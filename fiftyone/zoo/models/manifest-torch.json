@@ -17,7 +17,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.alexnet.alexnet",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "AlexNet_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -62,7 +64,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.deeplabv3_resnet101",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DeepLabV3_ResNet101_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
@@ -198,7 +202,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.deeplabv3_resnet50",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DeepLabV3_ResNet50_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
@@ -235,7 +241,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet121",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DenseNet121_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -280,7 +288,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet161",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DenseNet161_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -325,7 +335,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet169",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DenseNet169_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -370,7 +382,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.densenet.densenet201",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "DenseNet201_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -415,7 +429,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.faster_rcnn.fasterrcnn_resnet50_fpn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "FasterRCNN_ResNet50_FPN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
                     "confidence_thresh": 0.3
@@ -450,7 +466,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.fcn_resnet101",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "FCN_ResNet101_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
@@ -487,7 +505,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.segmentation.fcn_resnet50",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "FCN_ResNet50_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
                     "mask_targets_path": "{{eta-resources}}/voc-labels.txt",
                     "image_dim": 520,
@@ -524,7 +544,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.googlenet.googlenet",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "GoogLeNet_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -569,7 +591,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.inception.inception_v3",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "Inception_V3_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_size": [299, 299],
@@ -613,7 +637,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.keypoint_rcnn.keypointrcnn_resnet50_fpn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "KeypointRCNN_ResNet50_FPN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.KeypointDetectorOutputProcessor",
                     "labels_string": "other,person",
                     "confidence_thresh": 0.3,
@@ -674,7 +700,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.mask_rcnn.maskrcnn_resnet50_fpn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "MaskRCNN_ResNet50_FPN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.InstanceSegmenterOutputProcessor",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt"
                 }
@@ -708,7 +736,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mnasnet.mnasnet0_5",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "MNASNet0_5_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -753,7 +783,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mnasnet.mnasnet1_0",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "MNASNet0_5_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -798,7 +830,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mobilenet.mobilenet_v2",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "MobileNet_V2_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -843,7 +877,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet101",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNet101_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -888,7 +924,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet152",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNet152_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -933,7 +971,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet18",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNet18_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -978,7 +1018,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet34",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNet34_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1023,7 +1065,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnet50",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNet50_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1068,7 +1112,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnext101_32x8d",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNeXt101_32X8D_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1113,7 +1159,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.resnext50_32x4d",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ResNeXt50_32X4D_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1158,7 +1206,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.detection.retinanet.retinanet_resnet50_fpn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "RetinaNet_ResNet50_FPN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.DetectorOutputProcessor",
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
                     "confidence_thresh": 0.3
@@ -1193,7 +1243,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.shufflenetv2.shufflenet_v2_x0_5",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ShuffleNet_V2_X0_5_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1238,7 +1290,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.shufflenetv2.shufflenet_v2_x1_0",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "ShuffleNet_V2_X1_0_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1283,7 +1337,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.squeezenet.squeezenet1_1",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "SqueezeNet1_1_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1321,7 +1377,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.squeezenet.squeezenet1_0",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "SqueezeNet1_0_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1359,7 +1417,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg11_bn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "VGG11_BN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1404,7 +1464,7 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg11",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": { "weights": "VGG11_Weights.DEFAULT" },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1449,7 +1509,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg13_bn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "VGG13_BN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1494,7 +1556,7 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg13",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": { "weights": "VGG13_Weights.DEFAULT" },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1539,7 +1601,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg16_bn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "VGG16_BN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1584,7 +1648,7 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg16",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": { "weights": "VGG16_Weights.DEFAULT" },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1629,7 +1693,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg19_bn",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "VGG19_BN_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1674,7 +1740,7 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.vgg.vgg19",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": { "weights": "VGG19_Weights.DEFAULT" },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1719,7 +1785,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.wide_resnet101_2",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "Wide_ResNet101_2_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -1764,7 +1832,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.resnet.wide_resnet50_2",
-                    "entrypoint_args": { "pretrained": true },
+                    "entrypoint_args": {
+                        "weights": "wide-resnet50-2-imagenet-torch"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
