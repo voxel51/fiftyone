@@ -95,7 +95,12 @@ class TorchvisionImageModel(fout.TorchImageModel):
         entrypoint = etau.get_function(config.entrypoint_fcn)
 
         if version.parse(torchvision.__version__) < version.parse("0.13.0"):
-            kwargs = {"pretrained": True} if config.entrypoint_args else {}
+            if config.entrypoint_args:
+                kwargs = config.entrypoint_args
+                kwargs.pop("weights", None)
+                kwargs["pretrained"] = True
+            else:
+                kwargs = {}
         else:
             kwargs = config.entrypoint_args or {}
 
