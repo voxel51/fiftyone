@@ -298,10 +298,6 @@ class MongoEngineBaseDocument(SerializableDocument):
 
     def has_field(self, field_name):
         try:
-            chunks = field_name.split(".", 1)
-            if len(chunks) > 1:
-                return self._get_field(chunks[0]).has_field(chunks[1])
-
             _ = self._get_field(field_name)
             return True
         except (KeyError, AttributeError):
