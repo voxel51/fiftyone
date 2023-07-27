@@ -6,6 +6,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../Actions";
 import Sample from "../../Sample";
+import { Sample3d } from "../../Sample3d";
 import { useGroupContext } from "../GroupContextProvider";
 import { GroupSuspense } from "../GroupSuspense";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
@@ -32,6 +33,7 @@ export const UnorderedDynamicGroup = () => {
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
+  const parent = useRecoilValue(fos.parentMediaTypeSelector);
 
   if (!groupByFieldValue) {
     return null;
@@ -49,11 +51,15 @@ export const UnorderedDynamicGroup = () => {
           )}
           {isMainVisible && (
             <GroupSuspense>
-              <Sample
-                lookerRefCallback={lookerRefCallback}
-                lookerRef={lookerRef}
-                hideSampleBar
-              />
+              {parent !== "point_cloud" ? (
+                <Sample
+                  lookerRefCallback={lookerRefCallback}
+                  lookerRef={lookerRef}
+                  hideSampleBar
+                />
+              ) : (
+                <Sample3d />
+              )}
             </GroupSuspense>
           )}
         </>

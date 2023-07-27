@@ -254,6 +254,7 @@ class Dataset:
     group_slice: t.Optional[str]
     default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
+    parent_media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
@@ -582,6 +583,7 @@ async def serialize_dataset(
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
+                data.parent_media_type = view._parent_media_type
                 data.media_type = view.media_type
 
             collection = view

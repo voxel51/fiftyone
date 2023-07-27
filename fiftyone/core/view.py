@@ -146,6 +146,40 @@ class DatasetView(foc.SampleCollection):
         return self.__dataset
 
     @property
+    def _has_slices(self):
+        if self._dataset.media_type != fom.GROUP:
+            return False
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlices):
+                return False
+
+        return True
+
+    @property
+    def _parent_media_type(self):
+        if (
+            self._dataset.media_type != fom.GROUP
+            or not self._is_dynamic_groups
+        ):
+            return self._dataset.media_type
+
+        for idx, stage in enumerate(self._stages):
+            if isinstance(stage, fost.GroupBy):
+                break
+
+        parent = self.__class__(
+            self.__dataset,
+            _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
+            _group_slice=self.__group_slice,
+            _name=self.__name,
+        )
+        return DatasetView._build(
+            self._dataset, self._serialize()[:idx]
+        ).media_type
+
+    @property
     def _is_generated(self):
         return self._dataset._is_generated
 
@@ -164,17 +198,6 @@ class DatasetView(foc.SampleCollection):
     @property
     def _is_dynamic_groups(self):
         return self._outputs_dynamic_groups()
-
-    @property
-    def _has_slices(self):
-        if self._dataset.media_type != fom.GROUP:
-            return False
-
-        for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
-                return False
-
-        return True
 
     @property
     def _sample_cls(self):

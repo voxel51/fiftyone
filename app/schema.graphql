@@ -159,6 +159,7 @@ type Dataset {
   groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
+  parentMediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!

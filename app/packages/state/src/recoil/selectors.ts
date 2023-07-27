@@ -45,8 +45,16 @@ export const stateSubscription = selector<string>({
 });
 
 export const mediaTypeSelector = selector({
-  key: "mediaType",
+  key: "mediaTypeSelector",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const parentMediaTypeSelector = selector({
+  key: "parentMediaTypeSelector",
+  get: ({ get }) => get(atoms.dataset)?.parentMediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },

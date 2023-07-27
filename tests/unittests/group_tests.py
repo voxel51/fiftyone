@@ -20,6 +20,7 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
+import fiftyone.core.media as fom
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
@@ -1264,6 +1265,7 @@ class GroupImportExportTests(unittest.TestCase):
             self.assertIsNone(view.group_media_types)
             self.assertIsNone(view.group_slice)
             self.assertIsNone(view.group_slices)
+            self.assertEqual(view._parent_media_type, fom.GROUP)
 
             view = view.group_by("filepath")
             self.assertIsNone(view.default_group_slice)
@@ -1271,6 +1273,9 @@ class GroupImportExportTests(unittest.TestCase):
             self.assertIsNone(view.group_media_types)
             self.assertIsNone(view.group_slice)
             self.assertIsNone(view.group_slices)
+            self.assertEqual(
+                view._parent_media_type, dataset.group_media_types[slice]
+            )
 
 
 class _GroupImporter(foud.GroupDatasetImporter):

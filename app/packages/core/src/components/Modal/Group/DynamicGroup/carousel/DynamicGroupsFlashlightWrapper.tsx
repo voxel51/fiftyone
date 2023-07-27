@@ -2,13 +2,8 @@ import Flashlight from "@fiftyone/flashlight";
 import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
-import React, {
-  useCallback,
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import { get } from "lodash";
+import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
 import {
   selector,
   useRecoilCallback,
@@ -47,6 +42,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
   const modalSampleId = useRecoilValue(fos.modalSampleId);
+  const field = useRecoilValue(fos.dynamicGroupParameters);
   const highlight = useCallback(
     (sample) => sample.id === modalSampleId,
     [modalSampleId]
@@ -57,6 +53,8 @@ export const DynamicGroupsFlashlightWrapper = () => {
     true,
     {
       ...opts,
+      thumbnailTitle: (sample) =>
+        field.orderBy ? get(sample, field.orderBy) : null,
     },
     highlight
   );
