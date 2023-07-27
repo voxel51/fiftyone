@@ -114,6 +114,7 @@ def execute_operator(operator_uri, ctx, params):
 
 
 def _parse_ctx(ctx):
+    # @todo add selected_labels
     dataset = ctx.get("dataset", None)
     view = ctx.get("view", None)
     selected = ctx.get("selected", None)
