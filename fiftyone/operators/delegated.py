@@ -19,13 +19,10 @@ from fiftyone.operators.executor import (
 
 class DelegatedOperation(object):
     """Base class for delegated operations.
-
     Delegated operations are used to define custom operations that can be
     applied to datasets and views.
-
     Delegated operations are defined by subclassing this class and
     implementing the :meth:`get_pipeline_stage` method.
-
     """
 
     def __init__(self, repo: DelegatedOperationRepo = None):
@@ -43,7 +40,6 @@ class DelegatedOperation(object):
     ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
-
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """
@@ -77,6 +73,11 @@ class DelegatedOperation(object):
         return self._repo.update_run_state(
             _id=doc_id, run_state=ExecutionRunState.FAILED, result=result
         )
+
+    def set_pinned(
+        self, doc_id: ObjectId, pinned: bool = True
+    ) -> DelegatedOperationDocument:
+        return self._repo.set_pinned(_id=doc_id, pinned=pinned)
 
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)

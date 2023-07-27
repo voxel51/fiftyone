@@ -1,6 +1,5 @@
 """
 FiftyOne Repository Factory
-
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -23,7 +22,7 @@ class DelegatedOpPagingParams(object):
     def __init__(
         self,
         skip: int = 0,
-        limit: int = 10,
+        limit: int = 1000,
         sort_by: SortByField = SortByField.QUEUED_AT,
         sort_direction: SortDirection = SortDirection.DESCENDING,
     ):
