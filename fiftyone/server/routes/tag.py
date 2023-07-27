@@ -47,6 +47,8 @@ class Tag(HTTPEndpoint):
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
                 group=GroupElementFilter(id=group_id, slices=slices)
+                if not sample_ids
+                else None
             ),
             target_labels=target_labels,
             sample_ids=sample_ids,
