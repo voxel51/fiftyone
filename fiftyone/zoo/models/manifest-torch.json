@@ -784,7 +784,7 @@
                 "config": {
                     "entrypoint_fcn": "torchvision.models.mnasnet.mnasnet1_0",
                     "entrypoint_args": {
-                        "weights": "MNASNet0_5_Weights.DEFAULT"
+                        "weights": "MNASNet1_0_Weights.DEFAULT"
                     },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
