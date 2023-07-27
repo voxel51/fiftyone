@@ -2903,15 +2903,14 @@ def _print_delegated_list(ops):
 
     rows = []
     for op in ops:
-        state = _parse_state(op.run_state)
         rows.append(
             {
                 "id": op.id,
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
-                "state": op.run_state,
-                "completed": state == ExecutionRunState.COMPLETED,
+                "state": op.run_state.value,
+                "completed": op.run_state == ExecutionRunState.COMPLETED,
             }
         )
 
@@ -3058,8 +3057,7 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
 
     del_ids = set()
     for op in ops:
-        state = _parse_state(op.run_state)
-        if state != ExecutionRunState.RUNNING:
+        if op.run_state != ExecutionRunState.RUNNING:
             del_ids.add(op.id)
 
     num_del = len(del_ids)
