@@ -20,7 +20,7 @@ class SortDirection(Enum):
     DESCENDING = -1
 
 
-class DelegatedOpPagingParams(object):
+class DelegatedOpPagingParams:
     def __init__(
         self,
         sort_by: SortByField = SortByField.QUEUED_AT,
