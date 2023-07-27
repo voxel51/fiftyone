@@ -16,6 +16,7 @@ import time
 import textwrap
 
 import argcomplete
+from bson import ObjectId
 from tabulate import tabulate
 import webbrowser
 
@@ -2936,14 +2937,13 @@ class DelegatedInfoCommand(Command):
     @staticmethod
     def execute(parser, args):
         dos = food.DelegatedOperation()
-        op = dos.get(args.id)
+        op = dos.get(ObjectId(args.id))
 
         _print_delegated_info(op)
 
 
 def _print_delegated_info(op):
-    d = op.config.to_dict()
-    _print_dict_as_json(d)
+    fo.pprint(op.to_pymongo())
 
 
 class DelegatedCleanupCommand(Command):
