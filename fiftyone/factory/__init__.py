@@ -12,8 +12,8 @@ class SortByField(Enum):
     QUEUED_AT = "queued_at"
     COMPLETED_AT = "completed_at"
     STARTED_AT = "started_at"
-    FAILED_At = "failed_at"
-    OPERATOR_NAME = "operator"
+    FAILED_AT = "failed_at"
+    OPERATOR = "operator"
 
 
 class SortDirection(Enum):

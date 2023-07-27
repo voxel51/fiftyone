@@ -2892,7 +2892,7 @@ def _launch_delegated_local():
     try:
         dos = food.DelegatedOperation()
 
-        print("Delegated operation server running")
+        print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
             dos.execute_queued_operations(log=True)
@@ -3043,7 +3043,6 @@ def _print_delegated_list(ops):
             {
                 "id": op.id,
                 "operator": op.operator,
-                # @todo lookup by ID
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
                 "state": op.run_state,
@@ -3192,7 +3191,12 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
         dataset_name=dataset,
         run_state=state,
     )
-    del_ids = set(op.id for op in ops)
+
+    del_ids = set()
+    for op in ops:
+        state = _parse_state(op.run_state)
+        if state != ExecutionRunState.RUNNING:
+            del_ids.add(op.id)
 
     num_del = len(del_ids)
     if num_del == 0:
