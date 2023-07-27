@@ -5,7 +5,7 @@ FiftyOne Delegated Operation Repository
 |
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 
 import pymongo
 from bson import ObjectId
@@ -18,6 +18,7 @@ from fiftyone.factory import (
 )
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import ExecutionResult, ExecutionRunState
+import fiftyone.core.dataset as fod
 
 
 class DelegatedOperationRepo(object):
@@ -49,6 +50,7 @@ class DelegatedOperationRepo(object):
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -60,6 +62,12 @@ class DelegatedOperationRepo(object):
         raise NotImplementedError("subclass must implement list_operations()")
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Delete an operation."""
+        raise NotImplementedError("subclass must implement delete_operation()")
+
+    def delete_for_dataset(
+        self, dataset_id: ObjectId
+    ) -> List[DelegatedOperationDocument]:
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
@@ -98,6 +106,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
+
+        dataset_name = None
+        if isinstance(op.context, dict):
+            dataset_name = op.context.get("request_params", {}).get(
+                "dataset_name"
+            )
+        elif "dataset_name" in op.context.request_params:
+            dataset_name = op.context.request_params["dataset_name"]
+
+        if dataset_name and not op.dataset_id:
+            dataset = fod.load_dataset(dataset_name)
+            op.dataset_id = dataset.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
@@ -180,6 +200,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -200,6 +221,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["delegation_target"] = delegation_target
         if run_by:
             query["context.user"] = run_by
+        if dataset_id:
+            query["dataset_id"] = dataset_id
 
         for arg in kwargs:
             query[arg] = kwargs[arg]
@@ -229,7 +252,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one_and_delete(
             filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
         )
-        return DelegatedOperationDocument().from_pymongo(doc)
+        if doc:
+            return DelegatedOperationDocument().from_pymongo(doc)
+
+    def delete_for_dataset(self, dataset_id: ObjectId):
+        self._collection.delete_many(filter={"dataset_id": dataset_id})
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})

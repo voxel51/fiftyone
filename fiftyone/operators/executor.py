@@ -329,6 +329,13 @@ class ExecutionContext(object):
         """
         return self.request_params.get("dataset_name", None)
 
+    @property
+    def dataset_id(self):
+        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate
+        on.
+        """
+        return self.request_params.get("dataset_id", None)
+
     def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
 
