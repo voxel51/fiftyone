@@ -176,7 +176,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             operator=operator,
             dataset_name=dataset_name,
             run_state=ExecutionRunState.QUEUED,
-            run_by=run_by,
         )
 
     def list_operations(
