@@ -21,12 +21,10 @@ class DelegatedOperationDocument(object):
         self,
         operator: str = None,
         delegation_target: str = None,
-        dataset_id: ObjectId = None,
         context: dict = None,
     ):
         self.operator = operator
         self.delegation_target = delegation_target
-        self.dataset_id = dataset_id
         self.context = (
             context.__dict__
             if isinstance(context, ExecutionContext)
@@ -53,7 +51,6 @@ class DelegatedOperationDocument(object):
         self.delegation_target = (
             doc["delegation_target"] if "delegation_target" in doc else None
         )
-        self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
         self.started_at = doc["started_at"] if "started_at" in doc else None
         self.completed_at = (
             doc["completed_at"] if "completed_at" in doc else None
