@@ -62,6 +62,26 @@ class LabelTests(unittest.TestCase):
             custom_id=ObjectId(),
         )
 
+        self.assertTrue(detection.has_field("label"))
+        self.assertTrue(detection.has_field("foo"))
+        self.assertFalse(detection.has_field("spam"))
+
+        self.assertIsNone(detection.get_field("label"))
+        self.assertEqual(detection.get_field("foo"), "bar")
+
+        detection.set_field("label", "cat")
+        detection.set_field("foo", "baz")
+        detection.set_field("spam", "eggs")
+
+        self.assertEqual(detection.get_field("label"), "cat")
+        self.assertEqual(detection.get_field("foo"), "baz")
+        self.assertEqual(detection.get_field("spam"), "eggs")
+
+        # pylint: disable=no-member
+        self.assertEqual(detection.label, "cat")
+        self.assertEqual(detection.foo, "baz")
+        self.assertEqual(detection.spam, "eggs")
+
         d = detection.to_dict()
 
         self.assertIsInstance(d["_id"], ObjectId)
