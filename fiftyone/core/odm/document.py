@@ -297,16 +297,15 @@ class MongoEngineBaseDocument(SerializableDocument):
         return self._get_field_names(include_private=False)
 
     def has_field(self, field_name):
-        # pylint: disable=no-member
-        chunks = field_name.split(".", 1)
-        if len(chunks) > 1:
-            field = self._fields.get(chunks[0], None)
-            try:
-                return field.has_field(chunks[1])
-            except AttributeError:
-                return False
+        try:
+            chunks = field_name.split(".", 1)
+            if len(chunks) > 1:
+                return self._get_field(chunks[0]).has_field(chunks[1])
 
-        return field_name in self._fields
+            _ = self._get_field(field_name)
+            return True
+        except (KeyError, AttributeError):
+            return False
 
     def get_field(self, field_name):
         chunks = field_name.split(".", 1)
