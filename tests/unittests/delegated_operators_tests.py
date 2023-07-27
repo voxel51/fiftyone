@@ -11,7 +11,11 @@ from unittest.mock import patch
 
 from bson import ObjectId
 
-from fiftyone.factory import DelegatedOpPagingParams
+from fiftyone.factory import (
+    DelegatedOpPagingParams,
+    SortDirection,
+    SortByField,
+)
 from fiftyone.operators.executor import ExecutionContext, ExecutionResult
 from fiftyone.operators.operator import Operator, OperatorConfig
 from fiftyone.operators.delegated import DelegatedOperation, ExecutionRunState
@@ -316,8 +320,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=25,
-                sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                sort_direction=DelegatedOpPagingParams.SortDirection.DESCENDING,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.DESCENDING,
             ),
         )
 
@@ -329,8 +333,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=1,
-                sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                sort_direction=DelegatedOpPagingParams.SortDirection.ASCENDING,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.ASCENDING,
             ),
         )
 
@@ -381,8 +385,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 paging=DelegatedOpPagingParams(
                     skip=pages * limit,
                     limit=limit,
-                    sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                    sort_direction=DelegatedOpPagingParams.SortDirection.DESCENDING,
+                    sort_by=SortByField.QUEUED_AT,
+                    sort_direction=SortDirection.DESCENDING,
                 ),
             )
             total += len(docs)
