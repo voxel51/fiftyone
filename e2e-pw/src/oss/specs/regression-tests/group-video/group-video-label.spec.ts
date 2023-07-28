@@ -1,7 +1,7 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
+import { getUniqueDatasetNameWithPrefix, Duration } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("video-label-regression");
 const testVideoPath1 = `/tmp/test-video1-${datasetName}.webm`;
@@ -24,7 +24,7 @@ test.describe("groups video labels", () => {
         duration: 3,
         width: 100,
         height: 100,
-        frameRate: 30,
+        frameRate: 5,
         color: "#000000",
       });
     });
