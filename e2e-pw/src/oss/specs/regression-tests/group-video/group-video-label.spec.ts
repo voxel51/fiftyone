@@ -1,7 +1,7 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
-import { getUniqueDatasetNameWithPrefix, Duration } from "src/oss/utils";
+import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("video-label-regression");
 const testVideoPath1 = `/tmp/test-video1-${datasetName}.webm`;
@@ -89,7 +89,7 @@ test.describe("groups video labels", () => {
     modal,
   }) => {
     await grid.openFirstLooker();
-    await modal.waitForSampleToLoad();
+    await modal.waitForSampleLoadDomAttribute();
 
     await modal.video.clickUseFrameNumber();
 
@@ -100,7 +100,8 @@ test.describe("groups video labels", () => {
 
       // check screenshot before video is played
       await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-before-play.png`
+        `${slice}-before-play.png`,
+        { animations: "allow" }
       );
 
       await modal.video.playUntilFrames("5");
@@ -113,14 +114,20 @@ test.describe("groups video labels", () => {
           // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
           // the real test is that the correct label is shown
           mask: [modal.video.time],
+          animations: "allow",
         }
       );
     };
 
     await checkVideo("v1");
 
+    const sampleLoadEventPromiseForv2 =
+      modal.getSampleLoadEventPromiseForFilepath(testVideoPath2);
+
     // change slice and repeat
     await modal.group.selectNthItemFromCarousel(1);
+
+    await sampleLoadEventPromiseForv2;
 
     await checkVideo("v2");
   });

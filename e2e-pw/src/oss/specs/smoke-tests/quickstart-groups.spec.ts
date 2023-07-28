@@ -50,7 +50,7 @@ test.describe("quickstart-groups", () => {
   test.describe("modal", () => {
     test.beforeEach(async ({ modal, grid }) => {
       await grid.openFirstLooker();
-      await modal.waitForSampleToLoad();
+      await modal.waitForSampleLoadDomAttribute();
     });
 
     test("shows correct pinned slice in modal", async ({ modal }) => {

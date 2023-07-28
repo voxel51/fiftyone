@@ -35,7 +35,7 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleToLoad();
+    return this.waitForSampleLoadDomAttribute();
   }
 
   async navigateNextSample() {
@@ -62,7 +62,7 @@ export class ModalPom {
     return this.getLooker().click();
   }
 
-  async waitForSampleToLoad() {
+  async waitForSampleLoadDomAttribute() {
     return this.page.waitForFunction(
       () => {
         const canvas = document.querySelector(
@@ -76,6 +76,20 @@ export class ModalPom {
         return canvas.getAttribute("sample-loaded") === "true";
       },
       { timeout: Duration.Seconds(10) }
+    );
+  }
+
+  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
+    return this.page.evaluate(
+      (sampleFilepath_) =>
+        new Promise<void>((resolve, _reject) => {
+          document.addEventListener("sample-loaded", (e: CustomEvent) => {
+            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
+              resolve();
+            }
+          });
+        }),
+      sampleFilepath
     );
   }
 }

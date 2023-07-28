@@ -23,6 +23,8 @@
     },
     "scripts": {
         "unittests": "vitest",
+        "check-flaky": "./scripts/check-flaky.sh",
+        "kill-port": "./scripts/kill-port.sh",
         "build-linux-screenshot-docker-image": "./scripts/generate-screenshots-docker-image/build-docker-image.sh",
         "e2e:ui": "npx playwright test --ui -c playwright.config.ts",
         "e2e": "playwright test -c playwright.config.ts",

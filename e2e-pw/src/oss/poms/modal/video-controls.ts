@@ -7,6 +7,7 @@ export class ModalVideoControlsPom {
   readonly controls: Locator;
   readonly optionsPanel: Locator;
   readonly time: Locator;
+  readonly playPauseButton: Locator;
 
   private readonly modal: ModalPom;
 
@@ -19,14 +20,17 @@ export class ModalVideoControlsPom {
       "looker-video-options-panel"
     );
     this.time = this.modal.locator.getByTestId("looker-video-time");
+    this.playPauseButton = this.controls.getByTestId(
+      "looker-video-play-button"
+    );
   }
 
   private async play() {
-    return this.controls.getByTestId("looker-video-play-button").click();
+    return this.playPauseButton.click();
   }
 
   private async pause() {
-    return this.controls.getByTestId("looker-video-play-button").click();
+    return this.playPauseButton.click();
   }
 
   private async clickSettings() {

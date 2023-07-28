@@ -10,7 +10,7 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export default defineConfig({
   testDir: "./src",
   testMatch: "**/?(*.)+(spec).ts?(x)",
-  timeout: process.env.CI ? Duration.Seconds(60) : Duration.Seconds(30),
+  timeout: Duration.Seconds(60),
   /* Run tests in files in parallel */
   fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -27,8 +27,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: "on-first-retry",
-
+    trace: process.env.CI ? "on-all-retries" : "retain-on-failure",
     // todo: change this to data-testid after we migrate off of cypress
     testIdAttribute: "data-cy",
   },
@@ -46,6 +45,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         bypassCSP: true,
         launchOptions: { args: ["--disable-web-security"] },
+        // contextOptions: { reducedMotion: "reduce" as const },
       },
     },
   ],
