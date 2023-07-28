@@ -29,12 +29,20 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
     
     dataset.add_samples(samples)
     view = dataset.group_by("dynamic_group")
-    dataset.save_view("dynamic_group", view)`);
+    dataset.save_view("dynamic-group", view)`);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilLoad(page, datasetName, "dynamic-group");
   });
 
-  test(`${extension} dynamic group`, async ({ grid }) => {});
+  test(`${extension} dynamic group`, async ({ grid, modal }) => {
+    await grid.assert.waitForEntryCountTextToEqual("10 groups");
+
+    await grid.openFirstLooker();
+    await modal.sidebarPom.assert.verifySidebarEntryText("dynamic_group", "0");
+    await modal.scrollCarousel();
+    await modal.navigateCarousel(4, true);
+    await modal.sidebarPom.assert.verifySidebarEntryText("dynamic_group", "0");
+  });
 });

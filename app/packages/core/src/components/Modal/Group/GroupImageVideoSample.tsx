@@ -13,8 +13,8 @@ export const GroupImageVideoSample: React.FC<{
   const sample = useRecoilValue(fos.modalSample);
 
   const clearModal = useClearModal();
-  const pinned = !useRecoilValue(fos.pinned3DSampleSlice);
-  const reset = useResetRecoilState(fos.pinned3DSampleSlice);
+  const pinned = !useRecoilValue(fos.pinned3d);
+  const reset = useResetRecoilState(fos.pinned3d);
   const hover = fos.useHoveredSample(sample.sample);
   const { lookerRefCallback } = useGroupContext();
 

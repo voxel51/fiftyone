@@ -184,7 +184,6 @@ export const Looker3d = () => {
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
-
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const minZ = _.get(settings, "pointCloud.minZ", null);
 
@@ -331,7 +330,6 @@ export const Looker3d = () => {
           (customColorMap &&
             customColorMap[isPointcloudDataset ? "default" : slice]) ??
           "#00ff00";
-
         return (
           <PointCloudMesh
             key={slice}

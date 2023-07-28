@@ -36,6 +36,7 @@ export const DynamicGroupCarousel = () => {
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}
+      data-cy={"group-carousel"}
     >
       <DynamicGroupsFlashlightWrapper />
     </Resizable>

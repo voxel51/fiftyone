@@ -48,10 +48,11 @@ export const SampleBar: React.FC<{
   lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
   visible?: boolean;
   hoveringRef: MutableRefObject<boolean>;
-}> = ({ hoveringRef, lookerRef, sampleId, visible }) => {
+  actions?: boolean;
+}> = ({ hoveringRef, lookerRef, sampleId, visible, actions = true }) => {
   return visible ? (
     <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
-      <ModalActionsRow lookerRef={lookerRef} />
+      {actions && <ModalActionsRow lookerRef={lookerRef} />}
     </SelectableBar>
   ) : null;
 };

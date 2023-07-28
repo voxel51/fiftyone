@@ -3,7 +3,7 @@ import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import { useRef } from "react";
+import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { GroupBar } from "../Bars";
 import EnsureGroupSample from "./EnsureGroupSample";

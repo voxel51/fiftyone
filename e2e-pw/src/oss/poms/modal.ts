@@ -50,6 +50,13 @@ export class ModalPom {
     }, left);
   }
 
+  async navigateCarousel(index: number, allowErrorInfo = false) {
+    const looker = this.groupCarousel.getByTestId("looker").nth(index);
+    await looker.click({ position: { x: 10, y: 60 } });
+
+    return this.waitForSampleToLoad(allowErrorInfo);
+  }
+
   async navigateSlice(
     groupField: string,
     slice: string,

@@ -55,7 +55,6 @@ export const UnorderedDynamicGroup = () => {
                 <Sample
                   lookerRefCallback={lookerRefCallback}
                   lookerRef={lookerRef}
-                  hideSampleBar
                 />
               ) : (
                 <Sample3d />

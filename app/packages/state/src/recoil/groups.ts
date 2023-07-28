@@ -25,6 +25,11 @@ export const pinned3DSampleSlice = atom<string>({
   default: null,
 });
 
+export const pinned3d = atom<boolean>({
+  key: "pinned3d",
+  default: false,
+});
+
 export const pinned3DSample = selector({
   key: "pinned3DSample",
   get: ({ get }) => get(allPcdSlicesToSampleMap)[get(pinned3DSampleSlice)],
@@ -135,7 +140,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(pinned3DSampleSlice)) {
+      if (modal && get(pinned3d)) {
         return get(pinned3DSampleSlice);
       }
 
@@ -150,7 +155,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(pinned3DSampleSlice)) {
+      if (modal && get(pinned3d)) {
         return get(activePcdSlices);
       }
 
@@ -163,9 +168,8 @@ export const activeSliceDescriptorLabel = selector<string>({
   get: ({ get }) => {
     const currentSliceValue = get(currentSlice(true));
     const activePcdSlicesValue = get(activePcdSlices);
-    const isPcdSliceActive = activePcdSlicesValue?.includes(currentSliceValue);
 
-    if (!isPcdSliceActive) {
+    if (!get(pinned3d)) {
       return currentSliceValue;
     }
 

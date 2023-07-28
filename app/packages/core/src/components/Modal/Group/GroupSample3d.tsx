@@ -1,7 +1,8 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
+  useRecoilState,
   useRecoilTransaction_UNSTABLE,
   useRecoilValue,
   useRecoilValueLoadable,
@@ -9,26 +10,21 @@ import {
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
-const GroupSample3d = () => {
-  const sample = useRecoilValue(fos.allPcdSlicesToSampleMap)[
-    useRecoilValue(fos.pinned3DSampleSlice)
-  ];
+const Sample3dWrapper = () => {
+  const sample = useRecoilValue(fos.pinned3DSample);
+  const [pinned, setPinned] = useRecoilState(fos.pinned3d);
   const hover = fos.useHoveredSample(sample);
 
   return (
     <GroupSampleWrapper
       sampleId={sample.id}
-      pinned={false}
-      onClick={() => {}}
+      pinned={pinned}
+      onClick={() => setPinned(true)}
       {...hover.handlers}
     >
       <Sample3d />
     </GroupSampleWrapper>
   );
-};
-
-const Redirect = () => {
-  return useRecoilValue(fos.onlyPcd) ? <Sample3d /> : <GroupSample3d />;
 };
 
 export default () => {
@@ -98,5 +94,5 @@ export default () => {
     return <Loading>Pixelating...</Loading>;
   }
 
-  return <Redirect />;
+  return <Sample3dWrapper />;
 };
