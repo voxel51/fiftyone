@@ -1,6 +1,7 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { useState } from "react";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 
@@ -34,35 +35,43 @@ const useFlashlightPager = (
       pageSize: number
     ) => Promise<VariablesOf<foq.paginateSamplesQuery>>
   >
-): FlashlightConfig<number>["get"] => {
+): [boolean, FlashlightConfig<number>["get"]] => {
   const environment = useRelayEnvironment();
   const page = useRecoilValue(pageSelector);
+  const [empty, setEmpty] = useState(false);
 
-  return async (pageNumber) => {
-    const variables = await page(pageNumber, PAGE_SIZE);
-    return new Promise((resolve) => {
-      const subscription = fetchQuery<foq.paginateSamplesQuery>(
-        environment,
-        foq.paginateSamples,
-        variables
-      ).subscribe({
-        next: (data) => {
-          const items = processSamplePageData(
-            pageNumber * PAGE_SIZE,
-            store,
-            data
-          );
-          subscription.unsubscribe();
-          resolve({
-            items,
-            nextRequestKey: data.samples.pageInfo.hasNextPage
-              ? pageNumber + 1
-              : null,
-          });
-        },
+  return [
+    empty,
+    async (pageNumber) => {
+      const variables = await page(pageNumber, PAGE_SIZE);
+      return new Promise((resolve) => {
+        const subscription = fetchQuery<foq.paginateSamplesQuery>(
+          environment,
+          foq.paginateSamples,
+          variables
+        ).subscribe({
+          next: (data) => {
+            const items = processSamplePageData(
+              pageNumber * PAGE_SIZE,
+              store,
+              data
+            );
+
+            subscription.unsubscribe();
+            if (!pageNumber && !items.length) {
+              setEmpty(true);
+            }
+            resolve({
+              items,
+              nextRequestKey: data.samples.pageInfo.hasNextPage
+                ? pageNumber + 1
+                : null,
+            });
+          },
+        });
       });
-    });
-  };
+    },
+  ];
 };
 
 export default useFlashlightPager;

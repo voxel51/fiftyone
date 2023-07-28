@@ -121,7 +121,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
     [store, store, setSample]
   );
 
-  const pager = useFlashlightPager(store, pageParams);
+  const [_, pager] = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({

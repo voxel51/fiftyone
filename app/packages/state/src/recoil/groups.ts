@@ -8,7 +8,7 @@ import {
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import { graphQLSelector } from "recoil-relay";
+import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
 import { aggregateSelectorFamily } from "./aggregate";
 import { dataset } from "./atoms";
@@ -51,7 +51,7 @@ export const defaultGroupSlice = selector<string>({
   },
 });
 
-export const groupSlice = atomFamily<string, boolean>({
+export const groupSlice = atomFamily<string | null, boolean>({
   key: "groupSlice",
   default: null,
 });
@@ -61,6 +61,14 @@ export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   get: ({ get }) => {
     return get(groupSlice(false)) ? get(dataset).groupMediaTypes : [];
   },
+});
+
+export const groupMediaTypesMap = selector({
+  key: "groupMediaTypesMap",
+  get: ({ get }) =>
+    Object.fromEntries(
+      get(groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
+    ),
 });
 
 export const groupSlices = selector<string[]>({
@@ -86,7 +94,7 @@ export const hasGroupSlices = selector<boolean>({
     get(isGroup) && get(groupSlice(false)) && Boolean(get(groupSlices).length),
 });
 
-export const activePcdSlices = atom<string[] | null>({
+export const activePcdSlices = atom<string[]>({
   key: "activePcdSlices",
   default: [],
 });
@@ -133,6 +141,17 @@ export const allPcdSlices = selector<string[]>({
   },
 });
 
+export const allNonPcdSlices = selector<string[]>({
+  key: "allNonPcdSlices",
+  get: ({ get }) => {
+    return get(groupMediaTypes)
+      .filter(
+        ({ mediaType }) => !["point-cloud", "point_cloud"].includes(mediaType)
+      )
+      .map(({ name }) => name);
+  },
+});
+
 export const currentSlice = selectorFamily<string | null, boolean>({
   key: "currentSlice",
   get:
@@ -140,11 +159,13 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      if (modal && get(pinned3d)) {
+      const slice = get(groupSlice(modal));
+
+      if (!slice || (modal && get(pinned3d))) {
         return get(pinned3DSampleSlice);
       }
 
-      return get(groupSlice(modal));
+      return slice;
     },
 });
 
@@ -154,12 +175,13 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
     (modal) =>
     ({ get }) => {
       if (!get(isGroup)) return null;
+      const slice = get(groupSlice(modal));
 
-      if (modal && get(pinned3d)) {
+      if (!slice || (modal && get(pinned3d))) {
         return get(activePcdSlices);
       }
 
-      return [get(groupSlice(modal))].filter((s) => s);
+      return [slice].filter((s) => s);
     },
 });
 
@@ -201,36 +223,48 @@ export const refreshGroupQuery = atom<number>({
   default: 0,
 });
 
-export const pcdSamples = graphQLSelector<
+export const groupSamples = graphQLSelectorFamily<
   VariablesOf<foq.paginateSamplesQuery>,
+  { slices: string[]; count: number | null },
   ModalSample[]
 >({
-  key: "pcdSampleQuery",
+  key: "groupSamples",
   environment: RelayEnvironmentKey,
   query: foq.paginateSamples,
-  variables: ({ get }) => {
-    const groupIdValue = get(groupId);
+  variables:
+    ({ slices, count = null }) =>
+    ({ get }) => {
+      const groupIdValue = get(groupId);
 
-    return {
-      dataset: get(datasetName),
-      view: get(view),
-      filter: {
-        group: {
-          id: groupIdValue,
-          slices: get(allPcdSlices),
+      return {
+        count,
+        dataset: get(datasetName),
+        view: get(view),
+        filter: {
+          group: {
+            id: groupIdValue,
+            slices,
+          },
         },
-      },
-    };
-  },
+      };
+    },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
     return data.samples.edges.map((edge) => {
-      if (edge.node.__typename !== "PointCloudSample") {
-        throw new Error("unexpected type");
-      }
-
       return mapSampleResponse(edge.node as ModalSample);
     });
   },
+});
+
+export const nonPcdSamples = selector({
+  key: "nonPcdSamples",
+  get: ({ get }) =>
+    get(groupSamples({ slices: get(allNonPcdSlices), count: 1 })),
+});
+
+export const pcdSamples = selector({
+  key: "pcdSamples",
+  get: ({ get }) =>
+    get(groupSamples({ slices: get(allPcdSlices), count: null })),
 });
 
 export const groupByFieldValue = atom<string | null>({
@@ -246,8 +280,8 @@ export const nestedGroupIndex = atom<number>({
 export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
-    if (get(pinned3DSampleSlice)) {
-      get(activePcdSlicesToSampleMap)[get(pinned3DSampleSlice)]?.sample;
+    if (get(pinned3d)) {
+      return get(activePcdSlicesToSampleMap)[get(pinned3DSampleSlice)]?.sample;
     }
 
     return get(modalSample).sample;

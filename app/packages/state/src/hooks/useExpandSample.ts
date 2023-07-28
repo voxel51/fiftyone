@@ -49,8 +49,6 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
           [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-
-          [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
         ];
 
         const results = await Promise.all(
@@ -58,6 +56,32 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             snapshot.getPromise(get as RecoilState<unknown>)
           )
         );
+
+        let groupSlice = await snapshot.getPromise(
+          groupAtoms.groupSlice(false)
+        );
+
+        if (groupSlice) {
+          const types = await snapshot.getPromise(groupAtoms.groupMediaTypes);
+          const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
+          const defaultSlice = await snapshot.getPromise(
+            groupAtoms.defaultGroupSlice
+          );
+          if (
+            types.find(({ name }) => name === groupSlice).mediaType ===
+            "point_cloud"
+          ) {
+            if (map[defaultSlice] !== "point_cloud") {
+              groupSlice = defaultSlice;
+            } else {
+              groupSlice = types
+                .filter(({ mediaType }) => mediaType !== "point_cloud")
+                .map(({ name }) => name)
+                .sort()[0];
+            }
+            set(groupAtoms.groupSlice(true), groupSlice);
+          }
+        }
 
         for (const i in results) {
           set(data[i][0], results[i]);

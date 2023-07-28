@@ -1,4 +1,4 @@
-import { useTheme } from "@fiftyone/components";
+import { Loading, useTheme } from "@fiftyone/components";
 import Flashlight from "@fiftyone/flashlight";
 import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -80,7 +80,7 @@ const Column: React.FC = () => {
   const selectSample = useRef(select);
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
-  const pager = useFlashlightPager(store, pageParams);
+  const [empty, pager] = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -155,6 +155,10 @@ const Column: React.FC = () => {
   useLayoutEffect(() => {
     flashlight.updateItems(updateItem);
   }, [flashlight, updateItem, options, selected]);
+
+  if (empty) {
+    return <Loading>No data</Loading>;
+  }
 
   return (
     <div

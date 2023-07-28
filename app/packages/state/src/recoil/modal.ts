@@ -121,13 +121,20 @@ export const modalSample = graphQLSelector<
     const current = get(currentModalSample);
     if (current === null) return null;
 
+    const slices = get(hasGroupSlices);
+    const slice = get(groupSlice(true));
+
+    if (slices && !slice) {
+      return null;
+    }
+
     return {
       dataset: get(datasetName),
       view: get(view),
       filters: get(filters),
       filter: {
         id: current.id,
-        group: get(hasGroupSlices)
+        group: slices
           ? { slices: [get(groupSlice(true))], id: get(groupId) }
           : null,
       },
