@@ -1,29 +1,31 @@
-import { Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 
 export class PanelPom {
   readonly page: Page;
+  readonly locator: Locator;
+  readonly assert: PanelAsserter;
 
   constructor(page: Page) {
     this.page = page;
-  }
+    this.assert = new PanelAsserter(this);
 
-  container() {
-    return this.page.getByTestId("panel-container");
+    this.locator = this.page.getByTestId("panel-container");
   }
 
   newPanelBtn() {
-    return this.page.getByTitle("New panel");
+    return this.locator.getByTitle("New panel");
   }
 
   tab(name: string = "samples") {
-    // return this.page.getByTestId(`panel-tab-${name}`);
-    if (name === "samples") {
-      return this.page.getByRole("button", { name: "Samples", exact: true });
-    }
+    return this.locator.getByTestId(`panel-tab-${name}`);
   }
 
   histogramOption() {
-    return this.page.getByText("Histograms", { exact: true });
+    return this.locator.getByText("Histograms", { exact: true });
+  }
+
+  distributionContainer() {
+    return this.locator.getByTestId("distribution-container");
   }
 
   async openNew(option = "histograms") {
@@ -36,5 +38,13 @@ export class PanelPom {
 
   async open(option = "samples") {
     await this.tab(option).first().click();
+  }
+}
+
+class PanelAsserter {
+  constructor(private readonly gridPom: PanelPom) {}
+
+  async histogramLoaded() {
+    await expect(this.gridPom.distributionContainer()).toBeVisible();
   }
 }

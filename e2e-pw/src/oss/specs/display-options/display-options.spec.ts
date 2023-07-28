@@ -31,21 +31,16 @@ test.describe("Display Options", () => {
   test("switching display options statistics to group should be successful when histogram is open", async ({
     actionsRow,
     panel,
-    fiftyoneLoader,
-    page,
   }) => {
-    // open new panel
     await panel.openNew();
-    // open samples tab back
     await panel.open();
-    // wait until page loads
-    // await fiftyoneLoader.waitUntilLoad(page, datasetName);
-    // open display sidebar settings (NOTE: this is timing out - talk to Sashank)
     await actionsRow.openDisplayOptions();
-    // click on group tab
-    // await actionsRow.displayActions.setSidebarStatisticsMode("group");
-    // // open histograms tab back and make sure no error
-    // await panel.open();
-    // TODO assert no error
+    await actionsRow.displayActions.setSidebarStatisticsMode("group");
+    await panel.open("histograms");
+
+    await panel.distributionContainer().waitFor({ state: "visible" });
+    await panel.distributionContainer().click();
+
+    await panel.assert.histogramLoaded();
   });
 });
