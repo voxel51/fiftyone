@@ -31,6 +31,7 @@ import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
 import { isValidColor } from "../../overlays/util";
+import _ from "lodash";
 
 interface TagData {
   color: string;
