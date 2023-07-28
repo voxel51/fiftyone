@@ -264,18 +264,16 @@ class ExecutionContext(object):
 
     @property
     def secrets(self) -> dict:
-        print("context.secrets")
         return self._secrets
 
     def resolve_secret_values(self, keys):
-        print("resolve_secrets")
-        if self._secrets_client is None:
+        """Resolves the values of the given secrets."""
+        if None in (self._secrets_client, keys):
             return None
         for key in keys:
             secret = self._secrets_client.get_secret(key)
             if secret:
                 self._secrets[secret.key] = secret.value
-        print(self._secrets)
 
 
 class ExecutionResult(object):

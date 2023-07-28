@@ -14,9 +14,6 @@ class PluginSecretsResolver:
             cls._instance.client = _get_secrets_client()
         return cls._instance
 
-    # def __getattr__(self, attr):
-    #     return getattr(self.instance, attr)
-
     def get_secret(self, key) -> Optional[fois.ISecret]:
         return self._instance.client.get(key)
 
