@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import { Coloring, CustomizeColor } from "../../state";
 import { getAssignedColor } from "./util";
 
+const pool1 = "#EE0000";
+const pool2 = "#EE6600";
 const coloringByValue = {
   seed: 0,
-  pool: ["#EE0000", "#EE6600", "#EEBB00", "#00EE00", "#00EEBB", "#0000EE"],
+  pool: [pool1, pool2, "#EEBB00", "#00EE00", "#00EEBB", "#0000EE"],
   by: "value",
   scale: [],
   maskTargets: {},
@@ -242,21 +244,21 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         customizeColorSetting: sampleSetting12,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE6600");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSetting13,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE6600");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
         customizeColorSetting: sampleSetting1,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EEBB00");
+    ).toBe("#EE6600");
   });
 });
 
@@ -347,42 +349,42 @@ describe("Primitive fields bubbles get correct color", () => {
         customizeColorSetting: edgeSetting1,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE6600");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: edgeSetting2,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE0000");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: edgeSetting2,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE0000");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: edgeSetting2,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE0000");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: edgeSetting3,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE0000");
+    ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
         customizeColorSetting: edgeSetting4,
         isValidColor: isValidColorMock,
       })
-    ).toBe("#EE0000");
+    ).toBe(pool2);
   });
 
   it("Color by value mode, stringField and list of stringField get assigned value color correctly", () => {
