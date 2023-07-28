@@ -5,12 +5,17 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import { flashlightLooker } from "./Grid.module.css";
-import { rowAspectRatioThreshold } from "./recoil";
-import usePage from "./usePage";
+import {
+  gridCropCallback,
+  pageParameters,
+  rowAspectRatioThreshold,
+} from "./recoil";
 import useResize from "./useResize";
 
+import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { deferrer, stringifyObj } from "@fiftyone/state";
+import useFlashlightPager from "../../useFlashlightPager";
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
@@ -23,12 +28,15 @@ const Grid: React.FC<{}> = () => {
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
 
   const selected = useRecoilValue(fos.selectedSamples);
-  const pager = usePage(false, store);
-
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
+  const [empty, pager] = useFlashlightPager(
+    store,
+    pageParameters,
+    gridCropCallback
+  );
 
   // create flashlight only one time
   const [flashlight] = React.useState(() => {
@@ -36,7 +44,7 @@ const Grid: React.FC<{}> = () => {
       containerId: "grid-flashlight",
       horizontal: false,
       showPixels: true,
-      initialRequestKey: 1,
+      initialRequestKey: 0,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,
       onResize: resize.current,
@@ -167,6 +175,10 @@ const Grid: React.FC<{}> = () => {
   useEffect(() => {
     initialized.current = true;
   }, []);
+
+  if (empty) {
+    return <Loading>No data</Loading>;
+  }
 
   return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
 };

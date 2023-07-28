@@ -259,6 +259,7 @@ type Group {
 
 input GroupElementFilter {
   id: String = null
+  slice: String = null
   slices: [String!] = null
 }
 
@@ -441,6 +442,7 @@ type Query {
     first: Int = 20
     after: String = null
     filter: SampleFilter = null
+    extendedStages: BSON = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!

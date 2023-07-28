@@ -8,7 +8,7 @@ import { Resizable } from "re-resizable";
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
-import useFlashlightPager from "./useFlashlightPager";
+import useFlashlightPager from "../../../useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
 
 const groupCarouselSlices = selector<string[]>({
@@ -25,12 +25,7 @@ const groupCarouselSlices = selector<string[]>({
       get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
     );
 
-    return slices.filter(
-      (slice) =>
-        mediaTypes[slice] !== "point_cloud" ||
-        // remove after routing
-        mediaTypes[slice] === "point-cloud"
-    );
+    return slices.filter((slice) => mediaTypes[slice] !== "point_cloud");
   },
 });
 
@@ -45,6 +40,7 @@ const pageParams = selector({
             view: await snapshot.getPromise(fos.view),
             filter: {
               group: {
+                slice: await snapshot.getPromise(fos.groupSlice(false)),
                 id: await snapshot.getPromise(fos.groupId),
                 slices: await snapshot.getPromise(groupCarouselSlices),
               },

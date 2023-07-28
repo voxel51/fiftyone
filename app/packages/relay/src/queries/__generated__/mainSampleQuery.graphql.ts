@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b5754b48b96c95e4d0b3d33b660766e9>>
+ * @generated SignedSource<<1d598f6b9d52c6b564b614fbbf17fb0e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,6 +15,7 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   id?: string | null;
+  slice?: string | null;
   slices?: ReadonlyArray<string> | null;
 };
 export type mainSampleQuery$variables = {

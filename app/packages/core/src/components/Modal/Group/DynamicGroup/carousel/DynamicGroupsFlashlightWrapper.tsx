@@ -10,7 +10,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
-import useFlashlightPager from "../../useFlashlightPager";
+import useFlashlightPager from "../../../../../useFlashlightPager";
 import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
 export const DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID =

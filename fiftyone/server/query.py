@@ -42,7 +42,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.utils import from_dict
 
 
@@ -417,9 +417,16 @@ class Query(fosa.AggregateQuery):
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
         filter: t.Optional[SampleFilter] = None,
+        extended_stages: t.Optional[BSON] = None,
     ) -> Connection[SampleItem, str]:
         return await paginate_samples(
-            dataset, view, None, first, after, sample_filter=filter
+            dataset,
+            view,
+            None,
+            first,
+            after,
+            sample_filter=filter,
+            extended_stages=extended_stages,
         )
 
     @gql.field

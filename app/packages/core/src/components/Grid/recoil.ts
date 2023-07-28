@@ -1,7 +1,6 @@
-import { atom, selector, selectorFamily } from "recoil";
+import { atom, selector } from "recoil";
 
 import * as fos from "@fiftyone/state";
-import { groupSlice } from "@fiftyone/state";
 
 export const defaultGridZoom = selector<number>({
   key: "defaultGridZoom",
@@ -23,25 +22,43 @@ export const rowAspectRatioThreshold = selector<number>({
   get: ({ get }) => 11 - Math.max(get(gridZoom), get(gridZoomRange)[0]),
 });
 
-export interface PageParameters {
-  filters: fos.State.Filters;
-  dataset: string;
-  view: fos.State.Stage[];
-  zoom: boolean;
-}
+export const gridCropCallback = selector({
+  key: "gridCropCallback",
+  get: ({ getCallback }) => {
+    return getCallback(({ snapshot }) => async () => {
+      return (
+        (await snapshot.getPromise(fos.isPatchesView)) &&
+        (await snapshot.getPromise(fos.cropToContent(false)))
+      );
+    });
+  },
+});
 
-export const pageParameters = selectorFamily<PageParameters, boolean>({
-  key: "pageParameters",
-  get:
-    (modal) =>
-    ({ get }) => {
-      return {
-        filters: get(modal ? fos.modalFilters : fos.filters),
-        view: get(fos.view),
-        dataset: get(fos.datasetName),
-        extended: get(fos.extendedStages),
-        zoom: get(fos.isPatchesView) && get(fos.cropToContent(modal)),
-        slice: get(groupSlice(false)),
-      };
-    },
+export const pageParameters = selector({
+  key: "paginateGridVariables",
+  get: ({ getCallback }) => {
+    return getCallback(
+      ({ snapshot }) =>
+        async (page: number, pageSize: number) => {
+          const slice = await snapshot.getPromise(fos.groupSlice(false));
+
+          return {
+            dataset: await snapshot.getPromise(fos.datasetName),
+            view: await snapshot.getPromise(fos.view),
+            filters: await snapshot.getPromise(fos.filters),
+            filter: {
+              group: slice
+                ? {
+                    slice,
+                    slices: [slice],
+                  }
+                : null,
+            },
+            extendedStages: await snapshot.getPromise(fos.extendedStages),
+            after: page ? String(page * pageSize) : null,
+            first: pageSize,
+          };
+        }
+    );
+  },
 });

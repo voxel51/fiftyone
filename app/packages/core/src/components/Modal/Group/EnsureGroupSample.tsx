@@ -1,12 +1,14 @@
 import { Loading } from "@fiftyone/components";
 import {
   GroupSampleNotFound,
+  groupField,
   groupMediaTypesMap,
   groupSlice,
   modalSample,
   nonPcdSamples,
   pinned3d,
 } from "@fiftyone/state";
+import { get } from "lodash";
 import React, { Suspense, useEffect } from "react";
 import {
   useRecoilCallback,
@@ -22,14 +24,20 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
       async () => {
         let slice = await snapshot.getPromise(groupSlice(false));
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
-
-        if (slice && mediaTypes[slice] === "point_cloud") {
+        console.log("RESET");
+        if (!slice || mediaTypes[slice] === "point_cloud") {
           const samples = await snapshot.getPromise(nonPcdSamples);
-
+          console.log(samples);
           if (!samples.length) {
             slice = null;
+          } else {
+            slice = get(
+              samples[0].sample,
+              `${await snapshot.getPromise(groupField)}.name`
+            ) as unknown as string;
           }
         }
+        console.log(slice);
 
         !slice && set(pinned3d, true);
         set(groupSlice(true), slice);
