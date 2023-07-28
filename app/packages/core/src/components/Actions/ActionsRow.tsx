@@ -527,6 +527,7 @@ export const ModalActionsRow = ({
     >
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
+      <Colors />
       <Similarity modal={true} />
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />

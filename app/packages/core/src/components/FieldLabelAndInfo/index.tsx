@@ -280,7 +280,7 @@ function FieldInfoExpanded({
       onClick={(e) => e.stopPropagation()}
     >
       <FieldInfoExpandedContainer color={color}>
-        {!isModal && !disabled.has(field) && (
+        {!disabled.has(field) && (
           <CustomizeColor
             onClick={onClickCustomizeColor}
             color={color}
