@@ -23,7 +23,7 @@ import fiftyone as fo
 import fiftyone.constants as foc
 from fiftyone.core.config import locate_app_config
 import fiftyone.core.utils as fou
-from fiftyone.plugins.definitions import PluginDefinition
+from fiftyone.plugins.definitions import PLUGINS_DIR, PluginDefinition
 from fiftyone.utils.github import GitHubRepository
 
 
@@ -160,7 +160,7 @@ def download_plugin(
     overwrite=False,
 ):
     """Downloads the plugin(s) from the given location to your local plugins
-    directory (``fo.config.plugins_dir``).
+    directory (``PLUGINS_DIR``).
 
     .. note::
 
@@ -405,7 +405,7 @@ def create_plugin(
     metadata file will be created.
 
     If no ``outdir`` is specified, the plugin is created within your local
-    plugins directory (``fo.config.plugins_dir``).
+    plugins directory (``PLUGINS_DIR``).
 
     Args:
         plugin_name: the name of the plugin
@@ -433,7 +433,7 @@ def create_plugin(
             plugin_dir = existing_plugin_dirs[plugin_name]
             logger.info(f"Overwriting existing plugin '{plugin_name}'")
         else:
-            plugin_dir = os.path.join(fo.config.plugins_dir, plugin_name)
+            plugin_dir = os.path.join(PLUGINS_DIR, plugin_name)
     elif os.path.isdir(outdir):
         if not overwrite:
             raise ValueError(f"Directory '{outdir}' already exists")
@@ -549,7 +549,7 @@ def _find_plugin_metadata_files(root_dir, max_depth=1):
 
 
 def _iter_plugin_metadata_files():
-    plugins_dir = fo.config.plugins_dir
+    plugins_dir = PLUGINS_DIR
     if not plugins_dir or not os.path.isdir(plugins_dir):
         return
 
@@ -595,7 +595,7 @@ def _list_disabled_plugins():
 
 
 def _recommend_plugin_dir(plugin_name, src_dir=None):
-    plugins_dir = fo.config.plugins_dir
+    plugins_dir = PLUGINS_DIR
     if os.path.isdir(plugins_dir):
         existing_dirs = etau.list_subdirs(plugins_dir, recursive=True)
     else:

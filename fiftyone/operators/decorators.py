@@ -14,6 +14,8 @@ import os
 
 import fiftyone as fo
 
+from fiftyone.plugins.definitions import PLUGINS_DIR
+
 
 def coroutine_timeout(seconds):
     def decorator(func):
@@ -68,7 +70,7 @@ def plugins_cache(func):
         if not fo.config.plugins_cache_enabled:
             return func(*args, **kwargs)
 
-        curr_dir_state = dir_state(fo.config.plugins_dir)
+        curr_dir_state = dir_state(PLUGINS_DIR)
         if curr_dir_state != dir_cache["state"]:
             cache.clear()
             dir_cache["state"] = curr_dir_state

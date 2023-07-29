@@ -11,13 +11,18 @@ import os
 import sys
 import traceback
 
+import fiftyone as fo
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
 from fiftyone.operators.operator import Operator
 
+from .definitions import PLUGINS_DIR
+
 
 logger = logging.getLogger(__name__)
+
+INIT_FILENAME = "__init__.py"
 
 
 @plugins_cache
@@ -119,13 +124,15 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, "../operators/__init__.py")
+            module_path = os.path.join(module_dir, INIT_FILENAME)
             if not os.path.isfile(module_path):
                 return
 
-            parent_dir = os.path.basename(module_dir)
+            module_name = os.path.relpath(module_dir, PLUGINS_DIR).replace(
+                "/", "."
+            )
             spec = importlib.util.spec_from_file_location(
-                parent_dir, module_path
+                module_name, module_path
             )
             module = importlib.util.module_from_spec(spec)
             sys.modules[module.__name__] = module

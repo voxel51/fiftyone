@@ -13,6 +13,8 @@ import eta.core.serial as etas
 
 import fiftyone as fo
 
+PLUGINS_DIR = fo.config.plugins_dir
+
 
 class PluginDefinition(object):
     """A plugin definition.
@@ -128,7 +130,7 @@ class PluginDefinition(object):
     @property
     def server_path(self):
         """The default server path to the plugin."""
-        relpath = os.path.relpath(self.directory, fo.config.plugins_dir)
+        relpath = os.path.relpath(self.directory, PLUGINS_DIR)
         return "/" + os.path.join("plugins", relpath)
 
     @property
