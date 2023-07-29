@@ -43,10 +43,17 @@ class AbstractSecret(ISecret, abc.ABC):
         self._created_at = datetime.now()
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(_key={self.key}, _value={"*" * len(self._value)}, _created_at={self._created_at})'
+        return (
+            f"{self.__class__.__name__}(_key={self.key}, "
+            f'_value={"*" * len(self._value)}, '
+            f"_created_at={self._created_at})"
+        )
 
     def __str__(self):
-        return f'{self.__class__.__name__}(key={self.key},  has_value={"True" if self._value else "False"})'
+        return (
+            f"{self.__class__.__name__}(key={self.key},  "
+            f'has_value={"True" if self._value else "False"})'
+        )
 
     @property
     @abc.abstractmethod
