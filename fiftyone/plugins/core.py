@@ -160,7 +160,7 @@ def download_plugin(
     overwrite=False,
 ):
     """Downloads the plugin(s) from the given location to your local plugins
-    directory (``PLUGINS_DIR``).
+    directory (``fo.config.plugins_dir``).
 
     .. note::
 
@@ -405,7 +405,7 @@ def create_plugin(
     metadata file will be created.
 
     If no ``outdir`` is specified, the plugin is created within your local
-    plugins directory (``PLUGINS_DIR``).
+    plugins directory (``fo.config.plugins_dir``).
 
     Args:
         plugin_name: the name of the plugin
@@ -549,11 +549,10 @@ def _find_plugin_metadata_files(root_dir, max_depth=1):
 
 
 def _iter_plugin_metadata_files():
-    plugins_dir = PLUGINS_DIR
-    if not plugins_dir or not os.path.isdir(plugins_dir):
+    if not PLUGINS_DIR or not os.path.isdir(PLUGINS_DIR):
         return
 
-    for root, dirs, files in os.walk(plugins_dir, followlinks=True):
+    for root, dirs, files in os.walk(PLUGINS_DIR, followlinks=True):
         # Ignore hidden directories
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         for file in files:
@@ -595,9 +594,8 @@ def _list_disabled_plugins():
 
 
 def _recommend_plugin_dir(plugin_name, src_dir=None):
-    plugins_dir = PLUGINS_DIR
-    if os.path.isdir(plugins_dir):
-        existing_dirs = etau.list_subdirs(plugins_dir, recursive=True)
+    if os.path.isdir(PLUGINS_DIR):
+        existing_dirs = etau.list_subdirs(PLUGINS_DIR, recursive=True)
     else:
         existing_dirs = set()
 
@@ -605,12 +603,12 @@ def _recommend_plugin_dir(plugin_name, src_dir=None):
     if src_dir is not None:
         dirname = os.path.basename(src_dir)
         if dirname not in existing_dirs:
-            return os.path.join(plugins_dir, dirname)
+            return os.path.join(PLUGINS_DIR, dirname)
 
     # Else use directory-ified plugin name
     name = os.path.join(*plugin_name.split("/"))  # Windows compatibility
     if name not in existing_dirs:
-        return os.path.join(plugins_dir, name)
+        return os.path.join(PLUGINS_DIR, name)
 
     # Else generate a unique name based on the plugin name
     unique_name = None
@@ -622,7 +620,7 @@ def _recommend_plugin_dir(plugin_name, src_dir=None):
         else:
             break
 
-    return os.path.join(plugins_dir, unique_name)
+    return os.path.join(PLUGINS_DIR, unique_name)
 
 
 def _recommend_label(name):

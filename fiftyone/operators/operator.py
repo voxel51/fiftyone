@@ -255,8 +255,6 @@ class Operator(object):
         Args:
             secrets: a list of secrets
         """
-        print("add_secrets self", self)
-        print("adding secrets to operator", secrets)
         if not self._plugin_secrets:
             self._plugin_secrets = []
         self._plugin_secrets.extend(secrets)
