@@ -45,7 +45,6 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         bypassCSP: true,
         launchOptions: { args: ["--disable-web-security"] },
-        // contextOptions: { reducedMotion: "reduce" as const },
       },
     },
   ],
