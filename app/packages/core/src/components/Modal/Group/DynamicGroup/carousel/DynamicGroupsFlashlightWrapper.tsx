@@ -49,7 +49,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   );
 
   const createLooker = fos.useCreateLooker(
-    true,
+    false,
     true,
     {
       ...opts,

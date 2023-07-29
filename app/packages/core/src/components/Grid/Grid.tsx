@@ -1,9 +1,17 @@
+import { Loading } from "@fiftyone/components";
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
-import { useEventHandler, useExpandSample } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import {
+  deferrer,
+  stringifyObj,
+  useEventHandler,
+  useExpandSample,
+} from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import useFlashlightPager from "../../useFlashlightPager";
 import { flashlightLooker } from "./Grid.module.css";
 import {
   gridCropCallback,
@@ -11,11 +19,6 @@ import {
   rowAspectRatioThreshold,
 } from "./recoil";
 import useResize from "./useResize";
-
-import { Loading } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { deferrer, stringifyObj } from "@fiftyone/state";
-import useFlashlightPager from "../../useFlashlightPager";
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());

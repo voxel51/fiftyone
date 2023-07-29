@@ -13,14 +13,13 @@ const useSetGroupSlice = () => {
   const onError = useErrorHandler();
 
   return useRecoilTransaction_UNSTABLE(({ get, set }) => (slice: string) => {
-    throw new Error("WUT");
     set(groupSlice(false), slice);
-    send((session) =>
+    send((session) => {
       commit({
         onError,
         variables: { subscription, session, view: get(view), slice },
-      })
-    );
+      });
+    });
   });
 };
 

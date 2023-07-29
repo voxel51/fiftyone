@@ -23,11 +23,10 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
     ({ set, snapshot }) =>
       async () => {
         let slice = await snapshot.getPromise(groupSlice(false));
+
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
-        console.log("RESET");
         if (!slice || mediaTypes[slice] === "point_cloud") {
           const samples = await snapshot.getPromise(nonPcdSamples);
-          console.log(samples);
           if (!samples.length) {
             slice = null;
           } else {
@@ -37,13 +36,15 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
             ) as unknown as string;
           }
         }
-        console.log(slice);
 
-        !slice && set(pinned3d, true);
+        slice === null && set(pinned3d, true);
         set(groupSlice(true), slice);
       },
     []
   );
+  if (modal.state === "hasError") {
+    throw modal.contents;
+  }
 
   useEffect(() => {
     modal.state === "hasError" &&

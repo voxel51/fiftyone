@@ -44,7 +44,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} group carousel`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("2 groups");
+    await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
     await grid.openFirstLooker();
     await modal.sidebarPom.toggleSidebarGroup("GROUP");
     await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "0");

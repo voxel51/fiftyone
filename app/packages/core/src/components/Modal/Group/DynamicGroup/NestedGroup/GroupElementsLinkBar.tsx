@@ -1,3 +1,4 @@
+import { Loading, LoadingDots } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { currentModalSample } from "@fiftyone/state";
@@ -5,6 +6,7 @@ import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import { get as getValue } from "lodash";
 import React, {
+  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -67,7 +69,19 @@ export const GroupElementsLinkBar = () => {
     [loadDynamicGroupSamples, cursor]
   );
 
-  return <GroupElementsLinkBarImpl queryRef={queryRef} />;
+  return (
+    <BarContainer data-cy="dynamic-group-pagination-bar">
+      <Suspense
+        fallback={
+          <Loading>
+            <LoadingDots text={""} />
+          </Loading>
+        }
+      >
+        <GroupElementsLinkBarImpl queryRef={queryRef} />
+      </Suspense>
+    </BarContainer>
+  );
 };
 
 const GroupElementsLinkBarImpl = React.memo(
@@ -211,7 +225,7 @@ const GroupElementsLinkBarImpl = React.memo(
     fos.useEventHandler(document, "keydown", keyNavigationHandler);
 
     return (
-      <BarContainer data-cy="dynamic-group-pagination-bar">
+      <>
         <Pagination
           count={elementsCount}
           siblingCount={1}
@@ -250,7 +264,7 @@ const GroupElementsLinkBarImpl = React.memo(
             onChange={onPageChange}
           />
         )}
-      </BarContainer>
+      </>
     );
   }
 );

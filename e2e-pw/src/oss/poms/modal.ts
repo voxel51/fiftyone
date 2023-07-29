@@ -154,4 +154,11 @@ class ModalAsserter {
 
     expect(count).toBe(String(n));
   }
+
+  async verifyCarouselLength(count: number) {
+    const lookers = await this.modalPom.groupCarousel
+      .getByTestId("looker")
+      .count();
+    expect(lookers).toBe(count);
+  }
 }

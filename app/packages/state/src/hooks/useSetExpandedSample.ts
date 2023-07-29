@@ -14,8 +14,6 @@ export default () => {
   const types = useRecoilValue(groupAtoms.groupMediaTypes);
   const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
 
-  const defaultSlice = useRecoilValue(groupAtoms.defaultGroupSlice);
-
   const setter = useRecoilTransaction_UNSTABLE(
     ({ get, reset, set }) =>
       (
@@ -33,18 +31,14 @@ export default () => {
 
         let fallback = get(groupAtoms.groupSlice(false));
         if (map[fallback] === "point_cloud") {
-          if (map[defaultSlice] !== "point_cloud") {
-            fallback = defaultSlice;
-          } else {
-            fallback = types
-              .filter(({ mediaType }) => mediaType !== "point_cloud")
-              .map(({ name }) => name)
-              .sort()[0];
-          }
+          fallback = types
+            .filter(({ mediaType }) => mediaType !== "point_cloud")
+            .map(({ name }) => name)
+            .sort()[0];
         }
-        set(groupAtoms.groupSlice(true), (cur) => (cur ? cur : fallback));
+        set(groupAtoms.groupSlice(true), fallback);
       },
-    [types]
+    [map, types]
   );
 
   return useRecoilCallback(

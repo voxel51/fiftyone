@@ -1,5 +1,6 @@
 import { AbstractLooker } from "@fiftyone/looker";
 import {
+  Lookers,
   modalSample,
   modalSampleId,
   useClearModal,
@@ -15,7 +16,7 @@ export const SampleWrapper = ({
   actions,
   lookerRef,
 }: React.PropsWithChildren<{
-  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  lookerRef?: MutableRefObject<Lookers | undefined>;
   actions?: boolean;
 }>) => {
   const [hovering, setHovering] = useState(false);
@@ -41,7 +42,6 @@ export const SampleWrapper = ({
     update,
     clear,
   });
-  return <>{children}</>;
 
   return (
     <div
@@ -55,7 +55,6 @@ export const SampleWrapper = ({
         hoveringRef={hoveringRef}
         actions={actions}
       />
-
       {children}
     </div>
   );

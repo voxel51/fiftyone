@@ -57,14 +57,17 @@ const Column: React.FC = () => {
   const [id] = useState(() => uuid());
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
+
   const groupField = useRecoilValue(fos.groupField);
   const currentSlice = useRecoilValue(fos.groupSlice(true));
+
   const highlight = useCallback(
     (sample) => get(sample, groupField).name === currentSlice,
     [currentSlice, groupField]
   );
+
   const createLooker = fos.useCreateLooker(
-    true,
+    false,
     true,
     {
       ...opts,
@@ -72,6 +75,7 @@ const Column: React.FC = () => {
     },
     highlight
   );
+
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;

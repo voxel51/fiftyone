@@ -38,13 +38,15 @@ test.describe("quickstart-groups", () => {
   });
 
   test("entry counts works", async ({ grid }) => {
-    expect(await grid.getEntryCountText()).toEqual("4 groups");
+    expect(await grid.getEntryCountText()).toEqual("4 groups with slice");
 
     await grid.actionsRow.openDisplayOptions();
     await grid.actionsRow.displayActions.setSidebarStatisticsMode("group");
 
     // note: entry-counts might take a while to change, which is why we're asserting using polling
-    await grid.assert.waitForEntryCountTextToEqual("4 groups (12 samples)");
+    await grid.assert.waitForEntryCountTextToEqual(
+      "(12 samples) 4 groups with slice"
+    );
   });
 
   test.describe("modal", () => {

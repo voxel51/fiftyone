@@ -134,9 +134,7 @@ export const modalSample = graphQLSelector<
       filters: get(filters),
       filter: {
         id: current.id,
-        group: slices
-          ? { slices: [get(groupSlice(true))], id: get(groupId) }
-          : null,
+        group: slices ? { slice, slices: [slice], id: get(groupId) } : null,
       },
     };
   },

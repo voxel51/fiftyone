@@ -1,5 +1,5 @@
 import { Bar, useTheme } from "@fiftyone/components";
-import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
+import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useMemo, useRef } from "react";
@@ -45,7 +45,7 @@ const SelectableBar: React.FC<
 
 export const SampleBar: React.FC<{
   sampleId: string;
-  lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
+  lookerRef?: React.MutableRefObject<fos.Lookers | undefined>;
   visible?: boolean;
   hoveringRef: MutableRefObject<boolean>;
   actions?: boolean;

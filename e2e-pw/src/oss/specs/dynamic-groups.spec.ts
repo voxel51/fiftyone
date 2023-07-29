@@ -3,18 +3,19 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
+const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
+  grid: async ({ page }, use) => {
+    await use(new GridPom(page));
+  },
+  modal: async ({ page }, use) => {
+    await use(new ModalPom(page));
+  },
+});
+
 ["mp4", "pcd", "png"].forEach((extension) => {
   const datasetName = getUniqueDatasetNameWithPrefix(
-    `${extension}-sparse-groups`
+    `${extension}-dynamic-groups`
   );
-  const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-    grid: async ({ page }, use) => {
-      await use(new GridPom(page));
-    },
-    modal: async ({ page }, use) => {
-      await use(new ModalPom(page));
-    },
-  });
 
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.executePythonCode(`

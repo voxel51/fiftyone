@@ -41,7 +41,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} default slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group");
+    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.openFirstLooker();
     await modal.sidebarPom.toggleSidebarGroup("GROUP");
     await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
@@ -54,9 +54,9 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} shared slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group");
+    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.selectSlice("shared");
-    await grid.assert.waitForEntryCountTextToEqual("2 groups");
+    await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
     await grid.openFirstLooker();
     await modal.sidebarPom.assert.verifySidebarEntryText(
       "group.name",
@@ -86,9 +86,9 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} second slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group");
+    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.selectSlice("second");
-    await grid.assert.waitForEntryCountTextToEqual("1 group");
+    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.openFirstLooker();
     await modal.sidebarPom.toggleSidebarGroup("GROUP");
     await modal.sidebarPom.assert.verifySidebarEntryText(

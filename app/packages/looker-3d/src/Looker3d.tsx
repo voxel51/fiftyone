@@ -456,8 +456,8 @@ export const Looker3d = () => {
 
   return (
     <ErrorBoundary>
-      <Container onMouseOver={update} onMouseMove={update}>
-        <Canvas onClick={() => setCurrentAction(null)} data-cy="looker3d">
+      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
+        <Canvas onClick={() => setCurrentAction(null)}>
           <Screenshot />
           <Environment
             controlsRef={controlsRef}
@@ -519,7 +519,7 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.error) {
-      return <Loading>{this.state.error}</Loading>;
+      return <Loading dataCy={"looker3d"}>{this.state.error}</Loading>;
     }
 
     return this.props.children;

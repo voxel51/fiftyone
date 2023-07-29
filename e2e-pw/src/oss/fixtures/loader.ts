@@ -125,14 +125,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
     if (savedView) {
       await page.goto(`/datasets/${datasetName}?view=${savedView}`);
     } else {
-      throw new Error("E");
       await page.goto(`/datasets/${datasetName}`);
     }
 
     const pathname = await page.evaluate(() => window.location.pathname);
     if (pathname !== `/datasets/${datasetName}`) {
-      // is force necessary?
-      throw new Error("dataset not evaluated");
+      await forceDatasetFromSelector();
     }
 
     if (savedView) {

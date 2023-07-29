@@ -1,4 +1,14 @@
-import { affectedPathCountState } from "@fiftyone/state";
+import { PillButton, useTheme } from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import * as fos from "@fiftyone/state";
+import {
+  affectedPathCountState,
+  useEventHandler,
+  useOutsideClick,
+  useSetView,
+} from "@fiftyone/state";
 import {
   Bookmark,
   Check,
@@ -29,18 +39,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import { PillButton, useTheme } from "@fiftyone/components";
-import {
-  AbstractLooker,
-  FrameLooker,
-  ImageLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
-import { OperatorPlacements, types } from "@fiftyone/operators";
-import { useOperatorBrowser } from "@fiftyone/operators/src/state";
-import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
@@ -215,15 +213,13 @@ const Selected = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<
-    VideoLooker | ImageLooker | FrameLooker | undefined
-  >;
+  lookerRef?: MutableRefObject<fos.Lookers | undefined>;
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const samples = useRecoilValue(fos.selectedSamples);
   const labels = useRecoilValue(fos.selectedLabelIds);
-  const ref = useRef();
+  const ref = useRef<HTMLElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
@@ -513,7 +509,7 @@ export const ModalActionsRow = ({
   lookerRef,
   isGroup,
 }: {
-  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  lookerRef?: MutableRefObject<fos.Lookers | undefined>;
   isGroup?: boolean;
 }) => {
   const hideTagging = useRecoilValue(fos.readOnly);

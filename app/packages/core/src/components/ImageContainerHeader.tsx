@@ -1,19 +1,17 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
+import { Apps } from "@mui/icons-material";
 import Color from "color";
-import { Suspense, useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
+import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { gridZoom, gridZoomRange } from "./Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
-
-import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
-import { Apps } from "@mui/icons-material";
-import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
   position: absolute;
@@ -63,7 +61,7 @@ const Count = () => {
     fos.count({ path: "", extended: false, modal: false })
   );
   const isGroup = useRecoilValue(isGroupAtom);
-
+  const slice = useRecoilValue(fos.groupSlice(false));
   if (isGroup) {
     element = {
       plural: "groups",
@@ -77,6 +75,7 @@ const Count = () => {
         <PathEntryCounts modal={false} path={""} />
         {` `}
         {total === 1 ? element.singular : element.plural}
+        {slice && ` with slice`}
       </div>
     </RightDiv>
   );
@@ -91,16 +90,18 @@ const GroupsCount = () => {
   const elementTotal = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
+  const groupSlice = useRecoilValue(fos.groupSlice(false));
 
   return (
     <RightDiv data-cy="entry-counts">
       <div>
+        (<PathEntryCounts modal={false} path={""} />
+        {` `}
+        {elementTotal === 1 ? element.singular : element.plural}){` `}
         <PathEntryCounts modal={false} path={"_"} ignoreSidebarMode />
         {` `}
         {total === 1 ? "group" : "groups"}
-        {` `}(<PathEntryCounts modal={false} path={""} />
-        {` `}
-        {elementTotal === 1 ? element.singular : element.plural})
+        {groupSlice && ` with slice`}
       </div>
     </RightDiv>
   );

@@ -19,7 +19,6 @@ const processSamplePageData = (
       throw new Error("unexpected sample type");
     }
 
-    console.log(offset);
     store.samples.set(edge.node.id, edge.node as fos.ModalSample);
     store.indices.set(offset + i, edge.node.id);
 
