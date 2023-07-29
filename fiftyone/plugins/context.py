@@ -1,5 +1,5 @@
 """
-FiftyOne operator loader.
+FiftyOne plugin context.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -13,8 +13,8 @@ import traceback
 
 import fiftyone.plugins as fop
 
-from .decorators import plugins_cache
-from .operator import Operator
+from fiftyone.operators.decorators import plugins_cache
+from fiftyone.operators.operator import Operator
 
 
 logger = logging.getLogger(__name__)
@@ -119,7 +119,7 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, "__init__.py")
+            module_path = os.path.join(module_dir, "../operators/__init__.py")
             if not os.path.isfile(module_path):
                 return
 

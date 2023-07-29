@@ -6,8 +6,7 @@ FiftyOne operator registry.
 |
 """
 from .builtin import BUILTIN_OPERATORS
-from .loader import build_plugin_contexts
-from .operator import Operator
+from fiftyone.plugins.context import build_plugin_contexts
 
 
 def get_operator(operator_uri):

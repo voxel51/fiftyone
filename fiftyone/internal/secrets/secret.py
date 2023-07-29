@@ -12,9 +12,10 @@ from datetime import datetime
 
 class ISecret(abc.ABC):
     """
-    Interface for a secret.
+    Secret interface.
     """
 
+    @property
     @abc.abstractmethod
     def key(self) -> str:
         """
@@ -22,6 +23,7 @@ class ISecret(abc.ABC):
         """
         pass
 
+    @property
     @abc.abstractmethod
     def value(self) -> str:
         """
@@ -30,9 +32,9 @@ class ISecret(abc.ABC):
         pass
 
 
-class EnvSecret(ISecret, abc.ABC):
+class AbstractSecret(ISecret, abc.ABC):
     """
-    Fiftyone secret.
+    Abstract secret.
     """
 
     def __init__(self, key: str, value: str):
@@ -40,8 +42,35 @@ class EnvSecret(ISecret, abc.ABC):
         self._value = value
         self._created_at = datetime.now()
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(_key={self.key}, _value={"*" * len(self._value)}, _created_at={self._created_at})'
+
+    def __str__(self):
+        return f'{self.__class__.__name__}(key={self.key},  has_value={"True" if self._value else "False"})'
+
+    @property
+    @abc.abstractmethod
     def key(self) -> str:
         return self._key
 
+    @property
+    @abc.abstractmethod
     def value(self) -> str:
         return self._value
+
+
+class EnvSecret(AbstractSecret):
+    """
+    Fiftyone secret.
+    """
+
+    def __init__(self, key: str, value: str):
+        super().__init__(key, value)
+
+    @property
+    def key(self) -> str:
+        return super().key
+
+    @property
+    def value(self) -> str:
+        return super().value

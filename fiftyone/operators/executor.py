@@ -103,6 +103,7 @@ async def execute_operator(operator_name, request_params):
         return ExecutionResult(
             error="Validation Error", validation_ctx=validation_ctx
         )
+    print("execute_operator ctx.secrets", ctx.secrets)
     ctx.resolve_secret_values(operator._plugin_secrets)
 
     try:
