@@ -81,6 +81,10 @@ class DelegatedOperationRepo(object):
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
+    def count(self):
+        """Count all operations."""
+        raise NotImplementedError("subclass must implement count()")
+
 
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
@@ -117,7 +121,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if dataset_name and not op.dataset_id:
             dataset = fod.load_dataset(dataset_name)
-            op.dataset_id = dataset.id
+            op.dataset_id = dataset._doc.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
@@ -261,3 +265,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})
         return DelegatedOperationDocument().from_pymongo(doc)
+
+    def count(self, **filters) -> int:
+        return self._collection.count_documents(filter=filters)
