@@ -72,7 +72,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target="foo",
@@ -92,7 +92,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         self.delete_test_data()
 
@@ -234,7 +234,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
@@ -275,7 +275,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
@@ -317,7 +317,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         # create 100 docs, 25 of each state & for each user
         queued = []
@@ -456,7 +456,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar", "dataset_name": dataset_name}
@@ -475,7 +475,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         # create 100 docs, 25 of each state & for each user
         queued = []
