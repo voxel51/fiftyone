@@ -32,7 +32,7 @@ function Plots() {
   }, [plot]);
 
   return (
-    <DistributionsContainer>
+    <DistributionsContainer data-cy="distribution-container">
       <ControlsContainer>
         <Selector
           component={({ value }) => <>{value}</>}

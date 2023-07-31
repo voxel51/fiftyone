@@ -201,9 +201,13 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
-
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const selectedCounts = useRef(new Map<V["value"], number>());
-  const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
+  const selectVisibility = useRef(new Map<V["value"], number>());
+  const onSelect = useOnSelect(
+    selectedValuesAtom,
+    isFilterMode ? selectedCounts : selectVisibility
+  );
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
@@ -247,7 +251,9 @@ const CategoricalFilter = <T extends V = V>({
           !skeleton && (
             <Selector
               useSearch={useSearch}
-              placeholder={`+ filter by ${name}`}
+              placeholder={`+ ${
+                isFilterMode ? "filter" : "set visibility"
+              } by ${name}`}
               component={ResultComponent}
               onSelect={onSelect}
               inputStyle={{

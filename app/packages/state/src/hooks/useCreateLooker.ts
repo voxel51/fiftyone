@@ -130,6 +130,13 @@ export default <T extends AbstractLooker>(
         view,
       };
 
+      if (sample.group?.name) {
+        config.group = {
+          name: sample.group.name,
+          id: sample.group._id,
+        };
+      }
+
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),

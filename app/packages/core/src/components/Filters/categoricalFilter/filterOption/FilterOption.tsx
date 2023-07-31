@@ -1,16 +1,18 @@
+import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
+import Tooltip from "@fiftyone/components/src/components/Tooltip";
+import * as fos from "@fiftyone/state";
+import { useOutsideClick } from "@fiftyone/state";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 import HideImageIcon from "@mui/icons-material/HideImage";
 import ImageIcon from "@mui/icons-material/Image";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { IconButton } from "@mui/material";
 import Color from "color";
-import React, { useEffect } from "react";
-import { RecoilState, useRecoilState, useSetRecoilState } from "recoil";
+import React, { useMemo } from "react";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
-import Tooltip from "@fiftyone/components/src/components/Tooltip";
-import { useOutsideClick } from "@fiftyone/state";
 
 import { Popout } from "@fiftyone/components";
 import Item from "./FilterItem";
@@ -34,9 +36,16 @@ type Option = {
   tooltip: string;
 };
 
-type Key = "filter" | "negativeFilter" | "match" | "negativeMatch";
+type Key =
+  | "filter"
+  | "negativeFilter"
+  | "match"
+  | "negativeMatch"
+  | "visible"
+  | "notVisible";
 
 const generateOptions = (
+  isFilterMode: boolean,
   nestedField: string | undefined,
   shouldNotShowExclude: boolean,
   modal: boolean,
@@ -50,13 +59,32 @@ const generateOptions = (
   //  2) BooleanField should not have the negative filter or negative match options;
   //  3) in expanded mode or keypoints field, do not show the match or negative match options;
   const options: Option[] = [];
+  if (!isFilterMode) {
+    options.push({
+      icon: "VisibilityIcon",
+      key: "visible",
+      value: `Show ${isLabelTag ? "label tags" : valueName} 
+      `,
+      tooltip: "",
+    });
+    options.push({
+      icon: "VisibilityOffIcon",
+      key: "notVisible",
+      value: `Hide ${isLabelTag ? "label tags" : valueName}`,
+      tooltip: "",
+    });
+    return options;
+  }
+
   if (nestedField || isLabelTag) {
     options.push({
       icon: "FilterAltIcon",
       key: "filter",
-      value: `Select ${nestedField ?? "labels"} with ${
-        isLabelTag ? "label tag" : valueName
-      }`,
+      value: modal
+        ? `Show  ${nestedField ?? "labels"}`
+        : `Select ${nestedField ?? "labels"} with ${
+            isLabelTag ? "label tag" : valueName
+          }`,
       tooltip: isLabelTag
         ? "dataset.select_labels(tags=expr)"
         : isKeyPointLabel
@@ -68,9 +96,11 @@ const generateOptions = (
     options.push({
       icon: "FilterAltOffIcon",
       key: "negativeFilter",
-      value: `Exclude ${nestedField ?? "labels"} with ${
-        isLabelTag ? "label tag" : valueName
-      }`,
+      value: modal
+        ? `Hide ${nestedField ?? "labels"}`
+        : `Exclude ${nestedField ?? "labels"} with ${
+            isLabelTag ? "label tag" : valueName
+          }`,
       tooltip: isLabelTag
         ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
         : isKeyPointLabel
@@ -106,6 +136,7 @@ const generateOptions = (
         : "dataset.match(~expr)",
     });
   }
+
   return options;
 };
 
@@ -133,18 +164,17 @@ const FilterOption: React.FC<Props> = ({
 }) => {
   const isLabelTag = path?.startsWith("_label_tags");
   const isSampleTag = path?.startsWith("tag");
-
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const defaultToFilter = path === "_label_tags" || nestedField || modal;
   const [open, setOpen] = React.useState(false);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
-  const [key, setKey] = React.useState<Key>(() => {
-    if (!excluded) {
-      return nestedField || isLabelTag ? "filter" : "match";
-    } else {
-      return nestedField || isLabelTag ? "negativeFilter" : "negativeMatch";
-    }
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
+  const [filterKey, setFilterKey] = React.useState<Key>(() => {
+    if (defaultToFilter) return !excluded ? "filter" : "negativeFilter";
+    return !excluded ? "match" : "negativeMatch";
+  });
+  const [visibilityKey, setVisibilityKey] = React.useState<Key>(() => {
+    return !excluded ? "visible" : "notVisible";
   });
 
   const theme = useTheme();
@@ -157,34 +187,40 @@ const FilterOption: React.FC<Props> = ({
     setOpen(false);
   });
 
-  const options = generateOptions(
-    nestedField,
-    shouldNotShowExclude,
-    modal,
-    isKeyPointLabel,
-    valueName,
-    isLabelTag,
-    isSampleTag
+  const options = useMemo(
+    () =>
+      generateOptions(
+        isFilterMode,
+        nestedField,
+        shouldNotShowExclude,
+        modal,
+        isKeyPointLabel,
+        valueName,
+        isLabelTag,
+        isSampleTag
+      ),
+    [
+      isFilterMode,
+      modal,
+      isLabelTag,
+      isSampleTag,
+      nestedField,
+      shouldNotShowExclude,
+      isKeyPointLabel,
+      valueName,
+    ]
   );
 
-  useEffect(() => {
-    if (key === "filter") {
-      onSelectFilter();
-    } else if (key === "negativeFilter") {
-      onSelectNegativeFilter();
-    } else if (key === "match") {
-      onSelectMatch();
-    } else if (key === "negativeMatch") {
-      onSelectNegativeMatch();
-    }
-  }, [key]);
-
-  const selectedValue = options.find((o) => o.key === key)?.value;
+  const selectedValue = options.find(
+    (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+  )?.value;
 
   const Selected = () => {
     // render the icon for selected filter method
-    const icon = options.find((o) => o.key === key)?.icon;
-    if (!icon) return <>{key}</>;
+    const icon = options.find(
+      (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
+    )?.icon;
+    if (!icon) return <>{isFilterMode ? filterKey : visibilityKey}</>;
 
     switch (icon.toLowerCase()) {
       case "filteralticon":
@@ -195,34 +231,66 @@ const FilterOption: React.FC<Props> = ({
         return <ImageIcon fontSize="small" />;
       case "hideimageicon":
         return <HideImageIcon fontSize="small" />;
+      case "visibilityicon":
+        return <VisibilityIcon fontSize="small" />;
+      case "visibilityofficon":
+        return <VisibilityOffIcon fontSize="small" />;
       default:
         return <>{selectedValue}</>;
     }
   };
 
   const onSelectItem = (key: Key) => {
-    setKey(key);
+    isFilterMode ? setFilterKey(key) : setVisibilityKey(key);
     setOpen(false);
+    switch (key) {
+      case "filter":
+        onSelectFilter();
+        break;
+      case "negativeFilter":
+        onSelectNegativeFilter();
+        break;
+      case "match":
+        onSelectMatch();
+        break;
+      case "negativeMatch":
+        onSelectNegativeMatch();
+        break;
+      case "visible":
+        onSelectVisible();
+        break;
+      case "notVisible":
+        onSelectNotVisible();
+        break;
+    }
   };
 
   const onSelectFilter = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(false);
+    excluded && setExcluded(false);
+    isMatching && setIsMatching(false);
   };
 
   const onSelectNegativeFilter = () => {
-    setExcluded && setExcluded(true);
-    setIsMatching && setIsMatching(false);
+    !excluded && setExcluded(true);
+    isMatching && setIsMatching(false);
   };
 
   const onSelectMatch = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(true);
+    excluded && setExcluded(false);
+    !isMatching && setIsMatching(true);
   };
 
   const onSelectNegativeMatch = () => {
-    setExcluded && setExcluded(true);
-    setIsMatching && setIsMatching(true);
+    !excluded && setExcluded(true);
+    !isMatching && setIsMatching(true);
+  };
+
+  const onSelectVisible = () => {
+    excluded && setExcluded(false);
+  };
+
+  const onSelectNotVisible = () => {
+    !excluded && setExcluded(true);
   };
 
   const children = (

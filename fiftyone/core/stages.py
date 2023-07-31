@@ -4518,7 +4518,7 @@ class SelectGroupSlices(ViewStage):
         elif slices is not None:
             expr &= F(name_field) == slices
 
-        return [
+        pipeline = [
             {"$project": {group_field: True}},
             {
                 "$lookup": {
@@ -4531,6 +4531,23 @@ class SelectGroupSlices(ViewStage):
             {"$unwind": "$groups"},
             {"$replaceRoot": {"newRoot": "$groups"}},
         ]
+
+        # @note(SelectGroupSlices)
+        # Must re-apply field selection/exclusion after the $lookup
+        if isinstance(sample_collection, fov.DatasetView):
+            selected_fields, excluded_fields = _get_selected_excluded_fields(
+                sample_collection
+            )
+
+            if selected_fields:
+                stage = SelectFields(selected_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+            if excluded_fields:
+                stage = ExcludeFields(excluded_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+        return pipeline
 
     def get_media_type(self, sample_collection):
         group_field = sample_collection.group_field
@@ -8294,6 +8311,33 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
         warnings.warn(msg)
 
     return brain_key
+
+
+def _get_selected_excluded_fields(view):
+    selected_fields, excluded_fields = view._get_selected_excluded_fields()
+
+    if not view._has_frame_fields():
+        return selected_fields, excluded_fields
+
+    _selected_fields, _excluded_fields = view._get_selected_excluded_fields(
+        frames=True
+    )
+
+    if _selected_fields:
+        _selected_fields = {view._FRAMES_PREFIX + f for f in _selected_fields}
+        if selected_fields:
+            selected_fields.update(_selected_fields)
+        else:
+            selected_fields = _selected_fields
+
+    if _excluded_fields:
+        _excluded_fields = {view._FRAMES_PREFIX + f for f in _excluded_fields}
+        if excluded_fields:
+            excluded_fields.update(_excluded_fields)
+        else:
+            excluded_fields = _excluded_fields
+
+    return selected_fields, excluded_fields
 
 
 class _ViewStageRepr(reprlib.Repr):

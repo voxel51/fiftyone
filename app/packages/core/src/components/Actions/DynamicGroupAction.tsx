@@ -43,7 +43,6 @@ export const DynamicGroupAction = () => {
     <ActionDiv>
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
-        data-cy={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}
         open={open}
         onClick={() => {
@@ -55,6 +54,7 @@ export const DynamicGroupAction = () => {
         style={{
           cursor: "pointer",
         }}
+        data-cy="action-create-dynamic-groups"
       />
       {open && (
         <DynamicGroup
