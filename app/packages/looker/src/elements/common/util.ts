@@ -163,13 +163,12 @@ function getTagColor(
   const valueColor = setting.valueColors?.find(
     (v) => v.value === (param as string)
   )?.color;
-  console.info("param", param);
 
   if (isValidColor(valueColor)) {
     return valueColor;
-  } else {
-    return getColor(pool, seed, param as string);
   }
+
+  return getColor(pool, seed, param as string);
 }
 
 function getTargetColor(
@@ -209,18 +208,17 @@ function getTargetColor(
     if (!isPrimitive) {
       if (Array.isArray(param[key])) {
         return param[key].map((el) => el.toString()).includes(stringifiedValue);
-      } else {
-        return stringifiedValue === currentValue?.toString();
       }
+      return stringifiedValue === currentValue?.toString();
     } else {
       if (typeof value === "string" && value.includes(", ")) {
         return value
           .split(", ")
           .map((el) => el.toString())
           .includes(stringifiedValue);
-      } else {
-        return stringifiedValue === value.toString();
       }
+
+      return stringifiedValue === value.toString();
     }
   })?.color;
 }
@@ -259,7 +257,7 @@ export function getAssignedColor({
     value,
     by === "value"
   );
-  debugger;
+
   if (by === "field") {
     return getColorByField(setting, pool, seed, path, isValidColor);
   }
