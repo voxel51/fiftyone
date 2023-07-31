@@ -1,8 +1,8 @@
-import { FlashlightConfig } from "@fiftyone/flashlight";
+import { FlashlightConfig, Response } from "@fiftyone/flashlight";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
 
@@ -39,24 +39,20 @@ const defaultZoom = selector({
 const useFlashlightPager = (
   store: fos.LookerStore<fos.Lookers>,
   pageSelector: RecoilValueReadOnly<
-    (
-      page: number,
-      pageSize: number
-    ) => Promise<VariablesOf<foq.paginateSamplesQuery>>
+    (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
   >,
   zoomSelector?: RecoilValueReadOnly<() => Promise<boolean>>
-): [boolean, FlashlightConfig<number>["get"]] => {
+) => {
   const environment = useRelayEnvironment();
   const page = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector || defaultZoom);
-  const [empty, setEmpty] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
 
-  return [
-    empty,
-    async (pageNumber) => {
-      const variables = await page(pageNumber, PAGE_SIZE);
+  const pager = useMemo(() => {
+    return async (pageNumber: number) => {
+      const variables = page(pageNumber, PAGE_SIZE);
       const zoomValue = await zoom();
-      return new Promise((resolve) => {
+      return new Promise<Response<number>>((resolve) => {
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
           foq.paginateSamples,
@@ -72,7 +68,7 @@ const useFlashlightPager = (
 
             subscription.unsubscribe();
             if (!pageNumber && !items.length) {
-              setEmpty(true);
+              setIsEmpty(true);
             }
             resolve({
               items,
@@ -83,8 +79,17 @@ const useFlashlightPager = (
           },
         });
       });
-    },
-  ];
+    };
+  }, [environment, page, store, zoom]);
+
+  const ref = useRef<FlashlightConfig<number>["get"]>(pager);
+  ref.current = pager;
+
+  return {
+    isEmpty,
+    reset: page,
+    page: (page: number) => ref.current(page),
+  };
 };
 
 export default useFlashlightPager;

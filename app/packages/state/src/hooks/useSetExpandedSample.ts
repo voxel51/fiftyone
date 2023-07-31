@@ -22,10 +22,10 @@ export default () => {
         groupId?: string,
         groupByFieldValue?: string
       ) => {
+        groupId && set(groupAtoms.groupId, groupId);
         set(currentModalSample, { id, index });
         reset(groupAtoms.nestedGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
-        groupId && set(groupAtoms.groupId, groupId);
         groupByFieldValue &&
           set(groupAtoms.groupByFieldValue, groupByFieldValue);
 

@@ -20,19 +20,19 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
 
 const pageParams = selector({
   key: "paginateDynamicGroupVariables",
-  get: ({ getCallback }) => {
-    return getCallback(
-      ({ snapshot }) =>
-        async (page: number, pageSize: number) => {
-          return {
-            dataset: await snapshot.getPromise(fos.datasetName),
-            view: await snapshot.getPromise(fos.dynamicGroupViewQuery),
-            filter: {},
-            cursor: page ? String(page * pageSize) : null,
-            first: pageSize,
-          };
-        }
-    );
+  get: ({ get }) => {
+    const params = {
+      dataset: get(fos.datasetName),
+      view: get(fos.dynamicGroupViewQuery),
+    };
+    return (page: number, pageSize: number) => {
+      return {
+        ...params,
+        filter: {},
+        cursor: page ? String(page * pageSize) : null,
+        first: pageSize,
+      };
+    };
   },
 });
 
@@ -83,7 +83,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   }, []);
 
   const setSample = useSetDynamicGroupSample();
-
+  const { init, deferrer } = fos.useDeferrer();
   const navigationCallback = useRecoilCallback(
     ({ snapshot }) =>
       async (isPrevious) => {
@@ -121,7 +121,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
     [store, store, setSample]
   );
 
-  const [_, pager] = useFlashlightPager(store, pageParams);
+  const { page, reset } = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -138,7 +138,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: pager,
+      get: page,
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
@@ -169,14 +169,16 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
-    if (!flashlight.isAttached()) {
-      return;
-    }
+    deferrer(() => {
+      if (!flashlight.isAttached()) {
+        return;
+      }
 
-    flashlight.reset();
+      flashlight.reset();
 
-    freeVideos();
-  }, [flashlight, mediaField]);
+      freeVideos();
+    });
+  }, [deferrer, flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -202,8 +204,10 @@ export const DynamicGroupsFlashlightWrapper = () => {
     fos.lookerOptions({ modal: true, withFilter: true })
   );
   useLayoutEffect(() => {
-    flashlight.updateItems(updateItem);
-  }, [flashlight, updateItem, options, selected]);
+    deferrer(() => {
+      flashlight.updateItems(updateItem);
+    });
+  }, [deferrer, flashlight, updateItem, options, selected]);
 
   return (
     <div

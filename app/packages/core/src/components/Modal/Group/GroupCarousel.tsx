@@ -5,7 +5,13 @@ import * as fos from "@fiftyone/state";
 import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
-import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../../useFlashlightPager";
@@ -31,25 +37,25 @@ const groupCarouselSlices = selector<string[]>({
 
 const pageParams = selector({
   key: "paginateGroupVariables",
-  get: ({ getCallback }) => {
-    return getCallback(
-      ({ snapshot }) =>
-        async (page: number, pageSize: number) => {
-          return {
-            dataset: await snapshot.getPromise(fos.datasetName),
-            view: await snapshot.getPromise(fos.view),
-            filter: {
-              group: {
-                slice: await snapshot.getPromise(fos.groupSlice(false)),
-                id: await snapshot.getPromise(fos.groupId),
-                slices: await snapshot.getPromise(groupCarouselSlices),
-              },
-            },
-            after: page ? String(page * pageSize) : null,
-            first: pageSize,
-          };
-        }
-    );
+  get: ({ get }) => {
+    const params = {
+      dataset: get(fos.datasetName),
+      view: get(fos.view),
+      filter: {
+        group: {
+          slice: get(fos.groupSlice(false)),
+          id: get(fos.groupId),
+          slices: get(groupCarouselSlices),
+        },
+      },
+    };
+    return (page: number, pageSize: number) => {
+      return {
+        ...params,
+        after: page ? String(page * pageSize) : null,
+        first: pageSize,
+      };
+    };
   },
 });
 
@@ -80,7 +86,8 @@ const Column: React.FC = () => {
   const selectSample = useRef(select);
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
-  const [empty, pager] = useFlashlightPager(store, pageParams);
+  const { init, deferred } = fos.useDeferrer();
+  const { isEmpty, reset, page } = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -90,7 +97,7 @@ const Column: React.FC = () => {
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: pager,
+      get: page,
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
@@ -121,14 +128,16 @@ const Column: React.FC = () => {
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
-    if (!flashlight.isAttached()) {
-      return;
-    }
+    deferred(() => {
+      if (!flashlight.isAttached()) {
+        return;
+      }
 
-    flashlight.reset();
+      flashlight.reset();
 
-    freeVideos();
-  }, [flashlight, mediaField]);
+      freeVideos();
+    });
+  }, [deferred, reset, flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -153,10 +162,14 @@ const Column: React.FC = () => {
     fos.lookerOptions({ modal: true, withFilter: true })
   );
   useLayoutEffect(() => {
-    flashlight.updateItems(updateItem);
-  }, [flashlight, updateItem, options, selected]);
+    deferred(() => flashlight.updateItems(updateItem));
+  }, [deferred, flashlight, updateItem, options, selected]);
 
-  if (empty) {
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  if (isEmpty) {
     return <Loading>No data</Loading>;
   }
 

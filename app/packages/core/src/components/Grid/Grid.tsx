@@ -3,8 +3,8 @@ import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import {
-  deferrer,
   stringifyObj,
+  useDeferrer,
   useEventHandler,
   useExpandSample,
 } from "@fiftyone/state";
@@ -24,8 +24,7 @@ const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
   const store = fos.useLookerStore();
   const expandSample = useExpandSample(store);
-  const initialized = useRef(false);
-  const deferred = deferrer(initialized);
+  const { init, deferred } = useDeferrer();
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
@@ -35,7 +34,7 @@ const Grid: React.FC<{}> = () => {
   const resize = useResize();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
-  const [empty, pager] = useFlashlightPager(
+  const { isEmpty, page, reset } = useFlashlightPager(
     store,
     pageParameters,
     gridCropCallback
@@ -53,7 +52,7 @@ const Grid: React.FC<{}> = () => {
       onResize: resize.current,
       onItemResize: (id, dimensions) =>
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
-      get: pager,
+      get: page,
       render: (id, element, dimensions, soft, hide) => {
         let result = store.samples.get(id);
 
@@ -97,7 +96,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  useEffect(
+  useEffect(() => {
     deferred(() => {
       if (isModalOpen || isTagging || !flashlight.isAttached()) {
         return;
@@ -106,33 +105,35 @@ const Grid: React.FC<{}> = () => {
       flashlight.reset();
       store.reset();
       freeVideos();
-    }),
-    [
-      stringifyObj(useRecoilValue(fos.filters)),
-      useRecoilValue(fos.datasetName),
-      useRecoilValue(fos.cropToContent(false)),
-      fos.filterView(useRecoilValue(fos.view)),
-      useRecoilValue(fos.groupSlice(false)),
-      useRecoilValue(fos.refresher),
-      useRecoilValue(fos.similarityParameters),
-      useRecoilValue(fos.selectedMediaField(false)),
-      useRecoilValue(fos.extendedStagesUnsorted),
-      useRecoilValue(fos.extendedStages),
-    ]
-  );
+    });
+  }, [
+    deferred,
+    reset,
+    stringifyObj(useRecoilValue(fos.filters)),
+    useRecoilValue(fos.datasetName),
+    useRecoilValue(fos.cropToContent(false)),
+    fos.filterView(useRecoilValue(fos.view)),
+    useRecoilValue(fos.groupSlice(false)),
+    useRecoilValue(fos.refresher),
+    useRecoilValue(fos.similarityParameters),
+    useRecoilValue(fos.selectedMediaField(false)),
+    useRecoilValue(fos.extendedStagesUnsorted),
+    useRecoilValue(fos.extendedStages),
+  ]);
 
   const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
   selectSample.current = select;
 
   useLayoutEffect(
-    deferred(() =>
-      flashlight.updateOptions({ rowAspectRatioThreshold: threshold })
-    ),
-    [threshold]
+    () =>
+      deferred(() =>
+        flashlight.updateOptions({ rowAspectRatioThreshold: threshold })
+      ),
+    [deferred, flashlight, threshold]
   );
 
-  useLayoutEffect(
+  useLayoutEffect(() => {
     deferred(() => {
       flashlight.updateItems((sampleId) => {
         store.lookers.get(sampleId)?.updateOptions({
@@ -140,9 +141,8 @@ const Grid: React.FC<{}> = () => {
           selected: selected.has(sampleId),
         });
       });
-    }),
-    [lookerOptions, selected]
-  );
+    });
+  }, [deferred, flashlight, lookerOptions, store, selected]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -176,10 +176,10 @@ const Grid: React.FC<{}> = () => {
   );
 
   useEffect(() => {
-    initialized.current = true;
-  }, []);
+    init();
+  }, [init]);
 
-  if (empty) {
+  if (isEmpty) {
     return <Loading>No data</Loading>;
   }
 

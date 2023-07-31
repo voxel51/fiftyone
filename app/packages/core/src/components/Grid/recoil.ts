@@ -36,29 +36,28 @@ export const gridCropCallback = selector({
 
 export const pageParameters = selector({
   key: "paginateGridVariables",
-  get: ({ getCallback }) => {
-    return getCallback(
-      ({ snapshot }) =>
-        async (page: number, pageSize: number) => {
-          const slice = await snapshot.getPromise(fos.groupSlice(false));
-
-          return {
-            dataset: await snapshot.getPromise(fos.datasetName),
-            view: await snapshot.getPromise(fos.view),
-            filters: await snapshot.getPromise(fos.filters),
-            filter: {
-              group: slice
-                ? {
-                    slice,
-                    slices: [slice],
-                  }
-                : null,
-            },
-            extendedStages: await snapshot.getPromise(fos.extendedStages),
-            after: page ? String(page * pageSize) : null,
-            first: pageSize,
-          };
-        }
-    );
+  get: ({ get }) => {
+    const slice = get(fos.groupSlice(false));
+    const params = {
+      dataset: get(fos.datasetName),
+      view: get(fos.view),
+      filters: get(fos.filters),
+      filter: {
+        group: slice
+          ? {
+              slice,
+              slices: [slice],
+            }
+          : null,
+      },
+      extendedStages: get(fos.extendedStages),
+    };
+    return (page: number, pageSize: number) => {
+      return {
+        ...params,
+        after: page ? String(page * pageSize) : null,
+        first: pageSize,
+      };
+    };
   },
 });
