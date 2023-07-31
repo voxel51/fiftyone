@@ -1942,7 +1942,7 @@
                 }
             },
             "tags": ["embeddings", "torch"],
-            "date_added": "2023-05-03 10:17:51"
+            "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitb14",
@@ -1976,7 +1976,7 @@
                 }
             },
             "tags": ["embeddings", "torch"],
-            "date_added": "2023-05-03 10:17:51"
+            "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitl14",
@@ -2010,7 +2010,7 @@
                 }
             },
             "tags": ["embeddings", "torch"],
-            "date_added": "2023-05-03 10:17:51"
+            "date_added": "2023-07-31 10:17:51"
         },
         {
             "base_name": "dinov2-vitg14",
@@ -2044,7 +2044,7 @@
                 }
             },
             "tags": ["embeddings", "torch"],
-            "date_added": "2023-05-03 10:17:51"
+            "date_added": "2023-07-31 10:17:51"
         }
     ]
 }
