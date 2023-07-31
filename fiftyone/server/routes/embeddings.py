@@ -17,6 +17,7 @@ from fiftyone.core.utils import run_sync_task
 from fiftyone.server.decorators import route
 import fiftyone.server.utils as fosu
 import fiftyone.server.view as fosv
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 
 MAX_CATEGORIES = 100
@@ -26,6 +27,11 @@ COLOR_BY_TYPES = (
     fof.IntField,
     fof.FloatField,
 )
+
+
+def get_sample_filter(slices):
+    if slices:
+        return SampleFilter(group=GroupElementFilter(id=None, slices=slices))
 
 
 class OnPlotLoad(HTTPEndpoint):
@@ -38,7 +44,9 @@ class OnPlotLoad(HTTPEndpoint):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
+        filters = data.get("filters", None)
         label_field = data["labelField"]
+        slices = data["slices"]
         dataset = fosu.load_and_cache_dataset(dataset_name)
 
         try:
@@ -51,7 +59,13 @@ class OnPlotLoad(HTTPEndpoint):
             ) % brain_key
             return {"error": msg}
 
-        view = fosv.get_view(dataset_name, stages=stages)
+        view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            filters=filters,
+            sample_filter=get_sample_filter(slices),
+        )
+
         is_patches_view = view._is_patches
 
         patches_field = results.config.patches_field
@@ -146,6 +160,7 @@ class EmbeddingsSelection(HTTPEndpoint):
         brain_key = data["brainKey"]
         stages = data["view"]
         filters = data["filters"]
+        slices = data["slices"]
         extended_stages = data["extended"]
         extended_selection = data["extendedSelection"]
 
@@ -155,7 +170,11 @@ class EmbeddingsSelection(HTTPEndpoint):
         dataset = fosu.load_and_cache_dataset(dataset_name)
         results = dataset.load_brain_results(brain_key)
 
-        view = fosv.get_view(dataset_name, stages=stages)
+        view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            sample_filter=get_sample_filter(slices),
+        )
         if results.view != view:
             results.use_view(view, allow_missing=True)
 
@@ -173,6 +192,7 @@ class EmbeddingsSelection(HTTPEndpoint):
                 stages=stages,
                 filters=filters,
                 extended_stages=extended_stages,
+                sample_filter=get_sample_filter(slices),
             )
             is_patches_view = extended_view._is_patches
 
@@ -212,8 +232,13 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         stages = data["view"]
         patches_field = data["patchesField"]  # patches field of plot, or None
         selected_ids = data["selection"]  # selected IDs in plot
+        slices = data["slices"]
 
-        view = fosv.get_view(dataset_name, stages=stages)
+        view = fosv.get_view(
+            dataset_name,
+            stages=stages,
+            sample_filter=get_sample_filter(slices),
+        )
 
         is_patches_view = view._is_patches
         is_patches_plot = patches_field is not None

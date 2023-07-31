@@ -16,6 +16,7 @@ export function useSelectionEffect() {
   const filters = useRecoilValue(fos.filters);
   const extended = useRecoilValue(fos.extendedStagesUnsorted);
   const { selection } = useRecoilValue(fos.extendedSelection);
+  const slices = fos.currentSlices(false);
 
   // updated the selection when the extended view updates
   useEffect(() => {
@@ -28,6 +29,7 @@ export function useSelectionEffect() {
         filters,
         extended: resolvedExtended,
         extendedSelection: selection,
+        slices,
       }).then((res) => {
         let resolved = null;
         if (res.selected) {
