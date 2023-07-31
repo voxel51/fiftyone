@@ -10,11 +10,13 @@ import types as python_types
 import traceback
 from enum import Enum
 
+import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
 
+from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
 from fiftyone.core.utils import run_sync_task
@@ -137,6 +139,7 @@ def _parse_ctx(ctx):
     return dataset_name, view_stages, selected
 
 
+@coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(operator_uri, request_params):
     """Executes the operator with the given name.
 
@@ -294,6 +297,18 @@ class ExecutionContext(object):
     def selected(self):
         """The list of selected sample IDs or an empty list."""
         return self.request_params.get("selected", [])
+
+    @property
+    def selected_labels(self):
+        """A list of labels currently selected in the App.
+        Items are dictionaries with the following keys:
+        -   ``label_id``: the ID of the label
+        -   ``sample_id``: the ID of the sample containing the label
+        -   ``field``: the field name containing the label
+        -   ``frame_number``: the frame number containing the label (only
+            applicable to video samples)
+        """
+        return self.request_params.get("selected_labels", [])
 
     @property
     def dataset(self):
