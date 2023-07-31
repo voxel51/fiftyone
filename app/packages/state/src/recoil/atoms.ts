@@ -317,7 +317,7 @@ export const onlyPcd = selector<boolean>({
   key: "onlyPcd",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud") || set.has("point-cloud");
+    const hasPcd = set.has("point_cloud");
     return set.size === 1 && hasPcd;
   },
 });
@@ -326,7 +326,7 @@ export const groupMediaIs3dVisible = selector<boolean>({
   key: "groupMedia3dVisible",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud") || set.has("point-cloud");
+    const hasPcd = set.has("point_cloud");
     return get(groupMedia3dVisibleSetting) && hasPcd;
   },
 });

@@ -22,9 +22,11 @@ const Container = styled.div`
 
 const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
-    fos.groupMediaIsSlotVisibleSetting
+    fos.groupMedia3dVisibleSetting
   );
-  const pointCloudSliceExists = useRecoilValue(fos.pointCloudSliceExists);
+  const pointCloudSliceExists = useRecoilValue(fos.groupMediaTypesSet).has(
+    "point_cloud"
+  );
   const [isCarouselVisible, setIsCarouselVisible] = useRecoilState(
     fos.groupMediaIsCarouselVisibleSetting
   );
