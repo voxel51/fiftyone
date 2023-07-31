@@ -17,6 +17,7 @@ import time
 import textwrap
 
 import argcomplete
+from bson import ObjectId
 from tabulate import tabulate
 import webbrowser
 
@@ -32,6 +33,7 @@ import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
+import fiftyone.operators.delegated as food
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
@@ -95,6 +97,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "operators", OperatorsCommand)
+        _register_command(subparsers, "delegated", DelegatedCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
@@ -2836,6 +2839,368 @@ def _print_operator_info(operator_uri):
 
     d = operator.config.to_json()
     _print_dict_as_table(d)
+
+
+class DelegatedCommand(Command):
+    """Tools for working with FiftyOne delegated operations."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "launch", DelegatedLaunchCommand)
+        _register_command(subparsers, "list", DelegatedListCommand)
+        _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class DelegatedLaunchCommand(Command):
+    """Launches a service for running delegated operations.
+
+    Examples::
+
+        # Launch a local service
+        fiftyone delegated launch
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-t",
+            "--type",
+            default="local",
+            metavar="TYPE",
+            help="the type of service to launch. The default is 'local'",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        supported_types = ("local",)
+        if args.type not in supported_types:
+            raise ValueError(
+                "Unsupported service type '%s'. Supported values are %s"
+                % (args.type, supported_types)
+            )
+
+        if args.type == "local":
+            _launch_delegated_local()
+
+
+def _launch_delegated_local():
+    try:
+        dos = food.DelegatedOperationService()
+
+        print("Delegated operation service running")
+        print("\nTo exit, press ctrl + c")
+        while True:
+            dos.execute_queued_operations(log=True)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+
+
+class DelegatedListCommand(Command):
+    """List delegated operations.
+
+    Examples::
+
+        # List all delegated operations
+        fiftyone delegated list
+
+        # List some specific delegated operations
+        fiftyone delegated list \\
+            --dataset quickstart \\
+            --operator @voxel51/io/export_samples \\
+            --state COMPLETED \\
+            --sort-by COMPLETED_AT \\
+            --limit 10
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-o",
+            "--operator",
+            default=None,
+            metavar="OPERATOR",
+            help="only list operations for this operator",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset",
+            default=None,
+            metavar="DATASET",
+            help="only list operations for this dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--state",
+            default=None,
+            help=(
+                "only list operations with this state. Supported values are "
+                "('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')"
+            ),
+        )
+        parser.add_argument(
+            "--sort-by",
+            default="queued_at",
+            help=(
+                "how to sort the operations. Supported values are "
+                "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
+            ),
+        )
+        parser.add_argument(
+            "--reverse",
+            action="store_true",
+            default=None,
+            help="whether to sort in reverse order",
+        )
+        parser.add_argument(
+            "-l",
+            "--limit",
+            type=int,
+            default=None,
+            help="a maximum number of operations to show",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+
+        state = _parse_state(args.state)
+        paging = _parse_paging(
+            sort_by=args.sort_by, reverse=args.reverse, limit=args.limit
+        )
+
+        ops = dos.list_operations(
+            operator=args.operator,
+            dataset_name=args.dataset,
+            run_state=state,
+            paging=paging,
+        )
+
+        _print_delegated_list(ops)
+
+
+def _parse_state(state):
+    from fiftyone.operators.executor import ExecutionRunState
+
+    if state is not None:
+        try:
+            state = ExecutionRunState[state.upper()]
+        except:
+            raise ValueError("Invalid run state '%s'" % state)
+
+    return state
+
+
+def _parse_paging(sort_by=None, reverse=None, limit=None):
+    from fiftyone.factory import DelegatedOpPagingParams
+
+    sort_by = _parse_sort_by(sort_by)
+    sort_direction = _parse_reverse(reverse)
+    return DelegatedOpPagingParams(
+        sort_by=sort_by, sort_direction=sort_direction, limit=limit
+    )
+
+
+def _parse_sort_by(sort_by):
+    from fiftyone.factory import SortByField
+
+    if sort_by is not None:
+        try:
+            sort_by = SortByField[sort_by.upper()]
+        except:
+            raise ValueError("Invalid sort by '%s'" % sort_by)
+
+    return sort_by
+
+
+def _parse_reverse(reverse):
+    from fiftyone.factory import SortDirection
+
+    return SortDirection.ASCENDING if reverse else SortDirection.DESCENDING
+
+
+def _print_delegated_list(ops):
+    from fiftyone.operators.executor import ExecutionRunState
+
+    headers = [
+        "id",
+        "operator",
+        "dataset",
+        "queued_at",
+        "state",
+        "completed",
+    ]
+
+    rows = []
+    for op in ops:
+        rows.append(
+            {
+                "id": op.id,
+                "operator": op.operator,
+                "dataset": op.context.request_params.get("dataset_name", None),
+                "queued_at": op.queued_at,
+                "state": op.run_state.value,
+                "completed": op.run_state == ExecutionRunState.COMPLETED,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class DelegatedInfoCommand(Command):
+    """Prints information about a delegated operation.
+
+    Examples::
+
+        # Print information about a delegated operation
+        fiftyone delegated info <id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        op = dos.get(ObjectId(args.id))
+        fo.pprint(op._doc)
+
+
+class DelegatedCleanupCommand(Command):
+    """Cleanup delegated operations.
+
+    Examples::
+
+        # Delete all failed operations associated with a given dataset
+        fiftyone delegated cleanup --dataset quickstart --state FAILED
+
+        # Delete all delegated operations associated with non-existent datasets
+        fiftyone delegated cleanup --orphan
+
+        # Print information about operations rather than actually deleting them
+        fiftyone delegated cleanup --orphan --dry-run
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-o",
+            "--operator",
+            default=None,
+            metavar="OPERATOR",
+            help="cleanup operations for this operator",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset",
+            default=None,
+            metavar="DATASET",
+            help="cleanup operations for this dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--state",
+            default=None,
+            help=(
+                "delete operations in this state. Supported values are "
+                "('QUEUED', 'COMPLETED', 'FAILED')"
+            ),
+        )
+        parser.add_argument(
+            "--orphan",
+            action="store_true",
+            default=None,
+            help="delete all operations associated with non-existent datasets",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=None,
+            help=(
+                "whether to print information rather than actually deleting "
+                "operations"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.orphan:
+            _cleanup_orphan_delegated(dry_run=args.dry_run)
+        elif args.operator or args.dataset or args.state:
+            state = _parse_state(args.state)
+            _cleanup_delegated(
+                operator=args.operator,
+                dataset=args.dataset,
+                state=state,
+                dry_run=args.dry_run,
+            )
+        else:
+            print("No cleanup options specified")
+
+
+def _cleanup_orphan_delegated(dry_run=False):
+    from fiftyone.core.odm import get_db_conn
+
+    db = get_db_conn()
+    dataset_ids = set(d["_id"] for d in db.datasets.find({}, {"_id": 1}))
+
+    dos = food.DelegatedOperationService()
+    ops = dos.list_operations()
+
+    del_ids = set(op.id for op in ops if op.dataset_id not in dataset_ids)
+
+    num_del = len(del_ids)
+    if num_del == 0:
+        return
+
+    if dry_run:
+        print("Found %d orphan operation(s)" % num_del)
+    else:
+        print("Deleting %d orphan operation(s)" % num_del)
+        for del_id in del_ids:
+            dos.delete_operation(del_id)
+
+
+def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
+    from fiftyone.operators.executor import ExecutionRunState
+
+    if state == ExecutionRunState.RUNNING:
+        raise ValueError(
+            "Deleting operations that are currently running is not allowed"
+        )
+
+    dos = food.DelegatedOperationService()
+    ops = dos.list_operations(
+        operator=operator,
+        dataset_name=dataset,
+        run_state=state,
+    )
+
+    del_ids = set()
+    for op in ops:
+        if op.run_state != ExecutionRunState.RUNNING:
+            del_ids.add(op.id)
+
+    num_del = len(del_ids)
+    if num_del == 0:
+        return
+
+    if dry_run:
+        print("Found %d operation(s) to delete" % num_del)
+    else:
+        print("Deleting %d operation(s)" % num_del)
+        for del_id in del_ids:
+            dos.delete_operation(del_id)
 
 
 class PluginsCommand(Command):

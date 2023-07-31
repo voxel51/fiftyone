@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import traceback
 
 from fiftyone.core.expressions import ObjectId
@@ -15,17 +16,17 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionRunState,
 )
+from fiftyone.operators.types import List
+
+logger = logging.getLogger(__name__)
 
 
-class DelegatedOperation(object):
+class DelegatedOperationService(object):
     """Base class for delegated operations.
-
     Delegated operations are used to define custom operations that can be
     applied to datasets and views.
-
     Delegated operations are defined by subclassing this class and
     implementing the :meth:`get_pipeline_stage` method.
-
     """
 
     def __init__(self, repo: DelegatedOperationRepo = None):
@@ -43,7 +44,6 @@ class DelegatedOperation(object):
     ) -> DelegatedOperationDocument:
         """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance
         for the operation.
-
         Returns:
             a :class:`fiftyone.core.odm.DelegatedOperationDocument`
         """
@@ -86,6 +86,9 @@ class DelegatedOperation(object):
     def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         return self._repo.delete_operation(_id=doc_id)
 
+    def delete_for_dataset(self, dataset_id: ObjectId):
+        return self._repo.delete_for_dataset(dataset_id=dataset_id)
+
     def rerun_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
         doc = self._repo.get(_id=doc_id)
         return self._repo.queue_operation(**doc.__dict__)
@@ -104,6 +107,7 @@ class DelegatedOperation(object):
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         run_by: str = None,
@@ -113,6 +117,7 @@ class DelegatedOperation(object):
         return self._repo.list_operations(
             operator=operator,
             dataset_name=dataset_name,
+            dataset_id=dataset_id,
             run_state=run_state,
             delegation_target=delegation_target,
             run_by=run_by,
@@ -126,17 +131,20 @@ class DelegatedOperation(object):
         delegation_target: str = None,
         dataset_name: str = None,
         limit: int = None,
+        log: bool = False,
+        **kwargs,
     ):
-
         paging = None
         if limit is not None:
             paging = DelegatedOpPagingParams(limit=limit)
+
         queued_ops = self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
             delegation_target=delegation_target,
             run_state=ExecutionRunState.QUEUED,
             paging=paging,
+            **kwargs,
         )
 
         for op in queued_ops:
@@ -146,11 +154,19 @@ class DelegatedOperation(object):
                 # pull keys out of context and retrieve from secrets manager
                 # for execution
 
+                if log:
+                    logger.info(
+                        "\nRunning operation %s (%s)", op.id, op.operator
+                    )
                 result = asyncio.run(self._execute_operator(op))
                 self.set_completed(doc_id=op.id, result=result)
+                if log:
+                    logger.info("Operation %s complete", op.id)
             except Exception as e:
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
+                if log:
+                    logger.info("Operation %s failed", op.id)
 
     async def _execute_operator(self, doc: DelegatedOperationDocument):
         operator_uri = doc.operator
@@ -158,12 +174,12 @@ class DelegatedOperation(object):
         context.request_params["run_doc"] = doc.id
 
         prepared = prepare_operator_executor(
-            operator_name=operator_uri, request_params=context.request_params
+            operator_uri, context.request_params
         )
 
         if isinstance(prepared, ExecutionResult):
             self.set_failed(doc_id=doc.id, result=prepared)
         else:
-            (operator, _, ctx) = prepared
+            operator, _, ctx = prepared
             self.set_running(doc_id=doc.id)
             return operator.execute(ctx)

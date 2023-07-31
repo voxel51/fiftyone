@@ -1,20 +1,24 @@
 """
 FiftyOne Delegated Operation Repository
-
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, List
 
 import pymongo
 from bson import ObjectId
 from pymongo.collection import Collection
 
-from fiftyone.factory import DelegatedOpPagingParams
+from fiftyone.factory import (
+    DelegatedOpPagingParams,
+    SortByField,
+    SortDirection,
+)
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import ExecutionResult, ExecutionRunState
+import fiftyone.core.dataset as fod
 
 
 class DelegatedOperationRepo(object):
@@ -46,6 +50,7 @@ class DelegatedOperationRepo(object):
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -57,6 +62,12 @@ class DelegatedOperationRepo(object):
         raise NotImplementedError("subclass must implement list_operations()")
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
+        """Delete an operation."""
+        raise NotImplementedError("subclass must implement delete_operation()")
+
+    def delete_for_dataset(
+        self, dataset_id: ObjectId
+    ) -> List[DelegatedOperationDocument]:
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
@@ -90,12 +101,23 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return database[self.COLLECTION_NAME]
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
-
         op = DelegatedOperationDocument()
         for prop in self.required_props:
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
+
+        dataset_name = None
+        if isinstance(op.context, dict):
+            dataset_name = op.context.get("request_params", {}).get(
+                "dataset_name"
+            )
+        elif "dataset_name" in op.context.request_params:
+            dataset_name = op.context.request_params["dataset_name"]
+
+        if dataset_name and not op.dataset_id:
+            dataset = fod.load_dataset(dataset_name)
+            op.dataset_id = dataset.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
@@ -167,19 +189,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         operator: str = None,
         dataset_name: ObjectId = None,
-        run_by: str = None,
     ):
         return self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
             run_state=ExecutionRunState.QUEUED,
-            run_by=run_by,
         )
 
     def list_operations(
         self,
         operator: str = None,
         dataset_name: str = None,
+        dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
@@ -200,26 +221,23 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["delegation_target"] = delegation_target
         if run_by:
             query["context.user"] = run_by
+        if dataset_id:
+            query["dataset_id"] = dataset_id
 
         for arg in kwargs:
             query[arg] = kwargs[arg]
 
+        if not paging:
+            paging = DelegatedOpPagingParams(limit=1000)
+
         if isinstance(paging, dict):
             paging = DelegatedOpPagingParams(**paging)
 
-        if not isinstance(
-            paging.SortByField, DelegatedOpPagingParams.SortByField
-        ):
-            paging.sort_by = DelegatedOpPagingParams.SortByField(
-                paging.sort_by
-            )
+        if not isinstance(paging.SortByField, SortByField):
+            paging.sort_by = SortByField(paging.sort_by)
 
-        if not isinstance(
-            paging.SortDirection, DelegatedOpPagingParams.SortDirection
-        ):
-            paging.sort_direction = DelegatedOpPagingParams.SortDirection(
-                paging.sort_direction
-            )
+        if not isinstance(paging.SortDirection, SortDirection):
+            paging.sort_direction = SortDirection(paging.sort_direction)
 
         if paging:
             docs = (
@@ -228,17 +246,17 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 .limit(paging.limit)
                 .sort(paging.sort_by.value, paging.sort_direction.value)
             )
-        else:
-            docs = self._collection.find(query).limit(
-                1000
-            )  # force a limit of 1000 if no paging supplied
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
             filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
         )
-        return DelegatedOperationDocument().from_pymongo(doc)
+        if doc:
+            return DelegatedOperationDocument().from_pymongo(doc)
+
+    def delete_for_dataset(self, dataset_id: ObjectId):
+        self._collection.delete_many(filter={"dataset_id": dataset_id})
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one(filter={"_id": _id})

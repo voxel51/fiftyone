@@ -11,10 +11,18 @@ from unittest.mock import patch
 
 from bson import ObjectId
 
-from fiftyone.factory import DelegatedOpPagingParams
+from fiftyone import Dataset
+from fiftyone.factory import (
+    DelegatedOpPagingParams,
+    SortDirection,
+    SortByField,
+)
 from fiftyone.operators.executor import ExecutionContext, ExecutionResult
 from fiftyone.operators.operator import Operator, OperatorConfig
-from fiftyone.operators.delegated import DelegatedOperation, ExecutionRunState
+from fiftyone.operators.delegated import (
+    DelegatedOperationService,
+    ExecutionRunState,
+)
 
 
 class MockOperator(Operator):
@@ -48,7 +56,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
     def setUp(self):
         self.docs_to_delete = []
-        self.svc = DelegatedOperation()
+        self.svc = DelegatedOperationService()
 
     def tearDown(self):
         self.delete_test_data()
@@ -57,8 +65,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         for doc in self.docs_to_delete:
             self.svc.delete_operation(doc_id=doc.id)
 
-    def test_delegate_operation(self):
-        dataset_name = f"test_dataset_{ObjectId()}"
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_delegate_operation(self, mock_load_dataset):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target="foo",
@@ -70,7 +84,16 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.queued_at)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED.value)
 
-    def test_list_queued_operations(self):
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_list_queued_operations(self, mock_load_dataset):
+
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
+
         self.delete_test_data()
 
         dataset_name = f"test_dataset_{ObjectId()}"
@@ -171,7 +194,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.operators.registry.OperatorRegistry.get_operator",
         return_value=MockOperator(),
     )
-    def test_full_run_success(self, *args, **kwargs):
+    def test_full_run_success(self, mock_get_operator, mock_operator_exists):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
@@ -202,7 +225,16 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.operators.registry.OperatorRegistry.get_operator",
         return_value=MockOperator(success=False),
     )
-    def test_full_run_fail(self, *args, **kwargs):
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_full_run_fail(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
@@ -234,7 +266,16 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         "fiftyone.operators.registry.OperatorRegistry.get_operator",
         return_value=MockOperator(success=False),
     )
-    def test_rerun_failed(self, get_op_mock, op_exists_mock):
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_rerun_failed(
+        self, mock_load_dataset, get_op_mock, op_exists_mock
+    ):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
 
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
@@ -269,7 +310,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         doc = self.svc.get(doc_id=rerun_doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED.value)
 
-    def test_paging_sorting(self):
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_paging_sorting(self, mock_load_dataset):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
+
         # create 100 docs, 25 of each state & for each user
         queued = []
         running = []
@@ -318,8 +367,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=25,
-                sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                sort_direction=DelegatedOpPagingParams.SortDirection.DESCENDING,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.DESCENDING,
             ),
         )
 
@@ -331,8 +380,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=1,
-                sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                sort_direction=DelegatedOpPagingParams.SortDirection.ASCENDING,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.ASCENDING,
             ),
         )
 
@@ -387,8 +436,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 paging=DelegatedOpPagingParams(
                     skip=pages * limit,
                     limit=limit,
-                    sort_by=DelegatedOpPagingParams.SortByField.QUEUED_AT,
-                    sort_direction=DelegatedOpPagingParams.SortDirection.DESCENDING,
+                    sort_by=SortByField.QUEUED_AT,
+                    sort_direction=SortDirection.DESCENDING,
                 ),
             )
             total += len(docs)
@@ -397,3 +446,83 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(pages, 4)
         self.assertEqual(total, 25)
+
+    @patch(
+        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+        return_value=True,
+    )
+    @patch(
+        "fiftyone.operators.registry.OperatorRegistry.get_operator",
+        return_value=MockOperator(success=False),
+    )
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_gets_dataset_id_from_name(self, mock_load_dataset, *args):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
+
+        ctx = ExecutionContext()
+        ctx.request_params = {"foo": "bar", "dataset_name": dataset_name}
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target=f"test_target",
+            context=ctx.serialize(),
+        )
+
+        self.assertEqual(doc.dataset_id, dataset_id)
+
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_deletes_by_dataset_id(self, mock_load_dataset):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value.id = dataset_id
+
+        # create 100 docs, 25 of each state & for each user
+        queued = []
+        dataset_name = f"test_dataset_{ObjectId()}"
+        operator = f"@voxelfiftyone/operator/test_{ObjectId}"
+        for i in range(25):
+            doc = self.svc.queue_operation(
+                operator=operator,
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name,
+                    }
+                ),
+            )
+            time.sleep(0.01)  # ensure that the queued_at times are different
+            self.docs_to_delete.append(doc)
+            queued.append(doc)
+
+        ops = self.svc.list_operations(
+            dataset_name=dataset_name,
+            paging=DelegatedOpPagingParams(
+                skip=0,
+                limit=100,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.DESCENDING,
+            ),
+        )
+
+        self.assertEqual(len(ops), 25)
+
+        self.svc.delete_for_dataset(dataset_id=dataset_id)
+
+        ops = self.svc.list_operations(
+            dataset_name=dataset_name,
+            paging=DelegatedOpPagingParams(
+                skip=0,
+                limit=100,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.DESCENDING,
+            ),
+        )
+
+        self.assertEqual(len(ops), 0)

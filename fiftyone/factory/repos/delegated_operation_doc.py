@@ -1,13 +1,11 @@
 """
 FiftyOne Delegated Operation Repository Document
-
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
 
 from datetime import datetime
-from bson import ObjectId
 
 from fiftyone.operators.executor import (
     ExecutionContext,
@@ -34,6 +32,7 @@ class DelegatedOperationDocument(object):
             ExecutionRunState.QUEUED
         )  # default to queued state on create
         self.queued_at = datetime.utcnow()
+        self.dataset_id = None
         self.started_at = None
         self.pinned = False
         self.completed_at = None
@@ -46,7 +45,7 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
-        self.run_state = ExecutionRunState(doc["run_state"]).value
+        self.run_state = ExecutionRunState(doc["run_state"])
 
         # optional fields
         self.delegation_target = (
@@ -58,6 +57,7 @@ class DelegatedOperationDocument(object):
         )
         self.failed_at = doc["failed_at"] if "failed_at" in doc else None
         self.pinned = doc["pinned"] if "pinned" in doc else None
+        self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
 
         if (
             "context" in doc
