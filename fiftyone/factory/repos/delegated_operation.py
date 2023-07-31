@@ -116,7 +116,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if dataset_name and not op.dataset_id:
             dataset = fod.load_dataset(dataset_name)
-            op.dataset_id = dataset.id
+            op.dataset_id = dataset._doc.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
