@@ -54,7 +54,6 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
               {...panel}
               node={node}
               onClick={() => setOpen(!open)}
-              dataCy={`new-panel-option-${panel.name.toLowerCase()}`}
             />
           ))}
         </Popout>

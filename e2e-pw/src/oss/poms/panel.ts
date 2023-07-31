@@ -21,7 +21,7 @@ export class PanelPom {
   }
 
   histogramOption() {
-    return this.locator.getByText("Histograms", { exact: true });
+    return this.locator.getByTestId("new-panel-option-Histograms");
   }
 
   distributionContainer() {
