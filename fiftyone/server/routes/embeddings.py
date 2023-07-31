@@ -60,8 +60,6 @@ class OnPlotLoad(HTTPEndpoint):
             ) % brain_key
             return {"error": msg}
 
-        print(stages)
-
         view = fosv.get_view(
             dataset_name,
             stages=stages,
