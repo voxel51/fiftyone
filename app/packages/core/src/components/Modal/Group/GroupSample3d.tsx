@@ -29,7 +29,6 @@ const Sample3dWrapper = () => {
 
 export default () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
-
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
   const groupSlice = useRecoilValue(fos.groupSlice(true));
@@ -68,7 +67,7 @@ export default () => {
       return;
     }
 
-    if (slices.includes(groupSlice)) {
+    if (groupSlice && slices.includes(groupSlice)) {
       return;
     }
 
@@ -78,11 +77,6 @@ export default () => {
 
     assignSlices(slices, pcdSlices.contents);
   }, [assignSlices, slices, groupSlice, pinnedSlice, pcdSlices]);
-
-  if (pcdSlices.state === "loading" || !pinnedSlice) {
-    return <Loading>Pixelating...</Loading>;
-  }
-
   if (
     pcdSlices.state === "hasValue" &&
     !Object.keys(pcdSlices.contents).length
@@ -90,7 +84,7 @@ export default () => {
     return <Loading>No PCD slices</Loading>;
   }
 
-  if (!pcdSlices.contents[pinnedSlice]) {
+  if (pcdSlices.state === "loading" || !pcdSlices.contents[pinnedSlice]) {
     return <Loading>Pixelating...</Loading>;
   }
 

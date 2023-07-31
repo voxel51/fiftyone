@@ -242,6 +242,7 @@ export const groupSamples = graphQLSelectorFamily<
         view: get(view),
         filter: {
           group: {
+            slice: get(groupSlice(false)),
             id: groupIdValue,
             slices,
           },

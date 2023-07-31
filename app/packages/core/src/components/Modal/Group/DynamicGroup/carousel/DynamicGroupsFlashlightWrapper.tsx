@@ -83,7 +83,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   }, []);
 
   const setSample = useSetDynamicGroupSample();
-  const { init, deferrer } = fos.useDeferrer();
+  const { init, deferred } = fos.useDeferrer();
   const navigationCallback = useRecoilCallback(
     ({ snapshot }) =>
       async (isPrevious) => {
@@ -169,7 +169,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
-    deferrer(() => {
+    deferred(() => {
       if (!flashlight.isAttached()) {
         return;
       }
@@ -178,7 +178,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
 
       freeVideos();
     });
-  }, [deferrer, flashlight, mediaField]);
+  }, [deferred, reset, flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -204,10 +204,10 @@ export const DynamicGroupsFlashlightWrapper = () => {
     fos.lookerOptions({ modal: true, withFilter: true })
   );
   useLayoutEffect(() => {
-    deferrer(() => {
+    deferred(() => {
       flashlight.updateItems(updateItem);
     });
-  }, [deferrer, flashlight, updateItem, options, selected]);
+  }, [deferred, flashlight, updateItem, options, selected]);
 
   return (
     <div

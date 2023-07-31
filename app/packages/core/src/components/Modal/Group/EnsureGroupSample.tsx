@@ -42,9 +42,6 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
       },
     []
   );
-  if (modal.state === "hasError") {
-    throw modal.contents;
-  }
 
   useEffect(() => {
     modal.state === "hasError" &&

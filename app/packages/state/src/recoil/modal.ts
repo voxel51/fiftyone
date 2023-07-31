@@ -9,7 +9,6 @@ import { filters } from "./filters";
 import {
   groupId,
   groupSlice,
-  hasGroupSlices,
   pinned3DSample,
   pinned3DSampleSlice,
 } from "./groups";
@@ -121,10 +120,10 @@ export const modalSample = graphQLSelector<
     const current = get(currentModalSample);
     if (current === null) return null;
 
-    const slices = get(hasGroupSlices);
     const slice = get(groupSlice(false));
+    const sliceSelect = get(groupSlice(true));
 
-    if (slices && !slice) {
+    if (!slice) {
       return null;
     }
 
@@ -134,7 +133,9 @@ export const modalSample = graphQLSelector<
       filters: get(filters),
       filter: {
         id: current.id,
-        group: slices ? { slice, slices: [slice], id: get(groupId) } : null,
+        group: slice
+          ? { slice, slices: [sliceSelect], id: get(groupId) }
+          : null,
       },
     };
   },
