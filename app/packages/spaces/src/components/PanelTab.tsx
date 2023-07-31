@@ -41,6 +41,7 @@ export default function PanelTab({ node, active, spaceId }: PanelTabProps) {
         if (!active) spaces.setNodeActive(node);
       }}
       active={active}
+      data-cy={`panel-tab-${(panelName as string).toLowerCase()}`}
     >
       <PanelIcon name={panelName as string} />
       {title || panel.label || panel.name}

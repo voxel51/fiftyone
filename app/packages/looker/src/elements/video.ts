@@ -208,6 +208,7 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         this.element.appendChild(this.play);
         this.element.title = "Play (space)";
         this.element.style.cursor = "pointer";
+        this.element.setAttribute("data-cy", "looker-video-play-button");
       }
       this.isPlaying = playing;
       this.isBuffering = buffering || !loaded;
@@ -374,6 +375,7 @@ export class SeekBarElement extends BaseElement<VideoState, HTMLInputElement> {
 export class TimeElement extends BaseElement<VideoState> {
   createHTMLElement() {
     const element = document.createElement("div");
+    element.setAttribute("data-cy", "looker-video-time");
     element.classList.add(lookerTime);
     element.style.gridArea = "2 / 5 / 2 / 5";
     return element;

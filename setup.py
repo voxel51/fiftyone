@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.21.4"
+VERSION = "0.21.5"
 
 
 def get_version():
@@ -40,12 +40,12 @@ INSTALL_REQUIRES = [
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
-    "eventlet",
     "ftfy",
-    "future",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
+    # kaleido indirectly required by plotly for image export
+    # https://plotly.com/python/static-image-export/
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",

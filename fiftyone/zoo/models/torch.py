@@ -94,6 +94,13 @@ class TorchvisionImageModel(fout.TorchImageModel):
     def _load_network(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
         kwargs = config.entrypoint_args or {}
+
+        # pretrained=True was used instead of weights in torchvision < 0.13
+        if version.parse(torchvision.__version__) < version.parse("0.13.0"):
+            weights = kwargs.pop("weights", None)
+            if weights is not None:
+                kwargs["pretrained"] = True
+
         model_dir = fo.config.model_zoo_dir
 
         monkey_patcher = _make_load_state_dict_from_url_monkey_patcher(
