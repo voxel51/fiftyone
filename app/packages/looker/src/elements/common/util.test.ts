@@ -55,101 +55,25 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
     "ground_truth"
   );
 
-  const sampleSetting1 = [];
-  const sampleSetting2 = [
+  const emptySetting = [];
+  const emptySettingWithPath = [
     {
       path: "ground_truth",
-    },
-  ];
-  const sampleSetting5 = [
-    {
-      path: "ground_truth",
-      fieldColor: color1,
-      colorByAttribute: "label",
-      valueColors: [
-        {
-          value: "telephone",
-          color: color2,
-        },
-      ],
-    },
-  ];
-  const sampleSetting8 = [
-    {
-      path: "ground_truth",
-      colorByAttribute: "tags",
-      valueColors: [
-        {
-          value: "non-worm",
-          color: color3,
-        },
-      ],
     },
   ];
 
   it("Color by field mode, color can get resolved correctly in field mode with proper fallback", () => {
-    const sampleSetting3 = [
+    const sampleSettingNullFieldColor = [
       {
         path: "ground_truth",
         fieldColor: null,
       },
     ];
-
-    // when there is setting of selected path, use the field level color setting
-    expect(
-      getAssignedColor({
-        ...sampleInput1,
-        customizeColorSetting: sampleSetting5,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(color1);
-
-    // Edge cases: fallback to default color
-    expect(
-      getAssignedColor({
-        ...sampleInput1,
-        customizeColorSetting: sampleSetting1,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(defaultColor);
-    expect(
-      getAssignedColor({
-        ...sampleInput1,
-        customizeColorSetting: sampleSetting2,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(defaultColor);
-    expect(
-      getAssignedColor({
-        ...sampleInput1,
-        customizeColorSetting: sampleSetting3,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(defaultColor);
-  });
-
-  it("Color by value mode, when set properly, assigned color gets resolved correctly", () => {
-    // Classification:
-    expect(
-      getAssignedColor({
-        ...sampleInput2,
-        customizeColorSetting: sampleSetting5,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(color2);
-    expect(
-      getAssignedColor({
-        ...sampleInput2,
-        customizeColorSetting: sampleSetting8,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(color3);
-  });
-
-  it("Color by value mode, when colorByAttribute is null or not valid, use 'label' as default attribute", () => {
-    const sampleSetting6 = [
+    const sampleSettingClassificationDefaultAttribute = [
       {
         path: "ground_truth",
+        fieldColor: color1,
+        colorByAttribute: "label",
         valueColors: [
           {
             value: "telephone",
@@ -158,7 +82,85 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ],
       },
     ];
-    const sampleSetting7 = [
+
+    // when there is setting of selected path, use the field level color setting
+    expect(
+      getAssignedColor({
+        ...sampleInput1,
+        customizeColorSetting: sampleSettingClassificationDefaultAttribute,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(color1);
+
+    // Edge cases: fallback to default color
+    expect(
+      getAssignedColor({
+        ...sampleInput1,
+        customizeColorSetting: emptySetting,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(defaultColor);
+    expect(
+      getAssignedColor({
+        ...sampleInput1,
+        customizeColorSetting: emptySettingWithPath,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(defaultColor);
+    expect(
+      getAssignedColor({
+        ...sampleInput1,
+        customizeColorSetting: sampleSettingNullFieldColor,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(defaultColor);
+  });
+
+  it("Color by value mode, when set properly, assigned color gets resolved correctly", () => {
+    // Classification:
+    const sampleSettingClassificationDefaultAttribute = [
+      {
+        path: "ground_truth",
+        fieldColor: color1,
+        colorByAttribute: "label",
+        valueColors: [
+          {
+            value: "telephone",
+            color: color2,
+          },
+        ],
+      },
+    ];
+    const sampleSettingClassificationTagAsAttribute = [
+      {
+        path: "ground_truth",
+        colorByAttribute: "tags",
+        valueColors: [
+          {
+            value: "non-worm",
+            color: color3,
+          },
+        ],
+      },
+    ];
+    expect(
+      getAssignedColor({
+        ...sampleInput2,
+        customizeColorSetting: sampleSettingClassificationDefaultAttribute,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(color2);
+    expect(
+      getAssignedColor({
+        ...sampleInput2,
+        customizeColorSetting: sampleSettingClassificationTagAsAttribute,
+        isValidColor: isValidColorMock,
+      })
+    ).toBe(color3);
+  });
+
+  it("Color by value mode, when colorByAttribute is null or not valid, use 'label' as default attribute", () => {
+    const sampleSettingInvaidAttribute = [
       {
         path: "ground_truth",
         colorByAttribute: "ramdomString",
@@ -170,7 +172,7 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ],
       },
     ];
-    const sampleSetting9 = [
+    const sampleSettingNullAttribute = [
       {
         path: "ground_truth",
         colorByAttribute: null,
@@ -182,7 +184,7 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
         ],
       },
     ];
-    const sampleSetting10 = [
+    const sampleSettingNoAttribute = [
       {
         path: "ground_truth",
         valueColors: [
@@ -197,42 +199,36 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting6,
+        customizeColorSetting: sampleSettingInvaidAttribute,
         isValidColor: isValidColorMock,
       })
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting7,
+        customizeColorSetting: sampleSettingNullAttribute,
         isValidColor: isValidColorMock,
       })
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting9,
-        isValidColor: isValidColorMock,
-      })
-    ).toBe(color2);
-    expect(
-      getAssignedColor({
-        ...sampleInput2,
-        customizeColorSetting: sampleSetting10,
+        customizeColorSetting: sampleSettingNoAttribute,
         isValidColor: isValidColorMock,
       })
     ).toBe(color2);
   });
 
   it("Color by value mode, when no valid valueColors is available, fallback to default color", () => {
-    const sampleSetting12 = [
+    const sampleSettingIncomplete = [];
+    const sampleSettingEmptyValueColor = [
       {
         path: "ground_truth",
         colorByAttribute: "label",
         valueColors: [],
       },
     ];
-    const sampleSetting13 = [
+    const sampleSettingNoValueColor = [
       {
         path: "ground_truth",
         colorByAttribute: "label",
@@ -241,21 +237,21 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting12,
+        customizeColorSetting: sampleSettingEmptyValueColor,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting13,
+        customizeColorSetting: sampleSettingNoValueColor,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput2,
-        customizeColorSetting: sampleSetting1,
+        customizeColorSetting: sampleSettingIncomplete,
         isValidColor: isValidColorMock,
       })
     ).toBe("#EE6600");
@@ -264,19 +260,19 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
 
 describe("Primitive fields bubbles get correct color", () => {
   const sampleValue = "apple";
-  const edgeSetting1 = [];
-  const edgeSetting2 = [
+  const emptySetting = [];
+  const emptySettingWithPath = [
     {
       path: "str_field",
     },
   ];
-  const edgeSetting3 = [
+  const emptySettingNullFieldcolor = [
     {
       path: "str_field",
       fieldColor: null,
     },
   ];
-  const edgeSetting4 = [
+  const sampleSettingNullValuecolors = [
     {
       path: "str_field",
       fieldColor: color1,
@@ -290,7 +286,7 @@ describe("Primitive fields bubbles get correct color", () => {
       path: "str_field",
       value: sampleValue,
     };
-    const sampleSetting = [
+    const validFieldColorSetting = [
       {
         path: "str_field",
         fieldColor: color1,
@@ -301,7 +297,7 @@ describe("Primitive fields bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: sampleSetting,
+        customizeColorSetting: validFieldColorSetting,
         isValidColor: isValidColorMock,
       })
     ).toBe(color1);
@@ -315,21 +311,21 @@ describe("Primitive fields bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting1,
+        customizeColorSetting: emptySetting,
         isValidColor: isValidColorMock,
       })
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting2,
+        customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
       })
     ).toBe(defaultColor);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting3,
+        customizeColorSetting: emptySettingNullFieldcolor,
         isValidColor: isValidColorMock,
       })
     ).toBe(defaultColor);
@@ -346,42 +342,42 @@ describe("Primitive fields bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting1,
+        customizeColorSetting: emptySetting,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting2,
+        customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting2,
+        customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting2,
+        customizeColorSetting: emptySettingWithPath,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting3,
+        customizeColorSetting: emptySettingNullFieldcolor,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
     expect(
       getAssignedColor({
         ...sampleInput,
-        customizeColorSetting: edgeSetting4,
+        customizeColorSetting: sampleSettingNullValuecolors,
         isValidColor: isValidColorMock,
       })
     ).toBe(pool2);
@@ -441,7 +437,7 @@ describe("Primitive fields bubbles get correct color", () => {
       path: "int_field",
       value: value1,
     };
-    const sampleSetting1 = [
+    const intValueSettingString = [
       {
         path: "int_field",
         valueColors: [
@@ -452,7 +448,7 @@ describe("Primitive fields bubbles get correct color", () => {
         ],
       },
     ];
-    const sampleSetting2 = [
+    const intValueSettingNumber = [
       {
         path: "int_field",
         valueColors: [
@@ -467,14 +463,14 @@ describe("Primitive fields bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInputInt,
-        customizeColorSetting: sampleSetting1,
+        customizeColorSetting: intValueSettingString,
         isValidColor: isValidColorMock,
       })
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInputList,
-        customizeColorSetting: sampleSetting2,
+        customizeColorSetting: intValueSettingNumber,
         isValidColor: isValidColorMock,
       })
     ).toBe(color3);
@@ -493,7 +489,7 @@ describe("Primitive fields bubbles get correct color", () => {
       path: "bool_field",
       value: value2,
     };
-    const sampleSetting1 = [
+    const booleanValue = [
       {
         path: "bool_field",
         valueColors: [
@@ -512,14 +508,14 @@ describe("Primitive fields bubbles get correct color", () => {
     expect(
       getAssignedColor({
         ...sampleInputTrue,
-        customizeColorSetting: sampleSetting1,
+        customizeColorSetting: booleanValue,
         isValidColor: isValidColorMock,
       })
     ).toBe(color2);
     expect(
       getAssignedColor({
         ...sampleInputFalse,
-        customizeColorSetting: sampleSetting1,
+        customizeColorSetting: booleanValue,
         isValidColor: isValidColorMock,
       })
     ).toBe(color3);
