@@ -88,6 +88,8 @@ class ManagementSdkTests(unittest.TestCase):
     PLUGIN_OPERATOR_NAME = "op-op"
     ROLE = fom.UserRole.ADMIN
     ROLE_STR = ROLE.value
+    SNAPSHOT_DESCRIPTION = "a really cool snapshot"
+    SNAPSHOT_NAME = "snappy 51"
     USER = mock.Mock()
 
     client = None
@@ -365,18 +367,21 @@ class ManagementSdkTests(unittest.TestCase):
 
     def test_set_dataset_user_permission(self):
         for perm in (self.PERMISSION, self.PERMISSION_STR):
-            fom.set_dataset_user_permission(self.DATASET_NAME, self.USER, perm)
-            self.resolve_user.assert_called_with(
-                self.USER, pass_unknown_email=True
-            )
-            self.client.post_graphql_request.assert_called_with(
-                query=fom.dataset._SET_DATASET_USER_PERM_QUERY,
-                variables={
-                    "identifier": self.DATASET_NAME,
-                    "userId": self.resolve_user.return_value,
-                    "permission": self.PERMISSION_STR,
-                },
-            )
+            for invite in [False, True]:
+                fom.set_dataset_user_permission(
+                    self.DATASET_NAME, self.USER, perm, invite=invite
+                )
+                self.resolve_user.assert_called_with(
+                    self.USER, pass_unknown_email=invite
+                )
+                self.client.post_graphql_request.assert_called_with(
+                    query=fom.dataset._SET_DATASET_USER_PERM_QUERY,
+                    variables={
+                        "identifier": self.DATASET_NAME,
+                        "userId": self.resolve_user.return_value,
+                        "permission": self.PERMISSION_STR,
+                    },
+                )
         self.assertRaises(
             ValueError,
             fom.set_dataset_user_permission,
@@ -619,6 +624,187 @@ class ManagementSdkTests(unittest.TestCase):
         self.assertEqual(
             return_value,
             self.client.post_graphql_request.return_value["uploadPlugin"],
+        )
+
+    ######################### Snapshots
+    def test_create_snapshot(self):
+        fom.create_snapshot(
+            self.DATASET_NAME, self.SNAPSHOT_NAME, self.SNAPSHOT_DESCRIPTION
+        )
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._CREATE_SNAPSHOT_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+                "description": self.SNAPSHOT_DESCRIPTION,
+            },
+        )
+
+    def test_delete_snapshot(self):
+        fom.delete_snapshot(self.DATASET_NAME, self.SNAPSHOT_NAME)
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._DELETE_SNAPSHOT_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+            },
+        )
+
+    def test_get_snapshot_info(self):
+        now = datetime.datetime.utcnow()
+        snapshot = {
+            "createdAt": now,
+            "createdBy": self.EMAIL,
+            "description": self.SNAPSHOT_DESCRIPTION,
+            "id": "123456",
+            "linearChangeSummary": {
+                "numSamplesAdded": 1,
+                "numSamplesChanged": 2,
+                "numSamplesDeleted": 3,
+            },
+            "loadStatus": "LOADING",
+            "name": self.SNAPSHOT_NAME,
+            "numSamples": 200,
+            "slug": "snappy-51",
+        }
+        expected = fom.DatasetSnapshot(
+            created_at=now,
+            created_by=self.EMAIL,
+            description=self.SNAPSHOT_DESCRIPTION,
+            id="123456",
+            linear_change_summary=fom.SampleChangeSummary(
+                num_samples_added=1,
+                num_samples_changed=2,
+                num_samples_deleted=3,
+            ),
+            load_status=fom.DatasetSnapshotStatus.LOADING,
+            name=self.SNAPSHOT_NAME,
+            num_samples=200,
+            slug="snappy-51",
+        )
+        self.client.post_graphql_request.return_value = {
+            "dataset": {"snapshot": snapshot}
+        }
+
+        return_value = fom.get_snapshot_info(
+            self.DATASET_NAME, self.SNAPSHOT_NAME
+        )
+        self.assertEqual(return_value, expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._GET_SNAPSHOT_INFO_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+            },
+        )
+
+        # Unknown dataset
+        self.client.post_graphql_request.return_value = {"dataset": None}
+        self.assertRaises(
+            ValueError,
+            fom.get_snapshot_info,
+            self.DATASET_NAME,
+            self.SNAPSHOT_NAME,
+        )
+
+        # Unknown snapshot
+        self.client.post_graphql_request.return_value = {
+            "dataset": {"snapshot": None}
+        }
+        self.assertEqual(
+            fom.get_snapshot_info(self.DATASET_NAME, self.SNAPSHOT_NAME), None
+        )
+
+    def test_list_snapshots(self):
+        now = datetime.datetime.utcnow()
+        snapshots = [
+            {
+                "createdAt": now,
+                "createdBy": self.EMAIL,
+                "description": self.SNAPSHOT_DESCRIPTION,
+                "id": "123456",
+                "linearChangeSummary": {
+                    "numSamplesAdded": 1,
+                    "numSamplesChanged": 2,
+                    "numSamplesDeleted": 3,
+                },
+                "loadStatus": "LOADING",
+                "name": self.SNAPSHOT_NAME,
+                "numSamples": 200,
+                "slug": "snappy-51",
+            },
+            {
+                "createdAt": None,
+                "createdBy": self.EMAIL,
+                "description": None,
+                "id": "654321",
+                "linearChangeSummary": None,
+                "loadStatus": "UNLOADED",
+                "name": self.SNAPSHOT_NAME + "2",
+                "numSamples": 300,
+                "slug": "snappy-52",
+            },
+        ]
+        expected = [
+            fom.DatasetSnapshot(
+                created_at=now,
+                created_by=self.EMAIL,
+                description=self.SNAPSHOT_DESCRIPTION,
+                id="123456",
+                linear_change_summary=fom.SampleChangeSummary(
+                    num_samples_added=1,
+                    num_samples_changed=2,
+                    num_samples_deleted=3,
+                ),
+                load_status=fom.DatasetSnapshotStatus.LOADING,
+                name=self.SNAPSHOT_NAME,
+                num_samples=200,
+                slug="snappy-51",
+            ),
+            fom.DatasetSnapshot(
+                created_at=None,
+                created_by=self.EMAIL,
+                description=None,
+                id="654321",
+                linear_change_summary=None,
+                load_status=fom.DatasetSnapshotStatus.UNLOADED,
+                name=self.SNAPSHOT_NAME + "2",
+                num_samples=300,
+                slug="snappy-52",
+            ),
+        ]
+
+        self.client.post_graphql_request.return_value = {
+            "dataset": {"snapshots": snapshots}
+        }
+
+        return_value = fom.list_snapshots(self.DATASET_NAME)
+        self.assertEqual(return_value, expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._LIST_SNAPSHOTS_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+            },
+        )
+
+        # Unknown dataset
+        self.client.post_graphql_request.return_value = {"dataset": None}
+        self.assertRaises(
+            ValueError,
+            fom.list_snapshots,
+            self.DATASET_NAME,
+        )
+
+    def test_revert_snapshot(self):
+        fom.revert_dataset_to_snapshot(self.DATASET_NAME, self.SNAPSHOT_NAME)
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._REVERT_SNAPSHOT_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+            },
         )
 
     ######################### Users
