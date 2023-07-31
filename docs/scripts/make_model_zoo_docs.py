@@ -108,9 +108,9 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
+{% if 'segment-anything' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
-{% if 'segment-anything' in tags %}
     # Segment inside boxes
     dataset.apply_model(
         model,
