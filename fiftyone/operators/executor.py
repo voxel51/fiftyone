@@ -10,6 +10,7 @@ import types as python_types
 import traceback
 from enum import Enum
 
+import fiftyone as fo
 import fiftyone.core.dataset as fod
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
@@ -87,32 +88,6 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx, params):
-    """Executes the operator with the given name.
-
-    Args:
-        operator_uri: the URI of the operator
-        ctx: a dictionary of parameters defining the execution context
-        params: a dictionary of parameters for the operator
-
-    Returns:
-        an :class:`ExecutionResult`
-    """
-    dataset_name, view_stages, selected = _parse_ctx(ctx)
-
-    request_params = dict(
-        operator_uri=operator_uri,
-        dataset_name=dataset_name,
-        view=view_stages,
-        selected=selected,
-        params=params,
-    )
-
-    return asyncio.run(
-        execute_or_delegate_operator(operator_uri, request_params)
-    )
-
-
 def _parse_ctx(ctx):
     # @todo add selected_labels
     dataset = ctx.get("dataset", None)
@@ -138,9 +113,8 @@ def _parse_ctx(ctx):
     return dataset_name, view_stages, selected
 
 
-async def execute_or_delegate_operator(
-    operator_uri, request_params, user=None
-):
+@coroutine_timeout(seconds=fo.config.operator_timeout)
+async def execute_or_delegate_operator(operator_uri, request_params, user):
     """Executes the operator with the given name.
 
     Args:
@@ -304,14 +278,18 @@ class ExecutionContext(object):
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
+        <<<<<<< HEAD
 
-        Items are dictionaries with the following keys:
+                Items are dictionaries with the following keys:
 
-        -   ``label_id``: the ID of the label
-        -   ``sample_id``: the ID of the sample containing the label
-        -   ``field``: the field name containing the label
-        -   ``frame_number``: the frame number containing the label (only
-            applicable to video samples)
+        =======
+                Items are dictionaries with the following keys:
+        >>>>>>> d48e88e59... revert some merge issues, fix / add more documentation
+                -   ``label_id``: the ID of the label
+                -   ``sample_id``: the ID of the sample containing the label
+                -   ``field``: the field name containing the label
+                -   ``frame_number``: the frame number containing the label (only
+                    applicable to video samples)
         """
         return self.request_params.get("selected_labels", [])
 

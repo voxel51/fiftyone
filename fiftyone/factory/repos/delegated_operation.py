@@ -233,10 +233,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if isinstance(paging, dict):
             paging = DelegatedOpPagingParams(**paging)
 
-        if not isinstance(paging.SortByField, SortByField):
+        if not isinstance(paging.sort_by, SortByField):
             paging.sort_by = SortByField(paging.sort_by)
 
-        if not isinstance(paging.SortDirection, SortDirection):
+        if not isinstance(paging.sort_direction, SortDirection):
             paging.sort_direction = SortDirection(paging.sort_direction)
 
         if paging:
