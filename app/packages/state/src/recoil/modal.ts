@@ -122,7 +122,7 @@ export const modalSample = graphQLSelector<
     if (current === null) return null;
 
     const slices = get(hasGroupSlices);
-    const slice = get(groupSlice(true));
+    const slice = get(groupSlice(false));
 
     if (slices && !slice) {
       return null;
