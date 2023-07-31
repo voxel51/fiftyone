@@ -8,9 +8,8 @@ import {
   useExternalLink,
 } from "@fiftyone/utilities";
 
-import { Overlay } from "../../overlays/base";
+import { Overlay, RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
-import { isValidColor } from "../../overlays/util";
 import {
   BaseState,
   Coloring,
@@ -95,109 +94,208 @@ export const prettify = (
   return result;
 };
 
-// for classification types and regression and sample tag types
-type Param = {
+function findColorSetting(
+  customizeColorSetting: CustomizeColor[],
+  path: string
+) {
+  return customizeColorSetting.find((s) => s.path === path);
+}
+
+function getFallbackColor(
+  pool: readonly string[],
+  seed: number,
+  path: string,
+  value: string | number | boolean,
+  valueMode: boolean
+) {
+  const fallbackColorByField = getColor(pool, seed, path);
+  return ![undefined, null].includes(value) && valueMode
+    ? getColor(pool, seed, value)
+    : fallbackColorByField;
+}
+
+function getColorByField(
+  setting: CustomizeColor,
+  pool: readonly string[],
+  seed: number,
+  path: string,
+  isValidColor: (string) => boolean
+) {
+  if (isValidColor(setting?.fieldColor)) {
+    return setting.fieldColor;
+  }
+  return getColor(pool, seed, path);
+}
+
+function getCurrentValue(
+  isPrimitive: boolean,
+  setting: CustomizeColor,
+  param: string | RegularLabel | Regression,
+  fallbackLabel: string,
+  value: string | number | boolean
+) {
+  const key = setting?.colorByAttribute ?? fallbackLabel;
+  let currentValue;
+
+  if (!isPrimitive) {
+    const convertedKey = ![undefined, null].includes(param[key])
+      ? key
+      : fallbackLabel;
+    currentValue = !isPrimitive
+      ? Array.isArray(param[key])
+        ? param[convertedKey][0]
+        : param[convertedKey]
+      : null;
+  } else {
+    currentValue = value.toString();
+  }
+
+  return currentValue;
+}
+
+function getTagColor(
+  setting: CustomizeColor,
+  pool: readonly string[],
+  seed: number,
+  param: string | RegularLabel | Regression,
+  isValidColor: (string) => boolean
+) {
+  const valueColor = setting.valueColors?.find(
+    (v) => v.value === (param as string)
+  )?.color;
+
+  if (isValidColor(valueColor)) {
+    return valueColor;
+  }
+
+  return getColor(pool, seed, param as string);
+}
+
+function getTargetColor(
+  isPrimitive: boolean,
+  setting: CustomizeColor,
+  param: string | RegularLabel | Regression,
+  key: string,
+  value: string | number | boolean,
+  currentValue: string
+) {
+  return setting.valueColors?.find((colorSetup) => {
+    const stringifiedLowercaseValue = colorSetup.value
+      ?.toString()
+      .toLowerCase();
+    const stringifiedValue = colorSetup.value?.toString();
+
+    if (["none", "null", "undefined"].includes(stringifiedLowercaseValue)) {
+      if (isPrimitive) {
+        return typeof value === "string"
+          ? colorSetup.value?.toString().toLowerCase() === value.toLowerCase()
+          : !value;
+      } else {
+        return typeof param[key] === "string"
+          ? colorSetup.value?.toLowerCase === param[key]
+          : !param[key];
+      }
+    }
+    if (["true", "false"].includes(stringifiedLowercaseValue)) {
+      if (isPrimitive) {
+        return stringifiedLowercaseValue === value.toString().toLowerCase();
+      } else {
+        return (
+          stringifiedLowercaseValue === param[key]?.toString().toLowerCase()
+        );
+      }
+    }
+    if (!isPrimitive) {
+      if (Array.isArray(param[key])) {
+        return param[key].map((el) => el.toString()).includes(stringifiedValue);
+      }
+      return stringifiedValue === currentValue?.toString();
+    } else {
+      if (typeof value === "string" && value.includes(", ")) {
+        return value
+          .split(", ")
+          .map((el) => el.toString())
+          .includes(stringifiedValue);
+      }
+
+      return stringifiedValue === value.toString();
+    }
+  })?.color;
+}
+
+type ColorParams = {
   coloring: Coloring;
   path: string;
-  param: Classification | Regression | string;
+  // if embeddedDocumentField or tags
+  param?: Classification | Regression | string;
+  // fallback for index key, defaulted to "id" (not applicable for primitive fields)
+  fallbackIndex?: string;
+  // fallback for label key, defaulted to "label" (not applicable for primitive fields)
+  fallbackLabel?: string;
+  // if primitive fields
+  value?: string | number | boolean;
   customizeColorSetting: CustomizeColor[];
-  labelDefault: boolean; // use .label for classification or .value for regression
+  isValidColor: (string) => boolean;
 };
-export const getColorFromOptions = ({
+
+export function getAssignedColor({
   coloring,
   path,
   param,
-  customizeColorSetting,
-  labelDefault,
-}: Param) => {
-  let key;
-  const setting = customizeColorSetting.find((s) => s.path === path);
-  if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting.fieldColor;
-    }
-    return getColor(coloring.pool, coloring.seed, path);
-  }
-  if (coloring.by === "value" && path !== "tags") {
-    if (setting) {
-      key = setting.colorByAttribute ?? labelDefault ? "label" : "value";
-      // check if this label has a assigned color, use it if it is a valid color
-      const valueColor = setting?.valueColors?.find((l) => {
-        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-          return typeof param[key] === "string"
-            ? l.value?.toLowerCase === param[key]
-            : !param[key];
-        }
-        if (["True", "False"].includes(l.value?.toString())) {
-          return (
-            l.value?.toString().toLowerCase() ==
-            param[key]?.toString().toLowerCase()
-          );
-        }
-        return l.value?.toString() == param[key]?.toString();
-      })?.color;
-
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-    } else {
-      key = labelDefault ? "label" : "value";
-    }
-    return getColor(coloring.pool, coloring.seed, param[key]);
-  }
-  if (coloring.by === "value" && path === "tags") {
-    if (setting) {
-      const valueColor = setting.valueColors?.find(
-        (v) => v.value === param
-      )?.color;
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-    }
-  }
-  return getColor(coloring.pool, coloring.seed, path);
-};
-
-// for primitive types
-type PrimitiveParam = {
-  coloring: Coloring;
-  path: string;
-  value: string | number | boolean | { datetime: number };
-  customizeColorSetting: CustomizeColor[];
-};
-export const getColorFromOptionsPrimitives = ({
-  coloring,
-  path,
+  fallbackLabel = "label",
   value,
   customizeColorSetting,
-}: PrimitiveParam) => {
-  const setting = customizeColorSetting.find((s) => s.path === path);
-  if (coloring.by === "field") {
-    if (isValidColor(setting?.fieldColor ?? "")) {
-      return setting?.fieldColor;
-    }
-    return getColor(coloring.pool, coloring.seed, path);
+  isValidColor,
+}: ColorParams): string {
+  const setting = findColorSetting(customizeColorSetting, path);
+  const isPrimitive = ![null, undefined].includes(value);
+  const { by, seed, pool } = coloring;
+  const fallbackColor = getFallbackColor(
+    pool,
+    seed,
+    path,
+    value,
+    by === "value"
+  );
+
+  if (by === "field") {
+    return getColorByField(setting, pool, seed, path, isValidColor);
   }
-  if (coloring.by === "value") {
-    if (setting) {
-      // check if this label has a assigned color, use it if it is a valid color
-      const valueColor = setting.valueColors?.find((l) => {
-        const normalized = l.value?.toString().toLowerCase();
-        if (["none", "null", "undefined"].includes(normalized)) {
-          return typeof value === "string"
-            ? normalized === value.toLowerCase()
-            : !value;
-        }
-        if (["True", "False"].includes(l.value?.toString())) {
-          return normalized === value.toString().toLowerCase();
-        }
-        return l.value?.toString() === value.toString();
-      })?.color;
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
+
+  if (by === "value") {
+    if (!setting) {
+      return isPrimitive
+        ? fallbackColor
+        : getColor(pool, seed, path === "tags" ? param : param[fallbackLabel]);
     }
-    return getColor(coloring.pool, coloring.seed, path);
+
+    const currentValue = getCurrentValue(
+      isPrimitive,
+      setting,
+      param,
+      fallbackLabel,
+      value
+    );
+
+    if (path === "tags") {
+      return getTagColor(setting, pool, seed, param, isValidColor);
+    }
+
+    const targetColor = getTargetColor(
+      isPrimitive,
+      setting,
+      param,
+      setting.colorByAttribute ?? fallbackLabel,
+      value,
+      currentValue
+    );
+
+    if (isValidColor(targetColor)) {
+      return targetColor;
+    }
+
+    return getColor(pool, seed, currentValue);
   }
+
   return getColor(coloring.pool, coloring.seed, path);
-};
+}

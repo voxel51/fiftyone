@@ -377,12 +377,22 @@ export const Looker3d = () => {
             }
           }
           if (coloring.by === "value") {
-            const key =
-              setting.colorByAttribute === "index"
-                ? l._id
-                : setting.colorByAttribute === "label"
-                ? l.label
-                : l.attributes[setting.colorByAttribute] ?? l.label;
+            let key;
+            if (setting?.colorByAttribute) {
+              if (setting.colorByAttribute === "index") {
+                key = l._id;
+              } else if (setting.colorByAttribute === "label") {
+                key = l.label;
+              } else if (l.attributes[setting.colorByAttribute]) {
+                key = l.attributes[setting.colorByAttribute];
+              } else {
+                key = l.label;
+              }
+            } else {
+              // fallback to label if colorByAttribute is not set
+              key = l.label;
+            }
+
             if (
               setting &&
               setting.valueColors &&
@@ -404,7 +414,7 @@ export const Looker3d = () => {
           return { ...l, color, id: l._id };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sampleMap, selectedLabels]
+    [coloring, getColor, pathFilter, sampleMap, selectedLabels, colorScheme]
   );
 
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {

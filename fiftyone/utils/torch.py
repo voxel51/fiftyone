@@ -345,7 +345,7 @@ class TorchImageModel(
 
                 - A PIL image
                 - A uint8 numpy array (HWC)
-                - A Torch tensor (CWH)
+                - A Torch tensor (CHW)
 
         Returns:
             a :class:`fiftyone.core.labels.Label` instance or dict of
@@ -393,7 +393,10 @@ class TorchImageModel(
         if self._using_half_precision:
             imgs = imgs.half()
 
-        output = self._model(imgs)
+        output = self._forward_pass(imgs)
+
+        if self._output_processor is None:
+            return output
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
@@ -401,6 +404,9 @@ class TorchImageModel(
         return self._output_processor(
             output, frame_size, confidence_thresh=self.config.confidence_thresh
         )
+
+    def _forward_pass(self, imgs):
+        return self._model(imgs)
 
     def _parse_classes(self, config):
         if config.labels_string is not None:
@@ -501,6 +507,21 @@ class TorchImageModel(
         output_processor_cls = etau.get_class(config.output_processor_cls)
         kwargs = config.output_processor_args or {}
         return output_processor_cls(classes=self._classes, **kwargs)
+
+
+class TorchSamplesMixin(fom.SamplesMixin):
+    def predict(self, img, sample=None):
+        if isinstance(img, torch.Tensor):
+            imgs = img.unsqueeze(0)
+        else:
+            imgs = [img]
+
+        if sample is not None:
+            samples = [sample]
+        else:
+            samples = None
+
+        return self.predict_all(imgs, samples=samples)[0]
 
 
 class ToPILImage(object):
@@ -814,9 +835,9 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 -   boxes (``FloatTensor[N, 4]``): the predicted boxes in
                     ``[x1, y1, x2, y2]`` format (absolute coordinates)
                 -   labels (``Int64Tensor[N]``): the predicted labels
-                -   scores (``Tensor[N]``): the scores for each prediction
                 -   masks (``FloatTensor[N, 1, H, W]``): the predicted masks
-                    for each instance, in ``[0, 1]``
+                    for each instance, in ``[0, 1]``. May also be boolean
+                -   scores (``Tensor[N]``): optional scores for each prediction
 
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
@@ -835,12 +856,19 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
 
         boxes = output["boxes"].detach().cpu().numpy()
         labels = output["labels"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
         masks = output["masks"].detach().cpu().numpy()
+        if "scores" in output:
+            scores = output["scores"].detach().cpu().numpy()
+        else:
+            scores = itertools.repeat(None)
 
         detections = []
-        for box, label, score, soft_mask in zip(boxes, labels, scores, masks):
-            if confidence_thresh is not None and score < confidence_thresh:
+        for box, label, mask, score in zip(boxes, labels, masks, scores):
+            if (
+                confidence_thresh is not None
+                and score is not None
+                and score < confidence_thresh
+            ):
                 continue
 
             x1, y1, x2, y2 = box
@@ -851,11 +879,13 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 (y2 - y1) / height,
             ]
 
-            soft_mask = np.squeeze(soft_mask, axis=0)[
+            mask = np.squeeze(mask, axis=0)[
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
-            mask = soft_mask > self.mask_thresh
+
+            if mask.dtype != bool:
+                mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(

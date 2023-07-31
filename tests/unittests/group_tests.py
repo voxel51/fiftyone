@@ -567,6 +567,51 @@ class GroupTests(unittest.TestCase):
         self.assertIn("field", mixed_view.get_field_schema())
         self.assertIn("field", mixed_view.get_frame_field_schema())
 
+        view = dataset.select_fields()
+
+        # Cloning a grouped dataset maintains schema changes
+        group_dataset = view.clone()
+
+        self.assertNotIn("field", group_dataset.get_field_schema())
+        self.assertNotIn("field", group_dataset.get_frame_field_schema())
+        for sample in group_dataset:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
+        # Selecting group slices maintains schema changes
+        image_view = view.select_group_slices(media_type="image")
+
+        self.assertNotIn("field", image_view.get_field_schema())
+        for sample in image_view:
+            self.assertFalse(sample.has_field("field"))
+
+        image_dataset = image_view.clone()
+
+        self.assertNotIn("field", image_dataset.get_field_schema())
+        for sample in image_dataset:
+            self.assertFalse(sample.has_field("field"))
+
+        # @note(SelectGroupSlices)
+        # Selecting group slices maintains frame schema changes
+        video_view = view.select_group_slices(media_type="video")
+
+        self.assertNotIn("field", video_view.get_field_schema())
+        self.assertNotIn("field", video_view.get_frame_field_schema())
+        for sample in video_view:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
+        video_dataset = video_view.clone()
+
+        self.assertNotIn("field", video_dataset.get_field_schema())
+        self.assertNotIn("field", video_dataset.get_frame_field_schema())
+        for sample in video_dataset:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
     @drop_datasets
     def test_attached_groups(self):
         dataset = _make_group_dataset()
@@ -847,6 +892,12 @@ class GroupTests(unittest.TestCase):
         frame = sample.frames.first()
 
         self.assertEqual(frame.field, 1)
+
+        view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(view.media_type, "mixed")
+        with self.assertRaises(ValueError):
+            _ = view.clone()
 
     def test_merge_groups1(self):
         dataset = _make_group_dataset()

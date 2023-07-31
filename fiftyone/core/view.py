@@ -1425,12 +1425,14 @@ class DatasetView(foc.SampleCollection):
         _found_select_group_slice = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
+        _attach_frames_idx1 = None
 
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
         _attach_groups_idx = None
 
-        for idx, stage in enumerate(self._stages):
+        idx = 0
+        for stage in self._stages:
             if isinstance(stage, fost.SelectGroupSlices):
                 # We might need to reattach frames after `SelectGroupSlices`,
                 # since it involves a `$lookup` that resets the samples
@@ -1462,9 +1464,31 @@ class DatasetView(foc.SampleCollection):
 
                     _group_slices.update(_stage_group_slices)
 
-            # Generate stage's pipeline
-            _pipelines.append(stage.to_mongo(_view))
+            _pipeline = stage.to_mongo(_view)
+
+            # @note(SelectGroupSlices)
+            # Special case: when selecting group slices of a video dataset that
+            # modifies the dataset's schema, frame lookups must be injected in
+            # the middle of the stage's pipeline, after the group slice $lookup
+            # but *before* the $project stage(s) that reapply schema changes
+            if (
+                isinstance(stage, fost.SelectGroupSlices)
+                and _contains_videos
+                and _pipeline
+                and "$project" in _pipeline[-1]
+            ):
+                _pipeline0 = _pipeline
+                _pipeline = []
+                while _pipeline0 and "$project" in _pipeline0[-1]:
+                    _pipeline.insert(0, _pipeline0.pop())
+
+                idx += 1
+                _attach_frames_idx1 = idx
+                _pipelines.append(_pipeline0)
+
+            _pipelines.append(_pipeline)
             _view = _view._add_view_stage(stage, validate=False)
+            idx += 1
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
@@ -1472,6 +1496,9 @@ class DatasetView(foc.SampleCollection):
         #######################################################################
         # Insert frame lookup pipeline(s) if needed
         #######################################################################
+
+        if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
+            _attach_frames_idx = _attach_frames_idx1
 
         if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
             # Two lookups are required; manually do the **last** one and rely

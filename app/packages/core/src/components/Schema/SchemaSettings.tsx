@@ -9,9 +9,9 @@ import { Box, Typography } from "@mui/material";
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
+import { useOutsideClick } from "@fiftyone/state";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useOutsideClick } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -73,6 +73,7 @@ const SchemaSettings = () => {
     searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
+    resetAttributeFilters,
   } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
@@ -218,8 +219,8 @@ const SchemaSettings = () => {
                 borderRadius: "4px",
               }}
               onClick={() => {
+                resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -267,6 +268,7 @@ const SchemaSettings = () => {
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset
