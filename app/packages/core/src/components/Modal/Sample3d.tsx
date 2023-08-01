@@ -1,4 +1,4 @@
-import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
+import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useMemo } from "react";
 
@@ -9,8 +9,10 @@ const PluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
   const { sample } = useRecoilValue(fos.modalSample);
 
-  const [plugin] = usePlugin(PluginComponentType.Visualizer);
   const dataset = useRecoilValue(fos.dataset);
+  const plugin = useActivePlugins(PluginComponentType.Visualizer, {
+    dataset,
+  }).pop();
 
   const pluginAPI = useMemo(
     () => ({

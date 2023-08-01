@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Box, Typography } from "@mui/material";
 import { Tooltip, useTheme } from "@fiftyone/components";
 import { SchemaSelection } from "./SchemaSelection";
-import { useSchemaSettings } from "@fiftyone/state";
+import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
 import { Clear } from "@mui/icons-material";
 
 interface Props {
@@ -15,12 +15,11 @@ export const SchemaSearch = (props: Props) => {
   const theme = useTheme();
   const [error, setError] = useState<string>("");
 
-  const {
-    searchSchemaFields,
-    setSearchResults,
-    datasetName,
-    includeNestedFields,
-  } = useSchemaSettings();
+  const { datasetName, includeNestedFields, mergedSchema } =
+    useSchemaSettings();
+
+  const { searchSchemaFields, setSearchResults } =
+    useSearchSchemaFields(mergedSchema);
 
   return (
     <Box

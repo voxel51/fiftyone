@@ -374,12 +374,6 @@ export const UNSUPPORTED_FILTER_TYPES = [
   undefined,
 ];
 
-// An embedded document field are only represented as a top-level group, e.g.
-// "metadata", "embedded.embdedded" is an unsupported entry
-export const UNSUPPORTED_FILTER_PATHS = [
-  EMBEDDED_DOCUMENT_FIELD,
-  ...UNSUPPORTED_FILTER_TYPES,
-];
 export const SKIP_FIELD_TYPES = [...UNSUPPORTED_FILTER_TYPES, JUST_FIELD];
 
 export const DYNAMIC_GROUP_FIELDS = [
