@@ -275,7 +275,7 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-  const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+  const activeColor = useRecoilValue(fos.pathColor(path));
 
   const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(

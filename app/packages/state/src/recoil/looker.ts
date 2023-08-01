@@ -64,7 +64,7 @@ export const lookerOptions = selectorFamily<
         showTooltip,
         ...video,
         isPointcloudDataset: get(selectors.isPointcloudDataset),
-        coloring: get(colorAtoms.coloring(modal)),
+        coloring: get(colorAtoms.coloring),
         customizeColorSetting: get(atoms.sessionColorScheme).fields ?? [],
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],

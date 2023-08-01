@@ -257,9 +257,8 @@ function FieldInfoExpanded({
     el.current.style.top = top + "px";
     el.current.style.left = left + "px";
   };
-  const colorSettings = useRecoilValue(coloring(false));
+  const colorSettings = useRecoilValue(coloring);
 
-  const isModal = useRecoilValue(fos.currentModalSample) !== null;
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status

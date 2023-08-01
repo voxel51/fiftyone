@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -10,19 +11,13 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-
 import React, { Suspense, useMemo, useState } from "react";
-
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import { prettify } from "../../../utils/generic";
-
-import * as fos from "@fiftyone/state";
-import { NameAndCountContainer } from "../../utils";
-
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
+import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField } from "./utils";
 
@@ -82,7 +77,7 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
 
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
@@ -145,7 +140,7 @@ const ListValueEntry = ({
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
@@ -271,7 +266,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<string | number | null>(path);
 
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const theme = useTheme();
 
@@ -342,7 +337,7 @@ const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
 
