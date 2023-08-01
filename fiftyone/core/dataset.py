@@ -2785,8 +2785,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields
         """
         try:
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
             F = foe.ViewField
-            existing_sample = self.one(F(key_field) == sample[key_field])
+            existing_sample = view.one(F(key_field) == sample[key_field])
         except ValueError:
             if insert_new:
                 self.add_sample(
@@ -6887,6 +6892,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
         view = dataset_or_view
+
+        if view.media_type == fom.MIXED:
+            raise ValueError("Cloning mixed views is not allowed")
     else:
         dataset = dataset_or_view
         view = None

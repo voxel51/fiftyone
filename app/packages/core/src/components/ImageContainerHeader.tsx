@@ -95,7 +95,7 @@ const GroupsCount = () => {
   return (
     <RightDiv data-cy="entry-counts">
       <div>
-        <PathEntryCounts modal={false} path={"_"} />
+        <PathEntryCounts modal={false} path={"_"} ignoreSidebarMode />
         {` `}
         {total === 1 ? "group" : "groups"}
         {` `}(<PathEntryCounts modal={false} path={""} />
