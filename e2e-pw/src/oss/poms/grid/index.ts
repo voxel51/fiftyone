@@ -1,6 +1,7 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
+import { Duration } from "src/oss/utils";
 
 export class GridPom {
   readonly page: Page;
@@ -48,10 +49,8 @@ export class GridPom {
     return this.page.getByTestId("entry-counts").textContent();
   }
 
-  async takeFlashlightScreenshot(name: string) {
-    await this.page.locator('[data-cy="flashlight-section"]').screenshot({
-      path: `flashlight-${name}.png`,
-    });
+  async getNthFlashlightSection(n: number) {
+    return this.page.getByTestId("flashlight-section").nth(0);
   }
 
   async selectSlice(slice: string) {
@@ -108,5 +107,9 @@ class GridAsserter {
     return this.gridPom.page.waitForSelector("[data-cy=looker]", {
       timeout: 2000,
     });
+  }
+
+  async delay(ms: number) {
+    new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

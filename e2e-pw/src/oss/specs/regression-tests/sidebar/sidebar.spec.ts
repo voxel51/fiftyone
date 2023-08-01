@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -23,46 +23,62 @@ test.describe("sidebar-filter-visibility", () => {
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
-    // always unfold tags and metaData groups
+    // always fold tags and metaData groups
     await page.click('[title="TAGS"]');
     await page.click('[title="METADATA"]');
   });
 
-  test("In grid, select a label filter works", async ({
-    page,
-    grid,
-    sidebar,
-  }) => {
+  test("In grid, select a label filter works", async ({ grid, sidebar }) => {
+    // do not show prediction labels
+    await sidebar.clickFieldCheckbox("predictions");
+
     // select bottlel in ground_truth.detections.label
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
-      ["bottle", "bird"],
+      ["bottle"],
       "select-detections-with-label"
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("2 of 5 samples");
+    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.verifyNLookers(2);
+    await grid.assert.assertNLookers(1);
+
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "select-bottle.png"
+    );
 
     // go to visibility mode
     await sidebar.toggleSidebarMode();
+
+    // test case: visibility mode - show label
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
-      ["bottle"],
-      "show-label--------"
+      ["cat"],
+      "show-label----------------"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "select-bottle-show-cat.png"
     );
 
-    // compare screenshot
-    // await expect(sidebar.getGrid()).toHaveScreenshot(`sidebar-select-show.png`)
+    // test case: visibility mode - hide label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["person"],
+      "hide-label"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "select-bottle-hide-person-cat.png"
+    );
   });
 
-  test("In grid, exclude a label filter works", async ({
-    page,
-    grid,
-    sidebar,
-  }) => {
+  test("In grid, exclude a label filter works", async ({ grid, sidebar }) => {
+    // do not show prediction labels
+    await sidebar.clickFieldCheckbox("predictions");
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
@@ -73,14 +89,44 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.verifyNLookers(5);
+    await grid.assert.assertNLookers(5);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "exclude-bottle.png"
+    );
+
+    // Test with visibility mode:
+    await sidebar.toggleSidebarMode();
+
+    // test case: visibility mode - show label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["cup"],
+      "show-label----------------"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "exclude-bottle-show-cup.png"
+    );
+
+    // test case: visibility mode - hide label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      [],
+      "hide-label"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "exclude-bottle-hide-cup.png"
+    );
   });
 
   test("In grid, show samples with a label filter works", async ({
-    page,
     grid,
     sidebar,
   }) => {
+    // do not show prediction labels
+    await sidebar.clickFieldCheckbox("predictions");
+
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
@@ -91,14 +137,44 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.verifyNLookers(1);
+    await grid.assert.assertNLookers(1);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "show-bottle.png"
+    );
+
+    // Test with visibility mode:
+    await sidebar.toggleSidebarMode();
+
+    // test case: visibility mode - show label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["cup"],
+      "show-label----------------"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "show-bottle-show-cup.png"
+    );
+
+    // test case: visibility mode - hide label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      [],
+      "hide-label"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "exclude-bottle-hide-cup.png"
+    );
   });
 
   test("In grid, omit samples with a label filter works", async ({
-    page,
     grid,
     sidebar,
   }) => {
+    // do not show prediction labels
+    await sidebar.clickFieldCheckbox("predictions");
+
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
@@ -109,6 +185,34 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.verifyNLookers(4);
+    await grid.assert.assertNLookers(4);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "hide-bottle.png"
+    );
+
+    // Test the visibility mode:
+    await sidebar.toggleSidebarMode();
+
+    // test case: visibility mode - show label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["horse"],
+      "show-label----------------"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "hide-bottle-show-horse.png"
+    );
+
+    // test case: visibility mode - hide label
+    await sidebar.getLabelFromList(
+      "ground_truth.detections.label",
+      ["horse"],
+      "hide-label"
+    );
+    await grid.assert.delay(1000);
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "hide-bottle-hide-horse.png"
+    );
   });
 });
