@@ -71,6 +71,8 @@ export default function ListView(props) {
               schema={itemsSchema}
               readOnly={readOnly}
               hideIndexLabel={schema?.view?.hideIndexLabel}
+              parentSchema={schema}
+              relativePath={id}
             />
           );
         })}
