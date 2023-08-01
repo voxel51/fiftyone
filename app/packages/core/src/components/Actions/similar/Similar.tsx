@@ -50,8 +50,7 @@ const SortBySimilarity = ({
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
   const datasetId = useRecoilValue(fos.dataset).id;
-  const [lastUsedBrainKeys, setLastUsedBrainKeys] =
-    useBrowserStorage("lastUsedBrainKeys");
+  const [lastUsedBrainKeys] = useBrowserStorage("lastUsedBrainKeys");
 
   const lastUsedBrainkey = useMemo(() => {
     return lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys)[datasetId] : null;
@@ -94,6 +93,7 @@ const SortBySimilarity = ({
     []
   );
   const isLoading = useRecoilValue(fos.similaritySorting);
+  const isReadOnly = useRecoilValue(fos.readOnly);
 
   useLayoutEffect(() => {
     if (!choices.choices.includes(state.brainKey)) {
@@ -277,16 +277,20 @@ const SortBySimilarity = ({
               setValue={(brainKey) => onChangeBrainKey(brainKey)}
             />
           </div>
-          Optional: store the distance between each sample and the query in this
-          field
-          <Input
-            placeholder={"dist_field (default = None)"}
-            validator={(value) => !value.startsWith("_")}
-            value={state.distField ?? ""}
-            setter={(value) =>
-              updateState({ distField: !value.length ? undefined : value })
-            }
-          />
+          {!isReadOnly && (
+            <>
+              Optional: store the distance between each sample and the query in
+              this field
+              <Input
+                placeholder={"dist_field (default = None)"}
+                validator={(value) => !value.startsWith("_")}
+                value={state.distField ?? ""}
+                setter={(value) =>
+                  updateState({ distField: !value.length ? undefined : value })
+                }
+              />
+            </>
+          )}
         </div>
       )}
     </Popout>
