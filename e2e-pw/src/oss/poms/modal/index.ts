@@ -6,7 +6,6 @@ import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
   readonly page: Page;
-  readonly modal: Locator;
   readonly groupCarousel: Locator;
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
@@ -17,9 +16,8 @@ export class ModalPom {
   constructor(page: Page) {
     this.page = page;
     this.assert = new ModalAsserter(this);
-
-    this.modal = page.getByTestId("modal");
-    this.groupCarousel = this.modal.getByTestId("group-carousel");
+    this.locator = page.getByTestId("modal");
+    this.groupCarousel = this.locator.getByTestId("group-carousel");
     this.sidebar = new ModalSidebarPom(page);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
@@ -27,7 +25,7 @@ export class ModalPom {
 
   async toggleSelection() {
     await this.getLooker().hover();
-    await this.modal.getByTestId("selectable-bar").click();
+    await this.locator.getByTestId("selectable-bar").click();
   }
 
   async navigateSample(
@@ -117,7 +115,7 @@ export class ModalPom {
   }
 
   getGroupContainer() {
-    return this.modal.getByTestId("group-container");
+    return this.locator.getByTestId("group-container");
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
@@ -162,7 +160,7 @@ class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
   async verifySelection(n: number) {
-    const action = this.modalPom.modal.getByTestId("action-manage-selected");
+    const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
     const count = await action.first().textContent();
 
