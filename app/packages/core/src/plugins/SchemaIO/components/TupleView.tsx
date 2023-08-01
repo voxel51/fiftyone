@@ -36,6 +36,8 @@ export default function TuplesView(props) {
                 schema={itemSchema}
                 path={getPath(path, i)}
                 data={data?.[i] ?? itemSchema?.default ?? schema?.default?.[i]}
+                parentSchema={schema}
+                relativePath={i}
               />
             </Grid>
           );
