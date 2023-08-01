@@ -25,7 +25,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           [filterAtoms.modalFilters, filterAtoms.filters],
           ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
             return [
-              selectors.appConfigOption({ key, modal: true }),
+              selectors.appConfigOption({ key, modal: false }),
               selectors.appConfigOption({ key, modal: false }),
             ];
           }),
@@ -34,9 +34,9 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             schemaAtoms.activeFields({ modal: false }),
           ],
           [atoms.cropToContent(true), atoms.cropToContent(false)],
-          [atoms.colorSeed(true), atoms.colorSeed(false)],
+          [atoms.colorSeed, atoms.colorSeed],
           [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
-          [atoms.alpha(true), atoms.alpha(false)],
+          [atoms.alpha, atoms.alpha],
           [
             sidebarAtoms.sidebarGroupsDefinition(true),
             sidebarAtoms.sidebarGroupsDefinition(false),

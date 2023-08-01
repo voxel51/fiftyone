@@ -8,7 +8,7 @@ import { useWarnings } from "./useWarnings";
 import { fetchPlot } from "./fetch";
 
 export function useViewChangeEffect() {
-  const colorSeed = useRecoilValue(fos.colorSeed(false));
+  const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
   const [brainKey, setBrainKey] = useBrainResult();
   const [labelField] = useColorByField();

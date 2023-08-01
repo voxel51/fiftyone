@@ -21,14 +21,17 @@ export const coloring = selectorFamily<Coloring, boolean>({
     (modal) =>
     ({ get }) => {
       const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const seed = get(atoms.colorSeed(modal));
+      const seed = get(atoms.colorSeed);
       return {
         seed,
         pool,
         scale: get(colorscale),
-        by: get(selectors.appConfigOption({ key: "colorBy", modal })),
+        by: get(selectors.appConfigOption({ key: "colorBy", modal: false })),
         points: get(
-          selectors.appConfigOption({ key: "multicolorKeypoints", modal })
+          selectors.appConfigOption({
+            key: "multicolorKeypoints",
+            modal: false,
+          })
         ) as boolean,
         defaultMaskTargets: get(selectors.defaultTargets),
         maskTargets: get(selectors.targets).fields,
@@ -45,10 +48,10 @@ export const coloring = selectorFamily<Coloring, boolean>({
 export const colorMap = selectorFamily<(val) => string, boolean>({
   key: "colorMap",
   get:
-    (modal) =>
+    () =>
     ({ get }) => {
       const pool = get(colorPalette) ?? DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const seed = get(atoms.colorSeed(modal));
+      const seed = get(atoms.colorSeed);
       return createColorGenerator(pool, seed);
     },
   cachePolicy_UNSTABLE: {

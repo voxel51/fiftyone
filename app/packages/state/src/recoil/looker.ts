@@ -74,9 +74,9 @@ export const lookerOptions = selectorFamily<
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
-        alpha: get(atoms.alpha(modal)),
+        alpha: get(atoms.alpha),
         showSkeletons: get(
-          selectors.appConfigOption({ key: "showSkeletons", modal })
+          selectors.appConfigOption({ key: "showSkeletons", modal: false })
         ),
         defaultSkeleton: get(atoms.dataset).defaultSkeleton,
         skeletons: Object.fromEntries(
