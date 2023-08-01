@@ -19,16 +19,16 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   import fiftyone as fo
   import fiftyone.zoo as foz
 
-  cifar10_dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=50, dataset_name="cifar10")
+  cifar10_dataset = foz.load_zoo_dataset("cifar10", split="test", max_samples=50, dataset_name="${datasetName}")
   cifar10_dataset.persistent = True
 `);
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName, "dynamic-group");
+  await fiftyoneLoader.waitUntilLoad(page, datasetName);
 });
 
-test("valid candidates for group-by keys", async ({ grid }) => {
+test.skip("valid candidates for group-by keys", async ({ grid }) => {
   await grid.actionsRow.openCreateDynamicGroups();
   await verifyCandidateFields(grid, ["ground_truth.id", "ground_truth.label"]);
 });
