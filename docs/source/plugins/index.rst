@@ -252,6 +252,8 @@ below:
             types,
         } from "@fiftyone/operators";
 
+        const PLUGIN_NAME = "@my-org/my-plugin";
+
         class OpenEmbeddingsPanel extends Operator {
             get config() {
                 return new OperatorConfig({
@@ -259,7 +261,7 @@ below:
                     label: "Example: open Embeddings panel",
                 });
             }
-            useHooks(): {
+            useHooks(): {} {
                 const openPanelOperator = useOperatorExecutor("open_panel");
                 return { openPanelOperator };
             }
@@ -282,7 +284,7 @@ below:
             }
         }
 
-        registerOperator(OpenEmbeddingsPanel, "@voxel51/examples");
+        registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME");
 
 Plugin runtime
 --------------
