@@ -21,6 +21,7 @@ import {
   patching,
   resolveGroups,
   savingFilters,
+  selectedFieldsStageState,
   selectedLabels,
   selectedMediaField,
   selectedSamples,
@@ -32,7 +33,6 @@ import {
   similaritySorting,
   tagging,
   theme,
-  selectedFieldsStageState,
 } from "../recoil";
 import * as viewAtoms from "../recoil/view";
 import {

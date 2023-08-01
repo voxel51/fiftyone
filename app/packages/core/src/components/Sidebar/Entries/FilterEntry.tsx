@@ -27,12 +27,16 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
 
   const {
-    setSelectedFieldsStage,
     resetTextFilter,
     resetExcludedPaths,
     affectedPathCount,
-    setSearchResults,
+    mergedSchema,
   } = fos.useSchemaSettings();
+
+  const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
 
   const Text = styled.div`
     font-size: 1rem;

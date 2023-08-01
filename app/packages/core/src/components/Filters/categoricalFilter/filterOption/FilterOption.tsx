@@ -1,3 +1,4 @@
+import { Popout } from "@fiftyone/components";
 import { useTheme } from "@fiftyone/components/src/components/ThemeProvider";
 import Tooltip from "@fiftyone/components/src/components/Tooltip";
 import * as fos from "@fiftyone/state";
@@ -13,8 +14,6 @@ import Color from "color";
 import React, { useMemo } from "react";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-
-import { Popout } from "@fiftyone/components";
 import Item from "./FilterItem";
 
 interface Props {

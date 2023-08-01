@@ -1,25 +1,26 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { isEmpty, keyBy } from "lodash";
-import { useCallback, useContext, useEffect, useMemo } from "react";
-import { useMutation, useRefetchableFragment } from "react-relay";
+import _, { isEmpty, keyBy } from "lodash";
+import { useCallback, useEffect, useMemo } from "react";
+import { useRefetchableFragment } from "react-relay";
 import {
-  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { disabledField, skipField } from "./useSchemaSettings.utils";
-import _ from "lodash";
+import useSetShowNestedFields from "./schema/useSetShowNestedFields";
+import {
+  disabledField,
+  getSubPaths,
+  skipField,
+} from "./useSchemaSettings.utils";
 
 const SELECT_ALL = "SELECT_ALL";
 
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
-  const router = useContext(fos.RouterContext);
-  const [setView] = useMutation<foq.setViewMutation>(foq.setView);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
 
@@ -43,51 +44,10 @@ export default function useSchemaSettings() {
     !_.isEmpty(modalAttributeVisibility) && setModalAttributeVisibility({});
   };
 
-  const setSelectedFieldsStage = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (value) => {
-        if (!dataset) {
-          return;
-        }
-
-        set(fos.selectedFieldsStageState, value);
-
-        // router is loaded only in OSS
-        if (router.loaded) return;
-        const view = await snapshot.getPromise(fos.view);
-        const subscription = await snapshot.getPromise(fos.stateSubscription);
-        setView({
-          variables: {
-            view: value ? [...view, value] : view,
-            datasetName: dataset.name,
-            form: {},
-            subscription,
-          },
-          onCompleted: ({ setView: { dataset } }) => {
-            // in an embedded context, we update the dataset schema through the
-            // state proxy
-            set(fos.stateProxy, (current) => ({
-              ...(current || {}),
-              dataset,
-            }));
-          },
-        });
-      },
-    [setView, router, dataset]
-  );
-
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
     fos.schemaSearchTerm
-  );
-  const searchResults = useRecoilValue(fos.schemaSearchResultList);
-  const setSearchResults = useRecoilCallback(
-    ({ set }) =>
-      async (newPaths: string[] = []) => {
-        set(fos.schemaSearchResultList, newPaths);
-      },
-    []
   );
   const isVideo = dataset.mediaType === "video";
 
@@ -105,14 +65,6 @@ export default function useSchemaSettings() {
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     fos.lastAppliedPathsState
-  );
-
-  const [showNestedFields, setShowNestedFieldsRaw] = useRecoilState<boolean>(
-    fos.showNestedFieldsState
-  );
-
-  const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
-    fos.searchMetaFilterState
   );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
@@ -165,15 +117,18 @@ export default function useSchemaSettings() {
     }
   }, [viewSchema, fieldSchema]);
 
+  const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
+    fieldSchema,
+    viewSchema
+  );
+
   const [selectedTab, setSelectedTab] = useRecoilState(
     fos.schemaSelectedSettingsTab
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
   const selectedPathState = fos.selectedPathsState({});
-  const [selectedPaths, setSelectedPaths] = useRecoilState<{}>(
-    selectedPathState
-  );
+  const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
   // disabled paths are filtered
   const enabledSelectedPaths = useMemo(() => {
     const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
@@ -204,39 +159,20 @@ export default function useSchemaSettings() {
     selectedPaths,
   ]);
 
-  const excludePathsState = fos.excludedPathsState({});
-  const [excludedPaths, setExcludedPaths] = useRecoilState<{}>(
-    excludePathsState
+  const excludedPathsState = fos.excludedPathsState({});
+  const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
+
+  const mergedSchema = useMemo(
+    () => ({ ...viewSchema, ...fieldSchema }),
+    [viewSchema, fieldSchema]
   );
 
-  const setShowNestedFields = useCallback(
-    (val: boolean) => {
-      const newExcludePaths = new Set();
-      if (val) {
-        excludedPaths?.[datasetName]?.forEach((path) => {
-          const subPaths = [...getSubPaths(path)];
-          subPaths.forEach((path) => {
-            newExcludePaths.add(path);
-          });
-        });
-      } else {
-        excludedPaths?.[datasetName]?.forEach((path) => {
-          if (
-            isVideo
-              ? (path.split(".")?.length === 2 && path.startsWith("frames.")) ||
-                !path.includes(".")
-              : !path.includes(".")
-          ) {
-            newExcludePaths.add(path);
-          }
-        });
-      }
-
-      setExcludedPaths({ [datasetName]: newExcludePaths });
-      setShowNestedFieldsRaw(val);
-    },
-    [showNestedFields, excludedPaths]
-  );
+  const {
+    searchResults,
+    searchMetaFilter,
+    searchSchemaFields,
+    setSearchResults,
+  } = fos.useSearchSchemaFields(mergedSchema);
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
     if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))
@@ -349,72 +285,7 @@ export default function useSchemaSettings() {
     isVideo,
   ]);
 
-  const [searchSchemaFieldsRaw] = useMutation<foq.searchSelectFieldsMutation>(
-    foq.searchSelectFields
-  );
-
   const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-  const getPath = useCallback(
-    (path: string) => {
-      if (dataset && viewSchema) {
-        return dataset.mediaType === "video" && viewSchema?.[path]
-          ? `frames.${path}`
-          : path;
-      }
-      return path;
-    },
-    [viewSchema, dataset]
-  );
-
-  const mergedSchema = useMemo(
-    () => ({ ...viewSchema, ...fieldSchema }),
-    [viewSchema, fieldSchema]
-  );
-
-  const searchSchemaFields = useCallback(
-    (object) => {
-      if (!mergedSchema) {
-        return;
-      }
-      searchSchemaFieldsRaw({
-        variables: { datasetName, metaFilter: object },
-        onCompleted: (data) => {
-          if (data) {
-            const { searchSelectFields = [] } = data;
-            const res = (searchSelectFields as string[])
-              .map((p) => p.replace("._cls", ""))
-              .filter((pp) => !pp.startsWith("_"));
-            setSearchResults(res);
-            setSearchMetaFilter(object);
-
-            const shouldExcludePaths = Object.keys(mergedSchema)
-              .filter((path) => !searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setExcludedPaths({ [datasetName]: shouldExcludePaths });
-
-            const shouldSelectPaths = Object.keys(mergedSchema)
-              .filter((path) => searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
-          }
-        },
-        onError: (e) => {
-          console.error("failed to search schema fields", e);
-        },
-      });
-    },
-    [datasetName, mergedSchema]
-  );
 
   const setIncludeNestedFields = useCallback(
     (val: boolean) => {
@@ -436,27 +307,6 @@ export default function useSchemaSettings() {
     setSearchResults([]);
     setSearchTerm("");
   }, [datasetName, viewPaths, fieldSchema]);
-
-  const getSubPaths = useCallback(
-    (path: string) => {
-      if (!datasetName) {
-        return new Set();
-      }
-      const subPaths = new Set<string>();
-      subPaths.add(getPath(path));
-      Object.keys(mergedSchema).forEach((currPath: string) => {
-        const ftype = mergedSchema?.[currPath]?.ftype;
-        if (
-          currPath.startsWith(path + ".") &&
-          !skipField(currPath, mergedSchema)
-        ) {
-          subPaths.add(getPath(currPath));
-        }
-      });
-      return subPaths;
-    },
-    [mergedSchema, datasetName, isGroupDataset]
-  );
 
   useEffect(() => {
     if (!isEmpty(fieldSchema) && datasetName && !selectedPaths?.[datasetName]) {
@@ -482,7 +332,12 @@ export default function useSchemaSettings() {
   const toggleSelection = useCallback(
     (rawPath: string, checked: boolean) => {
       if (!selectedPaths || !rawPath || !datasetName) return;
-      const pathAndSubPaths = getSubPaths(rawPath);
+      const pathAndSubPaths = getSubPaths(
+        rawPath,
+        fieldSchema,
+        dataset.mediaType,
+        viewSchema
+      );
       if (!pathAndSubPaths.size) {
         return;
       }
@@ -517,7 +372,17 @@ export default function useSchemaSettings() {
       }
       setAllFieldsChecked(false);
     },
-    [selectedPaths, viewPaths, datasetName, excludedPaths]
+    [
+      selectedPaths,
+      datasetName,
+      fieldSchema,
+      dataset.mediaType,
+      viewSchema,
+      setAllFieldsChecked,
+      excludedPaths,
+      setExcludedPaths,
+      setSelectedPaths,
+    ]
   );
 
   const bareFinalSchema = useMemo(
@@ -630,9 +495,6 @@ export default function useSchemaSettings() {
     resetExcludedPaths,
     resetSelectedPaths,
     resetTextFilter,
-    searchMetaFilter,
-    searchResults,
-    searchSchemaFields,
     searchTerm,
     selectedPaths,
     selectedTab,
@@ -641,9 +503,7 @@ export default function useSchemaSettings() {
     setExpandedPaths,
     setIncludeNestedFields,
     setLastAppliedPaths,
-    setSearchResults,
     setSearchTerm,
-    setSelectedFieldsStage,
     setSelectedPaths,
     setSelectedTab,
     setSettingsModal,
@@ -653,6 +513,7 @@ export default function useSchemaSettings() {
     showMetadata,
     showNestedFields,
     toggleSelection,
+    mergedSchema,
     resetAttributeFilters,
   };
 }
