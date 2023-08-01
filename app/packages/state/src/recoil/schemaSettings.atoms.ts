@@ -1,11 +1,11 @@
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
-import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import * as fos from "@fiftyone/state";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
