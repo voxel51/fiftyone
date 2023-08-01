@@ -34,9 +34,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             schemaAtoms.activeFields({ modal: false }),
           ],
           [atoms.cropToContent(true), atoms.cropToContent(false)],
-          [atoms.colorSeed, atoms.colorSeed],
           [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
-          [atoms.alpha, atoms.alpha],
           [
             sidebarAtoms.sidebarGroupsDefinition(true),
             sidebarAtoms.sidebarGroupsDefinition(false),
