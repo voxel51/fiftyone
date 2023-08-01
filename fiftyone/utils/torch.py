@@ -676,13 +676,16 @@ class TorchImageModel(
 
             height, width = imgs.size()[-2:]
 
-        imgs = imgs.to(self._device)
-        if self._using_half_precision:
-            imgs = imgs.half()
+            imgs = imgs.to(self._device)
+            if self._using_half_precision:
+                imgs = imgs.half()
 
         output = self._forward_pass(imgs)
 
         if self._output_processor is None:
+            if isinstance(output, torch.Tensor):
+                output = output.detach().cpu().numpy()
+
             return output
 
         if self.has_logits:

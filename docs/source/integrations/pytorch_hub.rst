@@ -29,7 +29,7 @@ utility to load models from the PyTorch Hub:
     model = fout.load_torch_hub_image_model(
         "pytorch/vision",
         "resnet18",
-        hub_kwargs=dict(pretrained=True),
+        hub_kwargs=dict(weights="ResNet18_Weights.DEFAULT"),
     )
 
 The function returns a
@@ -52,7 +52,17 @@ directly pass the model to builtin methods like:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    dataset.limit(10).apply_model(model, label_field="predictions")
+    dataset.limit(10).apply_model(model, label_field="resnet18")
+
+    # Logits
+    print(dataset.first().resnet18.shape)  # (1000,)
+
+.. note::
+
+    In the above example, the `resnet18` field is populated with raw logits.
+    Refer to :ref:`this page <model-zoo-custom-models>` to see how to configure
+    output processors to automatically parse model outputs into FiftyOne
+    :ref:`label types <using-labels>`.
 
 Utilities
 ---------

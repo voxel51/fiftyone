@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 class TorchvisionImageModelConfig(
     fout.TorchImageModelConfig, fozm.HasZooModel
 ):
-    """.. autoclass:: fiftyone.utils.torch.TorchImageModelConfig"""
+    """Configuration for running a :class:`TorchvisionImageModel`.
+
+    See :class:`fiftyone.utils.torch.TorchImageModelConfig` for usage.
+    """
 
     def __init__(self, d):
         d = self.init(d)
