@@ -47,7 +47,8 @@ test.describe("sidebar-filter-visibility", () => {
 
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle.png"
+      "select-bottle.png",
+      { animations: "allow" }
     );
 
     // go to visibility mode
@@ -61,7 +62,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle-show-cat.png"
+      "select-bottle-show-cat.png",
+      { animations: "allow" }
     );
 
     // test case: visibility mode - hide label
@@ -72,7 +74,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle-hide-person-cat.png"
+      "select-bottle-hide-person-cat.png",
+      { animations: "allow" }
     );
   });
 
@@ -91,7 +94,8 @@ test.describe("sidebar-filter-visibility", () => {
     await grid.assert.waitForGridToLoad();
     await grid.assert.assertNLookers(5);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle.png"
+      "exclude-bottle.png",
+      { animations: "allow" }
     );
 
     // Test with visibility mode:
@@ -105,7 +109,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-show-cup.png"
+      "exclude-bottle-show-cup.png",
+      { animations: "allow" }
     );
 
     // test case: visibility mode - hide label
@@ -116,7 +121,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png"
+      "exclude-bottle-hide-cup.png",
+      { animations: "allow" }
     );
   });
 
@@ -139,7 +145,8 @@ test.describe("sidebar-filter-visibility", () => {
     await grid.assert.waitForGridToLoad();
     await grid.assert.assertNLookers(1);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-bottle.png"
+      "show-bottle.png",
+      { animations: "allow" }
     );
 
     // Test with visibility mode:
@@ -153,7 +160,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-bottle-show-cup.png"
+      "show-bottle-show-cup.png",
+      { animations: "allow" }
     );
 
     // test case: visibility mode - hide label
@@ -164,7 +172,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png"
+      "exclude-bottle-hide-cup.png",
+      { animations: "allow" }
     );
   });
 
@@ -187,7 +196,8 @@ test.describe("sidebar-filter-visibility", () => {
     await grid.assert.waitForGridToLoad();
     await grid.assert.assertNLookers(4);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle.png"
+      "hide-bottle.png",
+      { animations: "allow" }
     );
 
     // Test the visibility mode:
@@ -201,7 +211,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle-show-horse.png"
+      "hide-bottle-show-horse.png",
+      { animations: "allow" }
     );
 
     // test case: visibility mode - hide label
@@ -212,7 +223,8 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle-hide-horse.png"
+      "hide-bottle-hide-horse.png",
+      { animations: "allow" }
     );
   });
 });
