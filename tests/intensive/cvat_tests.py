@@ -289,7 +289,7 @@ class CVATTests(unittest.TestCase):
         )
 
         anno_key = "anno_key"
-        attributes = {"test": {"type": "text"}}
+        attributes = {"test": {"type": "text", "values": []}}
 
         results = dataset.annotate(
             anno_key,
@@ -639,6 +639,7 @@ class CVATTests(unittest.TestCase):
             },
             "age": {
                 "type": "text",
+                "values": [],
             },
         }
 

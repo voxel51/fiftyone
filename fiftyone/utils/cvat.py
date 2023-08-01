@@ -3260,7 +3260,7 @@ class CVATBackend(foua.AnnotationBackend):
             if name == "occluded":
                 return {"type": "occluded"}
 
-            return {"type": "checkbox"}
+            return {"type": "checkbox", "values": [True, False]}
 
         if isinstance(value, int):
             if name == "group_id":
@@ -3269,7 +3269,20 @@ class CVATBackend(foua.AnnotationBackend):
         return {"type": "text", "values": []}
 
     def requires_attr_values(self, attr_type):
-        return attr_type in ("select", "radio")
+        attrs = ("select", "radio")
+        api = self.connect_to_api()
+        if api.server_version >= Version("2.5") and attr_type in (
+            "text",
+            "checkbox",
+        ):
+            logger.warning(
+                "As of CVAT v2.5, text attributes now require an empty list of"
+                " values and checkbox require a [True, False] list of values "
+                "to be provided"
+            )
+            attrs = ("select", "radio", "text", "checkbox")
+
+        return attr_type in attrs
 
     def _connect_to_api(self):
         return CVATAnnotationAPI(
