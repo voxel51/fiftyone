@@ -1,5 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import { Duration } from "../utils";
+import { Duration } from "../../utils";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
@@ -47,7 +47,7 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleLoadDomAttribute();
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
   async scrollCarousel(left: number = null) {
