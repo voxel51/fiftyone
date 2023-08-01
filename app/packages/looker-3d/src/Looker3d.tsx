@@ -1,4 +1,5 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
@@ -48,7 +49,6 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 type View = "pov" | "top";
 
@@ -67,7 +67,7 @@ export const Looker3d = () => {
   const onSelectLabel = fos.useOnSelectLabel();
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMap);
   const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
