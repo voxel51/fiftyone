@@ -3899,8 +3899,79 @@ class ViewStageTests(unittest.TestCase):
         sample_ids = dataset.add_samples(samples)
 
         optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
-        expected_stages = [fosg.Select(sample_ids[0])]
+        expected_stages = [
+            fosg.SelectGroupSlices(),
+            fosg.Select(sample_ids[0]),
+        ]
         self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def test_selected_samples_in_group_slices(self):
+        (dataset, selected_ids) = self._make_group_by_group_dataset()
+        view = dataset.view()
+        self.assertEqual(view.media_type, "group")
+
+        # treating sample_ids as groups will yield no sample
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[0], groups=True
+        )
+        self.assertEqual(len(optimized_view), 0)
+
+        # selects one sample from all group_slices
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[0], groups=False
+        )
+        self.assertEqual(len(optimized_view), 1)
+
+        # selects two sample from all group_slices
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[:2], groups=False
+        )
+        self.assertEqual(len(optimized_view), 2)
+
+    def _make_group_by_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group_field", default="left")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+        group3 = fo.Group()
+
+        samples = [
+            fo.Sample(
+                filepath="left-image1.jpg",
+                group_field=group1.element("left"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="right-image1.jpg",
+                group_field=group1.element("right"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="left-image2.jpg",
+                group_field=group2.element("left"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="right-image2.jpg",
+                group_field=group2.element("right"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="left-image3.jpg",
+                group_field=group3.element("left"),
+                scene="bar",
+            ),
+            fo.Sample(
+                filepath="right-image3.jpg",
+                group_field=group3.element("right"),
+                scene="bar",
+            ),
+        ]
+
+        dataset.add_samples(samples)
+
+        return (dataset, [s.id for s in samples])
 
 
 if __name__ == "__main__":

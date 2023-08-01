@@ -120,6 +120,8 @@ async def aggregate_resolver(
         extended_stages=form.extended_stages,
         sample_filter=SampleFilter(
             group=GroupElementFilter(id=form.group_id, slices=form.slices)
+            if not form.sample_ids
+            else None
         ),
     )
 
