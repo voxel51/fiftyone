@@ -36,14 +36,12 @@ The function returns a
 :class:`TorchImageModel <fiftyone.utils.torch.TorchImageModel>` instance that
 wraps the raw Torch model in FiftyOne's
 :ref:`Model interface <model-zoo-design-overview>`, which means that you can
-directly pass the model to builtin methods like:
-
--   :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
--   :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
--   :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
--   :meth:`compute_visualization() <fiftyone.brain.compute_visualization>`
--   :meth:`compute_similarity() <fiftyone.brain.compute_similarity>`
--   and more!
+directly pass the model to builtin methods like
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
+:meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`,
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`, and
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>`.
 
 .. code-block:: python
     :linenos:
@@ -182,8 +180,7 @@ use it to compute embeddings:
         image_patch_size=14,
         embeddings_layer="head",
     )
-
-    assert model.has_embeddings is True
+    assert model.has_embeddings
 
     # Embed a single image
     img = np.asarray(Image.open(dataset.first().filepath))
@@ -232,7 +229,6 @@ your local model zoo and then load it to compute embeddings.
                 "base_name": "dinov2-vits14",
                 "description": "DINOv2: Learning Robust Visual Features without Supervision. Model: ViT-S/14 distilled",
                 "source": "https://github.com/facebookresearch/dinov2",
-                "size_bytes": 88283115,
                 "default_deployment_config_dict": {
                     "type": "fiftyone.utils.torch.TorchImageModel",
                     "config": {
@@ -244,23 +240,7 @@ your local model zoo and then load it to compute embeddings.
                         "image_patch_size": 14,
                         "embeddings_layer": "head"
                     }
-                },
-                "requirements": {
-                    "packages": {
-                        "entrypoint_fcn": "fiftyone.utils.torch.find_torch_hub_requirements",
-                        "entrypoint_args": {
-                            "repo_or_dir": "facebookresearch/dinov2"
-                        }
-                    },
-                    "cpu": {
-                        "support": true
-                    },
-                    "gpu": {
-                        "support": true
-                    }
-                },
-                "tags": ["embeddings", "torch"],
-                "date_added": "2023-05-03 10:17:51"
+                }
             }
         ]
     }
@@ -285,8 +265,8 @@ your local model zoo and then load it to compute embeddings.
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    model = foz.load_zoo_model("dinov2-vits14", ensure_requirements=False)
-    assert model.has_embeddings is True
+    model = foz.load_zoo_model("dinov2-vits14")
+    assert model.has_embeddings
 
     # Embed a single image
     img = np.asarray(Image.open(dataset.first().filepath))
