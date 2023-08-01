@@ -7,6 +7,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
+import { SampleWrapper } from "../Sample";
 import { Sample3d } from "../Sample3d";
 import { GroupSampleWrapper } from "./GroupSampleWrapper";
 
@@ -14,8 +15,9 @@ const Sample3dWrapper = () => {
   const sample = useRecoilValue(fos.pinned3DSample);
   const [pinned, setPinned] = useRecoilState(fos.pinned3d);
   const hover = fos.useHoveredSample(sample);
+  const hasGroupView = !useRecoilValue(fos.onlyPcd);
 
-  return (
+  return hasGroupView ? (
     <GroupSampleWrapper
       sampleId={sample.id}
       pinned={pinned}
@@ -24,6 +26,10 @@ const Sample3dWrapper = () => {
     >
       <Sample3d />
     </GroupSampleWrapper>
+  ) : (
+    <SampleWrapper sampleAtom={fos.pinned3DSample}>
+      <Sample3d />
+    </SampleWrapper>
   );
 };
 
@@ -32,6 +38,7 @@ export default () => {
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
   const groupSlice = useRecoilValue(fos.groupSlice(true));
+  const modalId = useRecoilValue(fos.modalSampleId);
 
   if (pcdSlices.state === "hasError") {
     throw pcdSlices.contents;
@@ -45,19 +52,23 @@ export default () => {
           [k: string]: fos.ModalSample;
         }
       ) => {
-        let newSlice = pinnedSlice;
+        let newSlice: string | null = null;
         for (let index = 0; index < slices.length; index++) {
           const element = slices[index];
           if (samples[element]) {
-            set(fos.pinned3DSampleSlice, element);
             newSlice = element;
             break;
           }
         }
 
-        set(fos.activePcdSlices, (cur) =>
-          Array.from(new Set([newSlice, ...cur.filter((s) => samples[s])]))
-        );
+        !newSlice && set(fos.pinned3d, false);
+        set(fos.pinned3DSampleSlice, newSlice);
+        set(fos.activePcdSlices, (cur) => {
+          const filtered = cur.filter((s) => samples[s]);
+          return Array.from(
+            new Set(newSlice ? [newSlice, ...filtered] : filtered)
+          );
+        });
       },
     []
   );
@@ -71,12 +82,13 @@ export default () => {
       return;
     }
 
-    if (pcdSlices.contents[pinnedSlice]) {
+    if (pinnedSlice && pcdSlices.contents[pinnedSlice]) {
       return;
     }
 
     assignSlices(slices, pcdSlices.contents);
-  }, [assignSlices, slices, groupSlice, pinnedSlice, pcdSlices]);
+  }, [assignSlices, modalId, slices, groupSlice, pinnedSlice, pcdSlices]);
+
   if (
     pcdSlices.state === "hasValue" &&
     !Object.keys(pcdSlices.contents).length
@@ -84,7 +96,7 @@ export default () => {
     return <Loading>No PCD slices</Loading>;
   }
 
-  if (pcdSlices.state === "loading" || !pcdSlices.contents[pinnedSlice]) {
+  if (pcdSlices.state === "loading" || !pcdSlices.contents[pinnedSlice || ""]) {
     return <Loading>Pixelating...</Loading>;
   }
 

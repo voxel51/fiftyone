@@ -65,6 +65,7 @@ export const Looker3d = () => {
   const pathFilter = usePathFilter();
   const labelAlpha = useRecoilValue(fos.alpha(MODAL_TRUE));
   const onSelectLabel = fos.useOnSelectLabel();
+
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
   const getColor = useRecoilValue(fos.colorMap(true));

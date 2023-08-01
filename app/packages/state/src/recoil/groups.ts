@@ -20,7 +20,7 @@ import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
-export const pinned3DSampleSlice = atom<string>({
+export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
   default: null,
 });

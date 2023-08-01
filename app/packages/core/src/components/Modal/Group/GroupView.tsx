@@ -23,9 +23,7 @@ export const GroupView = () => {
     fos.groupMediaIsCarouselVisibleSetting
   );
   const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
-  const isMainVisibleSetting = useRecoilValue(
-    fos.groupMediaIsMainVisibleSetting
-  );
+  const isMainVisibleSetting = useRecoilValue(fos.groupMediaIsMainVisible);
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH
@@ -71,11 +69,11 @@ export const GroupView = () => {
                 fullHeight={!isMainVisibleSetting}
               />
             )}
-            {
+            {isMainVisibleSetting && (
               <EnsureGroupSample>
                 <GroupImageVideoSample lookerRef={lookerRef} />
               </EnsureGroupSample>
-            }
+            )}
           </Resizable>
         )}
         {is3dVisible && <GroupSample3d />}

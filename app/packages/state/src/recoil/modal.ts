@@ -9,8 +9,10 @@ import { filters } from "./filters";
 import {
   groupId,
   groupSlice,
+  hasGroupSlices,
   pinned3DSample,
   pinned3DSampleSlice,
+  pinned3d,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
@@ -22,7 +24,9 @@ export const sidebarSampleId = selector({
   get: ({ get }) => {
     const override = get(pinned3DSampleSlice);
 
-    return override ? get(pinned3DSample).id : get(modalSampleId);
+    return get(pinned3d) && override
+      ? get(pinned3DSample).id
+      : get(modalSampleId);
   },
 });
 
@@ -123,7 +127,7 @@ export const modalSample = graphQLSelector<
     const slice = get(groupSlice(false));
     const sliceSelect = get(groupSlice(true));
 
-    if (!slice) {
+    if (get(hasGroupSlices) && (!slice || !sliceSelect)) {
       return null;
     }
 

@@ -342,6 +342,15 @@ export const groupMediaIsMainVisibleSetting = atom<boolean>({
   ],
 });
 
+export const groupMediaIsMainVisible = selector<boolean>({
+  key: "groupMediaIsMainVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+  },
+});
+
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",

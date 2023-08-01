@@ -2,7 +2,6 @@ import { Loading } from "@fiftyone/components";
 import { PluginComponentType, usePlugin } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useMemo } from "react";
-
 import { useRecoilValue } from "recoil";
 
 const PluginWrapper = () => {

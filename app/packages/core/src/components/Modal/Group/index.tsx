@@ -17,7 +17,7 @@ const Group = () => {
     return <GroupSample3d />;
   }
 
-  return dynamic ? <DynamicGroup /> : <GroupView />;
+  return <GroupView />;
 };
 
 export default Group;
