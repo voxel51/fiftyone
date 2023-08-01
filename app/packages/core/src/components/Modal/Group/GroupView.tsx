@@ -23,7 +23,7 @@ export const GroupView = () => {
     fos.groupMediaIsCarouselVisibleSetting
   );
   const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
-  const isMainVisibleSetting = useRecoilValue(fos.groupMediaIsMainVisible);
+  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisible);
   const [width, setWidth] = useBrowserStorage(
     "group-modal-split-view-width",
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH
@@ -33,7 +33,7 @@ export const GroupView = () => {
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
       <div className={mainGroup}>
-        {(isCarouselVisible || isMainVisibleSetting) && (
+        {(isCarouselVisible || isMainVisible) && (
           <Resizable
             size={{
               height: "100% !important",
@@ -66,10 +66,10 @@ export const GroupView = () => {
             {isCarouselVisible && (
               <GroupCarousel
                 key={`${key}-${mediaField}`}
-                fullHeight={!isMainVisibleSetting}
+                fullHeight={!isMainVisible}
               />
             )}
-            {isMainVisibleSetting && (
+            {isMainVisible && (
               <EnsureGroupSample>
                 <GroupImageVideoSample lookerRef={lookerRef} />
               </EnsureGroupSample>

@@ -64,7 +64,7 @@ async def load_view(
                 view = fov.make_optimized_select_view(view, form.sample_ids)
 
             if form.mixed and view.media_type == fom.GROUP:
-                view = view.select_group_slices(_allow_mixed=True)
+                view = view.select_group_slices(_force_mixed=True)
 
             return view
 
@@ -126,7 +126,7 @@ def get_view(
                 )
             if sample_filter.group.slices:
                 view = view.select_group_slices(
-                    sample_filter.group.slices, _allow_mixed=True
+                    sample_filter.group.slices, _force_mixed=True
                 )
 
         elif sample_filter.id:
