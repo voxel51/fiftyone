@@ -43,6 +43,11 @@ export const test = base.extend<{}, CustomFixtures>({
   ],
   baseURL: async ({ fiftyoneServerPort }, use) => {
     if (process.env.USE_DEV_BUILD) {
+      if (process.env.IS_UTILITY_DOCKER) {
+        await use(`http://host.docker.internal:5193`);
+        return;
+      }
+
       await use(`http://localhost:${5193}`);
       return;
     }

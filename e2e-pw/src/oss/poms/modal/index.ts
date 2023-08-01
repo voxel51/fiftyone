@@ -1,21 +1,28 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { Duration } from "../utils";
+import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
+import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
   readonly page: Page;
-  readonly sidebarPom: ModalSidebarPom;
   readonly modal: Locator;
   readonly groupCarousel: Locator;
   readonly assert: ModalAsserter;
+  readonly sidebar: ModalSidebarPom;
+  readonly locator: Locator;
+  readonly group: ModalGroupActionsPom;
+  readonly video: ModalVideoControlsPom;
 
   constructor(page: Page) {
     this.page = page;
-    this.sidebarPom = new ModalSidebarPom(page);
     this.assert = new ModalAsserter(this);
 
     this.modal = page.getByTestId("modal");
     this.groupCarousel = this.modal.getByTestId("group-carousel");
+    this.sidebar = new ModalSidebarPom(page);
+    this.group = new ModalGroupActionsPom(page, this);
+    this.video = new ModalVideoControlsPom(page, this);
   }
 
   async toggleSelection() {
@@ -27,9 +34,8 @@ export class ModalPom {
     direction: "forward" | "backward",
     allowErrorInfo = false
   ) {
-    const currentSampleId = await this.sidebarPom.getSampleId();
-
-    await this.modal
+    const currentSampleId = await this.sidebar.getSampleId();
+    await this.locator
       .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
       .click();
 
@@ -41,7 +47,7 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleToLoad(allowErrorInfo);
+    return this.waitForSampleLoadDomAttribute();
   }
 
   async scrollCarousel(left: number = null) {
@@ -54,7 +60,7 @@ export class ModalPom {
     const looker = this.groupCarousel.getByTestId("looker").nth(index);
     await looker.click({ position: { x: 10, y: 60 } });
 
-    return this.waitForSampleToLoad(allowErrorInfo);
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
   async navigateSlice(
@@ -62,7 +68,7 @@ export class ModalPom {
     slice: string,
     allowErrorInfo = false
   ) {
-    const currentSlice = await this.sidebarPom.getSidebarEntryText(
+    const currentSlice = await this.sidebar.getSidebarEntryText(
       `sidebar-entry-${groupField}.name`
     );
     const lookers = this.groupCarousel.getByTestId("looker");
@@ -79,7 +85,7 @@ export class ModalPom {
       },
       { currentSlice, groupField }
     );
-    return this.waitForSampleToLoad(allowErrorInfo);
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
   async close() {
@@ -94,12 +100,8 @@ export class ModalPom {
     return this.navigateSample("backward", allowErrorInfo);
   }
 
-  async getGroupPinnedText() {
-    return this.modal.getByTestId("pinned-slice-bar-description").textContent();
-  }
-
   getLooker3d() {
-    return this.modal.getByTestId("looker3d");
+    return this.locator.getByTestId("looker3d");
   }
 
   async clickOnLooker3d() {
@@ -107,7 +109,7 @@ export class ModalPom {
   }
 
   getLooker() {
-    return this.modal.getByTestId("looker").last();
+    return this.locator.getByTestId("looker").last();
   }
 
   async clickOnLooker() {
@@ -118,9 +120,7 @@ export class ModalPom {
     return this.modal.getByTestId("group-container");
   }
 
-  getCarousel() {}
-
-  async waitForSampleToLoad(allowErrorInfo = false) {
+  async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
     return this.page.waitForFunction(
       (allowErrorInfo) => {
         if (
@@ -140,6 +140,20 @@ export class ModalPom {
       },
       allowErrorInfo,
       { timeout: Duration.Seconds(10) }
+    );
+  }
+
+  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
+    return this.page.evaluate(
+      (sampleFilepath_) =>
+        new Promise<void>((resolve, _reject) => {
+          document.addEventListener("sample-loaded", (e: CustomEvent) => {
+            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
+              resolve();
+            }
+          });
+        }),
+      sampleFilepath
     );
   }
 }

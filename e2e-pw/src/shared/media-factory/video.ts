@@ -1,28 +1,54 @@
 import ffmpeg from "fluent-ffmpeg";
 
-export const createBlankVideo = async (options: {
+interface CreateBlankVideoOptions {
+  /**
+   * Duration of the video in seconds
+   */
   duration: number;
+  /**
+   * Width of the video in pixels
+   */
   width: number;
+  /**
+   * Height of the video in pixels
+   */
   height: number;
+  /**
+   * Frame rate of the video in frames per second
+   */
   frameRate: number;
+  /**
+   * Color of the video in hex format
+   */
+  color: string;
+  /**
+   * Path to the output video.
+   * Make sure the extension of the video matches the codec used (webm)
+   */
   outputPath: string;
-}): Promise<void> => {
-  const { duration, width, height, frameRate, outputPath } = options;
+}
+
+export const createBlankVideo = async (
+  options: CreateBlankVideoOptions
+): Promise<void> => {
+  const { duration, width, height, frameRate, color, outputPath } = options;
   return new Promise((resolve, reject) => {
     const startTime = performance.now();
 
     ffmpeg()
-      .input("color=c=black:s=" + width + "x" + height)
+      .input(`color=c=${color}:s=${width}x${height}`)
       .inputOptions(["-f", "lavfi", "-t", String(duration)])
       .outputOptions([
         "-r",
         String(frameRate),
         "-c:v",
-        "libx264",
-        "-preset",
-        "ultrafast",
-        "-crf",
-        "0",
+        // use libvpx for webm, (libx264 for h264 WHICH IS NOT SUPPORTED IN CHROMIUM)
+        "libvpx",
+        // bitrate is 1M per second
+        "-b:v",
+        "1M",
+        "-pix_fmt",
+        "yuv420p",
       ])
       .output(outputPath)
       .on("start", () => {

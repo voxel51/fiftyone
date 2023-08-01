@@ -293,6 +293,12 @@ export abstract class AbstractLooker<
         ctx.globalAlpha = 1;
 
         ctx.canvas.setAttribute("sample-loaded", "true");
+        ctx.canvas.dispatchEvent(
+          new CustomEvent("sample-loaded", {
+            detail: { sampleFilepath: this.sample.filepath },
+            bubbles: true,
+          })
+        );
       } catch (error) {
         if (error instanceof AppError || error instanceof MediaError) {
           this.updater({ error });

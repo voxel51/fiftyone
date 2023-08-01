@@ -51,6 +51,7 @@ export class ControlsElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
+    element.setAttribute("data-cy", "looker-video-controls");
     element.classList.add(lookerControls);
     return element;
   }
@@ -282,6 +283,7 @@ export class OptionsButtonElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
+    element.setAttribute("data-cy", "looker-video-controls-settings");
     element.classList.add(lookerClickable);
     element.style.padding = "2px";
     element.style.display = "flex";
