@@ -3266,7 +3266,7 @@ class CVATBackend(foua.AnnotationBackend):
             if name == "group_id":
                 return {"type": "group_id"}
 
-        return {"type": "text"}
+        return {"type": "text", "values": []}
 
     def requires_attr_values(self, attr_type):
         return attr_type in ("select", "radio")
@@ -4956,6 +4956,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "name": "label_id",
                     "input_type": "text",
                     "mutable": True,
+                    "values": [],
                 }
 
             label_attrs = {}
@@ -5079,6 +5080,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     "name": "label_id",
                     "input_type": "text",
                     "mutable": True,
+                    "values": [],
                 }
 
             if label_type == "scalar":
@@ -5096,6 +5098,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         "name": "value",
                         "input_type": "text",
                         "mutable": True,
+                        "values": [],
                     }
 
             # Handle class name clashes and global attributes
@@ -5204,7 +5207,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         labels_patch = {"labels": []}
         for label in labels:
             label["attributes"].append(
-                {"name": "label_id", "input_type": "text", "mutable": True}
+                {
+                    "name": "label_id",
+                    "input_type": "text",
+                    "mutable": True,
+                    "values": [],
+                }
             )
             labels_patch["labels"].append(label)
 
