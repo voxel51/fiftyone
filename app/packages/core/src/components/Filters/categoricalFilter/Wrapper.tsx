@@ -1,5 +1,10 @@
-import React, { MutableRefObject } from "react";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import { MutableRefObject } from "react";
+import {
+  RecoilState,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -37,7 +42,7 @@ const Wrapper = ({
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
+  const setIsMatching = useSetRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
