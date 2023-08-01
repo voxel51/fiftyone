@@ -385,3 +385,9 @@ export const isUsingSessionColorScheme = atom<boolean>({
   key: "isUsingSessionColorScheme",
   default: false,
 });
+
+// sidebar filter vs. visibility mode
+export const isSidebarFilterMode = atom<boolean>({
+  key: "isSidebarFilterMode",
+  default: true,
+});

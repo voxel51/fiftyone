@@ -22,8 +22,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     process.env.FIFTYONE_DATABASE_NAME = `${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
 
+    const mainPyPath = process.env.FIFTYONE_ROOT_DIR
+      ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
+      : "../fiftyone/server/main.py";
+
     const procString = getPythonCommand([
-      "../fiftyone/server/main.py",
+      mainPyPath,
       "--address",
       "0.0.0.0",
       "--port",

@@ -276,6 +276,7 @@ const FilterableEntry = ({
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
   const activeColor = useRecoilValue(fos.pathColor(path));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
@@ -341,11 +342,14 @@ const FilterableEntry = ({
                       <Hidden path={path} />
                     </Suspense>
                   )}
-                  <PathEntryCounts
-                    key="count"
-                    modal={modal}
-                    path={expandedPath}
-                  />
+                  {isFilterMode && (
+                    <PathEntryCounts
+                      key="count"
+                      modal={modal}
+                      path={expandedPath}
+                    />
+                  )}
+
                   {!disabled && (
                     <Arrow
                       key="arrow"
