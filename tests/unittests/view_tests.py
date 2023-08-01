@@ -3898,7 +3898,9 @@ class ViewStageTests(unittest.TestCase):
 
         sample_ids = dataset.add_samples(samples)
 
-        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
+        optimized_view = fov.make_optimized_select_view(
+            dataset, sample_ids[0], flatten=True
+        )
         expected_stages = [
             fosg.SelectGroupSlices(),
             fosg.Select(sample_ids[0]),
@@ -3912,19 +3914,19 @@ class ViewStageTests(unittest.TestCase):
 
         # treating sample_ids as groups will yield no sample
         optimized_view = fov.make_optimized_select_view(
-            dataset, selected_ids[0], groups=True
+            dataset, selected_ids[0], groups=True, flatten=True
         )
         self.assertEqual(len(optimized_view), 0)
 
         # selects one sample from all group_slices
         optimized_view = fov.make_optimized_select_view(
-            dataset, selected_ids[0], groups=False
+            dataset, selected_ids[0], groups=False, flatten=True
         )
         self.assertEqual(len(optimized_view), 1)
 
         # selects two sample from all group_slices
         optimized_view = fov.make_optimized_select_view(
-            dataset, selected_ids[:2], groups=False
+            dataset, selected_ids[:2], groups=False, flatten=True
         )
         self.assertEqual(len(optimized_view), 2)
 
