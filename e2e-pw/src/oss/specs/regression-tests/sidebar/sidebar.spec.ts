@@ -57,7 +57,7 @@ test.describe("sidebar-filter-visibility", () => {
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
       ["cat"],
-      "show-label----------------"
+      "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -101,7 +101,7 @@ test.describe("sidebar-filter-visibility", () => {
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
       ["cup"],
-      "show-label----------------"
+      "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -149,7 +149,7 @@ test.describe("sidebar-filter-visibility", () => {
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
       ["cup"],
-      "show-label----------------"
+      "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -197,7 +197,7 @@ test.describe("sidebar-filter-visibility", () => {
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
       ["horse"],
-      "show-label----------------"
+      "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
