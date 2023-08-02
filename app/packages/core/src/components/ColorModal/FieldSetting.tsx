@@ -48,7 +48,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
-  const coloring = useRecoilValue(fos.coloring(false));
+  const coloring = useRecoilValue(fos.coloring);
   const color = getColor(colorPool, coloring.seed, path);
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);

@@ -57,7 +57,9 @@ _MODEL_TEMPLATE = """
 
 -   Model name: ``{{ name }}``
 -   Model source: {{ source }}
+{% if size %}
 -   Model size: {{ size }}
+{% endif %}
 -   Exposes embeddings? {{ exposes_embeddings }}
 -   Tags: ``{{ tags }}``
 
@@ -106,9 +108,9 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
+{% if 'segment-anything' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
-{% if 'segment-anything' in tags %}
     # Segment inside boxes
     dataset.apply_model(
         model,
@@ -118,11 +120,19 @@ _MODEL_TEMPLATE = """
 
     # Full automatic segmentations
     dataset.apply_model(model, label_field="auto")
-{% else %}
-    dataset.apply_model(model, label_field="predictions")
-{% endif %}
 
     session = fo.launch_app(dataset)
+{% elif 'dinov2' in name %}
+    model = foz.load_zoo_model("{{ name }}", ensure_requirements=False)
+
+    embeddings = dataset.compute_embeddings(model)
+{% else %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+{% endif %}
 
 {% if 'clip' in tags %}
     #
@@ -223,8 +233,13 @@ def _render_model_content(template, model_name):
 
     header_name = model_name
 
-    size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
-    size_str = size_str[:-2] + " " + size_str[-2:]  # 123.45 MB, not 123.45MB
+    if zoo_model.size_bytes is not None:
+        size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
+        size_str = (
+            size_str[:-2] + " " + size_str[-2:]
+        )  # 123.45 MB, not 123.45MB
+    else:
+        size_str = None
 
     if "embeddings" in zoo_model.tags:
         exposes_embeddings = "yes"

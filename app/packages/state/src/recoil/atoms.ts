@@ -145,12 +145,12 @@ export const viewCounter = atom({
 
 export const DEFAULT_ALPHA = 0.7;
 
-export const alpha = atomFamily<number, boolean>({
+export const alpha = atom<number>({
   key: "alpha",
   default: DEFAULT_ALPHA,
 });
 
-export const colorSeed = atomFamily<number, boolean>({
+export const colorSeed = atom<number>({
   key: "colorSeed",
   default: 0,
 });

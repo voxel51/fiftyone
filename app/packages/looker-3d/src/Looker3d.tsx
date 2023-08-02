@@ -63,12 +63,12 @@ export const Looker3d = () => {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = useRecoilValue(fos.alpha(MODAL_TRUE));
+  const labelAlpha = useRecoilValue(fos.alpha);
   const onSelectLabel = fos.useOnSelectLabel();
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMap);
   const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
