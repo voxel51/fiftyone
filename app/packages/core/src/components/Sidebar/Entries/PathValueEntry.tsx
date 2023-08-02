@@ -308,8 +308,23 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T extends unknown>(path: string) => {
   const keys = path.split(".");
-  const data = { ...useRecoilValue(fos.activePcdSliceToSampleMap) };
+  const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
+
+  console.log(slices, loadable.contents);
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    throw loadable.contents;
+  }
+
+  if (!slices.every((slice) => loadable.contents[slice])) {
+    throw new Promise(() => {});
+  }
+
+  const data = { ...loadable.contents };
 
   let field = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {

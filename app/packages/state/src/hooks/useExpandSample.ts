@@ -58,7 +58,10 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
         if (groupSlice) {
           const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-          map[groupSlice] === "point_cloud" && set(groupAtoms.pinned3d, true);
+          if (map[groupSlice] === "point_cloud") {
+            set(groupAtoms.pinned3d, true);
+            set(groupAtoms.activePcdSlices, [groupSlice]);
+          }
         }
 
         const results = await Promise.all(
