@@ -278,18 +278,12 @@ class ExecutionContext(object):
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
-        <<<<<<< HEAD
-
-                Items are dictionaries with the following keys:
-
-        =======
-                Items are dictionaries with the following keys:
-        >>>>>>> d48e88e59... revert some merge issues, fix / add more documentation
-                -   ``label_id``: the ID of the label
-                -   ``sample_id``: the ID of the sample containing the label
-                -   ``field``: the field name containing the label
-                -   ``frame_number``: the frame number containing the label (only
-                    applicable to video samples)
+        Items are dictionaries with the following keys:
+        -   ``label_id``: the ID of the label
+        -   ``sample_id``: the ID of the sample containing the label
+        -   ``field``: the field name containing the label
+        -   ``frame_number``: the frame number containing the label (only
+            applicable to video samples)
         """
         return self.request_params.get("selected_labels", [])
 

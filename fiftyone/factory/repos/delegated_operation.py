@@ -53,8 +53,9 @@ class DelegatedOperationRepo(object):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
-        paging: DelegatedOpPagingParams = None,
         run_by: str = None,
+        paging: DelegatedOpPagingParams = None,
+        search: dict = None,
         pinned: bool = None,
         **kwargs: Any,
     ):
@@ -81,7 +82,7 @@ class DelegatedOperationRepo(object):
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
-    def count(self):
+    def count(self, **filters):
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
@@ -207,9 +208,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
-        paging: DelegatedOpPagingParams = None,
         run_by: str = None,
         pinned: bool = None,
+        paging: DelegatedOpPagingParams = None,
+        search: dict = None,
         **kwargs: Any,
     ):
         query = {}
@@ -243,6 +245,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if not isinstance(paging.sort_direction, SortDirection):
             paging.sort_direction = SortDirection(paging.sort_direction)
 
+        if search:
+            for key in search:
+                if key not in ["operator", "delegated_operation"]:
+                    raise ValueError("Invalid search key: {}".format(key))
+                query[key] = {"$regex": search[key]}
+
         if paging:
             docs = (
                 self._collection.find(query)
@@ -267,4 +275,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         return DelegatedOperationDocument().from_pymongo(doc)
 
     def count(self, **filters) -> int:
+        if "search" in filters:
+            for key in filters["search"]:
+                if key not in ["operator", "delegated_operation"]:
+                    raise ValueError("Invalid search key: {}".format(key))
+                filters[key] = {"$regex": filters["search"][key]}
+            del filters["search"]
+
         return self._collection.count_documents(filter=filters)

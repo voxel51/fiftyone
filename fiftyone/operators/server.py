@@ -91,6 +91,7 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+
         user = request.user
         dataset_name = data.get("dataset_name", None)
         dataset_ids = [dataset_name]
@@ -112,7 +113,9 @@ class ExecuteOperator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await execute_or_delegate_operator(operator_uri, data, user)
+        result = await execute_or_delegate_operator(
+            operator_uri, data, user=user.sub
+        )
         return result.to_json()
 
 
