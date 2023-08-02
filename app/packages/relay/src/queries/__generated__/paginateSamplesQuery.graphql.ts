@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7797065bb3c327d3793aacf1027c22f5>>
+ * @generated SignedSource<<eb631bac493eb09c49bb3ef0cd339af2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,7 @@ export type paginateSamplesQuery$variables = {
   dataset: string;
   extendedStages?: object | null;
   filter: SampleFilter;
+  paginationData?: boolean | null;
   view: Array;
 };
 export type paginateSamplesQuery$data = {
@@ -102,32 +103,37 @@ v4 = {
   "name": "filter"
 },
 v5 = {
+  "defaultValue": true,
+  "kind": "LocalArgument",
+  "name": "paginationData"
+},
+v6 = {
   "defaultValue": null,
   "kind": "LocalArgument",
   "name": "view"
 },
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "aspectRatio",
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sample",
   "storageKey": null
 },
-v9 = {
+v10 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -152,7 +158,7 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = [
+v11 = [
   {
     "alias": null,
     "args": [
@@ -180,6 +186,11 @@ v10 = [
         "kind": "Variable",
         "name": "first",
         "variableName": "count"
+      },
+      {
+        "kind": "Variable",
+        "name": "paginationData",
+        "variableName": "paginationData"
       },
       {
         "kind": "Variable",
@@ -243,10 +254,10 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v6/*: any*/),
                   (v7/*: any*/),
                   (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v9/*: any*/),
+                  (v10/*: any*/)
                 ],
                 "type": "ImageSample",
                 "abstractKey": null
@@ -254,10 +265,10 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v7/*: any*/),
-                  (v6/*: any*/),
                   (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v7/*: any*/),
+                  (v9/*: any*/),
+                  (v10/*: any*/)
                 ],
                 "type": "PointCloudSample",
                 "abstractKey": null
@@ -265,8 +276,8 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v6/*: any*/),
                   (v7/*: any*/),
+                  (v8/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -281,8 +292,8 @@ v10 = [
                     "name": "frameNumber",
                     "storageKey": null
                   },
-                  (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v9/*: any*/),
+                  (v10/*: any*/)
                 ],
                 "type": "VideoSample",
                 "abstractKey": null
@@ -305,12 +316,13 @@ return {
       (v2/*: any*/),
       (v3/*: any*/),
       (v4/*: any*/),
-      (v5/*: any*/)
+      (v5/*: any*/),
+      (v6/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v10/*: any*/),
+    "selections": (v11/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -320,25 +332,26 @@ return {
       (v1/*: any*/),
       (v0/*: any*/),
       (v2/*: any*/),
-      (v5/*: any*/),
+      (v6/*: any*/),
       (v4/*: any*/),
-      (v3/*: any*/)
+      (v3/*: any*/),
+      (v5/*: any*/)
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v10/*: any*/)
+    "selections": (v11/*: any*/)
   },
   "params": {
-    "cacheID": "463be9824dac55e82d92fdfc5f09909b",
+    "cacheID": "800fcd352c414c6c47e0adf43e5561a8",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $extendedStages: BSON\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, extendedStages: $extendedStages) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9c411553230ff7447820992e6c3b4c42";
+(node as any).hash = "1ab591fb442a8e276253c74b04e8f7db";
 
 export default node;

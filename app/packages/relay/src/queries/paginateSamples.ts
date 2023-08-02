@@ -9,6 +9,7 @@ export default r(graphql`
     $view: BSONArray!
     $filter: SampleFilter!
     $extendedStages: BSON
+    $paginationData: Boolean = true
   ) {
     samples(
       dataset: $dataset
@@ -17,6 +18,7 @@ export default r(graphql`
       after: $after
       filter: $filter
       extendedStages: $extendedStages
+      paginationData: $paginationData
     ) {
       pageInfo {
         hasNextPage
