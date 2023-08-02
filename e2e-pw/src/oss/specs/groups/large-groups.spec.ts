@@ -46,32 +46,32 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   test(`${extension} group carousel`, async ({ grid, modal }) => {
     await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
     await grid.openFirstLooker();
-    await modal.sidebarPom.toggleSidebarGroup("GROUP");
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "0");
+    await modal.sidebar.toggleSidebarGroup("GROUP");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
 
     await modal.scrollCarousel();
     await modal.navigateSlice("group", "19", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "19");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");
 
     await modal.scrollCarousel();
     await modal.navigateSlice("group", "39", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "39");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "39");
 
     await modal.scrollCarousel();
     await modal.navigateSlice("group", "59", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "59");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "59");
 
     await modal.scrollCarousel();
     await modal.navigateSlice("group", "79", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "79");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "79");
 
     await modal.scrollCarousel();
     await modal.navigateSlice("group", "99", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "99");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "99");
 
     await modal.scrollCarousel(0);
     await modal.navigateSlice("group", "0", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "0");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
     await modal.close();
   });
 });

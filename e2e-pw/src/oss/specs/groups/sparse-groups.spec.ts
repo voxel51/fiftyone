@@ -43,13 +43,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   test(`${extension} default slice`, async ({ grid, modal }) => {
     await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.openFirstLooker();
-    await modal.sidebarPom.toggleSidebarGroup("GROUP");
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
+    await modal.sidebar.toggleSidebarGroup("GROUP");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.navigateSlice("group", "shared", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "shared"
-    );
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.close();
   });
 
@@ -58,30 +55,18 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
     await grid.selectSlice("shared");
     await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
     await grid.openFirstLooker();
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "shared"
-    );
-    await modal.sidebarPom.toggleSidebarGroup("GROUP");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
+    await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.navigateSlice("group", "first", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.navigateNextSample(true);
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "shared"
-    );
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.navigateSlice("group", "second", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "second"
-    );
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
     await modal.navigatePreviousSample(true);
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "shared"
-    );
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.navigateSlice("group", "first", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("group.name", "first");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.close();
   });
 
@@ -90,16 +75,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
     await grid.selectSlice("second");
     await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
     await grid.openFirstLooker();
-    await modal.sidebarPom.toggleSidebarGroup("GROUP");
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "second"
-    );
+    await modal.sidebar.toggleSidebarGroup("GROUP");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
     await modal.navigateSlice("group", "shared", true);
-    await modal.sidebarPom.assert.verifySidebarEntryText(
-      "group.name",
-      "shared"
-    );
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.close();
   });
 });

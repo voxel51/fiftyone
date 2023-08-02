@@ -41,9 +41,9 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
     await grid.assert.waitForEntryCountTextToEqual("10 groups");
 
     await grid.openFirstLooker();
-    await modal.sidebarPom.assert.verifySidebarEntryText("dynamic_group", "0");
+    await modal.sidebar.assert.verifySidebarEntryText("dynamic_group", "0");
     await modal.scrollCarousel();
     await modal.navigateCarousel(4, true);
-    await modal.sidebarPom.assert.verifySidebarEntryText("dynamic_group", "0");
+    await modal.sidebar.assert.verifySidebarEntryText("dynamic_group", "0");
   });
 });

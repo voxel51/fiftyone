@@ -113,7 +113,7 @@ export const dynamicGroupsElementCount = selector<number>({
   get: ({ get }) => {
     const aggregations = get(
       aggregationQuery({
-        customView: get(viewAtoms.dynamicGroupiViewQuery),
+        customView: get(viewAtoms.dynamicGroupViewQuery),
         extended: false,
         modal: false,
         paths: [""],
@@ -393,10 +393,6 @@ export const counts = selectorFamily({
       }
 
       const data = get(aggregation(params));
-
-      if (!data) {
-        return {};
-      }
 
       if (data.values) {
         return Object.fromEntries(
