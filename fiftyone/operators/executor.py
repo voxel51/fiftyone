@@ -22,7 +22,7 @@ from .message import GeneratedMessage, MessageType
 from fiftyone.core.utils import run_sync_task
 
 
-class ExecutionRunState(Enum):
+class ExecutionRunState:
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
