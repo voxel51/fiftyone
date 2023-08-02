@@ -81,7 +81,7 @@ export const defaultPcdSlice = selector<string | null>({
 
     for (const { name, mediaType } of groupMediaTypes) {
       // return the first point cloud slice
-      if (["point_cloud", "point-cloud"].includes(mediaType)) {
+      if (mediaType === "point_cloud") {
         return name;
       }
     }
