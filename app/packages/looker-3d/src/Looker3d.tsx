@@ -322,9 +322,14 @@ export const Looker3d = () => {
           let mediaUrlUnresolved;
 
           if (Array.isArray(sample.urls)) {
-            mediaUrlUnresolved = sample.urls.find(
+            const mediaFieldObj = sample.urls.find(
               (u) => u.field === mediaField
-            ).url;
+            );
+            if (mediaFieldObj) {
+              mediaUrlUnresolved = mediaFieldObj.url;
+            } else {
+              return null;
+            }
           } else {
             mediaUrlUnresolved = sample.urls[mediaField];
           }
