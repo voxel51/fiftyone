@@ -8,7 +8,7 @@ const test = base.extend<{ panel: PanelPom }>({
   },
 });
 
-const datasetName = getUniqueDatasetNameWithPrefix(`dynamic-groups-cifar`);
+const datasetName = getUniqueDatasetNameWithPrefix(`empty-groups`);
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(`
