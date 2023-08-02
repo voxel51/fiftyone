@@ -57,7 +57,9 @@ _MODEL_TEMPLATE = """
 
 -   Model name: ``{{ name }}``
 -   Model source: {{ source }}
+{% if size %}
 -   Model size: {{ size }}
+{% endif %}
 -   Exposes embeddings? {{ exposes_embeddings }}
 -   Tags: ``{{ tags }}``
 
@@ -223,8 +225,13 @@ def _render_model_content(template, model_name):
 
     header_name = model_name
 
-    size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
-    size_str = size_str[:-2] + " " + size_str[-2:]  # 123.45 MB, not 123.45MB
+    if zoo_model.size_bytes is not None:
+        size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
+        size_str = (
+            size_str[:-2] + " " + size_str[-2:]
+        )  # 123.45 MB, not 123.45MB
+    else:
+        size_str = None
 
     if "embeddings" in zoo_model.tags:
         exposes_embeddings = "yes"
