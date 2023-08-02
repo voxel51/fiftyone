@@ -94,7 +94,7 @@ export class ModalPom {
   }
 
   async close() {
-    // await this.locator.press("Escape");
+    // close by clicking outside of modal
     await this.page.click("body", { position: { x: 0, y: 0 } });
     await this.locator.waitFor({ state: "detached" });
   }
