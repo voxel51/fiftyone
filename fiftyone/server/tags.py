@@ -36,7 +36,7 @@ def get_tag_view(
     )
 
     if sample_ids:
-        view = fov.make_optimized_select_view(view, sample_ids)
+        view = fov.make_optimized_select_view(view, sample_ids, flatten=True)
 
     if target_labels:
         if labels:

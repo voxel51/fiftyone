@@ -1751,6 +1751,7 @@ def make_optimized_select_view(
     sample_ids,
     ordered=False,
     groups=False,
+    flatten=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1768,6 +1769,8 @@ def make_optimized_select_view(
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
+        flatten (False): whether to flatten group datasets before selecting
+            sample ids
 
     Returns:
         a :class:`DatasetView`
@@ -1788,7 +1791,7 @@ def make_optimized_select_view(
     if groups:
         view = view.select_groups(sample_ids, ordered=ordered)
     else:
-        if view.media_type == fom.GROUP and view.group_slices:
+        if view.media_type == fom.GROUP and view.group_slices and flatten:
             view = view.select_group_slices(_allow_mixed=True)
 
         view = view.select(sample_ids, ordered=ordered)
