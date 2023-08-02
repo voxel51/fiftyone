@@ -49,6 +49,7 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
+import { Typography } from "@mui/material";
 
 type View = "pov" | "top";
 
@@ -316,38 +317,47 @@ export const Looker3d = () => {
 
   const filteredSamples = useMemo(
     () =>
-      Object.entries(sampleMap).map(([slice, sample]) => {
-        let mediaUrl;
+      Object.entries(sampleMap)
+        .map(([slice, sample]) => {
+          let mediaUrlUnresolved;
 
-        if (Array.isArray(sample.urls)) {
-          mediaUrl = fos.getSampleSrc(
-            sample.urls.find((u) => u.field === mediaField).url
+          if (Array.isArray(sample.urls)) {
+            mediaUrlUnresolved = sample.urls.find(
+              (u) => u.field === mediaField
+            ).url;
+          } else {
+            mediaUrlUnresolved = sample.urls[mediaField];
+          }
+
+          if (!mediaUrlUnresolved) {
+            return null;
+          }
+
+          const mediaUrl = fos.getSampleSrc(mediaUrlUnresolved);
+
+          const customColor =
+            (customColorMap &&
+              customColorMap[isPointcloudDataset ? "default" : slice]) ??
+            "#00ff00";
+
+          return (
+            <PointCloudMesh
+              key={slice}
+              minZ={minZ}
+              shadeBy={shadeBy}
+              customColor={customColor}
+              pointSize={pointSize}
+              src={mediaUrl}
+              rotation={pcRotation}
+              onLoad={(boundingBox) => {
+                if (!pointCloudBounds) setPointCloudBounds(boundingBox);
+              }}
+              defaultShadingColor={theme.text.primary}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+            />
           );
-        } else {
-          mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
-        }
-
-        const customColor =
-          (customColorMap &&
-            customColorMap[isPointcloudDataset ? "default" : slice]) ??
-          "#00ff00";
-        return (
-          <PointCloudMesh
-            key={slice}
-            minZ={minZ}
-            shadeBy={shadeBy}
-            customColor={customColor}
-            pointSize={pointSize}
-            src={mediaUrl}
-            rotation={pcRotation}
-            onLoad={(boundingBox) => {
-              if (!pointCloudBounds) setPointCloudBounds(boundingBox);
-            }}
-            defaultShadingColor={theme.text.primary}
-            isPointSizeAttenuated={isPointSizeAttenuated}
-          />
-        );
-      }),
+        })
+        .filter((e) => e !== null),
     [
       sampleMap,
       mediaField,
@@ -464,6 +474,16 @@ export const Looker3d = () => {
     tooltip,
     settings,
   ]);
+
+  if (filteredSamples.length === 0) {
+    return (
+      <Container style={{ padding: "2em" }}>
+        <Typography>
+          No point-cloud samples detected for media field "{mediaField}"
+        </Typography>
+      </Container>
+    );
+  }
 
   return (
     <ErrorBoundary>
