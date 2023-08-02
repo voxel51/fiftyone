@@ -692,3 +692,10 @@ export function pluralize(
 ) {
   return number === 1 ? singular : plural;
 }
+
+// vite-plugin-relay inexplicably removes import.meta.env
+// @fiftyone/utilities does not use the plugin, so this helper
+// is defined
+export const env = (): ImportMetaEnv => {
+  return import.meta.env;
+};
