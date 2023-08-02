@@ -1,16 +1,24 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { TaggerPom } from "src/oss/poms/action-row/tagger";
+import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
-const test = base.extend<{ tagger: TaggerPom; sidebar: SidebarPom }>({
+const test = base.extend<{
+  tagger: TaggerPom;
+  sidebar: SidebarPom;
+  grid: GridPom;
+}>({
   tagger: async ({ page }, use) => {
     await use(new TaggerPom(page));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
+  },
+  grid: async ({ page }, use) => {
+    await use(new GridPom(page));
   },
 });
 
@@ -44,6 +52,7 @@ test.describe("tag", () => {
     page,
     tagger,
     sidebar,
+    grid,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
@@ -51,14 +60,7 @@ test.describe("tag", () => {
     await tagger.clickTagger();
     await tagger.setActiveTaggerMode("sample");
     await tagger.addNewTag("sample", "test");
-
-    // should replace this, tried waitForSelector and waitForRequest... suggestion?
-    page.waitForTimeout(1000);
-    // const requestPromise = page.waitForRequest(
-    //   (request) =>
-    //     request.url() === "http://localhost:8787/tagging" && request.method() === "POST"
-    // );
-    // const request = await requestPromise;
+    await grid.assert.delay(1000);
 
     const container = await page.getByTestId("categorical-filter-tags");
     expect(container).toBeVisible();
@@ -71,6 +73,7 @@ test.describe("tag", () => {
     page,
     tagger,
     sidebar,
+    grid,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
@@ -79,8 +82,7 @@ test.describe("tag", () => {
     await tagger.setActiveTaggerMode("label");
     await tagger.addNewTag("label", "all");
 
-    // should remove it, looking for suggestion
-    page.waitForTimeout(1000);
+    await grid.assert.delay(1000);
 
     // Verify in the sidebar
     const container = await page.getByTestId("categorical-filter-_label_tags");

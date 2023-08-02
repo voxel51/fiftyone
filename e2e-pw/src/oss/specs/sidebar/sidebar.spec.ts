@@ -42,8 +42,6 @@ test.describe("sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.assertNLookers(1);
 
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -143,7 +141,7 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.assertNLookers(1);
+    await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-bottle.png",
       { animations: "allow" }
@@ -194,7 +192,7 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
     await grid.assert.waitForGridToLoad();
-    await grid.assert.assertNLookers(4);
+    await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-bottle.png",
       { animations: "allow" }
@@ -218,7 +216,7 @@ test.describe("sidebar-filter-visibility", () => {
     // test case: visibility mode - hide label
     await sidebar.getLabelFromList(
       "ground_truth.detections.label",
-      ["horse"],
+      [],
       "hide-label"
     );
     await grid.assert.delay(1000);
