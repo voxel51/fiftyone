@@ -443,6 +443,7 @@ type Query {
     after: String = null
     filter: SampleFilter = null
     extendedStages: BSON = null
+    filters: BSON = null
   ): SampleItemStrConnection!
   sample(
     dataset: String!
