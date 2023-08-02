@@ -116,7 +116,6 @@ export class OssLoader extends AbstractFiftyoneLoader {
       await page.getByTestId(`selector-Select dataset`).click();
 
       if (datasetName) {
-        console.log("attempting to click", `selector-result-${datasetName}`);
         await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
         const firstSelectorResult = page.locator(

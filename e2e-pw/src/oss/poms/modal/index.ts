@@ -61,6 +61,13 @@ export class ModalPom {
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
+  async waitForCarouselToLoad() {
+    await this.groupCarousel
+      .getByTestId("looker")
+      .first()
+      .waitFor({ state: "visible" });
+  }
+
   async navigateSlice(
     groupField: string,
     slice: string,
@@ -87,7 +94,9 @@ export class ModalPom {
   }
 
   async close() {
-    return this.page.press("body", "Escape");
+    // await this.locator.press("Escape");
+    await this.page.click("body", { position: { x: 0, y: 0 } });
+    await this.locator.waitFor({ state: "detached" });
   }
 
   async navigateNextSample(allowErrorInfo = false) {
@@ -167,10 +176,10 @@ class ModalAsserter {
     expect(count).toBe(String(n));
   }
 
-  async verifyCarouselLength(count: number) {
-    const lookers = await this.modalPom.groupCarousel
+  async verifyCarouselLength(expectedCount: number) {
+    const actualLookerCount = await this.modalPom.groupCarousel
       .getByTestId("looker")
       .count();
-    expect(lookers).toBe(count);
+    expect(actualLookerCount).toBe(expectedCount);
   }
 }
