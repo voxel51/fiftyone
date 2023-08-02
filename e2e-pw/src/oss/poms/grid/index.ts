@@ -25,15 +25,32 @@ export class GridPom {
   }
 
   async openFirstLooker() {
-    await this.locator.getByTestId("looker").first().click();
+    const looker = await this.getNthLooker(0);
+    await looker.click({ position: { x: 10, y: 60 } });
+  }
+
+  async toggleSelectFirstLooker() {
+    const looker = await this.getNthLooker(0);
+    await looker.click({ position: { x: 10, y: 5 } });
+  }
+
+  async toggleSelectNthLooker(n: number) {
+    const looker = await this.getNthLooker(n);
+    await looker.click({ position: { x: 10, y: 5 } });
   }
 
   async openNthLooker(n: number) {
-    await this.locator.getByTestId("looker").nth(n).click();
+    const looker = await this.getNthLooker(n);
+    await looker.click({ position: { x: 10, y: 50 } });
   }
 
   async getEntryCountText() {
     return this.page.getByTestId("entry-counts").textContent();
+  }
+
+  async selectSlice(slice: string) {
+    await this.page.getByTestId("selector-slice").fill(slice);
+    await this.page.getByTestId("selector-slice").press("Enter");
   }
 }
 
@@ -45,6 +62,22 @@ class GridAsserter {
       .getByTestId("looker")
       .count();
     expect(lookersCount).toBe(n);
+  }
+
+  async verifySelection(n: number) {
+    const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
+      "action-manage-selected"
+    );
+
+    if (n === 0) {
+      const count = await action.count();
+      expect(count).toBe(0);
+      return;
+    }
+
+    const count = await action.first().textContent();
+
+    expect(count).toBe(String(n));
   }
 
   async waitForEntryCountTextToEqual(text: string) {

@@ -135,7 +135,7 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def _base_view(self):
-        return self.__class__(self.__dataset)
+        return self.__class__(self.__dataset, _group_slice=self.group_slice)
 
     @property
     def _dataset(self):
@@ -144,6 +144,40 @@ class DatasetView(foc.SampleCollection):
     @property
     def _root_dataset(self):
         return self.__dataset
+
+    @property
+    def _has_slices(self):
+        if self._dataset.media_type != fom.GROUP:
+            return False
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlices):
+                return False
+
+        return True
+
+    @property
+    def _parent_media_type(self):
+        if (
+            self._dataset.media_type != fom.GROUP
+            or not self._is_dynamic_groups
+        ):
+            return self._dataset.media_type
+
+        for idx, stage in enumerate(self._stages):
+            if isinstance(stage, fost.GroupBy):
+                break
+
+        parent = self.__class__(
+            self.__dataset,
+            _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
+            _group_slice=self.__group_slice,
+            _name=self.__name,
+        )
+        return DatasetView._build(
+            self._dataset, self._serialize()[:idx]
+        ).media_type
 
     @property
     def _is_generated(self):
@@ -188,7 +222,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def group_field(self):
         """The group field of the view, or None if the view is not grouped."""
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_field
@@ -198,7 +232,7 @@ class DatasetView(foc.SampleCollection):
         """The current group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         if self.__group_slice is not None:
@@ -211,7 +245,7 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("DatasetView has no groups")
 
-        if self._is_dynamic_groups and self._dataset.media_type != fom.GROUP:
+        if self._is_dynamic_groups and not self._has_slices:
             raise ValueError("Dynamic grouped collections don't have slices")
 
         if slice_name is not None and slice_name not in self.group_media_types:
@@ -226,7 +260,7 @@ class DatasetView(foc.SampleCollection):
         """The list of group slices of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_slices
@@ -236,7 +270,7 @@ class DatasetView(foc.SampleCollection):
         """A dict mapping group slices to media types, or None if the view is
         not grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_media_types
@@ -246,7 +280,7 @@ class DatasetView(foc.SampleCollection):
         """The default group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.default_group_slice
@@ -1524,8 +1558,8 @@ class DatasetView(foc.SampleCollection):
         if media_type is None and not self._is_dynamic_groups:
             media_type = self.media_type
 
-        if group_slice is None:
-            group_slice = self.group_slice
+        if group_slice is None and self._dataset.media_type == fom.GROUP:
+            group_slice = self.__group_slice or self._dataset.group_slice
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
@@ -1644,9 +1678,6 @@ class DatasetView(foc.SampleCollection):
 
     def _set_media_type(self, media_type):
         self.__media_type = media_type
-
-        if media_type != fom.GROUP:
-            self.__group_slice = None
 
     def _set_name(self, name):
         self.__name = name
@@ -1776,7 +1807,6 @@ def make_optimized_select_view(
         a :class:`DatasetView`
     """
     in_view = sample_collection.view()
-    media_type = sample_collection.media_type
     stages = in_view._stages
 
     if any(isinstance(stage, fost.Mongo) for stage in stages):

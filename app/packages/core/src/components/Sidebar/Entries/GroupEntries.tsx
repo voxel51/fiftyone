@@ -1,3 +1,17 @@
+import { PillButton, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import {
+  useClearActive,
+  useClearFiltered,
+  useClearVisibility,
+  useDeleteGroup,
+  useRenameGroup,
+} from "@fiftyone/state/src/hooks/useGroupEntries";
+import {
+  numGroupFieldsActive,
+  numGroupFieldsFiltered,
+  numGroupFieldsVisible,
+} from "@fiftyone/state/src/recoil/groupEntries";
 import {
   Add,
   Check,
@@ -15,22 +29,6 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import styled from "styled-components";
-
-import * as fos from "@fiftyone/state";
-
-import { PillButton, useTheme } from "@fiftyone/components";
-import {
-  useClearActive,
-  useClearFiltered,
-  useClearVisibility,
-  useDeleteGroup,
-  useRenameGroup,
-} from "@fiftyone/state/src/hooks/useGroupEntries";
-import {
-  numGroupFieldsActive,
-  numGroupFieldsFiltered,
-  numGroupFieldsVisible,
-} from "@fiftyone/state/src/recoil/groupEntries";
 import Draggable from "./Draggable";
 
 type PillEntry = {
@@ -70,7 +68,8 @@ const PlusMinusButton = ({ expanded }: { expanded: boolean }) =>
 
 const GroupHeader = styled.div`
   border-bottom: 2px solid ${({ theme }) => theme.primary.softBorder};
-  border-top-radius: 3px;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
   margin-left: 2px;
   padding: 3px 3px 3px 8px;
   text-transform: uppercase;
@@ -135,6 +134,7 @@ const GroupEntry = React.memo(
 
     return (
       <div
+        data-cy={`sidebar-group-entry-${title}`}
         style={{
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
         }}

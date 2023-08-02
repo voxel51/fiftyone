@@ -1,4 +1,5 @@
 import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
@@ -10,19 +11,13 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-
 import React, { Suspense, useMemo, useState } from "react";
-
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
-
-import { prettify } from "../../../utils/generic";
-
-import * as fos from "@fiftyone/state";
-import { NameAndCountContainer } from "../../utils";
-
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
+import { prettify } from "../../../utils/generic";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import { NameAndCountContainer } from "../../utils";
 import RegularEntry from "./RegularEntry";
 import { makePseudoField } from "./utils";
 
@@ -313,8 +308,23 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T extends unknown>(path: string) => {
   const keys = path.split(".");
-  const data = { ...useRecoilValue(fos.activePcdSliceToSampleMap) };
+  const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
+
+  console.log(slices, loadable.contents);
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    throw loadable.contents;
+  }
+
+  if (!slices.every((slice) => loadable.contents[slice])) {
+    throw new Promise(() => {});
+  }
+
+  const data = { ...loadable.contents };
 
   let field = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {
@@ -355,7 +365,21 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  let data = useRecoilValue(fos.activeModalSample);
+  const loadable = useRecoilValueLoadable(fos.activeModalSample);
+
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.SampleNotFound) {
+      throw new Promise(() => {});
+    }
+
+    throw loadable.contents;
+  }
+
+  let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
   if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
@@ -393,7 +417,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
-  const pinned3DSample = useRecoilValue(fos.pinned3DSample);
+  const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
   const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
 

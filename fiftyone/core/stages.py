@@ -4470,10 +4470,17 @@ class SelectGroupSlices(ViewStage):
         media_type (None): a media type whose slice(s) to select
     """
 
-    def __init__(self, slices=None, media_type=None, _allow_mixed=False):
+    def __init__(
+        self,
+        slices=None,
+        media_type=None,
+        _allow_mixed=False,
+        _force_mixed=False,
+    ):
         self._slices = slices
         self._media_type = media_type
         self._allow_mixed = _allow_mixed
+        self._force_mixed = _force_mixed
 
     @property
     def slices(self):
@@ -4550,6 +4557,9 @@ class SelectGroupSlices(ViewStage):
         return pipeline
 
     def get_media_type(self, sample_collection):
+        if self._force_mixed:
+            return fom.MIXED
+
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
@@ -4642,7 +4652,7 @@ class SelectGroupSlices(ViewStage):
         return {
             slice_name: media_type
             for slice_name, media_type in group_media_types.items()
-            if slice_name in slices
+            if slice_name in slices or self._force_mixed
         }
 
     def _kwargs(self):

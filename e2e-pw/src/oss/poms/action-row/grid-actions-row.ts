@@ -1,13 +1,15 @@
-import { Page } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 import { DisplayOptionsPom } from "./display-options";
 
 export class GridActionsRowPom {
   readonly page: Page;
+  readonly gridActionsRow: Locator;
   readonly displayActions: DisplayOptionsPom;
 
   constructor(page: Page) {
     this.page = page;
     this.displayActions = new DisplayOptionsPom(page);
+    this.gridActionsRow = page.getByTestId("fo-grid-actions");
   }
 
   private async openAction(actionTestId: string) {

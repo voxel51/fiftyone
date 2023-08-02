@@ -24,14 +24,14 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
+import _ from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
+import { isValidColor } from "../../overlays/util";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
-import { isValidColor } from "../../overlays/util";
-import _ from "lodash";
 
 interface TagData {
   color: string;
@@ -504,8 +504,7 @@ const getFieldAndValue = (
     ) {
       return [null, null];
     }
-
-    if (values.length && field) {
+    if (values?.length && field) {
       values = unwind(field.dbField, values as RegularLabel[]).filter(
         (v) => v !== undefined && v !== null
       );

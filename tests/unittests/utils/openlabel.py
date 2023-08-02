@@ -1,5 +1,11 @@
+"""
+FiftyOne OpenLABEL test utils
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from collections import defaultdict
-from copy import deepcopy
 import os
 
 import eta.core.serial as etas

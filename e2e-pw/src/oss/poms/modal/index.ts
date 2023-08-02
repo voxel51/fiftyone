@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import { Duration } from "../../utils";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
@@ -6,6 +6,8 @@ import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
   readonly page: Page;
+  readonly groupCarousel: Locator;
+  readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
@@ -13,16 +15,24 @@ export class ModalPom {
 
   constructor(page: Page) {
     this.page = page;
+    this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
-
+    this.groupCarousel = this.locator.getByTestId("group-carousel");
     this.sidebar = new ModalSidebarPom(page);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
   }
 
-  async navigateSample(direction: "forward" | "backward") {
-    const currentSampleId = await this.sidebar.getSampleId();
+  async toggleSelection() {
+    await this.getLooker().hover();
+    await this.locator.getByTestId("selectable-bar").click();
+  }
 
+  async navigateSample(
+    direction: "forward" | "backward",
+    allowErrorInfo = false
+  ) {
+    const currentSampleId = await this.sidebar.getSampleId();
     await this.locator
       .getByTestId(`nav-${direction === "forward" ? "right" : "left"}-button`)
       .click();
@@ -35,15 +45,57 @@ export class ModalPom {
       return sampleId !== currentSampleId;
     }, currentSampleId);
 
-    return this.waitForSampleLoadDomAttribute();
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
-  async navigateNextSample() {
-    return this.navigateSample("forward");
+  async scrollCarousel(left: number = null) {
+    await this.groupCarousel.getByTestId("flashlight").evaluate((e, left) => {
+      e.scrollTo({ left: left ?? e.scrollWidth });
+    }, left);
   }
 
-  async navigatePreviousSample() {
-    return this.navigateSample("backward");
+  async navigateCarousel(index: number, allowErrorInfo = false) {
+    const looker = this.groupCarousel.getByTestId("looker").nth(index);
+    await looker.click({ position: { x: 10, y: 60 } });
+
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+  }
+
+  async navigateSlice(
+    groupField: string,
+    slice: string,
+    allowErrorInfo = false
+  ) {
+    const currentSlice = await this.sidebar.getSidebarEntryText(
+      `sidebar-entry-${groupField}.name`
+    );
+    const lookers = this.groupCarousel.getByTestId("looker");
+    const looker = lookers.filter({ hasText: slice }).first();
+    await looker.click({ position: { x: 10, y: 60 } });
+
+    // wait for slice to change
+    await this.page.waitForFunction(
+      ({ currentSlice, groupField }) => {
+        const slice = document.querySelector(
+          `[data-cy="sidebar-entry-${groupField}.name"]`
+        )?.textContent;
+        return slice !== currentSlice;
+      },
+      { currentSlice, groupField }
+    );
+    return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+  }
+
+  async close() {
+    return this.page.press("body", "Escape");
+  }
+
+  async navigateNextSample(allowErrorInfo = false) {
+    return this.navigateSample("forward", allowErrorInfo);
+  }
+
+  async navigatePreviousSample(allowErrorInfo = false) {
+    return this.navigateSample("backward", allowErrorInfo);
   }
 
   getLooker3d() {
@@ -62,19 +114,29 @@ export class ModalPom {
     return this.getLooker().click();
   }
 
-  async waitForSampleLoadDomAttribute() {
-    return this.page.waitForFunction(
-      () => {
-        const canvas = document.querySelector(
-          "[data-cy=modal-looker-container] canvas"
-        );
+  getGroupContainer() {
+    return this.locator.getByTestId("group-container");
+  }
 
-        if (!canvas) {
-          return false;
+  async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
+    return this.page.waitForFunction(
+      (allowErrorInfo) => {
+        if (
+          allowErrorInfo &&
+          document.querySelector(
+            "[data-cy=modal-looker-container] [data-cy=looker-error-info]"
+          )
+        ) {
+          return true;
         }
 
-        return canvas.getAttribute("sample-loaded") === "true";
+        return (
+          document
+            .querySelector(`[data-cy=modal-looker-container] canvas`)
+            ?.getAttribute("sample-loaded") === "true"
+        );
       },
+      allowErrorInfo,
       { timeout: Duration.Seconds(10) }
     );
   }
@@ -91,5 +153,24 @@ export class ModalPom {
         }),
       sampleFilepath
     );
+  }
+}
+
+class ModalAsserter {
+  constructor(private readonly modalPom: ModalPom) {}
+
+  async verifySelection(n: number) {
+    const action = this.modalPom.locator.getByTestId("action-manage-selected");
+
+    const count = await action.first().textContent();
+
+    expect(count).toBe(String(n));
+  }
+
+  async verifyCarouselLength(count: number) {
+    const lookers = await this.modalPom.groupCarousel
+      .getByTestId("looker")
+      .count();
+    expect(lookers).toBe(count);
   }
 }
