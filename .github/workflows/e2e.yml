@@ -24,23 +24,11 @@ jobs:
         with:
           node-version: 18
 
-      - name: Set up Python 3.8 and cache pip
-        uses: actions/setup-python@v4
-        id: pip-cache
-        with:
-          python-version: 3.8
-          cache: "pip"
-          cache-dependency-path: |
-            requirements/common.txt
-            requirements/github.txt
-            requirements/test.txt
-
       - name: Install setup dependencies
         run: |
           pip install --upgrade pip setuptools wheel
 
       - name: Install requirements.txt
-        if: steps.pip-cache.outputs.cache-hit != true
         run: |
           pip install -r requirements/github.txt
 
