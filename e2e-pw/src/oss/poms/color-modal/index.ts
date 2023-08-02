@@ -13,14 +13,14 @@ export class ColorModalPom {
 
   async closeColorModal() {
     const closeButton = this.page.getByTestId("close-color-modal");
-    await closeButton.click();
+    return closeButton.click();
   }
 
   async selectActiveField(fieldName: string) {
     const fieldSelector = this.page.getByTestId(
       `color-modal-list-item-${fieldName}`
     );
-    await fieldSelector.selectOption(fieldName);
+    return fieldSelector.selectOption(fieldName);
   }
 
   async setColorBy(mode: "value" | "field") {
@@ -29,7 +29,7 @@ export class ColorModalPom {
     );
     await globalTab.click();
     const modeButton = this.page.getByTestId(`radio-button-${mode}`);
-    await modeButton.click();
+    return modeButton.click();
   }
 
   async shuffleColors() {
@@ -38,7 +38,7 @@ export class ColorModalPom {
     );
     await globalTab.click();
     const shuffleButton = this.page.getByTestId("shuffle-colors");
-    await shuffleButton.click();
+    return shuffleButton.click();
   }
 
   async useColorBlindColors() {
@@ -49,7 +49,7 @@ export class ColorModalPom {
     const colorSettingCheckbox = this.page.getByTestId(
       "checkbox-Use color blind friendly option"
     );
-    await colorSettingCheckbox.click();
+    return colorSettingCheckbox.click();
   }
 
   async setOpacity(value: number) {}
@@ -62,23 +62,27 @@ export class ColorModalPom {
     const useMultiColorKeypointsCheckbox = this.page.getByTestId(
       "checkbox-Multicolor keypoints"
     );
-    await useMultiColorKeypointsCheckbox.click();
+    return useMultiColorKeypointsCheckbox.click();
   }
 
   // field level setting
   async toggleColorMode() {
     const toggleButton = this.page.getByTestId("color-by-toggle");
-    await toggleButton.click();
+    return toggleButton.click();
   }
 
   async useSpecialFieldColor(fieldName: string) {
     const checkbox = this.page.getByTestId(
       `checkbox-Use custom color for ${fieldName} field`
     );
-    await checkbox.click();
+    return checkbox.click();
   }
 
   async setSpecialFieldColor(fieldName: string, color: string) {}
+
+  async getJSONEditor() {
+    return this.page.getByTestId("color-scheme-editor");
+  }
 
   // action buttons
 
@@ -91,4 +95,13 @@ export class ColorModalPom {
 
 class ColorModalAsserter {
   constructor(private readonly ColorModalPom: ColorModalPom) {}
+
+  async verifyColorInColorPalette(colors: string[]) {
+    colors.forEach((color, index) => {
+      const actualColor = this.ColorModalPom.page
+        .locator(`color-palette-${index}`)
+        .getAttribute("color");
+      expect(actualColor).toEqual(color);
+    });
+  }
 }
