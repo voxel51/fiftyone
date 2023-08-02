@@ -1,10 +1,5 @@
 import React, { MutableRefObject } from "react";
-import {
-  RecoilState,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -41,11 +36,10 @@ const Wrapper = ({
   const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
-  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
+  const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
@@ -83,8 +77,8 @@ const Wrapper = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(!nestedField);
+    excluded && setExcluded(false);
+    setIsMatching(!nestedField);
   };
 
   if (totalCount === 0) {
@@ -111,7 +105,7 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={
-            count < 0
+            count < 0 || !isFilterMode
               ? null
               : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
@@ -138,7 +132,7 @@ const Wrapper = ({
           {
             <FilterOption
               nestedField={nestedField}
-              shouldNotShowExclude={shouldNotShowExclude}
+              shouldNotShowExclude={Boolean(shouldNotShowExclude)}
               excludeAtom={excludeAtom}
               isMatchingAtom={isMatchingAtom}
               valueName={name}

@@ -35,6 +35,8 @@ import {
   prettify,
 } from "./util";
 
+import _ from "lodash";
+
 interface TagData {
   color: string;
   title: string;
@@ -49,6 +51,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
+  private attributeVisibility: object;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -63,7 +66,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema, ...r },
-      options: { activePaths, coloring, timeZone, customizeColorSetting },
+      options: {
+        activePaths,
+        coloring,
+        timeZone,
+        customizeColorSetting,
+        filter,
+        attributeVisibility,
+      },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -79,6 +89,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorByValue === (coloring.by === "value") &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
+        _.isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -104,7 +115,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [INT_FIELD]: (path, value: number) => {
         const v = prettyNumber(value);
-
         return {
           path,
           value: v,
@@ -149,7 +159,6 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       },
       [FLOAT_FIELD]: (path: string, value: number) => {
         const v = prettyNumber(value);
-
         return {
           path,
           value: v,
@@ -262,19 +271,21 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
-            const v = coloring.by === "value" ? tag : "tags";
-            elements.push({
-              color: getColorFromOptions({
-                coloring,
-                path,
-                param: tag,
-                customizeColorSetting,
-                labelDefault: false,
-              }),
-              title: tag,
-              value: tag,
-              path: v,
-            });
+            if (filter(path, tag)) {
+              const v = coloring.by === "value" ? tag : "tags";
+              elements.push({
+                color: getColorFromOptions({
+                  coloring,
+                  path,
+                  param: tag,
+                  customizeColorSetting,
+                  labelDefault: false,
+                }),
+                title: tag,
+                value: tag,
+                path: v,
+              });
+            }
           });
         }
       } else if (path === "_label_tags") {
@@ -325,18 +336,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           Array.isArray(value)
-            ? pushList(LABEL_RENDERERS[field.embeddedDocType], value)
-            : elements.push(
+            ? filter(path, value) &&
+              pushList(LABEL_RENDERERS[field.embeddedDocType], value)
+            : filter(path, value) &&
+              elements.push(
                 LABEL_RENDERERS[field.embeddedDocType](path, value)
               );
 
           continue;
         }
 
-        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
-          Array.isArray(value)
-            ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
-            : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+        if (
+          field &&
+          PRIMITIVE_RENDERERS[field.ftype] &&
+          field.ftype !== LIST_FIELD
+        ) {
+          // none-list field value is in ['value'] format
+          // need to convert to 'value' to pass in the filter
+          const v =
+            Array.isArray(value) && value.length == 1 ? value[0] : value;
+          filter(path, v) && pushList(PRIMITIVE_RENDERERS[field.ftype], value);
           continue;
         }
 
@@ -345,7 +364,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           field.ftype === LIST_FIELD &&
           PRIMITIVE_RENDERERS[field.subfield]
         ) {
-          pushList(PRIMITIVE_RENDERERS[field.subfield], value);
+          // there may be visibility settings
+          const visibleValue = [];
+          value?.forEach((v) => {
+            if (filter(path, v)) {
+              visibleValue.push(v);
+            }
+          });
+          pushList(PRIMITIVE_RENDERERS[field.subfield], visibleValue);
           continue;
         }
       }
@@ -357,6 +383,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
+    this.attributeVisibility = attributeVisibility;
 
     elements
       .filter((e) => Boolean(e))

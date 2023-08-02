@@ -147,9 +147,7 @@ const getFilterData = (
 
       return (
         !label ||
-        (name !== "tags" &&
-          !excluded.includes(name) &&
-          VALID_PRIMITIVE_TYPES.includes(ftype))
+        (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
       );
     })
     .map<FilterItem>(({ ftype, subfield, name }) => {
@@ -277,6 +275,7 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
 
   const color = disabled ? theme.background.level2 : activeColor;
@@ -343,11 +342,14 @@ const FilterableEntry = ({
                       <Hidden path={path} />
                     </Suspense>
                   )}
-                  <PathEntryCounts
-                    key="count"
-                    modal={modal}
-                    path={expandedPath}
-                  />
+                  {isFilterMode && (
+                    <PathEntryCounts
+                      key="count"
+                      modal={modal}
+                      path={expandedPath}
+                    />
+                  )}
+
                   {!disabled && (
                     <Arrow
                       key="arrow"

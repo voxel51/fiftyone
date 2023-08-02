@@ -1,39 +1,17 @@
-import * as foc from "@fiftyone/components";
 import * as foo from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
-import * as mui from "@mui/material";
 import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
-import ReactDOM from "react-dom";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
+import "./externalize";
 
 declare global {
   interface Window {
     __fo_plugin_registry__: PluginComponentRegistry;
-    React: any;
-    ReactDOM: any;
-    recoil: any;
-    __fos__: any;
-    __foc__: any;
-    __fou__: any;
-    __foo__: any;
-    __mui__: any;
   }
-}
-
-if (typeof window !== "undefined") {
-  // required for plugins to use the same instance of React
-  window.React = React;
-  window.ReactDOM = ReactDOM;
-  window.recoil = recoil;
-  window.__fos__ = fos;
-  window.__foc__ = foc;
-  window.__fou__ = fou;
-  window.__foo__ = foo;
-  window.__mui__ = mui;
 }
 
 function usingRegistry() {
