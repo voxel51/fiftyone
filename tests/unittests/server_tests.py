@@ -787,7 +787,7 @@ class ServerViewTests(unittest.TestCase):
             dataset.name,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    id=first.group.id, slices=["first"]
+                    slice="first", id=first.group.id, slices=["first"]
                 )
             ),
         )
@@ -797,7 +797,7 @@ class ServerViewTests(unittest.TestCase):
             dataset.name,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    id=second.group.id, slices=["second"]
+                    slice="second", id=second.group.id, slices=["second"]
                 )
             ),
         )
@@ -816,7 +816,7 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
             first=1,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    id=first.group.id, slices=["first"]
+                    slice="first", id=first.group.id, slices=["first"]
                 )
             ),
         )
@@ -830,7 +830,7 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
             first=1,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    id=second.group.id, slices=["second"]
+                    slice="second", id=second.group.id, slices=["second"]
                 )
             ),
         )
