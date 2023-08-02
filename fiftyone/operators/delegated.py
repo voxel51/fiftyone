@@ -181,6 +181,7 @@ class DelegatedOperationService:
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         paging: DelegatedOpPagingParams = None,
+        search: dict = None,
         **kwargs,
     ):
         """
@@ -204,6 +205,7 @@ class DelegatedOperationService:
             run_state=run_state,
             delegation_target=delegation_target,
             paging=paging,
+            search=search,
             **kwargs,
         )
 

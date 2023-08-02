@@ -466,6 +466,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ctx.serialize(),
         )
 
+        self.docs_to_delete.append(doc)
+
         self.assertEqual(doc.dataset_id, dataset_id)
 
     @patch(
@@ -520,3 +522,57 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(len(ops), 0)
+
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_search(self, mock_load_dataset):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        dataset_name = f"test_dataset_{ObjectId()}"
+        delegation_target = f"delegation_target{ObjectId()}"
+        for i in range(4):
+            operator = f"@voxelfiftyone/operator/test_{i}"
+            for j in range(25):
+                doc = self.svc.queue_operation(
+                    operator=operator,
+                    delegation_target=delegation_target,
+                    context=ExecutionContext(
+                        request_params={
+                            "foo": "bar",
+                            "dataset_name": dataset_name,
+                        }
+                    ),
+                )
+                time.sleep(
+                    0.01
+                )  # ensure that the queued_at times are different
+                self.docs_to_delete.append(doc)
+
+        # test paging - get a page of everything
+        docs = self.svc.list_operations(
+            search={"operator": "operator\/test"},
+            paging=DelegatedOpPagingParams(
+                skip=0,
+                limit=5000,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.DESCENDING,
+            ),
+        )
+
+        self.assertEqual(len(docs), 100)
+
+        docs = self.svc.list_operations(
+            search={"operator": "test_0"},
+            paging=DelegatedOpPagingParams(
+                skip=0,
+                limit=5000,
+                sort_by=SortByField.QUEUED_AT,
+                sort_direction=SortDirection.ASCENDING,
+            ),
+        )
+
+        self.assertEqual(len(docs), 25)
