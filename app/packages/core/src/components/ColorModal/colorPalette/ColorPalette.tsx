@@ -92,6 +92,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           <ColorSquare
             key={index}
             color={color}
+            data-cy={`color-palette-${index}`}
             onClick={() => {
               setActiveIndex(index);
               setShowPicker(true);
@@ -113,6 +114,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
                   onClick={() => handleColorDelete(index)}
                   fontSize={"small"}
                   id={`delete-${index}`}
+                  data-cy={`delete-color-square-${index}`}
                 />
               </div>
             )}
@@ -131,7 +133,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </ColorSquare>
         ))}
         {colors.length < maxColors && (
-          <AddSquare onClick={handleColorAdd}>
+          <AddSquare onClick={handleColorAdd} data-cy="add-color">
             <AddIcon>+</AddIcon>
           </AddSquare>
         )}
