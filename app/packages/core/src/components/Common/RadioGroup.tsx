@@ -34,7 +34,11 @@ const Radio = React.memo(
     const props = useHighlightHover(false);
     return (
       <StyledRadioContainer>
-        <StyledRadio {...props} onClick={() => setValue(value)}>
+        <StyledRadio
+          {...props}
+          onClick={() => setValue(value)}
+          data-cy={`radio-button-${value}`}
+        >
           <MaterialRadio
             style={{ color, padding: "0 0.5rem 0 0" }}
             checked={value === currentValue}

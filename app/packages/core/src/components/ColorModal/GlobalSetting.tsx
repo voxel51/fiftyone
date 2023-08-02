@@ -26,7 +26,7 @@ const GlobalSetting: React.FC = ({}) => {
       <Divider>General</Divider>
       <ControlGroupWrapper>
         <LabelTitle>Color annotations by</LabelTitle>
-        <SectionWrapper>
+        <SectionWrapper data-cy="colorBy-controls">
           <RadioGroup
             choices={["field", "value"]}
             value={props.colorBy}

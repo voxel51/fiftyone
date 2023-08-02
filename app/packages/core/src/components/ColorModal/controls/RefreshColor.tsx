@@ -22,6 +22,7 @@ const ShuffleColor: React.FC = () => {
         }
         title={"Shuffle field colors"}
         onClick={() => setColorSeed(colorSeed + 1)}
+        data-cy="shuffle-colors"
         style={{
           margin: "0.25rem -0.5rem",
           height: "2rem",

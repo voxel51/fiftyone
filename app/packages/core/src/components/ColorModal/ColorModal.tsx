@@ -132,6 +132,7 @@ const ColorModal = () => {
                     onClick={() => setActiveColorModalField(null)}
                     onMouseDown={(e) => e.stopPropagation()}
                     style={{ margin: "auto 4px", cursor: "pointer" }}
+                    data-cy="close-color-modal"
                   />
                 </DraggableModalTitle>
                 <DraggableContent height={height} width={width}>

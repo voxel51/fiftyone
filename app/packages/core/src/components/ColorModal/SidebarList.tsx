@@ -121,6 +121,7 @@ const SidebarList: React.FC = () => {
                         },
                       }}
                       key={`menu-${pathIdx}`}
+                      data-cy={`color-modal-list-item-${getDisplayName(path)}`}
                       selected={getCurrentField(activeField).includes(path)}
                       disableRipple
                     >
