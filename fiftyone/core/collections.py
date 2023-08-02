@@ -5768,7 +5768,11 @@ class SampleCollection(object):
 
     @view_stage
     def select_group_slices(
-        self, slices=None, media_type=None, _allow_mixed=False
+        self,
+        slices=None,
+        media_type=None,
+        _allow_mixed=False,
+        _force_mixed=False,
     ):
         """Selects the samples in the group collection from the given slice(s).
 
@@ -5852,6 +5856,7 @@ class SampleCollection(object):
                 slices=slices,
                 media_type=media_type,
                 _allow_mixed=_allow_mixed,
+                _force_mixed=_force_mixed,
             )
         )
 

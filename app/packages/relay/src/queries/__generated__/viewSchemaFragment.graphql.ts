@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7ef0138316d531c3ab955081d6692334>>
+ * @generated SignedSource<<add70884bae39830061041624d34323e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,7 +19,7 @@ export type viewSchemaFragment$data = {
       readonly info: object | null;
       readonly path: string;
       readonly subfield: string | null;
-    } | null>;
+    }>;
     readonly frameFieldSchema: ReadonlyArray<{
       readonly description: string | null;
       readonly embeddedDocType: string | null;
@@ -27,8 +27,8 @@ export type viewSchemaFragment$data = {
       readonly info: object | null;
       readonly path: string;
       readonly subfield: string | null;
-    } | null>;
-  } | null;
+    }>;
+  };
   readonly " $fragmentType": "viewSchemaFragment";
 };
 export type viewSchemaFragment$key = {

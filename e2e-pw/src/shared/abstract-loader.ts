@@ -55,6 +55,11 @@ export abstract class AbstractFiftyoneLoader {
    *
    * @param page Playwright page object.
    * @param datasetName Name of the dataset to be loaded into the view.
+   * @param savedView Optional saved view name
    */
-  abstract waitUntilLoad(page: Page, datasetName: string): Promise<void>;
+  abstract waitUntilLoad(
+    page: Page,
+    datasetName: string,
+    savedView?: string
+  ): Promise<void>;
 }

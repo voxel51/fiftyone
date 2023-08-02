@@ -47,9 +47,20 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
           [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-
           [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
         ];
+
+        const groupSlice = await snapshot.getPromise(
+          groupAtoms.groupSlice(false)
+        );
+
+        if (groupSlice) {
+          const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
+          if (map[groupSlice] === "point_cloud") {
+            set(groupAtoms.pinned3d, true);
+            set(groupAtoms.activePcdSlices, [groupSlice]);
+          }
+        }
 
         const results = await Promise.all(
           data.map(([_, get]) =>
@@ -63,7 +74,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
         set(modalAtoms.currentModalNavigation, () => navigation);
       },
-    [environment, setExpandedSample]
+    [environment]
   );
 
   return useRecoilCallback<
