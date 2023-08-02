@@ -108,9 +108,9 @@ _MODEL_TEMPLATE = """
     )
 {% endif %}
 
+{% if 'segment-anything' in tags %}
     model = foz.load_zoo_model("{{ name }}")
 
-{% if 'segment-anything' in tags %}
     # Segment inside boxes
     dataset.apply_model(
         model,
@@ -120,11 +120,19 @@ _MODEL_TEMPLATE = """
 
     # Full automatic segmentations
     dataset.apply_model(model, label_field="auto")
-{% else %}
-    dataset.apply_model(model, label_field="predictions")
-{% endif %}
 
     session = fo.launch_app(dataset)
+{% elif 'dinov2' in name %}
+    model = foz.load_zoo_model("{{ name }}", ensure_requirements=False)
+
+    embeddings = dataset.compute_embeddings(model)
+{% else %}
+    model = foz.load_zoo_model("{{ name }}")
+
+    dataset.apply_model(model, label_field="predictions")
+
+    session = fo.launch_app(dataset)
+{% endif %}
 
 {% if 'clip' in tags %}
     #
