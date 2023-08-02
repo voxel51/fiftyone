@@ -45,8 +45,7 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
-        self.run_state = ExecutionRunState(doc["run_state"])
-
+        self.run_state = doc["run_state"]
         # optional fields
         self.delegation_target = (
             doc["delegation_target"] if "delegation_target" in doc else None
@@ -88,7 +87,6 @@ class DelegatedOperationDocument(object):
 
     def to_pymongo(self) -> dict:
         d = self.__dict__
-        d["run_state"] = d["run_state"].value
         d["context"] = (
             d["context"].__dict__
             if isinstance(d["context"], ExecutionContext)

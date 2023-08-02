@@ -154,7 +154,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if run_state == ExecutionRunState.COMPLETED:
             update = {
                 "$set": {
-                    "run_state": run_state.value,
+                    "run_state": run_state,
                     "completed_at": datetime.utcnow(),
                     "result": execution_result.to_json()
                     if execution_result
@@ -164,7 +164,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         elif run_state == ExecutionRunState.FAILED:
             update = {
                 "$set": {
-                    "run_state": run_state.value,
+                    "run_state": run_state,
                     "failed_at": datetime.utcnow(),
                     "result": execution_result.to_json()
                     if execution_result
@@ -174,7 +174,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         elif run_state == ExecutionRunState.RUNNING:
             update = {
                 "$set": {
-                    "run_state": run_state.value,
+                    "run_state": run_state,
                     "started_at": datetime.utcnow(),
                 }
             }
@@ -222,7 +222,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if dataset_name:
             query["context.request_params.dataset_name"] = dataset_name
         if run_state:
-            query["run_state"] = run_state.value
+            query["run_state"] = run_state
         if delegation_target:
             query["delegation_target"] = delegation_target
         if run_by:
@@ -246,10 +246,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging.sort_direction = SortDirection(paging.sort_direction)
 
         if search:
-            for key in search:
-                if key not in ["operator", "delegated_operation"]:
-                    raise ValueError("Invalid search key: {}".format(key))
-                query[key] = {"$regex": search[key]}
+            for term in search:
+                for field in search[term]:
+                    if field not in ["operator", "delegated_operation"]:
+                        raise ValueError(
+                            "Invalid search field: {}".format(field)
+                        )
+                    query[field] = {"$regex": term}
 
         if paging:
             docs = (
@@ -276,10 +279,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     def count(self, **filters) -> int:
         if "search" in filters:
-            for key in filters["search"]:
-                if key not in ["operator", "delegated_operation"]:
-                    raise ValueError("Invalid search key: {}".format(key))
-                filters[key] = {"$regex": filters["search"][key]}
+            search = filters["search"]
+            for term in search:
+                for field in search[term]:
+                    if field not in ["operator", "delegated_operation"]:
+                        raise ValueError(
+                            "Invalid search field: {}".format(field)
+                        )
+                    filters[field] = {"$regex": term}
             del filters["search"]
 
         return self._collection.count_documents(filter=filters)
