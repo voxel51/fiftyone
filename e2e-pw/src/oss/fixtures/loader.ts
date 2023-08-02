@@ -110,7 +110,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     throw new Error("Method not implemented.");
   }
 
-  async waitUntilLoad(page: Page, datasetName: string) {
+  async waitUntilLoad(page: Page, datasetName: string, savedView?: string) {
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
       await page.getByTestId(`selector-Select dataset`).click();
@@ -126,14 +126,22 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    if (!datasetName) {
-      await forceDatasetFromSelector();
+    if (savedView) {
+      await page.goto(`/datasets/${datasetName}?view=${savedView}`);
     } else {
       await page.goto(`/datasets/${datasetName}`);
-      const location = await page.evaluate(() => window.location.href);
+    }
 
-      if (!location.includes("datasets")) {
-        await forceDatasetFromSelector();
+    const pathname = await page.evaluate(() => window.location.pathname);
+    if (pathname !== `/datasets/${datasetName}`) {
+      await forceDatasetFromSelector();
+    }
+
+    if (savedView) {
+      const search = await page.evaluate(() => window.location.search);
+
+      if (search !== `?view=${savedView}`) {
+        throw new Error("wrong view");
       }
     }
 

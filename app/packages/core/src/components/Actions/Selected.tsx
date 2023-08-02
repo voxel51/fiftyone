@@ -84,7 +84,6 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const isGroup = await snapshot.getPromise(fos.isGroup);
     const selected = await snapshot.getPromise(fos.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
 

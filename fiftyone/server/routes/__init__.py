@@ -14,7 +14,6 @@ from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .plugins import Plugins
-from .samples import Samples
 from .select import Select
 from .sort import Sort
 from .screenshot import Screenshot
@@ -37,7 +36,6 @@ routes = (
         ("/frames", Frames),
         ("/media", Media),
         ("/plugins", Plugins),
-        ("/samples", Samples),
         ("/select", Select),
         ("/sort", Sort),
         ("/stages", Stages),

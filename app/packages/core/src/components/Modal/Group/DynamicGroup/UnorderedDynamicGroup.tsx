@@ -6,6 +6,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../Actions";
 import Sample from "../../Sample";
+import { Sample3d } from "../../Sample3d";
 import { useGroupContext } from "../GroupContextProvider";
 import { GroupSuspense } from "../GroupSuspense";
 import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
@@ -28,8 +29,11 @@ export const UnorderedDynamicGroup = () => {
   const lookerRef = useRef<AbstractLooker>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
-  const isImageVisible = useRecoilValue(fos.groupMediaIsImageVisible);
-  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
+  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
+  const isCarouselVisible = useRecoilValue(
+    fos.groupMediaIsCarouselVisibleSetting
+  );
+  const parent = useRecoilValue(fos.parentMediaTypeSelector);
 
   if (!groupByFieldValue) {
     return null;
@@ -38,19 +42,26 @@ export const UnorderedDynamicGroup = () => {
   return (
     <RootContainer>
       {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
-      {!isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+      {!isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
       <ElementsContainer>
-        {isImageVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
-        {isCarouselVisible && <DynamicGroupCarousel key={groupByFieldValue} />}
-        {isImageVisible && (
-          <GroupSuspense>
-            <Sample
-              lookerRefCallback={lookerRefCallback}
-              lookerRef={lookerRef}
-              hideSampleBar
-            />
-          </GroupSuspense>
-        )}
+        <>
+          {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+          {isCarouselVisible && (
+            <DynamicGroupCarousel key={groupByFieldValue} />
+          )}
+          {isMainVisible && (
+            <GroupSuspense>
+              {parent !== "point_cloud" ? (
+                <Sample
+                  lookerRefCallback={lookerRefCallback}
+                  lookerRef={lookerRef}
+                />
+              ) : (
+                <Sample3d />
+              )}
+            </GroupSuspense>
+          )}
+        </>
       </ElementsContainer>
     </RootContainer>
   );

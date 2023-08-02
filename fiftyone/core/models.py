@@ -2199,9 +2199,7 @@ class ModelManager(etam.ModelManager):
             logger.info("Downloading model from '%s'...", url)
             etaw.download_file(url, path=model_path)
         else:
-            raise ValueError(
-                "Invalid ModelManagerConfig '%s'" % str(self.config)
-            )
+            logger.info("This model's downloading is not managed by FiftyOne")
 
     def delete_model(self):
         raise NotImplementedError("Deleting models via API is not supported")

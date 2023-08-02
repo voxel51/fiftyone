@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<74b2325fb34d783930cf6e182f29e0e8>>
+ * @generated SignedSource<<7797065bb3c327d3793aacf1027c22f5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -15,16 +15,18 @@ export type SampleFilter = {
 };
 export type GroupElementFilter = {
   id?: string | null;
+  slice?: string | null;
   slices?: ReadonlyArray<string> | null;
 };
-export type paginateDynamicGroupSamplesQuery$variables = {
+export type paginateSamplesQuery$variables = {
+  after?: string | null;
   count?: number | null;
-  cursor?: string | null;
   dataset: string;
+  extendedStages?: object | null;
   filter: SampleFilter;
   view: Array;
 };
-export type paginateDynamicGroupSamplesQuery$data = {
+export type paginateSamplesQuery$data = {
   readonly samples: {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
@@ -39,6 +41,7 @@ export type paginateDynamicGroupSamplesQuery$data = {
         }>;
       } | {
         readonly __typename: "PointCloudSample";
+        readonly aspectRatio: number;
         readonly id: string;
         readonly sample: object;
         readonly urls: ReadonlyArray<{
@@ -48,6 +51,7 @@ export type paginateDynamicGroupSamplesQuery$data = {
       } | {
         readonly __typename: "VideoSample";
         readonly aspectRatio: number;
+        readonly frameNumber: number;
         readonly frameRate: number;
         readonly id: string;
         readonly sample: object;
@@ -62,27 +66,25 @@ export type paginateDynamicGroupSamplesQuery$data = {
       };
     }>;
     readonly pageInfo: {
-      readonly endCursor: string | null;
       readonly hasNextPage: boolean;
     };
-    readonly total: number | null;
   };
 };
-export type paginateDynamicGroupSamplesQuery = {
-  response: paginateDynamicGroupSamplesQuery$data;
-  variables: paginateDynamicGroupSamplesQuery$variables;
+export type paginateSamplesQuery = {
+  response: paginateSamplesQuery$data;
+  variables: paginateSamplesQuery$variables;
 };
 
 const node: ConcreteRequest = (function(){
 var v0 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "after"
+},
+v1 = {
   "defaultValue": 20,
   "kind": "LocalArgument",
   "name": "count"
-},
-v1 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "cursor"
 },
 v2 = {
   "defaultValue": null,
@@ -92,35 +94,40 @@ v2 = {
 v3 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "filter"
+  "name": "extendedStages"
 },
 v4 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "view"
+  "name": "filter"
 },
 v5 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "view"
+},
+v6 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v6 = {
+v7 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "aspectRatio",
   "storageKey": null
 },
-v7 = {
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sample",
   "storageKey": null
 },
-v8 = {
+v9 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -145,19 +152,24 @@ v8 = {
   ],
   "storageKey": null
 },
-v9 = [
+v10 = [
   {
     "alias": null,
     "args": [
       {
         "kind": "Variable",
         "name": "after",
-        "variableName": "cursor"
+        "variableName": "after"
       },
       {
         "kind": "Variable",
         "name": "dataset",
         "variableName": "dataset"
+      },
+      {
+        "kind": "Variable",
+        "name": "extendedStages",
+        "variableName": "extendedStages"
       },
       {
         "kind": "Variable",
@@ -183,8 +195,19 @@ v9 = [
       {
         "alias": null,
         "args": null,
-        "kind": "ScalarField",
-        "name": "total",
+        "concreteType": "SampleItemStrPageInfo",
+        "kind": "LinkedField",
+        "name": "pageInfo",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "hasNextPage",
+            "storageKey": null
+          }
+        ],
         "storageKey": null
       },
       {
@@ -220,10 +243,10 @@ v9 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v5/*: any*/),
                   (v6/*: any*/),
                   (v7/*: any*/),
-                  (v8/*: any*/)
+                  (v8/*: any*/),
+                  (v9/*: any*/)
                 ],
                 "type": "ImageSample",
                 "abstractKey": null
@@ -231,9 +254,10 @@ v9 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v5/*: any*/),
                   (v7/*: any*/),
-                  (v8/*: any*/)
+                  (v6/*: any*/),
+                  (v8/*: any*/),
+                  (v9/*: any*/)
                 ],
                 "type": "PointCloudSample",
                 "abstractKey": null
@@ -241,8 +265,8 @@ v9 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v5/*: any*/),
                   (v6/*: any*/),
+                  (v7/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -250,38 +274,20 @@ v9 = [
                     "name": "frameRate",
                     "storageKey": null
                   },
-                  (v7/*: any*/),
-                  (v8/*: any*/)
+                  {
+                    "alias": null,
+                    "args": null,
+                    "kind": "ScalarField",
+                    "name": "frameNumber",
+                    "storageKey": null
+                  },
+                  (v8/*: any*/),
+                  (v9/*: any*/)
                 ],
                 "type": "VideoSample",
                 "abstractKey": null
               }
             ],
-            "storageKey": null
-          }
-        ],
-        "storageKey": null
-      },
-      {
-        "alias": null,
-        "args": null,
-        "concreteType": "SampleItemStrPageInfo",
-        "kind": "LinkedField",
-        "name": "pageInfo",
-        "plural": false,
-        "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "endCursor",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "hasNextPage",
             "storageKey": null
           }
         ],
@@ -298,39 +304,41 @@ return {
       (v1/*: any*/),
       (v2/*: any*/),
       (v3/*: any*/),
-      (v4/*: any*/)
+      (v4/*: any*/),
+      (v5/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
-    "name": "paginateDynamicGroupSamplesQuery",
-    "selections": (v9/*: any*/),
+    "name": "paginateSamplesQuery",
+    "selections": (v10/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v0/*: any*/),
       (v1/*: any*/),
+      (v0/*: any*/),
       (v2/*: any*/),
+      (v5/*: any*/),
       (v4/*: any*/),
       (v3/*: any*/)
     ],
     "kind": "Operation",
-    "name": "paginateDynamicGroupSamplesQuery",
-    "selections": (v9/*: any*/)
+    "name": "paginateSamplesQuery",
+    "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "ba78f97e8af0df72d69b2427819b8136",
+    "cacheID": "463be9824dac55e82d92fdfc5f09909b",
     "id": null,
     "metadata": {},
-    "name": "paginateDynamicGroupSamplesQuery",
+    "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateDynamicGroupSamplesQuery(\n  $count: Int = 20\n  $cursor: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $cursor, filter: $filter) {\n    total\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $extendedStages: BSON\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, extendedStages: $extendedStages) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "eec9a419e225afd9718dca8b07353451";
+(node as any).hash = "9c411553230ff7447820992e6c3b4c42";
 
 export default node;

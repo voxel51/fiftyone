@@ -1,5 +1,5 @@
 import { Bar, useTheme } from "@fiftyone/components";
-import { AbstractLooker, VideoLooker } from "@fiftyone/looker";
+import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import React, { MutableRefObject, useMemo, useRef } from "react";
@@ -28,6 +28,7 @@ const SelectableBar: React.FC<
         event.target === headerRef.current && select(sampleId)
       }
       style={{ cursor: "pointer", ...style }}
+      data-cy={"selectable-bar"}
     >
       <div>
         <Checkbox
@@ -44,13 +45,14 @@ const SelectableBar: React.FC<
 
 export const SampleBar: React.FC<{
   sampleId: string;
-  lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
+  lookerRef?: React.MutableRefObject<fos.Lookers | undefined>;
   visible?: boolean;
   hoveringRef: MutableRefObject<boolean>;
-}> = ({ hoveringRef, lookerRef, sampleId, visible }) => {
+  actions?: boolean;
+}> = ({ hoveringRef, lookerRef, sampleId, visible, actions = true }) => {
   return visible ? (
     <SelectableBar hoveringRef={hoveringRef} sampleId={sampleId}>
-      <ModalActionsRow lookerRef={lookerRef} />
+      {actions && <ModalActionsRow lookerRef={lookerRef} />}
     </SelectableBar>
   ) : null;
 };

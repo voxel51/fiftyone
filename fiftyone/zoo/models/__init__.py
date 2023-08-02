@@ -127,8 +127,10 @@ def download_zoo_model(name, overwrite=False):
 
     if not overwrite and is_zoo_model_downloaded(name):
         logger.info("Model '%s' is already downloaded", name)
-    else:
+    elif model.manager is not None:
         model.manager.download_model(model_path, force=overwrite)
+    else:
+        logger.info("Model '%s' downloading is not managed by FiftyOne", name)
 
     return model, model_path
 
@@ -186,6 +188,7 @@ def ensure_zoo_model_requirements(name, error_level=None, log_success=True):
 def load_zoo_model(
     name,
     download_if_necessary=True,
+    ensure_requirements=True,
     install_requirements=False,
     error_level=None,
     cache=True,
@@ -193,8 +196,8 @@ def load_zoo_model(
 ):
     """Loads the model of the given name from the FiftyOne Model Zoo.
 
-    By default, the model will be downloaded if necessary if it does not
-    exist in ``fiftyone.config.model_zoo_dir``.
+    By default, the model will be downloaded if necessary, and any documented
+    package requirements will be checked to ensure that they are installed.
 
     Args:
         name: the name of the zoo model, which can have ``@<ver>`` appended to
@@ -203,6 +206,8 @@ def load_zoo_model(
             :func:`list_zoo_models` to see the available models
         download_if_necessary (True): whether to download the model if it is
             not found in the specified directory
+        ensure_requirements (True): whether to ensure any requirements are
+            installed before loading the model. By default, this is True
         install_requirements: whether to install any requirements before
             loading the model. By default, this is False
         error_level (None): the error level to use when installing/ensuring
@@ -231,7 +236,7 @@ def load_zoo_model(
     model = _get_model(name)
     models_dir = fo.config.model_zoo_dir
 
-    if not model.is_in_dir(models_dir):
+    if model.manager is not None and not model.is_in_dir(models_dir):
         if not download_if_necessary:
             raise ValueError("Model '%s' is not downloaded" % name)
 
@@ -239,7 +244,7 @@ def load_zoo_model(
 
     if install_requirements:
         model.install_requirements(error_level=error_level)
-    else:
+    elif ensure_requirements:
         model.ensure_requirements(error_level=error_level)
 
     config_dict = deepcopy(model.default_deployment_config_dict)
@@ -347,9 +352,11 @@ class ZooModel(etam.Model):
 
     Args:
         base_name: the base name of the model (no version info)
-        base_filename: the base filename of the model (no version info)
-        manager: the :class:`fiftyone.core.models.ModelManager` instance that
-            describes the remote storage location of the model
+        base_filename (None): the base filename of the model (no version info),
+            if applicable
+        manager (None): the :class:`fiftyone.core.models.ModelManager` instance
+            that describes the remote storage location of the model, if
+            applicable
         version (None): the version of the model
         description (None): the description of the model
         source (None): the source of the model

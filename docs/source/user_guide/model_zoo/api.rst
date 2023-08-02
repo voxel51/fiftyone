@@ -18,9 +18,7 @@ You can interact with the Model Zoo either via the Python library or the CLI.
 
   .. group-tab:: Python
 
-    The Model Zoo is accessible via the :mod:`fiftyone.zoo.models` package,
-    whose public methods are imported into the ``fiftyone.zoo`` namespace, for
-    convenience.
+    The Model Zoo is accessible via the :mod:`fiftyone.zoo` package.
 
   .. group-tab:: CLI
 
@@ -627,8 +625,8 @@ accessible to you when you update your FiftyOne package.
     `the GitHub repository <https://github.com/voxel51/fiftyone>`_.
 
 You can also add your own models to your local model zoo, enabling you to work
-with these models via the :mod:`fiftyone.zoo.models` package and the CLI using
-the same syntax that you would with publicly available models.
+with these models via the :mod:`fiftyone.zoo` package and the CLI using the
+same syntax that you would with publicly available models.
 
 To add model(s) to your local zoo, you simply write a JSON manifest file in
 the format below to tell FiftyOne about the model(s). For example, the manifest
