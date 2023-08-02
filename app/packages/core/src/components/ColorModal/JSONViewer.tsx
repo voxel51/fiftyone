@@ -64,7 +64,10 @@ const JSONViewer: React.FC = () => {
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 
   return (
-    <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+    <div
+      data-cy="color-scheme-editor"
+      style={{ width: "100%", height: "100%", overflow: "hidden" }}
+    >
       <SectionWrapper>
         <p style={{ margin: 0, lineHeight: "1.3rem" }}>
           You can use the JSON editor below to copy/edit your current color
