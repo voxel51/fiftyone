@@ -542,7 +542,7 @@ class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
 > {
-  state = { error: null };
+  state = { error: null, hasError: false };
 
   static getDerivedStateFromError = (error: Error) => ({
     hasError: true,
@@ -554,8 +554,8 @@ class ErrorBoundary extends React.Component<
   }
 
   render() {
-    if (this.state.error) {
-      return <Loading dataCy={"looker3d"}>{this.state.error}</Loading>;
+    if (this.state.hasError) {
+      return <Loading dataCy={"looker3d"}>{this.state.error.message}</Loading>;
     }
 
     return this.props.children;
