@@ -418,11 +418,12 @@ class Query(fosa.AggregateQuery):
         after: t.Optional[str] = None,
         filter: t.Optional[SampleFilter] = None,
         extended_stages: t.Optional[BSON] = None,
+        filters: t.Optional[BSON] = None,
     ) -> Connection[SampleItem, str]:
         return await paginate_samples(
             dataset,
             view,
-            None,
+            filters,
             first,
             after,
             sample_filter=filter,
