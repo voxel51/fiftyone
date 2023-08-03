@@ -114,10 +114,19 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
               primitiveFilter({ modal, path: `${expandedPath}.${name}` })
             );
 
-            return (value: unknown) =>
-              isKeypoints && typeof value[name] === "object" // keypoints ListFields
-                ? () => true
-                : filter(value[name === "id" ? "id" : dbField || name]);
+            return (value: unknown) => {
+              if (isKeypoints && typeof value[name] === "object") {
+                // keypoints ListFields
+                return () => true;
+              }
+
+              if (value[0]) {
+                // for classification type, value needs a conversion to get into the same shape as other types
+                return filter(value[0][name === "id" ? "id" : dbField || name]);
+              } else {
+                return filter(value[name === "id" ? "id" : dbField || name]);
+              }
+            };
           });
 
           f[path] = (value: unknown) => {
