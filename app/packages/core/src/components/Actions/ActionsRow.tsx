@@ -1,4 +1,9 @@
-import { PillButton, useTheme } from "@fiftyone/components";
+import {
+  PillButton,
+  scrollable,
+  scrollableSm,
+  useTheme,
+} from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
@@ -102,7 +107,7 @@ const Patches = () => {
         style={{ cursor: loading ? "default" : "pointer" }}
         data-cy="action-clips-patches"
       />
-      {open && <Patcher close={() => setOpen(false)} />}
+      {open && <Patcher close={() => setOpen(false)} anchorRef={ref} />}
     </ActionDiv>
   );
 };
@@ -149,6 +154,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           close={() => setOpen(false)}
           bounds={bounds}
           isImageSearch={isImageSearch}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -204,6 +210,7 @@ const Tag = ({
           bounds={bounds}
           close={() => setOpen(false)}
           lookerRef={lookerRef}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -267,6 +274,7 @@ const Selected = ({
           close={() => setOpen(false)}
           lookerRef={lookerRef}
           bounds={bounds}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -290,7 +298,7 @@ const Options = ({ modal }) => {
         title={"Display options"}
         data-cy="action-display-options"
       />
-      {open && <OptionsActions modal={modal} bounds={bounds} />}
+      {open && <OptionsActions modal={modal} bounds={bounds} anchorRef={ref} />}
     </ActionDiv>
   );
 };
@@ -358,33 +366,32 @@ const SaveFilters = () => {
   const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async () => {
-        const loading = await snapshot.getPromise(fos.savingFilters);
-        const selected = await snapshot.getPromise(fos.selectedSamples);
+    ({ snapshot, set }) => async () => {
+      const loading = await snapshot.getPromise(fos.savingFilters);
+      const selected = await snapshot.getPromise(fos.selectedSamples);
 
-        if (loading) {
-          return;
-        }
+      if (loading) {
+        return;
+      }
 
-        set(fos.savingFilters, true);
-        if (selected.size > 0) {
-          setView(
-            (v) => [
-              ...v,
-              {
-                _cls: "fiftyone.core.stages.Select",
-                kwargs: [["sample_ids", [...selected]]],
-              },
-            ],
-            undefined,
-            undefined,
-            true
-          );
-        } else {
-          setView((v) => v);
-        }
-      },
+      set(fos.savingFilters, true);
+      if (selected.size > 0) {
+        setView(
+          (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [["sample_ids", [...selected]]],
+            },
+          ],
+          undefined,
+          undefined,
+          true
+        );
+      } else {
+        setView((v) => v);
+      }
+    },
     []
   );
 
@@ -467,6 +474,10 @@ const ActionsRowDiv = styled.div`
   row-gap: 0.5rem;
   column-gap: 0.5rem;
   align-items: center;
+  overflow-x: hidden;
+  &:hover {
+    overflow-x: auto;
+  }
 `;
 
 export const BrowseOperations = () => {
@@ -492,6 +503,7 @@ export const GridActionsRow = () => {
   const isUsingSessionColorScheme = useRecoilValue(
     fos.isUsingSessionColorScheme
   );
+  const actionsRowDivRef = useRef<HTMLDivElement>();
 
   // In teams environment if the session color scheme is not applied to the dataset,
   // check to see if dataset.appConfig has applicable settings
@@ -510,8 +522,37 @@ export const GridActionsRow = () => {
     }
   }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
+  useEffect(() => {
+    const actionsRowDivElem = actionsRowDivRef.current;
+    if (actionsRowDivElem) {
+      const handleWheel = (e) => {
+        const leftEnd = actionsRowDivElem.offsetWidth;
+        const rightEnd = actionsRowDivElem.scrollWidth;
+        const scrollLeft = actionsRowDivElem.scrollLeft;
+        const leftScrolledEnd = leftEnd + scrollLeft;
+        const allowLeftScroll = leftScrolledEnd === leftEnd;
+        const allowRightScroll = leftScrolledEnd === rightEnd;
+
+        if (
+          e.deltaY == 0 ||
+          (e.deltaY < 0 && allowLeftScroll) ||
+          (e.deltaY > 0 && allowRightScroll)
+        )
+          return;
+
+        e.preventDefault();
+        actionsRowDivElem.scrollLeft = actionsRowDivElem.scrollLeft + e.deltaY;
+      };
+      actionsRowDivElem.addEventListener("wheel", handleWheel);
+      return () => actionsRowDivElem.removeEventListener("wheel", handleWheel);
+    }
+  }, []);
+
   return (
-    <ActionsRowDiv>
+    <ActionsRowDiv
+      className={`${scrollable} ${scrollableSm}`}
+      ref={actionsRowDivRef}
+    >
       <ToggleSidebar modal={false} />
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
@@ -546,6 +587,7 @@ export const ModalActionsRow = ({
     >
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
+      <Colors />
       <Similarity modal={true} />
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />

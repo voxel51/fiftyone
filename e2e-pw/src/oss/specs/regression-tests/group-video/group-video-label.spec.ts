@@ -18,8 +18,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 
 test.describe("groups video labels", () => {
   test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
-    [testVideoPath1, testVideoPath2].forEach((outputPath) => {
-      mediaFactory.createBlankVideo({
+    [testVideoPath1, testVideoPath2].forEach(async (outputPath) => {
+      await mediaFactory.createBlankVideo({
         outputPath,
         duration: 3,
         width: 100,

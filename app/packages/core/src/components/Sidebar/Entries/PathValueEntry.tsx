@@ -77,7 +77,7 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
 
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
@@ -140,7 +140,7 @@ const ListValueEntry = ({
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
@@ -266,7 +266,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<string | number | null>(path);
 
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const theme = useTheme();
 
@@ -311,7 +311,6 @@ const useSlicesData = <T extends unknown>(path: string) => {
   const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
 
-  console.log(slices, loadable.contents);
   if (loadable.state === "loading") {
     throw loadable.contents;
   }
@@ -352,7 +351,7 @@ const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
 

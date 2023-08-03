@@ -1,6 +1,6 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import {
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
@@ -47,12 +47,13 @@ export default () => {
   const assignSlices = useRecoilTransaction_UNSTABLE(
     ({ set }) =>
       (
+        pinnedSlice: string | null,
         slices: string[],
         samples: {
           [k: string]: fos.ModalSample;
         }
       ) => {
-        let newSlice: string | null = null;
+        let newSlice: string | null = samples[pinnedSlice] ? pinnedSlice : null;
         for (let index = 0; index < slices.length; index++) {
           const element = slices[index];
           if (samples[element]) {
@@ -82,11 +83,7 @@ export default () => {
       return;
     }
 
-    if (pinnedSlice && pcdSlices.contents[pinnedSlice]) {
-      return;
-    }
-
-    assignSlices(slices, pcdSlices.contents);
+    assignSlices(pinnedSlice, slices, pcdSlices.contents);
   }, [assignSlices, modalId, slices, groupSlice, pinnedSlice, pcdSlices]);
 
   if (
