@@ -3,6 +3,7 @@ import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useMemo, useRef, useState } from "react";
+import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
 
@@ -47,6 +48,7 @@ const useFlashlightPager = (
   const page = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector || defaultZoom);
   const [isEmpty, setIsEmpty] = useState(false);
+  const handleError = useErrorHandler();
 
   const pager = useMemo(() => {
     return async (pageNumber: number) => {
@@ -77,10 +79,11 @@ const useFlashlightPager = (
                 : null,
             });
           },
+          error: handleError,
         });
       });
     };
-  }, [environment, page, store, zoom]);
+  }, [environment, handleError, page, store, zoom]);
 
   const ref = useRef<FlashlightConfig<number>["get"]>(pager);
   ref.current = pager;

@@ -39,12 +39,20 @@ export class PanelPom {
   async open(option = "samples") {
     await this.tab(option).first().click();
   }
+
+  errorBoundary() {
+    return this.locator.getByTestId("error-boundary");
+  }
 }
 
 class PanelAsserter {
-  constructor(private readonly gridPom: PanelPom) {}
+  constructor(private readonly panelPom: PanelPom) {}
 
   async histogramLoaded() {
-    await expect(this.gridPom.distributionContainer()).toBeVisible();
+    await expect(this.panelPom.distributionContainer()).toBeVisible();
+  }
+
+  async hasError() {
+    await expect(this.panelPom.errorBoundary()).toBeVisible();
   }
 }

@@ -110,7 +110,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
     throw new Error("Method not implemented.");
   }
 
-  async waitUntilLoad(page: Page, datasetName: string, savedView?: string) {
+  async waitUntilLoad(
+    page: Page,
+    datasetName: string,
+    savedView?: string,
+    withGrid = true
+  ) {
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
       await page.getByTestId(`selector-Select dataset`).click();
@@ -144,8 +149,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     }
 
-    await page.waitForSelector("[data-cy=flashlight-section]", {
-      state: "visible",
-    });
+    await page.waitForSelector(
+      `[data-cy=${withGrid ? "flashlight-section" : "panel-container"}]`,
+      {
+        state: "visible",
+      }
+    );
   }
 }
