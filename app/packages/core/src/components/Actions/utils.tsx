@@ -161,6 +161,7 @@ export const tagParameters = ({
   activeFields: string[];
   groupData: {
     id: string | null;
+    slice: string | null;
     slices: string[] | null;
     mode: "group" | "slice";
   } | null;
@@ -188,6 +189,7 @@ export const tagParameters = ({
     label_fields: activeFields,
     target_labels: targetLabels,
     slices: !groups ? groupData?.slices : null,
+    slice: groupData?.slice,
     group_id: params.modal ? groupData?.id : null,
     sample_ids: getSampleIds(),
     labels:

@@ -22,7 +22,7 @@ export default () => {
         groupId?: string,
         groupByFieldValue?: string
       ) => {
-        groupId && set(groupAtoms.groupId, groupId);
+        set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
         reset(groupAtoms.nestedGroupIndex);
         reset(dynamicGroupCurrentElementIndex);

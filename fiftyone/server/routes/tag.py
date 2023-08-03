@@ -37,6 +37,7 @@ class Tag(HTTPEndpoint):
         extended = data.get("extended", None)
         current_frame = data.get("current_frame", None)
         slices = data.get("slices", None)
+        slice = data.get("slice", None)
         group_id = data.get("group_id", None)
         view = fost.get_tag_view(
             dataset,
@@ -46,7 +47,9 @@ class Tag(HTTPEndpoint):
             labels=labels,
             hidden_labels=hidden_labels,
             sample_filter=SampleFilter(
-                group=GroupElementFilter(id=group_id, slices=slices)
+                group=GroupElementFilter(
+                    slice=slice, id=group_id, slices=slices
+                )
                 if not sample_ids
                 else None
             ),
