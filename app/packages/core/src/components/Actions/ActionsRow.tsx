@@ -451,7 +451,10 @@ const ActionsRowDiv = styled.div`
   row-gap: 0.5rem;
   column-gap: 0.5rem;
   align-items: center;
-  overflow-x: auto;
+  overflow-x: hidden;
+  &:hover {
+    overflow-x: auto;
+  }
 `;
 
 export const BrowseOperations = () => {
