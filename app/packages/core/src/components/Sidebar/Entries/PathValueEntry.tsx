@@ -311,7 +311,6 @@ const useSlicesData = <T extends unknown>(path: string) => {
   const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
 
-  console.log(slices, loadable.contents);
   if (loadable.state === "loading") {
     throw loadable.contents;
   }
