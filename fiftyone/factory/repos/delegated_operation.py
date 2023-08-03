@@ -82,7 +82,7 @@ class DelegatedOperationRepo(object):
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
-    def count(self, **filters):
+    def count(self, filters, search) -> int:
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
@@ -277,9 +277,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one(filter={"_id": _id})
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def count(self, **filters) -> int:
-        if "search" in filters:
-            search = filters["search"]
+    def count(self, filters, search) -> int:
+        if "search":
             for term in search:
                 for field in search[term]:
                     if field not in ["operator", "delegated_operation"]:
@@ -287,6 +286,5 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                             "Invalid search field: {}".format(field)
                         )
                     filters[field] = {"$regex": term}
-            del filters["search"]
 
         return self._collection.count_documents(filter=filters)

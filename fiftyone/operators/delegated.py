@@ -16,7 +16,6 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionRunState,
 )
-from fiftyone.operators.types import List
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +181,7 @@ class DelegatedOperationService:
         delegation_target: str = None,
         run_by: str = None,
         paging: DelegatedOpPagingParams = None,
+        search: dict = None,
         **kwargs,
     ):
         """
@@ -193,6 +193,8 @@ class DelegatedOperationService:
             run_state: the optional run state of the delegated operations to return
             delegation_target: the optional delegation target of the delegated operations to return
             paging: the optional paging parameters
+            search: the optional search parameters
+            run_by: the optional user who ran the delegated operations
             **kwargs:
 
         Returns:
@@ -206,6 +208,7 @@ class DelegatedOperationService:
             delegation_target=delegation_target,
             run_by=run_by,
             paging=paging,
+            search=search,
             **kwargs,
         )
 
