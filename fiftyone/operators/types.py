@@ -1375,3 +1375,10 @@ class FileExplorerView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.default_path = kwargs.get("default_path", "/")
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "defaultPath": self.default_path,
+        }

@@ -28,7 +28,7 @@ import FileExplorer from "./FileExplorer";
 export default function FileExplorerView(props) {
   const { schema, data } = props;
   const { view = {} } = schema;
-  const { label, description } = view;
+  const { label, description, defaultPath } = view;
 
-  return <FileExplorer files={[]} />;
+  return <FileExplorer defaultPath={defaultPath} files={[]} />;
 }

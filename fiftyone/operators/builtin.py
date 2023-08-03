@@ -5,9 +5,13 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
+
 import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
+
+# import fiftyone.core.storage as fos
 
 
 class CloneSelectedSamples(foo.Operator):
@@ -284,6 +288,32 @@ class PrintStdout(foo.Operator):
         return {"msg": ctx.params.get("msg", None)}
 
 
+class ListFiles(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_files",
+            label="List Files",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        path = ctx.params.get("path", None)
+
+        # a date of 10 seconds ago
+        date = datetime.datetime.now()
+        # convert date into seconds from epoch
+        return {
+            "files": [
+                {
+                    "name": "file1",
+                    "dateModified": date.isoformat(),
+                    "size": 100,
+                },
+            ]
+        }
+
+
 BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
@@ -291,4 +321,5 @@ BUILTIN_OPERATORS = [
     DeleteSelectedSamples(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
+    ListFiles(_builtin=True),
 ]

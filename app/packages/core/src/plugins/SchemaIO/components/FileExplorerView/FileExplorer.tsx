@@ -11,6 +11,7 @@ import FileTable from "./FileTable";
 import VolumeSelector from "./VolumeSelector";
 import styled from "styled-components";
 import { Typography } from "@mui/material";
+import { useCurrentFiles } from "./state";
 
 const ModalContent = styled.div`
   background: #ffffff;
@@ -18,11 +19,12 @@ const ModalContent = styled.div`
   max-width: 1000px;
 `;
 
-export default function FileExplorer({ files }) {
+export default function FileExplorer({ defaultPath }) {
   const [open, setOpen] = React.useState(false);
-
+  const [currentPath, setCurrentPath] = React.useState(defaultPath);
   const [selectedFile, setSelectedFile] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const currentFiles = useCurrentFiles(currentPath);
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -76,13 +78,13 @@ export default function FileExplorer({ files }) {
               <Grid item container>
                 <ExplorerActions
                   onSidebarClick={() => setSidebarOpen((open) => !open)}
-                  currentPath="/this/is/the/current/path"
+                  currentPath={currentPath}
                   selectedFile={selectedFile}
                 />
               </Grid>
               <Grid item style={{ width: "100%" }}>
                 <FileTable
-                  files={files}
+                  files={currentFiles}
                   fullWidth
                   selectedFile={selectedFile}
                   setSelectedFile={setSelectedFile}

@@ -976,9 +976,11 @@ export class MarkdownView extends View {
  */
 
 export class FileExplorerView extends View {
+  public defaultPath: string;
   constructor(options: ViewProps) {
     super(options);
     this.name = "FileExplorerView";
+    this.defaultPath = options.defaultPath as string;
   }
   static fromJSON(json) {
     return new FileExplorerView(json);
