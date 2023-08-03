@@ -10,6 +10,7 @@ export default r(graphql`
     $filter: SampleFilter!
     $filters: BSON = null
     $extendedStages: BSON
+    $paginationData: Boolean = true
   ) {
     samples(
       dataset: $dataset
@@ -19,6 +20,7 @@ export default r(graphql`
       filter: $filter
       filters: $filters
       extendedStages: $extendedStages
+      paginationData: $paginationData
     ) {
       pageInfo {
         hasNextPage
