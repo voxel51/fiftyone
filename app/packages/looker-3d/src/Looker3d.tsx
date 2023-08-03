@@ -49,6 +49,7 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
+import { Typography } from "@mui/material";
 
 type View = "pov" | "top";
 
@@ -63,12 +64,12 @@ export const Looker3d = () => {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = useRecoilValue(fos.alpha(MODAL_TRUE));
+  const labelAlpha = useRecoilValue(fos.alpha);
   const onSelectLabel = fos.useOnSelectLabel();
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMap);
   const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
@@ -316,38 +317,52 @@ export const Looker3d = () => {
 
   const filteredSamples = useMemo(
     () =>
-      Object.entries(sampleMap).map(([slice, sample]) => {
-        let mediaUrl;
+      Object.entries(sampleMap)
+        .map(([slice, sample]) => {
+          let mediaUrlUnresolved;
 
-        if (Array.isArray(sample.urls)) {
-          mediaUrl = fos.getSampleSrc(
-            sample.urls.find((u) => u.field === mediaField).url
+          if (Array.isArray(sample.urls)) {
+            const mediaFieldObj = sample.urls.find(
+              (u) => u.field === mediaField
+            );
+            if (mediaFieldObj) {
+              mediaUrlUnresolved = mediaFieldObj.url;
+            } else {
+              return null;
+            }
+          } else {
+            mediaUrlUnresolved = sample.urls[mediaField];
+          }
+
+          if (!mediaUrlUnresolved) {
+            return null;
+          }
+
+          const mediaUrl = fos.getSampleSrc(mediaUrlUnresolved);
+
+          const customColor =
+            (customColorMap &&
+              customColorMap[isPointcloudDataset ? "default" : slice]) ??
+            "#00ff00";
+
+          return (
+            <PointCloudMesh
+              key={slice}
+              minZ={minZ}
+              shadeBy={shadeBy}
+              customColor={customColor}
+              pointSize={pointSize}
+              src={mediaUrl}
+              rotation={pcRotation}
+              onLoad={(boundingBox) => {
+                if (!pointCloudBounds) setPointCloudBounds(boundingBox);
+              }}
+              defaultShadingColor={theme.text.primary}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+            />
           );
-        } else {
-          mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
-        }
-
-        const customColor =
-          (customColorMap &&
-            customColorMap[isPointcloudDataset ? "default" : slice]) ??
-          "#00ff00";
-        return (
-          <PointCloudMesh
-            key={slice}
-            minZ={minZ}
-            shadeBy={shadeBy}
-            customColor={customColor}
-            pointSize={pointSize}
-            src={mediaUrl}
-            rotation={pcRotation}
-            onLoad={(boundingBox) => {
-              if (!pointCloudBounds) setPointCloudBounds(boundingBox);
-            }}
-            defaultShadingColor={theme.text.primary}
-            isPointSizeAttenuated={isPointSizeAttenuated}
-          />
-        );
-      }),
+        })
+        .filter((e) => e !== null),
     [
       sampleMap,
       mediaField,
@@ -465,6 +480,16 @@ export const Looker3d = () => {
     settings,
   ]);
 
+  if (filteredSamples.length === 0) {
+    return (
+      <Container style={{ padding: "2em" }}>
+        <Typography>
+          No point-cloud samples detected for media field "{mediaField}"
+        </Typography>
+      </Container>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
@@ -517,7 +542,7 @@ class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }
 > {
-  state = { error: null };
+  state = { error: null, hasError: false };
 
   static getDerivedStateFromError = (error: Error) => ({
     hasError: true,
@@ -529,8 +554,8 @@ class ErrorBoundary extends React.Component<
   }
 
   render() {
-    if (this.state.error) {
-      return <Loading dataCy={"looker3d"}>{this.state.error}</Loading>;
+    if (this.state.hasError) {
+      return <Loading dataCy={"looker3d"}>{this.state.error.message}</Loading>;
     }
 
     return this.props.children;

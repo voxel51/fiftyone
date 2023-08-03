@@ -225,14 +225,14 @@ export const refreshGroupQuery = atom<number>({
 
 export const groupSamples = graphQLSelectorFamily<
   VariablesOf<foq.paginateSamplesQuery>,
-  { slices: string[]; count: number | null },
+  { slices: string[]; count: number | null; paginationData?: boolean },
   ModalSample[]
 >({
   key: "groupSamples",
   environment: RelayEnvironmentKey,
   query: foq.paginateSamples,
   variables:
-    ({ slices, count = null }) =>
+    ({ slices, count = null, paginationData = true }) =>
     ({ get }) => {
       const groupIdValue = get(groupId);
 
@@ -247,6 +247,7 @@ export const groupSamples = graphQLSelectorFamily<
             slices,
           },
         },
+        paginationData,
       };
     },
   mapResponse: (data: ResponseFrom<foq.paginateSamplesQuery>) => {
@@ -265,7 +266,14 @@ export const nonPcdSamples = selector({
 export const pcdSamples = selector({
   key: "pcdSamples",
   get: ({ get }) =>
-    get(groupSamples({ slices: get(allPcdSlices), count: null })),
+    get(
+      groupSamples({
+        slices: get(allPcdSlices),
+        count: null,
+        // do not omit dict data, provide the unfiltered samples to Looker3d
+        paginationData: false,
+      })
+    ),
 });
 
 export const groupByFieldValue = atom<string | null>({

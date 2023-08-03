@@ -28,6 +28,7 @@ export const SamplesHeader = styled.div`
     ${({ theme }) => theme.background.mediaSpace} 100%
   );
   margin-left: -1rem;
+  gap: 8px;
 `;
 
 const RightDiv = styled.div`
@@ -71,7 +72,7 @@ const Count = () => {
 
   return (
     <RightDiv data-cy="entry-counts">
-      <div>
+      <div style={{ whiteSpace: "nowrap" }}>
         <PathEntryCounts modal={false} path={""} />
         {` `}
         {total === 1 ? element.singular : element.plural}

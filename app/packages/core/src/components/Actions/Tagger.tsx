@@ -459,9 +459,16 @@ type TaggerProps = {
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
   >;
+  anchorRef?: MutableRefObject<HTMLDivElement>;
 };
 
-const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
+const Tagger = ({
+  modal,
+  bounds,
+  close,
+  lookerRef,
+  anchorRef,
+}: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
@@ -483,7 +490,13 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
   const samplePlaceholder = useSamplePlaceHolder(modal, elementNames);
   return (
-    <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
+    <Popout
+      style={{ width: "12rem" }}
+      modal={modal}
+      bounds={bounds}
+      fixed
+      anchorRef={anchorRef}
+    >
       <SwitcherDiv>
         <SwitchDiv
           style={sampleProps}

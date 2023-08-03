@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<7797065bb3c327d3793aacf1027c22f5>>
+ * @generated SignedSource<<ee62f8703f3753de2c9f5df4417fa1a9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,6 +24,8 @@ export type paginateSamplesQuery$variables = {
   dataset: string;
   extendedStages?: object | null;
   filter: SampleFilter;
+  filters?: object | null;
+  paginationData?: boolean | null;
   view: Array;
 };
 export type paginateSamplesQuery$data = {
@@ -104,30 +106,40 @@ v4 = {
 v5 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "view"
+  "name": "filters"
 },
 v6 = {
+  "defaultValue": true,
+  "kind": "LocalArgument",
+  "name": "paginationData"
+},
+v7 = {
+  "defaultValue": null,
+  "kind": "LocalArgument",
+  "name": "view"
+},
+v8 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "id",
   "storageKey": null
 },
-v7 = {
+v9 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "aspectRatio",
   "storageKey": null
 },
-v8 = {
+v10 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
   "name": "sample",
   "storageKey": null
 },
-v9 = {
+v11 = {
   "alias": null,
   "args": null,
   "concreteType": "MediaURL",
@@ -152,7 +164,7 @@ v9 = {
   ],
   "storageKey": null
 },
-v10 = [
+v12 = [
   {
     "alias": null,
     "args": [
@@ -178,8 +190,18 @@ v10 = [
       },
       {
         "kind": "Variable",
+        "name": "filters",
+        "variableName": "filters"
+      },
+      {
+        "kind": "Variable",
         "name": "first",
         "variableName": "count"
+      },
+      {
+        "kind": "Variable",
+        "name": "paginationData",
+        "variableName": "paginationData"
       },
       {
         "kind": "Variable",
@@ -243,10 +265,10 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v6/*: any*/),
-                  (v7/*: any*/),
                   (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v9/*: any*/),
+                  (v10/*: any*/),
+                  (v11/*: any*/)
                 ],
                 "type": "ImageSample",
                 "abstractKey": null
@@ -254,10 +276,10 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v7/*: any*/),
-                  (v6/*: any*/),
+                  (v9/*: any*/),
                   (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v10/*: any*/),
+                  (v11/*: any*/)
                 ],
                 "type": "PointCloudSample",
                 "abstractKey": null
@@ -265,8 +287,8 @@ v10 = [
               {
                 "kind": "InlineFragment",
                 "selections": [
-                  (v6/*: any*/),
-                  (v7/*: any*/),
+                  (v8/*: any*/),
+                  (v9/*: any*/),
                   {
                     "alias": null,
                     "args": null,
@@ -281,8 +303,8 @@ v10 = [
                     "name": "frameNumber",
                     "storageKey": null
                   },
-                  (v8/*: any*/),
-                  (v9/*: any*/)
+                  (v10/*: any*/),
+                  (v11/*: any*/)
                 ],
                 "type": "VideoSample",
                 "abstractKey": null
@@ -305,12 +327,14 @@ return {
       (v2/*: any*/),
       (v3/*: any*/),
       (v4/*: any*/),
-      (v5/*: any*/)
+      (v5/*: any*/),
+      (v6/*: any*/),
+      (v7/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v10/*: any*/),
+    "selections": (v12/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -320,25 +344,27 @@ return {
       (v1/*: any*/),
       (v0/*: any*/),
       (v2/*: any*/),
-      (v5/*: any*/),
+      (v7/*: any*/),
       (v4/*: any*/),
-      (v3/*: any*/)
+      (v5/*: any*/),
+      (v3/*: any*/),
+      (v6/*: any*/)
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v10/*: any*/)
+    "selections": (v12/*: any*/)
   },
   "params": {
-    "cacheID": "463be9824dac55e82d92fdfc5f09909b",
+    "cacheID": "d65e8259e9d935782ca905d80e22550f",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $extendedStages: BSON\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, extendedStages: $extendedStages) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9c411553230ff7447820992e6c3b4c42";
+(node as any).hash = "e8ef27726824c7362be7589892f01f2a";
 
 export default node;

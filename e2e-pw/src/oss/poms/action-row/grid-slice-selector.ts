@@ -20,9 +20,14 @@ export class GridSliceSelectorPom {
   async getAvailableSlices() {
     const sliceResultsContainer = await this.openSliceSelector();
 
-    return await sliceResultsContainer.evaluate((div) =>
+    const slices = await sliceResultsContainer.evaluate((div) =>
       Array.from(div.childNodes).map((node: HTMLElement) => node.innerText)
     );
+
+    // close slice selector by clicking outside of it
+    await this.page.getByTestId("entry-counts").click();
+
+    return slices;
   }
 
   async selectSlice(sliceName: string) {
@@ -43,8 +48,14 @@ class GridSliceSelectorAsserter {
     ).toBeVisible();
   }
 
+  async verifyActiveSlice(expectedActiveSlice: string) {
+    await expect(
+      this.gridSliceSelectorPom.page.getByTestId(SLICE_SELECTOR_TEST_ID)
+    ).toHaveValue(expectedActiveSlice);
+  }
+
   async verifyHasSlices(expectedSlices: string[]) {
     const actualSlices = await this.gridSliceSelectorPom.getAvailableSlices();
-    expect(actualSlices).toEqual(expectedSlices);
+    expect(actualSlices.sort()).toEqual(expectedSlices.sort());
   }
 }

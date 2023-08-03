@@ -442,7 +442,9 @@ type Query {
     first: Int = 20
     after: String = null
     filter: SampleFilter = null
+    filters: BSON = null
     extendedStages: BSON = null
+    paginationData: Boolean = true
   ): SampleItemStrConnection!
   sample(
     dataset: String!
