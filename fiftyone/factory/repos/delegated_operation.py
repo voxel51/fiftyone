@@ -280,8 +280,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one(filter={"_id": _id})
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def count(self, filters, search) -> int:
-        if "search":
+    def count(self, filters=None, search=None) -> int:
+        if filters is None and search is not None:
+            filters = {}
+        if search:
             for term in search:
                 for field in search[term]:
                     if field not in ["operator", "delegated_operation"]:
