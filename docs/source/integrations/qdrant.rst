@@ -190,6 +190,10 @@ FiftyOne whenever a connection to Qdrant is made.
 
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL=localhost:6333
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_API_KEY=XXXXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_QDRANT_GRPC_PORT=6334
+    export FIFTYONE_BRAIN_SIMILARITY_QDRANT_PREFER_GRPC=false
+
+The `API_KEY`, `GRPC_PORT`, and `PREFER_GRPC` environment variables are optional.
 
 **FiftyOne Brain config**
 
@@ -202,7 +206,9 @@ located at `~/.fiftyone/brain_config.json`:
         "similarity_backends": {
             "qdrant": {
                 "url": "http://localhost:6333",
-                "api_key": "XXXXXXXX"
+                "api_key": "XXXXXXXX",
+                "grpc_port": 6334,
+                "prefer_grpc": false
             }
         }
     }
@@ -226,6 +232,8 @@ that require connections to Qdrant:
         brain_key="qdrant_index",
         url="http://localhost:6333",
         api_key="XXXXXXXX",
+        grpc_port=6334,
+        prefer_grpc=False
     )
 
 Note that, when using this strategy, you must manually provide the credentials
@@ -239,6 +247,8 @@ when loading an index later via
         "qdrant_index",
         url="http://localhost:6333",
         api_key="XXXXXXXX",
+        grpc_port=6334,
+        prefer_grpc=False
     )
 
 .. _qdrant-config-parameters:
