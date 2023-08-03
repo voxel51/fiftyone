@@ -3,7 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("cifar");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -14,100 +14,35 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   },
 });
 
-test.describe("sidebar-filter-visibility", () => {
+test.describe("classification-sidebar-filter-visibility", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
+    await fiftyoneLoader.loadZooDataset("cifar", datasetName, {
       max_samples: 5,
     });
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
-    // always fold tags and metaData groups
-    await page.click('[title="TAGS"]');
-    await page.click('[title="METADATA"]');
   });
 
-  test("In grid, select a label filter works", async ({ grid, sidebar }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
-
-    // select bottlel in ground_truth.detections.label
-    await sidebar.clickFieldDropdown("ground_truth");
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["bottle"],
-      "select-detections-with-label"
-    );
-
-    // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
-
-    await grid.assert.delay(1000);
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle.png",
-      { animations: "allow" }
-    );
-
-    // go to visibility mode
+  test("In grid, setting visibility directly works", async ({
+    grid,
+    sidebar,
+  }) => {
+    // Test the visibility mode:
     await sidebar.toggleSidebarMode();
+    // verify that visibility mode is active
+    expect(sidebar.getActiveMode()).toBe("VISIBILITY");
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["cat"],
+      ["visible-cattle"],
       "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle-show-cat.png",
-      { animations: "allow" }
-    );
-
-    // test case: visibility mode - hide label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["person"],
-      "hide-label"
-    );
-    await grid.assert.delay(1000);
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "select-bottle-hide-person-cat.png",
-      { animations: "allow" }
-    );
-  });
-
-  test("In grid, exclude a label filter works", async ({ grid, sidebar }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
-    await sidebar.clickFieldDropdown("ground_truth");
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["bottle"],
-      "exclude-detections-with-label"
-    );
-
-    // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.assertNLookers(5);
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle.png",
-      { animations: "allow" }
-    );
-
-    // Test with visibility mode:
-    await sidebar.toggleSidebarMode();
-
-    // test case: visibility mode - show label
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cup"],
-      "show-label--------"
-    );
-    await grid.assert.delay(1000);
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-show-cup.png",
+      "visible-cattle.png",
       { animations: "allow" }
     );
 
@@ -119,7 +54,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png",
+      "not-visible-cattle.png",
       { animations: "allow" }
     );
   });
@@ -128,22 +63,24 @@ test.describe("sidebar-filter-visibility", () => {
     grid,
     sidebar,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
-
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["bottle"],
+      ["cattle", "boy"],
       "show-samples-with-label"
     );
+    // await sidebar.applyLabelFromList(
+    //     "ground_truth.detections.label",
+    //     ["boy"],
+    //     "show-samples-with-label"
+    //   );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
+    await grid.assert.waitForEntryCountTextToEqual("2 of 5 samples");
     await grid.assert.waitForGridToLoad();
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-bottle.png",
+      "show-cattle-boy.png",
       { animations: "allow" }
     );
 
@@ -153,12 +90,12 @@ test.describe("sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["cup"],
+      ["cattle"],
       "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-bottle-show-cup.png",
+      "show-cattle-boy-visible-cattle.png",
       { animations: "allow" }
     );
 
@@ -170,7 +107,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png",
+      "show-cattle-boy-invisible-cattle.png",
       { animations: "allow" }
     );
   });
@@ -179,22 +116,19 @@ test.describe("sidebar-filter-visibility", () => {
     grid,
     sidebar,
   }) => {
-    // do not show prediction labels
-    await sidebar.clickFieldCheckbox("predictions");
-
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["bottle"],
+      ["cattle", "boy"],
       "omit-samples-with-label"
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
+    await grid.assert.waitForEntryCountTextToEqual("3 of 5 samples");
     await grid.assert.waitForGridToLoad();
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle.png",
+      "hide-cattle-boy.png",
       { animations: "allow" }
     );
 
@@ -204,12 +138,12 @@ test.describe("sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["horse"],
+      ["apple"],
       "show-label--------"
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle-show-horse.png",
+      "hide-cattle-boy-visible-apple.png",
       { animations: "allow" }
     );
 
@@ -221,7 +155,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.assert.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-bottle-hide-horse.png",
+      "hide-cattle-boy-invisible-apple.png",
       { animations: "allow" }
     );
   });

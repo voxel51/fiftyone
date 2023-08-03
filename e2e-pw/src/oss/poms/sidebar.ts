@@ -27,12 +27,15 @@ export class SidebarPom {
   async getAttributeItemCount(field: string, attributeValue: string) {
     const container = this.sidebar.getByTestId(`categorical-filter-${field}`);
     const item = container.getByTestId(`checkbox-${attributeValue}`);
-    const countText = item.getByTestId(`entry-count-all`);
-    return countText;
+    return item.getByTestId(`entry-count-all`);
+  }
+
+  async getActiveMode() {
+    return this.sidebar.getByTestId("sidebar-mode-status").innerText();
   }
 
   // apply a filter to a field
-  async getLabelFromList(
+  async applyLabelFromList(
     field: string,
     labels: string[],
     targetModeId: string
