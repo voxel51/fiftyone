@@ -554,7 +554,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # test paging - get a page of everything
         docs = self.svc.list_operations(
-            search={"operator": "operator\/test"},
+            search={"operator\/test": {"operator"}},
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=5000,
@@ -566,7 +566,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(len(docs), 100)
 
         docs = self.svc.list_operations(
-            search={"operator": "test_0"},
+            search={"test_0": {"operator"}},
             paging=DelegatedOpPagingParams(
                 skip=0,
                 limit=5000,

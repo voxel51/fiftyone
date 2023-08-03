@@ -81,7 +81,7 @@ class DelegatedOperationRepo(object):
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
-    def count(self, **filters):
+    def count(self, filters, search) -> int:
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
@@ -242,10 +242,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging.sort_direction = SortDirection(paging.sort_direction)
 
         if search:
-            for key in search:
-                if key not in ["operator", "delegated_operation"]:
-                    raise ValueError("Invalid search key: {}".format(key))
-                query[key] = {"$regex": search[key]}
+            for term in search:
+                for field in search[term]:
+                    if field not in ["operator", "delegated_operation"]:
+                        raise ValueError(
+                            "Invalid search field: {}".format(field)
+                        )
+                    query[field] = {"$regex": term}
 
         if paging:
             docs = self._collection.find(query)
@@ -277,12 +280,14 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one(filter={"_id": _id})
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def count(self, **filters) -> int:
-        if "search" in filters:
-            for key in filters["search"]:
-                if key not in ["operator", "delegated_operation"]:
-                    raise ValueError("Invalid search key: {}".format(key))
-                filters[key] = {"$regex": filters["search"][key]}
-            del filters["search"]
+    def count(self, filters, search) -> int:
+        if "search":
+            for term in search:
+                for field in search[term]:
+                    if field not in ["operator", "delegated_operation"]:
+                        raise ValueError(
+                            "Invalid search field: {}".format(field)
+                        )
+                    filters[field] = {"$regex": term}
 
         return self._collection.count_documents(filter=filters)
