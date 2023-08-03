@@ -582,3 +582,50 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(len(docs), 25)
+
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_count(self, mock_load_dataset):
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        dataset_name = f"test_dataset_{ObjectId()}"
+        delegation_target = f"delegation_target{ObjectId()}"
+        for i in range(4):
+            operator = f"@voxelfiftyone/operator/test_{i}"
+            for j in range(25):
+                doc = self.svc.queue_operation(
+                    operator=operator,
+                    delegation_target=delegation_target,
+                    context=ExecutionContext(
+                        request_params={
+                            "foo": "bar",
+                            "dataset_name": dataset_name,
+                        }
+                    ),
+                )
+                time.sleep(
+                    0.01
+                )  # ensure that the queued_at times are different
+                self.docs_to_delete.append(doc)
+
+        # test paging - get a page of everything
+        docs = self.svc.count(
+            search={"operator\/test": {"operator"}},
+        )
+
+        self.assertEqual(docs, 100)
+
+        docs = self.svc.count(
+            search={"test_0": {"operator"}},
+        )
+
+        self.assertEqual(docs, 25)
+
+        docs = self.svc.count(
+            filters={"operator": f"@voxelfiftyone/operator/test_0"},
+        )
+        self.assertEqual(docs, 25)

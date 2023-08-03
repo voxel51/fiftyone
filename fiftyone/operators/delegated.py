@@ -260,6 +260,9 @@ class DelegatedOperationService:
                 if log:
                     logger.info("Operation %s failed", op.id)
 
+    def count(self, filters=None, search=None) -> int:
+        return self._repo.count(filters=filters, search=search)
+
     async def _execute_operator(self, doc: DelegatedOperationDocument):
         operator_uri = doc.operator
         context = doc.context
