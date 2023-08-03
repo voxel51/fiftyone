@@ -1,11 +1,13 @@
-import React, { DetailedReactHTMLElement } from "react";
-import styled from "styled-components";
-import { IconButton } from "@mui/material";
+import { Tooltip } from "@fiftyone/components";
 import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
-import ImageIcon from "@mui/icons-material/Image";
 import HideImageIcon from "@mui/icons-material/HideImage";
-import { Tooltip } from "@fiftyone/components";
+import ImageIcon from "@mui/icons-material/Image";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import { IconButton } from "@mui/material";
+import React from "react";
+import styled from "styled-components";
 
 type ItemProp = {
   icon?: string;
@@ -53,6 +55,10 @@ const Item = React.memo(
             return <ImageIcon fontSize="small" />;
           case "hideimageicon":
             return <HideImageIcon fontSize="small" />;
+          case "visibilityicon":
+            return <VisibilityIcon fontSize="small" />;
+          case "visibilityofficon":
+            return <VisibilityOffIcon fontSize="small" />;
         }
       };
 

@@ -25,7 +25,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           [filterAtoms.modalFilters, filterAtoms.filters],
           ...["colorBy", "multicolorKeypoints", "showSkeletons"].map((key) => {
             return [
-              selectors.appConfigOption({ key, modal: true }),
+              selectors.appConfigOption({ key, modal: false }),
               selectors.appConfigOption({ key, modal: false }),
             ];
           }),
@@ -34,9 +34,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             schemaAtoms.activeFields({ modal: false }),
           ],
           [atoms.cropToContent(true), atoms.cropToContent(false)],
-          [atoms.colorSeed(true), atoms.colorSeed(false)],
           [atoms.sortFilterResults(true), atoms.sortFilterResults(false)],
-          [atoms.alpha(true), atoms.alpha(false)],
           [
             sidebarAtoms.sidebarGroupsDefinition(true),
             sidebarAtoms.sidebarGroupsDefinition(false),
@@ -49,9 +47,20 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
           [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-
           [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
         ];
+
+        const groupSlice = await snapshot.getPromise(
+          groupAtoms.groupSlice(false)
+        );
+
+        if (groupSlice) {
+          const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
+          if (map[groupSlice] === "point_cloud") {
+            set(groupAtoms.pinned3d, true);
+            set(groupAtoms.activePcdSlices, [groupSlice]);
+          }
+        }
 
         const results = await Promise.all(
           data.map(([_, get]) =>
@@ -65,7 +74,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
         set(modalAtoms.currentModalNavigation, () => navigation);
       },
-    [environment, setExpandedSample]
+    [environment]
   );
 
   return useRecoilCallback<

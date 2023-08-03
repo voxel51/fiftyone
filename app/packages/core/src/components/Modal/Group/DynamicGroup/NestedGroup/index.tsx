@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { GroupSuspense } from "../../GroupSuspense";
 import { GroupView } from "../../GroupView";
 import { GroupElementsLinkBar } from "./GroupElementsLinkBar";
@@ -9,7 +9,9 @@ export const NestedGroup = () => {
       <GroupSuspense>
         <GroupView />
       </GroupSuspense>
-      <GroupElementsLinkBar />
+      <Suspense>
+        <GroupElementsLinkBar />
+      </Suspense>
     </>
   );
 };

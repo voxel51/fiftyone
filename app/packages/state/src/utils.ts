@@ -1,15 +1,24 @@
 import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
-import { MutableRefObject } from "react";
+import { useCallback, useRef } from "react";
 import { State } from "./recoil";
 
 import { matchPath, RoutingContext } from "./routing";
 
-export const deferrer =
-  (initialized: MutableRefObject<boolean>) =>
-  (fn: (...args: any[]) => void) =>
-  (...args: any[]): void => {
-    if (initialized.current) fn(...args);
-  };
+export const useDeferrer = () => {
+  const initialized = useRef(false);
+  const deferred = useCallback(
+    (fn: () => void) => {
+      if (initialized.current) fn();
+    },
+    [initialized]
+  );
+
+  const init = useCallback(() => {
+    initialized.current = true;
+  }, []);
+
+  return { init, deferred };
+};
 
 export const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;

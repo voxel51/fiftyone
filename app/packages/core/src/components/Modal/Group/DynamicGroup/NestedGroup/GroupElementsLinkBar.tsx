@@ -1,3 +1,4 @@
+import { Loading, LoadingDots } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { currentModalSample } from "@fiftyone/state";
@@ -5,6 +6,7 @@ import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
 import { get as getValue } from "lodash";
 import React, {
+  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -48,18 +50,18 @@ export const GroupElementsLinkBar = () => {
   const environment = useRelayEnvironment();
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
-      return loadQuery<foq.paginateDynamicGroupSamplesQuery>(
+      return loadQuery<foq.paginateSamplesQuery>(
         environment,
-        foq.paginateDynamicGroupSamples,
+        foq.paginateSamples,
         {
-          cursor: cursor ? String(cursor) : null,
+          after: cursor ? String(cursor) : null,
           dataset,
           filter: {},
           view,
         }
       );
     },
-    [dataset, loadQuery, view]
+    [dataset, environment, view]
   );
 
   const queryRef = useMemo(
@@ -67,19 +69,27 @@ export const GroupElementsLinkBar = () => {
     [loadDynamicGroupSamples, cursor]
   );
 
-  return <GroupElementsLinkBarImpl queryRef={queryRef} />;
+  return (
+    <BarContainer data-cy="dynamic-group-pagination-bar">
+      <Suspense
+        fallback={
+          <Loading>
+            <LoadingDots text={""} />
+          </Loading>
+        }
+      >
+        <GroupElementsLinkBarImpl queryRef={queryRef} />
+      </Suspense>
+    </BarContainer>
+  );
 };
 
 const GroupElementsLinkBarImpl = React.memo(
-  ({
-    queryRef,
-  }: {
-    queryRef: PreloadedQuery<foq.paginateDynamicGroupSamplesQuery>;
-  }) => {
+  ({ queryRef }: { queryRef: PreloadedQuery<foq.paginateSamplesQuery> }) => {
     const setCursor = useSetRecoilState(fos.nestedGroupIndex);
     const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
-    const data = usePreloadedQuery(foq.paginateDynamicGroupSamples, queryRef);
+    const data = usePreloadedQuery(foq.paginateSamples, queryRef);
 
     const [
       dynamicGroupCurrentElementIndex,
@@ -215,7 +225,7 @@ const GroupElementsLinkBarImpl = React.memo(
     fos.useEventHandler(document, "keydown", keyNavigationHandler);
 
     return (
-      <BarContainer data-cy="dynamic-group-pagination-bar">
+      <>
         <Pagination
           count={elementsCount}
           siblingCount={1}
@@ -254,7 +264,7 @@ const GroupElementsLinkBarImpl = React.memo(
             onChange={onPageChange}
           />
         )}
-      </BarContainer>
+      </>
     );
   }
 );
