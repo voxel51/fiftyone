@@ -1,5 +1,5 @@
 import React from "react";
-import { Divider, Slider } from "@mui/material";
+import { Divider, Slider, Typography } from "@mui/material";
 import { SettingsBackupRestore } from "@mui/icons-material";
 
 import * as fos from "@fiftyone/state";
@@ -35,6 +35,10 @@ const GlobalSetting: React.FC = ({}) => {
         </SectionWrapper>
         <ShuffleColor />
         <LabelTitle>Color pool</LabelTitle>
+        <Typography fontSize="1rem" pb={0.5}>
+          Pool of colors from which otherwise unconfigured fields/values are
+          randomly assigned colors.
+        </Typography>
         <SectionWrapper>
           <ColorPalette />
         </SectionWrapper>
