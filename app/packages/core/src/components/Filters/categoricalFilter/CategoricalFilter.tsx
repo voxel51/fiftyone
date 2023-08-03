@@ -1,7 +1,7 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import { MutableRefObject, useEffect, useRef } from "react";
 import {
@@ -85,9 +85,10 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? get(groupId) || null : null,
           mixed,
-          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          slice: get(fos.groupSlice(false)),
+          slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
           sample_id:
-            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
+            modal && !get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }

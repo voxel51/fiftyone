@@ -98,7 +98,7 @@ const Looker = ({
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [reset, sampleData, createLooker]
+    [reset, createLooker]
   );
 
   useEffect(() => {
