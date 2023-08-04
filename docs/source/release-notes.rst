@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.3.5
 --------------------
-*Released August 4, 2023*
+*Released August 7, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.5 <release-notes-v0.21.5>`, plus:
 
@@ -27,7 +27,7 @@ SDK
 
 FiftyOne 0.21.5
 ---------------
-*Released August 4, 2023*
+*Released August 7, 2023*
 
 News
 
