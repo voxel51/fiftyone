@@ -15,7 +15,7 @@ export const filters = atom<State.Filters>({
 });
 
 export const filter = selectorFamily<
-  State.Filter,
+  State.Filters,
   { path: string; modal: boolean }
 >({
   key: "filter",

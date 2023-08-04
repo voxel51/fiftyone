@@ -1314,6 +1314,9 @@ class EmbeddedDocumentField(mongoengine.fields.EmbeddedDocumentField, Field):
         chunks = path.split(".", 1)
         if len(chunks) > 1:
             field = self._fields.get(chunks[0], None)
+            while isinstance(field, ListField):
+                field = field.field
+
             if not isinstance(field, EmbeddedDocumentField):
                 return None
 

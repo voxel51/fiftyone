@@ -2,22 +2,6 @@
  * This test suite validates that dynamic-groups functionality works in the fiftyone app.
  */
 
-const verifyCandidateFields = (fields: string[]) => {
-  // todo: investigate, "first()" is used to suppress this flakiness;
-  // sometimes an extra element is rendered and the test fails
-  cy.get("[data-cy=dynamic-group-pill-button]").first().click();
-  cy.get("[data-cy=group-by-selector]").click();
-  cy.get("[data-cy=selector-results-container]")
-    .children()
-    .should("have.length", fields.length);
-  fields.forEach((field) => {
-    const fieldWithDotEscaped = field.replace(/\./g, "\\.");
-    cy.get(`[data-cy=selector-result-${fieldWithDotEscaped}]`).should(
-      "be.visible"
-    );
-  });
-};
-
 const verifySceneIdTimestamp = (
   sceneId: number,
   timestamp: number,

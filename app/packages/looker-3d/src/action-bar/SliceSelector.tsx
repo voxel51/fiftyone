@@ -56,7 +56,7 @@ const PcdsSelector = () => {
   const [activePcdSlices, setActivePcdSlices] = useRecoilState(
     fos.activePcdSlices
   );
-  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
+  const allPcdSlices = Object.keys(useRecoilValue(fos.allPcdSlicesToSampleMap));
 
   const ref = useRef<HTMLDivElement>(null);
 
