@@ -120,6 +120,10 @@ Zoo
   `#3348 <https://github.com/voxel51/fiftyone/pull/3348>`_
 - Added support for running zoo models with the MPS backend
   `#2843 <https://github.com/voxel51/fiftyone/pull/2843>`_
+- Fixed YouTube video downloading for zoo datasets like
+  :ref:`ActivityNet <dataset-zoo-activitynet-200>` and
+  :ref:`Kinetics <dataset-zoo-kinetics-700-2020>`
+  `#3382 <https://github.com/voxel51/fiftyone/pull/3382>`_
 
 Annotation
 
@@ -131,7 +135,7 @@ Annotation
 
 Brain
 
-- Added support for :ref:`rRPC connections <qdrant-setup>` when using the
+- Added support for :ref:`gRPC connections <qdrant-setup>` when using the
   Qdrant similarity backend
   `#3296 <https://github.com/voxel51/fiftyone/pull/3296>`_
 - Improved support for
