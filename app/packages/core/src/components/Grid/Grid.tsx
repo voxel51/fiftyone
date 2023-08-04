@@ -179,11 +179,12 @@ const Grid: React.FC<{}> = () => {
     init();
   }, [init]);
 
-  if (isEmpty) {
-    return <Loading>No data</Loading>;
-  }
-
-  return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
+  return (
+    <>
+      {isEmpty && <Loading>No data</Loading>}
+      <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>
+    </>
+  );
 };
 
 export default Grid;
