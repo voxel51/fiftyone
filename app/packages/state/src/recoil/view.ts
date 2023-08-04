@@ -220,7 +220,10 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
       });
     }
 
-    return viewStages;
+    return [
+      ...get(view).filter(({ _cls }) => _cls !== GROUP_BY_VIEW_STAGE),
+      ...viewStages,
+    ];
   },
 });
 
