@@ -49,10 +49,10 @@ const SidebarList: React.FC = () => {
   );
 
   const getCurrentField = (activeField) => {
-    if (activeField === ACTIVE_FIELD.global) return ACTIVE_FIELD.global;
-    if (activeField === ACTIVE_FIELD.json) return ACTIVE_FIELD.json;
+    if (activeField === ACTIVE_FIELD.global) return [ACTIVE_FIELD.global];
+    if (activeField === ACTIVE_FIELD.json) return [ACTIVE_FIELD.json];
 
-    return activeField?.expandedPath;
+    return [activeField?.expandedPath, activeField.field.path];
   };
   return (
     <Resizable
@@ -121,7 +121,7 @@ const SidebarList: React.FC = () => {
                         },
                       }}
                       key={`menu-${pathIdx}`}
-                      selected={path === getCurrentField(activeField)}
+                      selected={getCurrentField(activeField).includes(path)}
                       disableRipple
                     >
                       <ListItemText
