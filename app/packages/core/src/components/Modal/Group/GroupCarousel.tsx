@@ -169,10 +169,6 @@ const Column: React.FC = () => {
     init();
   }, [init]);
 
-  if (isEmpty) {
-    return;
-  }
-
   return (
     <>
       {isEmpty && <Loading>No data</Loading>}
