@@ -3548,8 +3548,8 @@ class SampleCollection(object):
 
         Args:
             eval_key: an evaluation key
-            select_fields (False): whether to select only the fields involved
-                in the evaluation
+            select_fields (False): whether to exclude fields involved in other
+                evaluations
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3650,8 +3650,8 @@ class SampleCollection(object):
 
         Args:
             brain_key: a brain key
-            select_fields (False): whether to select only the fields involved
-                in the brain method run
+            select_fields (False): whether to exclude fields involved in other
+                brain method runs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -8599,8 +8599,8 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
-            select_fields (False): whether to select only the fields involved
-                in the annotation run
+            select_fields (False): whether to exclude fields involved in other
+                annotation runs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
