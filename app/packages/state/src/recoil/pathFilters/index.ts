@@ -120,28 +120,27 @@ export const pathFilter = selectorFamily<PathFilterSelector, boolean>({
                 return () => true;
               }
 
-              if (value[0]) {
-                // for classification type, value needs a conversion to get into the same shape as other types
-                return filter(value[0][name === "id" ? "id" : dbField || name]);
-              } else {
-                return filter(value[name === "id" ? "id" : dbField || name]);
-              }
+              const correctedValue = value[0] ? value[0] : value;
+              return filter(
+                correctedValue[name === "id" ? "id" : dbField || name]
+              );
             };
           });
 
           f[path] = (value: unknown) => {
+            const correctedValue = value[0] ? value[0] : value;
             if (hidden.has(value.id)) {
               return false;
             }
 
             return (
               matchesLabelTags(
-                value as { tags: string[] },
+                correctedValue as { tags: string[] },
                 currentFilter?._label_tags,
                 currentVisibility?._label_tags
               ) &&
               fs.every((filter) => {
-                return filter(value);
+                return filter(correctedValue);
               })
             );
           };
@@ -180,7 +179,7 @@ const matchesLabelTags = (
   if (!filter && visibility) {
     const { values, exclude } = visibility;
 
-    const contains = value.tags.some((tag) => values.includes(tag));
+    const contains = value.tags?.some((tag) => values.includes(tag));
     return exclude ? !contains : contains;
   }
 
@@ -192,7 +191,7 @@ const matchesLabelTags = (
       return true;
     }
 
-    const contains = value.tags.some((tag) => values.includes(tag));
+    const contains = value.tags?.some((tag) => values.includes(tag));
     return exclude ? !contains : contains;
   }
 
@@ -202,12 +201,12 @@ const matchesLabelTags = (
     const { values: vValues, exclude: vExclude } = visibility;
 
     if (isMatching) {
-      const contains = value.tags.some((tag) => vValues.includes(tag));
+      const contains = value.tags?.some((tag) => vValues.includes(tag));
       return vExclude ? !contains : contains;
     }
-    const vContains = value.tags.some((tag) => vValues.includes(tag));
+    const vContains = value.tags?.some((tag) => vValues.includes(tag));
     const vResult = vExclude ? !vContains : vContains;
-    const fContains = value.tags.some((tag) => values.includes(tag));
+    const fContains = value.tags?.some((tag) => values.includes(tag));
     const fResult = exclude ? !fContains : fContains;
     return vResult && fResult;
   }

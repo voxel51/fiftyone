@@ -319,8 +319,8 @@ const handleValues = (
 ) => {
   const r =
     (isVisibility
-      ? values.some((v) => value?.includes(v))
-      : values.every((v) => value?.includes(v)) || (none && NONE.has(value))) &&
-    Boolean(value);
+      ? values?.some((v) => value?.includes(v))
+      : values?.every((v) => value?.includes(v)) ||
+        (none && NONE.has(value))) && Boolean(value);
   return exclude ? !r : r;
 };
