@@ -1710,7 +1710,7 @@ def list_buckets(fs, abs_paths=False):
         abs_paths (False): whether to return absolute paths
 
     Returns:
-        a list of buckets or local directories
+        a list of buckets
     """
     if fs == FileSystem.LOCAL:
         root = os.path.abspath(os.sep)
