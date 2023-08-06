@@ -101,6 +101,9 @@ Core
 - Added support for exporting keypoints with nan-valued coordinates in
   :ref:`COCO format <COCODetectionDataset-export>`
   `#3316 <https://github.com/voxel51/fiftyone/pull/3316>`_
+- Updated :ref:`YOLOv5 exports <YOLOv5Dataset-export>` to use dict-style class
+  names
+  `#3393 <https://github.com/voxel51/fiftyone/pull/3393>`_
 - Fixed a bug when passing an RGB hex string to
   :meth:`to_segmentation() <fiftyone.core.labels.Detection.to_segmentation>`
   `#3293 <https://github.com/voxel51/fiftyone/pull/3293>`_
