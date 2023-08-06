@@ -9,6 +9,7 @@ prune tools
 prune tests
 
 global-exclude .*
+exclude TEAMS.md
 
 recursive-exclude fiftyone *.md
 

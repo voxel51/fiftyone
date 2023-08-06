@@ -9,7 +9,7 @@ python: app
 	@python setup.py sdist bdist_wheel
 
 docker: python
-	@docker build -t voxel51/fiftyone .
+	@docker build -t voxel51/fiftyone-teams .
 
 docker-export: docker
-	@docker save voxel51/fiftyone:latest | gzip > fiftyone.tar.gz
+	@docker save voxel51/fiftyone-teams:latest | gzip > fiftyone-teams.tar.gz

@@ -1,4 +1,4 @@
-name: Build
+name: Build Teams
 
 on: workflow_call
 
@@ -50,8 +50,8 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref }}
         run: |
-          if [[ $RELEASE_TAG =~ ^refs\/tags\/v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
-             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/v//")" >> $GITHUB_ENV
+          if [[ $RELEASE_TAG =~ ^refs\/tags\/teams-v[0-9]+.[0-9]+.[0-9]+rc[0-9]+ ]]; then
+             echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/teams-v//")" >> $GITHUB_ENV
           fi
       - name: Build python
         run: make python -o app
@@ -60,3 +60,4 @@ jobs:
         with:
           name: dist
           path: dist/
+          retention-days: 1

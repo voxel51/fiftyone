@@ -16,6 +16,7 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.web as etaw
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.youtube as fouy
 
@@ -74,10 +75,13 @@ def download_kinetics_split(
         -   **did_download**: whether any content was downloaded (True) or if
             all necessary files were already downloaded (False)
     """
+    fos.ensure_local(dataset_dir)
+
     if scratch_dir is None:
         cleanup = True
         scratch_dir = os.path.join(dataset_dir, "scratch")
     else:
+        fos.ensure_local(scratch_dir)
         cleanup = False
 
     info = KineticsDatasetInfo.build_for_version(

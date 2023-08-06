@@ -193,6 +193,13 @@ export const usePreLoadedDataset = (
     ) {
       view = window.history.state.view;
     }
+    if (
+      !router.state &&
+      typeof window !== "undefined" &&
+      window.history.state?.view
+    ) {
+      view = window.history.state.view;
+    }
 
     const { colorscale, config, state } = router?.state || {};
 

@@ -5,14 +5,19 @@ FiftyOne's public interface.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import fiftyone.core.cache as _foca
 import fiftyone.core.config as _foc
 import fiftyone.core.odm as _foo
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
 app_config = _foc.load_app_config()
+media_cache_config = _foc.load_media_cache_config()
 
 _foo.establish_db_conn(config)
+_foca.init_media_cache(media_cache_config)
+
+media_cache = _foca.media_cache
 
 from .core.aggregations import (
     Aggregation,
@@ -30,7 +35,7 @@ from .core.aggregations import (
     Sum,
     Values,
 )
-from .core.collections import SaveContext
+from .core.collections import DownloadContext, SaveContext
 from .core.config import AppConfig
 from .core.dataset import (
     Dataset,

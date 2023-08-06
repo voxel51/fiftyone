@@ -1,31 +1,52 @@
 """
 FiftyOne import/export-related unit tests.
 
+These tests can optionally be configured to read/write from a cloud bucket
+rather than a local directory by passing the extra ``--basedir`` argument::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py --basedir $BASEDIR
+
+You can run specific test(s) as follows::
+
+    BASEDIR=s3://voxel51-test/io
+    BASEDIR=gs://voxel51-test/io
+
+    python tests/unittests/import_export_tests.py \
+        ClassName.method_name \
+        --basedir $BASEDIR
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import argparse
 import os
 import random
 import string
+import sys
 import unittest
 
 import cv2
 import numpy as np
 import pytest
 
-import eta.core.image as etai
-import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
 
+
+basedir = None
 skipwindows = pytest.mark.skipif(
     os.name == "nt", reason="Windows hangs in workflows, fix me"
 )
@@ -33,13 +54,13 @@ skipwindows = pytest.mark.skipif(
 
 class ImageDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         root_dir = temp_dir.__enter__()
-        ref_image_path = os.path.join(root_dir, "_ref_image.jpg")
-        images_dir = os.path.join(root_dir, "_images")
+        ref_image_path = fos.join(root_dir, "_ref_image.jpg")
+        images_dir = fos.join(root_dir, "_images")
 
         img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
-        etai.write(img, ref_image_path)
+        foui.write(img, ref_image_path)
 
         self.root_dir = root_dir
         self.images_dir = images_dir
@@ -54,12 +75,12 @@ class ImageDatasetTests(unittest.TestCase):
         if name is None:
             name = self._new_name()
 
-        filepath = os.path.join(
+        filepath = fos.join(
             self.images_dir,
             name + os.path.splitext(self._ref_image_path)[1],
         )
 
-        etau.copy_file(self._ref_image_path, filepath)
+        fos.copy_file(self._ref_image_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -69,7 +90,7 @@ class ImageDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self.root_dir, self._new_name())
+        return fos.join(self.root_dir, self._new_name())
 
 
 class DuplicateImageExportTests(ImageDatasetTests):
@@ -440,7 +461,7 @@ class UnlabeledImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # _images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
 
 
 class ImageClassificationDatasetTests(ImageDatasetTests):
@@ -513,7 +534,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
@@ -539,7 +560,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageClassificationDataset,
@@ -591,11 +612,11 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
         # Labels-only (with rel dir)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
         rel_dir = self.root_dir
 
         dataset.export(
@@ -619,7 +640,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, rel_dir)
 
         # _images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(rel_dir))), 2)
 
     @drop_datasets
     def test_image_classification_directory_tree(self):
@@ -670,7 +691,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # <class>/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_tf_image_classification_dataset(self):
@@ -700,7 +721,7 @@ class ImageClassificationDatasetTests(ImageDatasetTests):
 
         # Direct records path w/ sharding
 
-        tf_records_path = os.path.join(self._new_dir(), "tf.records")
+        tf_records_path = fos.join(self._new_dir(), "tf.records")
         tf_records_patt = tf_records_path + "-*-of-*"
         images_dir = self._new_dir()
 
@@ -752,11 +773,11 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
 
         for idx, sample in enumerate(orig_dataset, 1):
             label = sample.predictions.label
-            outpath = os.path.join(export_dir1, label, "%06d.png" % idx)
+            outpath = fos.join(export_dir1, label, "%06d.png" % idx)
 
             # pylint: disable=no-member
-            img = etai.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
-            etai.write(img, outpath)
+            img = foui.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
+            foui.write(img, outpath)
 
         gray_dataset1 = fo.Dataset.from_dir(
             dataset_dir=export_dir1,
@@ -778,7 +799,7 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
         gray_dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir2,
             dataset_type=fo.types.TFImageClassificationDataset,
-            images_dir=os.path.join(export_dir2, "images-gray"),
+            images_dir=fos.join(export_dir2, "images-gray"),
         )
         gray_dataset2.compute_metadata()
         self.assertEqual(gray_dataset2.first().metadata.num_channels, 1)
@@ -787,7 +808,7 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
         rgb_dataset1 = fo.Dataset.from_dir(
             dataset_dir=export_dir2,
             dataset_type=fo.types.TFImageClassificationDataset,
-            images_dir=os.path.join(export_dir2, "images-rgb"),
+            images_dir=fos.join(export_dir2, "images-rgb"),
             force_rgb=True,
         )
         rgb_dataset1.compute_metadata()
@@ -806,7 +827,7 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
         rgb_dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir3,
             dataset_type=fo.types.TFImageClassificationDataset,
-            images_dir=os.path.join(export_dir3, "images"),
+            images_dir=fos.join(export_dir3, "images"),
         )
         rgb_dataset2.compute_metadata()
         self.assertEqual(rgb_dataset2.first().metadata.num_channels, 3)
@@ -905,7 +926,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
@@ -931,7 +952,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneImageDetectionDataset,
@@ -984,11 +1005,11 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
         # Labels-only (with rel dir)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
         rel_dir = self.root_dir
 
         dataset.export(
@@ -1013,7 +1034,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, rel_dir)
 
         # _images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(rel_dir))), 2)
 
     @drop_datasets
     def test_tf_object_detection_dataset(self):
@@ -1044,7 +1065,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Direct records path w/ sharding
 
-        tf_records_path = os.path.join(self._new_dir(), "tf.records")
+        tf_records_path = fos.join(self._new_dir(), "tf.records")
         tf_records_patt = tf_records_path + "-*-of-*"
         images_dir = self._new_dir()
 
@@ -1163,7 +1184,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.COCODetectionDataset,
@@ -1190,7 +1211,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.COCODetectionDataset,
@@ -1242,7 +1263,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_voc_detection_dataset(self):
@@ -1303,7 +1324,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.xml")
+        labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
             dataset_type=fo.types.VOCDetectionDataset,
@@ -1355,7 +1376,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_kitti_detection_dataset(self):
@@ -1408,7 +1429,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             labels_path=labels_path,
@@ -1460,7 +1481,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_yolov4_dataset(self):
@@ -1515,7 +1536,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = os.path.dirname(dataset.first().filepath)
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             dataset_type=fo.types.YOLOv4Dataset,
@@ -1537,7 +1558,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         )
 
         for sample in dataset2:
-            self.assertTrue(os.path.isfile(sample.filepath))
+            self.assertTrue(fos.isfile(sample.filepath))
 
         # Standard format
 
@@ -1567,7 +1588,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # images/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_yolov5_dataset(self):
@@ -1643,7 +1664,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # images/<split>/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 4)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 4)
 
     @drop_datasets
     def test_add_yolo_labels(self):
@@ -1655,7 +1676,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             export_dir=export_dir,
             dataset_type=fo.types.YOLOv5Dataset,
         )
-        yolo_labels_path = os.path.join(export_dir, "labels", "val")
+        yolo_labels_path = fos.join(export_dir, "labels", "val")
 
         # Standard
 
@@ -1692,7 +1713,7 @@ class ImageDetectionDatasetTests(ImageDatasetTests):
             export_dir=export_dir,
             dataset_type=fo.types.COCODetectionDataset,
         )
-        coco_labels_path = os.path.join(export_dir, "labels.json")
+        coco_labels_path = fos.join(export_dir, "labels.json")
 
         fouc.add_coco_labels(dataset, "coco", coco_labels_path, classes)
         self.assertEqual(
@@ -1907,7 +1928,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             dataset_type=fo.types.ImageSegmentationDirectory,
@@ -1983,7 +2004,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_image_segmentation_fiftyone_dataset(self):
@@ -2035,7 +2056,7 @@ class ImageSegmentationDatasetTests(ImageDatasetTests):
         # On-disk segmentations
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "segmentations")
+        field_dir = fos.join(export_dir, "fields", "segmentations")
 
         dataset.export(
             export_dir=export_dir,
@@ -2098,8 +2119,8 @@ class DICOMDatasetTests(ImageDatasetTests):
         images_dir = self._new_dir()
 
         ref_path = self._get_dcm_path()
-        dicom_path = os.path.join(dataset_dir, "test.dcm")
-        etau.copy_file(ref_path, dicom_path)
+        dicom_path = fos.join(dataset_dir, "test.dcm")
+        fos.copy_file(ref_path, dicom_path)
 
         # Standard format
 
@@ -2205,7 +2226,7 @@ class CSVDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
@@ -2242,7 +2263,7 @@ class CSVDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.csv")
+        labels_path = fos.join(self._new_dir(), "labels.csv")
 
         dataset.export(
             labels_path=labels_path,
@@ -2317,7 +2338,7 @@ class CSVDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
 class GeoLocationDatasetTests(ImageDatasetTests):
@@ -2386,7 +2407,7 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path,
@@ -2411,7 +2432,7 @@ class GeoLocationDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path,
@@ -2459,7 +2480,7 @@ class GeoLocationDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
 class MultitaskImageDatasetTests(ImageDatasetTests):
@@ -2574,7 +2595,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_bdd_dataset(self):
@@ -2625,7 +2646,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path,
@@ -2651,7 +2672,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             labels_path=labels_path,
@@ -2703,7 +2724,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_cvat_image_dataset(self):
@@ -2750,7 +2771,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         # Labels-only
 
         data_path = self.images_dir
-        labels_path = os.path.join(self._new_dir(), "labels.xml")
+        labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
             labels_path=labels_path,
@@ -2772,7 +2793,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.xml")
+        labels_path = fos.join(self._new_dir(), "labels.xml")
 
         dataset.export(
             labels_path=labels_path,
@@ -2816,7 +2837,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @skipwindows
     @drop_datasets
@@ -2978,7 +2999,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             export_media=False,
         )
 
-        self.assertFalse(os.path.isdir(os.path.join(export_dir, "data")))
+        self.assertFalse(fos.isdir(fos.join(export_dir, "data")))
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
@@ -3003,7 +3024,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             rel_dir=rel_dir,
         )
 
-        self.assertFalse(os.path.isdir(os.path.join(export_dir, "data")))
+        self.assertFalse(fos.isdir(fos.join(export_dir, "data")))
 
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
@@ -3042,12 +3063,12 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -3194,7 +3215,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             abs_paths=True,
         )
 
-        self.assertFalse(os.path.isdir(os.path.join(export_dir, "data")))
+        self.assertFalse(fos.isdir(fos.join(export_dir, "data")))
 
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.LegacyFiftyOneDataset,
@@ -3219,7 +3240,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
             rel_dir=rel_dir,
         )
 
-        self.assertFalse(os.path.isdir(os.path.join(export_dir, "data")))
+        self.assertFalse(fos.isdir(fos.join(export_dir, "data")))
 
         dataset2 = fo.Dataset.from_dir(
             dataset_type=fo.types.LegacyFiftyOneDataset,
@@ -3258,12 +3279,12 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
         # Alternate media
 
         export_dir = self._new_dir()
-        field_dir = os.path.join(export_dir, "fields", "filepath2")
+        field_dir = fos.join(export_dir, "fields", "filepath2")
 
         dataset.clone_sample_field("filepath", "filepath2")
         dataset.app_config.media_fields.append("filepath2")
@@ -3396,17 +3417,18 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
 
 class VideoDatasetTests(unittest.TestCase):
     def setUp(self):
-        temp_dir = etau.TempDir()
+        temp_dir = fos.TempDir(basedir=basedir)
         root_dir = temp_dir.__enter__()
-        ref_video_path = os.path.join(root_dir, "_ref_video.mp4")
-        videos_dir = os.path.join(root_dir, "_videos")
+        ref_video_path = fos.join(root_dir, "_ref_video.mp4")
+        videos_dir = fos.join(root_dir, "_videos")
 
-        with etav.FFmpegVideoWriter(ref_video_path, 5, (640, 480)) as writer:
-            for _ in range(5):
-                img = np.random.randint(
-                    255, size=(480, 640, 3), dtype=np.uint8
-                )
-                writer.write(img)
+        with fos.LocalFile(ref_video_path, "w") as local_path:
+            with etav.FFmpegVideoWriter(local_path, 5, (640, 480)) as writer:
+                for _ in range(5):
+                    img = np.random.randint(
+                        255, size=(480, 640, 3), dtype=np.uint8
+                    )
+                    writer.write(img)
 
         self.root_dir = root_dir
         self.videos_dir = videos_dir
@@ -3420,12 +3442,12 @@ class VideoDatasetTests(unittest.TestCase):
     def _new_video(self, filename=None):
         if filename is None:
             filename = self._new_name()
-        filepath = os.path.join(
+        filepath = fos.join(
             self.videos_dir,
             filename + os.path.splitext(self._ref_video_path)[1],
         )
 
-        etau.copy_file(self._ref_video_path, filepath)
+        fos.copy_file(self._ref_video_path, filepath)
         return filepath
 
     def _new_name(self):
@@ -3435,7 +3457,7 @@ class VideoDatasetTests(unittest.TestCase):
         )
 
     def _new_dir(self):
-        return os.path.join(self.root_dir, self._new_name())
+        return fos.join(self.root_dir, self._new_name())
 
 
 class OpenLABELVideoDatasetTests(VideoDatasetTests):
@@ -3826,7 +3848,7 @@ class UnlabeledVideoDatasetTests(VideoDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # _videos/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
 
 
 class VideoClassificationDatasetTests(VideoDatasetTests):
@@ -3897,7 +3919,7 @@ class VideoClassificationDatasetTests(VideoDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # <class>/_videos/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
 class TemporalDetectionDatasetTests(VideoDatasetTests):
@@ -3998,7 +4020,7 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
         # Labels-only
 
         data_path = self.videos_dir
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
@@ -4024,7 +4046,7 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
 
         # Labels-only (absolute paths)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
 
         dataset.export(
             dataset_type=fo.types.FiftyOneTemporalDetectionDataset,
@@ -4077,11 +4099,11 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_videos/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
         # Labels-only (with rel dir)
 
-        labels_path = os.path.join(self._new_dir(), "labels.json")
+        labels_path = fos.join(self._new_dir(), "labels.json")
         rel_dir = self.root_dir
 
         dataset.export(
@@ -4106,7 +4128,7 @@ class TemporalDetectionDatasetTests(VideoDatasetTests):
         # _videos/<filename>
         relpath = _relpath(dataset2.first().filepath, rel_dir)
 
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(rel_dir))), 2)
 
 
 class MultitaskVideoDatasetTests(VideoDatasetTests):
@@ -4222,7 +4244,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_videos/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
     @drop_datasets
     def test_cvat_video_dataset(self):
@@ -4269,7 +4291,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         # Labels-only
 
         data_path = self.videos_dir
-        labels_path = os.path.join(self._new_dir(), "labels/")
+        labels_path = fos.join(self._new_dir(), "labels/")
 
         dataset.export(
             labels_path=labels_path,
@@ -4315,7 +4337,7 @@ class MultitaskVideoDatasetTests(VideoDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # data/_videos/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 3)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 3)
 
 
 class UnlabeledMediaDatasetTests(ImageDatasetTests):
@@ -4368,14 +4390,25 @@ class UnlabeledMediaDatasetTests(ImageDatasetTests):
         relpath = _relpath(dataset2.first().filepath, export_dir)
 
         # _images/<filename>
-        self.assertEqual(len(relpath.split(os.path.sep)), 2)
+        self.assertEqual(len(relpath.split(fos.sep(export_dir))), 2)
 
 
 def _relpath(path, start):
     # Avoids errors related to symlinks in `/tmp` directories
-    return os.path.relpath(os.path.realpath(path), os.path.realpath(start))
+    if fos.is_local(path):
+        path = os.path.realpath(path)
+
+    if fos.is_local(start):
+        start = os.path.realpath(start)
+
+    return os.path.relpath(path, start)
 
 
 if __name__ == "__main__":
-    fo.config.show_progress_bars = False
-    unittest.main(verbosity=2)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--basedir", default=None)
+    options, args = parser.parse_known_args()
+    basedir = options.basedir
+
+    # fo.config.show_progress_bars = False
+    unittest.main(argv=sys.argv[:1] + args, verbosity=2)

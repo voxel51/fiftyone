@@ -1,7 +1,7 @@
 """
 3D utilities.
 
-| Copyright 2017-2022, Voxel51, Inc.
+| Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,10 +15,12 @@ import scipy.spatial as sp
 import eta.core.image as etai
 import eta.core.numutils as etan
 
+import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 from fiftyone.core.odm import DynamicEmbeddedDocument
@@ -528,41 +530,50 @@ def compute_orthographic_projection_images(
         filepaths = point_cloud_view.values("filepath")
         groups = itertools.repeat(None)
 
-    filename_maker = fou.UniqueFilenameMaker(
-        output_dir=output_dir, rel_dir=rel_dir
-    )
+    local_paths = point_cloud_view.get_local_paths()
 
     if out_group_slice is not None:
         out_samples = []
 
     all_metadata = []
 
-    with fou.ProgressBar(total=len(filepaths)) as pb:
-        for filepath, group in pb(zip(filepaths, groups)):
-            image_path = filename_maker.get_output_path(
-                filepath, output_ext=".png"
-            )
+    with fos.LocalDir(output_dir, "w") as local_dir:
+        filename_maker = fou.UniqueFilenameMaker(
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            alt_dir=local_dir,
+            idempotent=False,
+        )
 
-            img, metadata = compute_orthographic_projection_image(
-                filepath,
-                size,
-                shading_mode=shading_mode,
-                colormap=colormap,
-                subsampling_rate=subsampling_rate,
-                projection_normal=projection_normal,
-                bounds=bounds,
-            )
+        with fou.ProgressBar(total=len(filepaths)) as pb:
+            for filepath, local_path, group in pb(
+                zip(filepaths, local_paths, groups)
+            ):
+                image_path = filename_maker.get_output_path(
+                    filepath, output_ext=".png"
+                )
+                local_image_path = filename_maker.get_alt_path(image_path)
 
-            etai.write(img, image_path)
-            metadata.filepath = image_path
+                img, metadata = compute_orthographic_projection_image(
+                    local_path,
+                    size,
+                    shading_mode=shading_mode,
+                    colormap=colormap,
+                    subsampling_rate=subsampling_rate,
+                    projection_normal=projection_normal,
+                    bounds=bounds,
+                )
 
-            if out_group_slice is not None:
-                sample = Sample(filepath=image_path)
-                sample[group_field] = group.element(out_group_slice)
-                sample[metadata_field] = metadata
-                out_samples.append(sample)
+                etai.write(img, local_image_path)
+                metadata.filepath = image_path
 
-            all_metadata.append(metadata)
+                if out_group_slice is not None:
+                    sample = Sample(filepath=image_path)
+                    sample[group_field] = group.element(out_group_slice)
+                    sample[metadata_field] = metadata
+                    out_samples.append(sample)
+
+                all_metadata.append(metadata)
 
     if out_group_slice is not None:
         samples.add_samples(out_samples)
@@ -693,7 +704,8 @@ def _parse_point_cloud(
     projection_normal=None,
     subsampling_rate=None,
 ):
-    pc = o3d.io.read_point_cloud(filepath)
+    local_path = foc.media_cache.get_local_path(filepath)
+    pc = o3d.io.read_point_cloud(local_path)
 
     if projection_normal is not None and not np.array_equal(
         projection_normal, np.array([0, 0, 1])

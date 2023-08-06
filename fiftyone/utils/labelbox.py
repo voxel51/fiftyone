@@ -17,15 +17,15 @@ import webbrowser
 import numpy as np
 
 import eta.core.image as etai
-import eta.core.serial as etas
 import eta.core.utils as etau
-import eta.core.web as etaw
 
+import fiftyone.core.cache as foc
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
-import fiftyone.core.sample as fos
+from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.annotations as foua
@@ -498,6 +498,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 media files on disk to upload
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
+        media_paths = foc.media_cache.get_local_paths(media_paths)
 
         upload_info = []
 
@@ -959,7 +960,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        return etas.load_ndjson(response.text)
+        return fos.load_ndjson(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:
@@ -1510,7 +1511,7 @@ def import_from_labelbox(
         label_key = lambda k: k
 
     # Load labels
-    d_list = etas.read_json(json_path)
+    d_list = fos.read_json(json_path)
 
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
     with fou.ProgressBar() as pb:
@@ -1526,8 +1527,8 @@ def import_from_labelbox(
                 # pool?
                 image_url = d["Labeled Data"]
                 filepath = filename_maker.get_output_path(image_url)
-                etaw.download_file(image_url, path=filepath, quiet=True)
-                sample = fos.Sample(filepath=filepath)
+                fos.copy_file(image_url, filepath)
+                sample = Sample(filepath=filepath)
                 dataset.add_sample(sample)
             else:
                 logger.info(
@@ -1667,9 +1668,17 @@ def export_to_labelbox(
 
     sample_collection.compute_metadata()
 
-    etau.ensure_empty_file(ndjson_path)
+    if label_fields:
+        media_fields = sample_collection._get_media_fields(
+            whitelist=label_fields
+        )
+        if media_fields:
+            sample_collection.download_media(
+                media_fields=list(media_fields.keys())
+            )
 
     # Export the labels
+    annos = []
     with fou.ProgressBar() as pb:
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
@@ -1693,10 +1702,10 @@ def export_to_labelbox(
             # Export sample-level labels
             if label_fields:
                 labels_dict = _get_labels(sample, label_fields)
-                annos = _to_labelbox_image_labels(
+                sample_annos = _to_labelbox_image_labels(
                     labels_dict, frame_size, labelbox_id
                 )
-                etas.write_ndjson(annos, ndjson_path, append=True)
+                annos.extend(sample_annos)
 
             # Export frame-level labels
             if is_video and frame_label_fields:
@@ -1705,15 +1714,17 @@ def export_to_labelbox(
                     frames, frame_size, labelbox_id
                 )
 
-                video_labels_path = os.path.join(
+                video_labels_path = fos.join(
                     video_labels_dir, labelbox_id + ".json"
                 )
-                etas.write_ndjson(video_annos, video_labels_path)
+                fos.write_ndjson(video_annos, video_labels_path)
 
-                anno = _make_video_anno(
+                video_anno = _make_video_anno(
                     video_labels_path, data_row_id=labelbox_id
                 )
-                etas.write_ndjson([anno], ndjson_path, append=True)
+                annos.append(video_anno)
+
+    fos.write_ndjson(annos, ndjson_path)
 
 
 def download_labels_from_labelbox(labelbox_project, outpath=None):
@@ -1730,11 +1741,10 @@ def download_labels_from_labelbox(labelbox_project, outpath=None):
     export_url = labelbox_project.export_labels()
 
     if outpath:
-        etaw.download_file(export_url, path=outpath)
+        fos.copy_file(export_url, outpath)
         return None
 
-    labels_bytes = etaw.download_file(export_url)
-    return etas.load_json(labels_bytes)
+    return fos.read_json(export_url)
 
 
 def upload_media_to_labelbox(
@@ -1791,7 +1801,7 @@ def upload_labels_to_labelbox(
     Args:
         labelbox_project: a ``labelbox.schema.project.Project``
         annos_or_ndjson_path: a list of annotation dicts or the path to an
-            NDJSON file on disk containing annotations
+            NDJSON file containing annotations
         batch_size (None): an optional batch size to use when uploading the
             annotations. By default, ``annos_or_ndjson_path`` is passed
             directly to ``labelbox_project.upload_annotations()``
@@ -1801,7 +1811,7 @@ def upload_labels_to_labelbox(
         return labelbox_project.upload_annotations(name, annos_or_ndjson_path)
 
     if etau.is_str(annos_or_ndjson_path):
-        annos = etas.read_ndjson(annos_or_ndjson_path)
+        annos = fos.read_ndjson(annos_or_ndjson_path)
     else:
         annos = annos_or_ndjson_path
 
@@ -1838,7 +1848,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
     if outpath is None:
         outpath = inpath
 
-    din_list = etas.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -1852,7 +1862,7 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
 
             # Convert frame labels
             if video_outdir is not None:
-                frames_outpath = os.path.join(
+                frames_outpath = fos.join(
                     video_outdir, os.path.basename(frames_inpath)
                 )
             else:
@@ -1879,11 +1889,11 @@ def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):
         _ingest_label(din, dout_map[uuid]["Label"])
 
     dout = list(dout_map.values())
-    etas.write_json(dout, outpath)
+    fos.write_json(dout, outpath)
 
 
 def _convert_labelbox_frames_export_to_import(inpath, outpath):
-    din_list = etas.read_ndjson(inpath)
+    din_list = fos.read_ndjson(inpath)
 
     dout_map = {}
 
@@ -1902,7 +1912,7 @@ def _convert_labelbox_frames_export_to_import(inpath, outpath):
         _ingest_label(din, dout_map[frame_number])
 
     dout = [dout_map[fn] for fn in sorted(dout_map.keys())]
-    etas.write_ndjson(dout, outpath)
+    fos.write_ndjson(dout, outpath)
 
 
 def _ingest_label(din, d_label):
@@ -2163,7 +2173,7 @@ def _make_mask(instance_uri, color):
 # https://docs.labelbox.com/reference/export-video-annotations
 def _parse_video_labels(video_label_d, frame_size):
     url_or_filepath = video_label_d["frames"]
-    label_d_list = _download_or_load_ndjson(url_or_filepath)
+    label_d_list = fos.read_ndjson(url_or_filepath)
 
     frames = {}
     for label_d in label_d_list:
@@ -2416,16 +2426,8 @@ def _parse_point(pd, frame_size):
 
 
 def _parse_mask(instance_uri):
-    img_bytes = etaw.download_file(instance_uri, quiet=True)
+    img_bytes = fos.read_file(instance_uri, "rb")
     return etai.decode(img_bytes)
-
-
-def _download_or_load_ndjson(url_or_filepath):
-    if url_or_filepath.startswith("http"):
-        ndjson_bytes = etaw.download_file(url_or_filepath, quiet=True)
-        return etas.load_ndjson(ndjson_bytes)
-
-    return etas.read_ndjson(url_or_filepath)
 
 
 def _parse_attribute(value):
