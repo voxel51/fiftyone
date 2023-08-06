@@ -10,10 +10,6 @@ import {
 
 import { RelayEnvironmentKey } from "./relay";
 
-import { datasetName } from "./selectors";
-import { view } from "./view";
-import { selector, selectorFamily } from "recoil";
-import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
@@ -34,10 +30,14 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { State } from "./types";
+import { GetRecoilValue, selector, selectorFamily } from "recoil";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
+import { expandPath, field, fieldPaths, fields, labelFields } from "./schema";
+import { datasetName } from "./selectors";
+import { State } from "./types";
+import { view } from "./view";
 
 /**
  * A generic type that extracts the response type from a GraphQL query.
@@ -105,9 +105,10 @@ export const countValues = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
       const data = get(countValuesData(path));
 
@@ -116,13 +117,13 @@ export const countValues = selectorFamily({
           if (data.__typename === "BoolCountValuesResponse") {
             return data;
           }
+          break;
         case STRING_FIELD:
           if (data.__typename === "StrCountValuesResponse") {
             return data;
           }
-        default:
-          throw new Error("invalid request");
       }
+      throw new Error("invalid request");
     },
 });
 
@@ -131,9 +132,10 @@ export const histogramValues = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
       const data = get(histogramValuesData(path));
 
@@ -142,21 +144,25 @@ export const histogramValues = selectorFamily({
           if (data.__typename === "IntHistogramValuesResponse") {
             return data;
           }
+          break;
         case DATE_FIELD:
           if (data.__typename === "DatetimeHistogramValuesResponse") {
             return data;
           }
+          break;
         case DATE_TIME_FIELD:
           if (data.__typename === "DatetimeHistogramValuesResponse") {
             return data;
           }
+          break;
         case FLOAT_FIELD:
           if (data.__typename === "FloatHistogramValuesResponse") {
             return data;
           }
-        default:
-          throw new Error("invalid request");
+          break;
       }
+
+      throw new Error("invalid request");
     },
 });
 
@@ -165,10 +171,12 @@ export const distribution = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
+
       switch (ftype) {
         case BOOLEAN_FIELD:
           return get(countValues(path));
@@ -206,50 +214,25 @@ export const distributionPaths = selectorFamily<string[], string>({
 
       switch (group) {
         case "labels":
-          const labels = get(labelFields({})).map((l) => [
-            l,
-            get(expandPath(l)),
-          ]);
-          let paths = [];
-          for (let index = 0; index < labels.length; index++) {
-            const [parentPath, path] = labels[index];
-            paths = [
-              ...paths,
-              ...get(fields({ path, ftype: VALID_DISTRIBUTION_TYPES }))
-                .filter(({ name }) => {
-                  const parent = get(field(parentPath));
-
-                  return (
-                    !SKIP_FIELDS[parent.embeddedDocType] ||
-                    !SKIP_FIELDS[parent.embeddedDocType].includes(name)
-                  );
-                })
-                .map(({ name }) => [path, name].join(".")),
-            ];
-          }
-          return paths;
+          return labelPaths(get);
         case "label tags":
           return get(labelFields({})).map((l) => get(expandPath(l)) + ".tags");
         case "sample tags":
           return ["tags"];
         case "other fields":
-          const top = get(
-            fieldPaths({
-              space: State.SPACE.SAMPLE,
-              ftype: VALID_DISTRIBUTION_TYPES,
-            })
-          ).filter((path) => !["filepath", "tags"].includes(path));
-
-          const embedded = get(
-            fieldPaths({
-              space: State.SPACE.SAMPLE,
-              ftype: EMBEDDED_DOCUMENT_FIELD,
-            })
-          );
-
           return [
-            ...top,
-            ...embedded
+            ...get(
+              fieldPaths({
+                space: State.SPACE.SAMPLE,
+                ftype: VALID_DISTRIBUTION_TYPES,
+              })
+            ).filter((path) => !["filepath", "tags"].includes(path)),
+            ...get(
+              fieldPaths({
+                space: State.SPACE.SAMPLE,
+                ftype: EMBEDDED_DOCUMENT_FIELD,
+              })
+            )
               .filter(
                 (path) => !LABELS.includes(get(field(path)).embeddedDocType)
               )
@@ -265,30 +248,24 @@ export const distributionPaths = selectorFamily<string[], string>({
     },
 });
 
-export const noDistributionPathsData = selectorFamily<boolean, string>({
-  key: "noDistributionPathsData",
-  get:
-    (group) =>
-    ({ get }) => {
-      const paths = get(distributionPaths(group));
+const labelPaths = (get: GetRecoilValue) => {
+  const labels = get(labelFields({})).map((l) => [l, get(expandPath(l))]);
+  let paths: string[] = [];
+  for (let index = 0; index < labels.length; index++) {
+    const [parentPath, path] = labels[index];
+    paths = [
+      ...paths,
+      ...get(fields({ path, ftype: VALID_DISTRIBUTION_TYPES }))
+        .filter(({ name }) => {
+          const parent = get(field(parentPath));
 
-      return paths.every((path) => {
-        const data = get(distribution(path));
-
-        switch (data.__typename) {
-          case "BoolCountValuesResponse":
-            return !data.values.length;
-          case "IntHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "DatetimeHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "FloatHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "StrCountValuesResponse":
-            return !data.values.length;
-          default:
-            throw new Error("invalid request");
-        }
-      });
-    },
-});
+          return (
+            !SKIP_FIELDS[parent.embeddedDocType] ||
+            !SKIP_FIELDS[parent.embeddedDocType].includes(name)
+          );
+        })
+        .map(({ name }) => [path, name].join(".")),
+    ];
+  }
+  return paths;
+};
