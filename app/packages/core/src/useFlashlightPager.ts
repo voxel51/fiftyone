@@ -69,9 +69,8 @@ const useFlashlightPager = (
             );
 
             subscription.unsubscribe();
-            if (!pageNumber && !items.length) {
-              setIsEmpty(true);
-            }
+            !pageNumber && setIsEmpty(!items.length);
+
             resolve({
               items,
               nextRequestKey: data.samples.pageInfo.hasNextPage

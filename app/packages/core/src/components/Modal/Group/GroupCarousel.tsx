@@ -169,20 +169,19 @@ const Column: React.FC = () => {
     init();
   }, [init]);
 
-  if (isEmpty) {
-    return <Loading>No data</Loading>;
-  }
-
   return (
-    <div
-      style={{
-        display: "block",
-        width: "100%",
-        height: "100%",
-        position: "relative",
-      }}
-      id={id}
-    ></div>
+    <>
+      {isEmpty && <Loading>No data</Loading>}
+      <div
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          position: "relative",
+        }}
+        id={id}
+      ></div>
+    </>
   );
 };
 

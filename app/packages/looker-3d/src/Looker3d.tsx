@@ -2,6 +2,7 @@ import { Loading, useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
@@ -49,7 +50,6 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
-import { Typography } from "@mui/material";
 
 type View = "pov" | "top";
 
@@ -540,7 +540,7 @@ export const Looker3d = () => {
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
-  { error: Error | null }
+  { error: Error | string | null }
 > {
   state = { error: null, hasError: false };
 
@@ -555,7 +555,15 @@ class ErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <Loading dataCy={"looker3d"}>{this.state.error.message}</Loading>;
+      // useLoader from @react-three/fiber throws a raw string for PCD 404
+      // not an error
+      return (
+        <Loading dataCy={"looker3d"}>
+          {this.state.error instanceof Error
+            ? this.state.error.message
+            : this.state.error}
+        </Loading>
+      );
     }
 
     return this.props.children;
