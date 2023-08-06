@@ -36,7 +36,9 @@ const PATCHES_VIEW = "fiftyone.core.patches.PatchesView";
 const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 export const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
+export const LIMIT_VIEW_STAGE = "fiftyone.core.stages.Limit";
 export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
+export const SKIP_VIEW_STAGE = "fiftyone.core.stages.Skip";
 export const SORT_VIEW_STAGE = "fiftyone.core.stages.SortBy";
 
 enum ELEMENT_NAMES {
@@ -182,7 +184,7 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
     // todo: sanitize expressions
     const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
-    const viewStages = [
+    const viewStages: State.Stage[] = [
       {
         _cls: MATCH_VIEW_STAGE,
         kwargs: [
@@ -220,10 +222,28 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
       });
     }
 
-    return [
-      ...get(view).filter(({ _cls }) => _cls !== GROUP_BY_VIEW_STAGE),
-      ...viewStages,
-    ];
+    const baseView = [...get(view)];
+    let modalView: State.Stage[] = [];
+    let pastGroup = false;
+    for (let index = 0; index < baseView.length; index++) {
+      const stage = baseView[index];
+      if (stage._cls === GROUP_BY_VIEW_STAGE) {
+        modalView = [...modalView, ...viewStages];
+        pastGroup = true;
+        continue;
+      }
+
+      if (!pastGroup) {
+        modalView.push(stage);
+        continue;
+      }
+
+      if (![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE].includes(stage._cls)) {
+        modalView.push(stage);
+      }
+    }
+
+    return modalView;
   },
 });
 
