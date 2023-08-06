@@ -1033,14 +1033,18 @@ class GroupTests(unittest.TestCase):
         dataset = _make_group_dataset()
 
         dataset.add_collection(dataset, new_ids=True)
+        samples = dataset.select_group_slices(_allow_mixed=True)
 
         self.assertEqual(len(dataset), 4)
         self.assertEqual(dataset.media_type, "group")
         self.assertEqual(dataset.group_slice, "ego")
-        self.assertEqual(
-            len(dataset.select_group_slices(_allow_mixed=True)), 12
-        )
+
+        self.assertEqual(len(samples), 12)
+        self.assertEqual(len(set(samples.values("id"))), 12)
+        self.assertEqual(len(set(samples.values("group_field.id"))), 4)
+
         self.assertEqual(dataset.count("frames"), 4)
+        self.assertEqual(len(set(samples.values("frames.id", unwind=True))), 4)
 
     @drop_datasets
     def test_set_values_group(self):

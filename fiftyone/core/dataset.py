@@ -2508,7 +2508,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
                 information. Only applicable when ``include_info`` is True
-            new_ids (False): whether to generate new sample/frame IDs. By
+            new_ids (False): whether to generate new sample/frame/group IDs. By
                 default, the IDs of the input collection are retained
 
         Returns:
@@ -7422,48 +7422,31 @@ def _add_collection_with_new_ids(
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if contains_groups:
+        dst_samples = dataset.select_group_slices(_allow_mixed=True)
         src_samples = sample_collection.select_group_slices(_allow_mixed=True)
     else:
+        dst_samples = dataset
         src_samples = sample_collection
 
-    if not contains_videos:
-        src_samples._aggregate(
-            detach_groups=True,
-            post_pipeline=[
-                {"$project": {"_id": False}},
-                {"$addFields": {"_dataset_id": dataset._doc.id}},
-                {
-                    "$merge": {
-                        "into": dataset._sample_collection_name,
-                        "whenMatched": "keepExisting",
-                        "whenNotMatched": "insert",
-                    }
-                },
-            ],
-        )
+    if contains_videos:
+        old_ids = src_samples.values("id")
+        num_ids = len(old_ids)
+    else:
+        num_ids = len(src_samples)
 
-        return
-
-    #
-    # For video datasets, we must take greater care, because sample IDs are
-    # used as foreign keys in the frame documents
-    #
+    add_fields = {"_dataset_id": dataset._doc.id}
 
     if contains_groups:
-        src_videos = sample_collection.select_group_slices(
-            media_type=fom.VIDEO
-        )
-    else:
-        src_videos = sample_collection
-
-    old_ids = src_samples.values("_id")
+        id_field = sample_collection.group_field + "._id"
+        tmp_field = sample_collection.group_field + "._tmp"
+        add_fields[tmp_field] = "$" + id_field
 
     src_samples._aggregate(
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": add_fields},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7474,13 +7457,37 @@ def _add_collection_with_new_ids(
         ],
     )
 
+    new_ids = dst_samples[-num_ids:].values("id")
+
+    if contains_groups:
+        ops = []
+        for old_id in src_samples.distinct(id_field):
+            new_id = ObjectId()
+            op = UpdateMany(
+                {tmp_field: old_id},
+                {"$set": {id_field: new_id}, "$unset": {tmp_field: ""}},
+            )
+            ops.append(op)
+
+        dataset._bulk_write(ops)
+
+    if not contains_videos:
+        return new_ids
+
+    if contains_groups:
+        src_videos = sample_collection.select_group_slices(
+            media_type=fom.VIDEO
+        )
+    else:
+        src_videos = sample_collection
+
     src_videos._aggregate(
         frames_only=True,
         post_pipeline=[
             {
                 "$addFields": {
                     "_tmp": "$_sample_id",
-                    "_sample_id": {"$rand": {}},
+                    "_sample_id": {"$rand": {}},  # must exist for index
                 }
             },
             {"$project": {"_id": False}},
@@ -7495,18 +7502,17 @@ def _add_collection_with_new_ids(
         ],
     )
 
-    new_ids = dataset[-len(old_ids) :].values("_id")
-
     ops = [
         UpdateMany(
-            {"_tmp": _old},
-            {"$set": {"_sample_id": _new}, "$unset": {"_tmp": ""}},
+            {"_tmp": ObjectId(old_id)},
+            {"$set": {"_sample_id": ObjectId(new_id)}, "$unset": {"_tmp": ""}},
         )
-        for _old, _new in zip(old_ids, new_ids)
+        for old_id, new_id in zip(old_ids, new_ids)
     ]
+
     dataset._bulk_write(ops, frames=True)
 
-    return [str(_id) for _id in new_ids]
+    return new_ids
 
 
 def _merge_samples_python(

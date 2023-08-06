@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.3.5
 --------------------
-*Released August 4, 2023*
+*Released August 7, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.21.5 <release-notes-v0.21.5>`, plus:
 
@@ -27,7 +27,7 @@ SDK
 
 FiftyOne 0.21.5
 ---------------
-*Released August 4, 2023*
+*Released August 7, 2023*
 
 News
 
@@ -101,6 +101,9 @@ Core
 - Added support for exporting keypoints with nan-valued coordinates in
   :ref:`COCO format <COCODetectionDataset-export>`
   `#3316 <https://github.com/voxel51/fiftyone/pull/3316>`_
+- Updated :ref:`YOLOv5 exports <YOLOv5Dataset-export>` to use dict-style class
+  names
+  `#3393 <https://github.com/voxel51/fiftyone/pull/3393>`_
 - Fixed a bug when passing an RGB hex string to
   :meth:`to_segmentation() <fiftyone.core.labels.Detection.to_segmentation>`
   `#3293 <https://github.com/voxel51/fiftyone/pull/3293>`_
