@@ -40,6 +40,7 @@ export const LIMIT_VIEW_STAGE = "fiftyone.core.stages.Limit";
 export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
 export const SKIP_VIEW_STAGE = "fiftyone.core.stages.Skip";
 export const SORT_VIEW_STAGE = "fiftyone.core.stages.SortBy";
+export const TAKE_VIEW_STAGE = "fiftyone.core.stages.Take";
 
 enum ELEMENT_NAMES {
   CLIP = "clip",
@@ -238,7 +239,13 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
         continue;
       }
 
-      if (![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE].includes(stage._cls)) {
+      // Assume these stages should be filtered out because they apply to the slices
+      // and not a slice list. To be improved
+      if (
+        ![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE, TAKE_VIEW_STAGE].includes(
+          stage._cls
+        )
+      ) {
         modalView.push(stage);
       }
     }
