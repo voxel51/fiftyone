@@ -19,6 +19,34 @@ import fiftyone.core.validation as fov
 logger = logging.getLogger(__name__)
 
 
+def read(path, include_alpha=False, flag=None):
+    """Reads the image from the given path as a numpy array.
+
+    Color images are returned as RGB arrays.
+
+    Args:
+        path: the path to the image
+        include_alpha (False): whether to include the alpha channel of the
+            image, if present, in the returned array
+        flag (None): an optional OpenCV image format flag to use. If provided,
+            this flag takes precedence over ``include_alpha``
+
+    Returns:
+        a uint8 numpy array containing the image
+    """
+    return etai.read(path, include_alpha=include_alpha, flag=flag)
+
+
+def write(img, path):
+    """Writes image to file.
+
+    Args:
+        img: a numpy array
+        path: the output path
+    """
+    etai.write(img, path)
+
+
 def reencode_images(
     sample_collection,
     ext=".png",
