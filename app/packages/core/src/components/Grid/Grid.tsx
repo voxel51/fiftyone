@@ -1,4 +1,3 @@
-import { Loading } from "@fiftyone/components";
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
@@ -34,7 +33,7 @@ const Grid: React.FC<{}> = () => {
   const resize = useResize();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
-  const { isEmpty, page, reset } = useFlashlightPager(
+  const { page, reset } = useFlashlightPager(
     store,
     pageParameters,
     gridCropCallback
@@ -179,12 +178,7 @@ const Grid: React.FC<{}> = () => {
     init();
   }, [init]);
 
-  return (
-    <>
-      {isEmpty && <Loading>No data</Loading>}
-      <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>
-    </>
-  );
+  return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
 };
 
 export default Grid;
