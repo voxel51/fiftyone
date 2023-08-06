@@ -5,6 +5,7 @@ import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { Overlay } from "../overlays/base";
 import processOverlays from "../processOverlays";
 import {
+  BaseConfig,
   BufferRange,
   Buffers,
   Coloring,
@@ -15,6 +16,7 @@ import {
   LabelData,
   Optional,
   StateUpdate,
+  VideoConfig,
   VideoSample,
   VideoState,
 } from "../state";
@@ -39,6 +41,7 @@ interface AcquireReaderOptions {
   removeFrame: RemoveFrame;
   getCurrentFrame: () => number;
   dataset: string;
+  group: BaseConfig["group"];
   view: any[];
   sampleId: string;
   frameNumber: number;
@@ -88,6 +91,7 @@ const { acquireReader, addFrame } = (() => {
     customizeColorSetting,
     dataset,
     view,
+    group,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
@@ -161,6 +165,7 @@ const { acquireReader, addFrame } = (() => {
       customizeColorSetting,
       dataset,
       view,
+      group,
     });
     return subscription;
   };
@@ -442,6 +447,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
       dataset: this.state.config.dataset,
+      group: this.state.config.group,
       view: this.state.config.view,
     });
   }

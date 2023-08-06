@@ -18,12 +18,19 @@ export async function fetchColorByChoices(params) {
   );
 }
 
-export async function fetchPlot({ datasetName, brainKey, view, labelField }) {
+export async function fetchPlot({
+  datasetName,
+  brainKey,
+  view,
+  labelField,
+  slices,
+}) {
   const res = await getFetchFunction()("POST", "/embeddings/plot", {
     datasetName,
     brainKey,
     view,
     labelField,
+    slices,
   });
   return handleErrors(res);
 }

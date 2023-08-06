@@ -41,6 +41,7 @@ export default function AddPanelButton({ node, spaceId }: AddPanelButtonProps) {
           setOpen(!open);
         }}
         title="New panel"
+        data-cy="new-panel-btn"
       >
         <Add sx={{ fontSize: 16 }} />
       </IconButton>

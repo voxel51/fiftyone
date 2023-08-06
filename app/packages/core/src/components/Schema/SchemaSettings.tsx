@@ -60,8 +60,6 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    setSearchResults,
-    setSelectedFieldsStage,
     datasetName,
     excludedPaths,
     resetExcludedPaths,
@@ -70,10 +68,23 @@ const SchemaSettings = () => {
     lastAppliedPaths,
     setExcludedPaths,
     isFilterRuleActive,
-    searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
+    mergedSchema,
   } = fos.useSchemaSettings();
+  const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
+
+  const applyDisabled =
+    isFilterRuleActive && (!searchTerm || !searchResults.length);
+  const resetDisabled = isFilterRuleActive && !searchResults.length;
+
+  const { setSearchResults, searchMetaFilter } =
+    fos.useSearchSchemaFields(mergedSchema);
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
+
+  const { resetAttributeFilters } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -217,9 +228,10 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={applyDisabled}
               onClick={() => {
+                resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -261,12 +273,14 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={resetDisabled}
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset

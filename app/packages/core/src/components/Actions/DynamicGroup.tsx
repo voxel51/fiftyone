@@ -8,6 +8,7 @@ import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import { Alert } from "@mui/material";
 import React, {
+  MutableRefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -34,10 +35,12 @@ export default ({
   close,
   isProcessing,
   setIsProcessing,
+  anchorRef,
 }: {
   close: (e?: React.MouseEvent<Element>) => void;
   isProcessing: boolean;
   setIsProcessing: (value: boolean) => void;
+  anchorRef: MutableRefObject<unknown>;
 }) => {
   const [groupBy, setGroupBy] = useState<string>("");
   const [orderBy, setOrderBy] = useState<string>("");
@@ -145,7 +148,7 @@ export default ({
   if (fields.state === "hasError") throw fields.contents;
 
   return (
-    <Popout modal={false}>
+    <Popout modal={false} fixed anchorRef={anchorRef}>
       <DynamicGroupContainer ref={ref}>
         {isDynamicGroupViewStageActive ? (
           <Button
