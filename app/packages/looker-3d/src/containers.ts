@@ -74,6 +74,9 @@ export const Container = styled.div`
   height: 100%;
   width: 100%;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 export const ViewButton = styled.div`

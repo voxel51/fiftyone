@@ -33,6 +33,7 @@ export class OptionsPanelElement<
 
   createHTMLElement() {
     const element = document.createElement("div");
+    element.setAttribute("data-cy", "looker-video-options-panel");
     element.classList.add(lookerOptionsPanel);
     return element;
   }

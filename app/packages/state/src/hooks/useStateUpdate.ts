@@ -21,6 +21,7 @@ import {
   patching,
   resolveGroups,
   savingFilters,
+  selectedFieldsStageState,
   selectedLabels,
   selectedMediaField,
   selectedSamples,
@@ -39,7 +40,6 @@ import {
   collapseFields,
   viewsAreEqual,
 } from "../utils";
-import { selectedFieldsStageState } from "./useSchemaSettings";
 
 export interface StateUpdate {
   colorscale?: RGB[];
@@ -168,13 +168,8 @@ const useStateUpdate = (ignoreSpaces = false) => {
           }
           reset(_activeFields({ modal: false }));
           reset(selectedFieldsStageState);
-          let slice = dataset.groupSlice;
 
-          if (dataset.groupMediaTypes[slice] === "pcd") {
-            slice = dataset.defaultGroupSlice;
-          }
-
-          set(groupSlice(false), slice);
+          set(groupSlice(false), dataset.groupSlice);
           reset(groupStatistics(false));
 
           reset(similarityParameters);

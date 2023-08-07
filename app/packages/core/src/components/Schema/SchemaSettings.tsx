@@ -9,10 +9,6 @@ import { Box, Typography } from "@mui/material";
 import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import { TabOption } from "../utils";
 
-import useSchemaSettings, {
-  TAB_OPTIONS,
-} from "@fiftyone/state/src/hooks/useSchemaSettings";
-
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
 import { useOutsideClick } from "@fiftyone/state";
@@ -64,8 +60,6 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    setSearchResults,
-    setSelectedFieldsStage,
     datasetName,
     excludedPaths,
     resetExcludedPaths,
@@ -74,10 +68,23 @@ const SchemaSettings = () => {
     lastAppliedPaths,
     setExcludedPaths,
     isFilterRuleActive,
-    searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
-  } = useSchemaSettings();
+    mergedSchema,
+  } = fos.useSchemaSettings();
+  const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
+
+  const applyDisabled =
+    isFilterRuleActive && (!searchTerm || !searchResults.length);
+  const resetDisabled = isFilterRuleActive && !searchResults.length;
+
+  const { setSearchResults, searchMetaFilter } =
+    fos.useSearchSchemaFields(mergedSchema);
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
+
+  const { resetAttributeFilters } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -177,7 +184,7 @@ const SchemaSettings = () => {
           >
             <TabOption
               active={selectedTab}
-              options={TAB_OPTIONS.map((value) => {
+              options={fos.TAB_OPTIONS.map((value) => {
                 return {
                   key: value,
                   text: value,
@@ -221,9 +228,10 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={applyDisabled}
               onClick={() => {
+                resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -265,12 +273,14 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={resetDisabled}
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset

@@ -4,15 +4,15 @@ import {
 } from "@fiftyone/looker/src/overlays/util";
 import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
 import { StateForm } from "@fiftyone/relay";
+import { selectedFieldsStageState } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
-import { selectedFieldsStageState } from "../hooks/useSchemaSettings";
 import * as atoms from "./atoms";
 import { selectedSamples } from "./atoms";
 import { config } from "./config";
 import { filters, modalFilters } from "./filters";
-import { resolvedGroupSlice } from "./groups";
+import { currentSlice } from "./groups";
 import { isModalActive, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
@@ -45,8 +45,16 @@ export const stateSubscription = selector<string>({
 });
 
 export const mediaTypeSelector = selector({
-  key: "mediaType",
+  key: "mediaTypeSelector",
   get: ({ get }) => get(atoms.dataset)?.mediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const parentMediaTypeSelector = selector({
+  key: "parentMediaTypeSelector",
+  get: ({ get }) => get(atoms.dataset)?.parentMediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -469,7 +477,7 @@ export const viewStateForm = selectorFamily<
         sampleIds: omitSelected ? [] : [...get(selectedSamples)],
         labels: get(selectedLabelList),
         extended: get(extendedStages),
-        slice: selectSlice ? get(resolvedGroupSlice(modal)) : null,
+        slice: selectSlice ? get(currentSlice(modal)) : null,
         addStages: addStages ? JSON.parse(addStages) : [],
       };
     },

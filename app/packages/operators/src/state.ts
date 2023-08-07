@@ -39,7 +39,7 @@ export const promptingOperatorState = atom({
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
   get:
-    (operatorName) =>
+    () =>
     ({ get }) => {
       const promptingOperator = get(promptingOperatorState);
       if (!promptingOperator) {
@@ -58,12 +58,10 @@ export const showOperatorPromptSelector = selector({
 });
 
 export const usePromptOperatorInput = () => {
-  const [recentlyUsedOperators, setRecentlyUsedOperators] = useRecoilState(
+  const setRecentlyUsedOperators = useSetRecoilState(
     recentlyUsedOperatorsState
   );
-  const [promptingOperator, setPromptingOperator] = useRecoilState(
-    promptingOperatorState
-  );
+  const setPromptingOperator = useSetRecoilState(promptingOperatorState);
 
   const prompt = (operatorName) => {
     setRecentlyUsedOperators((recentlyUsedOperators) => {
@@ -85,12 +83,15 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const selectedLabels = get(fos.selectedLabels);
+
     return {
       datasetName,
       view,
       extended,
       filters,
       selectedSamples,
+      selectedLabels,
     };
   },
 });
@@ -142,10 +143,14 @@ export const useOperatorPrompt = () => {
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
+  const [resolving, setResolving] = useState(false);
+  const [resolvedCtx, setResolvedCtx] = useState(null);
+
   const resolveInput = useCallback(
     throttle(
       async (ctx) => {
         try {
+          setResolving(true);
           const resolved = await operator.resolveInput(ctx);
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -157,6 +162,8 @@ export const useOperatorPrompt = () => {
           resolveTypeError.current = e;
           setInputFields(null);
         }
+        setResolving(false);
+        setResolvedCtx(ctx);
       },
       operator.isRemote ? RESOLVE_TYPE_TTL : 0
     ),
@@ -190,10 +197,7 @@ export const useOperatorPrompt = () => {
     });
   }, []);
   const validateThrottled = useCallback(
-    throttle(validate, RESOLVE_INPUT_VALIDATION_TTL, {
-      leading: false,
-      trailing: true,
-    }),
+    throttle(validate, RESOLVE_INPUT_VALIDATION_TTL),
     []
   );
 
@@ -281,6 +285,11 @@ export const useOperatorPrompt = () => {
     }
   }, [executor.hasExecuted, executor.needsOutput]);
 
+  const pendingResolve = useMemo(
+    () => ctx.params != resolvedCtx?.params,
+    [ctx.params, resolvedCtx?.params]
+  );
+
   if (!promptingOperator) return null;
 
   return {
@@ -303,6 +312,8 @@ export const useOperatorPrompt = () => {
     validateThrottled,
     executorError,
     resolveError,
+    resolving,
+    pendingResolve,
   };
 };
 
@@ -364,9 +375,14 @@ export const availableOperators = selector({
         label: operator.label,
         name: operator.name,
         value: operator.uri,
-        description: operator.description,
+        description: operator.config.description,
         unlisted: operator.unlisted,
         canExecute: operator.config.canExecute,
+        pluginName: operator.pluginName,
+        _builtIn: operator._builtIn,
+        icon: operator.config.icon,
+        darkIcon: operator.config.darkIcon,
+        lightIcon: operator.config.lightIcon,
       };
     });
   },

@@ -9,6 +9,7 @@ import { useOperatorBrowser } from "./state";
 // todo: use plugin component
 import { useEffect, useRef } from "react";
 import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
+import OperatorIcon, { CustomIconPropsType } from "./OperatorIcon";
 import OperatorPalette from "./OperatorPalette";
 import { PaletteContentContainer } from "./styled-components";
 
@@ -52,13 +53,31 @@ const ChoiceIcon = styled.div`
   line-height: 45px;
 `;
 
-const Choice = ({ onClick, choice, selected }) => {
-  const disabled = choice.canExecute === false;
+const Choice = (props: ChoicePropsType) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { onClick, choice, selected } = props;
+  const { label, name, canExecute } = choice;
+  const disabled = canExecute === false;
+
+  useEffect(() => {
+    const containerElem = containerRef.current;
+    if (selected && containerElem) {
+      containerElem.scrollIntoView({ block: "nearest" });
+    }
+  }, [selected]);
+
   return (
-    <ChoiceContainer disabled={disabled} onClick={onClick} selected={selected}>
-      <ChoiceIcon>{disabled ? <Lock /> : <Extension />}</ChoiceIcon>
-      <ChoiceDescription>{choice.label}</ChoiceDescription>
-      {choice.label && <ChoiceLabel>{choice.name}</ChoiceLabel>}
+    <ChoiceContainer
+      disabled={disabled}
+      onClick={onClick}
+      selected={selected}
+      ref={containerRef}
+    >
+      <ChoiceIcon>
+        <OperatorIcon {...choice} Fallback={disabled ? Lock : Extension} />
+      </ChoiceIcon>
+      <ChoiceDescription>{label}</ChoiceDescription>
+      {label && <ChoiceLabel>{name}</ChoiceLabel>}
     </ChoiceContainer>
   );
 };
@@ -165,7 +184,9 @@ export default function OperatorBrowser() {
         ))}
         {browser.choices.length === 0 && (
           <Choice
-            onClick={() => {}}
+            onClick={() => {
+              // noop
+            }}
             key={"no-operator"}
             choice={{ label: "No matching operators" }}
             selected={false}
@@ -176,3 +197,15 @@ export default function OperatorBrowser() {
     document.body
   );
 }
+
+type ChoiceType = CustomIconPropsType & {
+  label: string;
+  name?: string;
+  canExecute?: boolean;
+};
+
+type ChoicePropsType = {
+  onClick: () => void;
+  choice: ChoiceType;
+  selected?: boolean;
+};
