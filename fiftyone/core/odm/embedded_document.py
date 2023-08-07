@@ -45,6 +45,27 @@ class DynamicEmbeddedDocument(
     meta = {"abstract": True, "allow_inheritance": True}
 
     def __init__(self, *args, **kwargs):
-        self._custom_fields = {}
         super().__init__(*args, **kwargs)
         self.validate()
+
+    def _get_field(self, field_name):
+        # pylint: disable=no-member
+        chunks = field_name.split(".", 1)
+        if len(chunks) > 1:
+            field = self._fields.get(chunks[0], None)
+            if field is None:
+                field = self._dynamic_fields.get(chunks[0], None)
+
+            if field is not None:
+                field = field.get_field(chunks[1])
+        else:
+            field = self._fields.get(field_name, None)
+            if field is None:
+                field = self._dynamic_fields.get(field_name, None)
+
+        if field is None:
+            raise AttributeError(
+                "%s has no field '%s'" % (self.__class__.__name__, field_name)
+            )
+
+        return field

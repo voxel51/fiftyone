@@ -1,5 +1,3 @@
-import { groupSample, groupSampleActive } from "./Group.module.css";
-
 import classNames from "classnames";
 import React, {
   MouseEventHandler,
@@ -9,6 +7,7 @@ import React, {
   useState,
 } from "react";
 import { GroupSampleBar } from "../Bars";
+import { groupSample, groupSampleActive } from "./Group.module.css";
 
 export const GroupSampleWrapper: React.FC<
   React.PropsWithChildren<{

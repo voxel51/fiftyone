@@ -6,6 +6,7 @@ FiftyOne Server /frames route
 |
 """
 from starlette.endpoints import HTTPEndpoint
+from starlette.responses import JSONResponse
 from starlette.requests import Request
 
 from fiftyone.core.expressions import ViewField as F
@@ -27,9 +28,13 @@ class Frames(HTTPEndpoint):
         dataset = data.get("dataset")
         stages = data.get("view")
         sample_id = data.get("sampleId")
+        group_slice = data.get("slice", None)
 
         view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
+
+        if group_slice is not None:
+            view.group_slice = group_slice
 
         end_frame = min(num_frames + start_frame, frame_count)
         support = None if stages else [start_frame, end_frame]
@@ -47,7 +52,9 @@ class Frames(HTTPEndpoint):
             view._pipeline(frames_only=True, support=support),
         ).to_list(end_frame - start_frame + 1)
 
-        return {
-            "frames": foj.stringify(frames),
-            "range": [start_frame, end_frame],
-        }
+        return JSONResponse(
+            {
+                "frames": foj.stringify(frames),
+                "range": [start_frame, end_frame],
+            }
+        )

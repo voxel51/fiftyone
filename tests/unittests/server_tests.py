@@ -10,13 +10,14 @@ import unittest
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.server.view as fosv
+from fiftyone.server.samples import paginate_samples
 
 from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
 
 
 class ServerViewTests(unittest.TestCase):
@@ -779,3 +780,59 @@ class ServerViewTests(unittest.TestCase):
         }
         view = fosv.get_view("test", filters=filters)
         self.assertEqual(len(view), 1)
+
+    def test_disjoint_groups(self):
+        dataset, first, second = make_disjoint_groups_dataset()
+        first_view = fosv.get_view(
+            dataset.name,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    slice="first", id=first.group.id, slices=["first"]
+                )
+            ),
+        )
+        self.assertEqual(first_view.first().id, first.id)
+
+        second_view = fosv.get_view(
+            dataset.name,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    slice="second", id=second.group.id, slices=["second"]
+                )
+            ),
+        )
+        self.assertEqual(second_view.first().id, second.id)
+
+
+class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
+    @drop_datasets
+    async def test_disjoint_groups(self):
+        dataset, first, second = make_disjoint_groups_dataset()
+
+        first_samples = await paginate_samples(
+            dataset.name,
+            [],
+            {},
+            first=1,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    slice="first", id=first.group.id, slices=["first"]
+                )
+            ),
+        )
+        self.assertEqual(len(first_samples.edges), 1)
+        self.assertEqual(first_samples.edges[0].node.id, first._id)
+
+        second_samples = await paginate_samples(
+            dataset.name,
+            [],
+            {},
+            first=1,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    slice="second", id=second.group.id, slices=["second"]
+                )
+            ),
+        )
+        self.assertEqual(len(second_samples.edges), 1)
+        self.assertEqual(second_samples.edges[0].node.id, second._id)

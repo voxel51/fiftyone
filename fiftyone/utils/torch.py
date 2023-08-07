@@ -8,6 +8,7 @@ PyTorch utilities.
 import logging
 import itertools
 import multiprocessing
+import os
 import sys
 
 import cv2
@@ -33,6 +34,213 @@ from torch.utils.data import Dataset
 
 
 logger = logging.getLogger(__name__)
+
+
+def load_torch_hub_image_model(repo_or_dir, model, hub_kwargs=None, **kwargs):
+    """Loads an image model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
+    :class:`TorchImageModel`.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        model = fout.load_torch_hub_image_model(
+            "facebookresearch/dinov2",
+            "dinov2_vits14",
+            image_patch_size=14,
+            embeddings_layer="head",
+        )
+
+        assert model.has_embeddings is True
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        model: see :attr:`torch:torch.hub.load`
+        **kwargs: additional parameters for :class:`TorchImageModelConfig`
+
+    Returns:
+        a :class:`TorchImageModel`
+    """
+    e = {"repo_or_dir": repo_or_dir, "model": model}
+    if hub_kwargs:
+        e.update(**hub_kwargs)
+
+    d = {
+        "entrypoint_fcn": load_torch_hub_raw_model,
+        "entrypoint_args": e,
+    }
+    d.update(**kwargs)
+
+    config = TorchImageModelConfig(d)
+    return TorchImageModel(config)
+
+
+def load_torch_hub_raw_model(*args, **kwargs):
+    """Loads a raw model from `PyTorch Hub <https://pytorch.org/hub>`_ as a
+    :class:`torch:torch.nn.Module`.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        model = fout.load_torch_hub_raw_model(
+            "facebookresearch/dinov2",
+            "dinov2_vits14",
+        )
+
+        print(type(model))
+        # <class 'dinov2.models.vision_transformer.DinoVisionTransformer'>
+
+    Args:
+        *args: positional arguments for :attr:`torch:torch.hub.load`
+        **kwargs: keyword arguments for :attr:`torch:torch.hub.load`
+
+    Returns:
+        a :class:`torch:torch.nn.Module`
+    """
+    return torch.hub.load(*args, **kwargs)
+
+
+def find_torch_hub_requirements(repo_or_dir, source="github"):
+    """Locates the ``requirements.txt`` file on disk associated with a
+    downloaded `PyTorch Hub <https://pytorch.org/hub>`_ model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        req_path = fout.find_torch_hub_requirements("facebookresearch/dinov2")
+
+        print(req_path)
+        # '~/.cache/torch/hub/facebookresearch_dinov2_main/requirements.txt'
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+
+    Returns:
+        the path to the requirements file on disk
+    """
+    if source == "github":
+        model_dir = torch.hub._get_cache_or_reload(
+            repo_or_dir,
+            False,
+            True,
+            "",
+            verbose=False,
+            skip_validation=True,
+        )
+    else:
+        model_dir = repo_or_dir
+
+    return os.path.join(model_dir, "requirements.txt")
+
+
+def load_torch_hub_requirements(repo_or_dir, source="github"):
+    """Loads the package requirements from the ``requirements.txt`` file on
+    disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
+    model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        requirements = fout.load_torch_hub_requirements("facebookresearch/dinov2")
+
+        print(requirements)
+        # ['torch==2.0.0', 'torchvision==0.15.0', ...]
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+
+    Returns:
+        a list of requirement strings
+    """
+    req_path = find_torch_hub_requirements(repo_or_dir, source=source)
+    if not os.path.isfile(req_path):
+        logger.warning("No requirements.txt file found for '%s'", repo_or_dir)
+        return []
+
+    requirements = []
+    with open(req_path, "r") as f:
+        for line in f:
+            line = _strip_comments(line)
+            if line:
+                requirements.append(line)
+
+    return requirements
+
+
+def _strip_comments(requirement_str):
+    chunks = []
+    for chunk in requirement_str.strip().split():
+        if chunk.startswith("#"):
+            break
+
+        chunks.append(chunk)
+
+    return " ".join(chunks)
+
+
+def install_torch_hub_requirements(
+    repo_or_dir, source="github", error_level=None
+):
+    """Installs the package requirements from the ``requirements.txt`` file on
+    disk associated with a downloaded `PyTorch Hub <https://pytorch.org/hub>`_
+    model.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        fout.install_torch_hub_requirements("facebookresearch/dinov2")
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    for req_str in load_torch_hub_requirements(repo_or_dir, source=source):
+        fou.install_package(req_str, error_level=error_level)
+
+
+def ensure_torch_hub_requirements(
+    repo_or_dir, source="github", error_level=None, log_success=False
+):
+    """Verifies that the package requirements from the ``requirements.txt``
+    file on disk associated with a downloaded
+    `PyTorch Hub <https://pytorch.org/hub>`_ model are installed.
+
+    Example usage::
+
+        import fiftyone.utils.torch as fout
+
+        fout.ensure_torch_hub_requirements("facebookresearch/dinov2")
+
+    Args:
+        repo_or_dir: see :attr:`torch:torch.hub.load`
+        source ("github"): see :attr:`torch:torch.hub.load`
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    for req_str in load_torch_hub_requirements(repo_or_dir, source=source):
+        fou.ensure_package(
+            req_str, error_level=error_level, log_success=log_success
+        )
 
 
 class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
@@ -93,19 +301,70 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
 class TorchImageModelConfig(foc.Config):
     """Configuration for running a :class:`TorchImageModel`.
 
+    Models are represented by this class via the following three components:
+
+    1.  Model::
+
+            # Directly specify a model
+            model
+
+            # Load model from an entrypoint
+            model = entrypoint_fcn(**entrypoint_args)
+
+    2.  Transforms::
+
+            # Directly provide transforms
+            transforms
+
+            # Load transforms from a function
+            transforms = transforms_fcn(**transforms_args)
+
+            # Use the `image_XXX` parameters defined below to build a transform
+            transforms = build_transforms(image_XXX, ...)
+
+    3.  OutputProcessor::
+
+            # Directly provide an OutputProcessor
+            output_processor
+
+            # Load an OutputProcessor from a function
+            output_processor = output_processor_cls(**output_processor_args)
+
+    Given these components, inference happens as follows::
+
+        def predict_all(imgs):
+            imgs = [transforms(img) for img in imgs]
+            if not raw_inputs:
+                imgs = torch.stack(imgs)
+
+            output = model(imgs)
+            return output_processor(output, ...)
+
     Args:
-        entrypoint_fcn: a fully-qualified function string like
+        model (None): a :class:`torch:torch.nn.Module` instance to use
+        entrypoint_fcn (None): a function or string like
             ``"torchvision.models.inception_v3"`` specifying the entrypoint
             function that loads the model
         entrypoint_args (None): a dictionary of arguments for
             ``entrypoint_fcn``
-        output_processor_cls: a string like
+        transforms (None): a preprocessing transform to apply
+        transforms_fcn (None): a function or string like
+            ``"torchvision.models.Inception_V3_Weights.DEFAULT.transforms"``
+            specifying a function that returns a preprocessing transform
+            function to apply
+        transforms_args (None): a dictionary of arguments for
+            ``transforms_args``
+        raw_inputs (None): whether to feed the raw list of images to the model
+            rather than stacking them as a Torch tensor
+        output_processor (None): an :class:`OutputProcessor` instance to use
+        output_processor_cls (None): a class or string like
             ``"fifytone.utils.torch.ClassifierOutputProcessor"`` specifying the
-            :class:`fifytone.utils.torch.OutputProcessor` to use
+            :class:`OutputProcessor` to use
         output_processor_args (None): a dictionary of arguments for
             ``output_processor_cls(classes=classes, **kwargs)``
         confidence_thresh (None): an optional confidence threshold apply to any
             applicable predictions generated by the model
+        classes (None): a list of class names for the model, if applicable
         labels_string (None): a comma-separated list of the class names for the
             model, if applicable
         labels_path (None): the path to the labels map for the model, if
@@ -130,6 +389,9 @@ class TorchImageModelConfig(foc.Config):
             images during preprocessing
         image_dim (None): resize the smaller input dimension to this value
             during preprocessing
+        image_patch_size (None): crop the input images during preprocessing, if
+            necessary, so that the image dimensions are a multiple of this
+            patch size
         image_mean (None): a 3-array of mean values in ``[0, 1]`` for
             preprocessing the input images
         image_std (None): a 3-array of std values in ``[0, 1]`` for
@@ -148,12 +410,22 @@ class TorchImageModelConfig(foc.Config):
     """
 
     def __init__(self, d):
-        self.entrypoint_fcn = self.parse_string(d, "entrypoint_fcn")
+        self.model = self.parse_raw(d, "model", default=None)
+        self.entrypoint_fcn = self.parse_raw(d, "entrypoint_fcn", default=None)
         self.entrypoint_args = self.parse_dict(
             d, "entrypoint_args", default=None
         )
-        self.output_processor_cls = self.parse_string(
-            d, "output_processor_cls"
+        self.transforms = self.parse_raw(d, "transforms", default=None)
+        self.transforms_fcn = self.parse_raw(d, "transforms_fcn", default=None)
+        self.transforms_args = self.parse_dict(
+            d, "transforms_args", default=None
+        )
+        self.raw_inputs = self.parse_bool(d, "raw_inputs", default=None)
+        self.output_processor = self.parse_raw(
+            d, "output_processor", default=None
+        )
+        self.output_processor_cls = self.parse_raw(
+            d, "output_processor_cls", default=None
         )
         self.output_processor_args = self.parse_dict(
             d, "output_processor_args", default=None
@@ -161,6 +433,7 @@ class TorchImageModelConfig(foc.Config):
         self.confidence_thresh = self.parse_number(
             d, "confidence_thresh", default=None
         )
+        self.classes = self.parse_array(d, "classes", default=None)
         self.labels_string = self.parse_string(
             d, "labels_string", default=None
         )
@@ -184,6 +457,9 @@ class TorchImageModelConfig(foc.Config):
         )
         self.image_size = self.parse_array(d, "image_size", default=None)
         self.image_dim = self.parse_number(d, "image_dim", default=None)
+        self.image_patch_size = self.parse_number(
+            d, "image_patch_size", default=None
+        )
         self.image_mean = self.parse_array(d, "image_mean", default=None)
         self.image_std = self.parse_array(d, "image_std", default=None)
         self.embeddings_layer = self.parse_string(
@@ -203,10 +479,6 @@ class TorchImageModel(
 ):
     """Wrapper for evaluating a Torch model on images.
 
-    This wrapper assumes that ``config.entrypoint_fcn`` returns a
-    :class:`torch:torch.nn.Module` whose ``__call__()`` method directly accepts
-    Torch tensors (NCHW) as input.
-
     See :ref:`this page <model-zoo-custom-models>` for example usage.
 
     Args:
@@ -216,36 +488,39 @@ class TorchImageModel(
     def __init__(self, config):
         self.config = config
 
+        device = self.config.device
+        if device is None:
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+        # Device details
+        self._device = torch.device(device)
+        self._using_gpu = self._device.type in ("cuda", "mps")
+        self._using_half_precision = self.config.use_half_precision
+        self._no_grad = None
+        self._benchmark_orig = None
+
+        # Load model
+        self._download_model(config)
+        self._model = self._load_model(config)
+
+        # Build transforms
+        transforms, ragged_batches = self._build_transforms(config)
+        self._transforms = transforms
+        self._ragged_batches = ragged_batches
+        self._preprocess = True
+
         # Parse model details
         self._classes = self._parse_classes(config)
         self._mask_targets = self._parse_mask_targets(config)
         self._skeleton = self._parse_skeleton(config)
 
-        # Build transforms
-        ragged_batches, transforms = self._build_transforms(config)
-        self._ragged_batches = ragged_batches
-        self._transforms = transforms
-        self._preprocess = True
-
-        device = self.config.device
-        if device is None:
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-        # Load model
-        self._device = torch.device(device)
-        self._using_gpu = self._device.type in ("cuda", "mps")
-        self._using_half_precision = self.config.use_half_precision
-        self._model = self._load_model(config)
-        self._no_grad = None
-        self._benchmark_orig = None
+        # Build output processor
+        self._output_processor = self._build_output_processor(config)
 
         fom.LogitsMixin.__init__(self)
         TorchEmbeddingsMixin.__init__(
             self, self._model, layer_name=self.config.embeddings_layer
         )
-
-        # Build output processor
-        self._output_processor = self._build_output_processor(config)
 
     def __enter__(self):
         if self.config.cudnn_benchmark is not None:
@@ -276,23 +551,22 @@ class TorchImageModel(
 
     @property
     def ragged_batches(self):
-        """True/False whether :meth:`transforms` may return tensors of
-        different sizes. If True, then passing ragged lists of images to
-        :meth:`predict_all` is not allowed.
+        """Whether :meth:`transforms` may return tensors of different sizes.
+        If True, then passing ragged lists of images to :meth:`predict_all` may
+        not be not allowed.
         """
         return self._ragged_batches
 
     @property
     def transforms(self):
-        """The
-        `torchvision.transforms <https://pytorch.org/vision/stable/transforms.html>`_
-        function that will/must be applied to each input before prediction.
+        """A ``torchvision.transforms`` function that will be applied to each
+        input before prediction, if any.
         """
         return self._transforms
 
     @property
     def preprocess(self):
-        """Whether to apply preprocessing transforms during inference."""
+        """Whether to apply preprocessing transforms for inference, if any."""
         return self._preprocess
 
     @preprocess.setter
@@ -345,7 +619,7 @@ class TorchImageModel(
 
                 - A PIL image
                 - A uint8 numpy array (HWC)
-                - A Torch tensor (CWH)
+                - A Torch tensor (CHW)
 
         Returns:
             a :class:`fiftyone.core.labels.Label` instance or dict of
@@ -380,29 +654,56 @@ class TorchImageModel(
         return self._predict_all(imgs)
 
     def _predict_all(self, imgs):
-        if self._preprocess:
+        if self._preprocess and self._transforms is not None:
             imgs = [self._transforms(img) for img in imgs]
 
-        if isinstance(imgs, (list, tuple)):
-            imgs = torch.stack(imgs)
+        height, width = None, None
 
-        height, width = imgs.size()[-2:]
-        frame_size = (width, height)
+        if self.config.raw_inputs:
+            # Feed images as list
+            if self._output_processor is not None:
+                img = imgs[0]
+                if isinstance(img, torch.Tensor):
+                    height, width = img.size()[-2:]
+                elif isinstance(img, Image.Image):
+                    width, height = img.size
+                elif isinstance(img, np.ndarray):
+                    height, width = img.shape[:2]
+        else:
+            # Feed images as stacked Tensor
+            if isinstance(imgs, (list, tuple)):
+                imgs = torch.stack(imgs)
 
-        imgs = imgs.to(self._device)
-        if self._using_half_precision:
-            imgs = imgs.half()
+            height, width = imgs.size()[-2:]
 
-        output = self._model(imgs)
+            imgs = imgs.to(self._device)
+            if self._using_half_precision:
+                imgs = imgs.half()
+
+        output = self._forward_pass(imgs)
+
+        if self._output_processor is None:
+            if isinstance(output, torch.Tensor):
+                output = output.detach().cpu().numpy()
+
+            return output
 
         if self.has_logits:
             self._output_processor.store_logits = self.store_logits
 
         return self._output_processor(
-            output, frame_size, confidence_thresh=self.config.confidence_thresh
+            output,
+            (width, height),
+            confidence_thresh=self.config.confidence_thresh,
         )
 
+    def _forward_pass(self, imgs):
+        return self._model(imgs)
+
     def _parse_classes(self, config):
+        if config.classes is not None:
+            return config.classes
+
         if config.labels_string is not None:
             return config.labels_string.split(",")
 
@@ -422,8 +723,8 @@ class TorchImageModel(
             return config.mask_targets
 
         if config.mask_targets_path is not None:
-            labels_path = fou.fill_patterns(config.mask_targets_path)
-            return etal.load_labels_map(labels_path)
+            mask_targets_path = fou.fill_patterns(config.mask_targets_path)
+            return etal.load_labels_map(mask_targets_path)
 
         return None
 
@@ -433,8 +734,42 @@ class TorchImageModel(
 
         return None
 
+    def _download_model(self, config):
+        pass
+
+    def _load_model(self, config):
+        if config.model is not None:
+            model = config.model
+        else:
+            entrypoint_fcn = config.entrypoint_fcn
+
+            if etau.is_str(entrypoint_fcn):
+                entrypoint_fcn = etau.get_function(entrypoint_fcn)
+
+            kwargs = config.entrypoint_args or {}
+            model = entrypoint_fcn(**kwargs)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
+
     def _build_transforms(self, config):
         ragged_batches = True
+
+        if config.transforms is not None:
+            return config.transforms, ragged_batches
+
+        if config.transforms_fcn is not None:
+            transforms = self._load_transforms(config)
+            return transforms, ragged_batches
+
+        if config.raw_inputs:
+            return None, ragged_batches
+
         transforms = [ToPILImage()]
 
         if config.image_size:
@@ -442,6 +777,8 @@ class TorchImageModel(
             transforms.append(torchvision.transforms.Resize(config.image_size))
         elif config.image_dim:
             transforms.append(torchvision.transforms.Resize(config.image_dim))
+        elif config.image_patch_size:
+            transforms.append(PatchSize(config.image_patch_size))
         else:
             if config.image_min_size:
                 transforms.append(MinResize(config.image_min_size))
@@ -469,38 +806,47 @@ class TorchImageModel(
             )
 
         transforms = torchvision.transforms.Compose(transforms)
-        return ragged_batches, transforms
 
-    def _load_model(self, config):
-        self._download_model(config)
+        return transforms, ragged_batches
 
-        model = self._load_network(config)
+    def _load_transforms(self, config):
+        transforms_fcn = config.transforms_fcn
 
-        model = model.to(self._device)
-        if self._using_half_precision:
-            model = model.half()
+        if etau.is_str(transforms_fcn):
+            transforms_fcn = etau.get_function(transforms_fcn)
 
-        self._load_state_dict(model, config)
-
-        model.eval()
-
-        return model
-
-    def _download_model(self, config):
-        pass
-
-    def _load_network(self, config):
-        entrypoint = etau.get_function(config.entrypoint_fcn)
-        kwargs = config.entrypoint_args or {}
-        return entrypoint(**kwargs)
-
-    def _load_state_dict(self, model, config):
-        pass
+        kwargs = config.transforms_args or {}
+        return transforms_fcn(**kwargs)
 
     def _build_output_processor(self, config):
-        output_processor_cls = etau.get_class(config.output_processor_cls)
+        if config.output_processor is not None:
+            return config.output_processor
+
+        output_processor_cls = config.output_processor_cls
+
+        if output_processor_cls is None:
+            return None
+
+        if etau.is_str(output_processor_cls):
+            output_processor_cls = etau.get_class(output_processor_cls)
+
         kwargs = config.output_processor_args or {}
         return output_processor_cls(classes=self._classes, **kwargs)
+
+
+class TorchSamplesMixin(fom.SamplesMixin):
+    def predict(self, img, sample=None):
+        if isinstance(img, torch.Tensor):
+            imgs = img.unsqueeze(0)
+        else:
+            imgs = [img]
+
+        if sample is not None:
+            samples = [sample]
+        else:
+            samples = None
+
+        return self.predict_all(imgs, samples=samples)[0]
 
 
 class ToPILImage(object):
@@ -591,6 +937,32 @@ class MaxResize(object):
         return F.resize(pil_image_or_tensor, size, **self._kwargs)
 
 
+class PatchSize(object):
+    """Transform that center crops the PIL image or torch Tensor, if necessary,
+    so that its dimensions are multiples of the specified patch size.
+
+    Args:
+        patch_size: the patch size
+    """
+
+    def __init__(self, patch_size):
+        self.patch_size = patch_size
+
+    def __call__(self, pil_image_or_tensor):
+        if isinstance(pil_image_or_tensor, torch.Tensor):
+            h, w = list(pil_image_or_tensor.size())[-2:]
+        else:
+            w, h = pil_image_or_tensor.size
+
+        hh = (h // self.patch_size) * self.patch_size
+        ww = (w // self.patch_size) * self.patch_size
+
+        if hh != h or ww != w:
+            return F.center_crop(pil_image_or_tensor, (hh, ww))
+
+        return pil_image_or_tensor
+
+
 class SaveLayerTensor(object):
     """Callback that saves the input/output tensor of the specified layer of a
     Torch model during each ``forward()`` call.
@@ -639,6 +1011,9 @@ class OutputProcessor(object):
         classes (None): the list of class labels for the model. This may not be
             required or used by some models
     """
+
+    def __init__(self, classes=None, **kwargs):
+        pass
 
     def __call__(self, output, frame_size, confidence_thresh=None):
         """Parses the model output.
@@ -814,9 +1189,9 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 -   boxes (``FloatTensor[N, 4]``): the predicted boxes in
                     ``[x1, y1, x2, y2]`` format (absolute coordinates)
                 -   labels (``Int64Tensor[N]``): the predicted labels
-                -   scores (``Tensor[N]``): the scores for each prediction
                 -   masks (``FloatTensor[N, 1, H, W]``): the predicted masks
-                    for each instance, in ``[0, 1]``
+                    for each instance, in ``[0, 1]``. May also be boolean
+                -   scores (``Tensor[N]``): optional scores for each prediction
 
             frame_size: the ``(width, height)`` of the frames in the batch
             confidence_thresh (None): an optional confidence threshold to use
@@ -835,12 +1210,19 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
 
         boxes = output["boxes"].detach().cpu().numpy()
         labels = output["labels"].detach().cpu().numpy()
-        scores = output["scores"].detach().cpu().numpy()
         masks = output["masks"].detach().cpu().numpy()
+        if "scores" in output:
+            scores = output["scores"].detach().cpu().numpy()
+        else:
+            scores = itertools.repeat(None)
 
         detections = []
-        for box, label, score, soft_mask in zip(boxes, labels, scores, masks):
-            if confidence_thresh is not None and score < confidence_thresh:
+        for box, label, mask, score in zip(boxes, labels, masks, scores):
+            if (
+                confidence_thresh is not None
+                and score is not None
+                and score < confidence_thresh
+            ):
                 continue
 
             x1, y1, x2, y2 = box
@@ -851,11 +1233,13 @@ class InstanceSegmenterOutputProcessor(OutputProcessor):
                 (y2 - y1) / height,
             ]
 
-            soft_mask = np.squeeze(soft_mask, axis=0)[
+            mask = np.squeeze(mask, axis=0)[
                 int(round(y1)) : int(round(y2)),
                 int(round(x1)) : int(round(x2)),
             ]
-            mask = soft_mask > self.mask_thresh
+
+            if mask.dtype != bool:
+                mask = mask > self.mask_thresh
 
             detections.append(
                 fol.Detection(

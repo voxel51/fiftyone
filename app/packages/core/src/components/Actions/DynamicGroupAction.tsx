@@ -2,7 +2,7 @@ import { PillButton } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
 import MergeIcon from "@mui/icons-material/Merge";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import { ActionDiv } from "./ActionsRow";
@@ -15,6 +15,7 @@ export const DynamicGroupAction = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const [measureRef] = useMeasure();
+  const ref = useRef();
 
   const pillComponent = useMemo(() => {
     if (isProcessing) {
@@ -40,7 +41,7 @@ export const DynamicGroupAction = () => {
   }, []);
 
   return (
-    <ActionDiv>
+    <ActionDiv ref={ref}>
       <PillButton
         id={DYNAMIC_GROUP_PILL_BUTTON_ID}
         icon={pillComponent}
@@ -61,6 +62,7 @@ export const DynamicGroupAction = () => {
           close={onCloseHandler}
           setIsProcessing={(value) => setIsProcessing(value)}
           isProcessing={isProcessing}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>

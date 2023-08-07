@@ -8,11 +8,13 @@ import { useWarnings } from "./useWarnings";
 import { fetchPlot } from "./fetch";
 
 export function useViewChangeEffect() {
-  const colorSeed = useRecoilValue(fos.colorSeed(false));
+  const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
   const [brainKey, setBrainKey] = useBrainResult();
   const [labelField] = useColorByField();
   const view = useRecoilValue(fos.view);
+  const slices = useRecoilValue(fos.currentSlices(false));
+  const filters = useRecoilValue(fos.filters);
   const [loadedPlot, setLoadedPlot] = usePanelStatePartial(
     "loadedPlot",
     null,
@@ -36,7 +38,7 @@ export function useViewChangeEffect() {
   useEffect(() => {
     setOverrideStage(null);
     setLoadingPlot(true);
-    fetchPlot({ datasetName, brainKey, view, labelField })
+    fetchPlot({ datasetName, filters, brainKey, view, labelField, slices })
       .catch((err) => {
         setLoadingPlotError(err);
         // setBrainKey(null);
@@ -72,5 +74,5 @@ export function useViewChangeEffect() {
         setLoadedPlot(res);
       })
       .finally(() => setLoadingPlot(false));
-  }, [datasetName, brainKey, labelField, view, colorSeed]);
+  }, [datasetName, brainKey, labelField, view, colorSeed, slices, filters]);
 }
