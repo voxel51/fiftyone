@@ -14,7 +14,6 @@ import warnings
 from bson import json_util
 
 import eta.core.datasets as etad
-import eta.core.image as etai
 import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -29,6 +28,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
+import fiftyone.utils.image as foui
 import fiftyone.utils.patches as foup
 
 from .parsers import (
@@ -1248,7 +1248,7 @@ class ImageExporter(MediaExporter):
         super().__init__(*args, default_ext=default_ext, **kwargs)
 
     def _write_media(self, img, outpath):
-        etai.write(img, outpath)
+        foui.write(img, outpath)
 
 
 class VideoExporter(MediaExporter):

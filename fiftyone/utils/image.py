@@ -19,13 +19,13 @@ import fiftyone.core.validation as fov
 logger = logging.getLogger(__name__)
 
 
-def read(path, include_alpha=False, flag=None):
+def read(path_or_url, include_alpha=False, flag=None):
     """Reads the image from the given path as a numpy array.
 
     Color images are returned as RGB arrays.
 
     Args:
-        path: the path to the image
+        path: the filepath or URL of the image
         include_alpha (False): whether to include the alpha channel of the
             image, if present, in the returned array
         flag (None): an optional OpenCV image format flag to use. If provided,
@@ -34,7 +34,7 @@ def read(path, include_alpha=False, flag=None):
     Returns:
         a uint8 numpy array containing the image
     """
-    return etai.read(path, include_alpha=include_alpha, flag=flag)
+    return etai.read(path_or_url, include_alpha=include_alpha, flag=flag)
 
 
 def write(img, path):
@@ -467,7 +467,7 @@ def _transform_image(
         )
 
         if should_reencode:
-            img = etai.read(inpath)
+            img = read(inpath)
             size = _parse_parameters(img, size, min_size, max_size)
 
         if should_reencode and inpath == outpath and not delete_original:
@@ -483,10 +483,10 @@ def _transform_image(
                 kwargs = {}
 
             img = etai.resize(img, width=size[0], height=size[1], **kwargs)
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif should_reencode:
-            etai.write(img, outpath)
+            write(img, outpath)
             did_transform = True
         elif inpath != outpath:
             etau.copy_file(inpath, outpath)
