@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.21.6:
+
+FiftyOne 0.21.6
+---------------
+*Released August 7, 2023*
+
+App
+
+- Fixed the Embeddings panel
+  `#3401 <https://github.com/voxel51/fiftyone/pull/3401>`_
+
 .. _release-notes-teams-v1.3.5:
 
 FiftyOne Teams 1.3.5
