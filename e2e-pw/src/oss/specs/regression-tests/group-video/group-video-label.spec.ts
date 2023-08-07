@@ -87,6 +87,7 @@ test.describe("groups video labels", () => {
   test("video plays with correct label for each slice", async ({
     grid,
     modal,
+    eventUtils,
   }) => {
     await grid.openFirstLooker();
     await modal.waitForSampleLoadDomAttribute();
@@ -122,7 +123,10 @@ test.describe("groups video labels", () => {
     await checkVideo("v1");
 
     const sampleLoadEventPromiseForv2 =
-      modal.getSampleLoadEventPromiseForFilepath(testVideoPath2);
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "sample-loaded",
+        (e) => e.detail.sampleFilepath === testVideoPath2
+      );
 
     // change slice and repeat
     await modal.group.selectNthItemFromCarousel(1);

@@ -149,20 +149,6 @@ export class ModalPom {
       { timeout: Duration.Seconds(10) }
     );
   }
-
-  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
-    return this.page.evaluate(
-      (sampleFilepath_) =>
-        new Promise<void>((resolve, _reject) => {
-          document.addEventListener("sample-loaded", (e: CustomEvent) => {
-            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
-              resolve();
-            }
-          });
-        }),
-      sampleFilepath
-    );
-  }
 }
 
 class ModalAsserter {
