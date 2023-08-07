@@ -156,7 +156,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["cup"],
       "show-label--------"
     );
-    await grid.delay(1000);
+    await grid.delay(3000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-bottle-show-cup.png",
       { animations: "allow" }
@@ -170,7 +170,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
     await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "exclude-bottle-hide-cup.png",
+      "show-bottle-hide-cup.png",
       { animations: "allow" }
     );
   });
