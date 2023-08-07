@@ -40,7 +40,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["visible-cattle"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "visible-cattle.png",
       { animations: "allow" }
@@ -52,7 +52,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "not-visible-cattle.png",
       { animations: "allow" }
@@ -69,16 +69,11 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["cattle", "boy"],
       "show-samples-with-label"
     );
-    // await sidebar.applyLabelFromList(
-    //     "ground_truth.detections.label",
-    //     ["boy"],
-    //     "show-samples-with-label"
-    //   );
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("2 of 5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.delay(1000);
+    await grid.waitForGridToLoad();
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-cattle-boy.png",
       { animations: "allow" }
@@ -93,7 +88,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["cattle"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-cattle-boy-visible-cattle.png",
       { animations: "allow" }
@@ -105,7 +100,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-cattle-boy-invisible-cattle.png",
       { animations: "allow" }
@@ -125,8 +120,8 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("3 of 5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.delay(1000);
+    await grid.waitForGridToLoad();
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-cattle-boy.png",
       { animations: "allow" }
@@ -141,7 +136,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["apple"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-cattle-boy-visible-apple.png",
       { animations: "allow" }
@@ -153,7 +148,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-cattle-boy-invisible-apple.png",
       { animations: "allow" }

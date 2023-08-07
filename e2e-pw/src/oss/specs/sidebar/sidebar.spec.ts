@@ -32,7 +32,7 @@ test.describe("sidebar-filter-visibility", () => {
     // do not show prediction labels
     await sidebar.clickFieldCheckbox("predictions");
 
-    // select bottlel in ground_truth.detections.label
+    // select bottle in ground_truth.detections.label
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
@@ -43,7 +43,7 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
 
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "select-bottle.png",
       { animations: "allow" }
@@ -58,7 +58,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["cat"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "select-bottle-show-cat.png",
       { animations: "allow" }
@@ -70,7 +70,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["person"],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "select-bottle-hide-person-cat.png",
       { animations: "allow" }
@@ -89,7 +89,7 @@ test.describe("sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("5 samples");
-    await grid.assert.waitForGridToLoad();
+    await grid.waitForGridToLoad();
     await grid.assert.assertNLookers(5);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "exclude-bottle.png",
@@ -105,7 +105,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["cup"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "exclude-bottle-show-cup.png",
       { animations: "allow" }
@@ -117,7 +117,7 @@ test.describe("sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "exclude-bottle-hide-cup.png",
       { animations: "allow" }
@@ -140,8 +140,8 @@ test.describe("sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.delay(1000);
+    await grid.waitForGridToLoad();
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-bottle.png",
       { animations: "allow" }
@@ -156,7 +156,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["cup"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-bottle-show-cup.png",
       { animations: "allow" }
@@ -168,7 +168,7 @@ test.describe("sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "exclude-bottle-hide-cup.png",
       { animations: "allow" }
@@ -191,8 +191,8 @@ test.describe("sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
-    await grid.assert.waitForGridToLoad();
-    await grid.assert.delay(1000);
+    await grid.waitForGridToLoad();
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-bottle.png",
       { animations: "allow" }
@@ -207,7 +207,7 @@ test.describe("sidebar-filter-visibility", () => {
       ["horse"],
       "show-label--------"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-bottle-show-horse.png",
       { animations: "allow" }
@@ -219,7 +219,7 @@ test.describe("sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-bottle-hide-horse.png",
       { animations: "allow" }

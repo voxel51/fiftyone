@@ -9,10 +9,6 @@ export class TaggerPom {
     this.page = page;
   }
 
-  async clickTagger() {
-    this.page.getByTestId("action-tag-sample-labels").click();
-  }
-
   async setActiveTaggerMode(mode: TaggerMode) {
     const selector = this.page.getByTestId(`tagger-switch-${mode}`);
     return selector.click();

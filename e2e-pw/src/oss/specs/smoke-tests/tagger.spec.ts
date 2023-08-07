@@ -1,4 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
+import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { TaggerPom } from "src/oss/poms/action-row/tagger";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -10,6 +11,7 @@ const test = base.extend<{
   tagger: TaggerPom;
   sidebar: SidebarPom;
   grid: GridPom;
+  gridActionsRow: GridActionsRowPom;
 }>({
   tagger: async ({ page }, use) => {
     await use(new TaggerPom(page));
@@ -19,6 +21,9 @@ const test = base.extend<{
   },
   grid: async ({ page }, use) => {
     await use(new GridPom(page));
+  },
+  gridActionsRow: async ({ page }, use) => {
+    await use(new GridActionsRowPom(page));
   },
 });
 
@@ -35,8 +40,9 @@ test.describe("tag", () => {
 
   test("sample tag and label tag loads correct aggregation number on default view", async ({
     tagger,
+    gridActionsRow,
   }) => {
-    await tagger.clickTagger();
+    await gridActionsRow.openTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
     const placeHolder = await tagger.getTagInputTextPlaceholder("sample");
     expect(placeHolder.includes(" 5 ")).toBe(true);
@@ -45,7 +51,7 @@ test.describe("tag", () => {
     const placeHolder2 = await tagger.getTagInputTextPlaceholder("label");
     expect(placeHolder2.includes(" 143 ")).toBe(true);
 
-    await tagger.clickTagger();
+    await gridActionsRow.openTagSamplesOrLabels();
   });
 
   test("In grid, I can add a new sample tag to all new samples", async ({
@@ -53,14 +59,15 @@ test.describe("tag", () => {
     tagger,
     sidebar,
     grid,
+    gridActionsRow,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
 
-    await tagger.clickTagger();
+    await gridActionsRow.openTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
     await tagger.addNewTag("sample", "test");
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
 
     const container = await page.getByTestId("categorical-filter-tags");
     expect(container).toBeVisible();
@@ -74,15 +81,16 @@ test.describe("tag", () => {
     tagger,
     sidebar,
     grid,
+    gridActionsRow,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
 
-    await tagger.clickTagger();
+    await gridActionsRow.openTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("label");
     await tagger.addNewTag("label", "all");
 
-    await grid.assert.delay(1000);
+    await grid.delay(1000);
 
     // Verify in the sidebar
     const container = await page.getByTestId("categorical-filter-_label_tags");

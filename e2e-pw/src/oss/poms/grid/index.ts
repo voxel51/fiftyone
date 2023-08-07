@@ -57,6 +57,16 @@ export class GridPom {
     await this.page.getByTestId("selector-slice").fill(slice);
     await this.page.getByTestId("selector-slice").press("Enter");
   }
+
+  async delay(ms: number) {
+    this.page.waitForTimeout(ms);
+  }
+
+  async waitForGridToLoad() {
+    return this.page.waitForSelector("[data-cy=looker]", {
+      timeout: 2000,
+    });
+  }
 }
 
 class GridAsserter {
@@ -101,15 +111,5 @@ class GridAsserter {
       text,
       { timeout: 2000 }
     );
-  }
-
-  async waitForGridToLoad() {
-    return this.gridPom.page.waitForSelector("[data-cy=looker]", {
-      timeout: 2000,
-    });
-  }
-
-  async delay(ms: number) {
-    new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
