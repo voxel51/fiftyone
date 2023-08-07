@@ -19,30 +19,6 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
       max_samples: 5,
     });
-    // await fiftyoneLoader.executePythonCode(`
-    // import fiftyone as fo
-    // dataset = fo.Dataset("${datasetName}")
-    // dataset.persistent = True
-
-    // samples = []
-    // samples.append(
-    //             fo.Sample(
-    //                 filepath=f"sample-1.png", ground_truth=fo.Classification(label="cattle")
-    //             )
-    //         )
-    // samples.append(
-    //             fo.Sample(
-    //                 filepath=f"sample-2.png",ground_truth=fo.Classification(label="boy")
-    //             )
-    //         )
-    // samples.append(
-    //             fo.Sample(
-    //                 filepath=f"sample-3.png", ground_truth=fo.Classification(label="apple")
-    //             )
-    //         )
-    // dataset.add_samples(samples)
-    // dataset.save()
-    // `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -89,6 +65,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     sidebar,
   }) => {
     await sidebar.clickFieldDropdown("ground_truth");
+    await grid.delay(1000);
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["frog", "deer"],
@@ -98,7 +75,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("3 of 10 samples");
     await grid.waitForGridToLoad();
-    await grid.delay(2000);
+    await grid.delay(3000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog-deer.png",
       { animations: "allow" }
