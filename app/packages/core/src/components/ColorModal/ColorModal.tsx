@@ -138,8 +138,6 @@ const ColorModal = () => {
                   <SidebarList />
                   <Display>
                     {field === ACTIVE_FIELD.global && <GlobalSetting />}
-                    Note that in this panel the color pool is the only savable
-                    option for now.
                     {field === ACTIVE_FIELD.json && <JSONViewer />}
                     {typeof field !== "string" && field && (
                       <FieldSetting prop={activeColorModalField} />
