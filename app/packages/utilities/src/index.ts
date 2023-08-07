@@ -375,12 +375,7 @@ export const UNSUPPORTED_FILTER_TYPES = [
   undefined,
 ];
 
-// An embedded document field are only represented as a top-level group, e.g.
-// "metadata", "embedded.embdedded" is an unsupported entry
-export const UNSUPPORTED_FILTER_PATHS = [
-  EMBEDDED_DOCUMENT_FIELD,
-  ...UNSUPPORTED_FILTER_TYPES,
-];
+export const SKIP_FIELD_TYPES = [...UNSUPPORTED_FILTER_TYPES, JUST_FIELD];
 
 export const DYNAMIC_GROUP_FIELDS = [
   BOOLEAN_FIELD,
@@ -697,3 +692,10 @@ export function pluralize(
 ) {
   return number === 1 ? singular : plural;
 }
+
+// vite-plugin-relay inexplicably removes import.meta.env
+// @fiftyone/utilities does not use the plugin, so this helper
+// is defined
+export const env = (): ImportMetaEnv => {
+  return import.meta.env;
+};

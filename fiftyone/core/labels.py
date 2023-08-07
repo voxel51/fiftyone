@@ -471,7 +471,7 @@ class Detection(_HasAttributesDict, _HasID, Label):
                 "be converted to segmentations"
             )
 
-        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        mask, target = _parse_segmentation_target(mask, frame_size, target)
         _render_instance(mask, self, target)
         return Segmentation(mask=mask)
 
@@ -578,7 +578,7 @@ class Detections(_HasLabelList, Label):
         Returns:
             a :class:`Segmentation`
         """
-        mask, labels_to_targets = _parse_to_segmentation_inputs(
+        mask, labels_to_targets = _parse_segmentation_mask_targets(
             mask, frame_size, mask_targets
         )
 
@@ -690,14 +690,15 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             frame_size (None): the ``(width, height)`` of the segmentation
                 mask to render. This parameter has no effect if a ``mask`` is
                 provided
-            target (255): the pixel value to use to render the object
+            target (255): the pixel value or RGB hex string to use to render
+                the object
             thickness (1): the thickness, in pixels, at which to render
                 (non-filled) polylines
 
         Returns:
             a :class:`Segmentation`
         """
-        mask, _ = _parse_to_segmentation_inputs(mask, frame_size, None)
+        mask, target = _parse_segmentation_target(mask, frame_size, target)
         _render_polyline(mask, self, target, thickness)
         return Segmentation(mask=mask)
 
@@ -904,7 +905,7 @@ class Polylines(_HasLabelList, Label):
         Returns:
             a :class:`Segmentation`
         """
-        mask, labels_to_targets = _parse_to_segmentation_inputs(
+        mask, labels_to_targets = _parse_segmentation_mask_targets(
             mask, frame_size, mask_targets
         )
 
@@ -1590,9 +1591,38 @@ def _heatmap_to_image(map, range):
     return map.astype(np.uint8)
 
 
-def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
+def _parse_segmentation_target(mask, frame_size, target):
+    if target is not None:
+        is_rgb = fof.is_rgb_target(target)
+    else:
+        is_rgb = False
+
+    if mask is None:
+        if frame_size is None:
+            raise ValueError("Either `mask` or `frame_size` must be provided")
+
+        if target is not None and not is_rgb and target > 255:
+            dtype = np.int
+        else:
+            dtype = np.uint8
+
+        width, height = frame_size
+        if is_rgb:
+            mask = np.zeros((height, width, 3), dtype=dtype)
+        else:
+            mask = np.zeros((height, width), dtype=dtype)
+
+    if target is not None and is_rgb:
+        target = _hex_to_rgb(target)
+
+    return mask, target
+
+
+def _parse_segmentation_mask_targets(mask, frame_size, mask_targets):
     if mask_targets is not None:
         is_rgb = fof.is_rgb_mask_targets(mask_targets)
+    else:
+        is_rgb = False
 
     if mask is None:
         if frame_size is None:
@@ -1604,12 +1634,10 @@ def _parse_to_segmentation_inputs(mask, frame_size, mask_targets):
             dtype = np.uint8
 
         width, height = frame_size
-        if mask_targets is not None and is_rgb:
+        if is_rgb:
             mask = np.zeros((height, width, 3), dtype=dtype)
         else:
             mask = np.zeros((height, width), dtype=dtype)
-    else:
-        height, width = mask.shape[:2]
 
     if mask_targets is not None:
         if is_rgb:
@@ -1739,7 +1767,7 @@ def _segmentation_to_polylines(
 
     if is_rgb:
         array_targets = np.unique(mask.reshape(-1, mask.shape[2]), axis=0)
-        targets = [_rgb_to_hex(t) for t in targets]
+        targets = [_rgb_to_hex(t) for t in array_targets]
     else:
         targets = np.unique(mask)
         array_targets = itertools.repeat(None)
@@ -1799,7 +1827,7 @@ def _hex_to_rgb(hex_str):
     r = int(hex_str[1:3], 16)
     g = int(hex_str[3:5], 16)
     b = int(hex_str[5:7], 16)
-    return np.array([r, g, b])
+    return (r, g, b)
 
 
 def _rgb_to_hex(rgb):

@@ -5,6 +5,7 @@ import {
   FLOAT_FIELD,
   Field,
   INT_FIELD,
+  LIST_FIELD,
   NOT_VISIBLE_LIST,
   STRING_FIELD,
   VALID_MASK_TYPES,
@@ -47,7 +48,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
   const setting = (fields ?? []).find((x) => x.path == path!);
   const setColorScheme = fos.useSetSessionColorScheme();
-  const coloring = useRecoilValue(fos.coloring(false));
+  const coloring = useRecoilValue(fos.coloring);
   const color = getColor(colorPool, coloring.seed, path);
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
@@ -79,9 +80,11 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const colorFields = useRecoilValue(
     fos.fields({
       path: commonExpandedPath,
-      ftype: VALID_COLOR_ATTRIBUTE_TYPES,
+      ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
     })
-  ).filter((field) => field.dbField !== "tags");
+  ).filter((field) =>
+    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield)
+  );
 
   const onChangeFieldColor = useCallback(
     (color) => {

@@ -1,11 +1,8 @@
-.PHONY: app python docker docker-export
+.PHONY: python docker docker-export
 
 .DEFAULT_GOAL := docker-export
 
-app:
-	@cd ../../app/packages/teams && yarn && yarn build && cd -
-
-python: app
+python:
 	@python setup.py sdist bdist_wheel
 
 docker: python

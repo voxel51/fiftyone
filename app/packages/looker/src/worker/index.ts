@@ -20,6 +20,7 @@ import { decode as decodeJpg } from "jpeg-js";
 import { CHUNK_SIZE } from "../constants";
 import { OverlayMask } from "../numpy";
 import {
+  BaseConfig,
   Coloring,
   CustomizeColor,
   FrameChunk,
@@ -351,6 +352,7 @@ const createReader = ({
   sampleId,
   dataset,
   view,
+  group,
 }: {
   chunkSize: number;
   coloring: Coloring;
@@ -360,6 +362,7 @@ const createReader = ({
   sampleId: string;
   dataset: string;
   view: Stage[];
+  group: BaseConfig["group"];
 }): FrameStream => {
   let cancelled = false;
 
@@ -370,7 +373,6 @@ const createReader = ({
           controller.close();
           return Promise.resolve();
         }
-
         const call = (): Promise<FrameChunk> =>
           getFetchFunction()(
             "POST",
@@ -382,6 +384,7 @@ const createReader = ({
               sampleId,
               dataset,
               view,
+              slice: group?.name,
             },
             "json",
             2
@@ -474,6 +477,7 @@ interface SetStream {
   uuid: string;
   dataset: string;
   view: Stage[];
+  group: BaseConfig["group"];
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -487,6 +491,7 @@ const setStream = ({
   uuid,
   dataset,
   view,
+  group,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -500,6 +505,7 @@ const setStream = ({
     sampleId,
     dataset,
     view,
+    group,
   });
 
   stream.reader.read().then(getSendChunk(uuid));

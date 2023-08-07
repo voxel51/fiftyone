@@ -200,13 +200,17 @@ This context provides a middle ground between the two extremes:
 .. note::
 
     Download contexts are useful if your cache is not large enough to store all
-    the media in the collection you're working with simultaneously.
+    the media in the dataset you're working with simultaneously.
 
 You can also use `get_local_paths()` to retrieve the list of local paths
-for each sample in a potentially cloud-backed dataset:
+for each sample in a potentially cloud-backed dataset or view:
 
 .. code-block:: python
     :linenos:
+
+    # These methods support full datasets or views into them
+    sample_collection = dataset
+    # sample_collection = dataset.limit(10)
 
     # Retrieve the local paths for all media in a collection
     local_paths = sample_collection.get_local_paths()

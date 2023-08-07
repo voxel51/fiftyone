@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.13.4"
+VERSION = "0.13.5"
 
 
 def get_version():
@@ -41,13 +41,13 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<1.8.0",
     "dill",
     "Deprecated",
-    "eventlet",
     "ftfy",
-    "future",
-    "hypercorn>=0.13.2,<14",
+    "jsonlines",
+    "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
-    "jsonlines",
+    # kaleido indirectly required by plotly for image export
+    # https://plotly.com/python/static-image-export/
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",
@@ -69,7 +69,7 @@ INSTALL_REQUIRES = [
     "setuptools",
     "sseclient-py>=1.7.2,<2",
     "sse-starlette>=0.10.3,<1",
-    "starlette>=0.24.0,<0.27",
+    "starlette>=0.24.0",
     "strawberry-graphql==0.138.1",
     "tabulate",
     "xmltodict",
@@ -88,9 +88,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.13,<0.14",
+    "fiftyone-brain>=0.13.1,<0.14",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.10,<0.11",
+    "voxel51-eta>=0.11,<0.12",
 ]
 
 

@@ -17,7 +17,7 @@ import {
   useRouter,
   useScreenshot,
 } from "@fiftyone/state";
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { env, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
@@ -72,6 +72,11 @@ const App: React.FC = ({}) => {
   }, [isCustomizeColorModalActive]);
 
   useEffect(() => {
+    if (env().VITE_NO_STATE) {
+      setReadyState(AppReadyState.OPEN);
+      return;
+    }
+
     const controller = new AbortController();
 
     getEventSource(
@@ -179,7 +184,9 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
     <ThemeProvider>
       <ErrorBoundary>
         <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
-          <EventsContext.Provider value={{ session: null }}>
+          <EventsContext.Provider
+            value={{ session: env().VITE_NO_STATE ? undefined : null }}
+          >
             <App />
           </EventsContext.Provider>
         </BeforeScreenshotContext.Provider>

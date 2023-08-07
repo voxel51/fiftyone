@@ -1,12 +1,12 @@
-import React from "react";
-import { Divider, Slider } from "@mui/material";
 import { SettingsBackupRestore } from "@mui/icons-material";
+import { Divider, Slider, Typography } from "@mui/material";
+import React from "react";
 
 import * as fos from "@fiftyone/state";
 
+import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import ColorPalette from "./colorPalette/ColorPalette";
-import Checkbox from "../Common/Checkbox";
 
 import {
   ControlGroupWrapper,
@@ -35,6 +35,10 @@ const GlobalSetting: React.FC = ({}) => {
         </SectionWrapper>
         <ShuffleColor />
         <LabelTitle>Color pool</LabelTitle>
+        <Typography fontSize="1rem" pb={0.5}>
+          Pool of colors from which otherwise unconfigured fields/values are
+          randomly assigned colors.
+        </Typography>
         <SectionWrapper>
           <ColorPalette />
         </SectionWrapper>
@@ -74,6 +78,7 @@ const GlobalSetting: React.FC = ({}) => {
           setValue={(v) => props.setShowSkeleton(v)}
         />
       </ControlGroupWrapper>
+      Note that in this panel the color pool is the only savable option for now.
     </div>
   );
 };

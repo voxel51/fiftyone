@@ -297,16 +297,11 @@ class MongoEngineBaseDocument(SerializableDocument):
         return self._get_field_names(include_private=False)
 
     def has_field(self, field_name):
-        # pylint: disable=no-member
-        chunks = field_name.split(".", 1)
-        if len(chunks) > 1:
-            field = self._fields.get(chunks[0], None)
-            try:
-                return field.has_field(chunks[1])
-            except AttributeError:
-                return False
-
-        return field_name in self._fields
+        try:
+            _ = self._get_field(field_name)
+            return True
+        except (KeyError, AttributeError):
+            return False
 
     def get_field(self, field_name):
         chunks = field_name.split(".", 1)
@@ -582,6 +577,14 @@ class Document(BaseDocument, mongoengine.Document):
     @classmethod
     def _doc_name(cls):
         return "Document"
+
+    def reload(self, *fields, **kwargs):
+        """Reloads the document from the database.
+
+        Args:
+            *fields: an optional args list of specific fields to reload
+        """
+        super().reload(*fields, **kwargs)
 
     def save(
         self,

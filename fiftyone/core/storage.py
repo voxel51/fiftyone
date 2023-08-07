@@ -285,10 +285,10 @@ def get_bucket_name(path):
 
         import fiftyone.core.storage as fos
 
-        fos.split_prefix("s3://bucket/object")  # 'bucket'
-        fos.split_prefix("gs://bucket/object")  # 'bucket'
-        fos.split_prefix("/path/to/file")       # ''
-        fos.split_prefix("a/file")              # ''
+        fos.get_bucket_name("s3://bucket/object")  # 'bucket'
+        fos.get_bucket_name("gs://bucket/object")  # 'bucket'
+        fos.get_bucket_name("/path/to/file")       # ''
+        fos.get_bucket_name("a/file")              # ''
 
     Args:
         path: a path
@@ -377,7 +377,7 @@ def get_client(fs=None, path=None):
 def get_url(path, **kwargs):
     """Returns a public URL for the given file.
 
-    The provided path must either already be a URL or a path into a filesystem
+    The provided path must either already be a URL or a path into a file system
     that supports signed URLs.
 
     Args:
@@ -408,7 +408,7 @@ def to_readable(path, **kwargs):
     """Returns a publicly readable path for the given file.
 
     The provided path must either already be a URL or be a remote path into a
-    filesystem that supports signed URLs.
+    file system that supports signed URLs.
 
     Args:
         path: a path
@@ -428,7 +428,7 @@ def to_writeable(path, **kwargs):
     """Returns a publicly writable path for the given file.
 
     The provided path must either already be a URL or be a remote path into a
-    filesystem that supports signed URLs.
+    file system that supports signed URLs.
 
     Args:
         path: a path
@@ -461,9 +461,7 @@ def make_temp_dir(basedir=None):
     if basedir is None:
         basedir = fo.config.default_dataset_dir
 
-    fs = get_file_system(basedir)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(basedir):
         ensure_dir(basedir)
         return tempfile.mkdtemp(dir=basedir)
 
@@ -1081,25 +1079,25 @@ def open_file(path, mode="r"):
 
     Example usage::
 
-        with open_file("/tmp/file.txt", "w") as f:
+        import fiftyone.core.storage as fos
+
+        with fos.open_file("/tmp/file.txt", "w") as f:
             f.write("Hello, world!")
 
-        with open_file("s3://tmp/file.txt", "w") as f:
+        with fos.open_file("s3://tmp/file.txt", "w") as f:
             f.write("Hello, world!")
 
-        with open_file("/tmp/file.txt", "r") as f:
+        with fos.open_file("/tmp/file.txt", "r") as f:
             print(f.read())
 
-        with open_file("s3://tmp/file.txt", "r") as f:
+        with fos.open_file("s3://tmp/file.txt", "r") as f:
             print(f.read())
 
     Args:
         path: the path
         mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         f = open(path, mode)
 
         try:
@@ -1267,9 +1265,7 @@ def exists(path):
     Returns:
         True/False
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.exists(path)
 
     client = get_client(path=path)
@@ -1289,9 +1285,7 @@ def isfile(path):
     Returns:
         True/False
     """
-    fs = get_file_system(path)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(path):
         return os.path.isfile(path)
 
     client = get_client(path=path)
@@ -1309,9 +1303,7 @@ def isdir(dirpath):
     Returns:
         True/False
     """
-    fs = get_file_system(dirpath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         return os.path.isdir(dirpath)
 
     client = get_client(path=dirpath)
@@ -1376,9 +1368,7 @@ def ensure_empty_dir(dirpath, cleanup=False):
     Raises:
         ValueError: if the directory is not empty and ``cleanup`` is False
     """
-    fs = get_file_system(dirpath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         etau.ensure_empty_dir(dirpath, cleanup=cleanup)
         return
 
@@ -1551,9 +1541,7 @@ def list_files(
     Returns:
         a list of filepaths
     """
-    fs = get_file_system(dirpath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         if not os.path.isdir(dirpath):
             return []
 
@@ -1625,9 +1613,7 @@ def get_glob_matches(glob_patt):
     Returns:
         a list of file paths
     """
-    fs = get_file_system(glob_patt)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(glob_patt):
         return etau.get_glob_matches(glob_patt)
 
     root, found_special = get_glob_root(glob_patt)
@@ -1825,9 +1811,7 @@ def delete_dir(dirpath):
     Args:
         dirpath: the directory path
     """
-    fs = get_file_system(dirpath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(dirpath):
         etau.delete_dir(dirpath)
         return
 
@@ -2050,7 +2034,7 @@ def _get_region(fs, bucket):
             return resp["LocationConstraint"] or "us-east-1"
         except Exception as e2:
             logger.warning(
-                "Failed to determine filesystem '%s' bucket '%s' location. "
+                "Failed to determine file system '%s' bucket '%s' location. "
                 "HeadBucket: %s. GetBucketLocation: %s",
                 fs,
                 bucket,
@@ -2304,9 +2288,7 @@ def _copy_file(inpath, outpath, cleanup=False):
 
 
 def _delete_file(filepath):
-    fs = get_file_system(filepath)
-
-    if fs == FileSystem.LOCAL:
+    if is_local(filepath):
         etau.delete_file(filepath)
         return
 

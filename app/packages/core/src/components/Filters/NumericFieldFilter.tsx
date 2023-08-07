@@ -125,6 +125,7 @@ const NumericFieldFilter = ({
   color,
 }: Props) => {
   const name = path.split(".").slice(-1)[0];
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const excludeAtom = fos.numericExcludeAtom({
     path,
     modal,
@@ -161,6 +162,9 @@ const NumericFieldFilter = ({
   });
 
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const hasVisibilitySetting = useRecoilValue(
+    fos.fieldHasVisibilitySetting({ modal, path })
+  );
 
   const bounded = useRecoilValue(
     fos.boundedCount({ modal, path, extended: false })
@@ -267,7 +271,7 @@ const NumericFieldFilter = ({
             disabled={true}
             name={bounds[0]}
             setValue={() => {}}
-            count={bounded}
+            count={isFilterMode ? bounded : undefined} // visibility mode does not show count
             subcountAtom={fos.boundedCount({
               modal,
               path,
@@ -305,7 +309,7 @@ const NumericFieldFilter = ({
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {isFiltered && (
+        {(isFiltered || hasVisibilitySetting) && (
           <Button
             text={"Reset"}
             color={color}

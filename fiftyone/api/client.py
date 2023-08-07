@@ -5,6 +5,7 @@
 """
 import functools
 import os
+from importlib import metadata
 from typing import Any, BinaryIO, Dict, Iterator, Mapping, Optional
 from typing_extensions import Literal
 
@@ -39,7 +40,15 @@ class Client:
         self._timeout = timeout
 
         self._session = requests.Session()
-        self._session.headers.update({"X-API-Key": self.__key})
+        try:
+            version = metadata.version("fiftyone")
+        except metadata.PackageNotFoundError:
+            version = ""
+        self._extra_headers = {
+            "X-API-Key": self.__key,
+            "User-Agent": f"FiftyOne Teams client/{version}",
+        }
+        self._session.headers.update(self._extra_headers)
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, self.__class__):
@@ -100,7 +109,10 @@ class Client:
     def socket(self, url_path: str) -> socket.Socket:
         """Create a websocket connection"""
         return socket.Socket(
-            self.__base_url, url_path, {"X-API-Key": self.__key}, self._timeout
+            self.__base_url,
+            url_path,
+            self._extra_headers,
+            self._timeout,
         )
 
     def close(self) -> None:

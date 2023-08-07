@@ -62,6 +62,26 @@ class LabelTests(unittest.TestCase):
             custom_id=ObjectId(),
         )
 
+        self.assertTrue(detection.has_field("label"))
+        self.assertTrue(detection.has_field("foo"))
+        self.assertFalse(detection.has_field("spam"))
+
+        self.assertIsNone(detection.get_field("label"))
+        self.assertEqual(detection.get_field("foo"), "bar")
+
+        detection.set_field("label", "cat")
+        detection.set_field("foo", "baz")
+        detection.set_field("spam", "eggs")
+
+        self.assertEqual(detection.get_field("label"), "cat")
+        self.assertEqual(detection.get_field("foo"), "baz")
+        self.assertEqual(detection.get_field("spam"), "eggs")
+
+        # pylint: disable=no-member
+        self.assertEqual(detection.label, "cat")
+        self.assertEqual(detection.foo, "baz")
+        self.assertEqual(detection.spam, "eggs")
+
         d = detection.to_dict()
 
         self.assertIsInstance(d["_id"], ObjectId)
@@ -338,6 +358,110 @@ class LabelTests(unittest.TestCase):
             ),
             {},
         )
+
+    @drop_datasets
+    def test_label_conversion(self):
+        label = "triangle"
+        frame_size = (640, 480)
+
+        polylines = fo.Polylines(
+            polylines=[
+                fo.Polyline(
+                    label=label,
+                    points=[[(0.1, 0.1), (0.1, 0.4), (0.4, 0.4)]],
+                    closed=True,
+                    filled=True,
+                ),
+                fo.Polyline(
+                    label=label,
+                    points=[[(0.6, 0.6), (0.9, 0.6), (0.9, 0.9)]],
+                    closed=True,
+                    filled=True,
+                ),
+            ]
+        )
+
+        detections = polylines.to_detections(frame_size=frame_size)
+        detection = detections.detections[0]
+        polyline = polylines.polylines[0]
+
+        #
+        # Grayscale
+        #
+
+        target = 128
+        mask_targets = {target: label}
+
+        seg1 = detections.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+        seg2 = detection.to_segmentation(frame_size=frame_size, target=target)
+        seg3 = polylines.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+        seg4 = polyline.to_segmentation(frame_size=frame_size, target=target)
+
+        self.assertEqual(seg1.mask.ndim, 2)
+        self.assertEqual(seg2.mask.ndim, 2)
+        self.assertEqual(seg3.mask.ndim, 2)
+        self.assertEqual(seg4.mask.ndim, 2)
+
+        dets1 = seg1.to_detections(
+            mask_targets=mask_targets, mask_types="thing"
+        )
+        dets2 = seg2.to_detections(
+            mask_targets=mask_targets, mask_types="stuff"
+        )
+        poly3 = seg3.to_polylines(
+            mask_targets=mask_targets, mask_types="thing"
+        )
+        poly4 = seg4.to_polylines(
+            mask_targets=mask_targets, mask_types="stuff"
+        )
+
+        self.assertEqual(len(dets1.detections), 2)
+        self.assertEqual(len(dets2.detections), 1)
+        self.assertEqual(len(poly3.polylines), 2)
+        self.assertEqual(len(poly4.polylines), 1)
+
+        #
+        # Color
+        #
+
+        target = "#ff6d04"
+        mask_targets = {target: label}
+
+        seg1 = detections.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+        seg2 = detection.to_segmentation(frame_size=frame_size, target=target)
+        seg3 = polylines.to_segmentation(
+            frame_size=frame_size, mask_targets=mask_targets
+        )
+        seg4 = polyline.to_segmentation(frame_size=frame_size, target=target)
+
+        self.assertEqual(seg1.mask.ndim, 3)
+        self.assertEqual(seg2.mask.ndim, 3)
+        self.assertEqual(seg3.mask.ndim, 3)
+        self.assertEqual(seg4.mask.ndim, 3)
+
+        dets1 = seg1.to_detections(
+            mask_targets=mask_targets, mask_types="thing"
+        )
+        dets2 = seg2.to_detections(
+            mask_targets=mask_targets, mask_types="stuff"
+        )
+        poly3 = seg3.to_polylines(
+            mask_targets=mask_targets, mask_types="thing"
+        )
+        poly4 = seg4.to_polylines(
+            mask_targets=mask_targets, mask_types="stuff"
+        )
+
+        self.assertEqual(len(dets1.detections), 2)
+        self.assertEqual(len(dets2.detections), 1)
+        self.assertEqual(len(poly3.polylines), 2)
+        self.assertEqual(len(poly4.polylines), 1)
 
 
 if __name__ == "__main__":

@@ -140,7 +140,7 @@ semantic meaning depending on the data you use to color/size the points.
 
 Here are a few of the many possible applications:
 
--   Identifying anomolous and/or visually similar examples
+-   Identifying anomalous and/or visually similar examples
 -   Uncovering patterns in incorrect/spurious predictions
 -   Finding examples of target scenarios in your data lake
 -   Mining hard examples for your evaluation pipeline
@@ -1148,7 +1148,7 @@ the external index/collection:
 Applications
 ------------
 
-How can simiarlity be used in practice? A common pattern is to mine your
+How can similarity be used in practice? A common pattern is to mine your
 dataset for similar examples to certain images or object patches of interest,
 e.g., those that represent failure modes of a model that need to be studied in
 more detail or underrepresented classes that need more training examples.

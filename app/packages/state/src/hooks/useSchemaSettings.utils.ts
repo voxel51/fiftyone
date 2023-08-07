@@ -1,6 +1,8 @@
+import { MediaType } from "@fiftyone/relay";
 import {
   CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
+  DETECTIONS_FIELD,
   DETECTION_DISABLED_SUB_PATHS,
   DETECTION_FIELD,
   DISABLED_LABEL_FIELDS_VISIBILITY,
@@ -24,13 +26,105 @@ import {
   REGRESSION_FIELD,
   SEGMENTATION_DISABLED_SUB_PATHS,
   SEGMENTATION_FIELD,
+  SKIP_FIELD_TYPES,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
   VALID_LABEL_TYPES,
 } from "@fiftyone/utilities";
 
-export const isMetadataField = (path: string) => {
+const isMetadataField = (path: string) => {
   return path === "metadata" || path.startsWith("metadata.");
+};
+
+/**
+ * @param path
+ * @param mediaType
+ * @param frameSchema
+ * @returns a new path prefixed with 'frames.' if the mediaType is 'video'
+ *  else returns the original path.
+ */
+export const getPath = (
+  path: string,
+  mediaType: MediaType,
+  frameSchema?: { [key: string]: Field }
+) => {
+  if (mediaType === "video") {
+    if (!frameSchema?.[path]) {
+      return path;
+    }
+    return `frames.${path}`;
+  }
+  return path;
+};
+
+export interface DatasetSchema {
+  [key: string]: Field;
+}
+
+/**
+ * @param path
+ * @param schema
+ * @param frameSchema
+ * @param mediaType
+ * @returns a list of full field paths and subpaths.
+ */
+export const getSubPaths = (
+  path: string,
+  schema: DatasetSchema,
+  mediaType: MediaType,
+  frameSchema?: DatasetSchema
+) => {
+  if (!path) {
+    throw new Error("path is required");
+  }
+
+  if (!schema) {
+    throw new Error("schema is required");
+  }
+
+  if (!mediaType) {
+    throw new Error("mediaType is required");
+  }
+
+  const subPaths = new Set<string>();
+  const thisPath = getPath(path, mediaType, frameSchema);
+  subPaths.add(thisPath);
+
+  Object.keys(schema).forEach((currPath: string) => {
+    if (currPath.startsWith(path + ".") && !skipField(currPath, schema)) {
+      subPaths.add(getPath(currPath, mediaType, frameSchema));
+    }
+  });
+
+  return subPaths;
+};
+
+export const skipField = (rawPath: string, schema: {}) => {
+  if (!rawPath) {
+    throw new Error("path argument is required");
+  }
+
+  // we remove 'frames.' prefix for processing
+  const path = rawPath.replace("frames.", "");
+
+  const currentField = schema?.[path];
+  if (!currentField) {
+    return true;
+  }
+
+  const ftype = currentField.ftype;
+  const parentPath = path.substring(0, path.lastIndexOf("."));
+  const pathSplit = path.split(".");
+  const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
+
+  return (
+    SKIP_FIELD_TYPES.includes(ftype) ||
+    (parentPath &&
+      [DETECTION_FIELD, DETECTIONS_FIELD].includes(
+        schema[parentPath]?.embeddedDocType
+      ) &&
+      [".bounding_box", ".index"].includes(pathLabel))
+  );
 };
 
 export const disabledField = (
