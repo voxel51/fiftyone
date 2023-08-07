@@ -135,7 +135,7 @@ class DatasetView(foc.SampleCollection):
 
     @property
     def _base_view(self):
-        return self.__class__(self.__dataset)
+        return self.__class__(self.__dataset, _group_slice=self.group_slice)
 
     @property
     def _dataset(self):
@@ -144,6 +144,40 @@ class DatasetView(foc.SampleCollection):
     @property
     def _root_dataset(self):
         return self.__dataset
+
+    @property
+    def _has_slices(self):
+        if self._dataset.media_type != fom.GROUP:
+            return False
+
+        for stage in self._stages:
+            if isinstance(stage, fost.SelectGroupSlices):
+                return False
+
+        return True
+
+    @property
+    def _parent_media_type(self):
+        if (
+            self._dataset.media_type != fom.GROUP
+            or not self._is_dynamic_groups
+        ):
+            return self._dataset.media_type
+
+        for idx, stage in enumerate(self._stages):
+            if isinstance(stage, fost.GroupBy):
+                break
+
+        parent = self.__class__(
+            self.__dataset,
+            _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
+            _group_slice=self.__group_slice,
+            _name=self.__name,
+        )
+        return DatasetView._build(
+            self._dataset, self._serialize()[:idx]
+        ).media_type
 
     @property
     def _is_generated(self):
@@ -188,7 +222,7 @@ class DatasetView(foc.SampleCollection):
     @property
     def group_field(self):
         """The group field of the view, or None if the view is not grouped."""
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_field
@@ -198,7 +232,7 @@ class DatasetView(foc.SampleCollection):
         """The current group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         if self.__group_slice is not None:
@@ -211,7 +245,7 @@ class DatasetView(foc.SampleCollection):
         if self.media_type != fom.GROUP:
             raise ValueError("DatasetView has no groups")
 
-        if self._is_dynamic_groups and self._dataset.media_type != fom.GROUP:
+        if self._is_dynamic_groups and not self._has_slices:
             raise ValueError("Dynamic grouped collections don't have slices")
 
         if slice_name is not None and slice_name not in self.group_media_types:
@@ -226,7 +260,7 @@ class DatasetView(foc.SampleCollection):
         """The list of group slices of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_slices
@@ -236,7 +270,7 @@ class DatasetView(foc.SampleCollection):
         """A dict mapping group slices to media types, or None if the view is
         not grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.group_media_types
@@ -246,7 +280,7 @@ class DatasetView(foc.SampleCollection):
         """The default group slice of the view, or None if the view is not
         grouped.
         """
-        if self.media_type != fom.GROUP:
+        if not self._has_slices:
             return None
 
         return self._dataset.default_group_slice
@@ -1391,12 +1425,14 @@ class DatasetView(foc.SampleCollection):
         _found_select_group_slice = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
+        _attach_frames_idx1 = None
 
         _contains_groups = self._dataset.media_type == fom.GROUP
         _group_slices = set()
         _attach_groups_idx = None
 
-        for idx, stage in enumerate(self._stages):
+        idx = 0
+        for stage in self._stages:
             if isinstance(stage, fost.SelectGroupSlices):
                 # We might need to reattach frames after `SelectGroupSlices`,
                 # since it involves a `$lookup` that resets the samples
@@ -1428,9 +1464,31 @@ class DatasetView(foc.SampleCollection):
 
                     _group_slices.update(_stage_group_slices)
 
-            # Generate stage's pipeline
-            _pipelines.append(stage.to_mongo(_view))
+            _pipeline = stage.to_mongo(_view)
+
+            # @note(SelectGroupSlices)
+            # Special case: when selecting group slices of a video dataset that
+            # modifies the dataset's schema, frame lookups must be injected in
+            # the middle of the stage's pipeline, after the group slice $lookup
+            # but *before* the $project stage(s) that reapply schema changes
+            if (
+                isinstance(stage, fost.SelectGroupSlices)
+                and _contains_videos
+                and _pipeline
+                and "$project" in _pipeline[-1]
+            ):
+                _pipeline0 = _pipeline
+                _pipeline = []
+                while _pipeline0 and "$project" in _pipeline0[-1]:
+                    _pipeline.insert(0, _pipeline0.pop())
+
+                idx += 1
+                _attach_frames_idx1 = idx
+                _pipelines.append(_pipeline0)
+
+            _pipelines.append(_pipeline)
             _view = _view._add_view_stage(stage, validate=False)
+            idx += 1
 
         if _attach_frames_idx is None and (attach_frames or frames_only):
             _attach_frames_idx = len(_pipelines)
@@ -1438,6 +1496,9 @@ class DatasetView(foc.SampleCollection):
         #######################################################################
         # Insert frame lookup pipeline(s) if needed
         #######################################################################
+
+        if _attach_frames_idx1 is not None and _attach_frames_idx is not None:
+            _attach_frames_idx = _attach_frames_idx1
 
         if _attach_frames_idx0 is not None and _attach_frames_idx is not None:
             # Two lookups are required; manually do the **last** one and rely
@@ -1497,8 +1558,8 @@ class DatasetView(foc.SampleCollection):
         if media_type is None and not self._is_dynamic_groups:
             media_type = self.media_type
 
-        if group_slice is None:
-            group_slice = self.group_slice
+        if group_slice is None and self._dataset.media_type == fom.GROUP:
+            group_slice = self.__group_slice or self._dataset.group_slice
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
@@ -1618,9 +1679,6 @@ class DatasetView(foc.SampleCollection):
     def _set_media_type(self, media_type):
         self.__media_type = media_type
 
-        if media_type != fom.GROUP:
-            self.__group_slice = None
-
     def _set_name(self, name):
         self.__name = name
 
@@ -1724,6 +1782,7 @@ def make_optimized_select_view(
     sample_ids,
     ordered=False,
     groups=False,
+    flatten=False,
 ):
     """Returns a view that selects the provided sample IDs that is optimized
     to reduce the document list as early as possible in the pipeline.
@@ -1741,12 +1800,13 @@ def make_optimized_select_view(
         ordered (False): whether to sort the samples in the returned view to
             match the order of the provided IDs
         groups (False): whether the IDs are group IDs, not sample IDs
+        flatten (False): whether to flatten group datasets before selecting
+            sample ids
 
     Returns:
         a :class:`DatasetView`
     """
     in_view = sample_collection.view()
-    media_type = sample_collection.media_type
     stages = in_view._stages
 
     if any(isinstance(stage, fost.Mongo) for stage in stages):
@@ -1761,6 +1821,9 @@ def make_optimized_select_view(
     if groups:
         view = view.select_groups(sample_ids, ordered=ordered)
     else:
+        if view.media_type == fom.GROUP and view.group_slices and flatten:
+            view = view.select_group_slices(_allow_mixed=True)
+
         view = view.select(sample_ids, ordered=ordered)
 
     #

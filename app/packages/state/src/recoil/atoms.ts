@@ -12,10 +12,11 @@ import {
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
 import { Field, StrictField } from "@fiftyone/utilities";
-import { AtomEffect, DefaultValue, atom, atomFamily } from "recoil";
+import { AtomEffect, DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
+import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
 
 export const refresher = atom<number>({
@@ -211,12 +212,12 @@ export const viewCounter = atom({
 
 export const DEFAULT_ALPHA = 0.7;
 
-export const alpha = atomFamily<number, boolean>({
+export const alpha = atom<number>({
   key: "alpha",
   default: DEFAULT_ALPHA,
 });
 
-export const colorSeed = atomFamily<number, boolean>({
+export const colorSeed = atom<number>({
   key: "colorSeed",
   default: 0,
 });
@@ -246,36 +247,10 @@ export const similaritySorting = atom<boolean>({
   default: false,
 });
 
-export const pinned3DSample = atom<string | null>({
-  key: "pinned3DSample",
-  default: null,
+export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
+  key: "extendedSelection",
+  default: { selection: null },
 });
-
-export const extendedSelection = (() => {
-  let selection: { selection: string[]; scope?: string } = { selection: [] };
-
-  return graphQLSyncFragmentAtom<
-    datasetFragment$key,
-    { selection: string[]; scope?: string }
-  >(
-    {
-      fragments: [datasetFragment],
-      keys: ["dataset"],
-      read: (data, previous) => {
-        if (data.id !== previous?.id) {
-          selection = { selection: [] };
-        }
-
-        return selection;
-      },
-      default: { selection: [] },
-    },
-    {
-      key: "extendedSelection",
-    }
-  );
-})();
-
 export const extendedSelectionOverrideStage = atom<any>({
   key: "extendedSelectionOverrideStage",
   default: null,
@@ -409,8 +384,8 @@ export const getBrowserStorageEffectForKey =
     })();
   };
 
-export const groupMediaIsCarouselVisible = atom<boolean>({
-  key: "groupMediaIsCarouselVisible",
+export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
+  key: "groupMediaIsCarouselVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
@@ -420,8 +395,8 @@ export const groupMediaIsCarouselVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIs3DVisible = atom<boolean>({
-  key: "groupMediaIs3DVisible",
+export const groupMedia3dVisibleSetting = atom<boolean>({
+  key: "groupMediaIs3dVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
@@ -431,15 +406,42 @@ export const groupMediaIs3DVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIsImageVisible = atom<boolean>({
-  key: "groupMediaIsImageVisible",
+export const onlyPcd = selector<boolean>({
+  key: "onlyPcd",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return set.size === 1 && hasPcd;
+  },
+});
+
+export const groupMediaIs3dVisible = selector<boolean>({
+  key: "groupMedia3dVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMedia3dVisibleSetting) && hasPcd;
+  },
+});
+
+export const groupMediaIsMainVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMainVisibleSetting",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("groupMediaIsImageVisible", {
+    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
       sessionStorage: true,
       valueClass: "boolean",
     }),
   ],
+});
+
+export const groupMediaIsMainVisible = selector<boolean>({
+  key: "groupMediaIsMainVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+  },
 });
 
 export const theme = atom<"dark" | "light">({
@@ -492,4 +494,10 @@ export const activeColorField = atom<
 
 export const colorScheme = sessionAtom({
   key: "colorScheme",
+});
+
+// sidebar filter vs. visibility mode
+export const isSidebarFilterMode = atom<boolean>({
+  key: "isSidebarFilterMode",
+  default: true,
 });

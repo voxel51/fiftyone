@@ -63,17 +63,17 @@ on the cards below to see how!
     :tags: Annotation
 
 .. customcarditem::
-    :header: Labelbox
-    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
-    :link: labelbox.html
-    :image: ../_static/images/integrations/labelbox.jpeg
-    :tags: Annotation
-
-.. customcarditem::
     :header: Label Studio
     :description: Annotate and edit your FiftyOne datasets in Label Studio through our integration.
     :link: labelstudio.html
     :image: ../_static/images/integrations/labelstudio.png
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
+    :link: labelbox.html
+    :image: ../_static/images/integrations/labelbox.jpeg
     :tags: Annotation
 
 .. customcarditem::
@@ -105,6 +105,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: PyTorch Hub
+    :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
+    :link: pytorch_hub.html
+    :image: ../_static/images/integrations/pytorch.png
+    :tags: Model-Zoo,Model-Evaluation
+
+.. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
@@ -133,10 +140,11 @@ on the cards below to see how!
     Open Images <open_images.rst>
     ActivityNet <activitynet.rst>
     CVAT <cvat.rst>
-    Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
+    Labelbox <labelbox.rst>
     Qdrant <qdrant.rst>
     Pinecone <pinecone.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
+    PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>

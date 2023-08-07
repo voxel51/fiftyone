@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import React, { Fragment, useCallback, useRef } from "react";
+import { Fragment, useCallback, useRef } from "react";
 import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
@@ -56,8 +56,6 @@ const SchemaSettings = () => {
     setSearchTerm,
     setSelectedTab,
     selectedTab,
-    setSearchResults,
-    setSelectedFieldsStage,
     datasetName,
     excludedPaths,
     resetExcludedPaths,
@@ -66,10 +64,23 @@ const SchemaSettings = () => {
     lastAppliedPaths,
     setExcludedPaths,
     isFilterRuleActive,
-    searchMetaFilter,
     enabledSelectedPaths,
     setShowNestedFields,
+    mergedSchema,
   } = fos.useSchemaSettings();
+  const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
+
+  const applyDisabled =
+    isFilterRuleActive && (!searchTerm || !searchResults.length);
+  const resetDisabled = isFilterRuleActive && !searchResults.length;
+
+  const { setSearchResults, searchMetaFilter } =
+    fos.useSearchSchemaFields(mergedSchema);
+
+  const { setViewToFields: setSelectedFieldsStage } =
+    fos.useSetSelectedFieldsStage();
+
+  const { resetAttributeFilters } = fos.useSchemaSettings();
 
   useOutsideClick(schemaModalRef, (_) => {
     close();
@@ -173,7 +184,7 @@ const SchemaSettings = () => {
                 return {
                   key: value,
                   text: value,
-                  title: `Fiele ${value}`,
+                  title: `Field ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
                     setShowNestedFields(false);
@@ -213,11 +224,10 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={applyDisabled}
               onClick={() => {
-                const initialFieldNames = [
-                  ...(excludedPaths[datasetName] || []),
-                ];
-
+                resetAttributeFilters();
+                const initialFieldNames = [...excludedPaths[datasetName]];
                 let stage;
                 if (isFilterRuleActive) {
                   stage = {
@@ -259,12 +269,14 @@ const SchemaSettings = () => {
                 padding: "0.25rem 0.5rem",
                 borderRadius: "4px",
               }}
+              disabled={resetDisabled}
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
                 setSelectedFieldsStage(null);
                 resetExcludedPaths();
                 setSearchResults([]);
+                resetAttributeFilters();
               }}
             >
               Reset

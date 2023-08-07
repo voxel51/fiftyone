@@ -14,7 +14,7 @@ import {
 import { useCallback, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
-import { ModalSample, selectedMediaField, sidebarSampleId } from "../recoil";
+import { ModalSample, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
@@ -33,7 +33,6 @@ export default <T extends AbstractLooker>(
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
   const isPatch = useRecoilValue(viewAtoms.isPatchesView);
   const handleError = useErrorHandler();
-  const activeId = isModal ? useRecoilValue(sidebarSampleId) : null;
 
   const view = useRecoilValue(viewAtoms.view);
   const dataset = useRecoilValue(datasetName);
@@ -130,6 +129,13 @@ export default <T extends AbstractLooker>(
         view,
       };
 
+      if (sample.group?.name) {
+        config.group = {
+          name: sample.group.name,
+          id: sample.group._id,
+        };
+      }
+
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),
@@ -148,7 +154,6 @@ export default <T extends AbstractLooker>(
       isPatch,
       options,
       thumbnail,
-      activeId,
       mediaField,
       dataset,
       fieldSchema,

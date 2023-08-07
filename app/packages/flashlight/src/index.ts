@@ -17,7 +17,7 @@ import {
   State,
 } from "./state";
 import { createScrollReader } from "./zooming";
-export type { Render, Response } from "./state";
+export type { Render, Render, Response, Response } from "./state";
 
 import {
   flashlight,
@@ -32,6 +32,7 @@ export type FlashlightOptions = Optional<Options>;
 export interface FlashlightConfig<K> {
   get: Get<K>;
   render: Render;
+  showPixels?: boolean;
   initialRequestKey: K;
   horizontal: boolean;
   options: FlashlightOptions;
@@ -55,7 +56,6 @@ export default class Flashlight<K> {
   private loading = false;
   private resizeObserver: ResizeObserver;
   private readonly config: FlashlightConfig<K>;
-  private pixelsSet: boolean;
   private ctx = 0;
   private resizeTimeout: ReturnType<typeof setTimeout>;
 
@@ -66,6 +66,7 @@ export default class Flashlight<K> {
     this.element = document.createElement("div");
     config.elementId && this.element.setAttribute("id", config.elementId);
     this.element.classList.add(flashlight);
+    this.element.setAttribute("data-cy", "flashlight");
     this.state = this.getEmptyState(config);
 
     document.addEventListener("visibilitychange", () => this.render());
@@ -174,7 +175,7 @@ export default class Flashlight<K> {
     return Boolean(this.element.parentElement);
   }
   private showPixels() {
-    this.container.classList.add(flashlightPixels);
+    this.config.showPixels && this.container.classList.add(flashlightPixels);
   }
 
   private hidePixels() {

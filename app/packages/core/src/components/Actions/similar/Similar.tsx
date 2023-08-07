@@ -2,6 +2,7 @@ import { useExternalLink } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import React, {
+  MutableRefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -39,6 +40,7 @@ interface SortBySimilarityProps {
   modal: boolean;
   close: () => void;
   bounds?: any; // fix me
+  anchorRef?: MutableRefObject<unknown>;
 }
 
 const SortBySimilarity = ({
@@ -46,6 +48,7 @@ const SortBySimilarity = ({
   bounds,
   close,
   isImageSearch,
+  anchorRef,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
   const datasetId = useRecoilValue(fos.dataset)?.id as string;
@@ -184,7 +187,13 @@ const SortBySimilarity = ({
   );
 
   return (
-    <Popout modal={modal} bounds={bounds} style={{ minWidth: 280 }}>
+    <Popout
+      modal={modal}
+      bounds={bounds}
+      style={{ minWidth: 280 }}
+      fixed
+      anchorRef={anchorRef}
+    >
       {hasSimilarityKeys && (
         <div
           style={{

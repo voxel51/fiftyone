@@ -35,7 +35,7 @@ export const filters = (() => {
 })();
 
 export const filter = selectorFamily<
-  State.Filter,
+  State.Filters,
   { path: string; modal: boolean }
 >({
   key: "filter",

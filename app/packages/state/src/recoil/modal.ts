@@ -5,9 +5,16 @@ import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
-import { pinned3DSample } from "./atoms";
 import { filters } from "./filters";
-import { groupId, hasGroupSlices, modalGroupSlice } from "./groups";
+import {
+  groupId,
+  groupSlice,
+  hasGroupSlices,
+  modalGroupSlice,
+  pinned3DSample,
+  pinned3DSampleSlice,
+  pinned3d,
+} from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
@@ -16,17 +23,22 @@ import { view } from "./view";
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
-    const override = get(pinned3DSample);
+    const override = get(pinned3DSampleSlice);
 
-    return override ? override : get(modalSampleId);
+    return get(pinned3d) && override
+      ? get(pinned3DSample).id
+      : get(modalSampleId);
   },
 });
 
 export type ModalSampleData = Exclude<
-  ResponseFrom<mainSampleQuery>["sample"],
-  {
-    readonly __typename: "%other";
-  }
+  Exclude<
+    ResponseFrom<mainSampleQuery>["sample"],
+    {
+      readonly __typename: "%other";
+    }
+  >,
+  null
 >;
 
 export type ModalSample = {
@@ -45,6 +57,11 @@ type ModalSelector = {
 export const currentModalSample = atom<ModalSelector | null>({
   key: "currentModalSample",
   default: null,
+});
+
+export const isModalActive = selector<boolean>({
+  key: "isModalActive",
+  get: ({ get }) => Boolean(get(currentModalSample)),
 });
 
 export type ModalNavigation = (
@@ -89,10 +106,17 @@ export const modalSample = graphQLSelector<
   environment: RelayEnvironmentKey,
   key: "modalSample",
   query: mainSample,
-  mapResponse: (data: ModalSampleResponse, { get }) => {
-    const current = get(currentModalSample);
+  mapResponse: (data: ModalSampleResponse, { variables }) => {
     if (!data.sample) {
-      throw new Error(`sample with index ${current.index} not found`);
+      if (variables.filter.group) {
+        throw new GroupSampleNotFound(
+          `sample with group id ${variables.filter.id} and slice ${variables.filter.group.slices[0]} not found`
+        );
+      }
+
+      throw new SampleNotFound(
+        `sample with id ${variables.filter.id} not found`
+      );
     }
 
     return mapSampleResponse(data.sample) as ModalSample;
@@ -101,21 +125,27 @@ export const modalSample = graphQLSelector<
     const current = get(currentModalSample);
     if (current === null) return null;
 
+    const slice = get(groupSlice);
+    const sliceSelect = get(modalGroupSlice);
+
+    if (get(hasGroupSlices) && (!slice || !sliceSelect)) {
+      return null;
+    }
+
     return {
       dataset: get(datasetName),
       view: get(view),
       filters: get(filters),
       filter: {
         id: current.id,
-        group: get(hasGroupSlices)
-          ? { slices: [get(modalGroupSlice)], id: get(groupId) }
+        group: slice
+          ? { slice, slices: [sliceSelect], id: get(groupId) }
           : null,
       },
     };
   },
 });
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => get(currentModalSample) !== null,
-});
+export class SampleNotFound extends Error {}
+
+export class GroupSampleNotFound extends SampleNotFound {}

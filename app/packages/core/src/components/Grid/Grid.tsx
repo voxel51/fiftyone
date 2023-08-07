@@ -2,49 +2,56 @@ import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import {
-  deferrer,
   stringifyObj,
+  useDeferrer,
   useEventHandler,
   useExpandSample,
 } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
+import useFlashlightPager from "../../useFlashlightPager";
 import { flashlightLooker } from "./Grid.module.css";
-import { rowAspectRatioThreshold } from "./recoil";
-import usePage from "./usePage";
+import {
+  gridCropCallback,
+  pageParameters,
+  rowAspectRatioThreshold,
+} from "./recoil";
 import useResize from "./useResize";
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
   const store = fos.useLookerStore();
   const expandSample = useExpandSample(store);
-  const initialized = useRef(false);
-  const deferred = deferrer(initialized);
+  const { init, deferred } = useDeferrer();
 
   const lookerOptions = fos.useLookerOptions(false);
   const createLooker = fos.useCreateLooker(false, true, lookerOptions);
 
   const selected = useRecoilValue(fos.selectedSamples);
-  const pager = usePage(false, store);
-
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
+  const { page, reset } = useFlashlightPager(
+    store,
+    pageParameters,
+    gridCropCallback
+  );
 
   // create flashlight only one time
   const [flashlight] = React.useState(() => {
     const flashlight = new Flashlight<number>({
       containerId: "grid-flashlight",
       horizontal: false,
-      initialRequestKey: 1,
+      showPixels: true,
+      initialRequestKey: 0,
       options: { rowAspectRatioThreshold: threshold, offset: 52 },
       onItemClick: expandSample,
       onResize: resize.current,
       onItemResize: (id, dimensions) =>
         store.lookers.has(id) && store.lookers.get(id)?.resize(dimensions),
-      get: pager,
+      get: page,
       render: (id, element, dimensions, soft, hide) => {
         let result = store.samples.get(id);
 
@@ -88,7 +95,7 @@ const Grid: React.FC<{}> = () => {
     return flashlight;
   });
 
-  useEffect(
+  useEffect(() => {
     deferred(() => {
       if (isModalOpen || isTagging || !flashlight.isAttached()) {
         return;
@@ -97,33 +104,35 @@ const Grid: React.FC<{}> = () => {
       flashlight.reset();
       store.reset();
       freeVideos();
-    }),
-    [
-      stringifyObj(useRecoilValue(fos.filters)),
-      useRecoilValue(fos.datasetName),
-      useRecoilValue(fos.cropToContent(false)),
-      fos.filterView(useRecoilValue(fos.view)),
-      useRecoilValue(fos.groupSlice),
-      useRecoilValue(fos.refresher),
-      useRecoilValue(fos.similarityParameters),
-      useRecoilValue(fos.selectedMediaField(false)),
-      useRecoilValue(fos.extendedStagesUnsorted),
-      useRecoilValue(fos.extendedStages),
-    ]
-  );
+    });
+  }, [
+    deferred,
+    reset,
+    stringifyObj(useRecoilValue(fos.filters)),
+    useRecoilValue(fos.datasetName),
+    useRecoilValue(fos.cropToContent(false)),
+    fos.filterView(useRecoilValue(fos.view)),
+    useRecoilValue(fos.groupSlice),
+    useRecoilValue(fos.refresher),
+    useRecoilValue(fos.similarityParameters),
+    useRecoilValue(fos.selectedMediaField(false)),
+    useRecoilValue(fos.extendedStagesUnsorted),
+    useRecoilValue(fos.extendedStages),
+  ]);
 
   const select = fos.useSelectFlashlightSample();
   const selectSample = useRef(select);
   selectSample.current = select;
 
   useLayoutEffect(
-    deferred(() =>
-      flashlight.updateOptions({ rowAspectRatioThreshold: threshold })
-    ),
-    [threshold]
+    () =>
+      deferred(() =>
+        flashlight.updateOptions({ rowAspectRatioThreshold: threshold })
+      ),
+    [deferred, flashlight, threshold]
   );
 
-  useLayoutEffect(
+  useLayoutEffect(() => {
     deferred(() => {
       flashlight.updateItems((sampleId) => {
         store.lookers.get(sampleId)?.updateOptions({
@@ -131,9 +140,8 @@ const Grid: React.FC<{}> = () => {
           selected: selected.has(sampleId),
         });
       });
-    }),
-    [lookerOptions, selected]
-  );
+    });
+  }, [deferred, flashlight, lookerOptions, store, selected]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -167,8 +175,8 @@ const Grid: React.FC<{}> = () => {
   );
 
   useEffect(() => {
-    initialized.current = true;
-  }, []);
+    init();
+  }, [init]);
 
   return <div id={id} className={flashlightLooker} data-cy="fo-grid"></div>;
 };

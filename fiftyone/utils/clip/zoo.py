@@ -41,8 +41,7 @@ class TorchCLIPModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             if necessary
         context_length: the model's context length
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
-        classes (None): an optional list of custom classes to use for zero-shot
-            prediction
+        classes (None): a list of custom classes for zero-shot prediction
     """
 
     def __init__(self, d):
@@ -55,7 +54,6 @@ class TorchCLIPModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.tokenizer_base_url = self.parse_string(d, "tokenizer_base_url")
         self.context_length = self.parse_int(d, "context_length")
         self.text_prompt = self.parse_string(d, "text_prompt")
-        self.classes = self.parse_array(d, "classes", default=None)
 
         self._tokenizer_path = os.path.join(
             fo.config.model_zoo_dir, self.tokenizer_base_filename
@@ -116,13 +114,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
         config.download_model_if_necessary()
         config.download_tokenizer_if_necessary()
 
-    def _parse_classes(self, config):
-        if config.classes:
-            return config.classes
-
-        return super()._parse_classes(config)
-
-    def _load_network(self, config):
+    def _load_model(self, config):
         with open(config.model_path, "rb") as f:
             model = torch.jit.load(f, map_location=self.device).eval()
 

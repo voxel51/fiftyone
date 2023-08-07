@@ -1,6 +1,7 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import {
+  StateForm,
   datasetAppConfigFragment,
   datasetAppConfigFragment$data,
   datasetAppConfigFragment$key,
@@ -14,7 +15,9 @@ import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
-import { isModalActive, modalSample } from "./modal";
+import { filters, modalFilters } from "./filters";
+import { currentSlice } from "./groups";
+import { currentModalSample, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { fieldSchema } from "./schema";
 import { State } from "./types";
@@ -52,6 +55,30 @@ export const stateSubscription = selector<string>({
     const params = new URLSearchParams(window.location.search);
 
     return params.get("subscription") || uuid();
+  },
+});
+
+export const mediaTypeSelector = selector({
+  key: "mediaTypeSelector",
+  get: ({ get }) => get(atoms.dataset)?.mediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const parentMediaTypeSelector = selector({
+  key: "parentMediaTypeSelector",
+  get: ({ get }) => get(atoms.dataset)?.parentMediaType,
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});
+
+export const savedViewsSelector = selector<State.SavedView[]>({
+  key: "datasetViews",
+  get: ({ get }) => get(atoms.dataset)?.savedViews || [],
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
   },
 });
 
@@ -440,12 +467,35 @@ export const mediaFields = selector<string[]>({
   },
 });
 
+export const viewStateForm = selectorFamily<
+  StateForm,
+  {
+    addStages?: string;
+    modal?: boolean;
+    selectSlice?: boolean;
+    omitSelected?: boolean;
+  }
+>({
+  key: "viewStateForm",
+  get:
+    ({ addStages, modal, selectSlice, omitSelected }) =>
+    ({ get }) => {
+      return {
+        filters: get(modal ? modalFilters : filters),
+        sampleIds: omitSelected ? [] : [...get(atoms.selectedSamples)],
+        labels: get(selectedLabelList),
+        extended: get(extendedStages),
+        slice: selectSlice ? get(currentSlice(modal)) : null,
+        addStages: addStages ? JSON.parse(addStages) : [],
+      };
+    },
+});
 export const selectedPatchIds = selectorFamily({
   key: "selectedPatchIds",
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(isModalActive);
+      const modal = get(currentModalSample);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);

@@ -54,11 +54,25 @@ const ChoiceIcon = styled.div`
 `;
 
 const Choice = (props: ChoicePropsType) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const { onClick, choice, selected } = props;
   const { label, name, canExecute } = choice;
   const disabled = canExecute === false;
+
+  useEffect(() => {
+    const containerElem = containerRef.current;
+    if (selected && containerElem) {
+      containerElem.scrollIntoView({ block: "nearest" });
+    }
+  }, [selected]);
+
   return (
-    <ChoiceContainer disabled={disabled} onClick={onClick} selected={selected}>
+    <ChoiceContainer
+      disabled={disabled}
+      onClick={onClick}
+      selected={selected}
+      ref={containerRef}
+    >
       <ChoiceIcon>
         <OperatorIcon {...choice} Fallback={disabled ? Lock : Extension} />
       </ChoiceIcon>

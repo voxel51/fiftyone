@@ -70,7 +70,10 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
     }
 
     return (
-      <div className={classnames(style.wrapper, scrollable)}>
+      <div
+        className={classnames(style.wrapper, scrollable)}
+        data-cy={"error-boundary"}
+      >
         <div className={classnames(style.container, scrollable)}>
           <div className={style.heading}>
             <div>

@@ -167,6 +167,7 @@ type Dataset {
   groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
+  parentMediaType: MediaType
   maskTargets: [NamedTargets!]!
   defaultMaskTargets: [Target!]
   sampleFields: [SampleField!]!
@@ -266,6 +267,7 @@ type Group {
 
 input GroupElementFilter {
   id: String = null
+  slice: String = null
   slices: [String!] = null
 }
 
@@ -439,6 +441,9 @@ type Query {
     first: Int = 20
     after: String = null
     filter: SampleFilter = null
+    filters: BSON = null
+    extendedStages: BSON = null
+    paginationData: Boolean = true
   ): SampleItemStrConnection!
   sample(
     dataset: String!
@@ -639,6 +644,7 @@ type VideoSample implements Sample {
   sample: JSON!
   urls: [MediaURL!]!
   aspectRatio: Float!
+  frameNumber: Int!
   frameRate: Float!
 }
 

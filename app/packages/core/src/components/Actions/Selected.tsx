@@ -257,6 +257,7 @@ interface SelectionActionsProps {
     VideoLooker | ImageLooker | FrameLooker | undefined
   >;
   bounds: any;
+  anchorRef?: MutableRefObject<unknown>;
 }
 
 const SelectionActions = ({
@@ -264,6 +265,7 @@ const SelectionActions = ({
   close,
   lookerRef,
   bounds,
+  anchorRef,
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
     lookerRef &&
@@ -278,7 +280,7 @@ const SelectionActions = ({
   lookerRef && useEventHandler(lookerRef.current, "play", close);
 
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={modal} bounds={bounds} fixed anchorRef={anchorRef}>
       {actions.map((props, i) => (
         <ActionOption {...props} key={i} />
       ))}

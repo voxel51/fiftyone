@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEventHandler } from "@fiftyone/state";
+import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
@@ -9,7 +9,6 @@ import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
-import { replace } from "./Entries/GroupEntries";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 

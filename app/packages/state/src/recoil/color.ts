@@ -9,97 +9,62 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
-import { config, configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
 
-export const colorscale = selector<RGB[]>({
-  key: "colorscale",
-  get: ({ get }) => {
-    return get(configData).colorscale as RGB[];
-  },
-});
-
-export const datasetColorScheme = selector({
-  key: "datasetColorScheme",
-  get: ({ get }) => get(selectors.datasetAppConfig).colorScheme,
-});
-
-export const defaultColorPool = selector({
-  key: "defaultColorPool",
-  get: ({ get }) => get(config).colorPool,
-});
-
-export const colorPool = selector({
-  key: "colorPool",
+export const coloring = selector<Coloring>({
+  key: "coloring",
   get: ({ get }) => {
     const pool = get(atoms.colorScheme).colorPool;
-
-    if (!pool) throw new Error("color pool not defined");
-
-    return pool;
+    const seed = get(atoms.colorSeed);
+    return {
+      seed,
+      pool,
+      scale: [],
+      by: get(selectors.appConfigOption({ key: "colorBy", modal: false })),
+      points: get(
+        selectors.appConfigOption({
+          key: "multicolorKeypoints",
+          modal: false,
+        })
+      ) as boolean,
+      defaultMaskTargets: get(selectors.defaultTargets),
+      maskTargets: get(selectors.targets).fields,
+      targets: new Array(pool.length)
+        .fill(0)
+        .map((_, i) => getColor(pool, seed, i)),
+    };
   },
-});
-
-export const coloring = selectorFamily<Coloring, boolean>({
-  key: "coloring",
-  get:
-    (modal) =>
-    ({ get }) => {
-      const pool = get(colorPool);
-      const seed = get(atoms.colorSeed(modal));
-      return {
-        seed,
-        pool,
-        scale: get(colorscale),
-        by: get(selectors.appConfigOption({ key: "colorBy", modal })),
-        points: get(
-          selectors.appConfigOption({ key: "multicolorKeypoints", modal })
-        ) as boolean,
-        defaultMaskTargets: get(selectors.defaultTargets),
-        maskTargets: get(selectors.targets).fields,
-        targets: new Array(pool.length)
-          .fill(0)
-          .map((_, i) => getColor(pool, seed, i)),
-      };
-    },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
-export const colorMap = selectorFamily<(val) => string, boolean>({
+export const colorMap = selector<(val) => string>({
   key: "colorMap",
-  get:
-    (modal) =>
-    ({ get }) => {
-      const pool = get(colorPool);
-      const seed = get(atoms.colorSeed(modal));
-      return createColorGenerator(pool, seed);
-    },
+  get: ({ get }) => {
+    const pool = get(atoms.colorScheme).colorPool;
+    const seed = get(atoms.colorSeed);
+    return createColorGenerator(pool, seed);
+  },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
 });
 
-export const colorMapRGB = selectorFamily<(val) => RGB, boolean>({
+export const colorMapRGB = selector<(val) => RGB>({
   key: "colorMapRGB",
-  get:
-    (modal) =>
-    ({ get }) => {
-      const hex = get(colorMap(modal));
-      return (val) => hexToRgb(hex(val));
-    },
+  get: ({ get }) => {
+    const hex = get(colorMap);
+    return (val) => hexToRgb(hex(val));
+  },
 });
 
-export const pathColor = selectorFamily<
-  string,
-  { path: string; modal: boolean }
->({
+export const pathColor = selectorFamily<string, string>({
   key: "pathColor",
   get:
-    ({ modal, path }) =>
+    (path) =>
     ({ get }) => {
       // video path tweak
       const field = get(schemaAtoms.field(path));
@@ -131,7 +96,7 @@ export const pathColor = selectorFamily<
         return setting!.fieldColor;
       }
 
-      const map = get(colorMap(modal));
+      const map = get(colorMap);
 
       if (get(schemaAtoms.labelFields({})).includes(parentPath)) {
         return map(parentPath);

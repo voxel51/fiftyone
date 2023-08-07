@@ -8,7 +8,7 @@ import {
   Schema,
   StrictField,
 } from "@fiftyone/utilities";
-import React, { MutableRefObject } from "react";
+import React, { MutableRefObject, useCallback, useRef } from "react";
 import {
   Environment,
   GraphQLResponse,
@@ -24,6 +24,22 @@ export const deferrer =
   (...args: any[]): void => {
     if (initialized.current) fn(...args);
   };
+
+export const useDeferrer = () => {
+  const initialized = useRef(false);
+  const deferred = useCallback(
+    (fn: () => void) => {
+      if (initialized.current) fn();
+    },
+    [initialized]
+  );
+
+  const init = useCallback(() => {
+    initialized.current = true;
+  }, []);
+
+  return { init, deferred };
+};
 
 export const stringifyObj = (obj) => {
   if (typeof obj !== "object" || Array.isArray(obj)) return obj;

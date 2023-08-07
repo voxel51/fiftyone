@@ -1,15 +1,19 @@
-import { PillButton, useTheme } from "@fiftyone/components";
 import {
-  AbstractLooker,
-  FrameLooker,
-  ImageLooker,
-  VideoLooker,
-} from "@fiftyone/looker";
+  PillButton,
+  scrollable,
+  scrollableSm,
+  useTheme,
+} from "@fiftyone/components";
+import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useEventHandler, useOutsideClick } from "@fiftyone/state";
+import {
+  affectedPathCountState,
+  useEventHandler,
+  useOutsideClick,
+} from "@fiftyone/state";
 import {
   Bookmark,
   Check,
@@ -57,8 +61,8 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
-    const affectedPathCount = get(fos.affectedPathCountState);
-    const isFieldVisibilityOn = affectedPathCount > 0;
+    const affectedPathCount = get(affectedPathCountState);
+    const isAttributeVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
@@ -67,7 +71,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
       isExtendedSelectionOn ||
         hasFiltersValue ||
         selectedSampleSet.size > 0 ||
-        isFieldVisibilityOn
+        isAttributeVisibilityOn
     );
   },
 });
@@ -98,8 +102,9 @@ const Patches = () => {
         highlight={open || Boolean(fields.length)}
         title={isVideo ? "Clips" : "Patches"}
         style={{ cursor: loading ? "default" : "pointer" }}
+        data-cy="action-clips-patches"
       />
-      {open && <Patcher close={() => setOpen(false)} />}
+      {open && <Patcher close={() => setOpen(false)} anchorRef={ref} />}
     </ActionDiv>
   );
 };
@@ -137,6 +142,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}
         style={{ cursor: "pointer" }}
+        data-cy="action-sort-by-similarity"
       />
       {open && (
         <SortBySimilarity
@@ -145,6 +151,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           close={() => setOpen(false)}
           bounds={bounds}
           isImageSearch={isImageSearch}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -192,6 +199,7 @@ const Tag = ({
         highlight={(selected || open) && available}
         ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
+        data-cy="action-tag-sample-labels"
       />
       {open && available && (
         <Tagger
@@ -199,6 +207,7 @@ const Tag = ({
           bounds={bounds}
           close={() => setOpen(false)}
           lookerRef={lookerRef}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -210,15 +219,13 @@ const Selected = ({
   lookerRef,
 }: {
   modal: boolean;
-  lookerRef?: MutableRefObject<
-    VideoLooker | ImageLooker | FrameLooker | undefined
-  >;
+  lookerRef?: MutableRefObject<fos.Lookers | undefined>;
 }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const samples = useRecoilValue(fos.selectedSamples);
   const labels = useRecoilValue(fos.selectedLabelIds);
-  const ref = useRef();
+  const ref = useRef<HTMLElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
   const [mRef, bounds] = useMeasure();
 
@@ -256,6 +263,7 @@ const Selected = ({
         style={{
           cursor: loading ? "default" : "pointer",
         }}
+        data-cy="action-manage-selected"
       />
       {open && (
         <Selector
@@ -263,6 +271,7 @@ const Selected = ({
           close={() => setOpen(false)}
           lookerRef={lookerRef}
           bounds={bounds}
+          anchorRef={ref}
         />
       )}
     </ActionDiv>
@@ -284,8 +293,9 @@ const Options = ({ modal }) => {
         highlight={open}
         ref={mRef}
         title={"Display options"}
+        data-cy="action-display-options"
       />
-      {open && <OptionsActions modal={modal} bounds={bounds} />}
+      {open && <OptionsActions modal={modal} bounds={bounds} anchorRef={ref} />}
     </ActionDiv>
   );
 };
@@ -316,6 +326,7 @@ const Colors = () => {
         onClick={onOpen}
         highlight={open}
         title={"Color settings"}
+        data-cy="action-color-settings"
       />
     </ActionDiv>
   );
@@ -337,6 +348,7 @@ const Hidden = () => {
       highlight={true}
       text={`${count}`}
       title={"Clear hidden labels"}
+      data-cy="action-clear-hidden-labels"
     />
   );
 };
@@ -394,6 +406,7 @@ const SaveFilters = () => {
         style={{ cursor: loading ? "default" : "pointer" }}
         onClick={saveFilters}
         title={"Convert current filters and/or sorting to view stages"}
+        data-cy="action-convert-filters-to-view-stages"
       />
     </ActionDiv>
   ) : null;
@@ -426,6 +439,7 @@ const ToggleSidebar: React.FC<{
       }
       highlight={!visible}
       ref={ref}
+      data-cy="action-toggle-sidebar"
     />
   );
 });
@@ -437,6 +451,10 @@ const ActionsRowDiv = styled.div`
   row-gap: 0.5rem;
   column-gap: 0.5rem;
   align-items: center;
+  overflow-x: hidden;
+  &:hover {
+    overflow-x: auto;
+  }
 `;
 
 export const BrowseOperations = () => {
@@ -449,6 +467,7 @@ export const BrowseOperations = () => {
         icon={<List />}
         onClick={() => browser.toggle()}
         title={"Browse operations"}
+        data-cy="action-browse-operations"
       />
     </ActionDiv>
   );
@@ -456,9 +475,39 @@ export const BrowseOperations = () => {
 
 export const GridActionsRow = () => {
   const hideTagging = useRecoilValue(fos.readOnly);
+  const actionsRowDivRef = useRef<HTMLDivElement>();
+
+  useEffect(() => {
+    const actionsRowDivElem = actionsRowDivRef.current;
+    if (actionsRowDivElem) {
+      const handleWheel = (e) => {
+        const leftEnd = actionsRowDivElem.offsetWidth;
+        const rightEnd = actionsRowDivElem.scrollWidth;
+        const scrollLeft = actionsRowDivElem.scrollLeft;
+        const leftScrolledEnd = leftEnd + scrollLeft;
+        const allowLeftScroll = leftScrolledEnd === leftEnd;
+        const allowRightScroll = leftScrolledEnd === rightEnd;
+
+        if (
+          e.deltaY == 0 ||
+          (e.deltaY < 0 && allowLeftScroll) ||
+          (e.deltaY > 0 && allowRightScroll)
+        )
+          return;
+
+        e.preventDefault();
+        actionsRowDivElem.scrollLeft = actionsRowDivElem.scrollLeft + e.deltaY;
+      };
+      actionsRowDivElem.addEventListener("wheel", handleWheel);
+      return () => actionsRowDivElem.removeEventListener("wheel", handleWheel);
+    }
+  }, []);
 
   return (
-    <ActionsRowDiv>
+    <ActionsRowDiv
+      className={`${scrollable} ${scrollableSm}`}
+      ref={actionsRowDivRef}
+    >
       <ToggleSidebar modal={false} />
       <Colors />
       {hideTagging ? null : <Tag modal={false} />}
@@ -479,7 +528,7 @@ export const ModalActionsRow = ({
   lookerRef,
   isGroup,
 }: {
-  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  lookerRef?: MutableRefObject<fos.Lookers | undefined>;
   isGroup?: boolean;
 }) => {
   const hideTagging = useRecoilValue(fos.readOnly);
@@ -493,6 +542,7 @@ export const ModalActionsRow = ({
     >
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
+      <Colors />
       <Similarity modal={true} />
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />

@@ -76,10 +76,6 @@ const Looker = ({
   const modalSampleData = useRecoilValue(fos.modalSample);
   const colorScheme = useRecoilValue(fos.colorScheme);
 
-  if (!modalSampleData && !propsSampleData) {
-    throw new Error("bad");
-  }
-
   const sampleData = useMemo(() => {
     if (propsSampleData) {
       return {
@@ -102,7 +98,7 @@ const Looker = ({
   });
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [useRecoilValue(fos.selectedMediaField(true)), reset, createLooker]
+    [reset, createLooker]
   );
 
   useEffect(() => {

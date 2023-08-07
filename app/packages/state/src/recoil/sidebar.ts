@@ -480,7 +480,6 @@ export const sidebarEntries = selectorFamily<
     (params) =>
     ({ get }) => {
       const entries = [
-        { type: "filter", kind: EntryKind.INPUT } as InputEntry,
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
             const group: GroupEntry = {

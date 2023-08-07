@@ -1,4 +1,8 @@
-import { useRecoilCallback, useRecoilTransaction_UNSTABLE } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilTransaction_UNSTABLE,
+  useRecoilValue,
+} from "recoil";
 import {
   currentModalNavigation,
   currentModalSample,
@@ -7,22 +11,34 @@ import {
 import * as groupAtoms from "../recoil/groups";
 
 export default () => {
+  const types = useRecoilValue(groupAtoms.groupMediaTypes);
+  const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
+
   const setter = useRecoilTransaction_UNSTABLE(
-    ({ reset, set }) =>
+    ({ get, reset, set }) =>
       (
         id: string,
         index: number,
         groupId?: string,
         groupByFieldValue?: string
       ) => {
+        set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
         reset(groupAtoms.nestedGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
-        groupId && set(groupAtoms.groupId, groupId);
         groupByFieldValue &&
           set(groupAtoms.groupByFieldValue, groupByFieldValue);
+
+        let fallback = get(groupAtoms.groupSlice(false));
+        if (map[fallback] === "point_cloud") {
+          fallback = types
+            .filter(({ mediaType }) => mediaType !== "point_cloud")
+            .map(({ name }) => name)
+            .sort()[0];
+        }
+        set(groupAtoms.groupSlice(true), fallback);
       },
-    []
+    [map, types]
   );
 
   return useRecoilCallback(

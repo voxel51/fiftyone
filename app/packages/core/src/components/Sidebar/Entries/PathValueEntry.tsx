@@ -12,7 +12,7 @@ import {
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useMemo, useState } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -77,7 +77,7 @@ const ScalarValueEntry = ({
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
   });
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
 
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
@@ -140,7 +140,7 @@ const ListValueEntry = ({
   const [expanded, setExpanded] = useState(false);
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
 
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const theme = useTheme();
   const { backgroundColor } = useSpring({
     backgroundColor: theme.background.level1,
@@ -266,7 +266,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
   const values = useSlicesData<string | number | null>(path);
 
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const theme = useTheme();
 
@@ -308,8 +308,22 @@ const SlicesLoadable = ({ path }: { path: string }) => {
 
 const useSlicesData = <T extends unknown>(path: string) => {
   const keys = path.split(".");
-  const data = { ...useRecoilValue(fos.activePcdSliceToSampleMap) };
+  const loadable = useRecoilValueLoadable(fos.activePcdSlicesToSampleMap);
   const slices = Array.from(useRecoilValue(fos.activePcdSlices) || []).sort();
+
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    throw loadable.contents;
+  }
+
+  if (!slices.every((slice) => loadable.contents[slice])) {
+    throw new Promise(() => {});
+  }
+
+  const data = { ...loadable.contents };
 
   let field = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {
@@ -337,7 +351,7 @@ const Loadable = ({ path }: { path: string }) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
-  const color = useRecoilValue(fos.pathColor({ path, modal: true }));
+  const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
 
@@ -350,7 +364,21 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  let data = useRecoilValue(fos.activeModalSample);
+  const loadable = useRecoilValueLoadable(fos.activeModalSample);
+
+  if (loadable.state === "loading") {
+    throw loadable.contents;
+  }
+
+  if (loadable.state === "hasError") {
+    if (loadable.contents instanceof fos.SampleNotFound) {
+      throw new Promise(() => {});
+    }
+
+    throw loadable.contents;
+  }
+
+  let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
   if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
@@ -388,7 +416,7 @@ const PathValueEntry = ({
   ) => void;
 }) => {
   const field = useRecoilValue(fos.field(path));
-  const pinned3DSample = useRecoilValue(fos.pinned3DSample);
+  const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
   const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
 
