@@ -3,6 +3,14 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.3.6:
+
+FiftyOne Teams 1.3.6
+--------------------
+*Released August 7, 2023*
+
+Includes :ref:`FiftyOne 0.21.6 <release-notes-v0.21.6>` updates
+
 .. _release-notes-v0.21.6:
 
 FiftyOne 0.21.6
