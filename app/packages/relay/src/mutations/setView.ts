@@ -23,6 +23,7 @@ export default r(graphql`
         id
         name
         mediaType
+        parentMediaType
         groupSlice
         defaultGroupSlice
         groupField

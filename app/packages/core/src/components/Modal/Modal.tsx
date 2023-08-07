@@ -61,7 +61,6 @@ const SampleModal = () => {
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
 
   const mode = useRecoilValue(fos.groupStatistics(true));
-  const override = useRecoilValue(fos.pinned3DSample);
   const screen = useRecoilValue(fos.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };
@@ -138,7 +137,7 @@ const SampleModal = () => {
                 {isFieldPrimitive && (
                   <Entries.PathValue
                     entryKey={key}
-                    key={`${key}-${override}`}
+                    key={key}
                     path={entry.path}
                     trigger={trigger}
                   />
@@ -181,7 +180,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, labelPaths, mode, override]
+    [disabled, labelPaths, mode]
   );
 
   useEffect(() => {

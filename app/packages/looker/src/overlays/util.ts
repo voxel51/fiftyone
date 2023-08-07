@@ -2,10 +2,10 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
 import { BaseLabel } from "./base";
-import colorString from "color-string";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
@@ -31,7 +31,7 @@ export const sizeBytes = (label: BaseLabel) => {
         case "object":
           var objClass = Object.prototype.toString.call(obj).slice(8, -1);
           if (objClass === "Object" || objClass === "Array") {
-            for (var key in obj) {
+            for (const key in obj) {
               if (!obj.hasOwnProperty(key)) continue;
               sizer(obj[key]);
             }

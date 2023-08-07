@@ -3,6 +3,158 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.3.5:
+
+FiftyOne Teams 1.3.5
+--------------------
+*Released August 7, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.21.5 <release-notes-v0.21.5>`, plus:
+
+App
+
+- Fixed a bug with :ref:`dataset search <teams-homepage>` where suggestions may
+  not appear when matches across multiple types collide
+- Upgraded the :ref:`Plugin configuration UI <teams-plugins>` to better explain
+  the available Operator permission configuration options
+
+SDK
+
+- Significant performance optimizations by introducing cursor batching for
+  relevant API endpoints
+
+.. _release-notes-v0.21.5:
+
+FiftyOne 0.21.5
+---------------
+*Released August 7, 2023*
+
+News
+
+- Added `Segment Anything <https://segment-anything.com>`_ to the
+  :ref:`Model Zoo <model-zoo>`!
+  `#3330 <https://github.com/voxel51/fiftyone/pull/3330>`_
+- Added `DINOv2 <https://github.com/facebookresearch/dinov2>`_ to the
+  :ref:`Model Zoo <model-zoo>`!
+  `#2951 <https://github.com/voxel51/fiftyone/pull/2951>`_
+- Added support for loading models from the :ref:`PyTorch Hub <pytorch-hub>`!
+  `#2949 <https://github.com/voxel51/fiftyone/pull/2949>`_
+
+App
+
+- Added support for controlling field visibility in the grid independent of
+  filtering `#3248 <https://github.com/voxel51/fiftyone/pull/3248>`_
+- Added support for filtering by label tags in individual label fields
+  `#3287 <https://github.com/voxel51/fiftyone/pull/3287>`_
+- Added support for specifying :ref:`custom colors <app-color-schemes-app>` for
+  list fields `#3319 <https://github.com/voxel51/fiftyone/pull/3319>`_
+- Added support for opening the :ref:`color panel <app-color-schemes-app>` when
+  the sample modal is open
+  `#3355 <https://github.com/voxel51/fiftyone/pull/3355>`_
+- Added helper text explaining custom color options
+  `#3383 <https://github.com/voxel51/fiftyone/pull/3383>`_
+- Added support for viewing slices of grouped datasets in the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+  `#3351 <https://github.com/voxel51/fiftyone/pull/3351>`_
+- Added support for coloring embeddings plots by list fields
+  `#3326 <https://github.com/voxel51/fiftyone/pull/3326>`_
+- Improved overflow when the actions row contains many icons
+  `#3296 <https://github.com/voxel51/fiftyone/pull/3296>`_
+- Added support for tagging all visible PCD slices
+  `#3384 <https://github.com/voxel51/fiftyone/pull/3384>`_
+- Improved handling of group datasets whose groups may contain missing samples
+  for certain slices
+  `#3333 <https://github.com/voxel51/fiftyone/pull/3333>`_
+- Fixed various issues when visualizing grouped datasets
+  `#3353 <https://github.com/voxel51/fiftyone/pull/3353>`_,
+  `#3322 <https://github.com/voxel51/fiftyone/pull/3322>`_,
+  `#3318 <https://github.com/voxel51/fiftyone/pull/3318>`_,
+  `#3379 <https://github.com/voxel51/fiftyone/pull/3379>`_,
+  `#3318 <https://github.com/voxel51/fiftyone/pull/3318>`_
+- Added bazel support
+  `#3338 <https://github.com/voxel51/fiftyone/pull/3338>`_
+- Removed the maximum ``starlette`` version requirement
+  `#3297 <https://github.com/voxel51/fiftyone/pull/3297>`_
+
+Plugins
+
+- Added support for accessing the currently selected labels in the App within
+  plugin execution contexts
+  `#3295 <https://github.com/voxel51/fiftyone/pull/3295>`_
+- Added support for configuring custom
+  :ref:`Operator icons <fiftyone-operators>`
+  `#3299 <https://github.com/voxel51/fiftyone/pull/3299>`_
+- Improved Operator form validation debounce behavior
+  `#3291 <https://github.com/voxel51/fiftyone/pull/3291>`_
+- Fixed some bugs that prevented customer visualizer plugins from being
+  recognized
+  `#3357 <https://github.com/voxel51/fiftyone/pull/3357>`_
+
+Core
+
+- Improved robustness of concurrent schema updates
+  `#3308 <https://github.com/voxel51/fiftyone/pull/3308>`_
+- Schema changes are now maintained by the
+  :meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
+  stage
+  `#3336 <https://github.com/voxel51/fiftyone/pull/3336>`_
+- Added support for exporting keypoints with nan-valued coordinates in
+  :ref:`COCO format <COCODetectionDataset-export>`
+  `#3316 <https://github.com/voxel51/fiftyone/pull/3316>`_
+- Updated :ref:`YOLOv5 exports <YOLOv5Dataset-export>` to use dict-style class
+  names
+  `#3393 <https://github.com/voxel51/fiftyone/pull/3393>`_
+- Fixed a bug when passing an RGB hex string to
+  :meth:`to_segmentation() <fiftyone.core.labels.Detection.to_segmentation>`
+  `#3293 <https://github.com/voxel51/fiftyone/pull/3293>`_
+- Fixed a bug where
+  :meth:`has_field() <fiftyone.core.document.Document.has_field>` would not
+  recognize dynamic fields
+  `#3349 <https://github.com/voxel51/fiftyone/pull/3349>`_
+- Fixed a bug when applying
+  :meth:`merge_sample() <fiftyone.core.dataset.Dataset.merge_sample>` to
+  grouped datasets
+  `#3327 <https://github.com/voxel51/fiftyone/pull/3327>`_
+
+Zoo
+
+- Use ``weights`` parameter instead of deprecated ``pretrained`` parameter for
+  torchvision models
+  `#3348 <https://github.com/voxel51/fiftyone/pull/3348>`_
+- Added support for running zoo models with the MPS backend
+  `#2843 <https://github.com/voxel51/fiftyone/pull/2843>`_
+- Fixed YouTube video downloading for zoo datasets like
+  :ref:`ActivityNet <dataset-zoo-activitynet-200>` and
+  :ref:`Kinetics <dataset-zoo-kinetics-700-2020>`
+  `#3382 <https://github.com/voxel51/fiftyone/pull/3382>`_
+
+Annotation
+
+- Upgraded the :ref:`Labelbox integration <labelbox-integration>` to support
+  the latest Labelbox API version
+  `#3323 <https://github.com/voxel51/fiftyone/pull/3323>`_
+- Fixed text and checkbox attribute usage when using CVAT 2.5
+  `#3373 <https://github.com/voxel51/fiftyone/pull/3373>`_
+
+Brain
+
+- Added support for :ref:`gRPC connections <qdrant-setup>` when using the
+  Qdrant similarity backend
+  `#3296 <https://github.com/voxel51/fiftyone/pull/3296>`_
+- Improved support for
+  :ref:`creating similarity indexes <brain-similarity-api>` with embeddings
+  stored in dataset fields
+- Resolved bugs with similarity queries using the sklearn backend
+  `#3304 <https://github.com/voxel51/fiftyone/issues/3304>`_,
+  `#3305 <https://github.com/voxel51/fiftyone/issues/3305>`_
+
+Docs
+
+- Fixed some documentation typos
+  `#3283 <https://github.com/voxel51/fiftyone/issues/3283>`_,
+  `#3289 <https://github.com/voxel51/fiftyone/issues/3289>`_,
+  `#3290 <https://github.com/voxel51/fiftyone/issues/3290>`_
+
 .. _release-notes-v0.21.4:
 
 FiftyOne 0.21.4
@@ -25,9 +177,6 @@ SDK
 - Added a `cache=True` option to the
   :ref:`upload_media() <teams-cloud-api-reference>` utility that allows for
   automatically adding any uploaded files to your local cache
-
-API connections
-
 - Fixed a bug when launching the App locally via API connections
 
 .. _release-notes-v0.21.3:
@@ -107,7 +256,7 @@ General
 - Reverted a change from Teams 1.3.0 so that the SDK again supports the
   declared minimum version requirement of `pymongo==3.12`
 
-API connections
+SDK
 
 - Updated the order of precedence for SDK connections so that
   :ref:`API connections <teams-api-connection>` take precedence over

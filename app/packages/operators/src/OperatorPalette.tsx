@@ -11,6 +11,7 @@ import { PALETTE_CONTROL_KEYS } from "./constants";
 
 import { scrollable } from "@fiftyone/components";
 import {
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -34,6 +35,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     title,
     disableSubmit,
     disabledReason,
+    loading,
   } = props;
   const hideActions = !onSubmit && !onCancel;
   const scroll = "paper";
@@ -108,6 +110,12 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       </DialogContent>
       {!hideActions && (
         <DialogActions sx={{ p: 1 }}>
+          {loading && (
+            <CircularProgress
+              size={20}
+              sx={{ mr: 1, color: (theme) => theme.palette.text.secondary }}
+            />
+          )}
           {onCancel && (
             <BaseStylesProvider>
               <Button onClick={onCancel} onKeyDown={onEnter(onCancel)}>
@@ -146,4 +154,5 @@ export type OperatorPaletteProps = PropsWithChildren & {
   title?: ReactElement;
   disableSubmit?: boolean;
   disabledReason?: string;
+  loading?: boolean;
 };

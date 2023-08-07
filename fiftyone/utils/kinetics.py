@@ -252,6 +252,11 @@ class KineticsDatasetManager(object):
 
         split = self.info.split
         for e, videos in download_errors.items():
+            if not isinstance(e, (str, int, float, bool)) and e != None:
+                try:
+                    e = str(e)
+                except:
+                    e = "Cannot parse error message"
             if e in prev_errors[split]:
                 prev_errors[split][e].extend(videos)
                 prev_errors[split][e] = sorted(set(prev_errors[split][e]))

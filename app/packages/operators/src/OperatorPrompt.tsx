@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box, LinearProgress, Typography } from "@mui/material";
 import { useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRecoilValue } from "recoil";
@@ -52,6 +52,7 @@ function ActualOperatorPrompt() {
 
   const title = getPromptTitle(operatorPrompt);
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
+  const { resolving, pendingResolve } = operatorPrompt;
 
   return createPortal(
     <OperatorPalette
@@ -59,14 +60,19 @@ function ActualOperatorPrompt() {
       {...paletteProps}
       onClose={paletteProps.onCancel || operatorPrompt.close}
       submitOnControlEnter
-      disableSubmit={hasValidationErrors}
-      disabledReason="Cannot execute operator with validation errors"
+      disableSubmit={hasValidationErrors || resolving || pendingResolve}
+      disabledReason={
+        hasValidationErrors
+          ? "Cannot execute operator with validation errors"
+          : "Cannot execute operator while validating form"
+      }
+      loading={resolving || pendingResolve}
     >
       <PaletteContentContainer>
         {operatorPrompt.showPrompt && (
           <Prompting operatorPrompt={operatorPrompt} />
         )}
-        {operatorPrompt.isExecuting && <div>Executing...</div>}
+        {operatorPrompt.isExecuting && <Executing />}
         {showResultOrError && (
           <ResultsOrError
             operatorPrompt={operatorPrompt}
@@ -76,6 +82,15 @@ function ActualOperatorPrompt() {
       </PaletteContentContainer>
     </OperatorPalette>,
     document.body
+  );
+}
+
+function Executing() {
+  return (
+    <Box>
+      <LinearProgress />
+      <Typography sx={{ pt: 1, textAlign: "center" }}>Executing...</Typography>
+    </Box>
   );
 }
 

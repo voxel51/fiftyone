@@ -132,6 +132,7 @@ interface BaseOptions {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   selectedLabels: string[];
+  attributeVisibility: object;
   showConfidence: boolean;
   showControls: boolean;
   showIndex: boolean;
@@ -163,7 +164,7 @@ export type Coordinates = [number, number];
 
 export type Dimensions = [number, number];
 
-interface BaseConfig {
+export interface BaseConfig {
   thumbnail: boolean;
   src: string;
   sources: { [path: string]: string };
@@ -171,6 +172,10 @@ interface BaseConfig {
   fieldSchema: Schema;
   view: Stage[];
   dataset: string;
+  group?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface FrameConfig extends BaseConfig {

@@ -1,10 +1,9 @@
+import { useTheme } from "@fiftyone/components";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
-import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
 import { constSelector, RecoilValueReadOnly } from "recoil";
+import styled from "styled-components";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
 import { useHighlightHover } from "../Actions/utils";

@@ -74,6 +74,7 @@ def _create_annotation(
     track=None,
     points=None,
     _type=None,
+    _label=None,
     group_id=0,
 ):
     if points is None:
@@ -85,7 +86,10 @@ def _create_annotation(
     tracks = []
     if shape is not None:
         if not isinstance(shape, dict):
-            label = _get_label(api, task_id, label=shape)
+            if _label is None:
+                label = _get_label(api, task_id, label=shape)
+            else:
+                label = _get_label(api, task_id, label=_label)
 
             shape = {
                 "type": _type,
@@ -100,7 +104,10 @@ def _create_annotation(
 
     if tag is not None:
         if not isinstance(tag, dict):
-            label = _get_label(api, task_id, label=tag)
+            if _label is None:
+                label = _get_label(api, task_id, label=tag)
+            else:
+                label = _get_label(api, task_id, label=_label)
             tag = {
                 "frame": 0,
                 "label_id": label,
@@ -111,7 +118,10 @@ def _create_annotation(
 
     if track is not None:
         if not isinstance(track, dict):
-            label = _get_label(api, task_id, label=track)
+            if _label is None:
+                label = _get_label(api, task_id, label=track)
+            else:
+                label = _get_label(api, task_id, label=_label)
             if isinstance(track, tuple):
                 start, end = track
             else:
@@ -290,7 +300,7 @@ class CVATTests(unittest.TestCase):
         )
 
         anno_key = "anno_key"
-        attributes = {"test": {"type": "text"}}
+        attributes = {"test": {"type": "text", "values": []}}
 
         results = dataset.annotate(
             anno_key,
@@ -640,6 +650,7 @@ class CVATTests(unittest.TestCase):
             },
             "age": {
                 "type": "text",
+                "values": [],
             },
         }
 
@@ -1416,6 +1427,7 @@ class CVATTests(unittest.TestCase):
                 api,
                 task_id,
                 track=(track_start, track_end),
+                _label="test_track",
             )
             shape = {
                 "type": "rectangle",
