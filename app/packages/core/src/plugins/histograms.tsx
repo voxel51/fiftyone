@@ -29,68 +29,41 @@ const ControlsContainer = styled.div`
   padding-top: 1rem;
 `;
 
-const plotGroupValues = ["Sample tags", "Label tags", "Labels", "Other fields"];
-
-const plotGroups = atomFamily<string, string>({
-  key: "plotGroups",
-  default: "Sample tags",
+const plotPaths = atomFamily<string | null, string>({
+  key: "plotPaths",
+  default: null,
 });
-
-const plotGroup = selector<string>({
-  key: "plotGroup",
-  get: ({ get }) => get(plotGroups(get(datasetName))),
-  set: ({ get, set }, newValue) => {
-    set(
-      plotGroups(get(datasetName)),
-      newValue instanceof DefaultValue ? null : newValue
-    );
-  },
-});
-
-const plotPaths = atomFamily<string | null, { dataset: string; group: string }>(
-  {
-    key: "plotPaths",
-    default: null,
-  }
-);
 
 const plotPath = selector<string | null>({
   key: "plotPath",
   get: ({ get }) => {
-    const group = get(plotGroup);
-    if ("Sample tags" === group) {
-      return "tags";
-    }
-
-    const plotPath = plotPaths({ dataset: get(datasetName), group });
+    const plotPath = plotPaths(get(datasetName));
 
     const path = get(plotPath);
 
     if (!path || (path !== "_label_tags" && !get(field(path))))
-      return get(distributionPaths(group))[0] || null;
+      return get(distributionPaths)[0] || null;
 
     return path;
   },
   set: ({ get, set }, newValue) => {
     set(
-      plotPaths({ dataset: get(datasetName), group: get(plotGroup) }),
+      plotPaths(get(datasetName)),
       newValue instanceof DefaultValue ? null : newValue
     );
   },
 });
 
-const PlotSelector = ({ group }: { group: string }) => {
-  const paths = useRecoilValue(distributionPaths(group));
+const PlotSelector = () => {
+  const paths = useRecoilValue(distributionPaths);
   const [path, setPath] = useRecoilState(plotPath);
   return (
     <Selector
       component={({ value }) => <>{value}</>}
-      containerStyle={{ position: "relative", width: "12rem" }}
-      inputStyle={{
-        width: "12rem",
-      }}
+      containerStyle={{ position: "relative" }}
       onSelect={setPath}
       overflow={true}
+      resultsPlacement="bottom-start"
       placeholder={"Select field"}
       useSearch={(search) => {
         const values = paths.filter((name) => name.includes(search));
@@ -104,34 +77,14 @@ const PlotSelector = ({ group }: { group: string }) => {
 function Plots() {
   const [_, setTitle] = usePanelTitle();
   const path = useRecoilValue(plotPath);
-  const [group, setGroup] = useRecoilState(plotGroup);
-
   useEffect(() => {
-    setTitle(group);
-  }, [group]);
+    setTitle(path);
+  }, [path]);
 
   return (
     <DistributionsContainer data-cy="distribution-container">
       <ControlsContainer>
-        <Selector<string>
-          component={({ value }) => <>{value}</>}
-          containerStyle={{ position: "relative", width: "12rem" }}
-          inputStyle={{
-            width: "12rem",
-          }}
-          onSelect={setGroup}
-          overflow={true}
-          placeholder={"Select histogram"}
-          useSearch={(search) => {
-            const values = plotGroupValues.filter((name) =>
-              name.includes(search)
-            );
-            return { values, total: plotGroups.length };
-          }}
-          value={group}
-        />
-        {"Sample tags" !== group && <PlotSelector group={group} />}
-
+        <PlotSelector />
         <OperatorPlacements place={types.Places.HISTOGRAM_ACTIONS} />
       </ControlsContainer>
       {path ? (

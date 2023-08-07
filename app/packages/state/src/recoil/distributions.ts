@@ -30,11 +30,11 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { GetRecoilValue, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
-import { expandPath, field, fieldPaths, fields, labelFields } from "./schema";
+import { field, fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
@@ -205,67 +205,28 @@ const SKIP_FIELDS = {
   [withPath(LABELS_PATH, POLYLINES)]: ["points"],
 };
 
-export const distributionPaths = selectorFamily<string[], string>({
+export const distributionPaths = selector<string[]>({
   key: "distributionPaths",
-  get:
-    (group) =>
-    ({ get }) => {
-      group = group.toLowerCase();
-
-      switch (group) {
-        case "labels":
-          return labelPaths(get);
-        case "label tags":
-          return get(labelFields({})).map((l) => get(expandPath(l)) + ".tags");
-        case "sample tags":
-          return ["tags"];
-        case "other fields":
-          return [
-            ...get(
-              fieldPaths({
-                space: State.SPACE.SAMPLE,
-                ftype: VALID_DISTRIBUTION_TYPES,
-              })
-            ).filter((path) => !["filepath", "tags"].includes(path)),
-            ...get(
-              fieldPaths({
-                space: State.SPACE.SAMPLE,
-                ftype: EMBEDDED_DOCUMENT_FIELD,
-              })
-            )
-              .filter(
-                (path) => !LABELS.includes(get(field(path)).embeddedDocType)
-              )
-              .flatMap((path) =>
-                get(fieldPaths({ path, ftype: VALID_DISTRIBUTION_TYPES })).map(
-                  (name) => [path, name].join(".")
-                )
-              ),
-          ];
-        default:
-          throw new Error("unknown group");
-      }
-    },
-});
-
-const labelPaths = (get: GetRecoilValue) => {
-  const labels = get(labelFields({})).map((l) => [l, get(expandPath(l))]);
-  let paths: string[] = [];
-  for (let index = 0; index < labels.length; index++) {
-    const [parentPath, path] = labels[index];
-    paths = [
-      ...paths,
-      ...get(fields({ path, ftype: VALID_DISTRIBUTION_TYPES }))
-        .filter(({ name }) => {
-          const parent = get(field(parentPath));
-
-          return (
-            !SKIP_FIELDS[parent.embeddedDocType] ||
-            !SKIP_FIELDS[parent.embeddedDocType].includes(name)
-          );
+  get: ({ get }) => {
+    return [
+      ...get(
+        fieldPaths({
+          space: State.SPACE.SAMPLE,
+          ftype: VALID_DISTRIBUTION_TYPES,
         })
-        .map(({ name }) => [path, name].join(".")),
-    ];
-  }
-  return paths;
-};
+      ).filter((path) => !["filepath", "id"].includes(path)),
+      ...get(
+        fieldPaths({
+          space: State.SPACE.SAMPLE,
+          ftype: EMBEDDED_DOCUMENT_FIELD,
+        })
+      )
+        .filter((path) => !LABELS.includes(get(field(path)).embeddedDocType))
+        .flatMap((path) =>
+          get(fieldPaths({ path, ftype: VALID_DISTRIBUTION_TYPES })).map(
+            (name) => [path, name].join(".")
+          )
+        ),
+    ].sort();
+  },
+});
