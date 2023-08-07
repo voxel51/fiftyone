@@ -5,6 +5,7 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 import datetime
 
 import fiftyone as fo
@@ -303,15 +304,32 @@ class ListFiles(foo.Operator):
         # a date of 10 seconds ago
         date = datetime.datetime.now()
         # convert date into seconds from epoch
-        return {
-            "files": [
-                {
-                    "name": "file1",
-                    "dateModified": date.isoformat(),
-                    "size": 100,
-                },
-            ]
+        return {"files": list_files(path)}
+
+
+# a function that given a path to a directory, returns a list of files in that directory
+# each file should have the file name, date modified, and size in bytes
+# the date modified should be in ISO format
+def list_files(path):
+    # get a list of files in the directory
+    filenames = os.listdir(path)
+    # map the filenames to their full file paths
+    filepaths = [os.path.join(path, filename) for filename in filenames]
+    # get the stats for each file
+    stats = [os.stat(filepath) for filepath in filepaths]
+    # map the stats to a dictionary of the file name, date modified, and size in bytes
+    files = [
+        {
+            "name": filename,
+            "dateModified": datetime.datetime.fromtimestamp(
+                stat.st_mtime
+            ).isoformat(),
+            "type": "file" if os.path.isfile(filepath) else "directory",
+            "size": stat.st_size,
         }
+        for filename, filepath, stat in zip(filenames, filepaths, stats)
+    ]
+    return files
 
 
 BUILTIN_OPERATORS = [
