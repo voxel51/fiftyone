@@ -74,7 +74,11 @@ test.describe("default video slice group", () => {
     fiftyoneLoader.waitUntilLoad(page, datasetName);
   });
 
-  test("video as default slice renders", async ({ grid, modal, page }) => {
+  test("video as default slice renders", async ({
+    grid,
+    modal,
+    eventUtils,
+  }) => {
     await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
     await grid.sliceSelector.assert.verifyActiveSlice("video");
     await grid.assert.assertNLookers(1);
@@ -85,8 +89,10 @@ test.describe("default video slice group", () => {
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const imgLoadedPromise =
-      grid.getSampleLoadEventPromiseForFilepath(testImgPath);
+    const imgLoadedPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "sample-loaded",
+      (e) => e.detail.sampleFilepath === testImgPath
+    );
     await grid.selectSlice("image");
     await imgLoadedPromise;
 
