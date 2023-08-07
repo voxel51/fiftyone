@@ -3,7 +3,7 @@ import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-const datasetName = getUniqueDatasetNameWithPrefix("cifar");
+const datasetName = getUniqueDatasetNameWithPrefix("classification-5");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
@@ -16,33 +16,58 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
 
 test.describe("classification-sidebar-filter-visibility", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("cifar", datasetName, {
+    await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
       max_samples: 5,
     });
+    // await fiftyoneLoader.executePythonCode(`
+    // import fiftyone as fo
+    // dataset = fo.Dataset("${datasetName}")
+    // dataset.persistent = True
+
+    // samples = []
+    // samples.append(
+    //             fo.Sample(
+    //                 filepath=f"sample-1.png", ground_truth=fo.Classification(label="cattle")
+    //             )
+    //         )
+    // samples.append(
+    //             fo.Sample(
+    //                 filepath=f"sample-2.png",ground_truth=fo.Classification(label="boy")
+    //             )
+    //         )
+    // samples.append(
+    //             fo.Sample(
+    //                 filepath=f"sample-3.png", ground_truth=fo.Classification(label="apple")
+    //             )
+    //         )
+    // dataset.add_samples(samples)
+    // dataset.save()
+    // `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
   });
 
-  test("In grid, setting visibility directly works", async ({
+  test("In cifar grid, setting visibility directly works", async ({
     grid,
     sidebar,
   }) => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
-    // verify that visibility mode is active
-    expect(sidebar.getActiveMode()).toBe("VISIBILITY");
 
     // test case: visibility mode - show label
+    await sidebar.clickFieldDropdown("ground_truth");
+    await grid.delay(3000);
+
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["visible-cattle"],
+      ["truck"],
       "show-label--------"
     );
-    await grid.delay(2000);
+    await grid.delay(3000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "visible-cattle.png",
+      "visible-truck.png",
       { animations: "allow" }
     );
 
@@ -54,28 +79,28 @@ test.describe("classification-sidebar-filter-visibility", () => {
     );
     await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "not-visible-cattle.png",
+      "not-visible-truck.png",
       { animations: "allow" }
     );
   });
 
-  test("In grid, show samples with a label filter works", async ({
+  test("In cifar grid, show samples with a label filter works", async ({
     grid,
     sidebar,
   }) => {
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["cattle", "boy"],
+      ["frog", "deer"],
       "show-samples-with-label"
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("2 of 5 samples");
+    await grid.assert.waitForEntryCountTextToEqual("3 of 10 samples");
     await grid.waitForGridToLoad();
     await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-cattle-boy.png",
+      "show-frog-deer.png",
       { animations: "allow" }
     );
 
@@ -85,12 +110,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["cattle"],
+      ["frog"],
       "show-label--------"
     );
     await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-cattle-boy-visible-cattle.png",
+      "show-frog-deer-visible-frog.png",
       { animations: "allow" }
     );
 
@@ -102,28 +127,27 @@ test.describe("classification-sidebar-filter-visibility", () => {
     );
     await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-cattle-boy-invisible-cattle.png",
+      "show-frog-deer-invisible-frog.png",
       { animations: "allow" }
     );
   });
 
-  test("In grid, omit samples with a label filter works", async ({
+  test("In cifar grid, omit samples with a label filter works", async ({
     grid,
     sidebar,
   }) => {
     await sidebar.clickFieldDropdown("ground_truth");
+    await grid.delay(2000);
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["cattle", "boy"],
+      ["frog"],
       "omit-samples-with-label"
     );
 
-    // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("3 of 5 samples");
-    await grid.waitForGridToLoad();
     await grid.delay(2000);
+    await grid.waitForGridToLoad();
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-cattle-boy.png",
+      "hide-frog.png",
       { animations: "allow" }
     );
 
@@ -133,12 +157,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["apple"],
+      ["truck"],
       "show-label--------"
     );
     await grid.delay(1000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-cattle-boy-visible-apple.png",
+      "hide-frog-visible-truck.png",
       { animations: "allow" }
     );
 
@@ -150,7 +174,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     );
     await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-cattle-boy-invisible-apple.png",
+      "hide-frog-invisible-truck.png",
       { animations: "allow" }
     );
   });

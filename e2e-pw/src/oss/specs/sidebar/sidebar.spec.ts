@@ -192,7 +192,7 @@ test.describe("sidebar-filter-visibility", () => {
     // verify the number of samples in the result
     await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
     await grid.waitForGridToLoad();
-    await grid.delay(1000);
+    await grid.delay(2000);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-bottle.png",
       { animations: "allow" }

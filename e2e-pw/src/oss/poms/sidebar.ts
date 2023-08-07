@@ -34,25 +34,26 @@ export class SidebarPom {
     return this.sidebar.getByTestId("sidebar-mode-status").innerText();
   }
 
+  async applyFilter(label: string) {
+    await this.sidebar.getByTestId(`checkbox-${label}`).click();
+  }
+
   // apply a filter to a field
   async applyLabelFromList(
     field: string,
     labels: string[],
     targetModeId: string
   ) {
-    const container = this.sidebar.getByTestId(`categorical-filter-${field}`);
-    // select attributes
     labels.forEach((label) => {
-      const item = container.getByTestId(`checkbox-${label}`);
-      item.click();
+      this.applyFilter(label);
     });
 
-    const currentMode = container.getByTestId("filter-mode-div");
+    const currentMode = this.sidebar.getByTestId("filter-mode-div");
     await currentMode.click();
     const targetMode = this.sidebar.getByTestId(
       `filter-option-${targetModeId}`
     );
-    await targetMode.click();
+    return targetMode.click();
   }
 
   async resetAttribute(attribute: string) {
