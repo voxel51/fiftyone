@@ -12,6 +12,7 @@ import os
 import eta.core.image as etai
 import eta.core.utils as etau
 
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -449,8 +450,8 @@ def _transform_image(
     delete_original=False,
     skip_failures=False,
 ):
-    inpath = fou.normalize_path(inpath)
-    outpath = fou.normalize_path(outpath)
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -537,7 +538,7 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
         return inpath
 
     if rel_dir is not None:
-        rel_dir = fou.normalize_path(rel_dir)
+        rel_dir = fos.normalize_path(rel_dir)
         filename = os.path.relpath(inpath, rel_dir)
     else:
         filename = os.path.basename(inpath)

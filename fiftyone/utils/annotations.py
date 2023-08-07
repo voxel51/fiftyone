@@ -2307,7 +2307,7 @@ def draw_labeled_images(
             This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2388,7 +2388,7 @@ def draw_labeled_videos(
             This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw

@@ -17,7 +17,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
-import fiftyone.core.utils as fou
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -175,7 +175,7 @@ class BDDDatasetImporter(
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             anno_dict_map = load_bdd_annotations(self.labels_path)
             anno_dict_map = {
-                fou.normpath(k): v for k, v in anno_dict_map.items()
+                fos.normpath(k): v for k, v in anno_dict_map.items()
             }
         else:
             anno_dict_map = {}
@@ -258,7 +258,7 @@ class BDDDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         image_format (None): the image format to use when writing in-memory

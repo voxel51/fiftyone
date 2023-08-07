@@ -9,7 +9,9 @@ from datetime import datetime
 import json
 import logging
 import multiprocessing.dummy
+import ntpath
 import os
+import posixpath
 import re
 import six
 import shutil
@@ -28,12 +30,28 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
+def normpath(path):
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if os.name == "nt":
+        return ntpath.normpath(path)
+
+    return posixpath.normpath(path.replace("\\", "/"))
+
+
 def normalize_path(path):
-    """Normalizes the given path.
-
-    Paths are sanitized via::
-
-        os.path.abspath(os.path.expanduser(path))
+    """Normalizes the given path by converting it to an absolute path and
+    expanding the user directory, if necessary.
 
     Args:
         path: a path

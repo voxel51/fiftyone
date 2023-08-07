@@ -98,7 +98,7 @@ def apply_model(
             image. This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
