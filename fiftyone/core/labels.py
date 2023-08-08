@@ -22,7 +22,6 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
-import fiftyone.utils.image as foui
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")

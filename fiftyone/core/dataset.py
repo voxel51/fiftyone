@@ -40,7 +40,6 @@ from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou

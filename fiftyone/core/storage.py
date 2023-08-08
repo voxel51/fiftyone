@@ -192,7 +192,7 @@ def get_file_system(path):
         path: a path
 
     Returns:
-        a :class:`FileSystem` enum
+        a :class:`FileSystem` value
     """
     if not path:
         return FileSystem.LOCAL

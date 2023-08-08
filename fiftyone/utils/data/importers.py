@@ -3419,8 +3419,8 @@ class ImageSegmentationDirectoryImporter(
 
         labels_path = fos.normpath(self.labels_path)
         labels_paths_map = {
-            os.path.splitext(p)[0]: fos.join(self.labels_path, p)
-            for p in fos.list_files(self.labels_path, recursive=True)
+            os.path.splitext(p)[0]: fos.join(labels_path, p)
+            for p in fos.list_files(labels_path, recursive=True)
         }
 
         uuids = set(labels_paths_map.keys())

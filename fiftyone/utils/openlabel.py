@@ -222,14 +222,14 @@ class OpenLABELImageDatasetImporter(
             labels_path = fos.normpath(self.labels_path)
 
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -439,14 +439,14 @@ class OpenLABELVideoDatasetImporter(
             labels_path = fos.normpath(self.labels_path)
 
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
