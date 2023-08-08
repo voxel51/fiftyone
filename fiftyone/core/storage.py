@@ -44,7 +44,7 @@ def get_file_system(path):
         path: a path
 
     Returns:
-        a :class:`FileSystem` enum
+        a :class:`FileSystem` value
     """
     return FileSystem.LOCAL
 
@@ -614,7 +614,7 @@ def list_buckets(fs, abs_paths=False):
     Windows).
 
     Args:
-        fs: a :class:`FileSystem` enum
+        fs: a :class:`FileSystem` value
         abs_paths (False): whether to return absolute paths
 
     Returns:
