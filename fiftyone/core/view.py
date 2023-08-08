@@ -1709,7 +1709,7 @@ class DatasetView(foc.SampleCollection):
                 if selected_fields is None:
                     selected_fields = set(sf)
                 else:
-                    selected_fields.intersection_update(sf)
+                    _merge_selected_fields(selected_fields, sf)
 
             ef = stage.get_excluded_fields(_view, frames=frames)
             if ef:
@@ -1846,6 +1846,24 @@ def make_optimized_select_view(
             view = view._add_view_stage(stage, validate=False)
 
     return view
+
+
+def _merge_selected_fields(selected_fields, sf):
+    #
+    # When merging selected fields from multiple view stages, it is possible
+    # that one stage selects nested fields within a root field that has been
+    # previously selected. In this case, the correct behavior is that the
+    # merged list contains the nested fields but *not* the root fields.
+    #
+    # https://docs.mongodb.com/manual/reference/operator/aggregation/project/#path-collision-errors-in-embedded-fields
+    #
+    nested_fields = set()
+    for f in sf:
+        if any(f.startswith(field + ".") for field in selected_fields):
+            nested_fields.add(f)
+
+    selected_fields.update(nested_fields)
+    selected_fields.intersection_update(sf)
 
 
 def _filter_schema(schema, selected_fields, excluded_fields):
