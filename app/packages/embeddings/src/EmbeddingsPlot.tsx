@@ -1,7 +1,7 @@
-import React, { useMemo } from "react";
 import { Loading, useTheme } from "@fiftyone/components";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
+import { useMemo } from "react";
 import Plot from "react-plotly.js";
 import { useRecoilValue } from "recoil";
 import { tracesToData } from "./tracesToData";
@@ -18,7 +18,7 @@ export function EmbeddingsPlot({
   plotSelection,
 }) {
   const theme = useTheme();
-  const getColor = useRecoilValue(fos.colorMap(false));
+  const getColor = useRecoilValue(fos.colorMap);
   const fields = useRecoilValue(fos.sessionColorScheme).fields;
   const setting = useMemo(() => {
     return fields.find((setting) => labelField?.includes(setting?.path ?? ""));
@@ -80,8 +80,8 @@ export function EmbeddingsPlot({
           onSelected={(selected, foo) => {
             if (!selected || selected?.points?.length === 0) return;
 
-            let result = {};
-            let pointIds = [];
+            const result = {};
+            const pointIds = [];
             for (const p of selected.points) {
               if (!result[p.fullData.name]) {
                 result[p.fullData.name] = [];

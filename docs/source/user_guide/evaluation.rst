@@ -95,6 +95,12 @@ statistics about your dataset.
         macro avg       0.27      0.57      0.35      1311
      weighted avg       0.42      0.68      0.51      1311
 
+
+.. note::
+    For details on micro, macro, and weighted averaging, see the 
+    `sklearn.metrics documentation  <https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_fscore_support.html#sklearn.metrics.precision_recall_fscore_support>`_.
+
+
 Sample metrics
 --------------
 
