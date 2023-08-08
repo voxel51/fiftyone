@@ -19,7 +19,6 @@ import eta.core.video as etav
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -220,6 +219,8 @@ class OpenLABELImageDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
             if fos.isfile(self.labels_path):
                 label_paths = [self.labels_path]
@@ -435,6 +436,8 @@ class OpenLABELVideoDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
             if fos.isfile(self.labels_path):
                 label_paths = [self.labels_path]

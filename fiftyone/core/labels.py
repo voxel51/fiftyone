@@ -26,6 +26,7 @@ import fiftyone.utils.image as foui
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+foui = fou.lazy_import("fiftyone.utils.image")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
 )
