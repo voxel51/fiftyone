@@ -5,6 +5,7 @@ File storage utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from contextlib import contextmanager
 from datetime import datetime
 import json
 import logging
@@ -30,23 +31,89 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-def normpath(path):
-    """Normalizes the given path by converting all slashes to forward slashes
-    on Unix and backslashes on Windows and removing duplicate slashes.
+class FileSystem(object):
+    """Enumeration of the available file systems."""
 
-    Use this function when you need a version of ``os.path.normpath`` that
-    converts ``\\`` to ``/`` on Unix.
+    LOCAL = "local"
+
+
+def get_file_system(path):
+    """Returns the file system enum for the given path.
 
     Args:
         path: a path
 
     Returns:
-        the normalized path
+        a :class:`FileSystem` enum
     """
-    if os.name == "nt":
-        return ntpath.normpath(path)
+    return FileSystem.LOCAL
 
-    return posixpath.normpath(path.replace("\\", "/"))
+
+def split_prefix(path):
+    """Splits the file system prefix from the given path.
+
+    The prefix for local paths is ``""``.
+
+    Example usages::
+
+        import fiftyone.core.storage as fos
+
+        fos.split_prefix("/path/to/file")       # ('', '/path/to/file')
+        fos.split_prefix("a/file")              # ('', 'a/file')
+
+    Args:
+        path: a path
+
+    Returns:
+        a ``(prefix, path)`` tuple
+    """
+    return "", path
+
+
+def get_bucket_name(path):
+    """Gets the bucket name from the given path.
+
+    The bucket name for local paths is ``""``.
+
+    Example usages::
+
+        import fiftyone.core.storage as fos
+
+        fos.get_bucket_name("/path/to/file")       # ''
+        fos.get_bucket_name("a/file")              # ''
+
+    Args:
+        path: a path
+
+    Returns:
+        the bucket name string
+    """
+    return ""
+
+
+def is_local(path):
+    """Determines whether the given path is local.
+
+    Args:
+        path: a path
+
+    Returns:
+        True/False
+    """
+    return get_file_system(path) == FileSystem.LOCAL
+
+
+def ensure_local(path):
+    """Ensures that the given path is local.
+
+    Args:
+        path: a path
+    """
+    if not is_local(path):
+        raise ValueError(
+            "The requested operation requires a local path, but found '%s'"
+            % path
+        )
 
 
 def normalize_path(path):
@@ -98,6 +165,177 @@ class TempDir(object):
 
     def __exit__(self, *args):
         delete_dir(self._name)
+
+
+@contextmanager
+def open_file(path, mode="r"):
+    """Opens the given file for reading or writing.
+
+    This function *must* be used as a context manager.
+
+    Example usage::
+
+        import fiftyone.core.storage as fos
+
+        with fos.open_file("/tmp/file.txt", "w") as f:
+            f.write("Hello, world!")
+
+        with fos.open_file("/tmp/file.txt", "r") as f:
+            print(f.read())
+
+    Args:
+        path: the path
+        mode ("r"): the mode. Supported values are ``("r", "rb", "w", "wb")``
+    """
+    f = open(path, mode)
+
+    try:
+        yield f
+    finally:
+        f.close()
+
+
+def read_file(path, binary=False):
+    """Reads the file.
+
+    Args:
+        path: the filepath
+        binary (False): whether to read the file in binary mode
+
+    Returns:
+        the file contents
+    """
+    mode = "rb" if binary else "r"
+    with open(path, mode) as f:
+        return f.read()
+
+
+def write_file(str_or_bytes, path):
+    """Writes the given string/bytes to a file.
+
+    If a string is provided, it is encoded via ``.encode()``.
+
+    Args:
+        str_or_bytes: the string or bytes
+        path: the filepath
+    """
+    ensure_basedir(path)
+    with open(path, "wb") as f:
+        f.write(_to_bytes(str_or_bytes))
+
+
+def sep(path):
+    """Returns the path separator for the given path.
+
+    For local paths, ``os.path.sep`` is returned.
+
+    For remote paths, ``"/"`` is returned.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the path separator
+    """
+    return os.path.sep
+
+
+def join(a, *p):
+    """Joins the given path components into a single path.
+
+    Args:
+        a: the root
+        *p: additional path components
+
+    Returns:
+        the joined path
+    """
+    return os.path.join(a, *p)
+
+
+def isabs(path):
+    """Determines whether the given path is absolute.
+
+    Remote paths are always considered absolute.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        True/False
+    """
+    return os.path.isabs(path)
+
+
+def abspath(path):
+    """Converts the given path to an absolute path.
+
+    Remote paths are returned unchanged.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        the absolute path
+    """
+    return os.path.abspath(path)
+
+
+def normpath(path):
+    """Normalizes the given path by converting all slashes to forward slashes
+    on Unix and backslashes on Windows and removing duplicate slashes.
+
+    Use this function when you need a version of ``os.path.normpath`` that
+    converts ``\\`` to ``/`` on Unix.
+
+    Args:
+        path: a path
+
+    Returns:
+        the normalized path
+    """
+    if os.name == "nt":
+        return ntpath.normpath(path)
+
+    return posixpath.normpath(path.replace("\\", "/"))
+
+
+def exists(path):
+    """Determines whether the given file or directory exists.
+
+    Args:
+        path: the file or directory path
+
+    Returns:
+        True/False
+    """
+    return os.path.exists(path)
+
+
+def isfile(path):
+    """Determines whether the given file exists.
+
+    Args:
+        path: the filepath
+
+    Returns:
+        True/False
+    """
+    return os.path.isfile(path)
+
+
+def isdir(dirpath):
+    """Determines whether the given directory exists.
+
+    Cloud "folders" are deemed to exist only if they are non-empty.
+
+    Args:
+        dirpath: the directory path
+
+    Returns:
+        True/False
+    """
+    return os.path.isdir(dirpath)
 
 
 def make_archive(dirpath, archive_path, cleanup=False):
@@ -171,35 +409,6 @@ def ensure_dir(dirpath):
         dirpath: the directory path
     """
     etau.ensure_dir(dirpath)
-
-
-def read_file(path, binary=False):
-    """Reads the file.
-
-    Args:
-        path: the filepath
-        binary (False): whether to read the file in binary mode
-
-    Returns:
-        the file contents
-    """
-    mode = "rb" if binary else "r"
-    with open(path, mode) as f:
-        return f.read()
-
-
-def write_file(str_or_bytes, path):
-    """Writes the given string/bytes to a file.
-
-    If a string is provided, it is encoded via ``.encode()``.
-
-    Args:
-        str_or_bytes: the string or bytes
-        path: the filepath
-    """
-    ensure_basedir(path)
-    with open(path, "wb") as f:
-        f.write(_to_bytes(str_or_bytes))
 
 
 def load_json(path_or_str):
@@ -398,14 +607,14 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
     return etau.list_subdirs(dirpath, abs_paths=abs_paths, recursive=recursive)
 
 
-def list_buckets(_, abs_paths=False):
+def list_buckets(fs, abs_paths=False):
     """Lists the available buckets in the given file system.
 
     This method returns subdirectories of ``/`` (or the current drive on
     Windows).
 
     Args:
-        _: an unused value
+        fs: a :class:`FileSystem` enum
         abs_paths (False): whether to return absolute paths
 
     Returns:
@@ -421,8 +630,7 @@ def get_glob_matches(glob_patt):
     The matches are returned in sorted order.
 
     Args:
-        glob_patt: a glob pattern like ``/path/to/files-*.jpg`` or
-            ``s3://path/to/files-*-*.jpg``
+        glob_patt: a glob pattern like ``/path/to/files-*.jpg``
 
     Returns:
         a list of file paths
@@ -435,8 +643,7 @@ def get_glob_root(glob_patt):
     subdirectory that contains no glob characters.
 
     Args:
-        glob_patt: a glob pattern like ``/path/to/files-*.jpg`` or
-            ``s3://path/to/files-*-*.jpg``
+        glob_patt: a glob pattern like ``/path/to/files-*.jpg``
 
     Returns:
         a tuple of:
