@@ -111,7 +111,6 @@ def make_archive(dirpath, archive_path, cleanup=False):
         archive_path: the archive path to write
         cleanup (False): whether to delete the directory after archiving it
     """
-    logger.info("Making archive...")
     etau.make_archive(dirpath, archive_path)
 
     if cleanup:
@@ -137,7 +136,6 @@ def extract_archive(archive_path, outdir=None, cleanup=False):
     if outdir is None:
         outdir = os.path.dirname(archive_path) or "."
 
-    logger.info("Extracting archive...")
     etau.extract_archive(archive_path, outdir=outdir)
 
     if cleanup:
