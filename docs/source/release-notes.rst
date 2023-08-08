@@ -7,20 +7,22 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.3.6
 --------------------
-*Released August 7, 2023*
+*Released August 8, 2023*
 
-Includes :ref:`FiftyOne 0.21.6 <release-notes-v0.21.6>` updates
+Includes all updates from :ref:`FiftyOne 0.21.6 <release-notes-v0.21.6>`.
 
 .. _release-notes-v0.21.6:
 
 FiftyOne 0.21.6
 ---------------
-*Released August 7, 2023*
+*Released August 8, 2023*
 
 App
 
 - Fixed the Embeddings panel
   `#3401 <https://github.com/voxel51/fiftyone/pull/3401>`_
+- Fixed a bug when using the sidebar to filter views that have selected fields
+  `#3405 <https://github.com/voxel51/fiftyone/pull/3405>`_
 
 .. _release-notes-teams-v1.3.5:
 
