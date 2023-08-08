@@ -107,7 +107,7 @@ const CustomColorSpace = () => {
   });
 
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
-  const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
+  const defaultPcdSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const [customColorMap, setCustomColorMap] =
     useRecoilState(customColorMapAtom);
   const [isColorPickerOn, setIsColorPickerOn] = useState(false);

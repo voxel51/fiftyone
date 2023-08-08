@@ -2,7 +2,7 @@ import * as fos from "@fiftyone/state";
 import { useRecoilState } from "recoil";
 
 const useGlobalColorSetting = () => {
-  const [opacity, setOpacity] = useRecoilState(fos.alpha(false));
+  const [opacity, setOpacity] = useRecoilState(fos.alpha);
   const [colorBy, setColorBy] = useRecoilState(
     fos.appConfigOption({ key: "colorBy", modal: false })
   );

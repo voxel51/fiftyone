@@ -6,5 +6,6 @@ module.exports = {
   plugins: ["@typescript-eslint"],
   rules: {
     "playwright/expect-expect": "off",
+    "playwright/no-networkidle": "off",
   },
 };

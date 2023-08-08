@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 import Input from "react-input-autosize";
-import { useLayer, UseLayerOptions } from "react-laag";
+import { UseLayerOptions, useLayer } from "react-laag";
 import LoadingDots from "../Loading/LoadingDots";
 
 import Results from "../Results/Results";
@@ -120,7 +120,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
     isOpen: editing,
-    overflowContainer: false,
+    overflowContainer: true,
     auto: true,
     snap: true,
     placement: resultsPlacement ? resultsPlacement : "bottom-center",

@@ -20,9 +20,11 @@ import fiftyone as fo
 import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
+import fiftyone.core.media as fom
 from fiftyone import ViewField as F
 
 from decorators import drop_datasets
+from utils.groups import make_disjoint_groups_dataset
 
 
 class GroupTests(unittest.TestCase):
@@ -565,6 +567,51 @@ class GroupTests(unittest.TestCase):
         self.assertIn("field", mixed_view.get_field_schema())
         self.assertIn("field", mixed_view.get_frame_field_schema())
 
+        view = dataset.select_fields()
+
+        # Cloning a grouped dataset maintains schema changes
+        group_dataset = view.clone()
+
+        self.assertNotIn("field", group_dataset.get_field_schema())
+        self.assertNotIn("field", group_dataset.get_frame_field_schema())
+        for sample in group_dataset:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
+        # Selecting group slices maintains schema changes
+        image_view = view.select_group_slices(media_type="image")
+
+        self.assertNotIn("field", image_view.get_field_schema())
+        for sample in image_view:
+            self.assertFalse(sample.has_field("field"))
+
+        image_dataset = image_view.clone()
+
+        self.assertNotIn("field", image_dataset.get_field_schema())
+        for sample in image_dataset:
+            self.assertFalse(sample.has_field("field"))
+
+        # @note(SelectGroupSlices)
+        # Selecting group slices maintains frame schema changes
+        video_view = view.select_group_slices(media_type="video")
+
+        self.assertNotIn("field", video_view.get_field_schema())
+        self.assertNotIn("field", video_view.get_frame_field_schema())
+        for sample in video_view:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
+        video_dataset = video_view.clone()
+
+        self.assertNotIn("field", video_dataset.get_field_schema())
+        self.assertNotIn("field", video_dataset.get_frame_field_schema())
+        for sample in video_dataset:
+            self.assertFalse(sample.has_field("field"))
+            for frame in sample.frames.values():
+                self.assertFalse(frame.has_field("field"))
+
     @drop_datasets
     def test_attached_groups(self):
         dataset = _make_group_dataset()
@@ -846,6 +893,12 @@ class GroupTests(unittest.TestCase):
 
         self.assertEqual(frame.field, 1)
 
+        view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(view.media_type, "mixed")
+        with self.assertRaises(ValueError):
+            _ = view.clone()
+
     def test_merge_groups1(self):
         dataset = _make_group_dataset()
 
@@ -980,14 +1033,18 @@ class GroupTests(unittest.TestCase):
         dataset = _make_group_dataset()
 
         dataset.add_collection(dataset, new_ids=True)
+        samples = dataset.select_group_slices(_allow_mixed=True)
 
         self.assertEqual(len(dataset), 4)
         self.assertEqual(dataset.media_type, "group")
         self.assertEqual(dataset.group_slice, "ego")
-        self.assertEqual(
-            len(dataset.select_group_slices(_allow_mixed=True)), 12
-        )
+
+        self.assertEqual(len(samples), 12)
+        self.assertEqual(len(set(samples.values("id"))), 12)
+        self.assertEqual(len(set(samples.values("group_field.id"))), 4)
+
         self.assertEqual(dataset.count("frames"), 4)
+        self.assertEqual(len(set(samples.values("frames.id", unwind=True))), 4)
 
     @drop_datasets
     def test_set_values_group(self):
@@ -1207,6 +1264,73 @@ class GroupImportExportTests(unittest.TestCase):
             set(flat_view.values("filepath")),
             set(flat_view2.values("filepath")),
         )
+
+    @drop_datasets
+    def test_disjoint_groups(self):
+        dataset, first, second = make_disjoint_groups_dataset()
+
+        view = dataset.select_groups(first.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, first.id)
+
+        view = view.select_group_slices("first")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, first.id)
+
+        dataset.group_slice = "second"
+        view = dataset.select_groups(second.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        view = view.select_group_slices("second")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        dataset.group_slice = None
+        view = dataset.view()
+        view.group_slice = "second"
+        view = view.select_groups(second.group.id)
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+        view = view.select_group_slices("second")
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.first().id, second.id)
+
+    @drop_datasets
+    def test_dynamic_groups(self):
+        dataset = _make_group_dataset()
+
+        for slice in dataset.group_slices:
+            dataset.group_slice = slice
+            view = dataset.group_by("filepath")
+            self.assertEqual(
+                view.default_group_slice, dataset.default_group_slice
+            )
+            self.assertEqual(view.group_field, dataset.group_field)
+            self.assertDictEqual(
+                view.group_media_types, dataset.group_media_types
+            )
+            self.assertEqual(view.group_slice, slice)
+            self.assertListEqual(view.group_slices, dataset.group_slices)
+
+            view = dataset.select_group_slices(slice)
+            self.assertIsNone(view.default_group_slice)
+            self.assertIsNone(view.group_field)
+            self.assertIsNone(view.group_media_types)
+            self.assertIsNone(view.group_slice)
+            self.assertIsNone(view.group_slices)
+            self.assertEqual(view._parent_media_type, fom.GROUP)
+
+            view = view.group_by("filepath")
+            self.assertIsNone(view.default_group_slice)
+            self.assertIsNone(view.group_field)
+            self.assertIsNone(view.group_media_types)
+            self.assertIsNone(view.group_slice)
+            self.assertIsNone(view.group_slices)
+            self.assertEqual(
+                view._parent_media_type, dataset.group_media_types[slice]
+            )
 
 
 class _GroupImporter(foud.GroupDatasetImporter):

@@ -18,6 +18,7 @@ class OneOf:
 @gql.input
 class GroupElementFilter:
     id: t.Optional[str] = None
+    slice: t.Optional[str] = None
     slices: t.Optional[t.List[str]] = None
 
 

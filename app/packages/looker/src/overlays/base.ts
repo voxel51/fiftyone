@@ -116,6 +116,10 @@ export abstract class CoordinateOverlay<
             : field.colorByAttribute
           : "label";
 
+        // use the first value as the fallback default if it's a listField
+        const currentValue = Array.isArray(this.label[key])
+          ? this.label[key][0]
+          : this.label[key];
         // check if this label has a assigned color, use it if it is a valid color
         const valueColor = field?.valueColors?.find((l) => {
           if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
@@ -129,11 +133,15 @@ export abstract class CoordinateOverlay<
               this.label[key]?.toString().toLowerCase()
             );
           }
-          return l.value?.toString() == this.label[key]?.toString();
+          return Array.isArray(this.label[key])
+            ? this.label[key]
+                .map((list) => list.toString())
+                .includes(l.value?.toString())
+            : l.value?.toString() == this.label[key]?.toString();
         })?.color;
         return isValidColor(valueColor)
           ? valueColor
-          : getColor(coloring.pool, coloring.seed, this.label[key]);
+          : getColor(coloring.pool, coloring.seed, currentValue);
       } else {
         return getColor(coloring.pool, coloring.seed, this.label["label"]);
       }

@@ -15,6 +15,7 @@ export default function useExtendedStageEffect() {
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
+  const slices = fos.currentSlices(false);
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {
@@ -23,6 +24,7 @@ export default function useExtendedStageEffect() {
         view,
         patchesField: loadedPlot.patches_field,
         selection,
+        slices,
       }).then(async (res) => {
         const currentDataset = await getCurrentDataset();
         if (currentDataset !== datasetName) return;

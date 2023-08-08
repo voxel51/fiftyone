@@ -9,11 +9,15 @@ All of these tests are designed to be run manually via::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import random
 import unittest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
+
+
+_SAM_PROMPT_FIELD = "prompt_field"
 
 
 def test_all_models():
@@ -39,6 +43,36 @@ def test_instance_segmentation_models():
 def test_semantic_segmentation_models():
     models = _get_models_with_tag("segmentation")
     _apply_models(models)
+
+
+def test_sam_boxes():
+    models = ["segment-anything-vitb-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam_points():
+    models = ["segment-anything-vitb-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        batch_size=2,
+        model_kwargs=dict(mask_index=1.05),
+        apply_kwargs={_SAM_PROMPT_FIELD: "ground_truth"},
+    )
+
+
+def test_sam_auto():
+    models = ["segment-anything-vitb-torch"]
+    _apply_models(
+        models,
+        max_samples=3,
+        model_kwargs=dict(pred_iou_thresh=0.9, min_mask_region_area=200),
+    )
 
 
 def test_keypoint_models():
@@ -95,31 +129,62 @@ def _get_models_with_tag(tag):
     return model_names
 
 
+def _detections_to_keypoints(detection_list):
+    keypoints = []
+    for detection in detection_list:
+        n_points = random.randint(1, 5)
+        x1, y1, w, h = detection.bounding_box
+        rand_point = lambda: (
+            random.uniform(x1, x1 + w),
+            random.uniform(y1, y1 + h),
+        )
+        points = [rand_point() for _ in range(n_points)]
+        keypoint = fo.Keypoint(points=points, label=detection.label)
+        keypoints.append(keypoint)
+
+    return fo.Keypoints(keypoints=keypoints)
+
+
 def _apply_models(
     model_names,
     batch_size=None,
     confidence_thresh=None,
     pass_confidence_thresh=False,
+    max_samples=10,
+    model_kwargs=None,
+    apply_kwargs=None,
 ):
     if pass_confidence_thresh:
         kwargs = {"confidence_thresh": confidence_thresh}
     else:
         kwargs = {}
 
+    if apply_kwargs:
+        kwargs.update(apply_kwargs)
+
     dataset = foz.load_zoo_dataset(
         "coco-2017",
         split="validation",
         dataset_name=fo.get_default_dataset_name(),
         shuffle=True,
-        max_samples=10,
+        max_samples=max_samples,
     )
+
+    # Generate keypoints for segment-anything model
+    if _SAM_PROMPT_FIELD in kwargs:
+        field_name = kwargs[_SAM_PROMPT_FIELD]
+        kp_field_name = field_name + "_points"
+        detections = dataset.values(field_name + ".detections")
+        keypoints = [_detections_to_keypoints(d) for d in detections]
+        dataset.set_values(kp_field_name, keypoints)
+        kwargs[_SAM_PROMPT_FIELD] = kp_field_name
 
     for idx, model_name in enumerate(model_names, 1):
         print(
             "Running model %d/%d: '%s'" % (idx, len(model_names), model_name)
         )
 
-        model = foz.load_zoo_model(model_name)
+        model = foz.load_zoo_model(model_name, **(model_kwargs or {}))
 
         label_field = model_name.lower().replace("-", "_").replace(".", "_")
 

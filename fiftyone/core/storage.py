@@ -285,10 +285,10 @@ def get_bucket_name(path):
 
         import fiftyone.core.storage as fos
 
-        fos.split_prefix("s3://bucket/object")  # 'bucket'
-        fos.split_prefix("gs://bucket/object")  # 'bucket'
-        fos.split_prefix("/path/to/file")       # ''
-        fos.split_prefix("a/file")              # ''
+        fos.get_bucket_name("s3://bucket/object")  # 'bucket'
+        fos.get_bucket_name("gs://bucket/object")  # 'bucket'
+        fos.get_bucket_name("/path/to/file")       # ''
+        fos.get_bucket_name("a/file")              # ''
 
     Args:
         path: a path
@@ -1079,16 +1079,18 @@ def open_file(path, mode="r"):
 
     Example usage::
 
-        with open_file("/tmp/file.txt", "w") as f:
+        import fiftyone.core.storage as fos
+
+        with fos.open_file("/tmp/file.txt", "w") as f:
             f.write("Hello, world!")
 
-        with open_file("s3://tmp/file.txt", "w") as f:
+        with fos.open_file("s3://tmp/file.txt", "w") as f:
             f.write("Hello, world!")
 
-        with open_file("/tmp/file.txt", "r") as f:
+        with fos.open_file("/tmp/file.txt", "r") as f:
             print(f.read())
 
-        with open_file("s3://tmp/file.txt", "r") as f:
+        with fos.open_file("s3://tmp/file.txt", "r") as f:
             print(f.read())
 
     Args:
