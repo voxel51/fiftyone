@@ -32,6 +32,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.runs as fors
 from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
 import fiftyone.types as fot
@@ -735,10 +736,10 @@ class ImportPathsMixin(object):
             data_path = os.path.expanduser(data_path)
 
             if not os.path.isabs(data_path) and dataset_dir is not None:
-                dataset_dir = fou.normalize_path(dataset_dir)
+                dataset_dir = fos.normalize_path(dataset_dir)
                 data_path = os.path.join(dataset_dir, data_path)
             else:
-                data_path = fou.normalize_path(data_path)
+                data_path = fos.normalize_path(data_path)
 
             if not os.path.exists(data_path):
                 if os.path.isfile(data_path + ".json"):
@@ -759,10 +760,10 @@ class ImportPathsMixin(object):
             labels_path = os.path.expanduser(labels_path)
 
             if not os.path.isabs(labels_path) and dataset_dir is not None:
-                dataset_dir = fou.normalize_path(dataset_dir)
+                dataset_dir = fos.normalize_path(dataset_dir)
                 labels_path = os.path.join(dataset_dir, labels_path)
             else:
-                labels_path = fou.normalize_path(labels_path)
+                labels_path = fos.normalize_path(labels_path)
 
         return labels_path
 
@@ -772,12 +773,12 @@ class ImportPathsMixin(object):
         manifest file into a UUID -> filepath map.
         """
         if ignore_exts:
-            to_uuid = lambda p: fou.normpath(os.path.splitext(p)[0])
+            to_uuid = lambda p: fos.normpath(os.path.splitext(p)[0])
         else:
-            to_uuid = lambda p: fou.normpath(p)
+            to_uuid = lambda p: fos.normpath(p)
 
         if isinstance(data_path, dict):
-            return {to_uuid(k): fou.normpath(v) for k, v in data_path.items()}
+            return {to_uuid(k): fos.normpath(v) for k, v in data_path.items()}
 
         if not data_path:
             return {}
@@ -791,7 +792,7 @@ class ImportPathsMixin(object):
             data_map = etas.read_json(data_path)
             data_root = os.path.dirname(data_path)
             return {
-                to_uuid(k): fou.normpath(os.path.join(data_root, v))
+                to_uuid(k): fos.normpath(os.path.join(data_root, v))
                 for k, v in data_map.items()
             }
 
@@ -799,7 +800,7 @@ class ImportPathsMixin(object):
             raise ValueError("Data directory '%s' does not exist" % data_path)
 
         return {
-            to_uuid(p): fou.normpath(os.path.join(data_path, p))
+            to_uuid(p): fos.normpath(os.path.join(data_path, p))
             for p in etau.list_files(data_path, recursive=recursive)
         }
 
@@ -830,7 +831,7 @@ class DatasetImporter(object):
         self, dataset_dir=None, shuffle=False, seed=None, max_samples=None
     ):
         if dataset_dir is not None:
-            dataset_dir = fou.normalize_path(dataset_dir)
+            dataset_dir = fos.normalize_path(dataset_dir)
 
         self.dataset_dir = dataset_dir
         self.shuffle = shuffle
@@ -1437,7 +1438,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         dataset_dir: the dataset directory
         rel_dir (None): a relative directory to prepend to each filepath if it
             is not absolute. This path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         import_saved_views (True): whether to include saved views in the
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
@@ -1539,7 +1540,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
             self._metadata = {}
 
         if self.rel_dir is not None:
-            self._rel_dir = fou.normalize_path(self.rel_dir)
+            self._rel_dir = fos.normalize_path(self.rel_dir)
         else:
             self._rel_dir = self.dataset_dir
 
@@ -1669,7 +1670,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         rel_dir (None): a relative directory to prepend to the ``filepath`` of
             each sample if the filepath is not absolute. This path is converted
             to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         import_saved_views (True): whether to include saved views in the
             import. Only applicable when importing full datasets
         import_runs (True): whether to include annotation/brain/evaluation
@@ -1836,7 +1837,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
         if self.rel_dir is not None:
             # Prepend `rel_dir` to all relative paths
-            rel_dir = fou.normalize_path(self.rel_dir)
+            rel_dir = fos.normalize_path(self.rel_dir)
         else:
             # Prepend `dataset_dir` to all relative paths
             rel_dir = self.dataset_dir
@@ -2458,7 +2459,7 @@ class FiftyOneImageClassificationDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
-            labels = {fou.normpath(k): v for k, v in labels.items()}
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -2925,7 +2926,7 @@ class FiftyOneImageDetectionDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
-            labels = {fou.normpath(k): v for k, v in labels.items()}
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -3119,7 +3120,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         if self.labels_path is not None and os.path.isfile(self.labels_path):
             labels = etas.read_json(self.labels_path)
-            labels = {fou.normpath(k): v for k, v in labels.items()}
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -3310,7 +3311,7 @@ class ImageSegmentationDirectoryImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
-        labels_path = fou.normpath(self.labels_path)
+        labels_path = fos.normpath(self.labels_path)
         labels_paths_map = {
             os.path.splitext(p)[0]: os.path.join(labels_path, p)
             for p in etau.list_files(labels_path, recursive=True)
@@ -3448,10 +3449,10 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         for idx in inds:
             record = index[idx]
             image_paths.append(
-                fou.normpath(os.path.join(self.dataset_dir, record.data))
+                fos.normpath(os.path.join(self.dataset_dir, record.data))
             )
             label_paths.append(
-                fou.normpath(os.path.join(self.dataset_dir, record.labels))
+                fos.normpath(os.path.join(self.dataset_dir, record.labels))
             )
 
         samples = list(zip(image_paths, label_paths))
@@ -3591,10 +3592,10 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         for idx in inds:
             record = index[idx]
             video_paths.append(
-                fou.normpath(os.path.join(self.dataset_dir, record.data))
+                fos.normpath(os.path.join(self.dataset_dir, record.data))
             )
             label_paths.append(
-                fou.normpath(os.path.join(self.dataset_dir, record.labels))
+                fos.normpath(os.path.join(self.dataset_dir, record.labels))
             )
 
         samples = list(zip(video_paths, label_paths))

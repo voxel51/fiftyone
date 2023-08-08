@@ -41,11 +41,12 @@ from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-fost = fou.lazy_import("fiftyone.core.stages")
+fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
@@ -2508,7 +2509,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
                 information. Only applicable when ``include_info`` is True
-            new_ids (False): whether to generate new sample/frame IDs. By
+            new_ids (False): whether to generate new sample/frame/group IDs. By
                 default, the IDs of the input collection are retained
 
         Returns:
@@ -2755,8 +2756,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 fields
         """
         try:
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
             F = foe.ViewField
-            existing_sample = self.one(F(key_field) == sample[key_field])
+            existing_sample = view.one(F(key_field) == sample[key_field])
         except ValueError:
             if insert_new:
                 self.add_sample(
@@ -5870,7 +5876,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -5886,7 +5892,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir)
+            rel_dir = fost.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name, persistent=persistent, overwrite=overwrite)
@@ -5988,7 +5994,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -6856,6 +6862,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
         view = dataset_or_view
+
+        if view.media_type == fom.MIXED:
+            raise ValueError("Cloning mixed views is not allowed")
     else:
         dataset = dataset_or_view
         view = None
@@ -7414,48 +7423,31 @@ def _add_collection_with_new_ids(
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if contains_groups:
+        dst_samples = dataset.select_group_slices(_allow_mixed=True)
         src_samples = sample_collection.select_group_slices(_allow_mixed=True)
     else:
+        dst_samples = dataset
         src_samples = sample_collection
 
-    if not contains_videos:
-        src_samples._aggregate(
-            detach_groups=True,
-            post_pipeline=[
-                {"$project": {"_id": False}},
-                {"$addFields": {"_dataset_id": dataset._doc.id}},
-                {
-                    "$merge": {
-                        "into": dataset._sample_collection_name,
-                        "whenMatched": "keepExisting",
-                        "whenNotMatched": "insert",
-                    }
-                },
-            ],
-        )
+    if contains_videos:
+        old_ids = src_samples.values("id")
+        num_ids = len(old_ids)
+    else:
+        num_ids = len(src_samples)
 
-        return
-
-    #
-    # For video datasets, we must take greater care, because sample IDs are
-    # used as foreign keys in the frame documents
-    #
+    add_fields = {"_dataset_id": dataset._doc.id}
 
     if contains_groups:
-        src_videos = sample_collection.select_group_slices(
-            media_type=fom.VIDEO
-        )
-    else:
-        src_videos = sample_collection
-
-    old_ids = src_samples.values("_id")
+        id_field = sample_collection.group_field + "._id"
+        tmp_field = sample_collection.group_field + "._tmp"
+        add_fields[tmp_field] = "$" + id_field
 
     src_samples._aggregate(
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": add_fields},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7466,13 +7458,37 @@ def _add_collection_with_new_ids(
         ],
     )
 
+    new_ids = dst_samples[-num_ids:].values("id")
+
+    if contains_groups:
+        ops = []
+        for old_id in src_samples.distinct(id_field):
+            new_id = ObjectId()
+            op = UpdateMany(
+                {tmp_field: old_id},
+                {"$set": {id_field: new_id}, "$unset": {tmp_field: ""}},
+            )
+            ops.append(op)
+
+        dataset._bulk_write(ops)
+
+    if not contains_videos:
+        return new_ids
+
+    if contains_groups:
+        src_videos = sample_collection.select_group_slices(
+            media_type=fom.VIDEO
+        )
+    else:
+        src_videos = sample_collection
+
     src_videos._aggregate(
         frames_only=True,
         post_pipeline=[
             {
                 "$addFields": {
                     "_tmp": "$_sample_id",
-                    "_sample_id": {"$rand": {}},
+                    "_sample_id": {"$rand": {}},  # must exist for index
                 }
             },
             {"$project": {"_id": False}},
@@ -7487,18 +7503,17 @@ def _add_collection_with_new_ids(
         ],
     )
 
-    new_ids = dataset[-len(old_ids) :].values("_id")
-
     ops = [
         UpdateMany(
-            {"_tmp": _old},
-            {"$set": {"_sample_id": _new}, "$unset": {"_tmp": ""}},
+            {"_tmp": ObjectId(old_id)},
+            {"$set": {"_sample_id": ObjectId(new_id)}, "$unset": {"_tmp": ""}},
         )
-        for _old, _new in zip(old_ids, new_ids)
+        for old_id, new_id in zip(old_ids, new_ids)
     ]
+
     dataset._bulk_write(ops, frames=True)
 
-    return [str(_id) for _id in new_ids]
+    return new_ids
 
 
 def _merge_samples_python(
@@ -8222,14 +8237,14 @@ def _always_select_field(sample_collection, field):
 
     view = sample_collection
 
-    if not any(isinstance(stage, fost.SelectFields) for stage in view._stages):
+    if not any(isinstance(stage, fot.SelectFields) for stage in view._stages):
         return view
 
     # Manually insert `field` into all `SelectFields` stages
     _view = view._base_view
     for stage in view._stages:
-        if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(
+        if isinstance(stage, fot.SelectFields):
+            stage = fot.SelectFields(
                 stage.field_names + [field], _allow_missing=True
             )
 

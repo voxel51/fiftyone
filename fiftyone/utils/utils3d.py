@@ -12,7 +12,6 @@ import warnings
 import numpy as np
 import scipy.spatial as sp
 
-import eta.core.image as etai
 import eta.core.numutils as etan
 
 import fiftyone.core.fields as fof
@@ -22,6 +21,7 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 from fiftyone.core.odm import DynamicEmbeddedDocument
+import fiftyone.utils.image as foui
 
 o3d = fou.lazy_import("open3d", callback=lambda: fou.ensure_package("open3d"))
 
@@ -553,7 +553,7 @@ def compute_orthographic_projection_images(
                 bounds=bounds,
             )
 
-            etai.write(img, image_path)
+            foui.write(img, image_path)
             metadata.filepath = image_path
 
             if out_group_slice is not None:

@@ -10,6 +10,10 @@
 .scrollable::-webkit-scrollbar {
   width: 16px;
 }
+.scrollableSm::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
 
 .scrollable::-webkit-scrollbar-track {
   border: solid 4px transparent var(--fo-palette-text-tertiary);

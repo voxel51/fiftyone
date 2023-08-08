@@ -371,7 +371,7 @@ class ActivityNetDatasetManager(object):
         return self.info.existing_split_sample_ids(split)
 
     def split_sample_ids(self, split):
-        return self.info.split_sample_ids[split]
+        return self.info.split_sample_ids(split)
 
     def process_source(self, source_dir, copy_files):
         source_dir = os.path.expanduser(source_dir)
@@ -727,6 +727,12 @@ class ActivityNetDatasetManager(object):
             prev_errors = {}
 
         for video, e in download_errors.items():
+            if not isinstance(e, (str, int, float, bool)) and e != None:
+                try:
+                    e = str(e)
+                except:
+                    e = "Cannot parse error message"
+
             if e in prev_errors:
                 prev_errors[e].append(video)
             else:
