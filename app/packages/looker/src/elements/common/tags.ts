@@ -406,6 +406,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
 
+    this.element.dispatchEvent(
+      new CustomEvent("re-render-tag", {
+        detail: sample.filepath,
+        bubbles: true,
+      })
+    );
+
     elements
       .filter((e) => Boolean(e))
       .forEach(({ path, value, color, title }) => {
