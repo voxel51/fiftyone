@@ -44,6 +44,8 @@ module.exports = {
     ],
     // allow namespace for type export
     "@typescript-eslint/no-namespace": "off",
+    "@typescript-eslint/no-non-null-assertion": "off",
+    "react/display-name": "off",
     "react/no-unknown-property": [
       "warn",
       {
@@ -59,6 +61,7 @@ module.exports = {
         ],
       },
     ],
+    "react/prop-types": 0,
   },
   settings: {
     react: {

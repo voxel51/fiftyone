@@ -16,7 +16,7 @@ export default function CodeBlock({ text, ...props }) {
       sx={{
         position: "relative",
         fontFamily: "Roboto Mono, monospace",
-        fontSize: 14,
+        fontSize: props?.fontSize || 14,
         "&:hover": {
           "& > button": {
             opacity: 1,

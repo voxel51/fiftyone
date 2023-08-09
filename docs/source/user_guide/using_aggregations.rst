@@ -270,6 +270,89 @@ collection.
         'iscrowd': <fiftyone.core.fields.FloatField object at 0x7fc964869fd0>,
     }
 
+You can also use the
+:meth:`list_schema() <fiftyone.core.collections.SampleCollection.list_schema>`
+aggregation to extract the value type(s) in a list field across all samples in
+a collection:
+
+.. code-block:: python
+    :linenos:
+
+    from datetime import datetime
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    sample1 = fo.Sample(
+        filepath="image1.png",
+        ground_truth=fo.Classification(
+            label="cat",
+            info=[
+                fo.DynamicEmbeddedDocument(
+                    task="initial_annotation",
+                    author="Alice",
+                    timestamp=datetime(1970, 1, 1),
+                    notes=["foo", "bar"],
+                ),
+                fo.DynamicEmbeddedDocument(
+                    task="editing_pass",
+                    author="Bob",
+                    timestamp=datetime.utcnow(),
+                ),
+            ],
+        ),
+    )
+
+    sample2 = fo.Sample(
+        filepath="image2.png",
+        ground_truth=fo.Classification(
+            label="dog",
+            info=[
+                fo.DynamicEmbeddedDocument(
+                    task="initial_annotation",
+                    author="Bob",
+                    timestamp=datetime(2018, 10, 18),
+                    notes=["spam", "eggs"],
+                ),
+            ],
+        ),
+    )
+
+    dataset.add_samples([sample1, sample2])
+
+    # Determine that `ground_truth.info` contains embedded documents
+    print(dataset.list_schema("ground_truth.info"))
+    # fo.EmbeddedDocumentField
+
+    # Determine the fields of the embedded documents in the list
+    print(dataset.schema("ground_truth.info[]"))
+    # {'task': StringField, ..., 'notes': ListField}
+
+    # Determine the type of the values in the nested `notes` list field
+    # Since `ground_truth.info` is not yet declared on the dataset's schema, we
+    # must manually include `[]` to unwind the info lists
+    print(dataset.list_schema("ground_truth.info[].notes"))
+    # fo.StringField
+
+    # Declare the `ground_truth.info` field
+    dataset.add_sample_field(
+        "ground_truth.info",
+        fo.ListField,
+        subfield=fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.DynamicEmbeddedDocument,
+    )
+
+    # Now we can inspect the nested `notes` field without unwinding
+    print(dataset.list_schema("ground_truth.info.notes"))
+    # fo.StringField
+
+.. note::
+
+    Schema aggregations are used internally by
+    :meth:`get_dynamic_field_schema() <fiftyone.core.dataset.Dataset.get_dynamic_field_schema>`
+    to impute the types of undeclared lists and embedded documents in a
+    dataset.
+
 .. _aggregations-sum:
 
 Sum values

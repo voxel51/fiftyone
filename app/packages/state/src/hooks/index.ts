@@ -7,6 +7,7 @@ export {
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
 export { default as useCreateLooker } from "./useCreateLooker";
+export { default as useSetSessionColorScheme } from "./useSetSessionColorScheme";
 export { default as useDimensions } from "./useDimensions";
 export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";
@@ -18,6 +19,7 @@ export { default as useLookerStore } from "./useLookerStore";
 export * from "./useOnSelectLabel";
 export { default as usePanel } from "./usePanel";
 export { default as useReset } from "./useReset";
+export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
 export {
   default as useRouter,
   getCurrentEnvironment,
@@ -29,6 +31,8 @@ export { default as useSelectFlashlightSample } from "./useSelectFlashlightSampl
 export { default as useSelectSample } from "./useSelectSample";
 export { default as useSendEvent } from "./useSendEvent";
 export { default as useSessionSpaces } from "./useSessionSpaces";
+export { default as useGlobalColorSetting } from "./useGlobalColorSetting";
+
 export { default as useSetDataset } from "./useSetDataset";
 export { default as useSetExpandedSample } from "./useSetExpandedSample";
 export { default as useSetGroupSlice } from "./useSetGroupSlice";
@@ -43,5 +47,7 @@ export { default as useToClips } from "./useToClips";
 export { default as useToEvaluationPatches } from "./useToEvaluationPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useToPatches } from "./useToPatches";
-export { default as useUpdateSample } from "./useUpdateSample";
-export { default as useResetExtendedSelection } from "./useResetExtendedSelection";
+export { default as useUpdateSamples } from "./useUpdateSamples";
+export { default as useSchemaSettings } from "./useSchemaSettings";
+export { settingsModal } from "./useSchemaSettings";
+export { default as withSuspense } from "./withSuspense";

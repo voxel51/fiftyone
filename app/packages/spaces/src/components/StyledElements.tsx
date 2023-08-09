@@ -1,8 +1,10 @@
+import { scrollbarStyles } from "@fiftyone/utilities";
 import styled from "styled-components";
 
 export const SpaceContainer = styled.div`
   width: 100%;
   height: 100%;
+  --focus-border: var(--fo-palette-neutral-plainColor);
 `;
 
 export const PanelContainer = styled.div`
@@ -13,7 +15,7 @@ export const PanelContainer = styled.div`
 
 export const PanelTabs = styled.div`
   display: flex;
-  background: var(--joy-palette-background-header);
+  background: var(--fo-palette-background-header);
   padding-bottom: 0px;
 `;
 
@@ -21,7 +23,8 @@ export const StyledPanel = styled.div`
   width: 100%;
   height: calc(100% - 28px);
   overflow: auto;
-  background: var(--joy-palette-background-mediaSpace);
+  background: var(--fo-palette-background-mediaSpace);
+  ${scrollbarStyles}
 `;
 
 export const AddPanelButtonContainer = styled.div`
@@ -34,7 +37,7 @@ export const StyledPanelItem = styled.div`
   padding: 4px 8px;
 
   &:hover {
-    background: var(--joy-palette-background-body);
+    background: var(--fo-palette-background-body);
   }
 `;
 
@@ -44,15 +47,15 @@ export const StyledTab = styled.button<{ active?: boolean }>`
   cursor: pointer;
   background: ${(props) =>
     props.active
-      ? "var(--joy-palette-background-level2)"
-      : "var(--joy-palette-background-inactiveTab)"};
+      ? "var(--fo-palette-background-level2)"
+      : "var(--fo-palette-background-inactiveTab)"};
   border: none;
   color: ${(props) =>
     props.active
-      ? "var(--joy-palette-text-primary)"
-      : "var(--joy-palette-text-secondary)"};
+      ? "var(--fo-palette-text-primary)"
+      : "var(--fo-palette-text-secondary)"};
   padding: 2px 12px 2px 12px;
-  border-right: 1px solid var(--joy-palette-background-level3);
+  border-right: 1px solid var(--fo-palette-background-level3);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 `;

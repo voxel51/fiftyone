@@ -1,17 +1,30 @@
-import React from "react";
 import * as fos from "@fiftyone/state";
-import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
-  createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
+import React from "react";
 import { useRecoilValue } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-let theme = extendJoyTheme({
+function dynamicTheme(accessor: string) {
+  const parts = accessor.split(".");
+  parts.unshift("--fo");
+  return `var(${parts.join("-")})`;
+}
+
+let theme = extendMuiTheme({
+  cssVarPrefix: "fo",
+  typography: {
+    fontFamily: "Palanquin, sans-serif",
+  },
   colorSchemes: {
-    light: createTheme({
+    light: {
       palette: {
+        action: {
+          active: "hsl(200, 0%, 30%)",
+          disabled: "hsl(200, 0%, 50%)",
+        },
         background: {
           body: "hsl(200, 0%, 85%)",
           button: "hsl(200, 0%, 90%)",
@@ -30,6 +43,7 @@ let theme = extendJoyTheme({
           inactiveTab: "hsl(200, 0%, 90%)",
         },
         divider: "hsl(200, 0%, 80%)",
+        dividerDisabled: "hsl(200, 0%, 85%)",
         danger: {
           plainColor: "hsl(0, 87%, 47%)",
         },
@@ -44,10 +58,14 @@ let theme = extendJoyTheme({
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
+          mainChannel: "0 0 0",
           plainBorder: "hsl(200, 0%, 90%)",
           plainColor: "hsl(25, 100%, 51%)",
           softBg: "hsl(200, 0%, 85%, 0.7)",
           softBorder: "hsl(200, 0%, 80%)",
+        },
+        secondary: {
+          main: "hsl(200, 0%, 30%)",
         },
         focusVisible: "hsl(212, 97%, 57%, 0.3)",
         text: {
@@ -66,10 +84,20 @@ let theme = extendJoyTheme({
           500: "#FF6D04",
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
+        error: {
+          main: "hsl(0, 87%, 53%)",
+        },
+        Avatar: {
+          defaultBg: "hsl(200, 0%, 85%)",
+        },
       },
-    }),
-    dark: createTheme({
+    },
+    dark: {
       palette: {
+        action: {
+          active: "hsl(200, 0%, 70%)",
+          disabled: "hsl(200, 0%, 50%)",
+        },
         background: {
           button: "hsl(200, 0%, 20%)",
           header: "hsl(200, 0%, 15%)",
@@ -85,8 +113,10 @@ let theme = extendJoyTheme({
           tooltip: "hsl(200, 0%, 5%)",
           viewBarButtons: "hsl(200, 0%, 15%)",
           inactiveTab: "hsl(200, 0%, 18%)",
+          paper: "hsl(200, 0%, 10%)",
         },
         divider: "hsl(200, 0%, 20%)",
+        dividerDisabled: "hsl(200, 0%, 15%)",
         danger: {
           plainColor: "hsl(0, 87%, 53%)",
         },
@@ -101,7 +131,7 @@ let theme = extendJoyTheme({
         },
         primary: {
           main: "hsl(25, 100%, 51%)",
-          mainChannel: "none",
+          mainChannel: "0 0 0",
           plainColor: "hsl(25, 100%, 51%)",
           plainBorder: "hsl(200, 0%, 5%)",
           softBg: "hsl(200, 0%, 25%)",
@@ -127,11 +157,43 @@ let theme = extendJoyTheme({
           500: "#FF6D04",
           600: "#D54B00", // Not in the design. Darker shade of 500 of is used
         },
+        error: {
+          main: "hsl(0, 87%, 53%)",
+        },
       },
-    }),
+    },
+  },
+  components: {
+    MuiButtonBase: {
+      defaultProps: {
+        disableRipple: true,
+      },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: {
+        root: {
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.secondary"),
+          },
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: dynamicTheme("palette.text.tertiary"),
+          },
+        },
+      },
+    },
+    MuiLink: {
+      styleOverrides: {
+        root: {
+          color: dynamicTheme("palette.text.primary"),
+        },
+      },
+    },
   },
   fontFamily: {
     body: "Palanquin, sans-serif",
+  },
+  opacity: {
+    inputPlaceholder: 0.5,
   },
 });
 
@@ -155,3 +217,32 @@ const ThemeProvider: React.FC<
 };
 
 export default ThemeProvider;
+
+// DEPRECATED
+import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
+
+export const joyTheme = extendJoyTheme({
+  colorSchemes: {
+    dark: theme.colorSchemes.dark,
+    light: theme.colorSchemes.light,
+  },
+  fontFamily: {
+    body: "Palanquin, sans-serif",
+  },
+  opacity: {
+    inputPlaceholder: 0.5,
+  },
+});
+
+export const JoyThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({
+  children,
+}) => {
+  const current = useRecoilValue(fos.theme);
+  return (
+    <LegacyTheme.Provider value={joyTheme.colorSchemes[current].palette}>
+      <CssVarsProvider theme={joyTheme} defaultMode={current}>
+        {children}
+      </CssVarsProvider>
+    </LegacyTheme.Provider>
+  );
+};

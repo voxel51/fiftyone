@@ -1,12 +1,4 @@
-import {
-  atomFamily,
-  DefaultValue,
-  selector,
-  selectorFamily,
-  useRecoilStateLoadable,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -19,24 +11,36 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-
+import { VariablesOf, commitMutation } from "react-relay";
+import {
+  DefaultValue,
+  atomFamily,
+  selector,
+  selectorFamily,
+  useRecoilStateLoadable,
+  useRecoilValue,
+} from "recoil";
+import { getCurrentEnvironment } from "../hooks/useRouter";
 import * as aggregationAtoms from "./aggregations";
+import * as atoms from "./atoms";
+import { isLargeVideo } from "./options";
 import {
   buildSchema,
-  field,
   fieldPaths,
   fields,
   filterPaths,
   pathIsShown,
 } from "./schema";
-
-import { State } from "./types";
-import * as viewAtoms from "./view";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
-import { isLargeVideo } from "./options";
-import { commitMutation, VariablesOf } from "react-relay";
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
-import { getCurrentEnvironment } from "../hooks/useRouter";
+import { State } from "./types";
+import {
+  fieldsMatcher,
+  groupFilter,
+  labelsMatcher,
+  primitivesMatcher,
+  unsupportedMatcher,
+} from "./utils";
+import * as viewAtoms from "./view";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -93,26 +97,6 @@ export const readableTags = selectorFamily<
     },
 });
 
-export const useLabelTagText = (modal: boolean) => {
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "label tags" }))
-      .state === "loading";
-
-  return { text: loading ? "Loading label tags" : "No label tags", loading };
-};
-
-export const useTagText = (modal: boolean) => {
-  const { singular } = useRecoilValue(viewAtoms.elementNames);
-  const loading =
-    useRecoilValueLoadable(readableTags({ modal, group: "tags" })).state ===
-    "loading";
-
-  return {
-    text: loading ? `Loading ${singular} tags` : `No ${singular} tags`,
-    loading,
-  };
-};
-
 export const useEntries = (
   modal: boolean
 ): [SidebarEntry[], (entries: SidebarEntry[]) => void] => {
@@ -164,33 +148,6 @@ export const RESERVED_GROUPS = new Set([
   "tags",
 ]);
 
-const fieldsReducer =
-  (ftypes: string[], docTypes: string[] = []) =>
-  (
-    acc: string[],
-    { ftype, subfield, embeddedDocType, name }: StrictField
-  ): string[] => {
-    if (name.startsWith("_")) {
-      return acc;
-    }
-
-    if (ftype === LIST_FIELD) {
-      ftype = subfield;
-    }
-
-    if (ftypes.includes(ftype)) {
-      return [...acc, name];
-    }
-
-    if (ftype === EMBEDDED_DOCUMENT_FIELD) {
-      if (docTypes.includes(embeddedDocType)) {
-        return [...acc, name];
-      }
-    }
-
-    return acc;
-  };
-
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
 const DEFAULT_IMAGE_GROUPS = [
@@ -198,7 +155,6 @@ const DEFAULT_IMAGE_GROUPS = [
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
-  { name: "other", paths: [] },
 ];
 
 const DEFAULT_VIDEO_GROUPS = [
@@ -207,17 +163,16 @@ const DEFAULT_VIDEO_GROUPS = [
   { name: "labels", paths: [] },
   { name: "frame labels", paths: [] },
   { name: "primitives", paths: [] },
-  { name: "other", paths: [] },
 ];
 
 const NONE = [null, undefined];
 
 export const resolveGroups = (
-  dataset: State.Dataset,
+  sampleFields: StrictField[],
+  frameFields: StrictField[],
+  sidebarGroups?: State.SidebarGroup[],
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  const sidebarGroups = dataset?.appConfig?.sidebarGroups;
-
   let groups = sidebarGroups
     ? JSON.parse(JSON.stringify(sidebarGroups))
     : undefined;
@@ -232,7 +187,7 @@ export const resolveGroups = (
   if (!groups) {
     groups = JSON.parse(
       JSON.stringify(
-        dataset.frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
+        frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
       )
     );
   }
@@ -243,70 +198,57 @@ export const resolveGroups = (
       : group;
   });
 
-  const present = new Set(groups.map(({ paths }) => paths).flat());
-
-  const updater = groupUpdater(groups, buildSchema(dataset));
-  const primitives = dataset.sampleFields
-    .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
-    .filter((path) => path !== "tags" && !present.has(path));
-
-  const labels = dataset.sampleFields
-    .reduce(fieldsReducer([], LABELS), [])
-    .filter((path) => !present.has(path));
-
-  const frameLabels = dataset.frameFields
-    .reduce(fieldsReducer([], LABELS), [])
-    .map((path) => `frames.${path}`)
-    .filter((path) => !present.has(path));
-
-  updater("labels", labels);
-  dataset.frameFields.length && updater("frame labels", frameLabels);
-  updater("primitives", primitives);
-
-  const fields = Object.fromEntries(
-    dataset.sampleFields.map(({ name, ...rest }) => [name, rest])
+  const present = new Set<string>(groups.map(({ paths }) => paths).flat());
+  const updater = groupUpdater(
+    groups,
+    buildSchema(sampleFields, frameFields),
+    present
   );
 
-  let other = dataset.sampleFields.reduce(
-    fieldsReducer([DICT_FIELD, null, undefined]),
-    []
+  updater("labels", fieldsMatcher(sampleFields, labelsMatcher(), present));
+
+  frameFields.length &&
+    updater(
+      "frame labels",
+      fieldsMatcher(frameFields, labelsMatcher(), present, "frames.")
+    );
+
+  updater(
+    "primitives",
+    fieldsMatcher(sampleFields, primitivesMatcher, present)
   );
 
-  dataset.sampleFields
-    .filter(({ embeddedDocType }) => !LABELS.includes(embeddedDocType))
-    .reduce(fieldsReducer([EMBEDDED_DOCUMENT_FIELD]), [])
-    .forEach((name) => {
-      const fieldPaths = (fields[name].fields || [])
-        .reduce(fieldsReducer(VALID_PRIMITIVE_TYPES), [])
-        .map((subfield) => `${name}.${subfield}`)
-        .filter((path) => !present.has(path));
+  sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
+    updater(
+      name,
+      fieldsMatcher(fields || [], () => true, present, `${name}.`)
+    );
+  });
 
-      other = [
-        ...other,
-        ...(fields[name].fields || [])
-          .reduce(fieldsReducer([DICT_FIELD, null, undefined]), [])
-          .map((subfield) => `${name}.${subfield}`),
-      ];
-
-      updater(name, fieldPaths);
+  frameFields.length &&
+    frameFields.filter(groupFilter).forEach(({ fields, name }) => {
+      present.add(`frames.${name}`);
+      updater(
+        `frames.${name}`,
+        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`)
+      );
     });
 
-  other = [
-    ...other,
-    ...dataset.frameFields
-      .reduce(fieldsReducer([...VALID_PRIMITIVE_TYPES, DICT_FIELD]), [])
-      .map((path) => `frames.${path}`),
-  ];
+  updater("other", fieldsMatcher(sampleFields, unsupportedMatcher, present));
 
   updater(
     "other",
-    other.filter((path) => !present.has(path))
+    fieldsMatcher(frameFields, () => true, present, "frames.")
   );
 
   return groups;
 };
 
-const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
+const groupUpdater = (
+  groups: State.SidebarGroup[],
+  schema: Schema,
+  present: Set<string>
+) => {
   const groupNames = groups.map(({ name }) => name);
 
   for (let i = 0; i < groups.length; i++) {
@@ -315,10 +257,12 @@ const groupUpdater = (groups: State.SidebarGroup[], schema: Schema) => {
 
   return (name: string, paths: string[]) => {
     if (paths.length === 0) return;
+    paths.forEach((path) => present.add(path));
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push({ name, paths, expanded: true });
+      groups.push({ name, paths, expanded: false });
+      groupNames.push(name);
       return;
     }
 
@@ -337,13 +281,14 @@ export const sidebarGroupsDefinition = atomFamily<
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
-  { modal: boolean; loading: boolean; filtered?: boolean; persist?: boolean }
+  { modal: boolean; loading: boolean; filtered?: boolean }
 >({
   key: "sidebarGroups",
   get:
-    ({ modal, loading, filtered = true, persist = true }) =>
+    ({ modal, loading, filtered = true }) =>
     ({ get }) => {
       const f = get(textFilter(modal));
+
       let groups = get(sidebarGroupsDefinition(modal))
         .map(({ paths, ...rest }) => ({
           ...rest,
@@ -588,42 +533,69 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    let paths = [...get(fieldPaths({ ftype: DICT_FIELD }))];
-    paths = [
-      ...paths,
-      ...get(fieldPaths({ ftype: LIST_FIELD })).filter(
-        (path) => !get(field(path)).subfield
-      ),
-    ];
+    const dataset = get(atoms.dataset);
+    const paths = new Set(
+      fieldsMatcher(dataset.sampleFields, unsupportedMatcher)
+    );
 
-    get(
-      fields({ ftype: EMBEDDED_DOCUMENT_FIELD, space: State.SPACE.SAMPLE })
-    ).forEach(({ fields, name: prefix }) => {
-      Object.values(fields)
-        .filter(
-          ({ ftype, subfield }) =>
-            ftype === DICT_FIELD ||
-            subfield === DICT_FIELD ||
-            (ftype === LIST_FIELD && !subfield)
-        )
-        .forEach(({ name }) => paths.push(`${prefix}.${name}`));
+    dataset.sampleFields.filter(groupFilter).forEach((parent) => {
+      fieldsMatcher(
+        parent.fields || [],
+        (field) => {
+          if (field.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.subfield);
+          }
+
+          if (parent.ftype === LIST_FIELD) {
+            return !VALID_PRIMITIVE_TYPES.includes(field.ftype);
+          }
+
+          return (
+            !VALID_PRIMITIVE_TYPES.includes(field.ftype) &&
+            !LABELS.includes(field.embeddedDocType)
+          );
+        },
+        undefined,
+        `${parent.name}.`
+      ).forEach((path) => paths.add(path));
     });
 
-    get(fields({ space: State.SPACE.FRAME })).forEach(
-      ({ name, embeddedDocType }) => {
-        if (LABELS.includes(embeddedDocType)) {
-          return;
-        }
+    fieldsMatcher(
+      dataset.frameFields,
+      primitivesMatcher,
+      undefined,
+      "frames."
+    ).forEach((path) => paths.add(path));
 
-        paths.push(`frames.${name}`);
-      }
-    );
+    dataset.frameFields.filter(groupFilter).forEach((parent) => {
+      fieldsMatcher(
+        parent.fields || [],
+        (field) => {
+          if (parent.ftype === LIST_FIELD) {
+            return true;
+          }
+
+          if (field.ftype === LIST_FIELD) {
+            return true;
+          }
+
+          return !LABELS.includes(field.embeddedDocType);
+        },
+        undefined,
+        `frames.${parent.name}.`
+      ).forEach((path) => paths.add(path));
+    });
 
     return new Set(paths);
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+});
+
+export const isDisabledPath = selectorFamily<boolean, string>({
+  key: "isDisabledPath",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(disabledPaths).has(path),
 });
 
 const collapsedPaths = selector<Set<string>>({

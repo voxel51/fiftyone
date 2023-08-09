@@ -112,6 +112,18 @@ class FiftyOneConfig(EnvConfig):
         self.plugins_dir = self.parse_string(
             d, "plugins_dir", env_var="FIFTYONE_PLUGINS_DIR", default=None
         )
+        self.plugins_cache_enabled = self.parse_bool(
+            d,
+            "plugins_cache_enabled",
+            env_var="FIFTYONE_PLUGINS_CACHE_ENABLED",
+            default=False,
+        )
+        self.operator_timeout = self.parse_int(
+            d,
+            "operator_timeout",
+            env_var="FIFTYONE_OPERATOR_TIMEOUT",
+            default=600,  # 600 seconds (10 minutes)
+        )
         self.dataset_zoo_manifest_paths = self.parse_path_array(
             d,
             "dataset_zoo_manifest_paths",
@@ -207,6 +219,13 @@ class FiftyOneConfig(EnvConfig):
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
 
+        self.max_thread_pool_workers = self.parse_int(
+            d,
+            "max_thread_pool_workers",
+            env_var="FIFTYONE_MAX_THREAD_POOL_WORKERS",
+            default=None,
+        )
+
         self._init()
 
     @property
@@ -238,6 +257,12 @@ class FiftyOneConfig(EnvConfig):
         if self.model_zoo_dir is None:
             self.model_zoo_dir = os.path.join(
                 self.default_dataset_dir, "__models__"
+            )
+
+        if self.plugins_dir is None:
+            self.plugins_dir = os.path.join(
+                self.default_dataset_dir,
+                "__plugins__",
             )
 
         if self.default_ml_backend is None:
@@ -321,6 +346,12 @@ class AppConfig(EnvConfig):
             "notebook_height",
             env_var="FIFTYONE_APP_NOTEBOOK_HEIGHT",
             default=800,
+        )
+        self.proxy_url = self.parse_string(
+            d,
+            "proxy_url",
+            env_var="FIFTYONE_APP_PROXY_URL",
+            default=None,
         )
         self.show_confidence = self.parse_bool(
             d,
@@ -418,7 +449,7 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        supported_color_bys = {"field", "instance", "label"}
+        supported_color_bys = {"field", "value"}
         default_color_by = "field"
         if self.color_by not in supported_color_bys:
             logger.warning(
@@ -565,24 +596,15 @@ def locate_config():
     The default location is ``~/.fiftyone/config.json``, but you can override
     this path by setting the ``FIFTYONE_CONFIG_PATH`` environment variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that a config file may not actually exist on disk.
 
     Returns:
         the path to the :class:`FiftyOneConfig` on disk
-
-    Raises:
-        OSError: if the config path has been customized but the file does not
-            exist on disk
     """
     if "FIFTYONE_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_CONFIG_PATH"]
 
 
 def locate_app_config():
@@ -592,24 +614,15 @@ def locate_app_config():
     override this path by setting the ``FIFTYONE_APP_CONFIG_PATH`` environment
     variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that the file may not actually exist.
 
     Returns:
         the path to the :class:`AppConfig` on disk
-
-    Raises:
-        OSError: if the App config path has been customized but the file does
-            not exist on disk
     """
     if "FIFTYONE_APP_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_APP_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_APP_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("App config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_APP_CONFIG_PATH"]
 
 
 def locate_annotation_config():
@@ -619,24 +632,15 @@ def locate_annotation_config():
     override this path by setting the ``FIFTYONE_ANNOTATION_CONFIG_PATH``
     environment variable.
 
-    Note that a config file may not actually exist on disk in the default
-    location, in which case the default config settings will be used.
+    Note that a config file may not actually exist on disk.
 
     Returns:
         the path to the :class:`AnnotationConfig` on disk
-
-    Raises:
-        OSError: if the annotation config path has been customized but the file
-            does not exist on disk
     """
     if "FIFTYONE_ANNOTATION_CONFIG_PATH" not in os.environ:
         return foc.FIFTYONE_ANNOTATION_CONFIG_PATH
 
-    config_path = os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
-    if not os.path.isfile(config_path):
-        raise OSError("Annotation config file '%s' not found" % config_path)
-
-    return config_path
+    return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
 
 
 def load_config():

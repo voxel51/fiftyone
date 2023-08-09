@@ -5,12 +5,14 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import typing as t
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import date, datetime
+import glob
 import hashlib
 import importlib
 import inspect
@@ -32,6 +34,11 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+from matplotlib import colors as mcolors
+from concurrent.futures import ThreadPoolExecutor
+
+import asyncio
+
 
 try:
     import pprintpp as _pprint
@@ -307,6 +314,46 @@ def fill_patterns(string):
     return etau.fill_patterns(string, available_patterns())
 
 
+def find_files(root_dir, patt, max_depth=1):
+    """Finds all files in the given root directory whose filename matches the
+    given glob pattern(s).
+
+    Both ``root_dir`` and ``patt`` may contain glob patterns.
+
+    Exammples::
+
+        import fiftyone.core.utils as fou
+
+        # Find .txt files in `/tmp`
+        fou.find_files("/tmp", "*.txt")
+
+        # Find .txt files in subdirectories of `/tmp` that begin with `foo-`
+        fou.find_files("/tmp/foo-*", "*.txt")
+
+        # Find .txt files in `/tmp` or its subdirectories
+        fou.find_files("/tmp", "*.txt", max_depth=2)
+
+    Args:
+        root_dir: the root directory
+        patt: a glob pattern or list of patterns
+        max_depth (1): a maximum depth to search. 1 means ``root_dir`` only,
+            2 means ``root_dir`` and its immediate subdirectories, etc
+
+    Returns:
+        a list of matching paths
+    """
+    if etau.is_str(patt):
+        patt = [patt]
+
+    paths = []
+    for i in range(max_depth):
+        root = os.path.join(root_dir, *list("*" * i))
+        for p in patt:
+            paths += glob.glob(os.path.join(root, p))
+
+    return paths
+
+
 def normpath(path):
     """Normalizes the given path by converting all slashes to forward slashes
     on Unix and backslashes on Windows and removing duplicate slashes.
@@ -339,12 +386,41 @@ def normalize_path(path):
     return os.path.abspath(os.path.expanduser(path))
 
 
+def install_package(requirement_str, error_level=None, error_msg=None):
+    """Installs the given package via ``pip``.
+
+    Installation is performed via::
+
+        python -m pip install <requirement_str>
+
+    Args:
+        requirement_str: a PEP 440 compliant package requirement, like
+            "tensorflow", "tensorflow<2", "tensorflow==2.3.0", or
+            "tensorflow>=1.13,<1.15"
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+        error_msg (None): an optional custom error message to use
+    """
+    if error_level is None:
+        error_level = fo.config.requirement_error_level
+
+    return etau.install_package(
+        requirement_str,
+        error_level=error_level,
+        error_msg=error_msg,
+    )
+
+
 def ensure_package(
     requirement_str, error_level=None, error_msg=None, log_success=False
 ):
     """Verifies that the given package is installed.
 
-    This function uses ``pkg_resources.get_distribution`` to locate the package
+    This function uses ``importlib.metadata`` to locate the package
     by its pip name and does not actually import the module.
 
     Therefore, unlike :meth:`ensure_import`, ``requirement_str`` should refer
@@ -382,6 +458,80 @@ def ensure_package(
         error_suffix=_REQUIREMENT_ERROR_SUFFIX,
         log_success=log_success,
     )
+
+
+def load_requirements(requirements_path):
+    """Loads the package requirements from a ``requirements.txt`` file on disk.
+
+    Comments and extra whitespace are automatically stripped.
+
+    Args:
+        requirements_path: the path to a requirements file
+
+    Returns:
+        a list of requirement strings
+    """
+    requirements = []
+    with open(requirements_path, "rt") as f:
+        for line in f:
+            line = _strip_comments(line)
+            if line:
+                requirements.append(line)
+
+    return requirements
+
+
+def _strip_comments(requirement_str):
+    chunks = []
+    for chunk in requirement_str.strip().split():
+        if chunk.startswith("#"):
+            break
+
+        chunks.append(chunk)
+
+    return " ".join(chunks)
+
+
+def install_requirements(requirements_path, error_level=None):
+    """Installs the package requirements from a ``requirements.txt`` file on
+    disk.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if the install fails
+            -   1: log warning if the install fails
+            -   2: ignore install fails
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+    """
+    for req_str in load_requirements(requirements_path):
+        install_package(req_str, error_level=error_level)
+
+
+def ensure_requirements(
+    requirements_path, error_level=None, log_success=False
+):
+    """Verifies that the package requirements from a ``requirements.txt`` file
+    on disk are installed.
+
+    Args:
+        requirements_path: the path to a requirements file
+        error_level (None): the error level to use, defined as:
+
+            -   0: raise error if requirement is not satisfied
+            -   1: log warning if requirement is not satisifed
+            -   2: ignore unsatisifed requirements
+
+            By default, ``fiftyone.config.requirement_error_level`` is used
+        log_success (False): whether to generate a log message if a requirement
+            is satisifed
+    """
+    for req_str in load_requirements(requirements_path):
+        ensure_package(
+            req_str, error_level=error_level, log_success=log_success
+        )
 
 
 def ensure_import(
@@ -1033,7 +1183,16 @@ class DynamicBatcher(object):
 
 @contextmanager
 def disable_progress_bars():
-    """Context manager that temporarily disables all progress bars."""
+    """Context manager that temporarily disables all progress bars.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        with fo.disable_progress_bars():
+            dataset = foz.load_zoo_dataset("quickstart")
+    """
     prev_show_progress_bars = fo.config.show_progress_bars
     try:
         fo.config.show_progress_bars = False
@@ -1488,6 +1647,23 @@ class SuppressLogging(object):
         logging.disable(logging.NOTSET)
 
 
+class add_sys_path(object):
+    """Context manager that temporarily inserts a path to ``sys.path``."""
+
+    def __init__(self, path, index=0):
+        self.path = path
+        self.index = index
+
+    def __enter__(self):
+        sys.path.insert(self.index, self.path)
+
+    def __exit__(self, *args):
+        try:
+            sys.path.remove(self.path)
+        except:
+            pass
+
+
 def is_arm_mac():
     """Determines whether the system is an ARM-based Mac (Apple Silicon).
 
@@ -1734,8 +1910,53 @@ def to_slug(name):
     return slug
 
 
+_T = t.TypeVar("_T")
+
+sync_task_executor = None
+
+
+def get_sync_task_executor():
+    global sync_task_executor
+    max_workers = fo.config.max_thread_pool_workers
+    if sync_task_executor is None and max_workers is not None:
+        sync_task_executor = ThreadPoolExecutor(max_workers=max_workers)
+    return sync_task_executor
+
+
+async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
+    """
+    Run a synchronous function as an async background task
+
+    Args:
+        run: a synchronous callable
+    """
+    loop = asyncio.get_running_loop()
+
+    return await loop.run_in_executor(get_sync_task_executor(), func, *args)
+
+
+def validate_color(value):
+    """Validates that the given value is a valid css color name.
+
+    Args:
+        value: a value
+
+    Raises:
+        ValueError: if ``value`` is not a valid css color name.
+    """
+
+    if not etau.is_str(value) or not (
+        value in mcolors.CSS4_COLORS
+        or re.search(r"^#(?:[0-9a-fA-F]{3}){1,2}$", value)
+    ):
+        raise ValueError(
+            """%s is neither a valid CSS color name in all lowercase \n"""
+            """(eg: 'yellowgreen') nor a hex color(eg. '#00ff00')""" % value
+        )
+
+
 def validate_hex_color(value):
-    """Validates that the given value is a hex color string.
+    """Validates that the given value is a hex color string or css name.
 
     Args:
         value: a value
@@ -1747,5 +1968,5 @@ def validate_hex_color(value):
         r"^#(?:[0-9a-fA-F]{3}){1,2}$", value
     ):
         raise ValueError(
-            "%s is not a valid hex color string (ex: '#FF6D04')" % value
+            "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )

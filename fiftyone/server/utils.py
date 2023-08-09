@@ -108,28 +108,6 @@ def from_dict(data_class: t.Type[T], data: Data) -> T:
     return _from_dict(data_class, data, config=_dacite_config)
 
 
-def iter_label_fields(view: foc.SampleCollection):
-    """
-    Yields the labels of the
-    :class:`fiftyone.core.collections.SampleCollection`
-
-    Args:
-        view: a :class:`fiftyone.core.collections.SampleCollection`
-    """
-    for field_name, field in view.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    ).items():
-        yield field_name, field
-
-    if view.media_type != fom.VIDEO:
-        return
-
-    for field_name, field in view.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    ).items():
-        yield "frames.%s" % field_name, field
-
-
 def meets_type(field: fof.Field, type_or_types):
     """
     Determines whether the field meets type or types, or the field

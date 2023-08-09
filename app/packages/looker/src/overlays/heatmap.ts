@@ -203,7 +203,7 @@ export default class HeatmapOverlay<State extends BaseState>
       return 0;
     }
 
-    if (state.options.coloring.by === "label") {
+    if (state.options.coloring.by === "value") {
       const index = Math.round(
         (Math.max(value - start, 0) / (stop - start)) *
           (state.options.coloring.scale.length - 1)
@@ -230,6 +230,11 @@ export default class HeatmapOverlay<State extends BaseState>
     if (index < 0) {
       return null;
     }
+
+    if (this.label.map.data.channels > 1) {
+      return this.targets[index * this.label.map.data.channels];
+    }
+
     return this.targets[index];
   }
 }

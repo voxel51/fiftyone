@@ -57,6 +57,7 @@ const SelectorResults = <T extends unknown>({
 };
 
 export interface SelectorProps<T> {
+  id?: string;
   value?: string;
   onSelect: (value: T) => void;
   placeholder: string;
@@ -71,20 +72,24 @@ export interface SelectorProps<T> {
   onMouseEnter?: React.MouseEventHandler;
 }
 
-const Selector = <T extends unknown>({
-  value,
-  onSelect,
-  placeholder,
-  useSearch,
-  component,
-  toKey = (value) => String(value),
-  inputStyle,
-  inputClassName,
-  containerStyle,
-  resultsPlacement,
-  overflow = false,
-  onMouseEnter,
-}: SelectorProps<T>) => {
+const Selector = <T extends unknown>(props: SelectorProps<T>) => {
+  const {
+    id,
+    value,
+    onSelect,
+    placeholder,
+    useSearch,
+    component,
+    toKey = (value) => String(value),
+    inputStyle,
+    inputClassName,
+    containerStyle,
+    resultsPlacement,
+    overflow = false,
+    onMouseEnter,
+    ...otherProps
+  } = props;
+
   const [editing, setEditing] = useState(false);
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
@@ -127,6 +132,7 @@ const Selector = <T extends unknown>({
 
   return (
     <div
+      {...otherProps}
       onMouseEnter={() => {
         hovering.current = true;
       }}
@@ -148,6 +154,7 @@ const Selector = <T extends unknown>({
         className={style.input}
         value={editing ? search : value || ""}
         placeholder={placeholder}
+        data-cy={`selector-${placeholder}`}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
           if (!editing) return;
@@ -194,6 +201,7 @@ const Selector = <T extends unknown>({
           <AnimatePresence>
             <motion.div
               className={style.resultsContainer}
+              id={id}
               initial={{ opacity: 0, height: 0 }}
               animate={{
                 opacity: 1,

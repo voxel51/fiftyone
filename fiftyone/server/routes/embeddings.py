@@ -12,6 +12,7 @@ from starlette.requests import Request
 
 import fiftyone.core.fields as fof
 import fiftyone.core.stages as fos
+from fiftyone.core.utils import run_sync_task
 
 from fiftyone.server.decorators import route
 import fiftyone.server.utils as fosu
@@ -24,6 +25,7 @@ COLOR_BY_TYPES = (
     fof.BooleanField,
     fof.IntField,
     fof.FloatField,
+    fof.ListField,
 )
 
 
@@ -31,11 +33,13 @@ class OnPlotLoad(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Loads an embeddings plot based on the current view."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
         label_field = data["labelField"]
-
         dataset = fosu.load_and_cache_dataset(dataset_name)
 
         try:
@@ -49,6 +53,7 @@ class OnPlotLoad(HTTPEndpoint):
             return {"error": msg}
 
         view = fosv.get_view(dataset_name, stages=stages)
+        is_patches_view = view._is_patches
 
         patches_field = results.config.patches_field
         is_patches_plot = patches_field is not None
@@ -78,7 +83,12 @@ class OnPlotLoad(HTTPEndpoint):
 
         # Color by data
         if label_field:
-            if view._is_patches:
+            if is_patches_view and not is_patches_plot:
+                # Must use the root dataset in order to retrieve colors for the
+                # plot, which is linked to samples, not patches
+                view = view._root_dataset
+
+            if is_patches_view and is_patches_plot:
                 # `label_field` is always provided with respect to root
                 # dataset, so we must translate for patches views
                 _, root = dataset._get_label_field_path(patches_field)
@@ -92,6 +102,11 @@ class OnPlotLoad(HTTPEndpoint):
             )
 
             field = view.get_field(label_field)
+
+            if isinstance(field, fof.ListField):
+                labels = [l[0] if l else None for l in labels]
+                field = field.field
+
             if isinstance(field, fof.FloatField):
                 style = "continuous"
             else:
@@ -125,6 +140,9 @@ class EmbeddingsSelection(HTTPEndpoint):
         """Determines which points in the embeddings plot to select based on
         the current extended view.
         """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
         stages = data["view"]
@@ -188,6 +206,9 @@ class EmbeddingsExtendedStage(HTTPEndpoint):
         """Generates an extended stage that encodes the current selection in
         the embeddings plot.
         """
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         stages = data["view"]
         patches_field = data["patchesField"]  # patches field of plot, or None
@@ -221,6 +242,9 @@ class ColorByChoices(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
         """Generates a list of color-by field choices for an embeddings plot."""
+        return await run_sync_task(self._post_sync, data)
+
+    def _post_sync(self, data):
         dataset_name = data["datasetName"]
         brain_key = data["brainKey"]
 
@@ -237,24 +261,15 @@ class ColorByChoices(HTTPEndpoint):
             root += "."
             schema = {k: v for k, v in schema.items() if k.startswith(root)}
 
-        nested_fields = set(
-            k for k, v in schema.items() if isinstance(v, fof.ListField)
+        bad_roots = tuple(
+            k + "." for k, v in schema.items() if isinstance(v, fof.ListField)
         )
 
         fields = [
             k
             for k, v in schema.items()
-            if (
-                isinstance(v, COLOR_BY_TYPES)
-                and not any(
-                    k == r or k.startswith(r + ".") for r in nested_fields
-                )
-            )
+            if isinstance(v, COLOR_BY_TYPES) and not k.startswith(bad_roots)
         ]
-
-        # Remove fields with no values
-        counts = dataset.count(fields)
-        fields = [f for f, c in zip(fields, counts) if c > 0]
 
         return {"fields": fields}
 

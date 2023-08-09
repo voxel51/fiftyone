@@ -1,19 +1,21 @@
+import { Controller, animated, config } from "@react-spring/web";
 import React, { Suspense, useCallback, useRef, useState } from "react";
-import { animated, Controller, config } from "@react-spring/web";
 import styled from "styled-components";
 
 import { move } from "@fiftyone/utilities";
 
-import { useEventHandler } from "@fiftyone/state";
-import { scrollbarStyles } from "../utils";
-import { Resizable } from "re-resizable";
-import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
-import { replace } from "./Entries/GroupEntries";
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useEventHandler } from "@fiftyone/state";
+import { scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
-import ViewSelection from "./ViewSelection";
+import { Resizable } from "re-resizable";
+import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import SchemaSettings from "../Schema/SchemaSettings";
+import { replace } from "./Entries/GroupEntries";
 import { resizeHandle } from "./Sidebar.module.css";
+import ViewSelection from "./ViewSelection";
+
 const MARGIN = 3;
 
 const fn = (
@@ -239,7 +241,7 @@ const measureGroups = (
 const isDisabledEntry = (
   entry: fos.SidebarEntry,
   disabled: Set<string>,
-  excludeGroups: boolean = false
+  excludeGroups = false
 ) => {
   if (entry.kind === fos.EntryKind.PATH) {
     return (
@@ -319,7 +321,7 @@ const getAfterKey = (
     });
   }
 
-  let result = filtered[0].key;
+  const result = filtered[0].key;
   if (isGroup) {
     if (result === null) return order[0];
 
@@ -435,6 +437,8 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+
+  const modalContainer = document.getElementById("modal");
 
   if (entries instanceof Error) {
     throw entries;
@@ -600,7 +604,7 @@ const InteractiveSidebar = ({
     requestAnimationFrame(() => {
       const { top, bottom, height } = container.current.getBoundingClientRect();
       const up = direction === Direction.UP;
-      let delta = up ? y - top : bottom - y;
+      const delta = up ? y - top : bottom - y;
       const canScroll = up
         ? scroll.current > 0
         : scroll.current + height < maxScrollHeight.current;
@@ -725,6 +729,7 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
+      {modalContainer && <SchemaSettings />}
       {!modal && (
         <Suspense>
           <Box

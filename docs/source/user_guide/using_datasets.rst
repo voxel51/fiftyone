@@ -360,10 +360,10 @@ retrieve a field and update it's metadata at any time:
     Did you know? You can view field metadata directly in the App by hovering
     over fields or attributes :ref:`in the sidebar <app-fields-sidebar>`!
 
-.. _custom-app-config:
+.. _dataset-app-config:
 
-Custom App config
------------------
+Dataset App config
+------------------
 
 All |Dataset| instances have an
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property that
@@ -371,21 +371,31 @@ contains a |DatasetAppConfig| that you can use to store dataset-specific
 settings that customize how the dataset is visualized in the
 :ref:`FiftyOne App <fiftyone-app>`.
 
-For example, you can declare
-:ref:`multiple media fields <app-multiple-media-fields>` on a dataset and
-configure which field is used by various components of the App by default:
-
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.utils.image as foui
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart")
+    session = fo.launch_app(dataset)
 
     # View the dataset's current App config
     print(dataset.app_config)
+
+.. _dataset-app-config-media-fields:
+
+Multiple media fields
+~~~~~~~~~~~~~~~~~~~~~
+
+You can declare :ref:`multiple media fields <app-multiple-media-fields>` on a
+dataset and configure which field is used by various components of the App by
+default:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.image as foui
 
     # Generate some thumbnail images
     foui.transform_images(
@@ -395,14 +405,75 @@ configure which field is used by various components of the App by default:
         output_dir="/tmp/thumbnails",
     )
 
-    # Modify the dataset's App config
+    # Configure when to use each field
     dataset.app_config.media_fields = ["filepath", "thumbnail_path"]
     dataset.app_config.grid_media_field = "thumbnail_path"
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-You can also configure the default loading behavior of the
+.. _dataset-app-config-color-scheme:
+
+Custom color scheme
+~~~~~~~~~~~~~~~~~~~
+
+You can store a :ref:`custom color scheme <app-color-schemes>` on a dataset
+that should be used by default whenever the dataset is loaded in the App:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    # Store a custom color scheme
+    dataset.app_config.color_scheme = fo.ColorScheme(
+        color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
+        fields=[
+            {
+                "path": "ground_truth",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            },
+            {
+                "path": "predictions",
+                "colorByAttribute": "eval",
+                "valueColors": [
+                    {"value": "fp", "color": "#ff0000"},  # false positives: red
+                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                ]
+            }
+        ]
+    )
+    dataset.save()  # must save after edits
+
+    # Setting `color_scheme` to None forces the dataset's default color scheme
+    # to be loaded
+    session.color_scheme = None
+
+In the above example, you can see TP/FP/FN colors in the App by clicking on the
+`Color palette` icon and switching `Color annotations by` to `value`.
+
+.. note::
+
+    Refer to the |ColorScheme| class for documentation of the available
+    customization options.
+
+.. note::
+
+    Did you know? You can also configure color schemes
+    :ref:`directly in the App <app-color-schemes>`!
+
+.. _dataset-app-config-sidebar-mode:
+
+Sidebar mode
+~~~~~~~~~~~~
+
+You can configure the default loading behavior of the
 :ref:`filters sidebar <app-sidebar-mode>`:
 
 .. code-block:: python
@@ -412,9 +483,14 @@ You can also configure the default loading behavior of the
     dataset.app_config.sidebar_mode = "best"
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-or even configure the organization and default expansion state of the
+.. _dataset-app-config-sidebar-groups:
+
+Sidebar groups
+~~~~~~~~~~~~~~
+
+You can configure the organization and default expansion state of the
 :ref:`sidebar's field groups <app-sidebar-groups>`:
 
 .. code-block:: python
@@ -431,9 +507,28 @@ or even configure the organization and default expansion state of the
     dataset.app_config.sidebar_groups = sidebar_groups
     dataset.save()  # must save after edits
 
-    session = fo.launch_app(dataset)
+    session.refresh()
 
-You can conveniently reset a dataset's App config by setting the
+.. _dataset-app-config-reset:
+
+Resetting a dataset's App config
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can conveniently reset any property of a dataset's App config by setting it
+to `None`:
+
+.. code-block:: python
+    :linenos:
+
+    # Reset the dataset's color scheme
+    dataset.app_config.color_scheme = None
+    dataset.save()  # must save after edits
+
+    print(dataset.app_config)
+
+    session.refresh()
+
+or you can reset the entire App config by setting the
 :meth:`app_config <fiftyone.core.dataset.Dataset.app_config>` property to
 `None`:
 
@@ -471,7 +566,7 @@ single class list in the store a single target dictionary in the
 :meth:`default_classes <fiftyone.core.dataset.Dataset.default_classes>`
 property of your dataset.
 
-These class lists are automatically used, if available, by methods such as
+You can also pass your class lists to methods such as
 :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
@@ -535,7 +630,7 @@ When you load datasets with |Segmentation| fields in the App that have
 corresponding mask targets, the label strings will appear in the App's tooltip
 when you hover over pixels.
 
-Mask targets are also automatically used, if available, by methods such as
+You can also pass your mask targets to methods such as
 :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
 and :meth:`export() <fiftyone.core.collections.SampleCollection.export>` that
 require knowledge of the mask targets for a dataset or field(s).
@@ -1094,6 +1189,162 @@ Setting a field to an inappropriate type raises an error:
     order to persist changes to the database when editing samples that are in
     datasets.
 
+.. _adding-dataset-fields:
+
+Adding fields to a dataset
+--------------------------
+
+You can also use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare new sample fields directly on datasets without explicitly populating
+any values on its samples:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    sample = fo.Sample(
+        filepath="image.jpg",
+        ground_truth=fo.Classification(label="cat"),
+    )
+
+    dataset = fo.Dataset()
+    dataset.add_sample(sample)
+
+    # Declare new primitive fields
+    dataset.add_sample_field("scene_id", fo.StringField)
+    dataset.add_sample_field("quality", fo.FloatField)
+
+    # Declare untyped list fields
+    dataset.add_sample_field("more_tags", fo.ListField)
+    dataset.add_sample_field("info", fo.ListField)
+
+    # Declare a typed list field
+    dataset.add_sample_field("also_tags", fo.ListField, subfield=fo.StringField)
+
+    # Declare a new Label field
+    dataset.add_sample_field(
+        "predictions",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.Classification,
+    )
+
+    print(dataset.get_field_schema())
+
+.. code-block:: text
+
+    {
+        'id': <fiftyone.core.fields.ObjectIdField object at 0x7f9280803910>,
+        'filepath': <fiftyone.core.fields.StringField object at 0x7f92d273e0d0>,
+        'tags': <fiftyone.core.fields.ListField object at 0x7f92d2654f70>,
+        'metadata': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f9280803d90>,
+        'ground_truth': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f92d2605190>,
+        'scene_id': <fiftyone.core.fields.StringField object at 0x7f9280803490>,
+        'quality': <fiftyone.core.fields.FloatField object at 0x7f92d2605bb0>,
+        'more_tags': <fiftyone.core.fields.ListField object at 0x7f92d08e4550>,
+        'info': <fiftyone.core.fields.ListField object at 0x7f92d264f9a0>,
+        'also_tags': <fiftyone.core.fields.ListField object at 0x7f92d264ff70>,
+        'predictions': <fiftyone.core.fields.EmbeddedDocumentField object at 0x7f92d2605640>,
+    }
+
+Whenever a new field is added to a dataset, the field is immediately available
+on all samples in the dataset with the value `None`:
+
+.. code-block:: python
+    :linenos:
+
+    print(sample)
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '642d8848f291652133df8d3a',
+        'media_type': 'image',
+        'filepath': '/Users/Brian/dev/fiftyone/image.jpg',
+        'tags': [],
+        'metadata': None,
+        'ground_truth': <Classification: {
+            'id': '642d8848f291652133df8d38',
+            'tags': [],
+            'label': 'cat',
+            'confidence': None,
+            'logits': None,
+        }>,
+        'scene_id': None,
+        'quality': None,
+        'more_tags': None,
+        'info': None,
+        'also_tags': None,
+        'predictions': None,
+    }>
+
+You can also declare nested fields on existing embedded documents using dot
+notation:
+
+.. code-block:: python
+    :linenos:
+
+    # Declare a new attribute on a `Classification` field
+    dataset.add_sample_field("predictions.breed", fo.StringField)
+
+.. note::
+
+    See :ref:`this section <dynamic-attributes>` for more options for
+    dynamically expanding the schema of nested lists and embedded documents.
+
+You can use :meth:`get_field() <fiftyone.core.dataset.Dataset.get_field>` to
+retrieve a |Field| instance by its name or ``embedded.field.name``. And, if the
+field contains an embedded document, you can call
+:meth:`get_field_schema() <fiftyone.core.fields.EmbeddedDocumentField.get_field_schema>`
+to recursively inspect its nested fields:
+
+.. code-block:: python
+    :linenos:
+
+    field = dataset.get_field("predictions")
+    print(field.document_type)
+    # <class 'fiftyone.core.labels.Classification'>
+
+    print(set(field.get_field_schema().keys()))
+    # {'logits', 'confidence', 'breed', 'tags', 'label', 'id'}
+
+    # Directly retrieve a nested field
+    field = dataset.get_field("predictions.breed")
+    print(type(field))
+    # <class 'fiftyone.core.fields.StringField'>
+
+If your dataset contains a |ListField| with no value type declared, you can add
+the type later by appending `[]` to the field path:
+
+.. code-block:: python
+    :linenos:
+
+    field = dataset.get_field("more_tags")
+    print(field.field)  # None
+
+    # Declare the subfield types of an existing untyped list field
+    dataset.add_sample_field("more_tags[]", fo.StringField)
+
+    field = dataset.get_field("more_tags")
+    print(field.field)  # StringField
+
+    # List fields can also contain embedded documents
+    dataset.add_sample_field(
+        "info[]",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.DynamicEmbeddedDocument,
+    )
+
+    field = dataset.get_field("info")
+    print(field.field)  # EmbeddedDocumentField
+    print(field.field.document_type)  # DynamicEmbeddedDocument
+
+.. note::
+
+    Declaring the value type of list fields is required if you want to filter
+    by the list's values :ref:`in the App <app-filtering>`.
+
 .. _editing-sample-fields:
 
 Editing sample fields
@@ -1212,19 +1463,22 @@ Media type is inferred from the
 as per the table below:
 
 .. table::
-    :widths: 30 30 40
+    :widths: 35 30 35
 
-    +------------+----------------+-------------------------------------------+
-    | MIME type  | `media_type`   | Description                               |
-    +============+================+===========================================+
-    | `image/*`  | `image`        | Image sample                              |
-    +------------+----------------+-------------------------------------------+
-    | `video/*`  | `video`        | Video sample                              |
-    +------------+----------------+-------------------------------------------+
-    | other      | `-`            | Generic sample                            |
-    +------------+----------------+-------------------------------------------+
+    +---------------------+----------------+----------------------------------+
+    | MIME type/extension | `media_type`   | Description                      |
+    +=====================+================+==================================+
+    | `image/*`           | `image`        | Image sample                     |
+    +---------------------+----------------+----------------------------------+
+    | `video/*`           | `video`        | Video sample                     |
+    +---------------------+----------------+----------------------------------+
+    | `*.pcd`             | `point-cloud`  | Point cloud sample               |
+    +---------------------+----------------+----------------------------------+
+    | other               | `-`            | Generic sample                   |
+    +---------------------+----------------+----------------------------------+
 
 .. note::
+
     The `filepath` of a sample can be changed after the sample is created, but
     the new filepath must have the same media type. In other words,
     `media_type` is immutable.
@@ -2376,13 +2630,31 @@ attributes and rendered as such in the App:
         'occluded': [False, False, True, False],
     }>
 
+If your keypoints have semantic meanings, you can
+:ref:`store keypoint skeletons <storing-keypoint-skeletons>` on your dataset to
+encode the meanings.
+
+If you are working with keypoint skeletons and a particular point is missing or
+not visible for an instance, use nan values for its coordinates:
+
+.. code-block:: python
+    :linenos:
+
+    keypoint = fo.Keypoint(
+        label="rectangle",
+        points=[
+            (0.3, 0.3),
+            (float("nan"), float("nan")),  # use nan to encode missing points
+            (0.7, 0.7),
+            (0.3, 0.7),
+        ],
+    )
+
 .. note::
 
-    Did you know? You can
-    :ref:`store keypoint skeletons <storing-keypoint-skeletons>` for your
-    keypoint fields on your dataset. Then, when you view the dataset in the
-    App, label strings and edges will be drawn when you visualize these fields
-    in the App.
+    Did you know? When you view datasets with
+    :ref:`keypoint skeletons <storing-keypoint-skeletons>` in the App, label
+    strings and edges will be drawn when you visualize the keypoint fields.
 
 .. _semantic-segmentation:
 

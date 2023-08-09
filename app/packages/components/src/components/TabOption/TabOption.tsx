@@ -39,10 +39,18 @@ type TabOption = {
 export type TabOptionProps = {
   active: string;
   options: TabOption[];
+  style?: React.CSSProperties;
   color?: string;
+  disabled?: boolean;
 };
 
-const TabOption = ({ active, options, color }: TabOptionProps) => {
+const TabOption = ({
+  active,
+  options,
+  style: propStyle,
+  disabled,
+  color,
+}: TabOptionProps) => {
   const theme = useTheme();
   const [hovering, setHovering] = useState(options.map((o) => false));
   const styles = useSprings(
@@ -71,10 +79,14 @@ const TabOption = ({ active, options, color }: TabOptionProps) => {
     >
       {options.map(({ text, title, onClick }, i) => (
         <Tab
-          onClick={onClick}
+          data-cy={`tab-option-${title}`}
+          onClick={() => {
+            !disabled && onClick();
+          }}
           title={title}
           style={{
             ...styles[i],
+            ...(propStyle ?? {}),
             cursor: text === active ? "default" : "pointer",
           }}
           onMouseEnter={() =>

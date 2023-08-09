@@ -1,5 +1,5 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
 import { useEventHandler } from "@fiftyone/state";
+import { useRecoilTransaction_UNSTABLE } from "recoil";
 
 import * as fos from "@fiftyone/state";
 
@@ -8,11 +8,11 @@ const useEscape = () => {
     document,
     "keydown",
     useRecoilTransaction_UNSTABLE(
-      ({ get, set }) =>
+      ({ get, reset }) =>
         (event: KeyboardEvent) => {
           event.key === "Escape" &&
-            !get(fos.modal) &&
-            set(fos.selectedSamples, new Set());
+            get(fos.modalSampleIndex) === null &&
+            reset(fos.selectedSamples);
         },
       []
     )

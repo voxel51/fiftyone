@@ -1,30 +1,49 @@
+import { affectedPathCountState } from "@fiftyone/state/src/hooks/useSchemaSettings";
 import {
   Bookmark,
   Check,
+  ColorLens,
   FlipToBack,
   KeyboardArrowLeft,
   KeyboardArrowRight,
+  List,
   LocalOffer,
+  Search,
   Settings,
   VisibilityOff,
   Wallpaper,
-  Search,
 } from "@mui/icons-material";
-import React, { MutableRefObject, useCallback, useRef, useState } from "react";
+import React, {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import useMeasure from "react-use-measure";
 import {
   selector,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
+  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 
 import { PillButton, useTheme } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  AbstractLooker,
+  FrameLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
+import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOutsideClick, useSetView } from "@fiftyone/state";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { ACTIVE_FIELD } from "../ColorModal/utils";
+import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
@@ -40,21 +59,27 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
+    const affectedPathCount = get(affectedPathCountState);
+    const isFieldVisibilityOn = affectedPathCount > 0;
+
     const isExtendedSelectionOn =
       (selection && selection.length > 0) || isSimilarityOn;
 
     return Boolean(
-      isExtendedSelectionOn || hasFiltersValue || selectedSampleSet.size > 0
+      isExtendedSelectionOn ||
+        hasFiltersValue ||
+        selectedSampleSet.size > 0 ||
+        isFieldVisibilityOn
     );
   },
 });
 
 const Loading = () => {
   const theme = useTheme();
-  return <LoadingDots text="" color={theme.text.primary} />;
+  return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
 
-const ActionDiv = styled.div`
+export const ActionDiv = styled.div`
   position: relative;
 `;
 
@@ -267,6 +292,37 @@ const Options = ({ modal }) => {
   );
 };
 
+const Colors = () => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+
+  const onOpen = () => {
+    setOpen(!open);
+    setActiveField(ACTIVE_FIELD.global);
+  };
+
+  useEffect(() => {
+    if (activeField) {
+      !open && setOpen(true);
+    } else {
+      open && setOpen(false);
+    }
+  }, [Boolean(activeField)]);
+
+  return (
+    <ActionDiv ref={ref}>
+      <PillButton
+        icon={<ColorLens />}
+        open={open}
+        onClick={onOpen}
+        highlight={open}
+        title={"Color settings"}
+      />
+    </ActionDiv>
+  );
+};
+
 const Hidden = () => {
   const [hiddenObjects, setHiddenObjects] = useRecoilState(fos.hiddenLabels);
   const count = Object.keys(hiddenObjects).length;
@@ -385,19 +441,60 @@ const ActionsRowDiv = styled.div`
   align-items: center;
 `;
 
+export const BrowseOperations = () => {
+  const browser = useOperatorBrowser();
+  return (
+    <ActionDiv>
+      <PillButton
+        open={false}
+        highlight={true}
+        icon={<List />}
+        onClick={() => browser.toggle()}
+        title={"Browse operations"}
+      />
+    </ActionDiv>
+  );
+};
+
 export const GridActionsRow = () => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
+
+  // In teams environment if the session color scheme is not applied to the dataset,
+  // check to see if dataset.appConfig has applicable settings
+  useEffect(() => {
+    if (!isUsingSessionColorScheme && datasetColorScheme) {
+      const colorPool =
+        datasetColorScheme.colorPool?.length > 0
+          ? datasetColorScheme.colorPool
+          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
+      const fields =
+        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
+      setSessionColor({
+        colorPool,
+        fields,
+      });
+    }
+  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   return (
     <ActionsRowDiv>
       <ToggleSidebar modal={false} />
-      <Options modal={false} />
+      <Colors />
       {hideTagging ? null : <Tag modal={false} />}
       <Patches />
-      {!isVideo && <Similarity modal={false} />}
+      <Similarity modal={false} />
       <SaveFilters />
       <Selected modal={false} />
+      <DynamicGroupAction />
+      <BrowseOperations />
+      <Options modal={false} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
+      <OperatorPlacements place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS} />
     </ActionsRowDiv>
   );
 };
@@ -406,10 +503,9 @@ export const ModalActionsRow = ({
   lookerRef,
   isGroup,
 }: {
-  lookerRef?: MutableRefObject<VideoLooker | undefined>;
+  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
   isGroup?: boolean;
 }) => {
-  const isVideo = useRecoilValue(fos.isVideoDataset);
   const hideTagging = useRecoilValue(fos.readOnly);
 
   return (
@@ -421,10 +517,11 @@ export const ModalActionsRow = ({
     >
       <Hidden />
       <Selected modal={true} lookerRef={lookerRef} />
-      {!isVideo && <Similarity modal={true} />}
+      <Similarity modal={true} />
       {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
   );

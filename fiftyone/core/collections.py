@@ -241,6 +241,11 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement _is_clips")
 
     @property
+    def _is_dynamic_groups(self):
+        """Whether this collection contains dynamic groups."""
+        raise NotImplementedError("Subclass must implement _is_dynamic_groups")
+
+    @property
     def _element_str(self):
         if self.media_type == fom.GROUP:
             return "group"
@@ -783,6 +788,10 @@ class SampleCollection(object):
             exact (False): whether to raise an error if multiple samples match
                 the expression
 
+        Raises:
+            ValueError: if no samples match the expression or if ``exact=True``
+            and multiple samples match the expression
+
         Returns:
             a :class:`fiftyone.core.sample.SampleView`
         """
@@ -926,9 +935,9 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                path, ftype=fof.EmbeddedDocumentField, leaf=True
-            )
+            field = self.get_field(path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
+                return tuple()
 
             field_names = field._get_default_fields(
                 include_private=include_private,
@@ -963,7 +972,7 @@ class SampleCollection(object):
         if self.media_type == fom.GROUP:
             field_names += (self.group_field,)
 
-        return field_names
+        return (f for f in field_names if f is not None)
 
     def _get_default_frame_fields(
         self,
@@ -972,11 +981,9 @@ class SampleCollection(object):
         use_db_fields=False,
     ):
         if path is not None:
-            field = self.get_field(
-                self._FRAMES_PREFIX + path,
-                ftype=fof.EmbeddedDocumentField,
-                leaf=True,
-            )
+            field = self.get_field(self._FRAMES_PREFIX + path, leaf=True)
+            if not isinstance(field, fof.EmbeddedDocumentField):
+                return tuple()
 
             field_names = field._get_default_fields(
                 include_private=include_private,
@@ -989,6 +996,22 @@ class SampleCollection(object):
             include_private=include_private,
             use_db_fields=use_db_fields,
         )
+
+    def _is_default_field(self, path):
+        path, is_frame_field = self._handle_frame_field(path)
+
+        chunks = path.rsplit(".", 1)
+        if len(chunks) > 1:
+            root = chunks[0]
+        else:
+            root = None
+
+        if is_frame_field:
+            default_fields = self._get_default_frame_fields(path=root)
+        else:
+            default_fields = self._get_default_sample_fields(path=root)
+
+        return path in default_fields
 
     def get_field(
         self,
@@ -1075,7 +1098,7 @@ class SampleCollection(object):
             if last_key and not leaf:
                 continue
 
-            if isinstance(field, fof.ListField):
+            while isinstance(field, fof.ListField):
                 field = field.field
 
             if isinstance(field, fof.EmbeddedDocumentField) and not last_key:
@@ -1098,11 +1121,12 @@ class SampleCollection(object):
         the collection.
 
         Args:
-            ftype (None): an optional field type to which to restrict the
-                returned schema. Must be a subclass of
+            ftype (None): an optional field type or iterable of types to which
+                to restrict the returned schema. Must be subclass(es) of
                 :class:`fiftyone.core.fields.Field`
-            embedded_doc_type (None): an optional embedded document type to
-                which to restrict the returned schema. Must be a subclass of
+            embedded_doc_type (None): an optional embedded document type or
+                iterable of types to which to restrict the returned schema.
+                Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
@@ -1146,7 +1170,7 @@ class SampleCollection(object):
             "Subclass must implement get_frame_field_schema()"
         )
 
-    def get_dynamic_field_schema(self, fields=None):
+    def get_dynamic_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         samples in the collection.
 
@@ -1156,15 +1180,18 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
             types
         """
-        schema = self.get_field_schema()
-        return self._get_dynamic_field_schema(schema, "", fields=fields)
+        return self._get_dynamic_field_schema(
+            fields=fields, recursive=recursive
+        )
 
-    def get_dynamic_frame_field_schema(self, fields=None):
+    def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
         frames of the samples in the collection.
 
@@ -1174,47 +1201,140 @@ class SampleCollection(object):
         Args:
             fields (None): an optional field or iterable of fields for which to
                 return dynamic fields. By default, all fields are considered
+            recursive (True): whether to recursively inspect nested lists and
+                embedded documents
 
         Returns:
             a dictionary mapping field paths to field types or lists of field
-            types
+            types, or ``None`` if the collection does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
-        schema = self.get_frame_field_schema()
-        prefix = self._FRAMES_PREFIX
-        return self._get_dynamic_field_schema(schema, prefix, fields=fields)
+        return self._get_dynamic_field_schema(
+            frames=True, fields=fields, recursive=recursive
+        )
 
-    def _get_dynamic_field_schema(self, schema, prefix, fields=None):
+    def _get_dynamic_field_schema(
+        self, frames=False, fields=None, recursive=True
+    ):
+        if frames:
+            schema = self.get_frame_field_schema()
+        else:
+            schema = self.get_field_schema()
+
         if fields is not None:
             if etau.is_str(fields):
-                fields = {fields}
+                fields = [fields]
             else:
-                fields = set(fields)
+                fields = list(fields)
 
-            schema = {k: v for k, v in schema.items() if k in fields}
+        dynamic_schema = self._do_get_dynamic_field_schema(
+            schema, frames=frames, fields=fields
+        )
+
+        # Recurse into new dynamic fields
+        if recursive:
+            s = dynamic_schema
+            while True:
+                s = self._do_get_dynamic_field_schema(
+                    s, frames=frames, new=True
+                )
+                if s:
+                    dynamic_schema.update(s)
+                else:
+                    break
+
+        # Merge list fields and their subfields
+        while True:
+            edits = {}
+
+            for path, field in dynamic_schema.items():
+                subpath = path + "[]"
+                subfield = dynamic_schema.get(subpath, None)
+                if subfield is not None:
+                    field.field = subfield
+                    edits[subpath] = None
+                    for _path in dynamic_schema.keys():
+                        if _path.startswith(subpath + "."):
+                            edits[_path] = path + _path[len(subpath) :]
+
+                    break
+
+            for path, new_path in edits.items():
+                field = dynamic_schema.pop(path)
+                if new_path:
+                    dynamic_schema[new_path] = field
+
+            if not edits:
+                break
+
+        return dynamic_schema
+
+    def _do_get_dynamic_field_schema(
+        self, schema, frames=False, fields=None, new=False
+    ):
+        if frames:
+            prefix = self._FRAMES_PREFIX
+        else:
+            prefix = ""
+
+        schema = fof.flatten_schema(schema)
+
+        if fields is not None:
+            schema = {
+                k: v
+                for k, v in schema.items()
+                if any(f == k or f.startswith(k + ".") for f in fields)
+            }
 
         aggs = []
         paths = []
-        for name, field in schema.items():
-            if isinstance(field, fof.EmbeddedDocumentField):
-                path = name
-                aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                paths.append(path)
+        for path, field in schema.items():
+            _path = prefix + path
 
-                if issubclass(field.document_type, fol._LABEL_LIST_FIELDS):
-                    path = name + "." + field.document_type._LABEL_LIST_FIELD
-                    aggs.append(foa.Schema(prefix + path, dynamic_only=True))
-                    paths.append(path)
+            is_list_field = False
+            while isinstance(field, fof.ListField):
+                field = field.field
+                is_list_field = True
+
+            if isinstance(field, fof.EmbeddedDocumentField):
+                if is_list_field and not _path.endswith("[]"):
+                    _path += "[]"
+
+                if new:
+                    # This field hasn't been declared yet, so we must provide
+                    # it's document type so that `Schema()` can distinguish
+                    # dynamic fields from builtin fields
+                    _doc_type = field.document_type
+                else:
+                    _doc_type = None
+
+                agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
+            elif is_list_field:
+                # Processing untyped default list fields is not allowed
+                _clean_path = _path.replace("[]", "")
+                if field is None and not self._is_default_field(_clean_path):
+                    agg = foa.ListSchema(_path)
+                else:
+                    agg = None
+            else:
+                agg = None
+
+            if agg is not None:
+                aggs.append(agg)
+                paths.append(path)
 
         fields = {}
 
         if aggs:
             results = self.aggregate(aggs)
-            for path, schema in zip(paths, results):
-                for name, field in schema.items():
-                    fields[path + "." + name] = field
+            for path, agg, schema in zip(paths, aggs, results):
+                if isinstance(agg, foa.Schema):
+                    for name, field in schema.items():
+                        fields[path + "." + name] = field
+                elif isinstance(agg, foa.ListSchema):
+                    fields[path + "[]"] = schema
 
         return fields
 
@@ -1463,9 +1583,8 @@ class SampleCollection(object):
     def _edit_label_tags(
         self, update_fcn, label_field, ids=None, label_ids=None
     ):
-        label_type, root = self._get_label_field_path(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
         _root, is_frame_field = self._handle_frame_field(root)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
 
         ops = []
 
@@ -1505,7 +1624,13 @@ class SampleCollection(object):
                     label_ids = self.values(id_path)
 
             for _label_ids in fou.iter_batches(label_ids, 100000):
-                ops.append(UpdateMany({_id_path: {"$in": _label_ids}}, update))
+                _label_ids = [_id for _id in _label_ids if _id is not None]
+                ops.append(
+                    UpdateMany(
+                        {_id_path: {"$in": _label_ids}},
+                        update,
+                    )
+                )
 
         if ops:
             self._dataset._bulk_write(ops, frames=is_frame_field)
@@ -1532,11 +1657,10 @@ class SampleCollection(object):
         is_list_fields = []
         is_frame_fields = []
         for label_field in label_fields:
-            label_type, id_path = view._get_label_field_path(label_field, "id")
-            is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+            root, is_list_field = view._get_label_field_root(label_field)
             is_frame_field = view._is_frame_field(label_field)
 
-            paths.append(id_path)
+            paths.append(root + ".id")
             is_list_fields.append(is_list_field)
             is_frame_fields.append(is_frame_field)
 
@@ -1896,7 +2020,7 @@ class SampleCollection(object):
         if (
             isinstance(self, fov.DatasetView)
             and isinstance(field, fof.EmbeddedDocumentField)
-            and issubclass(field.document_type, fol._LABEL_LIST_FIELDS)
+            and issubclass(field.document_type, fol._HasLabelList)
         ):
             label_type = field.document_type
             list_field = label_type._LABEL_LIST_FIELD
@@ -2044,10 +2168,9 @@ class SampleCollection(object):
         if is_frame_field:
             label_field = self._FRAMES_PREFIX + label_field
 
-        label_type, root = self._get_label_field_path(label_field)
+        root, is_list_field = self._get_label_field_root(label_field)
+        label_id_path = root + ".id"
         _root, _ = self._handle_frame_field(root)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
-        _, label_id_path = self._get_label_field_path(label_field, "id")
 
         id_map = {}
 
@@ -2488,12 +2611,11 @@ class SampleCollection(object):
                 "(found: '%s')" % field_name
             )
 
-        label_type = self._get_label_field_type(field_name)
+        root, is_list_field = self._get_label_field_root(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         ops = []
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
-            root = field_name + "." + label_type._LABEL_LIST_FIELD
+        if is_list_field:
             elem_id = root + "._id"
             set_path = root + ".$"
 
@@ -2956,11 +3078,15 @@ class SampleCollection(object):
         -   Instance segmentations in :class:`fiftyone.core.labels.Detections`
             format with their ``mask`` attributes populated
         -   Polygons in :class:`fiftyone.core.labels.Polylines` format
+        -   Keypoints in :class:`fiftyone.core.labels.Keypoints` format
         -   Temporal detections in
             :class:`fiftyone.core.labels.TemporalDetections` format
 
         For spatial object detection evaluation, this method uses COCO-style
         evaluation by default.
+
+        When evaluating keypoints, "IoUs" are computed via
+        `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
 
         For temporal segment detection, this method uses ActivityNet-style
         evaluation by default.
@@ -3005,10 +3131,12 @@ class SampleCollection(object):
             pred_field: the name of the field containing the predicted
                 :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             gt_field ("ground_truth"): the name of the field containing the
                 ground truth :class:`fiftyone.core.labels.Detections`,
                 :class:`fiftyone.core.labels.Polylines`,
+                :class:`fiftyone.core.labels.Keypoints`,
                 or :class:`fiftyone.core.labels.TemporalDetections`
             eval_key (None): a string key to use to refer to this evaluation
             classes (None): the list of possible classes. If not provided,
@@ -3496,7 +3624,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.ExcludeBy(field, values))
 
     @view_stage
-    def exclude_fields(self, field_names, _allow_missing=False):
+    def exclude_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Excludes the fields with the given names from the samples in the
         collection.
 
@@ -3547,14 +3677,40 @@ class SampleCollection(object):
             view = dataset.exclude_fields("predictions.mood")
 
         Args:
-            field_names: a field name or iterable of field names to exclude.
-                May contain ``embedded.field.name`` as well
+            field_names (None): a field name or iterable of field names to
+                exclude. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically excludes fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to exclude fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to exclude all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    exclude fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to exclude fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to exclude
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.ExcludeFields(field_names, _allow_missing=_allow_missing)
+            fos.ExcludeFields(
+                field_names=field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -4266,6 +4422,37 @@ class SampleCollection(object):
         )
 
     @view_stage
+    def flatten(self, stages=None):
+        """Returns a flattened view that contains all samples in the dynamic
+        grouped collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+            # Group samples by ground truth label
+            grouped_view = dataset.take(1000).group_by("ground_truth.label")
+            print(len(grouped_view))  # 10
+
+            # Return a flat view that contains 10 samples from each class
+            flat_view = grouped_view.flatten(fo.Limit(10))
+            print(len(flat_view))  # 100
+
+        Args:
+            stages (None): a :class:`fiftyone.core.stages.ViewStage` or list of
+                :class:`fiftyone.core.stages.ViewStage` instances to apply to
+                each group's samples while flattening
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Flatten(stages=stages))
+
+    @view_stage
     def geo_near(
         self,
         point,
@@ -4430,12 +4617,14 @@ class SampleCollection(object):
     def group_by(
         self,
         field_or_expr,
+        order_by=None,
+        reverse=False,
+        flat=False,
         match_expr=None,
         sort_expr=None,
-        reverse=False,
     ):
-        """Creates a view that reorganizes the samples in the collection so
-        that they are grouped by a specified field or expression.
+        """Creates a view that groups the samples in the collection by a
+        specified field or expression.
 
         Examples::
 
@@ -4445,41 +4634,57 @@ class SampleCollection(object):
 
             dataset = foz.load_zoo_dataset("cifar10", split="test")
 
-            # Take a random sample of 1000 samples and organize them by ground
-            # truth label with groups arranged in decreasing order of size
+            #
+            # Take 1000 samples at random and group them by ground truth label
+            #
+
+            view = dataset.take(1000).group_by("ground_truth.label")
+
+            for group in view.iter_dynamic_groups():
+                group_value = group.first().ground_truth.label
+                print("%s: %d" % (group_value, len(group)))
+
+            #
+            # Variation of above operation that arranges the groups in
+            # decreasing order of size and immediately flattens them
+            #
+
+            from itertools import groupby
+
             view = dataset.take(1000).group_by(
                 "ground_truth.label",
+                flat=True,
                 sort_expr=F().length(),
                 reverse=True,
             )
 
-            print(view.values("ground_truth.label"))
-            print(
-                sorted(
-                    view.count_values("ground_truth.label").items(),
-                    key=lambda kv: kv[1],
-                    reverse=True,
-                )
-            )
+            rle = lambda v: [(k, len(list(g))) for k, g in groupby(v)]
+            for label, count in rle(view.values("ground_truth.label")):
+                print("%s: %d" % (label, count))
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
                 a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
+            order_by (None): an optional field by which to order the samples in
+                each group
+            reverse (False): whether to return the results in descending order.
+                Applies both to ``order_by`` and ``sort_expr``
+            flat (False): whether to return a grouped collection (False) or a
+                flattened collection (True)
             match_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines which groups to include in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
+                samples in each group. Only applicable when ``flat=True``
             sort_expr (None): an optional
                 :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
-                samples in each group
-            reverse (False): whether to return the results in descending order
+                samples in each group. Only applicable when ``flat=True``
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4487,9 +4692,11 @@ class SampleCollection(object):
         return self._add_view_stage(
             fos.GroupBy(
                 field_or_expr,
+                order_by=order_by,
+                reverse=reverse,
+                flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
-                reverse=reverse,
             )
         )
 
@@ -5164,7 +5371,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
 
     @view_stage
-    def mongo(self, pipeline):
+    def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
         """Adds a view stage defined by a raw MongoDB aggregation pipeline.
 
         See `MongoDB aggregation pipelines <https://docs.mongodb.com/manual/core/aggregation-pipeline/>`_
@@ -5246,7 +5453,7 @@ class SampleCollection(object):
                     }
                 },
                 {"$sort": {"_sort_field": -1}},
-                {"$unset": "_sort_field"}
+                {"$project": {"_sort_field": False}},
             ])
 
         Args:
@@ -5255,7 +5462,13 @@ class SampleCollection(object):
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.Mongo(pipeline))
+        return self._add_view_stage(
+            fos.Mongo(
+                pipeline,
+                _needs_frames=_needs_frames,
+                _group_slices=_group_slices,
+            )
+        )
 
     @view_stage
     def select(self, sample_ids, ordered=False):
@@ -5351,7 +5564,9 @@ class SampleCollection(object):
         )
 
     @view_stage
-    def select_fields(self, field_names=None, _allow_missing=False):
+    def select_fields(
+        self, field_names=None, meta_filter=None, _allow_missing=False
+    ):
         """Selects only the fields with the given names from the samples in the
         collection. All other fields are excluded.
 
@@ -5417,12 +5632,38 @@ class SampleCollection(object):
         Args:
             field_names (None): a field name or iterable of field names to
                 select. May contain ``embedded.field.name`` as well
+            meta_filter (None): a filter that dynamically selects fields in
+                the collection's schema according to the specified rule, which
+                can be matched against the field's ``name``, ``type``,
+                ``description``, and/or ``info``. For example:
+
+                -   Use ``meta_filter="2023"`` or
+                    ``meta_filter={"any": "2023"}`` to select fields that have
+                    the string "2023" anywhere in their name, type,
+                    description, or info
+                -   Use ``meta_filter={"type": "StringField"}`` or
+                    ``meta_filter={"type": "Classification"}`` to select all
+                    string or classification fields, respectively
+                -   Use ``meta_filter={"description": "my description"}`` to
+                    select fields whose description contains the string
+                    "my description"
+                -   Use ``meta_filter={"info": "2023"}`` to select fields that
+                    have the string "2023" anywhere in their info
+                -   Use ``meta_filter={"info.key": "value"}}`` to select
+                    fields that have a specific key/value pair in their info
+                -   Include ``meta_filter={"include_nested_fields": True, ...}``
+                    in your meta filter to include all nested fields in the
+                    filter
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SelectFields(field_names, _allow_missing=_allow_missing)
+            fos.SelectFields(
+                field_names,
+                meta_filter=meta_filter,
+                _allow_missing=_allow_missing,
+            )
         )
 
     @view_stage
@@ -6048,8 +6289,9 @@ class SampleCollection(object):
 
         Args:
             field: the patches field, which must be of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than ``field``
                 and the default sample fields are included. Can be any of the
                 following:
@@ -6121,8 +6363,9 @@ class SampleCollection(object):
         Args:
             eval_key: an evaluation key that corresponds to the evaluation of
                 ground truth/predicted fields that are of type
-                :class:`fiftyone.core.labels.Detections` or
-                :class:`fiftyone.core.labels.Polylines`
+                :class:`fiftyone.core.labels.Detections`,
+                :class:`fiftyone.core.labels.Polylines`, or
+                :class:`fiftyone.core.labels.Keypoints`
             other_fields (None): controls whether fields other than the
                 ground truth/predicted fields and the default sample fields are
                 included. Can be any of the following:
@@ -7108,6 +7351,7 @@ class SampleCollection(object):
         field_or_expr,
         expr=None,
         dynamic_only=False,
+        _doc_type=None,
         _include_private=False,
     ):
         """Extracts the names and types of the attributes of a specified
@@ -7191,8 +7435,102 @@ class SampleCollection(object):
             field_or_expr,
             expr=expr,
             dynamic_only=dynamic_only,
+            _doc_type=_doc_type,
             _include_private=_include_private,
         )
+        return self._make_and_aggregate(make, field_or_expr)
+
+    @aggregation
+    def list_schema(self, field_or_expr, expr=None):
+        """Extracts the value type(s) in a specified list field across all
+        samples in the collection.
+
+        Examples::
+
+            from datetime import datetime
+            import fiftyone as fo
+
+            dataset = fo.Dataset()
+
+            sample1 = fo.Sample(
+                filepath="image1.png",
+                ground_truth=fo.Classification(
+                    label="cat",
+                    info=[
+                        fo.DynamicEmbeddedDocument(
+                            task="initial_annotation",
+                            author="Alice",
+                            timestamp=datetime(1970, 1, 1),
+                            notes=["foo", "bar"],
+                        ),
+                        fo.DynamicEmbeddedDocument(
+                            task="editing_pass",
+                            author="Bob",
+                            timestamp=datetime.utcnow(),
+                        ),
+                    ],
+                ),
+            )
+
+            sample2 = fo.Sample(
+                filepath="image2.png",
+                ground_truth=fo.Classification(
+                    label="dog",
+                    info=[
+                        fo.DynamicEmbeddedDocument(
+                            task="initial_annotation",
+                            author="Bob",
+                            timestamp=datetime(2018, 10, 18),
+                            notes=["spam", "eggs"],
+                        ),
+                    ],
+                ),
+            )
+
+            dataset.add_samples([sample1, sample2])
+
+            # Determine that `ground_truth.info` contains embedded documents
+            print(dataset.list_schema("ground_truth.info"))
+            # fo.EmbeddedDocumentField
+
+            # Determine the fields of the embedded documents in the list
+            print(dataset.schema("ground_truth.info[]"))
+            # {'task': StringField, ..., 'notes': ListField}
+
+            # Determine the type of the values in the nested `notes` list field
+            # Since `ground_truth.info` is not yet declared on the dataset's
+            # schema, we must manually include `[]` to unwind the info lists
+            print(dataset.list_schema("ground_truth.info[].notes"))
+            # fo.StringField
+
+            # Declare the `ground_truth.info` field
+            dataset.add_sample_field(
+                "ground_truth.info",
+                fo.ListField,
+                subfield=fo.EmbeddedDocumentField,
+                embedded_doc_type=fo.DynamicEmbeddedDocument,
+            )
+
+            # Now we can inspect the nested `notes` field without unwinding
+            print(dataset.list_schema("ground_truth.info.notes"))
+            # fo.StringField
+
+        Args:
+            field_or_expr: a field name, ``embedded.field.name``,
+                :class:`fiftyone.core.expressions.ViewExpression`, or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                defining the field or expression to aggregate
+            expr (None): a :class:`fiftyone.core.expressions.ViewExpression` or
+                `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
+                to apply to ``field_or_expr`` (which must be a field) before
+                aggregating
+
+        Returns:
+            a :class:`fiftyone.core.fields.Field` or list of
+            :class:`fiftyone.core.fields.Field` instances describing the value
+            type(s) in the list
+        """
+        make = lambda field_or_expr: foa.ListSchema(field_or_expr, expr=expr)
         return self._make_and_aggregate(make, field_or_expr)
 
     @aggregation
@@ -8063,6 +8401,8 @@ class SampleCollection(object):
                 -   ``"prompt"``: present an interactive prompt to
                     direct/discard unexpected labels
                 -   ``"ignore"``: automatically ignore any unexpected labels
+                -   ``"keep"``: automatically keep all unexpected labels in a
+                    field whose name matches the the label type
                 -   ``"return"``: return a dict containing all unexpected
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
@@ -8170,12 +8510,24 @@ class SampleCollection(object):
         Frame-level fields can be indexed by prepending ``"frames."`` to the
         field name.
 
-        If you are indexing a single field and it already has a unique
-        constraint, it will be retained regardless of the ``unique`` value you
-        specify. Conversely, if the given field already has a non-unique index
-        but you requested a unique index, the existing index will be replaced
-        with a unique index. Use :meth:`drop_index` to drop an existing index
-        first if you wish to modify an existing index in other ways.
+        .. note::
+
+            If an index with the same field(s) but different order(s) already
+            exists, no new index will be created.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
+
+        .. note::
+
+            If you are indexing a single field and it already has a unique
+            constraint, it will be retained regardless of the ``unique`` value
+            you specify. Conversely, if the given field already has a
+            non-unique index but you requested a unique index, the existing
+            index will be replaced with a unique index.
+
+            Use :meth:`drop_index` to drop an existing index first if you wish
+            to replace an existing index with new properties.
 
         Args:
             field_or_spec: the field name, ``embedded.field.name``, or index
@@ -8195,13 +8547,13 @@ class SampleCollection(object):
             input_spec = list(field_or_spec)
 
         single_field_index = len(input_spec) == 1
+        index_info = self.get_index_information()
 
         # For single field indexes, provide special handling based on `unique`
         # constraint
         if single_field_index:
             field = input_spec[0][0]
 
-            index_info = self.get_index_information()
             if field in index_info:
                 _unique = index_info[field].get("unique", False)
                 if _unique or (unique == _unique):
@@ -8241,6 +8593,20 @@ class SampleCollection(object):
             )
 
         is_frame_index = all(is_frame_fields)
+
+        if single_field_index:
+            index_name = input_spec[0][0]
+        else:
+            index_name = "_".join("%s_%s" % (f, o) for f, o in index_spec)
+
+        if is_frame_index:
+            index_name = self._FRAMES_PREFIX + index_name
+
+        normalize = lambda name: name.replace("-1", "1")
+        _index_name = normalize(index_name)
+        if any(_index_name == normalize(name) for name in index_info.keys()):
+            # Satisfactory index already exists
+            return index_name
 
         if is_frame_index:
             coll = self._dataset._frame_collection
@@ -8321,6 +8687,10 @@ class SampleCollection(object):
 
         if self._is_clips:
             return ["id", "filepath", "sample_id"]
+
+        if self.media_type == fom.GROUP:
+            gf = self.group_field
+            return ["id", "filepath", gf + ".id", gf + ".name"]
 
         return ["id", "filepath"]
 
@@ -9071,6 +9441,9 @@ class SampleCollection(object):
             return True
 
         if self.media_type == fom.GROUP:
+            if self.group_media_types is None:
+                return self._dataset.media_type == fom.VIDEO
+
             if any_slice:
                 return any(
                     slice_media_type == fom.VIDEO
@@ -9190,10 +9563,10 @@ class SampleCollection(object):
         media_fields = {}
 
         if frames:
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(flat=True)
             app_media_fields = set()
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(flat=True)
             app_media_fields = set(self._dataset.app_config.media_fields)
 
         if not include_filepath:
@@ -9220,30 +9593,18 @@ class SampleCollection(object):
         return media_fields
 
     def _get_label_fields(self):
-        fields = self._get_sample_label_fields()
+        return [path for path, _ in _iter_label_fields(self)]
 
-        if self._has_frame_fields():
-            fields.extend(self._get_frame_label_fields())
+    def _get_label_field_schema(self):
+        schema = self.get_field_schema()
+        return dict(_iter_schema_label_fields(schema))
 
-        return fields
-
-    def _get_sample_label_fields(self):
-        return list(
-            self.get_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-            ).keys()
-        )
-
-    def _get_frame_label_fields(self):
+    def _get_frame_label_field_schema(self):
         if not self._has_frame_fields():
             return None
 
-        return [
-            self._FRAMES_PREFIX + field
-            for field in self.get_frame_field_schema(
-                ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-            ).keys()
-        ]
+        schema = self.get_frame_field_schema()
+        return dict(_iter_schema_label_fields(schema))
 
     def _get_root_fields(self, fields):
         root_fields = set()
@@ -9291,13 +9652,18 @@ class SampleCollection(object):
         field_name, _ = self._handle_group_field(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
+        # for fiftyone.server.view hidden results
+        if field_name.startswith("___"):
+            field_name = field_name[3:]
+
+        # for fiftyone.core.stages hidden results
         if field_name.startswith("__"):
             field_name = field_name[2:]
 
         if is_frame_field:
-            schema = self.get_frame_field_schema()
+            schema = self.get_frame_field_schema(flat=True)
         else:
-            schema = self.get_field_schema()
+            schema = self.get_field_schema(flat=True)
 
         if field_name not in schema:
             ftype = "frame field" if is_frame_field else "field"
@@ -9307,6 +9673,9 @@ class SampleCollection(object):
             )
 
         field = schema[field_name]
+
+        if isinstance(field, fof.ListField):
+            field = field.field
 
         if not isinstance(field, fof.EmbeddedDocumentField) or not issubclass(
             field.document_type, fol.Label
@@ -9318,10 +9687,22 @@ class SampleCollection(object):
 
         return field.document_type
 
+    def _get_label_field_root(self, field_name):
+        label_type = self._get_label_field_type(field_name)
+
+        if issubclass(label_type, fol._HasLabelList):
+            root = field_name + "." + label_type._LABEL_LIST_FIELD
+            is_list_field = True
+        else:
+            root = field_name
+            is_list_field = isinstance(self.get_field(root), fof.ListField)
+
+        return root, is_list_field
+
     def _get_label_field_path(self, field_name, subfield=None):
         label_type = self._get_label_field_type(field_name)
 
-        if issubclass(label_type, fol._LABEL_LIST_FIELDS):
+        if issubclass(label_type, fol._HasLabelList):
             field_name += "." + label_type._LABEL_LIST_FIELD
 
         if subfield:
@@ -9406,30 +9787,68 @@ class SampleCollection(object):
             self,
             field,
             expr,
-            embedded_root,
+            embedded_root=embedded_root,
             allow_missing=allow_missing,
             new_field=new_field,
             context=context,
         )
 
     def _get_values_by_id(self, path_or_expr, ids, link_field=None):
+        is_list_field = False
         if link_field == "frames":
             if self._is_frames:
                 id_path = "id"
             else:
                 id_path = "frames.id"
         elif link_field is not None:
-            _, id_path = self._get_label_field_path(link_field, "id")
+            root, is_list_field = self._get_label_field_root(link_field)
+            id_path = root + ".id"
         elif self._is_patches:
             id_path = "sample_id"
         else:
             id_path = "id"
 
-        values_map = {
-            i: v
-            for i, v in zip(*self.values([id_path, path_or_expr], unwind=True))
-        }
+        ref_ids, values = self.values([id_path, path_or_expr])
+        values_map = {}
+
+        if is_list_field:
+            for _ids, _values in zip(ref_ids, values):
+                if not _ids:
+                    continue
+
+                for _id, _val in zip(_ids, _values):
+                    values_map[_id] = _val
+        else:
+            for _id, _val in zip(ref_ids, values):
+                values_map[_id] = _val
+
         return [values_map.get(i, None) for i in ids]
+
+
+def _iter_label_fields(sample_collection):
+    schema = sample_collection.get_field_schema()
+    for path, field in _iter_schema_label_fields(schema):
+        yield path, field
+
+    if not sample_collection._has_frame_fields():
+        return
+
+    prefix = sample_collection._FRAMES_PREFIX
+    schema = sample_collection.get_frame_field_schema()
+    for path, field in _iter_schema_label_fields(schema):
+        yield prefix + path, field
+
+
+def _iter_schema_label_fields(schema):
+    for path, field in schema.items():
+        if isinstance(field, fof.EmbeddedDocumentField):
+            if issubclass(field.document_type, fol.Label):
+                yield path, field
+            else:
+                for _path, _field in field.get_field_schema().items():
+                    if isinstance(_field, fof.EmbeddedDocumentField):
+                        if issubclass(_field.document_type, fol.Label):
+                            yield path + "." + _path, _field
 
 
 def _serialize_value(field_name, field, value, validate=True):
@@ -9471,7 +9890,9 @@ def _parse_label_field(
         return label_field
 
     if _is_glob_pattern(label_field):
-        label_field = _get_matching_fields(sample_collection, label_field)
+        label_field = _get_matching_label_fields(
+            sample_collection, label_field
+        )
 
     if etau.is_container(label_field):
         return {f: f for f in label_field}
@@ -9511,7 +9932,7 @@ def _parse_frame_labels_field(
         return frame_labels_field
 
     if _is_glob_pattern(frame_labels_field):
-        frame_labels_field = _get_matching_fields(
+        frame_labels_field = _get_matching_label_fields(
             sample_collection, frame_labels_field, frames=True
         )
 
@@ -9549,13 +9970,16 @@ def _is_glob_pattern(s):
     return "*" in s or "?" in s or "[" in s
 
 
-def _get_matching_fields(sample_collection, patt, frames=False):
+def _get_matching_label_fields(sample_collection, patt, frames=False):
     if frames:
-        schema = sample_collection.get_frame_field_schema()
+        label_schema = sample_collection._get_frame_label_field_schema()
     else:
-        schema = sample_collection.get_field_schema()
+        label_schema = sample_collection._get_label_field_schema()
 
-    return fnmatch.filter(list(schema.keys()), patt)
+    if label_schema is None:
+        return label_schema
+
+    return fnmatch.filter(list(label_schema.keys()), patt)
 
 
 def _get_default_label_fields_for_exporter(
@@ -9574,9 +9998,7 @@ def _get_default_label_fields_for_exporter(
         return None
 
     media_type = sample_collection.media_type
-    label_schema = sample_collection.get_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
+    label_schema = sample_collection._get_label_field_schema()
 
     label_field_or_dict = _get_fields_with_types(
         media_type,
@@ -9613,9 +10035,7 @@ def _get_default_frame_label_fields_for_exporter(
         return None
 
     media_type = sample_collection.media_type
-    frame_label_schema = sample_collection.get_frame_field_schema(
-        ftype=fof.EmbeddedDocumentField, embedded_doc_type=fol.Label
-    )
+    frame_label_schema = sample_collection._get_frame_label_field_schema()
 
     frame_labels_field_or_dict = _get_fields_with_types(
         media_type,
@@ -9947,7 +10367,9 @@ def _parse_field_name(
     other_list_fields = sorted(other_list_fields)
 
     def _replace(path):
-        return ".".join([new_field] + path.split(".")[1:])
+        n = new_field.count(".") + 1
+        chunks = path.split(".", n)
+        return new_field + "." + chunks[-1] if len(chunks) > n else new_field
 
     if new_field:
         field_name = _replace(field_name)
@@ -10038,7 +10460,7 @@ def _make_set_field_pipeline(
     sample_collection,
     field,
     expr,
-    embedded_root,
+    embedded_root=False,
     allow_missing=False,
     new_field=None,
     context=None,
@@ -10072,7 +10494,7 @@ def _make_set_field_pipeline(
     # Case 1: no list fields
     if not list_fields:
         expr_dict = _render_expr(expr, path, embedded_root)
-        pipeline = [{"$set": {path: expr_dict}}]
+        pipeline = [{"$addFields": {path: expr_dict}}]
         return pipeline, expr_dict
 
     # Case 2: one list field
@@ -10082,7 +10504,7 @@ def _make_set_field_pipeline(
         expr, expr_dict = _set_terminal_list_field(
             list_field, subfield, expr, embedded_root
         )
-        pipeline = [{"$set": {list_field: expr.to_mongo()}}]
+        pipeline = [{"$addFields": {list_field: expr.to_mongo()}}]
         return pipeline, expr_dict
 
     # Case 3: multiple list fields
@@ -10102,7 +10524,7 @@ def _make_set_field_pipeline(
 
     expr = expr.to_mongo(prefix="$" + list_fields[0])
 
-    pipeline = [{"$set": {list_fields[0]: expr}}]
+    pipeline = [{"$addFields": {list_fields[0]: expr}}]
 
     return pipeline, expr_dict
 

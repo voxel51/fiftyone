@@ -6,15 +6,17 @@ Utilities for working with datasets in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import math
 from collections import defaultdict
 from copy import copy, deepcopy
 from datetime import datetime
 import itertools
 import logging
+import math
 import multiprocessing
 import multiprocessing.dummy
 import os
+from packaging.version import Version
+import time
 import warnings
 import webbrowser
 
@@ -3075,6 +3077,35 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
             or when using ``task_size`` and generating multiple tasks
         organization (None): the name of the organization to use when sending
             requests to CVAT
+        frame_start (None): nonnegative integer(s) defining the first frame of
+            videos to upload when creating video tasks. Supported values are:
+
+                -   ``integer``: the first frame to upload for each video
+                -   ``list``: a list of first frame integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepaths to first
+                    frame integers to use for the corresponding videos
+
+        frame_stop (None): nonnegative integer(s) defining the last frame of
+            videos to upload when creating video tasks. Supported values are:
+
+                -   ``integer``: the last frame to upload for each video
+                -   ``list``: a list of last frame integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepaths to last
+                    frame integers to use for the corresponding videos
+
+        frame_step (None): positive integer(s) defining which frames to sample
+            when creating video tasks. Supported values are:
+
+                -   ``integer``: the frame step to apply to each video task
+                -   ``list``: a list of frame step integers corresponding to
+                    videos in the given samples
+                -   ``dict``: a dictionary mapping sample filepaths to frame
+                    step integers to use for the corresponding videos
+
+            Note that this argument cannot be provided when uploading existing
+            tracks
     """
 
     def __init__(
@@ -3102,6 +3133,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         group_id_attr=None,
         issue_tracker=None,
         organization=None,
+        frame_start=None,
+        frame_stop=None,
+        frame_step=None,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -3122,6 +3156,9 @@ class CVATBackendConfig(foua.AnnotationBackendConfig):
         self.group_id_attr = group_id_attr
         self.issue_tracker = issue_tracker
         self.organization = organization
+        self.frame_start = _validate_frame_arg(frame_start, "frame_start")
+        self.frame_stop = _validate_frame_arg(frame_stop, "frame_stop")
+        self.frame_step = _validate_frame_arg(frame_step, "frame_step")
 
         # store privately so these aren't serialized
         self._username = username
@@ -3525,7 +3562,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def base_api_url(self):
-        if self._server_version == 1:
+        if self._server_version.major == 1:
             return "%s/api/v1" % self.base_url
 
         return "%s/api" % self.base_url
@@ -3533,6 +3570,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     @property
     def login_url(self):
         return "%s/auth/login" % self.base_api_url
+
+    @property
+    def about_url(self):
+        return "%s/server/about" % self.base_api_url
 
     @property
     def users_url(self):
@@ -3592,11 +3633,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             anno_filepath,
         )
 
+    def labels_url(self, task_id):
+        # server_version >= 2.4 only
+        return "%s/labels?task_id=%d" % (self.base_api_url, task_id)
+
     def jobs_url(self, task_id):
-        return "%s/jobs" % self.task_url(task_id)
+        if self._server_version >= Version("2.4"):
+            return "%s/jobs?task_id=%d" % (self.base_api_url, task_id)
+        else:
+            return "%s/jobs" % self.task_url(task_id)
 
     def job_url(self, task_id, job_id):
-        return "%s/%d" % (self.jobs_url(task_id), job_id)
+        if self._server_version >= Version("2.4"):
+            return self.taskless_job_url(job_id)
+        else:
+            return "%s/%d" % (self.jobs_url(task_id), job_id)
 
     def taskless_job_url(self, job_id):
         return "%s/jobs/%d" % (self.base_api_url, job_id)
@@ -3621,13 +3672,13 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
     @property
     def assignee_key(self):
-        if self._server_version == 1:
+        if self._server_version.major == 1:
             return "assignee_id"
 
         return "assignee"
 
     def _parse_reviewers(self, job_reviewers):
-        if self._server_version == 2 and job_reviewers is not None:
+        if self._server_version.major > 1 and job_reviewers is not None:
             logger.warning("CVAT v2 servers do not support `job_reviewers`")
             return None
 
@@ -3655,7 +3706,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # pylint: disable=too-many-function-args
             self._session.headers.update(self._headers)
 
-        self._server_version = 2
+        self._server_version = Version("2")
 
         try:
             self._login(username, password)
@@ -3663,11 +3714,29 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if e.response.status_code != 404:
                 raise e
 
-            self._server_version = 1
+            self._server_version = Version("1")
             self._login(username, password)
 
         self._add_referer()
         self._add_organization()
+
+        try:
+            response = self.get(self.about_url).json()
+            ver = Version(response["version"])
+            if ver.major != self._server_version.major:
+                logger.warning(
+                    "CVAT server major versions don't match: %s vs %s",
+                    ver.major,
+                    self._server_version.major,
+                )
+
+            self._server_version = ver
+        except Exception as e:
+            logger.debug(
+                "Failed to access or parse CVAT server version: %s", e
+            )
+
+        logger.debug("CVAT server version: %s", self._server_version)
 
     def _add_referer(self):
         if "Referer" not in self._session.headers:
@@ -3688,7 +3757,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             self._session.post,
             self.login_url,
             print_error_info=False,
-            data={"username": username, "password": password},
+            json={"username": username, "password": password},
         )
 
         if "csrftoken" in response.cookies:
@@ -3878,7 +3947,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of project IDs
         """
         return self._get_paginated_results(
-            self.projects_url, self.projects_page_url, value="id"
+            self.projects_url, get_page_url=self.projects_page_url, value="id"
         )
 
     def project_exists(self, project_id):
@@ -3934,16 +4003,23 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         resp = self.get(self.project_url(project_id)).json()
-        tasks = []
-        for task in resp.get("tasks", []):
-            if isinstance(task, int):
-                # For CVATv2 servers, task ids are stored directly as an array
-                # of integers
-                tasks.append(task)
-            else:
-                # For CVATv1 servers, project tasks are dictionaries we need to
-                # exctract "id" from
-                tasks.append(task["id"])
+        val = resp.get("tasks", [])
+
+        if self._server_version >= Version("2.4"):
+            tasks = self._get_paginated_results(val["url"])
+            tasks = [x["id"] for x in tasks]
+        else:
+            tasks = []
+            for task in val:
+                if isinstance(task, int):
+                    # For v2 servers, task ids are stored directly as an array
+                    # of integers
+                    tasks.append(task)
+                else:
+                    # For v1 servers, project tasks are dictionaries we need to
+                    # exctract "id" from
+                    tasks.append(task["id"])
+
         return tasks
 
     def create_task(
@@ -4002,12 +4078,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if issue_tracker is not None:
             task_json["bug_tracker"] = issue_tracker
 
-        task_resp = self.post(self.tasks_url, json=task_json).json()
-        task_id = task_resp["id"]
+        task_id, labels = self._get_task_id_labels_json(task_json)
 
+        # @todo: see _get_attr_class_maps
         class_id_map = {}
         attr_id_map = {}
-        for label in task_resp["labels"]:
+        for label in labels:
             class_id = label["id"]
             class_id_map[label["name"]] = class_id
             attr_id_map[class_id] = {}
@@ -4031,7 +4107,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             the list of task IDs
         """
         return self._get_paginated_results(
-            self.tasks_url, self.tasks_page_url, value="id"
+            self.tasks_url, get_page_url=self.tasks_page_url, value="id"
         )
 
     def task_exists(self, task_id):
@@ -4096,6 +4172,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         chunk_size=None,
         job_assignees=None,
         job_reviewers=None,
+        frame_start=None,
+        frame_stop=None,
+        frame_step=None,
     ):
         """Uploads a list of media to the task with the given ID.
 
@@ -4114,6 +4193,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size (None): the number of frames to upload per ZIP chunk
             job_assignees (None): a list of usernames to assign jobs
             job_reviewers (None): a list of usernames to assign job reviews
+            frame_start (None): an optional first frame to start uploading from
+            frame_stop (None): an optional last frame to upload
+            frame_step (None): an optional positive integer specifying the
+                spacing between frames to upload
 
         Returns:
             a list of the job IDs created for the task
@@ -4127,41 +4210,40 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if chunk_size:
             data["chunk_size"] = chunk_size
 
-        files = {}
-        open_files = []
+        if frame_start is not None:
+            data["start_frame"] = frame_start
 
-        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
-            # Video task
-            filename = os.path.basename(paths[0])
-            open_file = open(paths[0], "rb")
-            files["client_files[0]"] = (filename, open_file)
-            open_files.append(open_file)
-        else:
-            # Image task
-            for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
-                open_file = open(path, "rb")
-                files["client_files[%d]" % idx] = (filename, open_file)
-                open_files.append(open_file)
+        if frame_stop is not None:
+            data["stop_frame"] = frame_stop
+
+        if frame_step is not None:
+            data["frame_filter"] = "step=%d" % frame_step
+
+        files, open_files = self._parse_local_files(paths)
 
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
+        except Exception as e:
+            raise e
         finally:
             for f in open_files:
                 f.close()
 
-        # @todo is this loop really needed?
+        # It can take a bit for jobs to show up, so we poll
         job_ids = []
         while not job_ids:
-            job_resp = self.get(self.jobs_url(task_id))
-            job_resp_json = job_resp.json()
-            if "results" in job_resp_json:
-                job_resp_json = job_resp_json["results"]
+            url = self.jobs_url(task_id)
+            if self._server_version >= Version("2.4"):
+                job_resp_json = self._get_paginated_results(url)
+            else:
+                job_resp = self.get(url)
+                job_resp_json = job_resp.json()
+                if "results" in job_resp_json:
+                    job_resp_json = job_resp_json["results"]
 
             job_ids = [j["id"] for j in job_resp_json]
+            if not job_ids:
+                time.sleep(1)
 
         if job_assignees is not None:
             num_assignees = len(job_assignees)
@@ -4174,7 +4256,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     job_patch = {self.assignee_key: user_id}
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
-        if self._server_version == 1 and job_reviewers is not None:
+        if self._server_version.major == 1 and job_reviewers is not None:
             num_reviewers = len(job_reviewers)
             for idx, job_id in enumerate(job_ids):
                 # Round robin strategy
@@ -4186,6 +4268,34 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     self.patch(self.taskless_job_url(job_id), json=job_patch)
 
         return job_ids
+
+    def _parse_local_files(self, paths):
+        files = {}
+        open_files = []
+
+        if len(paths) == 1 and fom.get_media_type(paths[0]) == fom.VIDEO:
+            # Video task
+            filename = os.path.basename(paths[0])
+            f = open(paths[0], "rb")
+            files["client_files[0]"] = (filename, f)
+            open_files.append(f)
+        else:
+            # Image task
+            for idx, path in enumerate(paths):
+                # IMPORTANT: CVAT organizes media within a task alphabetically
+                # by filename, so we must give CVAT filenames whose
+                # alphabetical order matches the order of `paths`
+                filename = "%06d_%s" % (idx, os.path.basename(path))
+
+                if self._server_version >= Version("2.3"):
+                    with open(path, "rb") as f:
+                        files["client_files[%d]" % idx] = (filename, f.read())
+                else:
+                    f = open(path, "rb")
+                    files["client_files[%d]" % idx] = (filename, f)
+                    open_files.append(f)
+
+        return files, open_files
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
@@ -4261,10 +4371,11 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         num_samples = len(samples)
         batch_size = self._get_batch_size(samples, task_size)
         num_batches = math.ceil(num_samples / batch_size)
+        is_video = samples.media_type == fom.VIDEO
 
         samples.compute_metadata()
 
-        if samples.media_type == fom.VIDEO:
+        if is_video:
             # The current implementation requires frame IDs for all frames that
             # might get labels
             samples.ensure_frames()
@@ -4281,6 +4392,21 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 anno_tags = []
                 anno_shapes = []
                 anno_tracks = []
+
+                if is_video:
+                    _frame_start = _render_frame_arg(
+                        config.frame_start, idx, samples_batch
+                    )
+                    _frame_stop = _render_frame_arg(
+                        config.frame_stop, idx, samples_batch
+                    )
+                    _frame_step = _render_frame_arg(
+                        config.frame_step, idx, samples_batch
+                    )
+                else:
+                    _frame_start = None
+                    _frame_stop = None
+                    _frame_step = None
 
                 for label_field, label_info in label_schema.items():
                     _tags = []
@@ -4309,11 +4435,32 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             label_field,
                             label_info,
                             cvat_schema,
+                            _frame_start,
+                            _frame_stop,
+                            _frame_step,
                             assign_scalar_attrs,
                             only_keyframes,
                             occluded_attrs,
                             group_id_attrs,
                         )
+
+                        if _tracks and _frame_step is not None:
+                            #
+                            # @todo fully support working with existing
+                            # annotation tracks. This will require additional
+                            # logic to handle mutations of objects outside of
+                            # the uploaded frames.
+                            #
+                            # Example: A detection track is deleted with
+                            # frame_step 5, then the detections for that track
+                            # between frames 1-5 need to be deleted when the
+                            # annotations are loaded again.
+                            #
+                            raise ValueError(
+                                "Cannot upload existing annotation tracks for "
+                                "field '%s' when a 'frame_step' is provided"
+                                % label_field
+                            )
 
                     anno_tags.extend(_tags)
                     anno_shapes.extend(_shapes)
@@ -4351,6 +4498,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     task_ids,
                     job_ids,
                     frame_id_map,
+                    _frame_start,
+                    _frame_stop,
+                    _frame_step,
                 )
 
                 for label_field in label_schema.keys():
@@ -4448,6 +4598,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     )
                     continue
 
+                data_resp = self.get(self.task_data_meta_url(task_id)).json()
+                frames = data_resp["frames"]
+                frame_start = data_resp["start_frame"]
+                frame_stop = data_resp["stop_frame"]
+                frame_step = _parse_frame_step(data_resp)
+
                 # Download task data
                 attr_id_map, _class_map_rev = self._get_attr_class_maps(
                     task_id
@@ -4457,8 +4613,17 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 all_tags = task_resp["tags"]
                 all_tracks = task_resp["tracks"]
 
-                data_resp = self.get(self.task_data_meta_url(task_id)).json()
-                frames = data_resp["frames"]
+                # For videos that were subsampled, remap the frame numbers to
+                # those on the original video
+                all_shapes = _remap_annotation_frames(
+                    all_shapes, frame_start, frame_stop, frame_step
+                )
+                all_tags = _remap_annotation_frames(
+                    all_tags, frame_start, frame_stop, frame_step
+                )
+                all_tracks = _remap_annotation_frames(
+                    all_tracks, frame_start, frame_stop, frame_step
+                )
 
                 label_fields = labels_task_map_rev[task_id]
                 label_types = self._get_return_label_types(
@@ -4511,6 +4676,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         attr_id_map,
                         frames,
                         ignore_types,
+                        frame_stop,
+                        frame_step,
                         assigned_scalar_attrs=scalar_attrs,
                     )
                     label_field_results = self._merge_results(
@@ -4528,6 +4695,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         attr_id_map,
                         frames,
                         ignore_types,
+                        frame_stop,
+                        frame_step,
                         assigned_scalar_attrs=scalar_attrs,
                         occluded_attrs=_occluded_attrs,
                         group_id_attrs=_group_id_attrs,
@@ -4556,6 +4725,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                             attr_id_map,
                             frames,
                             ignore_types,
+                            frame_stop,
+                            frame_step,
                             assigned_scalar_attrs=scalar_attrs,
                             track_index=track_index,
                             track_group_id=track_group_id,
@@ -4599,37 +4770,43 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return annotations
 
     def _get_attr_class_maps(self, task_id):
-        task_json = self.get(self.task_url(task_id)).json()
-
+        labels = self._get_task_labels(task_id)
         _class_map = {}
         attr_id_map = {}
-        for label in task_json["labels"]:
+        for label in labels:
             _class_map[label["id"]] = label["name"]
             attr_id_map[label["id"]] = {
                 i["name"]: i["id"] for i in label["attributes"]
             }
 
+        # AL: not sure why we didn't just reverse keys/vals initially
         class_map_rev = {n: i for i, n in _class_map.items()}
 
         return attr_id_map, class_map_rev
 
-    def _get_paginated_results(self, base_url, get_page_url, value=None):
+    def _get_paginated_results(self, base_url, get_page_url=None, value=None):
         results = []
         page_number = 1
         page = base_url
         while True:
             response = self.get(page).json()
+            if "results" not in response:
+                break
+
             for result in response["results"]:
                 if value is not None:
                     results.append(result[value])
                 else:
                     results.append(result)
 
-            if not response["next"]:
+            page = response.get("next", None)
+
+            if not page:
                 break
 
-            page_number += 1
-            page = get_page_url(page_number)
+            if get_page_url is not None:
+                page_number += 1
+                page = get_page_url(page_number)
 
         return results
 
@@ -4665,14 +4842,33 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             raise ValueError("Project '%s' not found" % project_id)
 
         resp = self.get(self.project_url(project_id)).json()
-        return resp["labels"]
+        labels = resp["labels"]
+
+        if self._server_version >= Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
+
+        return labels
 
     def _get_task_labels(self, task_id):
         resp = self.get(self.task_url(task_id)).json()
         if "labels" not in resp:
             raise ValueError("Task '%s' not found" % task_id)
 
-        return resp["labels"]
+        labels = resp["labels"]
+        if self._server_version >= Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
+
+        return labels
+
+    def _get_task_id_labels_json(self, task_json):
+        resp = self.post(self.tasks_url, json=task_json).json()
+        task_id = resp["id"]
+
+        labels = resp["labels"]
+        if self._server_version >= Version("2.4"):
+            labels = self._get_paginated_results(labels["url"])
+
+        return task_id, labels
 
     def _parse_project_details(self, project_name, project_id):
         if project_id is not None:
@@ -5061,6 +5257,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         task_ids,
         job_ids,
         frame_id_map,
+        frame_start,
+        frame_stop,
+        frame_step,
     ):
         media_field = config.media_field
         segment_size = config.segment_size
@@ -5073,12 +5272,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         job_reviewers = config.job_reviewers
         issue_tracker = config.issue_tracker
 
-        is_video = samples_batch.media_type == fom.VIDEO
-
         _task_assignee = task_assignee
         _job_assignees = job_assignees
         _job_reviewers = job_reviewers
         _issue_tracker = issue_tracker
+
+        is_video = samples_batch.media_type == fom.VIDEO
 
         if is_video:
             # Videos are uploaded in multiple tasks with 1 job per task
@@ -5123,17 +5322,28 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             chunk_size=chunk_size,
             job_assignees=_job_assignees,
             job_reviewers=_job_reviewers,
+            frame_start=frame_start,
+            frame_stop=frame_stop,
+            frame_step=frame_step,
         )
-        self._verify_uploaded_frames(task_id, samples_batch)
+
+        self._verify_uploaded_frames(
+            task_id, samples_batch, frame_start, frame_stop, frame_step
+        )
+
         frame_id_map[task_id] = self._build_frame_id_map(samples_batch)
 
         return task_id, class_id_map, attr_id_map
 
-    def _verify_uploaded_frames(self, task_id, samples):
+    def _verify_uploaded_frames(
+        self, task_id, samples, frame_start, frame_stop, frame_step
+    ):
         task_meta = self.get(self.task_data_meta_url(task_id)).json()
         num_uploaded = task_meta.get("size", 0)
         if samples.media_type == fom.VIDEO:
-            num_frames = samples.count("frames")
+            num_frames = self._compute_expected_frames(
+                samples, frame_start, frame_stop, frame_step
+            )
             ftype = "frames"
         else:
             num_frames = len(samples)
@@ -5146,6 +5356,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 num_frames,
                 ftype,
             )
+
+    def _compute_expected_frames(
+        self, samples, frame_start, frame_stop, frame_step
+    ):
+        n = samples.count("frames")
+        _frame_start = 0 if frame_start is None else frame_start
+        _frame_stop = n if frame_stop is None else min(frame_stop, n)
+        _frame_step = 1 if frame_step is None else frame_step
+
+        return int((_frame_stop - _frame_start) / _frame_step)
 
     def _upload_annotations(
         self,
@@ -5229,6 +5449,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
+        frame_start,
+        frame_stop,
+        frame_step,
         assign_scalar_attrs,
         only_keyframes,
         occluded_attrs,
@@ -5247,6 +5470,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 assign_scalar_attrs=assign_scalar_attrs,
             )
         elif is_video and label_type != "segmentation":
@@ -5260,6 +5486,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 load_tracks=True,
                 only_keyframes=only_keyframes,
                 occluded_attrs=occluded_attrs,
@@ -5272,6 +5501,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 label_field,
                 label_info,
                 cvat_schema,
+                frame_start,
+                frame_stop,
+                frame_step,
                 occluded_attrs=occluded_attrs,
                 group_id_attrs=group_id_attrs,
             )
@@ -5402,6 +5634,8 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         attr_id_map,
         frames,
         ignore_types,
+        frame_stop,
+        frame_step,
         assigned_scalar_attrs=False,
         track_index=None,
         track_group_id=None,
@@ -5457,7 +5691,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             and prev_frame is not None
             and not prev_outside
         ):
-            for frame in range(prev_frame + 1, max(frame_id_map) + 1):
+            for frame in range(
+                prev_frame + 1, min(max(frame_id_map), frame_stop) + 1
+            ):
                 anno = deepcopy(prev_anno)
                 anno["frame"] = frame
                 anno["keyframe"] = False
@@ -5763,6 +5999,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         label_field,
         label_info,
         cvat_schema,
+        frame_start,
+        frame_stop,
+        frame_step,
         assign_scalar_attrs=False,
         load_tracks=False,
         only_keyframes=False,
@@ -5798,6 +6037,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         frame_id = -1
         for sample in samples:
+            next_frame_idx = 0 if frame_start is None else frame_start
             metadata = sample.metadata
 
             if is_video:
@@ -5807,7 +6047,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 images = [sample]
                 frame_size = (metadata.width, metadata.height)
 
-            for image in images:
+            for idx, image in enumerate(images):
+                if idx != next_frame_idx:
+                    # This is a video being subsampled, only load annotations
+                    # for frames that are being rendered
+                    continue
+
                 frame_id += 1
 
                 label = image[field]
@@ -5887,6 +6132,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                         id_map[sample.id][image.id] = ids
                     else:
                         id_map[sample.id] = ids
+
+                next_frame_idx = _get_next_frame(next_frame_idx, frame_step)
+                if frame_stop is not None and next_frame_idx > frame_stop:
+                    break
 
         # Record any attribute name changes due to label attributes being
         # stored in attributes dicts rather than as dynamic fields
@@ -7480,3 +7729,96 @@ def _get_interpolated_shapes(track_shapes):
         shapes.extend(interpolate(prev_shape, shape))
 
     return shapes
+
+
+def _validate_frame_arg(arg, arg_name):
+    if arg is None:
+        return arg
+
+    if not isinstance(arg, (int, list, dict)):
+        raise ValueError(
+            "Unsupported type %s for argument '%s'. Expected an int, list, or "
+            "dict" % (type(arg), arg_name)
+        )
+
+    if arg_name == "frame_step":
+        if isinstance(arg, int):
+            args = [arg]
+        elif isinstance(arg, dict):
+            args = arg.values()
+        else:
+            args = arg
+
+        for a in args:
+            if a < 1:
+                raise ValueError("'frame_step' must be >= 1; found %d" % a)
+
+    return arg
+
+
+def _render_frame_arg(arg, idx, samples_batch):
+    if isinstance(arg, list):
+        return arg[idx % len(arg)]
+
+    if isinstance(arg, dict):
+        try:
+            return arg[samples_batch.values("filepath")[0]]
+        except:
+            return None
+
+    return arg
+
+
+def _parse_frame_step(data_resp):
+    # Parse frame step from a frame filter like ``{"frame_filter": "step=5"}``
+    filt = data_resp.get("frame_filter", None)
+    if not filt:
+        return None
+
+    steps = [
+        int(s.split("=")[1])
+        for s in filt.split(",")
+        if "step" == s.split("=")[0]
+    ]
+
+    if len(steps) < 1:
+        return None
+
+    return steps[0]
+
+
+def _remap_annotation_frame(frame_value, frame_start, frame_step):
+    if frame_step is None:
+        frame_step = 1
+
+    return int(frame_value * frame_step) + frame_start
+
+
+def _remap_annotation_frames(annos, frame_start, frame_stop, frame_step):
+    if frame_start == 0 and frame_step is None:
+        return annos
+
+    # If a video was subsampled
+    if isinstance(annos, list):
+        return [
+            _remap_annotation_frames(a, frame_start, frame_stop, frame_step)
+            for a in annos
+        ]
+
+    if isinstance(annos, dict):
+        for k, v in annos.items():
+            if k == "frame":
+                annos[k] = _remap_annotation_frame(v, frame_start, frame_step)
+            elif isinstance(v, list) or isinstance(v, dict):
+                annos[k] = _remap_annotation_frames(
+                    v, frame_start, frame_stop, frame_step
+                )
+
+    return annos
+
+
+def _get_next_frame(next_frame_idx, frame_step):
+    if frame_step is None:
+        frame_step = 1
+
+    return next_frame_idx + frame_step

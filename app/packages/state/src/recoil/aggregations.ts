@@ -1,13 +1,13 @@
 import * as foq from "@fiftyone/relay";
-import { VALID_KEYPOINTS } from "@fiftyone/utilities";
+import { Stage, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
-import { GetRecoilValue, selectorFamily } from "recoil";
+import { GetRecoilValue, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import { currentSlice, groupId, groupStatistics } from "./groups";
+import { currentSlices, groupId, groupStatistics } from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -28,6 +28,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     paths: string[];
     root?: boolean;
     mixed?: boolean;
+    customView?: Stage[];
   },
   ResponseFrom<foq.aggregationsQuery>
 >({
@@ -36,7 +37,14 @@ export const aggregationQuery = graphQLSelectorFamily<
   mapResponse: (response) => response,
   query: foq.aggregation,
   variables:
-    ({ extended, modal, paths, root = false, mixed = false }) =>
+    ({
+      extended,
+      modal,
+      paths,
+      root = false,
+      mixed = false,
+      customView = undefined,
+    }) =>
     ({ get }) => {
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const group = get(groupId) || null;
@@ -54,8 +62,8 @@ export const aggregationQuery = graphQLSelectorFamily<
         mixed,
         sampleIds:
           !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
-        slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
-        view: !root ? get(viewAtoms.view) : [],
+        slices: mixed ? null : get(currentSlices(modal)), // when mixed, slice is not needed
+        view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 
       return {
@@ -98,6 +106,21 @@ export const aggregation = selectorFamily({
         aggregations({ ...params, paths: get(schemaAtoms.filterFields(path)) })
       ).filter((data) => data.path === path)[0];
     },
+});
+
+export const dynamicGroupsElementCount = selector<number>({
+  key: "dynamicGroupsElementCount",
+  get: ({ get }) => {
+    const aggregations = get(
+      aggregationQuery({
+        customView: get(viewAtoms.dynamicGroupViewQuery),
+        extended: false,
+        modal: false,
+        paths: [""],
+      })
+    ).aggregations;
+    return aggregations?.at(0)?.count ?? 0;
+  },
 });
 
 export const noneCount = selectorFamily<
@@ -180,7 +203,7 @@ export const stringCountResults = selectorFamily({
       const isSkeletonPoints =
         VALID_KEYPOINTS.includes(
           get(schemaAtoms.field(parent)).embeddedDocType
-        ) && keys[2] === "points";
+        ) && keys.slice(-1)[0] === "points";
 
       if (isSkeletonPoints) {
         const skeleton = get(selectors.skeleton(parent));
@@ -420,17 +443,20 @@ export const cumulativeCounts = selectorFamily<
   get:
     ({ extended, path: key, modal, ftype, embeddedDocType }) =>
     ({ get }) => {
-      return gatherPaths(get, ftype, embeddedDocType).reduce((result, path) => {
-        const data = get(counts({ extended, modal, path: `${path}.${key}` }));
-        for (const value in data) {
-          if (!result[value]) {
-            result[value] = 0;
-          }
+      return [...new Set(gatherPaths(get, ftype, embeddedDocType))].reduce(
+        (result, path) => {
+          const data = get(counts({ extended, modal, path: `${path}.${key}` }));
+          for (const value in data) {
+            if (!result[value]) {
+              result[value] = 0;
+            }
 
-          result[value] += data[value];
-        }
-        return result;
-      }, {});
+            result[value] += data[value];
+          }
+          return result;
+        },
+        {}
+      );
     },
 });
 

@@ -20,13 +20,7 @@ export default function CopyButton({ text = "", ...props }: CopyButtonProps) {
 
   return (
     <Button
-      startIcon={
-        copied ? (
-          <DoneOutlined sx={{ color: (theme) => theme.palette.success.main }} />
-        ) : (
-          <ContentCopy />
-        )
-      }
+      startIcon={copied ? <DoneOutlined /> : <ContentCopy />}
       onClick={() => {
         navigator.clipboard.writeText(text);
         setCopied(true);

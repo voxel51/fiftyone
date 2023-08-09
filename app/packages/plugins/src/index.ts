@@ -1,13 +1,14 @@
+import * as foc from "@fiftyone/components";
+import * as foo from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
-import { Component, createElement } from "react";
+import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import * as mui from "@mui/material";
 import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import * as recoil from "recoil";
-import * as foc from "@fiftyone/components";
-import * as fou from "@fiftyone/utilities";
-import { PluginWrapper, wrapCustomComponent } from "./components";
+import { wrapCustomComponent } from "./components";
 
 declare global {
   interface Window {
@@ -18,6 +19,8 @@ declare global {
     __fos__: any;
     __foc__: any;
     __fou__: any;
+    __foo__: any;
+    __mui__: any;
   }
 }
 
@@ -29,6 +32,8 @@ if (typeof window !== "undefined") {
   window.__fos__ = fos;
   window.__foc__ = foc;
   window.__fou__ = fou;
+  window.__foo__ = foo;
+  window.__mui__ = mui;
 }
 
 function usingRegistry() {
@@ -68,30 +73,57 @@ export function getByType(type: PluginComponentType) {
   return usingRegistry().getByType(type);
 }
 
-type PluginDescription = {
-  scriptPath: string;
+async function fetchPluginsMetadata(): Promise<PluginDefinition[]> {
+  const result = await getFetchFunction()("GET", "/plugins");
+  if (result && result.plugins) {
+    return result.plugins.map((p) => new PluginDefinition(p));
+  }
+  throw new Error("Failed to fetch plugins metadata");
+}
+
+class PluginDefinition {
   name: string;
-};
-type PluginSetting = {
-  [settingName: string]: any;
-  enabled?: boolean;
-};
-type PluginSettings = { [pluginName: string]: PluginSetting };
-type PluginFetchResult = {
-  plugins: PluginDescription[];
-  settings?: PluginSettings;
-};
-async function fetchPluginsMetadata(): Promise<PluginFetchResult> {
-  return getFetchFunction()("GET", "/plugins");
+  version: string;
+  license: string;
+  description: string;
+  fiftyone_compatibility: string;
+  operators: string[];
+  jsBundle: string | null;
+  pyEntry: string | null;
+  jsBundleExists: boolean;
+  jsBundleServerPath: string | null;
+  serverPath: string;
+  hasPy: boolean;
+  hasJS: boolean;
+
+  constructor(json: any) {
+    const serverPathPrefix = fou.getFetchPathPrefix();
+    this.name = json.name;
+    this.version = json.version;
+    this.license = json.license;
+    this.description = json.description;
+    this.fiftyone_compatibility = json.fiftyone_compatibility;
+    this.operators = json.operators;
+    this.jsBundle = json.js_bundle;
+    this.pyEntry = json.py_entry;
+
+    this.jsBundleExists = json.js_bundle_exists;
+    this.jsBundleServerPath = `${serverPathPrefix}${json.js_bundle_server_path}`;
+    this.hasPy = json.has_py;
+    this.hasJS = json.has_js;
+    this.serverPath = `${serverPathPrefix}${json.server_path}`;
+  }
 }
 
 let _settings = null;
 export async function loadPlugins() {
-  const { plugins, settings } = await fetchPluginsMetadata();
-  window.__fo_plugin_settings__ = settings;
-  for (const { scriptPath, name } of plugins) {
-    const pluginSetting = settings && settings[name];
-    if (!pluginSetting || pluginSetting.enabled !== false) {
+  await foo.loadOperators();
+  const plugins = await fetchPluginsMetadata();
+  for (const plugin of plugins) {
+    usingRegistry().registerPluginDefinition(plugin);
+    if (plugin.hasJS) {
+      const name = plugin.name;
+      const scriptPath = plugin.jsBundleServerPath;
       if (usingRegistry().hasScript(name)) {
         console.log(`Plugin "${name}": already loaded`);
         continue;
@@ -158,6 +190,41 @@ export function usePlugin(
 }
 
 /**
+ * Get a plugin definition by name.
+ * @param name The name of the plugin
+ * @returns The plugin definition
+ */
+export function usePluginDefinition(name: string): PluginDefinition {
+  return getPluginDefinition(name);
+}
+
+/**
+ * Get a plugin definition by name.
+ * @param name The name of the plugin
+ * @returns The plugin definition
+ */
+export function getPluginDefinition(name: string): PluginDefinition {
+  const pluginDefinition = usingRegistry().getPluginDefinition(name);
+  if (!pluginDefinition) {
+    throw new Error(`Plugin "${name}" not found`);
+  }
+  return pluginDefinition;
+}
+
+/**
+ * Get the absolute path to a file within a plugin directory.
+ * @param name The name of the plugin
+ * @param path The path to the file within the plugin directory
+ * @returns An absolute path to the file
+ */
+export function getAbsolutePluginPath(name: string, path: string): string {
+  const pluginDefinition = getPluginDefinition(name);
+  if (pluginDefinition) {
+    return `${pluginDefinition.serverPath}/${path}`;
+  }
+}
+
+/**
  * A react hook that returns a list of active plugins.
  *
  * @param type The type of plugin to list
@@ -188,6 +255,7 @@ export enum PluginComponentType {
   Visualizer,
   Plot,
   Panel,
+  Component,
 }
 
 type PluginActivator = (props: any) => boolean;
@@ -240,9 +308,16 @@ function warn(ok, msg) {
 const REQUIRED = ["name", "type", "component"];
 class PluginComponentRegistry {
   private data = new Map<string, PluginComponentRegistration>();
+  private pluginDefinitions = new Map<string, PluginDefinition>();
   private scripts = new Set<string>();
   registerScript(name: string) {
     this.scripts.add(name);
+  }
+  registerPluginDefinition(pluginDefinition: PluginDefinition) {
+    this.pluginDefinitions.set(pluginDefinition.name, pluginDefinition);
+  }
+  getPluginDefinition(name: string) {
+    return this.pluginDefinitions.get(name);
   }
   hasScript(name: string) {
     return this.scripts.has(name);

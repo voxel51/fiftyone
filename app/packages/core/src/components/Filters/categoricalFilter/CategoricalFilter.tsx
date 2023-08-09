@@ -1,8 +1,13 @@
+import { Selector, useTheme } from "@fiftyone/components";
+import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
+import * as fos from "@fiftyone/state";
+import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
-  atomFamily,
   RecoilState,
   RecoilValue,
+  atomFamily,
   selectorFamily,
   useRecoilCallback,
   useRecoilValue,
@@ -10,13 +15,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import { Selector, useTheme } from "@fiftyone/components";
-import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
-import * as fos from "@fiftyone/state";
-import { getFetchFunction, VALID_KEYPOINTS } from "@fiftyone/utilities";
-
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -26,7 +24,7 @@ import Wrapper from "./Wrapper";
 
 const CategoricalFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
-  border: 1px solid var(--joy-palette-divider);
+  border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
@@ -66,12 +64,7 @@ const categoricalSearchResults = selectorFamily<
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
       const mixed = get(groupStatistics(modal)) === "group";
-      const group = get(groupId) || null;
-      let sampleId: string | undefined = undefined;
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
-      if (modal) {
-        sampleId = get(fos.modal)?.sample._id;
-      }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
@@ -90,10 +83,11 @@ const categoricalSearchResults = selectorFamily<
           path,
           search,
           selected,
-          group_id: modal ? group : null,
+          group_id: modal ? get(groupId) || null : null,
           mixed,
-          slice: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
-          sample_id: modal && !group && !mixed ? sampleId : null,
+          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          sample_id:
+            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }
@@ -181,7 +175,6 @@ interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
-  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
   countsAtom: RecoilValue<{
     count: number;
     results: [T["value"], number][];
@@ -189,17 +182,18 @@ interface Props<T extends V = V> {
   modal: boolean;
   path: string;
   named?: boolean;
+  color: string;
 }
 
 const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
-  onlyMatchAtom,
   isMatchingAtom,
   path,
   modal,
   named = true,
+  color,
 }: Props<T>) => {
   let name = path.split(".").slice(-1)[0];
   name = path.startsWith("tags")
@@ -207,7 +201,7 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
-  const color = useRecoilValue(fos.pathColor({ modal, path }));
+
   const selectedCounts = useRef(new Map<V["value"], number>());
   const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
   const useSearch = getUseSearch({ modal, path });
@@ -218,7 +212,7 @@ const CategoricalFilter = <T extends V = V>({
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
-
+  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
 
@@ -272,7 +266,6 @@ const CategoricalFilter = <T extends V = V>({
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
-          onlyMatchAtom={onlyMatchAtom}
           modal={modal}
           totalCount={count}
           selectedCounts={selectedCounts}

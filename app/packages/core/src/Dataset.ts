@@ -42,6 +42,7 @@ export const DatasetNodeQuery = graphql`
       mediaType
       defaultGroupSlice
       groupField
+      groupSlice
       groupMediaTypes {
         name
         mediaType
@@ -57,6 +58,18 @@ export const DatasetNodeQuery = graphql`
           name
         }
         sidebarMode
+        colorScheme {
+          colorPool
+          fields {
+            path
+            fieldColor
+            colorByAttribute
+            valueColors {
+              value
+              color
+            }
+          }
+        }
       }
       sampleFields {
         ftype

@@ -11,11 +11,11 @@ import typing as t
 
 
 from fiftyone.core.collections import SampleCollection
-from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
-from fiftyone.server.filters import SampleFilter
+from fiftyone.core.utils import run_sync_task
 
+from fiftyone.server.filters import SampleFilter
 import fiftyone.server.metadata as fosm
 from fiftyone.server.paginator import Connection, Edge, PageInfo
 from fiftyone.server.scalars import BSON, JSON, BSONArray
@@ -66,29 +66,48 @@ MEDIA_TYPES = {
 async def paginate_samples(
     dataset: str,
     stages: BSONArray,
-    filters: BSON,
+    filters: JSON,
     first: int,
     after: t.Optional[str] = None,
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
+    pagination_data: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    view = fosv.get_view(
+    run = lambda reload: fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
-        count_label_tags=True,
+        pagination_data=pagination_data,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
+        reload=reload,
     )
 
     root_view = fosv.get_view(dataset, stages=stages)
+    try:
+        view = await run_sync_task(run, False)
+    except:
+        view = await run_sync_task(run, True)
+
+    try:
+        root_view = await run_sync_task(
+            lambda: fosv.get_view(dataset, stages=stages, reload=False)
+        )
+    except:
+        root_view = await run_sync_task(
+            lambda: fosv.get_view(dataset, stages=stages, reload=True)
+        )
 
     media = view.media_type
     if media == fom.MIXED:
         media = root_view.group_media_types[root_view.default_group_slice]
 
     if media == fom.GROUP:
-        media = view.group_media_types[view.group_slice]
+        if view.group_slice is not None:
+            media = view.group_media_types[view.group_slice]
+        else:
+            # todo: this is a temp hack
+            media = fom.IMAGE
 
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on
@@ -102,16 +121,17 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = view._pipeline(
-        attach_frames=True,
+        attach_frames=media == fom.VIDEO,
         detach_frames=False,
         manual_group_select=sample_filter
         and sample_filter.group
-        and (sample_filter.group.id and not sample_filter.group.slice),
+        and (sample_filter.group.id and not sample_filter.group.slices),
         support=support,
     )
+
     # Only return the first frame of each video sample for the grid thumbnail
     if media == fom.VIDEO:
-        pipeline.append({"$set": {"frames": {"$slice": ["$frames", 1]}}})
+        pipeline.append({"$addFields": {"frames": {"$slice": ["$frames", 1]}}})
 
     samples = await foo.aggregate(
         foo.get_async_db_conn()[view._dataset._sample_collection_name],

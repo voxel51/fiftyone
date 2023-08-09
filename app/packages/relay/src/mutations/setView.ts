@@ -121,6 +121,18 @@ export default r(graphql`
             paths
           }
           sidebarMode
+          colorScheme {
+            colorPool
+            fields {
+              path
+              fieldColor
+              colorByAttribute
+              valueColors {
+                value
+                color
+              }
+            }
+          }
         }
       }
       view

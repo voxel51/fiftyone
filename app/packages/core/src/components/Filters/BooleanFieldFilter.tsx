@@ -1,17 +1,16 @@
-import React from "react";
-
 import {
+  boolExcludeAtom,
+  boolIsMatchingAtom,
   booleanCountResults,
   booleanSelectedValuesAtom,
-  boolIsMatchingAtom,
-  boolOnlyMatchAtom,
-  boolExcludeAtom,
 } from "@fiftyone/state";
+import React from "react";
 import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 
 const BooleanFieldFilter = ({
   path,
   modal,
+  color,
   ...rest
 }: {
   path: string;
@@ -20,12 +19,12 @@ const BooleanFieldFilter = ({
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
+  color: string;
 }) => {
   return (
     <CategoricalFilter<{ value: boolean | null; count: number }>
       selectedValuesAtom={booleanSelectedValuesAtom({ path, modal })}
       isMatchingAtom={boolIsMatchingAtom({ path, modal })}
-      onlyMatchAtom={boolOnlyMatchAtom({ path, modal })}
       excludeAtom={boolExcludeAtom({ path, modal })}
       countsAtom={booleanCountResults({
         path,
@@ -34,6 +33,7 @@ const BooleanFieldFilter = ({
       })}
       modal={modal}
       path={path}
+      color={color}
       {...rest}
     />
   );

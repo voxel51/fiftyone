@@ -8,10 +8,10 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
+import * as fos from "../";
 import { State, stateSubscription, view, viewStateForm } from "../recoil";
 import { RouterContext } from "../routing";
 import useSendEvent from "./useSendEvent";
-import * as fos from "../";
 
 export const stateProxy = atom<object>({
   key: "stateProxy",
@@ -81,7 +81,8 @@ const useSetView = (
 
               const search = searchParams.toString();
 
-              if (router.history.location.state) {
+              // the router is only loaded in OSS
+              if (router.loaded) {
                 const newRoute = `${router.history.location.pathname}${
                   search.length ? "?" : ""
                 }${search}`;
@@ -98,6 +99,7 @@ const useSetView = (
                     savedViews: savedViews,
                     spaces,
                   },
+                  selectedFieldsStage: null,
                   variables: {
                     view: savedViewSlug ? value : viewResponse,
                     dataset: dataset.name,
@@ -115,6 +117,7 @@ const useSetView = (
                   viewName,
                   dataset,
                 });
+
                 window.history.replaceState(window.history.state, "", newRoute);
               }
               onComplete && onComplete();

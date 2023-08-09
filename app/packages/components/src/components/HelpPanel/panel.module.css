@@ -6,10 +6,10 @@
   padding: 1rem;
   line-height: 1;
   font-weight: bold;
-  color: var(--joy-palette-text-secondary);
-  background-color: var(--joy-palette-background-level3);
-  border: 1px solid var(--joy-palette-primary-softBorder);
-  box-shadow: 0 8px 15px 0 var(--joy-palette-neutral-softBg);
+  color: var(--fo-palette-text-secondary);
+  background-color: var(--fo-palette-background-level3);
+  border: 1px solid var(--fo-palette-primary-softBorder);
+  box-shadow: 0 8px 15px 0 var(--fo-palette-neutral-softBg);
   border-radius: 3px;
   overflow: auto;
   scrollbar-width: none;
@@ -52,7 +52,7 @@
 .lookerPanelHeader {
   font-size: 18px;
   padding-bottom: 0.5rem;
-  border-bottom: 2px solid var(--joy-palette-primary-plainColor);
+  border-bottom: 2px solid var(--fo-palette-primary-plainColor);
 }
 
 .lookerPanelClose {
@@ -70,8 +70,8 @@
 }
 
 .lookerPanelClose:hover {
-  background-color: var(--joy-palette-primary-plainColor);
-  color: var(--joy-palette-text-buttonHighlight);
+  background-color: var(--fo-palette-primary-plainColor);
+  color: var(--fo-palette-text-buttonHighlight);
   transform: translate(0, -1px);
 }
 
@@ -114,15 +114,15 @@
 
 .lookerShortcutValue {
   font-weight: normal;
-  color: var(--joy-palette-primary-plainColor);
+  color: var(--fo-palette-primary-plainColor);
 }
 
 .lookerShortcutTitle {
-  color: var(--joy-palette-text-primary);
+  color: var(--fo-palette-text-primary);
   font-weight: bold;
 }
 
 .lookerShortcutDetail {
   font-weight: normal;
-  color: var(--joy-palette-text-secondary);
+  color: var(--fo-palette-text-secondary);
 }

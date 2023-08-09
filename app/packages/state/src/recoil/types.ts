@@ -1,5 +1,5 @@
-import { StrictField } from "@fiftyone/utilities";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
+import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -17,6 +17,7 @@ export namespace State {
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
+    customizedColors: CustomizeColor[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
@@ -107,6 +108,11 @@ export namespace State {
     paths: string[];
   }
 
+  export interface DynamicGroupParameters {
+    groupBy: string;
+    orderBy?: string;
+  }
+
   export interface DatasetAppConfig {
     gridMediaField?: string;
     modalMediaField?: string;
@@ -114,6 +120,7 @@ export namespace State {
     plugins?: PluginConfig;
     sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
+    colorScheme?: ColorScheme;
   }
 
   /**
@@ -147,7 +154,8 @@ export namespace State {
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
-    viewCls: string;
+    viewCls: null;
+    viewFields: StrictField[]; // sample && frame fields in the current view
   }
 
   /**
@@ -207,5 +215,25 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
+    colorScheme?: ColorScheme;
   }
+}
+
+export interface CustomizeColor {
+  path: string;
+  fieldColor?: string;
+  colorByAttribute?: string; // must be string field, int field, or boolean field
+  valueColors?: {
+    value: string;
+    color: string;
+  }[];
+}
+
+export interface ColorScheme {
+  colorPool: string[];
+  fields: CustomizeColor[];
+}
+
+export interface ColorSchemeSetting extends ColorScheme {
+  saveToApp?: boolean;
 }

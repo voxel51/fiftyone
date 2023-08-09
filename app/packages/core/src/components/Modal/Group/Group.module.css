@@ -1,0 +1,51 @@
+.groupContainer {
+  position: relative;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.mainGroup {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex-grow: 1;
+}
+
+.group {
+  position: relative;
+  flex-direction: column;
+  justify-content: center;
+  flex-grow: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.groupSample {
+  position: relative;
+  flex-grow: 1;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  border-bottom: 3px solid var(--fo-palette-primary-plainBorder);
+}
+
+.groupSampleActive {
+  border-bottom: 3px solid var(--fo-palette-primary-plainColor);
+}
+
+.lookerPanelOverlayContainer {
+  display: none;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  z-index: 10001;
+}
+
+.groupMediaVisibilityIcon {
+  transform: rotate(90deg);
+}

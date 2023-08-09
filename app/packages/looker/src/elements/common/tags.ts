@@ -1,19 +1,20 @@
 /**
  * Copyright 2017-2023, Voxel51, Inc.
  */
-
 import {
   BOOLEAN_FIELD,
   CLASSIFICATION,
   CLASSIFICATIONS,
   DATE_FIELD,
   DATE_TIME_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   Field,
   FLOAT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
+  getColor,
   INT_FIELD,
   LABELS_PATH,
   LIST_FIELD,
@@ -23,26 +24,28 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
-
-import { getColor } from "@fiftyone/utilities";
+import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
-import { BaseState, NONFINITE, Sample } from "../../state";
+import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
-
-import { prettify } from "./util";
-
 import { lookerTags } from "./tags.module.css";
+import {
+  getColorFromOptions,
+  getColorFromOptionsPrimitives,
+  prettify,
+} from "./util";
 
 interface TagData {
   color: string;
   title: string;
+  path?: string;
   value: string;
 }
 
-const LABEL_LISTS = [withPath(LABELS_PATH, CLASSIFICATIONS)];
-
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
+  private customizedColors: CustomizeColor[] = [];
+  private colorPool: string[];
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
@@ -59,8 +62,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
   renderSelf(
     {
-      config: { fieldSchema },
-      options: { activePaths, coloring, timeZone },
+      config: { fieldSchema, ...r },
+      options: { activePaths, coloring, timeZone, customizeColorSetting },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -73,7 +76,9 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
-        this.colorByValue === (coloring.by === "label") &&
+        this.colorByValue === (coloring.by === "value") &&
+        arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
+        compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -82,165 +87,172 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const elements: TagData[] = [];
 
-    const PRIMITIVE_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
+    const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
         const v = value ? "True" : "False";
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [INT_FIELD]: (path, value: number) => {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [DATE_FIELD]: (path, value: { datetime: number }) => {
         const v = formatDate(value.datetime);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value.datetime : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [DATE_TIME_FIELD]: (path, value: { datetime: number }) => {
         const v = formatDateTime(value.datetime, timeZone);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value.datetime : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [FLOAT_FIELD]: (path: string, value: number) => {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [FRAME_NUMBER_FIELD]: (path, value: number) => {
         const v = prettyNumber(value);
 
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [FRAME_SUPPORT_FIELD]: (path, value: [number, number]) => {
         const v = `[${value.join(", ")}]`;
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? v : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value: v,
+            customizeColorSetting,
+          }),
         };
       },
       [OBJECT_ID_FIELD]: (path, value: string) => {
         return {
+          path,
           value,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
       [STRING_FIELD]: (path, value: string) => {
         return {
+          path,
           value,
           title: `${path}: ${value}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptionsPrimitives({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+          }),
         };
       },
     };
 
-    const LABEL_RENDERERS: {
-      [key: string]: (
-        path: string,
-        value: unknown
-      ) => { color: string; value: string; title: string };
-    } = {
-      [withPath(LABELS_PATH, CLASSIFICATION)]: (
+    const CLASSIFICATION_RENDERER = (path, param: Classification) => {
+      if (!param.label) {
+        return null;
+      }
+      return {
         path,
-        { label }: Classification
-      ) => ({
-        value: label,
-        title: `${path}: ${label}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? label : path
-        ),
-      }),
-      [withPath(LABELS_PATH, CLASSIFICATIONS)]: (
-        path,
-        { label }: Classification
-      ) => ({
-        value: label,
-        title: `${path}: ${label}`,
-        color: getColor(
-          coloring.pool,
-          coloring.seed,
-          coloring.by === "label" ? label : path
-        ),
-      }),
-      [withPath(LABELS_PATH, REGRESSION)]: (path, { value }: Regression) => {
-        const v = prettyNumber(value);
+        value: param.label,
+        title: `${path}: ${param.label}`,
+        color: getColorFromOptions({
+          coloring,
+          path,
+          param,
+          customizeColorSetting,
+          labelDefault: true,
+        }),
+      };
+    };
+
+    const LABEL_RENDERERS = {
+      [withPath(LABELS_PATH, CLASSIFICATION)]: CLASSIFICATION_RENDERER,
+      [withPath(LABELS_PATH, CLASSIFICATIONS)]: CLASSIFICATION_RENDERER,
+      [withPath(LABELS_PATH, REGRESSION)]: (path, param: Regression) => {
+        const v = prettyNumber(param.value);
         return {
+          path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColor(
-            coloring.pool,
-            coloring.seed,
-            coloring.by === "label" ? value : path
-          ),
+          color: getColorFromOptions({
+            coloring,
+            path,
+            param,
+            customizeColorSetting,
+            labelDefault: false,
+          }),
         };
       },
     };
@@ -250,39 +262,46 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
+            const v = coloring.by === "value" ? tag : "tags";
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, tag),
+              color: getColorFromOptions({
+                coloring,
+                path,
+                param: tag,
+                customizeColorSetting,
+                labelDefault: false,
+              }),
               title: tag,
               value: tag,
+              path: v,
             });
           });
         }
       } else if (path === "_label_tags") {
-        Object.entries(sample._label_tags).forEach(([tag, count]) => {
+        Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
+          const v = coloring.by === "value" ? tag : path;
           elements.push({
-            color: getColor(coloring.pool, coloring.seed, path),
+            color: getColor(coloring.pool, coloring.seed, v),
             title: value,
-            value,
+            value: value,
+            path: v,
           });
         });
       } else {
-        const [field, value, list] = getFieldAndValue(
-          sample,
-          fieldSchema,
-          path
-        );
+        const [field, value] = getFieldAndValue(sample, fieldSchema, path);
 
         if (field === null) {
           continue;
         }
 
-        const pushList = (renderer, value) => {
+        const pushList = (renderer, value: unknown[]) => {
           let count = 0;
           let rest = 0;
+
           for (
             let index = 0;
-            index < (value as Array<unknown>).length;
+            index < (value as Array<unknown>)?.length;
             index++
           ) {
             const result = renderer(path, value[index]);
@@ -304,24 +323,18 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         };
 
         if (value === undefined) continue;
-
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
-          if (path.startsWith("frames.")) continue;
-          const classifications = LABEL_LISTS.includes(field.embeddedDocType);
+          Array.isArray(value)
+            ? pushList(LABEL_RENDERERS[field.embeddedDocType], value)
+            : elements.push(
+                LABEL_RENDERERS[field.embeddedDocType](path, value)
+              );
 
-          if (classifications) {
-            pushList(
-              LABEL_RENDERERS[field.embeddedDocType],
-              value.classifications
-            );
-          } else {
-            elements.push(LABEL_RENDERERS[field.embeddedDocType](path, value));
-          }
           continue;
         }
 
         if (field && PRIMITIVE_RENDERERS[field.ftype]) {
-          list
+          Array.isArray(value)
             ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
             : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
           continue;
@@ -338,21 +351,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
-    this.colorByValue = coloring.by === "label";
+    this.colorByValue = coloring.by === "value";
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
+    this.customizedColors = customizeColorSetting;
+    this.colorPool = coloring.pool as string[];
 
-    elements.forEach(({ value, color, title }) => {
-      const div = document.createElement("div");
-      const child = prettify(value);
-      child instanceof HTMLElement
-        ? div.appendChild(child)
-        : (div.innerHTML = child);
-      div.title = title;
-      div.style.backgroundColor = color;
-      this.element.appendChild(div);
-    });
+    elements
+      .filter((e) => Boolean(e))
+      .forEach(({ path, value, color, title }) => {
+        const div = document.createElement("div");
+        const child = prettify(value);
+        child instanceof HTMLElement
+          ? div.appendChild(child)
+          : (div.innerHTML = child);
+        div.title = title;
+        div.style.backgroundColor = color;
+        div.setAttribute("data-cy", `tag-${path}`);
+        this.element.appendChild(div);
+      });
 
     return this.element;
   }
@@ -385,9 +403,13 @@ const prettyNumber = (value: number | NONFINITE): string => {
   return Number(string).toLocaleString();
 };
 
-const unwind = (name: string, value: unknown) => {
-  if (Array.isArray(value)) {
-    return value.map((val) => unwind(name, val));
+const unwind = (
+  name: string,
+  value: RegularLabel[] | RegularLabel,
+  depth = 0
+) => {
+  if (Array.isArray(value) && depth < 2) {
+    return value.map((val) => unwind(name, val), depth + 1);
   }
 
   const v = value[name];
@@ -404,25 +426,104 @@ const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
-): [Field | null, unknown, boolean] => {
-  let value: unknown = sample;
+): [Field | null, RegularLabel[]] => {
+  let values: Array<RegularLabel> | undefined = [
+    sample as unknown as RegularLabel,
+  ];
   let field: Field = null;
-  let list = false;
 
-  for (const key of path.split(".")) {
-    field = schema[key];
+  if (
+    path.startsWith("frames.") &&
+    schema?.frames?.embeddedDocType === "fiftyone.core.frames.FrameSample"
+  ) {
+    values = values[0]?.frames;
+    schema = schema.frames.fields;
+    path = path.split(".").slice(1).join(".");
+  }
 
-    if (field && field.embeddedDocType === "fiftyone.core.frames.FrameSample") {
-      return [null, null, false];
+  for (const key of path.split(".").slice(0, 2)) {
+    if (!schema?.[key]) {
+      return [null, null];
     }
 
-    if (![undefined, null].includes(value) && field) {
-      value = unwind(field.dbField, value);
-      list = list || field.ftype === LIST_FIELD;
+    field = schema[key];
+
+    if (
+      field &&
+      field.ftype === LIST_FIELD &&
+      field.subfield === EMBEDDED_DOCUMENT_FIELD
+    ) {
+      return [null, null];
+    }
+
+    if (values.length && field) {
+      values = unwind(field.dbField, values as RegularLabel[]).filter(
+        (v) => v !== undefined && v !== null
+      );
+    }
+
+    if (field.embeddedDocType === withPath(LABELS_PATH, CLASSIFICATIONS)) {
+      values = values.map((value) => value?.["classifications"] || []).flat();
+      break;
     }
 
     schema = field ? field.fields : null;
   }
 
-  return [field, value, list];
+  return [field, values];
 };
+
+const compareObjectArrays = (arr1, arr2) => {
+  // Check if the arrays are the same length
+  if (arr1?.length !== arr2?.length) {
+    return false;
+  }
+
+  // Create a copy of each array and sort them
+  const sortedArr1 = arr1.slice().sort(sortObjectArrays);
+  const sortedArr2 = arr2.slice().sort(sortObjectArrays);
+
+  // Compare each object in the sorted arrays
+  for (let i = 0; i < sortedArr1.length; i++) {
+    const obj1 = sortedArr1[i];
+    const obj2 = sortedArr2[i];
+
+    // Check if the objects have the same keys
+    const obj1Keys = Object.keys(obj1).sort();
+    const obj2Keys = Object.keys(obj2).sort();
+    if (JSON.stringify(obj1Keys) !== JSON.stringify(obj2Keys)) {
+      return false;
+    }
+
+    // Check if the objects have the same values for each key
+    for (let j = 0; j < obj1Keys.length; j++) {
+      const key = obj1Keys[j];
+      if (JSON.stringify(obj1[key]) !== JSON.stringify(obj2[key])) {
+        return false;
+      }
+    }
+  }
+
+  // If all objects pass the comparison checks, return true
+  return true;
+};
+
+// Helper function to sort arrays of objects based on their key-value pairs
+function sortObjectArrays(a, b) {
+  const keysA = Object.keys(a).sort();
+  const keysB = Object.keys(b).sort();
+  for (let i = 0; i < keysA.length; i++) {
+    const key = keysA[i];
+    const comparison = key?.localeCompare(keysB[i]);
+    if (comparison !== 0) {
+      return comparison;
+    }
+    const valueComparison = JSON.stringify(a[key])?.localeCompare(
+      JSON.stringify(b[key])
+    );
+    if (valueComparison !== 0) {
+      return valueComparison;
+    }
+  }
+  return 0;
+}

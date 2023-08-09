@@ -1,6 +1,5 @@
-import { Apps } from "@mui/icons-material";
 import Color from "color";
-import React, { Suspense } from "react";
+import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 
@@ -12,7 +11,8 @@ import GroupSliceSelector from "./GroupSliceSelector";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup } from "@fiftyone/state";
+import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
+import { Apps } from "@mui/icons-material";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
 
 export const SamplesHeader = styled.div`
@@ -62,8 +62,9 @@ const Count = () => {
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-  const group = useRecoilValue(isGroup);
-  if (group) {
+  const isGroup = useRecoilValue(isGroupAtom);
+
+  if (isGroup) {
     element = {
       plural: "groups",
       singular: "group",
@@ -71,10 +72,10 @@ const Count = () => {
   }
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}
         {total === 1 ? element.singular : element.plural}
       </div>
     </RightDiv>
@@ -82,7 +83,7 @@ const Count = () => {
 };
 
 const GroupsCount = () => {
-  let element = useRecoilValue(fos.elementNames);
+  const element = useRecoilValue(fos.elementNames);
   const total = useRecoilValue(
     fos.count({ path: "_", extended: false, modal: false })
   );
@@ -92,13 +93,13 @@ const GroupsCount = () => {
   );
 
   return (
-    <RightDiv>
+    <RightDiv data-cy="entry-counts">
       <div>
         <PathEntryCounts modal={false} path={"_"} />
-        &nbsp;
+        {` `}
         {total === 1 ? "group" : "groups"}
-        &nbsp; (<PathEntryCounts modal={false} path={""} />
-        &nbsp;
+        {` `}(<PathEntryCounts modal={false} path={""} />
+        {` `}
         {elementTotal === 1 ? element.singular : element.plural})
       </div>
     </RightDiv>
@@ -109,8 +110,14 @@ const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
   const theme = useTheme();
-  const group = useRecoilValue(isGroup);
+  const isGroup = useRecoilValue(isGroupAtom);
+  const groupSlices = useRecoilValue(fos.groupSlices);
   const groupStats = useRecoilValue(groupStatistics(false));
+
+  const shouldShowSliceSelector = useMemo(
+    () => isGroup && groupSlices.length > 1,
+    [isGroup, groupSlices]
+  );
 
   return (
     <SamplesHeader>
@@ -125,7 +132,7 @@ const ImageContainerHeader = () => {
         >
           {groupStats === "group" ? <GroupsCount /> : <Count />}
         </Suspense>
-        {group && (
+        {shouldShowSliceSelector && (
           <RightDiv>
             <GroupSliceSelector />
           </RightDiv>

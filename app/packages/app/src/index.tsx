@@ -4,17 +4,18 @@ import { usePlugins } from "@fiftyone/plugins";
 import {
   BeforeScreenshotContext,
   EventsContext,
-  getDatasetName,
-  modal,
-  screenshotCallbacks,
   State,
-  stateSubscription,
-  useReset,
-  useClearModal,
-  useScreenshot,
-  useRouter,
-  useRefresh,
+  activeColorField,
+  getDatasetName,
   getSavedViewName,
+  isModalActive,
+  screenshotCallbacks,
+  stateSubscription,
+  useClearModal,
+  useRefresh,
+  useReset,
+  useRouter,
+  useScreenshot,
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import React, { useEffect, useRef, useState } from "react";
@@ -57,14 +58,18 @@ const App: React.FC = ({}) => {
     new URLSearchParams(window.location.search).get("context")
   );
 
-  const isModalActive = Boolean(useRecoilValue(modal));
+  const isModalOpen = useRecoilValue(isModalActive);
+  const isCustomizeColorModalActive = Boolean(useRecoilValue(activeColorField));
   const handleError = useErrorHandler();
 
   useEffect(() => {
+    document.getElementById("modal")?.classList.toggle("modalon", isModalOpen);
+  }, [isModalOpen]);
+  useEffect(() => {
     document
-      .getElementById("modal")
-      ?.classList.toggle("modalon", isModalActive);
-  }, [isModalActive]);
+      .getElementById("colorModal")
+      ?.classList.toggle("modalon", isCustomizeColorModalActive);
+  }, [isCustomizeColorModalActive]);
 
   useEffect(() => {
     const controller = new AbortController();

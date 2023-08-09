@@ -181,8 +181,9 @@ class ClipsView(fov.DatasetView):
             )
 
     def _to_source_ids(self, label_field, ids, label_ids):
-        label_type = self._source_collection._get_label_field_type(label_field)
-        is_list_field = issubclass(label_type, fol._LABEL_LIST_FIELDS)
+        _, is_list_field = self._source_collection._get_label_field_root(
+            label_field
+        )
 
         if not is_list_field:
             return ids, label_ids
@@ -284,7 +285,7 @@ class ClipsView(fov.DatasetView):
         super().keep_fields()
 
     def reload(self):
-        """Reloads this view from the source collection in the database.
+        """Reloads the view.
 
         Note that :class:`ClipView` instances are not singletons, so any
         in-memory clips extracted from this view will not be updated by calling
@@ -298,10 +299,11 @@ class ClipsView(fov.DatasetView):
         # This assumes that calling `load_view()` when the current clips
         # dataset has been deleted will cause a new one to be generated
         #
-
         self._clips_dataset.delete()
         _view = self._clips_stage.load_view(self._source_collection)
         self._clips_dataset = _view._clips_dataset
+
+        super().reload()
 
     def _sync_source_sample(self, sample):
         if not self._classification_field:
@@ -756,12 +758,12 @@ def _write_support_clips(
 
     if is_list:
         pipeline.extend(
-            [{"$unwind": "$support"}, {"$set": {"_rand": {"$rand": {}}}}]
+            [{"$unwind": "$support"}, {"$addFields": {"_rand": {"$rand": {}}}}]
         )
 
     pipeline.extend(
         [
-            {"$set": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": {"_dataset_id": dataset._doc.id}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -773,6 +775,7 @@ def _write_temporal_detection_clips(
     dataset, src_collection, field, other_fields=None
 ):
     src_dataset = src_collection._dataset
+    root, is_list_field = src_collection._get_label_field_root(field)
     label_type = src_collection._get_label_field_type(field)
 
     supported_types = (fol.TemporalDetection, fol.TemporalDetections)
@@ -803,25 +806,24 @@ def _write_temporal_detection_clips(
         {"$match": {"$expr": {"$gt": ["$" + field, None]}}},
     ]
 
-    if label_type is fol.TemporalDetections:
-        list_path = field + "." + label_type._LABEL_LIST_FIELD
-        pipeline.extend(
-            [{"$unwind": "$" + list_path}, {"$set": {field: "$" + list_path}}]
-        )
+    if is_list_field:
+        pipeline.append({"$unwind": "$" + root})
 
-    support_path = field + ".support"
+    if label_type is fol.TemporalDetections:
+        pipeline.append({"$addFields": {field: "$" + root}})
+
     pipeline.extend(
         [
             {
-                "$set": {
+                "$addFields": {
                     "_id": "$" + field + "._id",
-                    "support": "$" + support_path,
+                    "support": "$" + field + ".support",
                     field + "._cls": "Classification",
                     "_rand": {"$rand": {}},
                     "_dataset_id": dataset._doc.id,
                 }
             },
-            {"$unset": support_path},
+            {"$project": {field + ".support": False}},
             {"$out": dataset._sample_collection_name},
         ]
     )
@@ -875,7 +877,7 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                 {"$project": project},
                 {"$unwind": "$" + _tmp_field},
                 {
-                    "$set": {
+                    "$addFields": {
                         "support": {"$slice": ["$" + _tmp_field, 2, 2]},
                         field: {
                             "_cls": "DynamicEmbeddedDocument",
@@ -886,13 +888,14 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
                         "_dataset_id": dataset._doc.id,
                     },
                 },
-                {"$unset": _tmp_field},
+                {"$project": {_tmp_field: False}},
                 {"$out": dataset._sample_collection_name},
             ]
         )
     finally:
-        cleanup_op = {"$unset": {_tmp_field: ""}}
-        src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_dataset._sample_collection.update_many(
+            {}, {"$unset": {_tmp_field: ""}}
+        )
 
 
 def _write_expr_clips(
@@ -954,7 +957,7 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
                 {"$project": project},
                 {"$unwind": "$support"},
                 {
-                    "$set": {
+                    "$addFields": {
                         "_rand": {"$rand": {}},
                         "_dataset_id": dataset._doc.id,
                     }
@@ -963,28 +966,22 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
             ]
         )
     finally:
-        cleanup_op = {"$unset": {_tmp_field: ""}}
-        src_dataset._sample_collection.update_many({}, cleanup_op)
+        src_dataset._sample_collection.update_many(
+            {}, {"$unset": {_tmp_field: ""}}
+        )
 
 
 def _get_trajectories(sample_collection, frame_field):
     path = sample_collection._FRAMES_PREFIX + frame_field
-    label_type = sample_collection._get_label_field_type(path)
+    root, is_list_field = sample_collection._get_label_field_root(path)
+    root, _ = sample_collection._handle_frame_field(root)
 
-    if not issubclass(label_type, fol._LABEL_LIST_FIELDS):
-        raise ValueError(
-            "Frame field '%s' has type %s, but trajectories can only be "
-            "extracted for label list fields %s"
-            % (
-                frame_field,
-                label_type,
-                fol._LABEL_LIST_FIELDS,
-            )
-        )
+    if not is_list_field:
+        raise ValueError("Trajectories can only be extracted for label lists")
 
     fn_expr = F("frames").map(F("frame_number"))
     uuid_expr = F("frames").map(
-        F(frame_field + "." + label_type._LABEL_LIST_FIELD).map(
+        F(root).map(
             F("label").concat(
                 ".", (F("index") != None).if_else(F("index").to_string(), "")
             )

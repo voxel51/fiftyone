@@ -14,7 +14,6 @@ from uuid import uuid4
 import warnings
 import webbrowser
 
-import ndjson
 import numpy as np
 
 import eta.core.image as etai
@@ -688,7 +687,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     def _setup_project(
         self, project_name, dataset, label_schema, classes_as_attrs
     ):
-        project = self._client.create_project(name=project_name)
+        project = self._client.create_project(
+            name=project_name, queue_mode=lb.QueueMode.Dataset
+        )
         project.datasets.connect(dataset)
 
         self._setup_editor(project, label_schema, classes_as_attrs)
@@ -931,7 +932,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
-        return ndjson.loads(response.text)
+        return etas.load_ndjson(response.text)
 
     def _download_project_labels(self, project_id=None, project=None):
         if project is None:

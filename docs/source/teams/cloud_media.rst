@@ -561,6 +561,7 @@ _____________
         rel_dir=None,
         media_field="filepath",
         update_filepaths=False,
+        cache=False,
         overwrite=False,
         skip_failures=False,
         progress=False,
@@ -582,6 +583,12 @@ _____________
             media_field ("filepath"): the field containing the media paths
             update_filepaths (False): whether to update the ``media_field`` of each
                 sample in the collection to its remote path
+            cache (False): whether to store the uploaded media in your local media
+                cache. The supported values are:
+
+                -   ``False`` (default): do not cache the media
+                -   ``True`` or ``"copy"``: copy the media into your local cache
+                -   ``"move"``: move the media into your local cache
             overwrite (False): whether to overwrite (True) or skip (False) existing
                 remote files
             skip_failures (False): whether to gracefully continue without raising

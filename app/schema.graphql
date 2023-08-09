@@ -1,4 +1,5 @@
 input Aggregate {
+  count: Count = null
   countValues: CountValues = null
   histogramValues: HistogramValues = null
 }
@@ -27,13 +28,14 @@ input AggregationForm {
   mixed: Boolean!
   paths: [String!]!
   sampleIds: [ID!]!
-  slice: String
+  slices: [String!]
   view: BSONArray!
   viewName: String = null
 }
 
 union AggregationResponses =
-    BoolCountValuesResponse
+    CountResponse
+  | BoolCountValuesResponse
   | IntCountValuesResponse
   | StrCountValuesResponse
   | DatetimeHistogramValuesResponse
@@ -95,19 +97,49 @@ type BrainRunConfig implements RunConfig {
   method: String
   patchesField: String
   supportsPrompts: Boolean
-  type: String
+  type: BrainRunType
   maxK: Int
   supportsLeastSimilarity: Boolean
+}
+
+enum BrainRunType {
+  similarity
+  visualization
 }
 
 enum ColorBy {
   field
   instance
-  label
+  value
+}
+
+type ColorScheme {
+  colorPool: [String!]
+  fields: [CustomizeColor!]
+}
+
+input ColorSchemeInput {
+  colorPool: [String!] = null
+  fields: JSONArray = null
+}
+
+input Count {
+  field: String!
+}
+
+type CountResponse {
+  count: Int!
 }
 
 input CountValues {
   field: String!
+}
+
+type CustomizeColor {
+  path: String!
+  fieldColor: String
+  colorByAttribute: String
+  valueColors: [LabelSetting!]
 }
 
 type DataAggregation implements Aggregation {
@@ -153,6 +185,7 @@ type DatasetAppConfig {
   modalMediaField: String
   gridMediaField: String
   spaces: JSON
+  colorScheme: ColorScheme
 }
 
 type DatasetStrConnection {
@@ -225,7 +258,7 @@ type Group {
 
 input GroupElementFilter {
   id: String = null
-  slice: String = null
+  slices: [String!] = null
 }
 
 input HistogramValues {
@@ -264,9 +297,16 @@ type IntValueCount {
 
 scalar JSON
 
+scalar JSONArray
+
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
+}
+
+type LabelSetting {
+  value: String!
+  color: String!
 }
 
 enum MediaType {
@@ -345,6 +385,15 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
+  setColorScheme(
+    subscription: String!
+    session: String
+    dataset: String!
+    stages: BSONArray!
+    colorScheme: ColorSchemeInput!
+    saveToApp: Boolean!
+  ): Boolean!
+  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
 type NamedKeypointSkeleton {
@@ -392,11 +441,21 @@ type Query {
     after: String = null
     filter: SampleFilter = null
   ): SampleItemStrConnection!
-  sample(dataset: String!, view: BSONArray!, filter: SampleFilter!): SampleItem
+  sample(
+    dataset: String!
+    view: BSONArray!
+    filter: SampleFilter!
+    index: Int = null
+    filters: JSON = null
+  ): SampleItem
   teamsSubmission: Boolean!
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]
+  schemaForViewStages(
+    datasetName: String!
+    viewStages: BSONArray!
+  ): SchemaResult
 }
 
 type RootAggregation implements Aggregation {
@@ -424,6 +483,7 @@ interface Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!
+  aspectRatio: Float!
 }
 
 type SampleField {
@@ -434,6 +494,11 @@ type SampleField {
   dbField: String
   description: String
   info: JSON
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField]!
+  frameFieldSchema: [SampleField]!
 }
 
 input SampleFilter {
@@ -462,6 +527,8 @@ type SampleItemStrPageInfo {
 }
 
 type SavedView {
+  id: String
+  datasetId: String
   name: String
   description: String
   color: String
@@ -470,8 +537,6 @@ type SavedView {
   createdAt: datetime
   lastModifiedAt: datetime
   lastLoadedAt: datetime
-  id: String
-  datasetId: String
   viewName: String
   stageDicts: BSONArray
 }

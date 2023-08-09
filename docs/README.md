@@ -28,6 +28,7 @@ A couple noteable flags are supported:
     changed
 -   `-s` will update static files only, i.e. `custom.css` and `custom.js`
     mentioned below
+-   `-f` will perform a fast build, i.e. zoo and plugin docs will be skipped
 
 ## Contributing
 

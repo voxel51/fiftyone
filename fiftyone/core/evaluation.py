@@ -6,6 +6,7 @@ Evaluation runs framework.
 |
 """
 from fiftyone.core.runs import Run, RunInfo, RunConfig, RunResults
+from fiftyone.core.odm import patch_evaluations
 
 
 class EvaluationInfo(RunInfo):
@@ -58,6 +59,10 @@ class EvaluationMethod(Run):
     @classmethod
     def _results_cache_field(cls):
         return "_evaluation_cache"
+
+    @classmethod
+    def _patch_function(cls):
+        return patch_evaluations
 
 
 class EvaluationResults(RunResults):

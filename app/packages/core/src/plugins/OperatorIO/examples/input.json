@@ -1,0 +1,867 @@
+{
+    "basic": {
+        "type": {
+            "name": "Object",
+            "properties": {
+                "autocomplete": {
+                    "type": { "name": "String" },
+                    "view": {
+                        "label": "Autocomplete Field",
+                        "name": "AutocompleteView",
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "First",
+                                "value": "1"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Second",
+                                "value": "2"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Third",
+                                "value": "3"
+                            }
+                        ]
+                    }
+                },
+                "checkbox": {
+                    "type": { "name": "Boolean" },
+                    "view": { "label": "Checkbox field" }
+                },
+                "code": {
+                    "type": { "name": "String" },
+                    "view": {
+                        "label": "Code field",
+                        "name": "CodeView",
+                        "language": "javascript"
+                    }
+                },
+                "color": {
+                    "type": { "name": "String" },
+                    "view": { "label": "Color field", "name": "ColorView" }
+                },
+                "dropdown": {
+                    "type": { "name": "Number" },
+                    "view": {
+                        "label": "Dropdown Field",
+                        "name": "Dropdown",
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "First",
+                                "value": "1"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Second",
+                                "value": "2"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Third",
+                                "value": "3"
+                            }
+                        ]
+                    }
+                },
+                "number": {
+                    "type": { "name": "Number" },
+                    "view": { "label": "Number Field" }
+                },
+                "string": {
+                    "type": { "name": "String" },
+                    "view": { "label": "String Field" }
+                },
+                "file": {
+                    "type": { "name": "String" },
+                    "view": { "label": "File Field", "name": "FileView" }
+                },
+                "list": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "String" }
+                    },
+                    "view": { "label": "List Field" }
+                },
+                "map": {
+                    "type": {
+                        "name": "Map",
+                        "key_type": { "name": "String" },
+                        "value_type": { "name": "String" }
+                    },
+                    "view": {
+                        "name": "MapView",
+                        "label": "Map Field",
+                        "key": { "label": "Key" },
+                        "value": { "label": "Value" }
+                    }
+                },
+                "object": {
+                    "type": {
+                        "name": "Object",
+                        "properties": {
+                            "nestedString": {
+                                "type": { "name": "String" },
+                                "view": { "label": "Nested String Field" }
+                            }
+                        }
+                    },
+                    "view": { "label": "Object Field" }
+                },
+                "oneof": {
+                    "type": {
+                        "name": "OneOf",
+                        "types": [{ "name": "String" }, { "name": "Number" }]
+                    },
+                    "view": {
+                        "name": "OneOfView",
+                        "label": "Number or String",
+                        "oneof": [
+                            { "name": "View", "label": "String Field" },
+                            { "name": "View", "label": "Number Field" }
+                        ]
+                    }
+                },
+                "radio": {
+                    "type": {
+                        "name": "Enum",
+                        "values": ["first", "second", "third"]
+                    },
+                    "view": { "label": "Radio Field", "name": "RadioGroup" }
+                },
+                "slider": {
+                    "type": { "name": "Number" },
+                    "view": { "name": "SliderView", "label": "Slider Field" }
+                },
+                "switch": {
+                    "type": { "name": "Boolean" },
+                    "view": { "name": "SwitchView", "label": "Switch Field" }
+                },
+                "tuple": {
+                    "type": {
+                        "name": "Tuple",
+                        "items": [{ "name": "String" }, { "name": "Number" }]
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "TupleView",
+                        "label": "Tuple Field",
+                        "items": [
+                            { "label": "String Field" },
+                            { "label": "Number Field" }
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "simpleSchema": {
+        "type": { "name": "Object", "properties": {} },
+        "default": {
+            "string": "string",
+            "number": 1,
+            "boolean": true,
+            "object": {
+                "stringProp": "string",
+                "numberProp": 1,
+                "booleanProp": true
+            },
+            "arrayOfStrings": ["string"],
+            "arrayOfNumbers": [1],
+            "arrayOfBoolean": [true],
+            "arrayOfObject": [
+                {
+                    "stringProp": "string",
+                    "numberProp": 1,
+                    "booleanProp": true
+                }
+            ]
+        },
+        "view": { "name": "InferredView", "label": "Default value based form" }
+    },
+    "errors": {
+        "media_field": [
+            { "reason": "Field is required" },
+            { "reason": "Field must be a string" }
+        ],
+        "pets": [{ "reason": "Field is required" }],
+        "jsEditor": [{ "reason": "Field is required" }],
+        "cars": [{ "reason": "Field must be non-empty" }],
+        "objectArray": [{ "reason": "Field must be non-empty" }],
+        "launch_editor": [{ "reason": "Field is required" }],
+        "color": [{ "reason": "Choose a different color" }]
+    },
+    "schema": {
+        "type": {
+            "name": "Object",
+            "properties": {
+                "switch": {
+                    "type": { "name": "Boolean" },
+                    "view": {
+                        "name": "SwitchView"
+                    }
+                },
+                "slider": {
+                    "type": { "name": "Number" },
+                    "view": {
+                        "name": "SliderView"
+                    }
+                },
+                "errors": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "Object", "properties": {} }
+                    },
+                    "default": [
+                        {
+                            "reason": "This is the first error",
+                            "details": "Some error details\nLine 2"
+                        },
+                        {
+                            "reason": "This is the second error",
+                            "details": "Some error details"
+                        },
+                        {
+                            "reason": "This is the third error",
+                            "details": "Some error details"
+                        }
+                    ],
+                    "view": {
+                        "name": "ErrorView",
+                        "detailed": true,
+                        "popout": true
+                    }
+                },
+                "cars": {
+                    "type": {
+                        "name": "Map",
+                        "key_type": { "name": "String" },
+                        "value_type": { "name": "String" }
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "MapView",
+                        "label": "Cars",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "read_only": null,
+                        "key": {
+                            "name": "View",
+                            "label": "Id",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null
+                        },
+                        "value": {
+                            "name": "View",
+                            "label": "Make and model",
+                            "description": null,
+                            "caption": null,
+                            "space": null,
+                            "placeholder": null,
+                            "read_only": null
+                        }
+                    }
+                },
+                "pets": {
+                    "type": {
+                        "name": "List",
+                        "element_type": { "name": "String" },
+                        "min_items": 1,
+                        "max_items": 5
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "Dropdown",
+                        "label": "Pets",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "placeholder": "Select one or more pet",
+                        "read_only": null,
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "Cat",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "value": "cat"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Dog",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "value": "dog"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Other",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "read_only": null,
+                                "value": "other"
+                            }
+                        ]
+                    }
+                },
+                "objectArray": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "Object",
+                            "properties": {
+                                "first_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "First name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "last_name": {
+                                    "type": { "name": "String" },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Last name",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                },
+                                "age": {
+                                    "type": {
+                                        "name": "Number",
+                                        "min": null,
+                                        "max": null,
+                                        "int": false,
+                                        "float": false
+                                    },
+                                    "default": null,
+                                    "required": false,
+                                    "choices": null,
+                                    "view": {
+                                        "name": "View",
+                                        "label": "Age",
+                                        "description": null,
+                                        "caption": null,
+                                        "space": null,
+                                        "placeholder": null,
+                                        "read_only": null
+                                    }
+                                }
+                            },
+                            "needsResolution": false
+                        },
+                        "min_items": 1,
+                        "max_items": 5
+                    },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "List of objects"
+                    }
+                },
+                "sampleFile": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "FileView",
+                        "label": "Sample file",
+                        "description": "Upload or provide a URL to a sample file",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                },
+                "tags": {
+                    "type": { "name": "String" },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "AutocompleteView",
+                        "label": "Tags",
+                        "description": "Select a tag or type a custom tag",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "Tag one",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "value": "one"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Tag two",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "value": "two"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Tag three",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "value": "three"
+                            }
+                        ]
+                    }
+                },
+                "json": {
+                    "type": { "name": "String" },
+                    "defaultValue": { "name": "Full Name" },
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "JSONView",
+                        "label": "JSON Viewer",
+                        "description": "JSON Viewer with syntax highlighting",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null
+                    }
+                },
+                "export": {
+                    "type": { "name": "String" },
+                    "defaultValue": "direct",
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "TabsView",
+                        "label": "Export method",
+                        "description": "Select your export method",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "choices": [
+                            {
+                                "name": "Choice",
+                                "label": "Direct export",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "value": "direct"
+                            },
+                            {
+                                "name": "Choice",
+                                "label": "Cloud export",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "value": "cloud"
+                            }
+                        ],
+                        "variant": "rounded"
+                    }
+                },
+                "color": {
+                    "type": { "name": "String" },
+                    "default": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "ColorView",
+                        "label": "Favorite color",
+                        "description": "Pick your favorite color using the color picker",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "compact": false,
+                        "variant": null
+                    }
+                },
+                "jsEditor": {
+                    "type": { "name": "String" },
+                    "defaultValue": "Winter",
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "CodeView",
+                        "label": "JS editor",
+                        "description": "JS editor with auto-complete and syntax highlighting",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "language": "javascript",
+                        "readOnly": false
+                    }
+                },
+                "oneoffs": {
+                    "type": {
+                        "name": "OneOf",
+                        "types": [
+                            {
+                                "name": "String"
+                            },
+                            {
+                                "name": "Number",
+                                "min": null,
+                                "max": null,
+                                "int": false,
+                                "float": false
+                            }
+                        ]
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "OneOfView",
+                        "label": "Number or string",
+                        "description": null,
+                        "caption": null,
+                        "space": null,
+                        "oneof": [
+                            {
+                                "name": "View",
+                                "label": "String",
+                                "description": "Please provide a string value",
+                                "caption": null,
+                                "space": null
+                            },
+                            {
+                                "name": "View",
+                                "label": "Number",
+                                "description": "Please provide a number value",
+                                "caption": null,
+                                "space": null
+                            }
+                        ]
+                    }
+                },
+                "backend": {
+                    "type": {
+                        "name": "Enum",
+                        "values": ["cvat", "labelbox", "labelstudio"]
+                    },
+                    "defaultValue": "cvat",
+                    "required": true,
+                    "choices": null,
+                    "view": {
+                        "label": "Annotation Backend",
+                        "name": "RadioGroup",
+                        "choices": [
+                            {
+                                "value": "cvat",
+                                "label": "CVAT",
+                                "description": "Free and open source"
+                            },
+                            {
+                                "value": "labelbox",
+                                "label": "LabelBox",
+                                "description": "Annotations and collaboration"
+                            },
+                            {
+                                "value": "labelstudio",
+                                "label": "Label Studio",
+                                "description": "Data Labeling Platform"
+                            }
+                        ]
+                    }
+                },
+                "media_field": {
+                    "type": {
+                        "name": "Enum",
+                        "values": [
+                            "id",
+                            "filepath",
+                            "tags",
+                            "metadata",
+                            "ground_truth",
+                            "uniqueness",
+                            "predictions"
+                        ]
+                    },
+                    "defaultValue": "filepath",
+                    "required": true,
+                    "choices": null,
+                    "view": {
+                        "label": "Media Field"
+                    }
+                },
+                "tuples": {
+                    "type": {
+                        "name": "Tuple",
+                        "items": [
+                            { "name": "String" },
+                            {
+                                "name": "Number",
+                                "min": null,
+                                "max": null,
+                                "int": false,
+                                "float": false
+                            },
+                            { "name": "Boolean" }
+                        ]
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "name": "TupleView",
+                        "label": "The Tuple",
+                        "description": "Tuple with string as the type for first item, number for second, and boolean for third",
+                        "caption": null,
+                        "space": null,
+                        "placeholder": null,
+                        "items": [
+                            {
+                                "name": "View",
+                                "label": "String item",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null,
+                                "componentsProps": {
+                                    "field": {
+                                        "multiline": true,
+                                        "rows": 4
+                                    }
+                                }
+                            },
+                            {
+                                "name": "View",
+                                "label": "Number Item",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null
+                            },
+                            {
+                                "name": "View",
+                                "label": "Boolean Item",
+                                "description": null,
+                                "caption": null,
+                                "space": null,
+                                "placeholder": null
+                            }
+                        ]
+                    }
+                },
+                "launch_editor": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": false,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Launch Editor",
+                        "space": "2"
+                    }
+                },
+                "use_custom_label_schema": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": false,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Use Custom Label Schema",
+                        "space": "10"
+                    }
+                },
+                "label_field": {
+                    "type": {
+                        "name": "String"
+                    },
+                    "defaultValue": null,
+                    "required": true,
+                    "choices": null,
+                    "view": {
+                        "label": "Label Field"
+                    }
+                },
+                "label_type": {
+                    "type": {
+                        "name": "Enum",
+                        "values": [
+                            "classification",
+                            "classifications",
+                            "detections",
+                            "polylines",
+                            "polygons",
+                            "keypoints",
+                            "segmentations"
+                        ]
+                    },
+                    "defaultValue": null,
+                    "required": true,
+                    "choices": null,
+                    "view": {
+                        "label": "Label Type",
+                        "name": "Dropdown",
+                        "choices": []
+                    }
+                },
+                "override_attributes_for_classes": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": false,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Override Attributes for Classes"
+                    }
+                },
+                "classes": {
+                    "type": {
+                        "name": "List",
+                        "element_type": {
+                            "name": "String"
+                        },
+                        "min_items": 1,
+                        "max_items": null
+                    },
+                    "defaultValue": null,
+                    "required": true,
+                    "choices": null,
+                    "view": {
+                        "name": "AutocompleteView",
+                        "label": "Classes"
+                    }
+                },
+                "attributes_style": {
+                    "type": {
+                        "name": "Enum",
+                        "values": ["defaultValue", "list", "dict"]
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Attributes Style",
+                        "name": "RadioGroup",
+                        "choices": []
+                    }
+                },
+                "use_dataset_mask_targets": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": null,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Use Dataset Mask Targets"
+                    }
+                },
+                "allow_additions": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": true,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Allow Additions"
+                    }
+                },
+                "allow_deletions": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": true,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Allow Deletions"
+                    }
+                },
+                "allow_label_edits": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": true,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Allow Label Edits"
+                    }
+                },
+                "allow_index_edits": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": true,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Allow Index Edits"
+                    }
+                },
+                "allow_spatial_edits": {
+                    "type": {
+                        "name": "Boolean"
+                    },
+                    "defaultValue": true,
+                    "required": false,
+                    "choices": null,
+                    "view": {
+                        "label": "Allow Spatial Edits"
+                    }
+                }
+            },
+            "needsResolution": false
+        },
+        "defaultValue": null,
+        "required": false,
+        "choices": null,
+        "view": {
+            "label": "Request Annotations",
+            "description": "You can request annotation using any of supported backends",
+            "caption": "Please fill out all the fields marked with asterisk",
+            "descriptionView": "tooltip"
+        }
+    }
+}

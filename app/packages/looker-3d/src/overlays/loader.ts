@@ -1,4 +1,5 @@
 import * as fos from "@fiftyone/looker/src/state";
+import { SampleData } from "@fiftyone/state";
 
 const RENDERABLE = ["Detection", "Polyline"];
 const RENDERABLE_LIST = ["Detections", "Polylines"];
@@ -10,37 +11,39 @@ export type OverlayLabel = {
   selected: boolean;
   color?: string;
   label?: string;
+  sampleId?: string;
 };
 
-export const load3dOverlays = (
-  sample: fos.Sample | fos.Sample[],
+export const load3dOverlayForSample = (
+  sampleId: string,
+  samples: SampleData | fos.Sample[],
   selectedLabels: Record<string, unknown>,
   currentPath = []
 ) => {
   let overlays: OverlayLabel[] = [];
-  const labels = Array.isArray(sample) ? sample : Object.values(sample);
-  const labelKeys = Array.isArray(sample) ? null : Object.keys(sample);
 
-  for (let i = 0; i < labels.length; i++) {
-    const label = labels[i];
+  const labelKeys = Array.isArray(samples) ? null : Object.keys(samples);
+  const labelValues = Array.isArray(samples) ? samples : Object.values(samples);
+
+  for (let i = 0; i < labelValues.length; i++) {
+    const label = labelValues[i];
     const labelKey = labelKeys ? labelKeys[i] : "";
     if (!label) {
       continue;
     }
 
-    // Note: this logic is not quite right
-    // this is hardcoded to match the kitti dataset
-    // it should change to be dataset agnostic!
     if (RENDERABLE.includes(label._cls)) {
       overlays.push({
         ...label,
+        sampleId,
         path: [...currentPath, labelKey].filter((k) => !!k),
         selected: label._id in selectedLabels,
       });
     } else if (RENDERABLE_LIST.includes(label._cls)) {
       overlays = [
         ...overlays,
-        ...load3dOverlays(
+        ...load3dOverlayForSample(
+          sampleId,
           label[label._cls.toLowerCase()],
           selectedLabels,
           labelKey ? [...currentPath, labelKey] : [...currentPath]
@@ -50,4 +53,29 @@ export const load3dOverlays = (
   }
 
   return overlays;
+};
+
+export const load3dOverlays = (
+  samples: { [sliceOrFilename: string]: SampleData } | fos.Sample[],
+  selectedLabels: Record<string, unknown>,
+  currentPath = []
+) => {
+  const overlays = [];
+
+  for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
+    if (!sampleWrapper?.sample?._id) {
+      return;
+    }
+
+    overlays.push(
+      load3dOverlayForSample(
+        sampleWrapper.sample._id,
+        sampleWrapper.sample,
+        selectedLabels,
+        currentPath
+      )
+    );
+  }
+
+  return overlays.flat();
 };

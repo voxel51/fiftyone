@@ -2,9 +2,16 @@ import React from "react";
 
 import { loading } from "./LoadingDots.module.css";
 
-const LoadingDots = ({ text, color }: { text: string; color?: string }) => {
+const LoadingDots = ({
+  text,
+  style,
+}: {
+  text: string;
+  color?: string;
+  style?: React.CSSProperties;
+}) => {
   return (
-    <span style={color ? { color } : {}}>
+    <span style={style ?? {}}>
       {text}
       <span className={loading} />
     </span>

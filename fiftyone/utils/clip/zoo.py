@@ -7,7 +7,7 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 """
 import logging
 import os
-from pkg_resources import packaging
+from packaging.version import Version
 import warnings
 
 import eta.core.web as etaw
@@ -110,7 +110,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
         Returns:
             a ``num_prompts x num_dims`` array of prompt embeddings
         """
-        return self._embed_prompts(prompts).detach().numpy()
+        return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _download_model(self, config):
         config.download_model_if_necessary()
@@ -137,9 +137,7 @@ class TorchCLIPModel(fout.TorchImageModel, fom.PromptMixin):
             for p in prompts
         ]
 
-        if packaging.version.parse(
-            torch.__version__
-        ) < packaging.version.parse("1.8.0"):
+        if Version(torch.__version__) < Version("1.8.0"):
             dtype = torch.long
         else:
             dtype = torch.int
