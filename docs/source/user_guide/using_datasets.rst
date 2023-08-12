@@ -2416,6 +2416,7 @@ cuboid in the format depicted below:
     0--------1
 
 .. note::
+
     FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
 
@@ -2485,6 +2486,11 @@ You can store and visualize rotated bounding boxes in FiftyOne using the
 :meth:`Polyline.from_rotated_box() <fiftyone.core.labels.Polyline.from_rotated_box>`
 method, which accepts rotated boxes described by their center coordinates,
 width/height, and counter-clockwise rotation, in radians.
+
+.. note::
+
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
 
 .. code-block:: python
     :linenos:
