@@ -10,7 +10,18 @@ dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 export type PythonCommandGenerator = (argv: string[]) => string;
 
 export class PythonRunner {
-  constructor(private pythonCommandGenerator: PythonCommandGenerator) {}
+  constructor(
+    private readonly pythonCommandGenerator: PythonCommandGenerator,
+    private readonly env?: Record<string, string>
+  ) {
+    this.pythonCommandGenerator = pythonCommandGenerator;
+
+    if (this.env) {
+      Object.entries(this.env).forEach(([key, value]) => {
+        process.env[key] = value;
+      });
+    }
+  }
 
   public exec(sourceCode: string) {
     const dedentedSourceCode = dedentPythonCode(sourceCode);
