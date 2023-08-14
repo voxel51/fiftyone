@@ -134,6 +134,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
           )}
           <Tooltip text="Change field visibility" placement="bottom-center">
             <Settings
+              data-cy="field-visibility-icon"
               onClick={() => {
                 setSchemaModal({
                   open: true,

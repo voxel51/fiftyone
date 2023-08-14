@@ -796,6 +796,7 @@ const InteractiveSidebar = ({
 
               return (
                 <animated.div
+                  data-cy={`${entry?.path}-field`}
                   onMouseDownCapture={() => {
                     lastTouched.current = undefined;
                     placeItems();
