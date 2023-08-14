@@ -16,8 +16,8 @@ export class PythonRunner {
   ) {
     this.pythonCommandGenerator = pythonCommandGenerator;
 
-    if (this.env) {
-      Object.entries(this.env).forEach(([key, value]) => {
+    if (env) {
+      Object.entries(env).forEach(([key, value]) => {
         process.env[key] = value;
       });
     }
