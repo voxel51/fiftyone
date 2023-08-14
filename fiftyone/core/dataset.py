@@ -2633,6 +2633,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         d["_dataset_id"] = self._doc.id
 
+        # Add created and updated time to sample. We cannot use $$NOW to use
+        #   the DB's time because it's not supported on insert
+        now = datetime.utcnow()
+        # if "created_at" not in d:
+        #     d["created_at"] = now
+        # d["last_updated_at"] = now
+
         return d
 
     def _bulk_write(self, ops, frames=False, ordered=False):
@@ -3893,6 +3900,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "_id": False,
                         "_sample_id": "$_id",
                         "_dataset_id": self._doc.id,
+                        "last_updated_at": "$$NOW",
+                        # "created_at": "$$NOW",
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6933,14 +6942,30 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$addFields": {"_dataset_id": _id}})
+    pipeline.append(
+        {
+            "$addFields": {
+                "_dataset_id": _id,
+                "created_at": "$$NOW",
+                "last_updated_at": "$$NOW",
+            }
+        }
+    )
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$addFields": {"_dataset_id": _id}})
+        pipeline.append(
+            {
+                "$addFields": {
+                    "_dataset_id": _id,
+                    "created_at": "$$NOW",
+                    "last_updated_at": "$$NOW",
+                }
+            }
+        )
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -7046,11 +7071,15 @@ def _save_view(view, fields=None):
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
 
+    now = datetime.utcnow()
     if sample_fields:
-        pipeline.append({"$project": {f: True for f in sample_fields}})
+        field_project = {f: True for f in sample_fields}
+        field_project.update(last_updated_at=now)
+        pipeline.append({"$project": field_project})
         pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
     elif save_samples:
+        pipeline.append({"$set": {"last_updated_at": now}})
         pipeline.append(
             {
                 "$merge": {
@@ -7081,10 +7110,13 @@ def _save_view(view, fields=None):
             )
 
         if frame_fields:
-            pipeline.append({"$project": {f: True for f in frame_fields}})
+            field_project = {f: True for f in frame_fields}
+            field_project.update(last_updated_at=now)
+            pipeline.append({"$project": field_project})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
         else:
+            pipeline.append({"$project": {"last_updated_at": now}})
             pipeline.append(
                 {
                     "$merge": {
@@ -7434,7 +7466,11 @@ def _add_collection_with_new_ids(
     else:
         num_ids = len(src_samples)
 
-    add_fields = {"_dataset_id": dataset._doc.id}
+    add_fields = {
+        "_dataset_id": dataset._doc.id,
+        "created_at": "$$NOW",
+        "last_updated_at": "$$NOW",
+    }
 
     if contains_groups:
         id_field = sample_collection.group_field + "._id"
@@ -7491,7 +7527,13 @@ def _add_collection_with_new_ids(
                 }
             },
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dataset._doc.id,
+                    "created_at": "$$NOW",
+                    "last_updated_at": "$$NOW",
+                }
+            },
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7786,7 +7828,12 @@ def _merge_samples_pipeline(
 
     sample_pipeline.extend(
         [
-            {"$addFields": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dst_dataset._doc.id,
+                    "last_updated_at": "$$NOW",
+                }
+            },
             {
                 "$merge": {
                     "into": dst_dataset._sample_collection_name,
@@ -7879,6 +7926,7 @@ def _merge_samples_pipeline(
                     "$addFields": {
                         "_dataset_id": dst_dataset._doc.id,
                         "_sample_id": "$" + frame_key_field,
+                        "last_updated_at": "$$NOW",
                     }
                 },
                 {

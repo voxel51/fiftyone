@@ -16,7 +16,6 @@ from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
 class DatasetFrameDocument(DatasetMixin, Document):
-
     meta = {"abstract": True}
 
     _is_frames_doc = True
@@ -26,10 +25,11 @@ class DatasetFrameDocument(DatasetMixin, Document):
 
     _sample_id = fof.ObjectIdField(required=True)
     _dataset_id = fof.ObjectIdField()
+    created_at = fof.DateTimeField()
+    last_updated_at = fof.DateTimeField()
 
 
 class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
-
     _is_frames_doc = True
 
     # pylint: disable=no-member

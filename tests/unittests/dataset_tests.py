@@ -2908,6 +2908,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
+        self.assertNotIn("last_updated_at", d)
+        self.assertNotIn("created_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2917,6 +2919,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_media_type", d)
         self.assertIn("_rand", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("last_updated_at", d)
+        self.assertIn("created_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2952,6 +2956,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
+        self.assertNotIn("last_updated_at", d)
+        self.assertNotIn("created_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -2960,6 +2966,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_id", d)
         self.assertIn("_sample_id", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("last_updated_at", d)
+        self.assertIn("created_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")

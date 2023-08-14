@@ -5,6 +5,7 @@ Dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 import os
 
 from bson import ObjectId
@@ -48,10 +49,12 @@ class _SampleMixin(object):
     def __setattr__(self, name, value):
         if name == "frames" and self.media_type == fomm.VIDEO:
             self.set_field("frames", value)
-            return
+        else:
+            self._secure_media(name, value)
+            super().__setattr__(name, value)
 
-        self._secure_media(name, value)
-        super().__setattr__(name, value)
+        if name not in ["last_updated_at", "created_at"] and not name.startswith("_"):
+            super().__setattr__("last_updated_at", datetime.datetime.utcnow())
 
     def __getitem__(self, field_name):
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
@@ -60,6 +63,8 @@ class _SampleMixin(object):
         return super().__getitem__(field_name)
 
     def __setitem__(self, field_name, value):
+        if field_name not in ["last_updated_at", "created_at"] and not field_name.startswith("_"):
+            super().__setitem__("last_updated_at", datetime.datetime.utcnow())
         if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
             self.frames[field_name] = value
             return
@@ -72,6 +77,14 @@ class _SampleMixin(object):
             return iter(self._frames)
 
         raise ValueError("Image samples are not iterable")
+
+    @property
+    def created_at(self):
+        return self._doc.created_at
+
+    @property
+    def last_updated_at(self):
+        return self._doc.last_updated_at
 
     @property
     def dataset_id(self):
@@ -114,16 +127,22 @@ class _SampleMixin(object):
                 validate=validate,
                 dynamic=dynamic,
             )
-
-            return
-
-        super().set_field(
-            field_name,
-            value,
-            create=create,
-            validate=validate,
-            dynamic=dynamic,
-        )
+        else:
+            super().set_field(
+                field_name,
+                value,
+                create=create,
+                validate=validate,
+                dynamic=dynamic,
+            )
+        if field_name not in ["last_updated_at", "created_at"] and not field_name.startswith("_"):
+            super().set_field(
+                "last_updated_at",
+                datetime.datetime.utcnow(),
+                create=True,
+                validate=True,
+                dynamic=False,
+            )
 
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:

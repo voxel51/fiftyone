@@ -27,6 +27,47 @@ class SampleTests(unittest.TestCase):
         self.assertIsInstance(sample._doc, foo.NoDatasetSampleDocument)
 
     @drop_datasets
+    def test_update_times(self):
+        now = datetime.datetime.utcnow()
+        delta = datetime.timedelta(milliseconds=1)
+
+        # Create unattached sample
+        sample = fo.Sample(filepath="/path/to/image.jpg")
+        creation_time = sample.created_at
+        update_time = sample.last_updated_at
+        self.assertAlmostEqual(creation_time, now, delta=delta)
+        self.assertAlmostEqual(creation_time, update_time, delta=delta)
+
+        # Try and fail to make a new sample field with sample.field
+        try:
+            sample.foo = "bar"
+        except ValueError:
+            pass
+        self.assertEqual(update_time, sample.last_updated_at)
+
+        # Make new fields
+        sample["foo"] = "bar"
+        update_time = sample.last_updated_at
+        self.assertEqual(creation_time, sample.created_at)
+        self.assertGreater(update_time, creation_time)
+
+        sample.set_field("bar", "baz")
+        self.assertEqual(creation_time, sample.created_at)
+        self.assertGreater(sample.last_updated_at, update_time)
+        update_time = sample.last_updated_at
+
+        # Make edit
+        sample.bar = "bat"
+        self.assertEqual(creation_time, sample.created_at)
+        self.assertGreater(sample.last_updated_at, update_time)
+        update_time = sample.last_updated_at
+
+        # Read-only doesn't affect
+        _ = sample.foo
+        self.assertEqual(creation_time, sample.created_at)
+        self.assertEqual(update_time, sample.last_updated_at)
+
+    @drop_datasets
     def test_abs_filepath(self):
         filepath = "relative/file.jpg"
         abs_filepath = os.path.abspath(filepath)
@@ -519,6 +560,116 @@ class SampleInDatasetTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             sample2["dynamic.classifications.classifications.foo"]
+
+    @drop_datasets
+    def test_update_times(self):
+        now = datetime.datetime.utcnow()
+        delta = datetime.timedelta(milliseconds=1)
+
+        def check_updated(sample, creation_time, updated_time, reload=False):
+            if reload:
+                sample.reload()
+            self.assertEqual(sample.created_at, creation_time)
+            self.assertGreater(sample.last_updated_at, updated_time)
+            return sample.last_updated_at
+
+        # Create unattached sample first
+        dataset = fo.Dataset()
+        sample = fo.Sample("s1.png")
+        creation_time = sample.created_at
+        updated_time = sample.last_updated_at
+
+        # After adding to dataset we reload and check times because they'll
+        #   be at millisecond precision now.
+        dataset.add_samples([sample])
+        sample.reload()
+        self.assertAlmostEqual(sample.created_at, creation_time, delta=delta)
+        self.assertAlmostEqual(sample.last_updated_at, updated_time, delta=delta)
+        creation_time = sample.created_at
+        updated_time = sample.last_updated_at
+
+        # Adding sample field should not update modify time because we update
+        #   the schema not each sample
+        dataset.add_sample_field(
+            "class_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "detect_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        self.assertEqual(sample.created_at, creation_time)
+        self.assertEqual(sample.last_updated_at, updated_time)
+
+        # Make single field edit and check update time
+        dataset.set_values("foo", ["bar"])
+        sample.reload()
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # Make sample level edit with save and check time
+        sample.class_field = fo.Classification(label="cow", other="snother")
+        sample.detect_field = fo.Detections(detections=[fo.Detection(label="cow", other="snother"), fo.Detection(label="moo", other="snother")])
+        sample["foo"] = "bar"
+        sample.save()
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # tag_samples
+        dataset.tag_samples("blah")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # untag_samples
+        dataset.untag_samples("blah")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # tag_labels
+        dataset.tag_labels("blah", "class_field")
+        updated_time = check_updated(sample, creation_time, updated_time)
+        dataset.tag_labels("blah", "detect_field")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # untag_labels
+        dataset.untag_labels("blah", "class_field")
+        updated_time = check_updated(sample, creation_time, updated_time)
+        dataset.untag_labels("blah", "detect_field")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # Set label values
+        class_id = dataset.values("class_field.id")[0]
+        dataset.set_label_values("class_field.other", {class_id: "change"})
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        detect_ids = dataset.values("detect_field.detections.id", unwind=True)
+        dataset.set_label_values("detect_field.detections.other", {detect_id: "change" for detect_id in detect_ids})
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # View is saved - first field only then entire version.
+        view = dataset.set_field("foo", "spam")
+        view.save("foo")
+        sample.reload()
+        updated_time = check_updated(sample, creation_time, updated_time, reload=True)
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        view = dataset.set_field("foo", "eggs")
+        view.save()
+        sample.reload()
+        updated_time = check_updated(sample, creation_time, updated_time, reload=True)
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # Clone fields
+        dataset.clone_sample_field("foo", "food")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        dataset.clone_sample_field("class_field.other", "class_field.snother")
+        updated_time = check_updated(sample, creation_time, updated_time)
+
+        # Rename fields
+
+        # Create new dataset
+        #dataset2 = fo.Dataset()
+        #dataset2.add_sample(dataset.first())
+
 
 
 class SampleCollectionTests(unittest.TestCase):
