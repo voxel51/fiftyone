@@ -74,7 +74,6 @@ const Sample = ({
   lookerRef: propsLookerRef,
   actions,
 }: SampleProps) => {
-  const clearModal = useClearModal();
   const lookerRef = useRef<AbstractLooker | undefined>(undefined);
 
   const ref = propsLookerRef || lookerRef;
@@ -87,7 +86,6 @@ const Sample = ({
         key={`looker-${id}`}
         lookerRef={ref}
         lookerRefCallback={lookerRefCallback}
-        onClose={clearModal}
       />
     </SampleWrapper>
   );
