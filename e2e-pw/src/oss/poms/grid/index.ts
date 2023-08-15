@@ -52,20 +52,6 @@ export class GridPom {
     await this.page.getByTestId("selector-slice").fill(slice);
     await this.page.getByTestId("selector-slice").press("Enter");
   }
-
-  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
-    return this.page.evaluate(
-      (sampleFilepath_) =>
-        new Promise<void>((resolve, _reject) => {
-          document.addEventListener("sample-loaded", (e: CustomEvent) => {
-            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
-              resolve();
-            }
-          });
-        }),
-      sampleFilepath
-    );
-  }
 }
 
 class GridAsserter {
