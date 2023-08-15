@@ -408,7 +408,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     this.element.dispatchEvent(
       new CustomEvent("re-render-tag", {
-        detail: sample.filepath,
+        detail: "re-render-tag",
         bubbles: true,
       })
     );

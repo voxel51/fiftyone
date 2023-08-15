@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 
 type filterMode = "select" | "exclude" | "show" | "omit";
 type visibilityMode = "show" | "hide";
@@ -21,6 +21,12 @@ export class SidebarPom {
   async clickFieldDropdown(field: string) {
     const selector = this.sidebar.getByTestId(`sidebar-field-arrow-${field}`);
     return selector.click();
+  }
+
+  async waitForElement(dataCy: string) {
+    const selector = this.sidebar.getByTestId(dataCy);
+    await selector.waitFor();
+    expect(selector).toBeVisible();
   }
 
   // when less than 25 entries, it's displayed in a list
@@ -49,7 +55,9 @@ export class SidebarPom {
     });
 
     const currentMode = this.sidebar.getByTestId("filter-mode-div");
+    await currentMode.waitFor();
     await currentMode.click();
+    // make sure the pop out panel is fully expanded, to make sure click is successful
     const targetMode = this.sidebar.getByTestId(
       `filter-option-${targetModeId}`
     );
