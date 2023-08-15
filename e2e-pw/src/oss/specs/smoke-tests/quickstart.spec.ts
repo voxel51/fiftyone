@@ -24,10 +24,18 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("smoke", async ({ page, grid, modal }) => {
-  await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
+test.describe("quickstart", () => {
+  test("smoke", async ({ page, grid, modal }) => {
+    await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
 
-  // test navigation
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+    // test navigation
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+  });
+
+  test("entry counts show correct text when toPatches then groupedBy", async ({
+    grid,
+  }) => {
+    await grid.actionsRow.openToClipsOrPatches();
+  });
 });
