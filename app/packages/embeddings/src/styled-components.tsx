@@ -5,6 +5,7 @@ export const EmbeddingsContainer = styled.div`
   margin: 0;
   height: 100%;
   width: 100%;
+  position: relative;
 `;
 export const Selectors = styled.div`
   display: flex;
