@@ -1,6 +1,7 @@
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
+  DATE_TIME_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
@@ -49,6 +50,7 @@ const primitiveFilter = selectorFamily<
           FRAME_SUPPORT_FIELD,
           INT_FIELD,
           DATE_FIELD,
+          DATE_TIME_FIELD,
         ].includes(ftype)
       ) {
         return get(numeric({ modal, path }));
@@ -71,7 +73,7 @@ const primitiveFilter = selectorFamily<
 
       if (
         [LIST_FIELD].includes(ftype) &&
-        [INT_FIELD, FLOAT_FIELD, DATE_FIELD].includes(subfield)
+        [INT_FIELD, FLOAT_FIELD, DATE_FIELD, DATE_TIME_FIELD].includes(subfield)
       ) {
         return get(listNumber({ modal, path }));
       }
