@@ -47,6 +47,7 @@ test("modal carousel has correct second page (all 21 samples)", async ({
   await modal.waitForCarouselToLoad();
   await modal.scrollCarousel();
   await modal.scrollCarousel();
-  await page.waitForTimeout(100000);
-  await modal.sidebar.assert.verifySidebarEntryText("i", "1");
+  await modal.scrollCarousel();
+  await modal.navigateSlice("i", "20", true);
+  await modal.sidebar.assert.verifySidebarEntryText("i", "20");
 });

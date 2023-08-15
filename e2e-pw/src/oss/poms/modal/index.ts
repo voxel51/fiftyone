@@ -72,7 +72,7 @@ export class ModalPom {
     allowErrorInfo = false
   ) {
     const currentSlice = await this.sidebar.getSidebarEntryText(
-      `sidebar-entry-${groupField}.name`
+      `sidebar-entry-${groupField}`
     );
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
@@ -82,7 +82,7 @@ export class ModalPom {
     await this.page.waitForFunction(
       ({ currentSlice, groupField }) => {
         const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}.name"]`
+          `[data-cy="sidebar-entry-${groupField}"]`
         )?.textContent;
         return slice !== currentSlice;
       },

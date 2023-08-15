@@ -62,7 +62,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
-    await modal.navigateSlice("group", "shared", true);
+    await modal.navigateSlice("group.name", "shared", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.close();
   });
@@ -80,15 +80,15 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.openFirstSample();
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.sidebar.toggleSidebarGroup("GROUP");
-    await modal.navigateSlice("group", "first", true);
+    await modal.navigateSlice("group.name", "first", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.navigateNextSample(true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.navigateSlice("group", "second", true);
+    await modal.navigateSlice("group.name", "second", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
     await modal.navigatePreviousSample(true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
-    await modal.navigateSlice("group", "first", true);
+    await modal.navigateSlice("group.name", "first", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.close();
   });
@@ -106,7 +106,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
-    await modal.navigateSlice("group", "shared", true);
+    await modal.navigateSlice("group.name", "shared", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.close();
   });

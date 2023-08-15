@@ -66,27 +66,27 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
 
     await modal.scrollCarousel();
-    await modal.navigateSlice("group", "19", true);
+    await modal.navigateSlice("group.name", "19", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");
 
     await modal.scrollCarousel();
-    await modal.navigateSlice("group", "39", true);
+    await modal.navigateSlice("group.name", "39", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "39");
 
     await modal.scrollCarousel();
-    await modal.navigateSlice("group", "59", true);
+    await modal.navigateSlice("group.name", "59", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "59");
 
     await modal.scrollCarousel();
-    await modal.navigateSlice("group", "79", true);
+    await modal.navigateSlice("group.name", "79", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "79");
 
     await modal.scrollCarousel();
-    await modal.navigateSlice("group", "99", true);
+    await modal.navigateSlice("group.name", "99", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "99");
 
     await modal.scrollCarousel(0);
-    await modal.navigateSlice("group", "0", true);
+    await modal.navigateSlice("group.name", "0", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
     await modal.close();
   });
