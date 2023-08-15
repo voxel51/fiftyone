@@ -158,12 +158,6 @@ export class SavedViewsPom {
     return this.dialogLocator.getByRole("option", { name: c });
   }
 
-  // saveButton() {
-  //   return this.dialogLocator.getByRole("button", {
-  //     name: "Save view",
-  //     exact: true,
-  //   });
-  // }
   saveButton() {
     return this.dialogLocator.getByTestId("saved-views-btn-save");
   }
@@ -247,7 +241,6 @@ class SavedViewAsserter {
   }
 
   async verifySavedView(slug: string = "test") {
-    // await this.svp.page.waitForURL(`*view=${slug}`, { timeout: 5000 });
     await expect(this.svp.page).toHaveURL(new RegExp(`view=${slug}`));
   }
 
