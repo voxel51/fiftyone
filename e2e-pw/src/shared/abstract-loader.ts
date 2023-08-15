@@ -55,6 +55,13 @@ export abstract class AbstractFiftyoneLoader {
    *
    * @param page Playwright page object.
    * @param datasetName Name of the dataset to be loaded into the view.
+   * @param savedView Optional saved view name
+   * @param savedView Optional flag to wait until grid load. Default is true
    */
-  abstract waitUntilLoad(page: Page, datasetName: string): Promise<void>;
+  abstract waitUntilLoad(
+    page: Page,
+    datasetName: string,
+    savedView?: string,
+    withGrid?: boolean
+  ): Promise<void>;
 }

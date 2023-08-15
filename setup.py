@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.13.4"
+VERSION = "0.14.0"
 
 
 def get_version():
@@ -41,13 +41,13 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<1.8.0",
     "dill",
     "Deprecated",
-    "eventlet",
     "ftfy",
-    "future",
-    "hypercorn>=0.13.2,<14",
+    "jsonlines",
+    "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
-    "jsonlines",
+    # kaleido indirectly required by plotly for image export
+    # https://plotly.com/python/static-image-export/
     "kaleido",
     "matplotlib",
     "mongoengine==0.24.2",
@@ -88,9 +88,9 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.13,<0.14",
+    "fiftyone-brain>=0.13.1,<0.14",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.10,<0.11",
+    "voxel51-eta>=0.11,<0.12",
 ]
 
 
@@ -127,7 +127,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.28.2,<0.29"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.18.2,<0.19"]}
 
 
 with open("README.md", "r") as fh:

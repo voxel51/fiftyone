@@ -101,7 +101,7 @@ mutation ($dataset: String!, $snapshot: String!){
     revertDatasetToSnapshot(
         datasetIdentifier: $dataset,
         snapshotName: $snapshot,
-    )
+    ) {id}
 }
 """
 
@@ -134,7 +134,7 @@ _LIST_SNAPSHOTS_QUERY = (
 
 def create_snapshot(
     dataset_name: str, snapshot_name: str, description: Optional[str] = None
-):
+) -> DatasetSnapshot:
     """Create and store a snapshot of the current state of ``dataset_name``.
 
     Snapshot name must be unique for the given dataset.
@@ -157,7 +157,7 @@ def create_snapshot(
         description (None): Optional description to attach to this snapshot
     """
     client = connection.APIClientConnection().client
-    client.post_graphql_request(
+    result = client.post_graphql_request(
         query=_CREATE_SNAPSHOT_QUERY,
         variables={
             "dataset": dataset_name,
@@ -165,6 +165,8 @@ def create_snapshot(
             "description": description,
         },
     )
+    snapshot = result["createDatasetSnapshot"]
+    return DatasetSnapshot(**util.camel_to_snake_container(snapshot))
 
 
 def delete_snapshot(dataset_name: str, snapshot_name: str):

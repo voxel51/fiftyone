@@ -842,7 +842,7 @@ images:
     View stages:
         1. SelectGroupSlices(slices=['left', 'right'])
 
-Note that the :meth:`media_type <fiftyone.core.view.DatasetView.media_type` of
+Note that the :meth:`media_type <fiftyone.core.view.DatasetView.media_type>` of
 the above collections are `image`, not `group`. This means you can perform any
 valid operation for image collections to these views, without worrying about
 the fact that their data is sourced from a grouped dataset!
@@ -855,6 +855,31 @@ the fact that their data is sourced from a grouped dataset!
     another_view = image_view.match(F("metadata.width") >= 640)
 
     # Add fields/tags, run evaluation, export, etc
+
+Also note that any filtering that you apply prior to a
+:meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
+stage in a view is **not** automatically reflected by the output view, as the
+stage looks up unfiltered slice data from the source collection:
+
+.. code-block:: python
+    :linenos:
+
+    # Filter the active slice to locate groups of interest
+    match_view = dataset.filter_labels(...).match(...)
+
+    # Lookup all image slices for the matching groups
+    # This view contains *unfiltered* image slices
+    images_view = match_view.select_group_slices(media_type="image")
+
+Instead, you can apply the same (or different) filtering *after* the
+:meth:`select_group_slices() <fiftyone.core.collections.SampleCollection.select_group_slices>`
+stage:
+
+.. code-block:: python
+    :linenos:
+
+    # Now apply filters to the flattened collection
+    match_images_view = images_view.filter_labels(...).match(...)
 
 .. _groups-aggregations:
 

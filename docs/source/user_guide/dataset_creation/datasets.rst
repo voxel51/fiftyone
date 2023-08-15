@@ -2373,19 +2373,18 @@ where `dataset.yaml` contains the following information:
     train: ./images/train/
     val: ./images/val/
 
-    # number of classes
-    nc: 80
+    names:
+      0: list
+      1: of
+      2: classes
+      ...
 
-    # class names
-    names: ["list", "of", "classes", ...]
-
-See `this page <https://docs.ultralytics.com/tutorials/train-custom-datasets>`_
-for a full description of the possible format of `dataset.yaml`. In particular,
-the dataset may contain one or more splits with arbitrary names, as the
-specific split being imported or exported is specified by the `split` argument
-to :class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`. Also, `dataset.yaml` can
-be located outside of `<dataset_dir>` as long as the optional `path` is
-provided.
+See `this page <https://docs.ultralytics.com/datasets/detect>`_ for a full
+description of the possible format of `dataset.yaml`. In particular, the
+dataset may contain one or more splits with arbitrary names, as the specific
+split being imported or exported is specified by the `split` argument to
+:class:`fiftyone.utils.yolo.YOLOv5DatasetImporter`. Also, `dataset.yaml` can be
+located outside of `<dataset_dir>` as long as the optional `path` is provided.
 
 .. note::
 

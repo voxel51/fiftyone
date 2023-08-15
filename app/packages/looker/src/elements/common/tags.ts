@@ -24,16 +24,14 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
+import _ from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
+import { isValidColor } from "../../overlays/util";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
-import {
-  getColorFromOptions,
-  getColorFromOptionsPrimitives,
-  prettify,
-} from "./util";
+import { getAssignedColor, prettify } from "./util";
 
 interface TagData {
   color: string;
@@ -49,6 +47,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private colorByValue: boolean;
   private colorSeed: number;
   private playing = false;
+  private attributeVisibility: object;
 
   createHTMLElement() {
     const container = document.createElement("div");
@@ -63,7 +62,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   renderSelf(
     {
       config: { fieldSchema, ...r },
-      options: { activePaths, coloring, timeZone, customizeColorSetting },
+      options: {
+        activePaths,
+        coloring,
+        timeZone,
+        customizeColorSetting,
+        filter,
+        attributeVisibility,
+      },
       playing,
     }: Readonly<State>,
     sample: Readonly<Sample>
@@ -79,6 +85,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorByValue === (coloring.by === "value") &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
+        _.isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {
@@ -89,31 +96,38 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
-        const v = value ? "True" : "False";
-        return {
-          path,
-          value: v,
-          title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
-            coloring,
-            path,
-            value,
-            customizeColorSetting,
-          }),
-        };
-      },
-      [INT_FIELD]: (path, value: number) => {
-        const v = prettyNumber(value);
+        let v;
+        if (Array.isArray(value)) {
+          v = value.map((v) => (v ? "True" : "False")).join(", ");
+        } else {
+          v = value ? "True" : "False";
+        }
 
         return {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
+            coloring,
+            path,
+            value,
+            customizeColorSetting,
+            isValidColor,
+          }),
+        };
+      },
+      [INT_FIELD]: (path, value: number) => {
+        const v = prettyNumber(value);
+        return {
+          path,
+          value: v,
+          title: `${path}: ${v}`,
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -124,11 +138,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -139,26 +154,27 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
       [FLOAT_FIELD]: (path: string, value: number) => {
         const v = prettyNumber(value);
-
         return {
           path,
           value: v,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -169,11 +185,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -183,11 +200,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -196,24 +214,32 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
       [STRING_FIELD]: (path, value: string) => {
+        let v;
+        if (Array.isArray(value)) {
+          v = value.join(", ");
+        } else {
+          v = value;
+        }
         return {
           path,
-          value,
-          title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          value: v,
+          title: `${path}: ${v}`,
+          color: getAssignedColor({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -227,12 +253,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         path,
         value: param.label,
         title: `${path}: ${param.label}`,
-        color: getColorFromOptions({
+        color: getAssignedColor({
           coloring,
           path,
           param,
           customizeColorSetting,
-          labelDefault: true,
+          isValidColor,
         }),
       };
     };
@@ -246,12 +272,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptions({
+          color: getAssignedColor({
             coloring,
             path,
             param,
             customizeColorSetting,
-            labelDefault: false,
+            fallbackLabel: "value",
+            isValidColor,
           }),
         };
       },
@@ -262,31 +289,36 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
-            const v = coloring.by === "value" ? tag : "tags";
-            elements.push({
-              color: getColorFromOptions({
-                coloring,
-                path,
-                param: tag,
-                customizeColorSetting,
-                labelDefault: false,
-              }),
-              title: tag,
-              value: tag,
-              path: v,
-            });
+            if (filter(path, [tag])) {
+              const v = coloring.by === "value" ? tag : "tags";
+              elements.push({
+                color: getAssignedColor({
+                  coloring,
+                  path,
+                  param: tag,
+                  customizeColorSetting,
+                  fallbackLabel: "value",
+                  isValidColor,
+                }),
+                title: tag,
+                value: tag,
+                path: v,
+              });
+            }
           });
         }
       } else if (path === "_label_tags") {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           const v = coloring.by === "value" ? tag : path;
-          elements.push({
-            color: getColor(coloring.pool, coloring.seed, v),
-            title: value,
-            value: value,
-            path: v,
-          });
+          if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
+            elements.push({
+              color: getColor(coloring.pool, coloring.seed, v),
+              title: value,
+              value: value,
+              path: v,
+            });
+          }
         });
       } else {
         const [field, value] = getFieldAndValue(sample, fieldSchema, path);
@@ -325,18 +357,26 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (value === undefined) continue;
         if (field && LABEL_RENDERERS[field.embeddedDocType]) {
           Array.isArray(value)
-            ? pushList(LABEL_RENDERERS[field.embeddedDocType], value)
-            : elements.push(
+            ? filter(path, value) &&
+              pushList(LABEL_RENDERERS[field.embeddedDocType], value)
+            : filter(path, value) &&
+              elements.push(
                 LABEL_RENDERERS[field.embeddedDocType](path, value)
               );
 
           continue;
         }
 
-        if (field && PRIMITIVE_RENDERERS[field.ftype]) {
-          Array.isArray(value)
-            ? pushList(PRIMITIVE_RENDERERS[field.ftype], value)
-            : elements.push(PRIMITIVE_RENDERERS[field.ftype](path, value));
+        if (
+          field &&
+          PRIMITIVE_RENDERERS[field.ftype] &&
+          field.ftype !== LIST_FIELD
+        ) {
+          // none-list field value is in ['value'] format
+          // need to convert to 'value' to pass in the filter
+          const v =
+            Array.isArray(value) && value.length == 1 ? value[0] : value;
+          filter(path, v) && pushList(PRIMITIVE_RENDERERS[field.ftype], value);
           continue;
         }
 
@@ -345,7 +385,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           field.ftype === LIST_FIELD &&
           PRIMITIVE_RENDERERS[field.subfield]
         ) {
-          pushList(PRIMITIVE_RENDERERS[field.subfield], value);
+          // there may be visibility settings
+          const visibleValue = [];
+          value?.forEach((v) => {
+            if (filter(path, v)) {
+              visibleValue.push(v);
+            }
+          });
+          pushList(PRIMITIVE_RENDERERS[field.subfield], visibleValue);
           continue;
         }
       }
@@ -357,6 +404,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
     this.colorPool = coloring.pool as string[];
+    this.attributeVisibility = attributeVisibility;
 
     elements
       .filter((e) => Boolean(e))
@@ -391,16 +439,21 @@ const prettyNumber = (value: number | NONFINITE): string => {
   if (typeof value === "string") {
     return value;
   }
-
   let string = null;
-  if (value % 1 === 0) {
-    string = value.toFixed(0);
-  } else if (value < 0.001) {
-    string = value.toFixed(6);
+
+  if (Array.isArray(value)) {
+    string = value.map((v) => prettyNumber(v)).join(", ");
+    return string;
   } else {
-    string = value.toFixed(3);
+    if (value % 1 === 0) {
+      string = value.toFixed(0);
+    } else if (value < 0.001) {
+      string = value.toFixed(6);
+    } else {
+      string = value.toFixed(3);
+    }
+    return Number(string).toLocaleString();
   }
-  return Number(string).toLocaleString();
 };
 
 const unwind = (
@@ -455,8 +508,7 @@ const getFieldAndValue = (
     ) {
       return [null, null];
     }
-
-    if (values.length && field) {
+    if (values?.length && field) {
       values = unwind(field.dbField, values as RegularLabel[]).filter(
         (v) => v !== undefined && v !== null
       );
@@ -527,3 +579,13 @@ function sortObjectArrays(a, b) {
   }
   return 0;
 }
+
+const shouldShowLabelTag = (labelTag: string, visibility: object) => {
+  if (!visibility) return true;
+
+  const values = visibility["values"];
+  const exclude = visibility["exclude"];
+
+  const contains = values.includes(labelTag);
+  return exclude ? !contains : contains;
+};
