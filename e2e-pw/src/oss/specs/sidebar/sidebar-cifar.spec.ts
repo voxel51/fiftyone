@@ -18,6 +18,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("cifar10", datasetName, {
       max_samples: 5,
+      split: "test",
     });
   });
 
@@ -36,12 +37,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["truck"],
+      ["cat"],
       "show-label--------"
     );
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "visible-truck.png",
+      "visible-cat.png",
       { animations: "allow" }
     );
 
@@ -53,7 +54,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     );
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "not-visible-truck.png",
+      "not-visible-cat.png",
       { animations: "allow" }
     );
   });
@@ -66,16 +67,16 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.waitForElement("categorical-filter-ground_truth.tags");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["truck", "ship"],
+      ["ship", "frog"],
       "show-samples-with-label"
     );
 
     // verify the number of samples in the result
     await grid.waitForGridToLoad();
-    await grid.assert.waitForEntryCountTextToEqual("4 of 10 samples");
+    await grid.assert.waitForEntryCountTextToEqual("3 of 5 samples");
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-truck.png",
+      "show-frog.png",
       { animations: "allow" }
     );
 
@@ -85,12 +86,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["truck"],
+      ["frog"],
       "show-label--------"
     );
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-truck-ship-visible-truck.png",
+      "show-frog-ship-visible-frog.png",
       { animations: "allow" }
     );
 
@@ -102,7 +103,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     );
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "show-truck-ship-invisible-truck.png",
+      "show-frog-ship-invisible-frog.png",
       { animations: "allow" }
     );
   });
@@ -114,13 +115,13 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["frog"],
+      ["ship"],
       "omit-samples-with-label"
     );
 
     await grid.waitForGridToLoad();
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-frog.png",
+      "hide-ship.png",
       { animations: "allow" }
     );
 
@@ -130,11 +131,11 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["truck"],
+      ["cat"],
       "show-label--------"
     );
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-frog-visible-truck.png",
+      "hide-ship-visible-cat.png",
       { animations: "allow" }
     );
 
@@ -145,7 +146,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       "hide-label"
     );
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "hide-frog-invisible-truck.png",
+      "hide-ship-invisible-cat.png",
       { animations: "allow" }
     );
   });
