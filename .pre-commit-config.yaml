@@ -37,11 +37,3 @@ repos:
       - id: prettier
         exclude: ^docs/theme/
         language_version: system
-
-  - repo: local
-    hooks:
-      - id: e2e-lint
-        name: Lint E2E files
-        language: system
-        require_serial: true
-        entry: bash -c "cd e2e-pw && yarn lint"

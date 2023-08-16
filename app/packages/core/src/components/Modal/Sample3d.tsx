@@ -3,8 +3,15 @@ import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
 
-const PluginWrapper = () => {
+const Sample3dContiner = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+`;
+
+const Looker3dPluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
   const modal = useRecoilValue(fos.currentModalSample);
 
@@ -32,7 +39,9 @@ const PluginWrapper = () => {
 export const Sample3d = () => {
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <PluginWrapper />
+      <Sample3dContiner data-cy="modal-looker-container">
+        <Looker3dPluginWrapper />
+      </Sample3dContiner>
     </Suspense>
   );
 };
