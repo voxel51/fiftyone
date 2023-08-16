@@ -29,9 +29,16 @@ test.describe("classification-sidebar-filter-visibility", () => {
   test("In cifar grid, setting visibility directly works", async ({
     grid,
     sidebar,
+    eventUtils,
   }) => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "re-render-tag",
+        (e) => e.detail === "re-render-tag"
+      );
 
     // test case: visibility mode - show label
     await sidebar.clickFieldDropdown("ground_truth");
@@ -40,7 +47,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["cat"],
       "show-label--------"
     );
-
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "visible-cat.png",
       { animations: "allow" }
@@ -52,7 +59,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "not-visible-cat.png",
       { animations: "allow" }
@@ -62,12 +69,18 @@ test.describe("classification-sidebar-filter-visibility", () => {
   test("In cifar grid, show samples with a label filter works", async ({
     grid,
     sidebar,
+    eventUtils,
   }) => {
     await sidebar.clickFieldDropdown("ground_truth");
     await sidebar.waitForElement("categorical-filter-ground_truth.tags");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["ship", "frog"],
+      ["frog"],
+      "show-samples-with-label"
+    );
+    await sidebar.applyLabelFromList(
+      "ground_truth.detections.label",
+      ["ship"],
       "show-samples-with-label"
     );
 
@@ -82,6 +95,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     // Test with visibility mode:
     await sidebar.toggleSidebarMode();
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "re-render-tag",
+        (e) => e.detail === "re-render-tag"
+      );
 
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
@@ -89,7 +108,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       ["frog"],
       "show-label--------"
     );
-
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog-ship-visible-frog.png",
       { animations: "allow" }
@@ -101,7 +120,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
-
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog-ship-invisible-frog.png",
       { animations: "allow" }
@@ -111,8 +130,10 @@ test.describe("classification-sidebar-filter-visibility", () => {
   test("In cifar grid, omit samples with a label filter works", async ({
     grid,
     sidebar,
+    eventUtils,
   }) => {
     await sidebar.clickFieldDropdown("ground_truth");
+    await sidebar.waitForElement("categorical-filter-ground_truth.tags");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["ship"],
@@ -128,12 +149,20 @@ test.describe("classification-sidebar-filter-visibility", () => {
     // Test the visibility mode:
     await sidebar.toggleSidebarMode();
 
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "re-render-tag",
+        (e) => e.detail === "re-render-tag"
+      );
+
     // test case: visibility mode - show label
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["cat"],
       "show-label--------"
     );
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-ship-visible-cat.png",
       { animations: "allow" }
@@ -145,6 +174,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
       [],
       "hide-label"
     );
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-ship-invisible-cat.png",
       { animations: "allow" }

@@ -58,45 +58,54 @@ test.describe("tag", () => {
     page,
     tagger,
     sidebar,
-    grid,
     gridActionsRow,
+    eventUtils,
   }) => {
     await sidebar.clickFieldCheckbox("tags");
     await sidebar.clickFieldDropdown("tags");
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "flashlight-refreshing",
+        (e) => e.detail === "flashlight-refreshing"
+      );
 
     await gridActionsRow.openTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
-    await tagger.addNewTag("sample", "test");
-    await grid.delay(1000);
+    await tagger.addNewTag("sample", "test1");
 
-    const container = await page.getByTestId("categorical-filter-tags");
-    expect(container).toBeVisible();
-    const div = page.getByTitle("test");
-    expect(div).toBeVisible();
-    expect(div).toHaveText("test5");
+    await gridRefreshedEventPromise;
+
+    const bubble = page.getByTestId("tag-tags-test1");
+    await expect(bubble).toHaveCount(5);
   });
 
   test("In grid, I can add a new label tag to all new samples", async ({
     page,
     tagger,
     sidebar,
-    grid,
+    eventUtils,
     gridActionsRow,
   }) => {
     await sidebar.clickFieldCheckbox("_label_tags");
     await sidebar.clickFieldDropdown("_label_tags");
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "flashlight-refreshing",
+        (e) => e.detail === "flashlight-refreshing"
+      );
 
     await gridActionsRow.openTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("label");
-    await tagger.addNewTag("label", "all");
+    await tagger.addNewTag("label", "labelTest");
 
-    await grid.delay(1000);
-
-    // Verify in the sidebar
-    const container = await page.getByTestId("categorical-filter-_label_tags");
-    expect(container).toBeVisible();
-    const div = page.getByTitle("all");
-    expect(div).toBeVisible();
-    expect(div).toHaveText("all143");
+    await gridRefreshedEventPromise;
+    // verify the bubble in the image
+    // the first sample has 17 label tag count, the second sample has 22 tag count
+    const bubble1 = page.getByTestId("tag-_label_tags-labeltest:-17");
+    const bubble2 = page.getByTestId("tag-_label_tags-labeltest:-22");
+    await expect(bubble1).toBeVisible();
+    await expect(bubble2).toBeVisible();
   });
 });
