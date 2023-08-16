@@ -115,6 +115,10 @@ npx playwright test --update-snapshots -g "description of my test"
 
 #### Troubleshooting
 
--   Close all stray browser windows from previous test runs.
+The order of the steps is from the most to the least likely to fix the issue.
+
+-   Run `yarn kill-port 8787` to kill any stray processes that might be running
+    on port 8787.
 -   Reload VSCode developer window.
--   Try again.
+-   Close all browser windows from previous test runs.
+-   Restart the dev server.
