@@ -280,6 +280,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def count(self, filters=None, search=None) -> int:
         if filters is None and search is not None:
             filters = {}
+
+        query = filters
+
+        if "dataset_name" in query:
+            query["context.request_params.dataset_name"] = query[
+                "dataset_name"
+            ]
+            del query["dataset_name"]
+        if "run_by" in query:
+            query["context.user"] = query["run_by"]
+            del query["run_by"]
+
         if search:
             for term in search:
                 for field in search[term]:
@@ -287,6 +299,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
-                    filters[field] = {"$regex": term}
+                    query[field] = {"$regex": term}
 
-        return self._collection.count_documents(filter=filters)
+        return self._collection.count_documents(filter=query)
