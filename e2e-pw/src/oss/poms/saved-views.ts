@@ -1,10 +1,15 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
-import {
-  Color,
-  ColorList,
-  updatedView,
-  updatedView2,
-} from "../specs/smoke-tests/saved-views.spec";
+
+export type Color =
+  | "Gray"
+  | "Blue"
+  | "Purple"
+  | "Red"
+  | "Yellow"
+  | "Green"
+  | "Pink"
+  | "Orange"
+  | "Purple";
 
 export class SavedViewsPom {
   readonly page: Page;
@@ -253,7 +258,7 @@ class SavedViewAsserter {
     await expect(this.svp.closeModalBtn()).toBeHidden();
   }
 
-  async verifyDefaultColors() {
+  async verifyDefaultColors(ColorList: string[]) {
     const colorListBox = this.svp.colorListContainer();
     await expect(colorListBox).toBeVisible();
     // verify default
@@ -355,20 +360,15 @@ class SavedViewAsserter {
     await expect(this.svp.colorInput(color)).toBeVisible();
   }
 
-  async verifyInputUpdated(
-    name: string = updatedView.name,
-    description: string = updatedView.description,
-    color: Color = updatedView.color
-  ) {
-    await this.svp.clickEdit("test");
-    this.verifyInputUpdated(name, description, color);
-  }
-
-  async verifyInputUpdatedRaw(
-    name: string = updatedView2.name,
-    description: string = updatedView2.description,
-    color: Color = updatedView2.color
-  ) {
+  async verifyInputUpdated({
+    name,
+    description,
+    color,
+  }: {
+    name: string;
+    description: string;
+    color: Color;
+  }) {
     await expect(this.svp.nameInput()).toHaveValue(name);
     await expect(this.svp.descriptionInput()).toHaveValue(description);
     await expect(this.svp.colorInput(color)).toBeVisible();

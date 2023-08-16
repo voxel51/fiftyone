@@ -1,8 +1,8 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { SavedViewsPom } from "src/oss/poms/saved-views";
+import { SavedViewsPom, Color } from "src/oss/poms/saved-views";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-export const ColorList = [
+const ColorList = [
   "Gray",
   "Blue",
   "Purple",
@@ -13,17 +13,6 @@ export const ColorList = [
   "Orange",
   "Purple",
 ];
-
-export type Color =
-  | "Gray"
-  | "Blue"
-  | "Purple"
-  | "Red"
-  | "Yellow"
-  | "Green"
-  | "Pink"
-  | "Orange"
-  | "Purple";
 
 export const updatedView = {
   name: "test updated",
@@ -82,11 +71,11 @@ test.describe("saved views", () => {
 
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
     await fiftyoneLoader.waitUntilLoad(page, datasetName);
-    await delete_saved_view(savedViews, testView.name);
-    await delete_saved_view(savedViews, updatedView2.slug);
+    await deleteSavedView(savedViews, testView.name);
+    await deleteSavedView(savedViews, updatedView2.slug);
   });
 
-  async function delete_saved_view(savedViews, slug: string) {
+  async function deleteSavedView(savedViews, slug: string) {
     const hasUnsaved = savedViews.canClearView();
     if (!hasUnsaved) {
       await savedViews.clearView();
@@ -111,7 +100,7 @@ test.describe("saved views", () => {
     await expect(savedViews.selector()).toBeVisible();
   });
 
-  test("clicking on the selector opens the view dialog with default values.", async ({
+  test("clicking on the selector opens the view dialog with default values", async ({
     savedViews,
   }) => {
     await savedViews.openCreateModal();
@@ -184,7 +173,7 @@ test.describe("saved views", () => {
   }) => {
     await savedViews.openCreateModal();
     await savedViews.clickColor();
-    await savedViews.assert.verifyDefaultColors();
+    await savedViews.assert.verifyDefaultColors(ColorList);
     await savedViews.assert.verifyColorNotExists();
   });
 
@@ -293,7 +282,7 @@ test.describe("saved views", () => {
     );
 
     await savedViews.clickEdit(updatedView2.slug);
-    await savedViews.assert.verifyInputUpdatedRaw();
+    await savedViews.assert.verifyInputUpdated(updatedView2);
   });
 
   test("editing a saved view should update the view URL parameter and selection", async ({
