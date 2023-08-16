@@ -180,6 +180,7 @@ export default function ViewSelection() {
       <Box>
         <ViewDialog
           canEdit={canEdit}
+          id="saved-views"
           savedViews={items}
           onEditSuccess={(
             createSavedView: fos.State.SavedView,
@@ -189,7 +190,7 @@ export default function ViewSelection() {
               { name: datasetName },
               {
                 fetchPolicy: "network-only",
-                onComplete: (newOptions) => {
+                onComplete: () => {
                   if (createSavedView && reload) {
                     setView([], undefined, createSavedView.slug);
                     setSelected({
@@ -217,6 +218,7 @@ export default function ViewSelection() {
         />
         <Selection
           readonly={!canEdit}
+          id="saved-views"
           selected={selected}
           setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
@@ -245,6 +247,7 @@ export default function ViewSelection() {
           }}
           lastFixedOption={
             <LastOption
+              data-cy={`saved-views-create-new`}
               onClick={() => canEdit && !isEmptyView && setIsOpen(true)}
               disabled={isEmptyView || !canEdit}
             >
