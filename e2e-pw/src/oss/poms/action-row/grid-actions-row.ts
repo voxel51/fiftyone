@@ -44,4 +44,12 @@ export class GridActionsRowPom {
   async toggleColorSettings() {
     return this.openAction("action-color-settings");
   }
+
+  toPatchesByLabelField(fieldName: string) {
+    return this.page.getByTestId(`labels-patches-${fieldName}`);
+  }
+
+  async clickToPatchesByLabelField(fieldName: string) {
+    await this.toPatchesByLabelField(fieldName).click();
+  }
 }

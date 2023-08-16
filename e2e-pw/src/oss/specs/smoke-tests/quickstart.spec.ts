@@ -35,7 +35,11 @@ test.describe("quickstart", () => {
 
   test("entry counts show correct text when toPatches then groupedBy", async ({
     grid,
+    fiftyoneLoader,
+    page,
   }) => {
     await grid.actionsRow.openToClipsOrPatches();
+    await grid.actionsRow.clickToPatchesByLabelField("predictions");
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 });
