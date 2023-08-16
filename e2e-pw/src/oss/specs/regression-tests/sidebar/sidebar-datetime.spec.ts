@@ -1,4 +1,4 @@
-import { test as base } from "src/oss/fixtures";
+import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { SidebarPom } from "src/oss/poms/sidebar";
@@ -30,46 +30,91 @@ const test = base.extend<{
 });
 
 test.describe("date field and date time field can filter visibility", () => {
-  test.beforeAll(async ({ fiftyoneLoader }) => {
+  test.beforeAll(async ({ fiftyoneLoader, mediaFactory }) => {
+    await mediaFactory.createBlankImage({
+      outputPath: testImgPath,
+      width: 50,
+      height: 50,
+    });
+
+    await mediaFactory.createBlankImage({
+      outputPath: testImgPath2,
+      width: 50,
+      height: 50,
+    });
+
     await fiftyoneLoader.executePythonCode(`
         import fiftyone as fo
+        from datetime import date, datetime, timedelta
 
         dataset = fo.Dataset("${datasetName}")
         dataset.persistent = True
 
+        t1 = datetime.strptime("2021-01-01", "%Y-%m-%d")
+        t2 = datetime.strptime("2021-01-01 18:58:00", "%Y-%m-%d %H:%M:%S")
+
+        image_sample = fo.Sample(filepath="${testImgPath}")
+        image_sample2 = fo.Sample(filepath="${testImgPath2}")
+
+        dataset.add_samples([image_sample, image_sample2])
+
+        for idx, sample in enumerate(dataset):
+            sample["dates"] = t1 - timedelta(days=idx)
+            sample["seconds"] = t2 - timedelta(seconds=idx)
+            sample.save()
         `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilLoad(page, datasetName);
   });
 
-  test("filter date and date time works", async ({
+  test("change date field visibility works", async ({
     sidebar,
     grid,
     modal,
     eventUtils,
+    page,
   }) => {
-    // await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
-    // await grid.sliceSelector.assert.verifyActiveSlice("video");
-    // await grid.assert.assertNLookers(1);
-    // await grid.openFirstLooker();
-    // await modal.waitForSampleLoadDomAttribute();
-    // await modal.waitForCarouselToLoad();
-    // await modal.assert.verifyCarouselLength(2);
-    // await modal.close();
-    // const imgLoadedPromise = eventUtils.getEventReceivedPromiseForPredicate(
-    //   "sample-loaded",
-    //   (e) => e.detail.sampleFilepath === testImgPath
-    // );
-    // await grid.selectSlice("image");
-    // await imgLoadedPromise;
-    // await grid.assert.assertNLookers(2);
-    // await grid.openFirstLooker();
-    // await modal.waitForSampleLoadDomAttribute();
-    // await modal.waitForCarouselToLoad();
-    // await modal.assert.verifyCarouselLength(2);
-    // await modal.navigateNextSample();
-    // await modal.assert.verifyCarouselLength(1);
+    await sidebar.toggleSidebarMode();
+
+    // collapse metadata group
+    await sidebar.toggleSidebarGroup("METADATA");
+
+    await sidebar.clickFieldDropdown("dates");
+    await sidebar.clickFieldCheckbox("dates");
+    await page.waitForTimeout(1000);
+
+    await sidebar.setSliderStartValue("dates", 10);
+    // check screenshot
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "date-field-visibility.png",
+      { animations: "allow" }
+    );
+  });
+
+  test("change datetime field visibility works", async ({
+    sidebar,
+    grid,
+    modal,
+    eventUtils,
+    page,
+  }) => {
+    await sidebar.toggleSidebarMode();
+
+    // collapse metadata group
+    await sidebar.toggleSidebarGroup("METADATA");
+
+    await sidebar.clickFieldDropdown("seconds");
+    await sidebar.clickFieldCheckbox("seconds");
+    await page.waitForTimeout(1000);
+
+    await sidebar.setSliderStartValue("seconds", 10);
+
+    // check screenshot
+    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+      "datetime-field-visibility.png",
+      { animations: "allow" }
+    );
   });
 });

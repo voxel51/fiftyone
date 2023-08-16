@@ -36,6 +36,19 @@ export class SidebarPom {
     return item.getByTestId(`entry-count-all`);
   }
 
+  async setSliderStartValue(field: string, value: number) {
+    const container = this.sidebar.getByTestId(
+      `numeric-slider-container-${field}`
+    );
+    const slider = container.getByTestId("slider");
+    const bound = await (await slider).boundingBox();
+    await this.page.mouse.move(
+      bound.x + bound.width / 2,
+      bound.y + bound.height / 2
+    );
+    await this.page.mouse.down();
+  }
+
   async getActiveMode() {
     return this.sidebar.getByTestId("sidebar-mode-status").innerText();
   }
@@ -75,5 +88,9 @@ export class SidebarPom {
   async toggleSidebarMode() {
     const toggle = this.sidebar.getByTestId("sidebar-mode-status");
     return toggle.click();
+  }
+
+  async toggleSidebarGroup(name: string) {
+    await this.sidebar.getByTestId(`sidebar-group-${name}`).click();
   }
 }
