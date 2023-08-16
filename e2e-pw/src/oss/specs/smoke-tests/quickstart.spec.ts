@@ -33,13 +33,21 @@ test.describe("quickstart", () => {
     await modal.waitForSampleLoadDomAttribute();
   });
 
-  test("entry counts show correct text when toPatches then groupedBy", async ({
+  test("entry counts text when toPatches then groupedBy", async ({
     grid,
     fiftyoneLoader,
     page,
   }) => {
-    await grid.actionsRow.openToClipsOrPatches();
+    await grid.actionsRow.toggleToClipsOrPatches();
     await grid.actionsRow.clickToPatchesByLabelField("predictions");
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+
+    await grid.assert.isEntryCountTextEqualTo("122 patches");
+
+    await grid.actionsRow.toggleCreateDynamicGroups();
+    await grid.actionsRow.groupBy("predictions.label");
+
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
   });
 });
