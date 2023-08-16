@@ -72,7 +72,6 @@ test.describe("date field and date time field can filter visibility", () => {
   test("change date field visibility works", async ({
     sidebar,
     grid,
-    modal,
     eventUtils,
     page,
   }) => {
@@ -80,6 +79,12 @@ test.describe("date field and date time field can filter visibility", () => {
 
     // collapse metadata group
     await sidebar.toggleSidebarGroup("METADATA");
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "re-render-tag",
+        (e) => e.detail === "re-render-tag"
+      );
 
     await sidebar.clickFieldDropdown("dates");
     await sidebar.clickFieldCheckbox("dates");
@@ -87,6 +92,7 @@ test.describe("date field and date time field can filter visibility", () => {
 
     await sidebar.setSliderStartValue("dates", 10);
     // check screenshot
+    await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "date-field-visibility.png",
       { animations: "allow" }
@@ -96,7 +102,6 @@ test.describe("date field and date time field can filter visibility", () => {
   test("change datetime field visibility works", async ({
     sidebar,
     grid,
-    modal,
     eventUtils,
     page,
   }) => {
@@ -105,12 +110,19 @@ test.describe("date field and date time field can filter visibility", () => {
     // collapse metadata group
     await sidebar.toggleSidebarGroup("METADATA");
 
+    // mount eventListener
+    const gridRefreshedEventPromise =
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "re-render-tag",
+        (e) => e.detail === "re-render-tag"
+      );
+
     await sidebar.clickFieldDropdown("seconds");
     await sidebar.clickFieldCheckbox("seconds");
     await page.waitForTimeout(1000);
 
     await sidebar.setSliderStartValue("seconds", 10);
-
+    await gridRefreshedEventPromise;
     // check screenshot
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "datetime-field-visibility.png",

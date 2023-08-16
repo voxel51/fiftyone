@@ -41,12 +41,17 @@ export class SidebarPom {
       `numeric-slider-container-${field}`
     );
     const slider = container.getByTestId("slider");
-    const bound = await (await slider).boundingBox();
+    const bound = await slider.boundingBox();
     await this.page.mouse.move(
-      bound.x + bound.width / 2,
+      bound.x + bound.width / 3,
       bound.y + bound.height / 2
     );
     await this.page.mouse.down();
+    await this.page.mouse.move(
+      bound.x + bound.width / 3,
+      bound.y + bound.height / 2
+    );
+    await this.page.mouse.up();
   }
 
   async getActiveMode() {
