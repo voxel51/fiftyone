@@ -258,7 +258,7 @@ class SavedViewAsserter {
     await expect(this.svp.closeModalBtn()).toBeHidden();
   }
 
-  async verifyDefaultColors(ColorList: string[]) {
+  async verifyDefaultColors(colorList: string[]) {
     const colorListBox = this.svp.colorListContainer();
     await expect(colorListBox).toBeVisible();
     // verify default
@@ -266,7 +266,7 @@ class SavedViewAsserter {
       colorListBox.getByRole("option", { name: "Gray" })
     ).toBeInViewport();
 
-    ColorList.forEach(async (color: string) => {
+    colorList.forEach(async (color: string) => {
       await expect(
         colorListBox.getByRole("option", { name: color })
       ).toBeVisible();
