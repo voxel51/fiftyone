@@ -71,7 +71,6 @@ test.describe("date field and date time field can filter visibility", () => {
 
   test("change date field visibility works", async ({
     sidebar,
-    grid,
     eventUtils,
     page,
   }) => {
@@ -89,19 +88,16 @@ test.describe("date field and date time field can filter visibility", () => {
     await sidebar.clickFieldDropdown("dates");
     await sidebar.clickFieldCheckbox("dates");
     await page.waitForTimeout(1000);
+    expect(await page.getByTestId("tag-dates").count()).toBe(2);
 
     await sidebar.setSliderStartValue("dates", 10);
-    // check screenshot
+
     await gridRefreshedEventPromise;
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "date-field-visibility.png",
-      { animations: "allow" }
-    );
+    expect(await page.getByTestId("tag-dates").count()).toBe(1);
   });
 
   test("change datetime field visibility works", async ({
     sidebar,
-    grid,
     eventUtils,
     page,
   }) => {
@@ -120,13 +116,11 @@ test.describe("date field and date time field can filter visibility", () => {
     await sidebar.clickFieldDropdown("seconds");
     await sidebar.clickFieldCheckbox("seconds");
     await page.waitForTimeout(1000);
+    expect(await page.getByTestId("tag-seconds").count()).toBe(2);
 
     await sidebar.setSliderStartValue("seconds", 10);
     await gridRefreshedEventPromise;
     // check screenshot
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "datetime-field-visibility.png",
-      { animations: "allow" }
-    );
+    expect(await page.getByTestId("tag-seconds").count()).toBe(1);
   });
 });
