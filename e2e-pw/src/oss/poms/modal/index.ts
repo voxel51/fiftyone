@@ -154,7 +154,7 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
-  async verifySelection(n: number) {
+  async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
     const count = await action.first().textContent();
