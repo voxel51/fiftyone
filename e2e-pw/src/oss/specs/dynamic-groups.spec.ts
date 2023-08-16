@@ -12,7 +12,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-const extensionDatasetNamePairs = ["mp4", "pcd", "png"].map(
+// TODO: omitting 'mp4' because https://github.com/voxel51/fiftyone/issues/3421
+const extensionDatasetNamePairs = ["pcd", "png"].map(
   (extension) =>
     [
       extension,
@@ -61,7 +62,6 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.assert.isEntryCountTextEqualTo("10 groups");
 
     await grid.openFirstSample();
-    await modal.waitForSampleLoadDomAttribute(true);
     await modal.sidebar.assert.verifySidebarEntryText("dynamic_group", "0");
     await modal.scrollCarousel();
     await modal.navigateCarousel(4, true);
