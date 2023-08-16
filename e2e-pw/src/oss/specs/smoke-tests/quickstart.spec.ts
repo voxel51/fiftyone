@@ -1,7 +1,18 @@
-import { expect, test } from "src/oss/fixtures";
+import { expect, test as base } from "src/oss/fixtures";
+import { GridPom } from "src/oss/poms/grid";
+import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+
+const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
+  grid: async ({ page }, use) => {
+    await use(new GridPom(page));
+  },
+  modal: async ({ page }, use) => {
+    await use(new ModalPom(page));
+  },
+});
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
@@ -10,9 +21,13 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("smoke", async ({ page }) => {
+test("smoke", async ({ page, grid, modal }) => {
   await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
+
+  // test navigation
+  await grid.openFirstSample();
+  await modal.waitForSampleLoadDomAttribute();
 });

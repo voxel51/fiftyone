@@ -283,7 +283,7 @@ class SavedViewAsserter {
     await expect(this.svp.savedViewOption(name)).toBeVisible();
   }
 
-  async verifySaveViewFails(name: string = "test") {
+  async verifySaveViewFails() {
     await expect(this.svp.saveButton()).toBeDisabled();
     expect(this.svp.nameError()).toBeDefined();
     await this.svp.clickCloseModal();

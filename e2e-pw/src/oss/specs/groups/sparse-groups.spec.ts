@@ -37,12 +37,12 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test(`${extension} default slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
-    await grid.openFirstLooker();
+    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+    await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "first");
     await modal.navigateSlice("group", "shared", true);
@@ -51,10 +51,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} shared slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
+    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
     await grid.selectSlice("shared");
-    await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
-    await grid.openFirstLooker();
+    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+    await grid.openFirstSample();
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "shared");
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.navigateSlice("group", "first", true);
@@ -71,10 +71,10 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test(`${extension} second slice`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
+    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
     await grid.selectSlice("second");
-    await grid.assert.waitForEntryCountTextToEqual("1 group with slice");
-    await grid.openFirstLooker();
+    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+    await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "second");
     await modal.navigateSlice("group", "shared", true);

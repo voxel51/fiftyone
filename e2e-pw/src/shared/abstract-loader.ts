@@ -58,7 +58,7 @@ export abstract class AbstractFiftyoneLoader {
    * @param savedView Optional saved view name
    * @param savedView Optional flag to wait until grid load. Default is true
    */
-  abstract waitUntilLoad(
+  abstract waitUntilGridVisible(
     page: Page,
     datasetName: string,
     savedView?: string,

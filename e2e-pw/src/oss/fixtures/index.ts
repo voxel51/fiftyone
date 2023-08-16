@@ -18,7 +18,7 @@ export type CustomFixturesWithPage = {
   eventUtils: EventUtils;
 };
 
-const customFixtures = base.extend<{}, CustomFixturesWithoutPage>({
+const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   fiftyoneServerPort: [
     async ({}, use, workerInfo) => {
       if (process.env.USE_DEV_BUILD) {

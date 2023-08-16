@@ -70,7 +70,7 @@ test.describe("saved views", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await deleteSavedView(savedViews, testView.name);
     await deleteSavedView(savedViews, updatedView2.slug);
   });

@@ -40,12 +40,12 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test(`${extension} group carousel`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("2 groups with slice");
-    await grid.openFirstLooker();
+    await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
+    await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
 

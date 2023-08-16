@@ -57,7 +57,7 @@ test.describe("groups video labels", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("correct thumbnails for both slices", async ({ grid, page }) => {
@@ -68,7 +68,7 @@ test.describe("groups video labels", () => {
     await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
     const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-      return new Promise<void>((resolve, _reject) => {
+      return new Promise<void>((resolve) => {
         document.addEventListener("sample-loaded", (e: CustomEvent) => {
           if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
             resolve();
@@ -89,7 +89,7 @@ test.describe("groups video labels", () => {
     modal,
     eventUtils,
   }) => {
-    await grid.openFirstLooker();
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
     await modal.video.clickUseFrameNumber();

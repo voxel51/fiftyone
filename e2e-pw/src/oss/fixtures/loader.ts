@@ -98,7 +98,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     );
   }
 
-  async loadTestDataset(name: string) {
+  async loadTestDataset() {
     throw new Error("Method not implemented.");
   }
 
@@ -106,11 +106,11 @@ export class OssLoader extends AbstractFiftyoneLoader {
     return this.pythonRunner.exec(code);
   }
 
-  async executePythonFixture(fixturePath: string) {
+  async executePythonFixture() {
     throw new Error("Method not implemented.");
   }
 
-  async waitUntilLoad(
+  async waitUntilGridVisible(
     page: Page,
     datasetName: string,
     savedView?: string,
@@ -154,6 +154,21 @@ export class OssLoader extends AbstractFiftyoneLoader {
       {
         state: "visible",
       }
+    );
+
+    await page.waitForFunction(
+      () => {
+        if (document.querySelector(`[data-cy=looker-error-info]`)) {
+          return true;
+        }
+
+        return (
+          document.querySelector(`canvas`)?.getAttribute("sample-loaded") ===
+          "true"
+        );
+      },
+      {},
+      { timeout: Duration.Seconds(10) }
     );
   }
 }
