@@ -37,13 +37,11 @@
 
 ```typescript
 class MyPOM {
-    readonly page: Page;
     readonly semanticLocator1: Locator;
     readonly semanticLocator2: Locator;
     readonly assert: MyPOMAsserter;
 
-    constructor() {
-        this.page = page;
+    constructor(private readonly page) {
         this.semanticLocator1 = this.page.locator("...");
         this.semanticLocator2 = this.page.locator("...");
         this.assert = new MyPOMAsserter(this);
