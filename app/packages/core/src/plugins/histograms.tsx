@@ -5,7 +5,7 @@ import { usePanelTitle } from "@fiftyone/spaces";
 import { datasetName, distributionPaths, field } from "@fiftyone/state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { BarChart } from "@mui/icons-material";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   DefaultValue,
   atomFamily,
@@ -14,11 +14,12 @@ import {
   useRecoilValue,
 } from "recoil";
 import styled from "styled-components";
-import Distribution from "../components/Distribution";
+import Histogram from "../components/Histogram";
 
-const DistributionsContainer = styled.div`
+const HistogramsContainer = styled.div`
   height: 100%;
-  overflow: hidden;
+  overflow: auto;
+  position: relative;
   ${scrollbarStyles}
 `;
 
@@ -34,15 +35,13 @@ const plotPaths = atomFamily<string | null, string>({
   default: null,
 });
 
-const plotPath = selector<string | null>({
+const plotPath = selector<string>({
   key: "plotPath",
   get: ({ get }) => {
     const plotPath = plotPaths(get(datasetName));
-
     const path = get(plotPath);
 
-    if (!path || (path !== "_label_tags" && !get(field(path))))
-      return get(distributionPaths)[0] || null;
+    if (!path || !get(field(path))) return get(distributionPaths)[0];
 
     return path;
   },
@@ -69,7 +68,8 @@ const PlotSelector = () => {
         const values = paths.filter((name) => name.includes(search));
         return { values, total: paths.length };
       }}
-      value={path}
+      value={path || ""}
+      cy={"histograms"}
     />
   );
 };
@@ -82,17 +82,17 @@ function Plots() {
   }, [path]);
 
   return (
-    <DistributionsContainer data-cy="distribution-container">
+    <HistogramsContainer data-cy="histograms-container">
       <ControlsContainer>
         <PlotSelector />
         <OperatorPlacements place={types.Places.HISTOGRAM_ACTIONS} />
       </ControlsContainer>
       {path ? (
-        <Distribution key={path} path={path} style={{ margin: "1rem" }} />
+        <Histogram key={path} path={path} style={{ margin: "1rem" }} />
       ) : (
         <Loading>Select a field</Loading>
       )}
-    </DistributionsContainer>
+    </HistogramsContainer>
   );
 }
 

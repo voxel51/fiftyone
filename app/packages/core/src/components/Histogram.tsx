@@ -1,10 +1,16 @@
-import { scrollbarStyles } from "@fiftyone/utilities";
+import { Loading, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { distribution } from "@fiftyone/state";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  scrollbarStyles,
+} from "@fiftyone/utilities";
 import React, { PureComponent, Suspense, useRef } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-
 import {
   formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
@@ -12,11 +18,6 @@ import {
   prettify,
 } from "../utils/generic";
 import { ContentDiv, ContentHeader } from "./utils";
-
-import { Loading, useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { distribution } from "@fiftyone/state";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
 
 const Container = styled.div`
   ${scrollbarStyles}
@@ -132,7 +133,7 @@ const makeData = (counts: readonly number[], values: readonly number[]) => {
   return { data: data, ticks: getTicks(data) };
 };
 
-const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
+const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
 
@@ -174,7 +175,14 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
         };
 
   return data.length ? (
-    <Container ref={ref}>
+    <Container
+      ref={(el) => {
+        el?.dispatchEvent(
+          new CustomEvent(`histogram-${path}`, { bubbles: true })
+        );
+        ref(el);
+      }}
+    >
       <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
       <BarChart
         ref={container}
@@ -242,6 +250,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
           fill="rgb(255, 109, 4)"
           barCategoryGap={0}
           barSize={barWidth}
+          isAnimationActive={false}
         />
       </BarChart>
     </Container>
@@ -250,7 +259,7 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
   );
 };
 
-const DistributionsContainer = styled.div`
+const HistogramContainer = styled.div`
   overflow-y: scroll;
   overflow-x: hidden;
   width: 100%;
@@ -267,9 +276,9 @@ const Distribution = ({
 }) => {
   return (
     <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
-      <DistributionsContainer style={style}>
-        <DistributionRenderer key={path} path={path} />
-      </DistributionsContainer>
+      <HistogramContainer style={style}>
+        <HistogramRenderer key={path} path={path} />
+      </HistogramContainer>
     </Suspense>
   );
 };

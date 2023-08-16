@@ -1,27 +1,19 @@
-import { VariablesOf } from "react-relay";
-import { graphQLSelectorFamily } from "recoil-relay";
-
 import {
   countValues as countValuesGraphQL,
   countValuesQuery,
   histogramValues as histogramValuesGraphQL,
   histogramValuesQuery,
 } from "@fiftyone/relay";
-
-import { RelayEnvironmentKey } from "./relay";
-
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
   DETECTION,
   DETECTIONS,
-  EMBEDDED_DOCUMENT_FIELD,
   FLOAT_FIELD,
   INT_FIELD,
   KEYPOINT,
   KEYPOINTS,
-  LABELS,
   LABELS_PATH,
   LIST_FIELD,
   POLYLINE,
@@ -30,10 +22,13 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
+import { VariablesOf } from "react-relay";
 import { selector, selectorFamily } from "recoil";
+import { graphQLSelectorFamily } from "recoil-relay";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
+import { RelayEnvironmentKey } from "./relay";
 import { field, fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
@@ -207,26 +202,22 @@ const SKIP_FIELDS = {
 
 export const distributionPaths = selector<string[]>({
   key: "distributionPaths",
-  get: ({ get }) => {
-    return [
-      ...get(
-        fieldPaths({
-          space: State.SPACE.SAMPLE,
-          ftype: VALID_DISTRIBUTION_TYPES,
-        })
-      ).filter((path) => !["filepath", "id"].includes(path)),
-      ...get(
-        fieldPaths({
-          space: State.SPACE.SAMPLE,
-          ftype: EMBEDDED_DOCUMENT_FIELD,
-        })
-      )
-        .filter((path) => !LABELS.includes(get(field(path)).embeddedDocType))
-        .flatMap((path) =>
-          get(fieldPaths({ path, ftype: VALID_DISTRIBUTION_TYPES })).map(
-            (name) => [path, name].join(".")
-          )
-        ),
-    ].sort();
-  },
+  get: ({ get }) =>
+    get(
+      fieldPaths({
+        space: State.SPACE.SAMPLE,
+        ftype: VALID_DISTRIBUTION_TYPES,
+      })
+    )
+      .filter((path) => !["filepath", "id"].includes(path))
+      .filter((path) => {
+        const keys = path.split(".");
+        const parent = get(field(keys.slice(0, -1).join(".")));
+        return (
+          !parent ||
+          !SKIP_FIELDS[parent.embeddedDocType] ||
+          !SKIP_FIELDS[parent.embeddedDocType].includes(keys.slice(-1)[0])
+        );
+      })
+      .sort(),
 });

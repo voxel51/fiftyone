@@ -56,27 +56,34 @@ export const Result = <T extends unknown>({
 
 export interface ResultsProps<T> {
   active?: number;
-  results: T[];
-  onSelect: (value: T) => void;
-  total?: number;
   component: React.FC<{ value: T; className: string }>;
+  cy?: string;
+  onSelect: (value: T) => void;
+  results: T[];
   toKey: (value: T) => string;
+  total?: number;
 }
 
 const Results = <T extends unknown>({
   active,
+  cy,
+  component,
   onSelect,
   results,
-  total,
-  component,
   toKey = (value: T) => String(value),
+  total,
 }: ResultsProps<T>) => {
   return (
     <div className={style.container}>
       <div
         className={style.scrollContainer}
         style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
-        data-cy="selector-results-container"
+        data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
+        ref={(ref) => {
+          ref?.dispatchEvent(
+            new CustomEvent(`selector-results-${cy}`, { bubbles: true })
+          );
+        }}
       >
         {results.map((result, i) => (
           <Result
@@ -95,7 +102,7 @@ const Results = <T extends unknown>({
               {results.length} of {total.toLocaleString()}
             </>
           )}
-          {!Boolean(total) && <>No results</>}
+          {!total && <>No results</>}
         </div>
       )}
     </div>

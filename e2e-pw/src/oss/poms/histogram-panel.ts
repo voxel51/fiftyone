@@ -1,15 +1,34 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
+import { SelectorPom } from "./selector";
 
 export class HistogramPom {
-  readonly page: Page;
-  readonly locator: Locator;
   readonly assert: HistogramAsserter;
+  readonly locator: Locator;
+  readonly selector: SelectorPom;
 
-  constructor(page: Page) {
-    this.page = page;
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils
+  ) {
     this.assert = new HistogramAsserter(this);
 
-    this.locator = this.page.getByTestId("distribution-container");
+    this.locator = this.page.getByTestId("histograms-container");
+    this.selector = new SelectorPom(
+      page,
+      this.locator,
+      "histograms",
+      eventUtils
+    );
+  }
+
+  async selectField(field: string) {
+    const promise = this.eventUtils.getEventReceivedPromiseForPredicate(
+      `histogram-${field}`,
+      () => true
+    );
+    await this.selector.selectResult(field);
+    await promise;
   }
 }
 
@@ -18,5 +37,13 @@ class HistogramAsserter {
 
   async histogramLoaded() {
     await expect(this.histogramPom.locator).toBeVisible();
+  }
+
+  async verifyField(field: string) {
+    await this.histogramPom.selector.assert.verifyValue(field);
+  }
+
+  async verifyFields(fields: string[]) {
+    await this.histogramPom.selector.assert.verifyResults(fields);
   }
 }
