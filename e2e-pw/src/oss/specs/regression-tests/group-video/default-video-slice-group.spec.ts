@@ -102,6 +102,8 @@ test.describe("default video slice group", () => {
     await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(2);
     await modal.navigateNextSample();
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(1);
   });
 });

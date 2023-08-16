@@ -5,7 +5,6 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
-  readonly page: Page;
   readonly groupCarousel: Locator;
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
@@ -13,8 +12,7 @@ export class ModalPom {
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
 
-  constructor(page: Page) {
-    this.page = page;
+  constructor(private readonly page: Page) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
     this.groupCarousel = this.locator.getByTestId("group-carousel");
