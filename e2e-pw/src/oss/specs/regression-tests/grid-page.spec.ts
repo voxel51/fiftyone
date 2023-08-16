@@ -13,6 +13,7 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
 });
 
 const datasetName = getUniqueDatasetNameWithPrefix("grid-page");
+const groupDatasetName = getUniqueDatasetNameWithPrefix("grid-page-group");
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
   await fiftyoneLoader.executePythonCode(`
@@ -24,23 +25,48 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 
     view = dataset.group_by("group", order_by="i")
     dataset.save_view("group", view)
+
+    group_dataset = fo.Dataset("${groupDatasetName}")
+    group_dataset.persistent = True
+    group_dataset.add_group_field("group")
+    group_samples = []
+    group = fo.Group()
+    for i in range(0, 21):
+        group_samples.append(fo.Sample(filepath=f"{i}.png", group=group.element(str(i))))
+
+    group_dataset.add_samples(group_samples)
   `);
 });
 
 test("grid has correct second page (all 21 samples)", async ({
-  page,
   fiftyoneLoader,
   grid,
+  page,
 }) => {
   await fiftyoneLoader.waitUntilLoad(page, datasetName);
   await grid.assert.assertNLookers(21);
 });
 
-test("modal carousel has correct second page (all 21 samples)", async ({
-  page,
+test("modal group carousel has correct second page (all 21 samples)", async ({
   fiftyoneLoader,
-  modal,
   grid,
+  modal,
+  page,
+}) => {
+  await fiftyoneLoader.waitUntilLoad(page, groupDatasetName);
+  await grid.openFirstLooker();
+  await modal.sidebar.toggleSidebarGroup("GROUP");
+  await modal.waitForCarouselToLoad();
+  await modal.scrollCarousel();
+  await modal.navigateSlice("group.name", "20", true);
+  await modal.sidebar.assert.verifySidebarEntryText("group.name", "20");
+});
+
+test("modal dynamic group carousel has correct second page (all 21 samples)", async ({
+  fiftyoneLoader,
+  grid,
+  modal,
+  page,
 }) => {
   await fiftyoneLoader.waitUntilLoad(page, datasetName, "group");
   await grid.openFirstLooker();
