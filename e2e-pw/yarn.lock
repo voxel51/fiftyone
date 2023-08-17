@@ -476,13 +476,13 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@playwright/test@^1.37":
-  version "1.37.0"
-  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.37.0.tgz#5b3b60dabaabc0d5d3021fb5a5bb8250b424c71d"
-  integrity sha512-181WBLk4SRUyH1Q96VZl7BP6HcK0b7lbdeKisn3N/vnjitk+9HbdlFz/L5fey05vxaAhldIDnzo8KUoy8S3mmQ==
+"@playwright/test@^1.37.1":
+  version "1.37.1"
+  resolved "https://registry.yarnpkg.com/@playwright/test/-/test-1.37.1.tgz#e7f44ae0faf1be52d6360c6bbf689fd0057d9b6f"
+  integrity sha512-bq9zTli3vWJo8S3LwB91U0qDNQDpEXnw7knhxLM0nwDvexQAwx9tO8iKDZSqqneVq+URd/WIoz+BALMqUTgdSg==
   dependencies:
     "@types/node" "*"
-    playwright-core "1.37.0"
+    playwright-core "1.37.1"
   optionalDependencies:
     fsevents "2.3.2"
 
@@ -1690,10 +1690,10 @@ pkg-types@^1.0.3:
     mlly "^1.2.0"
     pathe "^1.1.0"
 
-playwright-core@1.37.0:
-  version "1.37.0"
-  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.37.0.tgz#a0a009b840076706452e29aab0efe0ebf5d45ab1"
-  integrity sha512-1c46jhTH/myQw6sesrcuHVtLoSNfJv8Pfy9t3rs6subY7kARv0HRw5PpyfPYPpPtQvBOmgbE6K+qgYUpj81LAA==
+playwright-core@1.37.1:
+  version "1.37.1"
+  resolved "https://registry.yarnpkg.com/playwright-core/-/playwright-core-1.37.1.tgz#cb517d52e2e8cb4fa71957639f1cd105d1683126"
+  integrity sha512-17EuQxlSIYCmEMwzMqusJ2ztDgJePjrbttaefgdsiqeLWidjYz9BxXaTaZWxH1J95SHGk6tjE+dwgWILJoUZfA==
 
 pngjs@^3.0.0:
   version "3.4.0"
