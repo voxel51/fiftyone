@@ -42,7 +42,7 @@ export const createPcd = (options: {
 
   const command = getPythonCommand([
     "-c",
-    `$'${dedentPythonCode(pythonCode)}'`,
+    `'''${dedentPythonCode(pythonCode)}'''`,
   ]);
   const proc = spawnSync(command, {
     shell: true,
