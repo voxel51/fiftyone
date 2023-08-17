@@ -3,47 +3,63 @@ import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
-["mp4", "pcd", "png"].forEach((extension) => {
-  const datasetName = getUniqueDatasetNameWithPrefix(
-    `${extension}-sparse-groups`
-  );
-  const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-    grid: async ({ page }, use) => {
-      await use(new GridPom(page));
-    },
-    modal: async ({ page }, use) => {
-      await use(new ModalPom(page));
-    },
+const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
+  grid: async ({ page }, use) => {
+    await use(new GridPom(page));
+  },
+  modal: async ({ page }, use) => {
+    await use(new ModalPom(page));
+  },
+});
+
+// note: omitting "pcd" because we don't display carousel for pcd datasets
+const extensionDatasetNamePairs = ["mp4", "png"].map(
+  (extension) =>
+    [
+      extension,
+      getUniqueDatasetNameWithPrefix(`${extension}-sparse-groups`),
+    ] as const
+);
+
+test.beforeAll(async ({ fiftyoneLoader }) => {
+  let pythonCode = `
+      import fiftyone as fo
+  `;
+
+  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+    pythonCode += `
+      # ${extension} dataset
+      dataset = fo.Dataset("${datasetName}")
+      dataset.add_group_field("group", default="0")
+      dataset.persistent = True
+  
+      first_group = fo.Group()
+      second_group = fo.Group()
+      samples = []
+      for i in range(0, 100):
+          first = fo.Sample(
+              filepath=f"{i}-first.${extension}", group=first_group.element(f"{i}")
+          )
+          second = fo.Sample(
+              filepath=f"{i}-second.${extension}", group=second_group.element(f"{i}")
+          )
+      
+          samples.extend([first, second])
+      
+      dataset.add_samples(samples)
+      `;
   });
+  await fiftyoneLoader.executePythonCode(pythonCode);
+});
 
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.add_group_field("group", default="0")
-    dataset.persistent = True
-
-    first_group = fo.Group()
-    second_group = fo.Group()
-    samples = []
-    for i in range(0, 100):
-        first = fo.Sample(
-            filepath=f"{i}-first.${extension}", group=first_group.element(f"{i}")
-        )
-        second = fo.Sample(
-            filepath=f"{i}-second.${extension}", group=second_group.element(f"{i}")
-        )
-    
-        samples.extend([first, second])
-    
-    dataset.add_samples(samples)`);
-  });
-
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+  test(`${extension} group carousel`, async ({
+    fiftyoneLoader,
+    page,
+    grid,
+    modal,
+  }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  });
-
-  test(`${extension} group carousel`, async ({ grid, modal }) => {
     await grid.assert.isEntryCountTextEqualTo("2 groups with slice");
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
