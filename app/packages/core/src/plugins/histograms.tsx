@@ -3,7 +3,6 @@ import { OperatorPlacements, types } from "@fiftyone/operators";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
 import { usePanelTitle } from "@fiftyone/spaces";
 import { datasetName, distributionPaths, field } from "@fiftyone/state";
-import { scrollbarStyles } from "@fiftyone/utilities";
 import { BarChart } from "@mui/icons-material";
 import React, { useEffect } from "react";
 import {
@@ -17,17 +16,20 @@ import styled from "styled-components";
 import Histogram from "../components/Histogram";
 
 const HistogramsContainer = styled.div`
-  height: 100%;
-  overflow: auto;
   position: relative;
-  ${scrollbarStyles}
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 `;
 
 const ControlsContainer = styled.div`
   display: flex;
   gap: 1rem;
-  padding-left: 1rem;
-  padding-top: 1rem;
+  margin: 1rem;
 `;
 
 const plotPaths = atomFamily<string | null, string>({
@@ -88,7 +90,7 @@ function Plots() {
         <OperatorPlacements place={types.Places.HISTOGRAM_ACTIONS} />
       </ControlsContainer>
       {path ? (
-        <Histogram key={path} path={path} style={{ margin: "1rem" }} />
+        <Histogram key={path} path={path} />
       ) : (
         <Loading>Select a field</Loading>
       )}

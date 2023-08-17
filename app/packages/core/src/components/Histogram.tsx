@@ -24,7 +24,7 @@ const Container = styled.div`
   overflow-y: hidden;
   overflow-x: auto;
   width: 100%;
-  height: 100%;
+  flex: 1;
 `;
 
 const LIMIT = 200;
@@ -72,6 +72,7 @@ const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
   line-height: 2rem;
+  margin-left: 1rem;
 `;
 
 const getTicks = (data: { key: number; edges: [number, number] }[]) => {
@@ -183,7 +184,7 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
         ref(el);
       }}
     >
-      <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
+      {hasMore && <Title>{`First ${data?.length} results`}</Title>}
       <BarChart
         ref={container}
         height={height - 37}
@@ -259,26 +260,10 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   );
 };
 
-const HistogramContainer = styled.div`
-  overflow-y: scroll;
-  overflow-x: hidden;
-  width: 100%;
-  height: calc(100% - 4.5rem);
-  ${scrollbarStyles}
-`;
-
-const Distribution = ({
-  path,
-  style,
-}: {
-  path: string;
-  style?: React.CSSProperties;
-}) => {
+const Distribution = ({ path }: { path: string }) => {
   return (
     <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
-      <HistogramContainer style={style}>
-        <HistogramRenderer key={path} path={path} />
-      </HistogramContainer>
+      <HistogramRenderer key={path} path={path} />
     </Suspense>
   );
 };

@@ -1,4 +1,4 @@
-import { expect, Locator, Page } from "src/oss/fixtures";
+import { expect, Locator } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
 export class SelectorPom {
@@ -8,10 +8,9 @@ export class SelectorPom {
   readonly resultsContainer: Locator;
 
   constructor(
-    private readonly page: Page,
     private readonly parent: Locator,
-    private readonly title: string,
-    private readonly eventUtils: EventUtils
+    private readonly eventUtils: EventUtils,
+    private readonly title: string
   ) {
     this.assert = new SelectorAsserter(this);
     this.input = this.parent.getByTestId(`selector-${this.title}`);

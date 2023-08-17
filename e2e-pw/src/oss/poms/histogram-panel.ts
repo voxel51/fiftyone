@@ -14,12 +14,7 @@ export class HistogramPom {
     this.assert = new HistogramAsserter(this);
 
     this.locator = this.page.getByTestId("histograms-container");
-    this.selector = new SelectorPom(
-      page,
-      this.locator,
-      "histograms",
-      eventUtils
-    );
+    this.selector = new SelectorPom(this.locator, eventUtils, "histograms");
   }
 
   async selectField(field: string) {
