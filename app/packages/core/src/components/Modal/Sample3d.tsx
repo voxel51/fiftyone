@@ -1,9 +1,11 @@
 import { Loading } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React, { Suspense, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { SampleWrapper } from "./Sample";
 
 const Sample3dContiner = styled.div`
   width: 100%;
@@ -37,10 +39,14 @@ const Looker3dPluginWrapper = () => {
 };
 
 export const Sample3d = () => {
+  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
+
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
       <Sample3dContiner data-cy="modal-looker-container">
-        <Looker3dPluginWrapper />
+        <SampleWrapper lookerRef={lookerRef}>
+          <Looker3dPluginWrapper />
+        </SampleWrapper>
       </Sample3dContiner>
     </Suspense>
   );
