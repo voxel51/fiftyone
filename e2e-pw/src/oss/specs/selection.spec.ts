@@ -67,8 +67,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.assert.isSelectionCountEqualTo(0);
   });
 
-  // TODO: fixme
-  test.skip(`${extension} modal selection`, async ({
+  test(`${extension} modal selection`, async ({
     fiftyoneLoader,
     page,
     modal,
@@ -76,7 +75,6 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
   }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.toggleSelectFirstSample();
-    // TODO: fixme, checkbox inexplicably gets unchecked
     await grid.assert.isNthSampleSelected(0);
     await grid.openNthSample(1);
     await modal.assert.verifySelectionCount(1);

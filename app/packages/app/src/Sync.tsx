@@ -29,7 +29,7 @@ import {
   useSession,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
-import { getEventSource, toCamelCase } from "@fiftyone/utilities";
+import { env, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
 import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
@@ -95,6 +95,11 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             return;
           }
 
+          const stateless = env().VITE_NO_STATE || true;
+          if (stateless && readyStateRef.current === AppReadyState.OPEN) {
+            return;
+          }
+
           switch (msg.event) {
             case Events.DEACTIVATE_NOTEBOOK_CELL:
               controller.abort();
@@ -129,15 +134,17 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
                 "colorScheme",
                 ensureColorScheme(payload.state.color_scheme)
               );
-              setter("selectedSamples", new Set(payload.state.selected));
-              setter(
-                "selectedLabels",
-                toCamelCase(
-                  payload.state.selected_labels
-                ) as State.SelectedLabel[]
-              );
-              payload.state.spaces &&
-                setter("sessionSpaces", payload.state.spaces);
+              if (!stateless) {
+                setter("selectedSamples", new Set(payload.state.selected));
+                setter(
+                  "selectedLabels",
+                  toCamelCase(
+                    payload.state.selected_labels
+                  ) as State.SelectedLabel[]
+                );
+                payload.state.spaces &&
+                  setter("sessionSpaces", payload.state.spaces);
+              }
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -165,7 +172,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
 
               if (readyStateRef.current !== AppReadyState.OPEN) {
                 router.history.replace(path, {
-                  view: payload.state.view || [],
+                  view: stateless ? [] : payload.state.view || [],
                 });
                 router.load().then(() => setReadyState(AppReadyState.OPEN));
               } else {
