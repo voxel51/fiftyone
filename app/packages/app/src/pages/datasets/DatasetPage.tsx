@@ -23,7 +23,7 @@ const DatasetPageQueryNode = graphql`
     $cursor: String
     $savedViewSlug: String
     $name: String!
-    $view: BSONArray
+    $view: BSONArray!
     $extendedView: BSONArray
   ) {
     config {
@@ -53,6 +53,7 @@ const DatasetPageQueryNode = graphql`
     ...savedViewsFragment
     ...configFragment
     ...stageDefinitionsFragment
+    ...viewSchemaFragment
   }
 `;
 

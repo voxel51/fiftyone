@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<add70884bae39830061041624d34323e>>
+ * @generated SignedSource<<2fbe02e39ce04bc0d59ab85750ce2c85>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ReaderFragment, RefetchableFragment } from 'relay-runtime';
+import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type viewSchemaFragment$data = {
   readonly schemaForViewStages: {
@@ -35,8 +35,6 @@ export type viewSchemaFragment$key = {
   readonly " $data"?: viewSchemaFragment$data;
   readonly " $fragmentSpreads": FragmentRefs<"viewSchemaFragment">;
 };
-
-import viewSchemaFragmentQuery_graphql from './viewSchemaFragmentQuery.graphql';
 
 const node: ReaderFragment = (function(){
 var v0 = [
@@ -91,17 +89,11 @@ return {
     },
     {
       "kind": "RootArgument",
-      "name": "viewStages"
+      "name": "view"
     }
   ],
   "kind": "Fragment",
-  "metadata": {
-    "refetch": {
-      "connection": null,
-      "fragmentPathInResult": [],
-      "operation": viewSchemaFragmentQuery_graphql
-    }
-  },
+  "metadata": null,
   "name": "viewSchemaFragment",
   "selections": [
     {
@@ -115,7 +107,7 @@ return {
         {
           "kind": "Variable",
           "name": "viewStages",
-          "variableName": "viewStages"
+          "variableName": "view"
         }
       ],
       "concreteType": "SchemaResult",
@@ -152,6 +144,6 @@ return {
 };
 })();
 
-(node as any).hash = "b744bc5d77c4fb64ec357da7669d4f0f";
+(node as any).hash = "22945eebda27b7d001d3b969f23c71e6";
 
 export default node;
