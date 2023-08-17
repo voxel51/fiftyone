@@ -1,6 +1,5 @@
 import { ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { useClearModal } from "@fiftyone/state";
 import React, { MutableRefObject } from "react";
 import { useRecoilValue, useResetRecoilState } from "recoil";
 import Looker from "../Looker";
@@ -12,7 +11,6 @@ export const GroupImageVideoSample: React.FC<{
 }> = ({ lookerRef }) => {
   const sample = useRecoilValue(fos.modalSample);
 
-  const clearModal = useClearModal();
   const pinned = !useRecoilValue(fos.pinned3d);
   const reset = useResetRecoilState(fos.pinned3d);
   const hover = fos.useHoveredSample(sample.sample);
@@ -30,7 +28,6 @@ export const GroupImageVideoSample: React.FC<{
         key={sample.id}
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
-        onClose={clearModal}
       />
     </GroupSampleWrapper>
   );

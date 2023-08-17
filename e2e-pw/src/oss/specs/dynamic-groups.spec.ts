@@ -12,35 +12,54 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-["mp4", "pcd", "png"].forEach((extension) => {
-  const datasetName = getUniqueDatasetNameWithPrefix(
-    `${extension}-dynamic-groups`
-  );
+// TODO: omitting 'mp4' because https://github.com/voxel51/fiftyone/issues/3421
+const extensionDatasetNamePairs = ["pcd", "png"].map(
+  (extension) =>
+    [
+      extension,
+      getUniqueDatasetNameWithPrefix(`${extension}-sparse-groups`),
+    ] as const
+);
 
-  test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.executePythonCode(`
-    import fiftyone as fo
-    dataset = fo.Dataset("${datasetName}")
-    dataset.persistent = True
+test.beforeAll(async ({ fiftyoneLoader }) => {
+  let pythonCode = `
+      import fiftyone as fo
+  `;
 
-    samples = []
-    for i in range(0, 100):
-        sample = fo.Sample(filepath=f"{i}.${extension}", dynamic_group=i % 10)
-        samples.append(sample)
-    
-    dataset.add_samples(samples)
-    view = dataset.group_by("dynamic_group")
-    dataset.save_view("dynamic-group", view)`);
+  extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+    pythonCode += `
+      # ${extension} dataset
+      dataset = fo.Dataset("${datasetName}")
+      dataset.persistent = True
+  
+      samples = []
+      for i in range(0, 100):
+          sample = fo.Sample(filepath=f"{i}.${extension}", dynamic_group=i % 10)
+          samples.append(sample)
+      
+      dataset.add_samples(samples)
+      view = dataset.group_by("dynamic_group")
+      dataset.save_view("dynamic-group", view)
+
+      `;
   });
+  await fiftyoneLoader.executePythonCode(pythonCode);
+});
 
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName, "dynamic-group");
-  });
+extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
+  test(`${extension} dynamic group`, async ({
+    page,
+    fiftyoneLoader,
+    grid,
+    modal,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      savedView: "dynamic-group",
+    });
 
-  test(`${extension} dynamic group`, async ({ grid, modal }) => {
-    await grid.assert.waitForEntryCountTextToEqual("10 groups");
+    await grid.assert.isEntryCountTextEqualTo("10 groups");
 
-    await grid.openFirstLooker();
+    await grid.openFirstSample();
     await modal.sidebar.assert.verifySidebarEntryText("dynamic_group", "0");
     await modal.scrollCarousel();
     await modal.navigateCarousel(4, true);

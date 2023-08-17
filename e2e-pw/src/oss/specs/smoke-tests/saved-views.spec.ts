@@ -1,5 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { SavedViewsPom, Color } from "src/oss/poms/saved-views";
+import { Color, SavedViewsPom } from "src/oss/poms/saved-views";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const ColorList = [
@@ -70,7 +70,7 @@ test.describe("saved views", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await deleteSavedView(savedViews, testView.name);
     await deleteSavedView(savedViews, updatedView2.slug);
   });

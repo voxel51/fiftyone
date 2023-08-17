@@ -559,9 +559,11 @@ class ErrorBoundary extends React.Component<
       // not an error
       return (
         <Loading dataCy={"looker3d"}>
-          {this.state.error instanceof Error
-            ? this.state.error.message
-            : this.state.error}
+          <div data-cy="looker-error-info">
+            {this.state.error instanceof Error
+              ? this.state.error.message
+              : this.state.error}
+          </div>
         </Loading>
       );
     }

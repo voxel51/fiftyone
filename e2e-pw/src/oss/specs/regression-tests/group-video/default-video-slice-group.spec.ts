@@ -71,7 +71,7 @@ test.describe("default video slice group", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    fiftyoneLoader.waitUntilLoad(page, datasetName);
+    fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("video as default slice renders", async ({
@@ -81,9 +81,9 @@ test.describe("default video slice group", () => {
   }) => {
     await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
     await grid.sliceSelector.assert.verifyActiveSlice("video");
-    await grid.assert.assertNLookers(1);
+    await grid.assert.isLookerCountEqualTo(1);
 
-    await grid.openFirstLooker();
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(2);
@@ -96,12 +96,14 @@ test.describe("default video slice group", () => {
     await grid.selectSlice("image");
     await imgLoadedPromise;
 
-    await grid.assert.assertNLookers(2);
-    await grid.openFirstLooker();
+    await grid.assert.isLookerCountEqualTo(2);
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(2);
     await modal.navigateNextSample();
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(1);
   });
 });

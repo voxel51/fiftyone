@@ -15,7 +15,7 @@ export class EventUtils {
     // note: cannot directly pass function to `evaluate`, which is why we expose it to the `window` object first
     return this.page.evaluate(
       ({ eventName_, exposedFunctionName_ }) =>
-        new Promise<void>((resolve, _reject) => {
+        new Promise<void>((resolve) => {
           document.addEventListener(eventName_, (e: CustomEvent) => {
             if (window[exposedFunctionName_](e)) {
               resolve();

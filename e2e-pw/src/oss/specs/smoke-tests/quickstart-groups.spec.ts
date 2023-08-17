@@ -25,14 +25,14 @@ test.describe("quickstart-groups", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("should have four lookers with 'left' as default slice", async ({
     grid,
     page,
   }) => {
-    await grid.assert.assertNLookers(4);
+    await grid.assert.isLookerCountEqualTo(4);
     const selectorSlice = page.getByTestId("selector-slice");
     await expect(selectorSlice).toHaveValue("left");
   });
@@ -40,18 +40,18 @@ test.describe("quickstart-groups", () => {
   test("entry counts works", async ({ grid }) => {
     expect(await grid.getEntryCountText()).toEqual("4 groups with slice");
 
-    await grid.actionsRow.openDisplayOptions();
+    await grid.actionsRow.toggleDisplayOptions();
     await grid.actionsRow.displayActions.setSidebarStatisticsMode("group");
 
     // note: entry-counts might take a while to change, which is why we're asserting using polling
-    await grid.assert.waitForEntryCountTextToEqual(
+    await grid.assert.isEntryCountTextEqualTo(
       "(12 samples) 4 groups with slice"
     );
   });
 
   test.describe("modal", () => {
     test.beforeEach(async ({ modal, grid }) => {
-      await grid.openFirstLooker();
+      await grid.openFirstSample();
       await modal.waitForSampleLoadDomAttribute();
     });
 

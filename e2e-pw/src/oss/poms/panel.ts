@@ -1,5 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 
+export type PanelName = "Samples" | "Histograms" | "Embeddings" | "OperatorIO";
 export class PanelPom {
   readonly page: Page;
   readonly locator: Locator;
@@ -12,47 +13,44 @@ export class PanelPom {
     this.locator = this.page.getByTestId("panel-container");
   }
 
-  newPanelBtn() {
+  get newPanelBtn() {
     return this.locator.getByTitle("New panel");
   }
 
-  tab(name: string = "samples") {
-    return this.locator.getByTestId(`panel-tab-${name}`);
+  get histogramDistributionContainer() {
+    return this.page.getByTestId("distribution-container");
   }
 
-  histogramOption() {
-    return this.locator.getByTestId("new-panel-option-Histograms");
+  get errorBoundary() {
+    return this.page.getByTestId("error-boundary");
   }
 
-  distributionContainer() {
-    return this.locator.getByTestId("distribution-container");
+  getPanelOption(panelName: PanelName) {
+    return this.locator.getByTestId(`new-panel-option-${panelName}`);
   }
 
-  async openNew(option = "histograms") {
-    await this.newPanelBtn().click();
-
-    if (option === "histograms") {
-      await this.histogramOption().click();
-    }
+  getTab(name: PanelName) {
+    return this.locator.getByTestId(`panel-tab-${name.toLocaleLowerCase()}`);
   }
 
-  async open(option = "samples") {
-    await this.tab(option).first().click();
+  async open(panelName: PanelName) {
+    await this.newPanelBtn.click();
+    await this.getPanelOption(panelName).click();
   }
 
-  errorBoundary() {
-    return this.locator.getByTestId("error-boundary");
+  async bringPanelToForeground(panelName: PanelName) {
+    await this.getTab(panelName).click();
   }
 }
 
 class PanelAsserter {
   constructor(private readonly panelPom: PanelPom) {}
 
-  async histogramLoaded() {
-    await expect(this.panelPom.distributionContainer()).toBeVisible();
+  async isHistogramLoaded() {
+    await expect(this.panelPom.histogramDistributionContainer).toBeVisible();
   }
 
   async hasError() {
-    await expect(this.panelPom.errorBoundary()).toBeVisible();
+    await expect(this.panelPom.errorBoundary).toBeVisible();
   }
 }

@@ -25,11 +25,11 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test.skip("valid candidates for group-by keys", async ({ grid }) => {
-  await grid.actionsRow.openCreateDynamicGroups();
+  await grid.actionsRow.toggleCreateDynamicGroups();
   await verifyCandidateFields(grid, ["ground_truth.id", "ground_truth.label"]);
 });
 
