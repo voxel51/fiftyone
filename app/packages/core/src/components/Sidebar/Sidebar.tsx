@@ -700,6 +700,7 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
+  console.log("items", items);
 
   return shown ? (
     <Resizable
@@ -794,9 +795,18 @@ const InteractiveSidebar = ({
                 style.zIndex = 0;
               }
 
+              let dataCy = `-field`;
+              if (entry.kind === fos.EntryKind.GROUP) {
+                dataCy = `sidebar-group-${entry.name}` + dataCy;
+              } else if (entry.kind === fos.EntryKind.PATH) {
+                dataCy = entry.path + dataCy;
+              } else {
+                dataCy = "sidebar" + dataCy;
+              }
+
               return (
                 <animated.div
-                  data-cy={`${entry?.path}-field`}
+                  data-cy={dataCy}
                   onMouseDownCapture={() => {
                     lastTouched.current = undefined;
                     placeItems();

@@ -17,19 +17,37 @@ test.describe("field visibility", () => {
     });
   });
 
-  test.beforeEach(async ({ page, fiftyoneLoader, fieldVisibility }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("Field visibility modal opens", async ({ fieldVisibility }) => {
+  test("field visibility modal opens", async ({ fieldVisibility }) => {
     await fieldVisibility.openFieldVisibilityModal();
   });
 
-  test("predictions field should no longer be in the sidebar if it was hidden using field visibility", async ({
+  test("sidebar group is hidden if all its fields are hidden using field visibility", async ({
     fieldVisibility,
   }) => {
-    await fieldVisibility.assert.assertFieldInSidebar("predictions");
-    await fieldVisibility.hideFields(["predictions"]);
-    // await fieldVisibility.assert.assertFieldNotInSidebar("predictions");
+    await fieldVisibility.assert.assertSidebarGroupIsVisibile("labels");
+    await fieldVisibility.assert.assertFieldsInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
+
+    await fieldVisibility.hideFields(["predictions", "ground_truth"]);
+    await fieldVisibility.assert.assertFieldsNotInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
+
+    // TODO - fix me
+    await fieldVisibility.assert.assertSidebarGroupIsHidden("labels");
+
+    await fieldVisibility.clearFieldVisibilityChanges();
+    await fieldVisibility.assert.assertSidebarGroupIsVisibile("labels");
+    await fieldVisibility.assert.assertFieldsInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
   });
 });

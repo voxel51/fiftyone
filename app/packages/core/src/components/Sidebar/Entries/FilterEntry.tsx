@@ -95,6 +95,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
           {selectedFieldsStage && affectedPathCount > 0 && (
             <Tooltip text="Clear field selection" placement="bottom-center">
               <Box
+                data-cy="field-visibility-btn-clear"
                 sx={{
                   minWidth: "50px",
                   maxWidth: "100px",
