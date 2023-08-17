@@ -23,12 +23,12 @@ test.describe("orthographic projections", () => {
     mediaFactory.createPcd({
       outputPath: normalPcd,
       shape: "cube",
-      numPoints: 30,
+      numPoints: 100,
     });
     mediaFactory.createPcd({
       outputPath: pcdWithNaN,
       shape: "cube",
-      numPoints: 15,
+      numPoints: 100,
       imputeNaN: {
         indices: [
           [0, 0],
@@ -80,10 +80,10 @@ test.describe("orthographic projections", () => {
         mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
-    // pan to the right and check that pcds are rendered correctly
-    await modal.panSample("right");
+    // pan to the left and check that pcds are rendered correctly
+    await modal.panSample("left");
     await expect(modal.modalContainer).toHaveScreenshot(
-      "orthographic-projection-modal-cuboid-1-right-pan.png",
+      "orthographic-projection-modal-cuboid-1-left-pan.png",
       {
         animations: "allow",
         mask: [modal.locator.getByTestId("looker3d-action-bar")],
@@ -99,9 +99,10 @@ test.describe("orthographic projections", () => {
       }
     );
 
-    await modal.panSample("down");
+    // pan to the right and check that pcds are rendered correctly
+    await modal.panSample("right");
     await expect(modal.modalContainer).toHaveScreenshot(
-      "orthographic-projection-modal-cuboid-1-down-pan.png",
+      "orthographic-projection-modal-cuboid-2-right-pan.png",
       {
         animations: "allow",
         mask: [modal.locator.getByTestId("looker3d-action-bar")],

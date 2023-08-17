@@ -25,7 +25,7 @@ export const createPcd = (options: {
   if "${options.shape}" == "diagonal":
     points = [[i, i, i] for i in range(${numPoints})]
   elif "${options.shape}" == "cube":
-    loop_stop = ${numPoints} // 3
+    loop_stop = int(${numPoints} ** (1/3))
     points = [[i, j, k] for i in range(loop_stop) for j in range(loop_stop) for k in range(loop_stop)]
 
   if ${imputeNaN?.indices ? "True" : "False"}:
