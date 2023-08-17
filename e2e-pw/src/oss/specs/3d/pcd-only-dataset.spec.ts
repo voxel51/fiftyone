@@ -29,14 +29,12 @@ test.describe("orthographic projections", () => {
       outputPath: pcdWithNaN,
       shape: "cube",
       numPoints: 15,
-      chaosOptions: {
-        imputeNaN: {
-          indices: [
-            [0, 0],
-            [1, 1],
-            [2, 2],
-          ],
-        },
+      imputeNaN: {
+        indices: [
+          [0, 0],
+          [1, 1],
+          [2, 2],
+        ],
       },
     });
 

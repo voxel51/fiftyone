@@ -2,12 +2,6 @@ import { spawnSync } from "child_process";
 import { Duration, getPythonCommand } from "src/oss/utils";
 import { dedentPythonCode } from "src/oss/utils/dedent";
 
-type ChaosOptions = {
-  imputeNaN?: {
-    indices: Array<number[]>;
-  };
-};
-
 /**
  * This function creates a new pcd file with the specified number of points.
  * The points are arranged in a diagonal line in 3D space.
@@ -16,9 +10,11 @@ export const createPcd = (options: {
   outputPath: string;
   numPoints: number;
   shape: "diagonal" | "cube";
-  chaosOptions?: ChaosOptions;
+  imputeNaN?: {
+    indices: Array<number[]>;
+  };
 }) => {
-  const { outputPath, numPoints, chaosOptions } = options;
+  const { outputPath, numPoints, imputeNaN } = options;
 
   const startTime = performance.now();
   console.log(`Creating blank pcd with options: ${JSON.stringify(options)}`);
@@ -32,8 +28,8 @@ export const createPcd = (options: {
     loop_stop = ${numPoints} // 3
     points = [[i, j, k] for i in range(loop_stop) for j in range(loop_stop) for k in range(loop_stop)]
 
-  if ${chaosOptions?.imputeNaN?.indices ? "True" : "False"}:
-    for index in ${JSON.stringify(chaosOptions?.imputeNaN?.indices)}:
+  if ${imputeNaN?.indices ? "True" : "False"}:
+    for index in ${JSON.stringify(imputeNaN?.indices)}:
       points[index[0]][index[1]] = float("nan")
 
   pcd.points = o3d.utility.Vector3dVector(points)
