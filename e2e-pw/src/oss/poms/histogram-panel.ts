@@ -30,7 +30,7 @@ export class HistogramPom {
 class HistogramAsserter {
   constructor(private readonly histogramPom: HistogramPom) {}
 
-  async histogramLoaded() {
+  async isLoaded() {
     await expect(this.histogramPom.locator).toBeVisible();
   }
 

@@ -40,11 +40,11 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test("histograms panel", async ({ histogram, panel }) => {
-  await panel.openNew("histograms");
+  await panel.open("Histograms");
   await histogram.assert.verifyField("bool");
 
   await histogram.assert.verifyFields([
@@ -71,7 +71,7 @@ test("histograms panel", async ({ histogram, panel }) => {
     "tags",
   ]);
 
-  await histogram.assert.histogramLoaded();
+  await histogram.assert.isLoaded();
   await expect(await histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });

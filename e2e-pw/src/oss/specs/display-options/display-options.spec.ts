@@ -1,14 +1,19 @@
 import { test as base } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
+import { HistogramPom } from "src/oss/poms/histogram-panel";
 import { PanelPom } from "src/oss/poms/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{
   actionsRow: GridActionsRowPom;
+  histogram: HistogramPom;
   panel: PanelPom;
 }>({
   actionsRow: async ({ page }, use) => {
     await use(new GridActionsRowPom(page));
+  },
+  histogram: async ({ page, eventUtils }, use) => {
+    await use(new HistogramPom(page, eventUtils));
   },
   panel: async ({ page }, use) => {
     await use(new PanelPom(page));
@@ -30,6 +35,7 @@ test.describe("Display Options", () => {
 
   test("switching display options statistics to group should be successful when histogram is open", async ({
     actionsRow,
+    histogram,
     panel,
   }) => {
     await panel.open("Histograms");
@@ -42,6 +48,6 @@ test.describe("Display Options", () => {
     await panel.histogramDistributionContainer.waitFor({ state: "visible" });
     await panel.histogramDistributionContainer.click();
 
-    await panel.assert.isHistogramLoaded();
+    await histogram.assert.isLoaded();
   });
 });
