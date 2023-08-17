@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   commitLocalUpdate,
   useMutation,
@@ -31,8 +31,8 @@ const ColorFooter: React.FC = () => {
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
-  const defaultColorPool = useRecoilValue(fos.defaultColorPool);
-  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
+  const defaultColorPool = useRecoilValue(fos.config).colorPool;
+  const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
 
   if (!activeColorModalField) return null;

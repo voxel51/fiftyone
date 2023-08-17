@@ -16,12 +16,14 @@ interface ColorPaletteProps {
 
 const isDefaultColorPool = selector({
   key: "isDefaultColorPool",
-  get: ({ get }) => isSameArray(get(fos.colorPool), get(fos.defaultColorPool)),
+  get: ({ get }) =>
+    isSameArray(get(fos.colorScheme).colorPool, get(fos.config).colorPool),
 });
 
 const isColorBlindColorPool = selector({
   key: "isColorBlindColorPool",
-  get: ({ get }) => isSameArray(get(fos.colorPool), colorBlindFriendlyPalette),
+  get: ({ get }) =>
+    isSameArray(get(fos.colorScheme).colorPool, colorBlindFriendlyPalette),
 });
 
 const ColorPalette: React.FC<ColorPaletteProps> = ({
@@ -35,7 +37,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
 
   const isUsingDefault = useRecoilValue(isDefaultColorPool);
   const isUsingColorBlindOption = useRecoilValue(isColorBlindColorPool);
-  const defaultPool = useRecoilValue(fos.defaultColorPool);
+  const defaultPool = useRecoilValue(fos.config).colorPool;
 
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showPicker, setShowPicker] = useState(false);

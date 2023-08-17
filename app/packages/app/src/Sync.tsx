@@ -416,9 +416,10 @@ const WRITE_HANDLERS: {
   ) => void;
 } = {
   colorScheme: (_, environment, colorScheme, subscription) => {
-    if (colorScheme instanceof DefaultValue) {
+    if (!colorScheme || colorScheme instanceof DefaultValue) {
       throw new Error("not implemented");
     }
+
     commitMutation<setColorSchemeMutation>(environment, {
       mutation: setColorScheme,
       variables: {
@@ -465,7 +466,7 @@ const WRITE_HANDLERS: {
       `${router.history.location.pathname}${router.history.location.search}`,
       {
         ...router.get().state,
-        extendedStages: [selectedFields],
+        extendedStages: selectedFields ? [selectedFields] : [],
       }
     );
   },

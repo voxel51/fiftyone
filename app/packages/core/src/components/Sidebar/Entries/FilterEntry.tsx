@@ -15,7 +15,6 @@ import styled from "styled-components";
 import { FilterInputDiv } from "./utils";
 
 const Filter = ({ modal }: { modal: boolean }) => {
-  return null;
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
     fos.isSidebarFilterMode
