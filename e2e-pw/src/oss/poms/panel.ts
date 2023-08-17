@@ -22,7 +22,7 @@ export class PanelPom {
   }
 
   get errorBoundary() {
-    return this.locator.getByTestId("error-boundary");
+    return this.page.getByTestId("error-boundary");
   }
 
   getPanelOption(panelName: PanelName) {

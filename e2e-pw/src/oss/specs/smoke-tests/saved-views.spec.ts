@@ -1,5 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { SavedViewsPom, Color } from "src/oss/poms/saved-views";
+import { Color, SavedViewsPom } from "src/oss/poms/saved-views";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const ColorList = [

@@ -48,16 +48,14 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 
 extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
   test(`${extension} dynamic group`, async ({
-    fiftyoneLoader,
     page,
+    fiftyoneLoader,
     grid,
     modal,
   }) => {
-    await fiftyoneLoader.waitUntilGridVisible(
-      page,
-      datasetName,
-      "dynamic-group"
-    );
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      savedView: "dynamic-group",
+    });
 
     await grid.assert.isEntryCountTextEqualTo("10 groups");
 
