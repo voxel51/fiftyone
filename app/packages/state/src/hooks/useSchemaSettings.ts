@@ -25,7 +25,7 @@ const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
     fragments: [foq.viewSchemaFragment],
     default: null,
   },
-  { key: "viewSchemeSelecto" }
+  { key: "viewSchemeSelector" }
 );
 
 export default function useSchemaSettings() {

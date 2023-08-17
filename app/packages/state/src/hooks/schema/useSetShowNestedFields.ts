@@ -8,7 +8,7 @@ import { DatasetSchema, getSubPaths } from "../useSchemaSettings.utils";
  * @returns a value and a setter for showNestedField atom/state
  */
 export default function useSetShowNestedFields(
-  schema: DatasetSchema,
+  schema: Readonly<DatasetSchema>,
   frameSchema?: DatasetSchema
 ) {
   const dataset = useRecoilValue(fos.dataset);

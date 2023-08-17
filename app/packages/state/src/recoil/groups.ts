@@ -210,7 +210,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      const slice = get(modalGroupSlice);
+      const slice = get(modal ? modalGroupSlice : groupSlice);
 
       if (!slice || (modal && get(pinned3d))) {
         return get(pinned3DSampleSlice);
@@ -226,7 +226,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
     (modal) =>
     ({ get }) => {
       if (!get(isGroup)) return null;
-      const slice = get(modalGroupSlice);
+      const slice = get(modal ? modalGroupSlice : groupSlice);
 
       if (!slice || (modal && get(pinned3d))) {
         return get(activePcdSlices);

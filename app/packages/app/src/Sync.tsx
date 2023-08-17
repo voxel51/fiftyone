@@ -31,7 +31,7 @@ import {
 } from "@fiftyone/state";
 import { getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
@@ -102,7 +102,6 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               break;
             case Events.REFRESH:
               refresh();
-              console.log(JSON.parse(msg.data));
               break;
             case Events.SET_COLOR_SCHEME:
               setter(
@@ -213,6 +212,12 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
     setter,
     subscription,
   ]);
+
+  useEffect(() => {
+    subscribe((_, { reset }) => {
+      reset(fos.currentModalSample);
+    });
+  }, []);
 
   return (
     <SessionContext.Provider value={sessionRef.current}>
