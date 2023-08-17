@@ -1,16 +1,10 @@
 import React from "react";
 import { useRecoilValue } from "recoil";
 
-import styled from "styled-components";
 import * as fos from "@fiftyone/state";
 import { isGroup as isGroupAtom } from "@fiftyone/state";
+import styled from "styled-components";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
-
-const Container = styled.div`
-  display: flex;
-  width: 100%;
-  height: 100%;
-`;
 
 const RightDiv = styled.div`
   display: flex;
@@ -23,6 +17,7 @@ const RightDiv = styled.div`
   margin: 0 0.25rem;
   padding-right: 1rem;
   font-weight: bold;
+  white-space: nowrap;
 `;
 
 interface Props {
@@ -30,7 +25,7 @@ interface Props {
 }
 
 const ResourceCount = ({ isGroup }: Props) => {
-  return <Container>{isGroup ? <GroupsCount /> : <Count />}</Container>;
+  return isGroup ? <GroupsCount /> : <Count />;
 };
 
 const GroupsCount = () => {
