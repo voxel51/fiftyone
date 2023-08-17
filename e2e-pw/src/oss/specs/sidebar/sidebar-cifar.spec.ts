@@ -37,7 +37,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        (e) => e.detail === "re-render-tag"
+        () => true
       );
 
     // test case: visibility mode - show label
@@ -99,7 +99,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        (e) => e.detail === "re-render-tag"
+        () => true
       );
 
     // test case: visibility mode - show label
@@ -153,7 +153,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        (e) => e.detail === "re-render-tag"
+        () => true
       );
 
     // test case: visibility mode - show label

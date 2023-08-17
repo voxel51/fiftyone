@@ -82,7 +82,7 @@ test.describe("date field and date time field can filter visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        (e) => e.detail === "re-render-tag"
+        () => true
       );
 
     await sidebar.clickFieldDropdown("dates");
@@ -110,7 +110,7 @@ test.describe("date field and date time field can filter visibility", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "re-render-tag",
-        (e) => e.detail === "re-render-tag"
+        () => true
       );
 
     await sidebar.clickFieldDropdown("seconds");

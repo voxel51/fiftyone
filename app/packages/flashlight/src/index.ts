@@ -161,7 +161,6 @@ export default class Flashlight<K> {
     this.showPixels();
     this.element.dispatchEvent(
       new CustomEvent("flashlight-refreshing", {
-        detail: "flashlight-refreshing",
         bubbles: true,
       })
     );

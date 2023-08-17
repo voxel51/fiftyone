@@ -67,7 +67,7 @@ test.describe("tag", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "flashlight-refreshing",
-        (e) => e.detail === "flashlight-refreshing"
+        () => true
       );
 
     await gridActionsRow.openTagSamplesOrLabels();
@@ -93,7 +93,7 @@ test.describe("tag", () => {
     const gridRefreshedEventPromise =
       eventUtils.getEventReceivedPromiseForPredicate(
         "flashlight-refreshing",
-        (e) => e.detail === "flashlight-refreshing"
+        () => true
       );
 
     await gridActionsRow.openTagSamplesOrLabels();
