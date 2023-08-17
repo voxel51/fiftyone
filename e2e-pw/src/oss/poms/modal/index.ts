@@ -76,14 +76,26 @@ export class ModalPom {
       modalBoundingBox.height / 2
     );
     await this.page.mouse.down();
-    await this.page.mouse.move(
-      direction === "left"
-        ? modalBoundingBox.width / 2 - offsetPixels
-        : modalBoundingBox.width / 2 + offsetPixels,
-      direction === "up"
-        ? modalBoundingBox.height / 2 - offsetPixels
-        : modalBoundingBox.height / 2 + offsetPixels
-    );
+
+    let newPositionX = modalBoundingBox.width / 2;
+    let newPositionY = modalBoundingBox.height / 2;
+
+    switch (direction) {
+      case "left":
+        newPositionX -= offsetPixels;
+        break;
+      case "right":
+        newPositionX += offsetPixels;
+        break;
+      case "up":
+        newPositionY -= offsetPixels;
+        break;
+      case "down":
+        newPositionY += offsetPixels;
+        break;
+    }
+
+    await this.page.mouse.move(newPositionX, newPositionY);
     await this.page.mouse.up();
   }
 
