@@ -5,7 +5,6 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
-  readonly page: Page;
   readonly groupCarousel: Locator;
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
@@ -13,8 +12,7 @@ export class ModalPom {
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
 
-  constructor(page: Page) {
-    this.page = page;
+  constructor(private readonly page: Page) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
     this.groupCarousel = this.locator.getByTestId("group-carousel");
@@ -149,26 +147,12 @@ export class ModalPom {
       { timeout: Duration.Seconds(10) }
     );
   }
-
-  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
-    return this.page.evaluate(
-      (sampleFilepath_) =>
-        new Promise<void>((resolve, _reject) => {
-          document.addEventListener("sample-loaded", (e: CustomEvent) => {
-            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
-              resolve();
-            }
-          });
-        }),
-      sampleFilepath
-    );
-  }
 }
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
-  async verifySelection(n: number) {
+  async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
     const count = await action.first().textContent();

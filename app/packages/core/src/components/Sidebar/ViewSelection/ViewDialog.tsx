@@ -38,6 +38,7 @@ import {
 } from "./styledComponents";
 
 interface Props {
+  id: string;
   savedViews: fos.State.SavedView[];
   onEditSuccess: (saveView: fos.State.SavedView, reload?: boolean) => void;
   onDeleteSuccess: (slug: string) => void;
@@ -55,7 +56,13 @@ export const viewDialogContent = atom({
 });
 
 export default function ViewDialog(props: Props) {
-  const { onEditSuccess, onDeleteSuccess, savedViews = [], canEdit } = props;
+  const {
+    onEditSuccess,
+    onDeleteSuccess,
+    savedViews = [],
+    canEdit,
+    id,
+  } = props;
   const theme = useTheme();
   const [isOpen, setIsOpen] = useRecoilState<boolean>(viewDialogOpen);
   const viewContent = useRecoilValue(viewDialogContent);
@@ -130,7 +137,7 @@ export default function ViewDialog(props: Props) {
     setNameValue("");
     setDescriptionValue("");
     setColorOption(DEFAULT_COLOR_OPTION);
-  }, []);
+  }, [resetViewContent]);
 
   const onDeleteView = useCallback(() => {
     handleDeleteView(nameValue, () => {
@@ -138,7 +145,7 @@ export default function ViewDialog(props: Props) {
       setIsOpen(false);
       onDeleteSuccess(nameValue);
     });
-  }, [nameValue]);
+  }, [handleDeleteView, nameValue, onDeleteSuccess, resetValues, setIsOpen]);
 
   const onSaveView = useCallback(() => {
     if (isCreating) {
@@ -166,7 +173,19 @@ export default function ViewDialog(props: Props) {
         }
       );
     }
-  }, [view, nameValue, descriptionValue, colorOption?.color]);
+  }, [
+    isCreating,
+    handleCreateSavedView,
+    nameValue,
+    descriptionValue,
+    colorOption.color,
+    view,
+    resetValues,
+    onEditSuccess,
+    setIsOpen,
+    handleUpdateSavedView,
+    initialName,
+  ]);
 
   return (
     <Dialog
@@ -180,6 +199,7 @@ export default function ViewDialog(props: Props) {
         style={{
           background: theme.background.level1,
         }}
+        data-cy={`${id}-modal-body-container`}
       >
         <DialogTitle
           alignItems="flex-start"
@@ -189,6 +209,7 @@ export default function ViewDialog(props: Props) {
           {title}
           <IconButton
             aria-label="close"
+            data-cy={`${id}-btn-close`}
             onClick={() => {
               setIsOpen(false);
               resetValues();
@@ -207,6 +228,8 @@ export default function ViewDialog(props: Props) {
           <InputContainer>
             <Label>Name</Label>
             <NameInput
+              data-cy={`${id}-input-name`}
+              autoFocus
               placeholder="Your view name"
               value={nameValue}
               onChange={(e) => setNameValue(e.target.value)}
@@ -217,6 +240,7 @@ export default function ViewDialog(props: Props) {
           <InputContainer>
             <Label>Description</Label>
             <DescriptionInput
+              data-cy={`${id}-input-description`}
               rows={5}
               placeholder="Enter a description"
               value={descriptionValue}
@@ -226,6 +250,7 @@ export default function ViewDialog(props: Props) {
           <InputContainer>
             <Label>Color</Label>
             <Selection
+              id={`${id}-input-color-selection`}
               selected={colorOption}
               setSelected={(item) => setColorOption(item)}
               items={COLOR_OPTIONS}
@@ -247,6 +272,7 @@ export default function ViewDialog(props: Props) {
           >
             {!isCreating && canEdit && (
               <Button
+                data-cy={`${id}-btn-delete`}
                 onClick={onDeleteView}
                 sx={{
                   background: theme.background.level1,
@@ -268,7 +294,10 @@ export default function ViewDialog(props: Props) {
             }}
           >
             <Button
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                resetValues();
+                setIsOpen(false);
+              }}
               sx={{
                 background: theme.background.level1,
                 color: theme.text.primary,
@@ -284,6 +313,7 @@ export default function ViewDialog(props: Props) {
               Cancel
             </Button>
             <Button
+              data-cy={`${id}-btn-save`}
               onClick={onSaveView}
               disabled={
                 isUpdatingSavedView ||

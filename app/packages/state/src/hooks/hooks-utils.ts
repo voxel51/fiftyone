@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ResizeObserver from "resize-observer-polyfill";
 
+interface EventTarget {
+  addEventListener: HTMLElement["addEventListener"];
+  removeEventListener: HTMLElement["removeEventListener"];
+}
+
 export const useEventHandler = (
-  target,
-  eventType,
-  handler,
+  target: EventTarget,
+  eventType: string,
+  handler: React.EventHandler<any>,
   useCapture = false
 ) => {
   // Adapted from https://reactjs.org/docs/hooks-faq.html#what-can-i-do-if-my-effect-dependencies-change-too-often
@@ -49,7 +54,7 @@ export const useScrollHandler = (handler) =>
 export const useHashChangeHandler = (handler) =>
   useEventHandler(window, "hashchange", handler);
 
-export const useKeydownHandler = (handler) =>
+export const useKeydownHandler = (handler: React.KeyboardEventHandler) =>
   useEventHandler(document.body, "keydown", handler);
 
 export const useOutsideClick = (

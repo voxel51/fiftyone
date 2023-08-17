@@ -166,7 +166,7 @@ const Grid: React.FC<{}> = () => {
             return;
           }
 
-          if ((await snapshot.getPromise(fos.modalSampleIndex)) === null) {
+          if (!(await snapshot.getPromise(fos.isModalActive))) {
             reset(fos.selectedSamples);
           }
         },

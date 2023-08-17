@@ -9,6 +9,7 @@ import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
+import { Filter } from "./Entries";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
@@ -740,6 +741,7 @@ const InteractiveSidebar = ({
           <ViewSelection />
         </Box>
       )}
+      <Filter modal={modal} />
       <SidebarColumn
         ref={container}
         onScroll={({ target }) => {

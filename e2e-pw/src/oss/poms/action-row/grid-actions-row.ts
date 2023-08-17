@@ -17,31 +17,31 @@ export class GridActionsRowPom {
     return selector.click();
   }
 
-  async openDisplayOptions() {
+  async toggleDisplayOptions() {
     return this.openAction("action-display-options");
   }
 
-  async openBrowseOperations() {
+  async toggleBrowseOperations() {
     return this.openAction("action-browse-operations");
   }
 
-  async openCreateDynamicGroups() {
+  async toggleCreateDynamicGroups() {
     return this.openAction("action-create-dynamic-groups");
   }
 
-  async openSortBySimilarity() {
+  async toggleSortBySimilarity() {
     return this.openAction("action-sort-by-similarity");
   }
 
-  async openToClipsOrPatches() {
+  async toggleToClipsOrPatches() {
     return this.openAction("action-clips-patches");
   }
 
-  async openTagSamplesOrLabels() {
+  async toggleTagSamplesOrLabels() {
     return this.openAction("action-tag-sample-labels");
   }
 
-  async openColorSettings() {
+  async toggleColorSettings() {
     return this.openAction("action-color-settings");
   }
 }

@@ -20,28 +20,28 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
-  async getNthLooker(n: number) {
+  getNthLooker(n: number) {
     return this.locator.getByTestId("looker").nth(n);
   }
 
-  async openFirstLooker() {
-    const looker = await this.getNthLooker(0);
-    await looker.click({ position: { x: 10, y: 60 } });
+  async getNthCheckbox(n: number) {
+    return this.getNthLooker(n).getByTestId("looker-checkbox-input-");
   }
 
-  async toggleSelectFirstLooker() {
-    const looker = await this.getNthLooker(0);
-    await looker.click({ position: { x: 10, y: 5 } });
+  async toggleSelectNthSample(n: number) {
+    await this.getNthLooker(n).click({ position: { x: 10, y: 5 } });
   }
 
-  async toggleSelectNthLooker(n: number) {
-    const looker = await this.getNthLooker(n);
-    await looker.click({ position: { x: 10, y: 5 } });
+  async toggleSelectFirstSample() {
+    await this.toggleSelectNthSample(0);
   }
 
-  async openNthLooker(n: number) {
-    const looker = await this.getNthLooker(n);
-    await looker.click({ position: { x: 10, y: 50 } });
+  async openNthSample(n: number) {
+    await this.getNthLooker(n).click({ position: { x: 10, y: 50 } });
+  }
+
+  async openFirstSample() {
+    return this.openNthSample(0);
   }
 
   async getEntryCountText() {
@@ -52,40 +52,31 @@ export class GridPom {
     await this.page.getByTestId("selector-slice").fill(slice);
     await this.page.getByTestId("selector-slice").press("Enter");
   }
-
-  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
-    return this.page.evaluate(
-      (sampleFilepath_) =>
-        new Promise<void>((resolve, _reject) => {
-          document.addEventListener("sample-loaded", (e: CustomEvent) => {
-            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
-              resolve();
-            }
-          });
-        }),
-      sampleFilepath
-    );
-  }
 }
 
 class GridAsserter {
   constructor(private readonly gridPom: GridPom) {}
 
-  async assertNLookers(n: number) {
+  async isLookerCountEqualTo(n: number) {
     const lookersCount = await this.gridPom.locator
       .getByTestId("looker")
       .count();
     expect(lookersCount).toBe(n);
   }
 
-  async verifySelection(n: number) {
+  async isNthSampleSelected(n: number) {
+    const checkbox = await this.gridPom.getNthCheckbox(n);
+    const isChecked = await checkbox.isChecked();
+    expect(isChecked).toBe(true);
+  }
+
+  async isSelectionCountEqualTo(n: number) {
     const action = this.gridPom.actionsRow.gridActionsRow.getByTestId(
       "action-manage-selected"
     );
 
     if (n === 0) {
-      const count = await action.count();
-      expect(count).toBe(0);
+      await expect(action).toBeHidden();
       return;
     }
 
@@ -94,7 +85,7 @@ class GridAsserter {
     expect(count).toBe(String(n));
   }
 
-  async waitForEntryCountTextToEqual(text: string) {
+  async isEntryCountTextEqualTo(text: string) {
     return this.gridPom.page.waitForFunction(
       (text_) => {
         return (

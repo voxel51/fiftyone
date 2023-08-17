@@ -50,12 +50,12 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test(`ego default group slice transitions`, async ({ grid, modal }) => {
-  await grid.assert.waitForEntryCountTextToEqual("50 groups with slice");
-  await grid.openFirstLooker();
+  await grid.assert.isEntryCountTextEqualTo("50 groups with slice");
+  await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.clickOnLooker();

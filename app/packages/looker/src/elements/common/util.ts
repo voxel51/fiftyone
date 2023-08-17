@@ -61,11 +61,12 @@ export const makeCheckboxRow = function (
   checked: boolean
 ): [HTMLLabelElement, HTMLInputElement] {
   const label = document.createElement("label");
-  label.setAttribute("data-cy", `looker-video-controls-settings-${text}`);
+  label.setAttribute("data-cy", `looker-checkbox-${text}`);
   label.classList.add(lookerLabel);
   label.innerHTML = text;
 
   const checkbox = document.createElement("input");
+  checkbox.setAttribute("data-cy", `looker-checkbox-input-${text}`);
   checkbox.setAttribute("type", "checkbox");
   checkbox.checked = checked;
   const span = document.createElement("span");

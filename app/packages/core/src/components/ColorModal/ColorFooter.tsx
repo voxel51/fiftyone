@@ -17,7 +17,12 @@ import {
 } from "./ShareStyledDiv";
 
 const ColorFooter: React.FC = () => {
-  const canEdit = useRecoilValue(fos.canEditCustomColors);
+  const isReadOnly = useRecoilValue(fos.readOnly);
+  const canEditCustomColors = useRecoilValue(fos.canEditCustomColors);
+  const canEdit = useMemo(
+    () => !isReadOnly && canEditCustomColors,
+    [canEditCustomColors, isReadOnly]
+  );
   const setColorScheme = fos.useSetSessionColorScheme();
   const [activeColorModalField, setActiveColorModalField] = useRecoilState(
     fos.activeColorField
