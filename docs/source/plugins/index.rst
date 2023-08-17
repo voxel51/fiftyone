@@ -261,7 +261,7 @@ below:
                     label: "Example: open Embeddings panel",
                 });
             }
-            useHooks(): object {
+            useHooks() {
                 const openPanelOperator = useOperatorExecutor("open_panel");
                 return { openPanelOperator };
             }
