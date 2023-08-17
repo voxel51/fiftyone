@@ -24,10 +24,30 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test("smoke", async ({ page, grid, modal }) => {
-  await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
+test.describe("quickstart", () => {
+  test("smoke", async ({ page, grid, modal }) => {
+    await expect(page.getByTestId("entry-counts")).toHaveText("5 samples");
 
-  // test navigation
-  await grid.openFirstSample();
-  await modal.waitForSampleLoadDomAttribute();
+    // test navigation
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+  });
+
+  test("entry counts text when toPatches then groupedBy", async ({
+    grid,
+    fiftyoneLoader,
+    page,
+  }) => {
+    await grid.actionsRow.toggleToClipsOrPatches();
+    await grid.actionsRow.clickToPatchesByLabelField("predictions");
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+
+    await grid.assert.isEntryCountTextEqualTo("122 patches");
+
+    await grid.actionsRow.toggleCreateDynamicGroups();
+    await grid.actionsRow.groupBy("predictions.label");
+
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+    await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
+  });
 });
