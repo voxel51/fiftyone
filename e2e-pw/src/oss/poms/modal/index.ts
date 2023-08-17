@@ -6,6 +6,9 @@ import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
+  readonly looker: Locator;
+  readonly modalContainer: Locator;
+
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
   readonly locator: Locator;
@@ -15,14 +18,18 @@ export class ModalPom {
   constructor(private readonly page: Page) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
+
     this.groupCarousel = this.locator.getByTestId("group-carousel");
+    this.looker = this.locator.getByTestId("looker").last();
+    this.modalContainer = this.locator.getByTestId("modal-looker-container");
+
     this.sidebar = new ModalSidebarPom(page);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
   }
 
   async toggleSelection() {
-    await this.getLooker().hover();
+    await this.looker.hover();
     await this.locator.getByTestId("selectable-bar").click();
   }
 
@@ -57,6 +64,27 @@ export class ModalPom {
     await looker.click({ position: { x: 10, y: 60 } });
 
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
+  }
+
+  async panSample(
+    direction: "left" | "right" | "up" | "down",
+    offsetPixels = 100
+  ) {
+    const modalBoundingBox = await this.modalContainer.boundingBox();
+    await this.page.mouse.move(
+      modalBoundingBox.width / 2,
+      modalBoundingBox.height / 2
+    );
+    await this.page.mouse.down();
+    await this.page.mouse.move(
+      direction === "left"
+        ? modalBoundingBox.width / 2 - offsetPixels
+        : modalBoundingBox.width / 2 + offsetPixels,
+      direction === "up"
+        ? modalBoundingBox.height / 2 - offsetPixels
+        : modalBoundingBox.height / 2 + offsetPixels
+    );
+    await this.page.mouse.up();
   }
 
   async waitForCarouselToLoad() {
@@ -113,12 +141,8 @@ export class ModalPom {
     return this.getLooker3d().click();
   }
 
-  getLooker() {
-    return this.locator.getByTestId("looker").last();
-  }
-
   async clickOnLooker() {
-    return this.getLooker().click();
+    return this.looker.click();
   }
 
   getGroupContainer() {
