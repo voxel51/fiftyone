@@ -39,7 +39,7 @@ const Looker3dPluginWrapper = () => {
 };
 
 export const Sample3d = () => {
-  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
+  const lookerRef = useRef<fos.Lookers | undefined>(undefined);
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
