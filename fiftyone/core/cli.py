@@ -6,6 +6,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 |
 """
 import argparse
+import warnings
 from collections import defaultdict
 from datetime import datetime
 import json
@@ -815,6 +816,18 @@ class DatasetsExportCommand(Command):
                 "`fiftyone.core.collections.SampleCollection.export()`"
             ),
         )
+        parser.add_argument(
+            "--filters",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "Sample tags or class labels to filter dataset. "
+                "To use sample tags, pass tags as `tags=train,val` and "
+                "to use label filters, pass label field and values as in "
+                "ground_truth=car,person,dog"
+            ),
+        )
 
     @staticmethod
     def execute(parser, args):
@@ -824,8 +837,21 @@ class DatasetsExportCommand(Command):
         dataset_type = etau.get_class(args.type) if args.type else None
         label_field = args.label_field
         kwargs = args.kwargs or {}
+        label_filters = args.filters or {}
+        tags = label_filters.pop("tags", [])
 
         dataset = fod.load_dataset(name)
+
+        if tags:
+            dataset = dataset.match_tags(tags)
+        for k, v in label_filters.items():
+            if not dataset.has_sample_field(k):
+                warnings.warn(
+                    f"Dataset {dataset.name!r} does not contain label field {k!r}"
+                )
+                continue
+            filter_fn = fo.ViewField("label").is_in(v)
+            dataset = dataset.filter_labels(k, filter_fn)
 
         if json_path:
             dataset.write_json(json_path)
