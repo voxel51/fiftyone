@@ -123,6 +123,7 @@ const LabelsPatches = ({ close }) => {
       {fields.map((field) => {
         return (
           <ActionOption
+            id="labels-patches"
             key={field}
             text={field}
             title={`Switch to patches view for the "${field}" field`}

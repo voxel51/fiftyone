@@ -6,3 +6,4 @@ export { default as FieldLabelAndInfo } from "./FieldLabelAndInfo";
 export { default as Loading } from "./Loading";
 export * from "./Sidebar";
 export { default as ViewBar } from "./ViewBar/ViewBar";
+export { default as ResourceCount } from "./ResourceCount";

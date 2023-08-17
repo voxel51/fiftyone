@@ -60,7 +60,7 @@ const useClearSelectedLabels = () => {
 interface LookerProps {
   sample?: fos.ModalSample;
   lookerRef?: MutableRefObject<any>;
-  lookerRefCallback?: (looker: AbstractLooker) => void;
+  lookerRefCallback?: (looker: fos.Lookers) => void;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
