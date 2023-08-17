@@ -284,7 +284,7 @@ below:
             }
         }
 
-        registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME");
+        registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME);
 
 Plugin runtime
 --------------
