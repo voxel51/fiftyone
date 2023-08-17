@@ -73,6 +73,7 @@ test.describe("orthographic projections", () => {
 
     // open modal and check that pcds are rendered correctly
     await grid.openFirstSample();
+    await modal.modalContainer.hover();
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-1.png",
       {
@@ -82,6 +83,7 @@ test.describe("orthographic projections", () => {
     );
     // pan to the left and check that pcds are rendered correctly
     await modal.panSample("left");
+    await modal.modalContainer.hover();
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-1-left-pan.png",
       {
@@ -91,6 +93,7 @@ test.describe("orthographic projections", () => {
     );
 
     await modal.navigateNextSample();
+    await modal.modalContainer.hover();
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-2.png",
       {
@@ -101,6 +104,7 @@ test.describe("orthographic projections", () => {
 
     // pan to the right and check that pcds are rendered correctly
     await modal.panSample("right");
+    await modal.modalContainer.hover();
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-2-right-pan.png",
       {
