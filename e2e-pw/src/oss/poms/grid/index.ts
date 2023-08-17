@@ -20,6 +20,10 @@ export class GridPom {
     this.locator = page.getByTestId("fo-grid");
   }
 
+  get firstFlashlightSection() {
+    return this.locator.getByTestId("flashlight-section").first();
+  }
+
   getNthLooker(n: number) {
     return this.locator.getByTestId("looker").nth(n);
   }
