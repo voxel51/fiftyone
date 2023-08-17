@@ -65,7 +65,7 @@ test.describe("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
+    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
     const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
       return new Promise<void>((resolve) => {
@@ -81,7 +81,7 @@ test.describe("groups video labels", () => {
     await grid.sliceSelector.selectSlice("v2");
     await v2SampleLoadedPromise;
 
-    await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
+    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
   });
 
   test("video plays with correct label for each slice", async ({
@@ -97,27 +97,23 @@ test.describe("groups video labels", () => {
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.group.assert.assertGroupPinnedText(`${slice} is pinned`);
 
-      await modal.getLooker().hover();
+      await modal.looker.hover();
 
       // check screenshot before video is played
-      await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-before-play.png`,
-        { animations: "allow" }
-      );
+      await expect(modal.looker).toHaveScreenshot(`${slice}-before-play.png`, {
+        animations: "allow",
+      });
 
       await modal.video.playUntilFrames("5");
-      await modal.getLooker().hover();
+      await modal.looker.hover();
 
       // check screenshot after video is played
-      await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-after-play.png`,
-        {
-          // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
-          // the real test is that the correct label is shown
-          mask: [modal.video.time],
-          animations: "allow",
-        }
-      );
+      await expect(modal.looker).toHaveScreenshot(`${slice}-after-play.png`, {
+        // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
+        // the real test is that the correct label is shown
+        mask: [modal.video.time],
+        animations: "allow",
+      });
     };
 
     await checkVideo("v1");
