@@ -7,7 +7,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { SampleWrapper } from "./Sample";
 
-const Sample3dContiner = styled.div`
+const Sample3dContainer = styled.div`
   width: 100%;
   height: 100%;
   position: relative;
@@ -40,14 +40,19 @@ const Looker3dPluginWrapper = () => {
 
 export const Sample3d = () => {
   const lookerRef = useRef<fos.Lookers | undefined>(undefined);
+  const isGroup = useRecoilValue(fos.isGroup);
 
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <Sample3dContiner data-cy="modal-looker-container">
-        <SampleWrapper lookerRef={lookerRef}>
+      <Sample3dContainer data-cy="modal-looker-container">
+        {isGroup ? (
           <Looker3dPluginWrapper />
-        </SampleWrapper>
-      </Sample3dContiner>
+        ) : (
+          <SampleWrapper lookerRef={lookerRef}>
+            <Looker3dPluginWrapper />
+          </SampleWrapper>
+        )}
+      </Sample3dContainer>
     </Suspense>
   );
 };
