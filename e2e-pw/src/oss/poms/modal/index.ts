@@ -22,7 +22,7 @@ export class ModalPom {
   }
 
   async toggleSelection() {
-    await this.getLooker().hover();
+    await this.locator.hover();
     await this.locator.getByTestId("selectable-bar").click();
   }
 

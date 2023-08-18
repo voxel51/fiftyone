@@ -95,7 +95,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             return;
           }
 
-          const stateless = env().VITE_NO_STATE || true;
+          const stateless = env().VITE_NO_STATE;
           if (stateless && readyStateRef.current === AppReadyState.OPEN) {
             return;
           }
@@ -312,13 +312,14 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               [
                 "groupSlice",
                 (_, slice) => {
-                  commitMutation<setGroupSliceMutation>(environment, {
-                    mutation: setGroupSlice,
-                    variables: {
-                      slice,
-                      subscription,
-                    },
-                  });
+                  !env().VITE_NO_STATE &&
+                    commitMutation<setGroupSliceMutation>(environment, {
+                      mutation: setGroupSlice,
+                      variables: {
+                        slice,
+                        subscription,
+                      },
+                    });
                 },
               ],
               [
@@ -346,16 +347,28 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             ])
           }
           subscribe={(fn) => {
-            let {
-              preloadedQuery: { variables: current },
-            } = router.get();
+            let current = router.get();
             return router.subscribe((entry, action) => {
               sessionRef.current.selectedSamples = new Set();
               sessionRef.current.selectedLabels = [];
-              sessionRef.current.selectedFields = undefined;
+
+              const next = router.get();
               // @ts-ignore
-              if (current.name !== entry.preloadedQuery.variables.name) {
+              if (
+                current.preloadedQuery.variables.name !==
+                entry.preloadedQuery.variables.name
+              ) {
                 sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
+                sessionRef.current.selectedFields = undefined;
+              }
+
+              if (
+                !fos.viewsAreEqual(
+                  current.state?.view || [],
+                  next.state?.view || []
+                )
+              ) {
+                sessionRef.current.selectedFields = undefined;
               }
 
               // @ts-ignore
@@ -368,7 +381,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
                 }
               );
 
-              current = entry.preloadedQuery.variables;
+              current = next;
               dispatchSideEffect(entry, action, subscription);
               fn(entry);
             });

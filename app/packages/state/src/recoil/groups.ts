@@ -19,7 +19,6 @@ import { VariablesOf, commitLocalUpdate } from "react-relay";
 import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import type { ResponseFrom } from "../utils";
-import { aggregateSelectorFamily } from "./aggregate";
 import { dataset, mediaType } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
@@ -383,15 +382,7 @@ export const dynamicGroupFields = selector<string[]>({
           (group) => path !== `${group}.id` && path !== `${group}.name`
         )
     );
-    const counts = get(aggregateSelectorFamily({ paths: filtered })).aggregate;
 
-    return filtered.filter((_, index) => {
-      const data = counts[index];
-      if (data.__typename !== "CountResponse") {
-        throw new Error("expected a CountResponse");
-      }
-
-      return data.count > 0;
-    });
+    return filtered;
   },
 });

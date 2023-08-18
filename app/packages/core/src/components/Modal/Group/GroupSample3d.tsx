@@ -1,6 +1,6 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
@@ -79,7 +79,7 @@ export default () => {
       return;
     }
 
-    if (groupSlice && slices.includes(groupSlice)) {
+    if (groupSlice && slices.includes(groupSlice) && pinnedSlice) {
       return;
     }
 

@@ -152,7 +152,6 @@ export const fullSchema = selector<Schema>({
           info: null,
           path: "frames",
           description: null,
-          info: null,
         },
       } as Schema;
     }
@@ -179,17 +178,15 @@ export const fieldPaths = selectorFamily<
       }
 
       // use { flat: true } to get schema's dynamic fields included
-      const sampleFields = get(
-        fieldSchema({ space: State.SPACE.SAMPLE, flat: true })
-      );
-      const frameFields = get(
-        fieldSchema({ space: State.SPACE.FRAME, flat: true })
-      );
+      const sampleFields = get(atoms.flatSampleFields);
+      const frameFields = get(atoms.flatFrameFields);
 
-      const sampleLabels = Object.keys(sampleFields)
+      const sample = sampleFields
+        .map(({ path }) => path)
         .filter((l) => !l.startsWith("_"))
         .sort();
-      const frameLabels = Object.keys(frameFields)
+      const frame = frameFields
+        .map(({ path }) => path)
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
         .sort();
@@ -200,15 +197,15 @@ export const fieldPaths = selectorFamily<
         );
 
       if (space === State.SPACE.SAMPLE) {
-        return f(sampleLabels);
+        return f(sample);
       }
 
       if (space === State.SPACE.FRAME) {
-        return f(frameLabels);
+        return f(frame);
       }
 
       if (!space && !path) {
-        return f(sampleLabels.concat(frameLabels).sort());
+        return f(sample.concat(frame).sort());
       }
 
       const fieldValue = get(field(path));

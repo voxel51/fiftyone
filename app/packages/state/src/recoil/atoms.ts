@@ -4,11 +4,13 @@ import {
   datasetFragment,
   datasetFragment$key,
   frameFieldsFragment,
+  frameFieldsFragment$data,
   frameFieldsFragment$key,
   graphQLSyncFragmentAtom,
   mediaTypeFragment,
   mediaTypeFragment$key,
   sampleFieldsFragment,
+  sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
 import { Field, StrictField } from "@fiftyone/utilities";
@@ -144,35 +146,45 @@ export const mediaType = graphQLSyncFragmentAtom<
   }
 );
 
-export const sampleFields = graphQLSyncFragmentAtom<
+export const flatSampleFields = graphQLSyncFragmentAtom<
   sampleFieldsFragment$key,
-  StrictField[]
+  sampleFieldsFragment$data["sampleFields"]
 >(
   {
     fragments: [datasetFragment, sampleFieldsFragment],
     keys: ["dataset"],
-    read: (dataset) => collapseFields(dataset?.sampleFields || []),
+    read: (data) => data.sampleFields,
     default: [],
   },
   {
-    key: "sampleFields",
+    key: "flatSampleFields",
   }
 );
 
-export const frameFields = graphQLSyncFragmentAtom<
+export const sampleFields = selector<StrictField[]>({
+  key: "sampleFields",
+  get: ({ get }) => collapseFields(get(flatSampleFields) || []),
+});
+
+export const flatFrameFields = graphQLSyncFragmentAtom<
   frameFieldsFragment$key,
-  StrictField[]
+  frameFieldsFragment$data["frameFields"]
 >(
   {
     fragments: [datasetFragment, frameFieldsFragment],
     keys: ["dataset"],
-    read: (data) => collapseFields(data?.frameFields || []),
+    read: (data) => data.frameFields,
     default: [],
   },
   {
-    key: "frameFields",
+    key: "flatFrameFields",
   }
 );
+
+export const frameFields = selector<StrictField[]>({
+  key: "frameFields",
+  get: ({ get }) => collapseFields(get(flatFrameFields) || []),
+});
 
 export const selectedViewName = atom<string>({
   key: "selectedViewName",
