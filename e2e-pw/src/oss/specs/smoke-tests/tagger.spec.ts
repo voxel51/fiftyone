@@ -35,14 +35,14 @@ test.describe("tag", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("sample tag and label tag loads correct aggregation number on default view", async ({
     tagger,
     gridActionsRow,
   }) => {
-    await gridActionsRow.openTagSamplesOrLabels();
+    await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
     const placeHolder = await tagger.getTagInputTextPlaceholder("sample");
     expect(placeHolder.includes(" 5 ")).toBe(true);
@@ -51,7 +51,7 @@ test.describe("tag", () => {
     const placeHolder2 = await tagger.getTagInputTextPlaceholder("label");
     expect(placeHolder2.includes(" 143 ")).toBe(true);
 
-    await gridActionsRow.openTagSamplesOrLabels();
+    await gridActionsRow.toggleTagSamplesOrLabels();
   });
 
   test("In grid, I can add a new sample tag to all new samples", async ({
@@ -70,7 +70,7 @@ test.describe("tag", () => {
         () => true
       );
 
-    await gridActionsRow.openTagSamplesOrLabels();
+    await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("sample");
     await tagger.addNewTag("sample", "test1");
 
@@ -96,7 +96,7 @@ test.describe("tag", () => {
         () => true
       );
 
-    await gridActionsRow.openTagSamplesOrLabels();
+    await gridActionsRow.toggleTagSamplesOrLabels();
     await tagger.setActiveTaggerMode("label");
     await tagger.addNewTag("label", "labelTest");
 

@@ -66,7 +66,7 @@ test.describe("date field and date time field can filter visibility", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("change date field visibility works", async ({

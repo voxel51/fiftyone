@@ -23,7 +23,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("In cifar grid, setting visibility directly works", async ({
@@ -86,7 +86,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     // verify the number of samples in the result
     await grid.waitForGridToLoad();
-    await grid.assert.waitForEntryCountTextToEqual("3 of 5 samples");
+    await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog.png",

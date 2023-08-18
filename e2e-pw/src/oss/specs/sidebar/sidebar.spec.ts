@@ -22,7 +22,7 @@ test.describe("sidebar-filter-visibility", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     // always fold tags and metaData groups
     await page.click('[title="TAGS"]');
     await page.click('[title="METADATA"]');
@@ -41,7 +41,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
+    await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "select-bottle.png",
@@ -87,9 +87,9 @@ test.describe("sidebar-filter-visibility", () => {
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("5 samples");
+    await grid.assert.isEntryCountTextEqualTo("5 samples");
     await grid.waitForGridToLoad();
-    await grid.assert.assertNLookers(5);
+    await grid.assert.isLookerCountEqualTo(5);
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "exclude-bottle.png",
       { animations: "allow" }
@@ -138,7 +138,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("1 of 5 samples");
+    await grid.assert.isEntryCountTextEqualTo("1 of 5 samples");
     await grid.waitForGridToLoad();
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -189,7 +189,7 @@ test.describe("sidebar-filter-visibility", () => {
     );
 
     // verify the number of samples in the result
-    await grid.assert.waitForEntryCountTextToEqual("4 of 5 samples");
+    await grid.assert.isEntryCountTextEqualTo("4 of 5 samples");
     await grid.waitForGridToLoad();
 
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
