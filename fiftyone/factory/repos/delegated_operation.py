@@ -9,6 +9,7 @@ from typing import Any, List
 
 import pymongo
 from bson import ObjectId
+from pymongo import IndexModel
 from pymongo.collection import Collection
 
 from fiftyone.factory import (
@@ -96,6 +97,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             collection if collection is not None else self._get_collection()
         )
 
+        self._create_indexes()
+
     def _get_collection(self) -> Collection:
         import fiftyone.core.odm as foo
         import fiftyone as fo
@@ -103,6 +106,32 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
         database = db_client[fo.config.database_name]
         return database[self.COLLECTION_NAME]
+
+    def _create_indexes(self):
+        indices = self._collection.list_indexes()
+        index_names = [index["name"] for index in indices]
+        indices_to_create = []
+        if "operator_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("operator", pymongo.ASCENDING)], name="operator_1"
+                )
+            )
+        if "updated_at_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("updated_at", pymongo.ASCENDING)], name="updated_at_1"
+                )
+            )
+        if "run_state_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("run_state", pymongo.ASCENDING)], name="run_state_1"
+                )
+            )
+
+        if indices_to_create:
+            self._collection.create_indexes(indices_to_create)
 
     def queue_operation(self, **kwargs: Any) -> DelegatedOperationDocument:
         op = DelegatedOperationDocument()
@@ -155,6 +184,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "completed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
                     "result": execution_result.to_json()
                     if execution_result
                     else None,
@@ -165,6 +195,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "failed_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
                     "result": execution_result.to_json()
                     if execution_result
                     else None,
@@ -175,6 +206,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 "$set": {
                     "run_state": run_state,
                     "started_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
                 }
             }
 
