@@ -69,13 +69,11 @@ const Checkbox = <T extends unknown>({
           e.stopPropagation();
 
           !disabled && !muted && setValue(!value);
-          console.log("onclick", value);
         }}
       >
         {!disabled && (
           <MaterialCheckbox
             checked={value}
-            data-cy={`material-checkbox-${text}`}
             title={text}
             style={{
               padding: "0 0.5rem 0 0",

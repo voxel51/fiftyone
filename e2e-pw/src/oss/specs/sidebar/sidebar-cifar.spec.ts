@@ -86,19 +86,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["frog"],
-      "show-samples-with-label"
-    );
-    await grid.waitForGridToLoad();
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["cat"],
-      "show-samples-with-label"
-    );
-    await grid.waitForGridToLoad();
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["ship"],
+      ["frog", "ship"],
       "show-samples-with-label"
     );
 

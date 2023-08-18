@@ -100,7 +100,7 @@ const Wrapper = ({
       </>
     );
   }
-  console.log(selectedSet);
+
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
