@@ -484,6 +484,16 @@ const InteractiveSidebar = ({
             ...config.stiff,
             bounce: 0,
           },
+          onRest: () => {
+            // fires event for e2e testing to avoid using onWait
+            if (container?.current) {
+              container?.current.dispatchEvent(
+                new CustomEvent("animation-onRest", {
+                  bubbles: true,
+                })
+              );
+            }
+          },
           overflow: "visible",
         }),
         entry,

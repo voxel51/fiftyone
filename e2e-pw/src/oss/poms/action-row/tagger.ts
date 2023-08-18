@@ -3,11 +3,7 @@ import { Locator, Page } from "src/oss/fixtures";
 type TaggerMode = "sample" | "label";
 
 export class TaggerPom {
-  readonly page: Page;
-
-  constructor(page: Page) {
-    this.page = page;
-  }
+  constructor(private readonly page: Page) {}
 
   async setActiveTaggerMode(mode: TaggerMode) {
     const selector = this.page.getByTestId(`tagger-switch-${mode}`);

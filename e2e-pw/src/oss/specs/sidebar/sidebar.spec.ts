@@ -28,12 +28,20 @@ test.describe("sidebar-filter-visibility", () => {
     await page.click('[title="METADATA"]');
   });
 
-  test("In grid, select a label filter works", async ({ grid, sidebar }) => {
+  test("In grid, select a label filter works", async ({
+    grid,
+    sidebar,
+    eventUtils,
+  }) => {
     // do not show prediction labels
     await sidebar.clickFieldCheckbox("predictions");
-
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
     // select bottle in ground_truth.detections.label
     await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["bottle"],
@@ -76,10 +84,21 @@ test.describe("sidebar-filter-visibility", () => {
     );
   });
 
-  test("In grid, exclude a label filter works", async ({ grid, sidebar }) => {
+  test("In grid, exclude a label filter works", async ({
+    grid,
+    sidebar,
+    eventUtils,
+  }) => {
     // do not show prediction labels
     await sidebar.clickFieldCheckbox("predictions");
+
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+
     await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["bottle"],
@@ -126,11 +145,18 @@ test.describe("sidebar-filter-visibility", () => {
   test("In grid, show samples with a label filter works", async ({
     grid,
     sidebar,
+    eventUtils,
   }) => {
     // do not show prediction labels
     await sidebar.clickFieldCheckbox("predictions");
 
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+
     await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["bottle"],
@@ -177,11 +203,17 @@ test.describe("sidebar-filter-visibility", () => {
   test("In grid, omit samples with a label filter works", async ({
     grid,
     sidebar,
+    eventUtils,
   }) => {
     // do not show prediction labels
     await sidebar.clickFieldCheckbox("predictions");
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
 
     await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["bottle"],

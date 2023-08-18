@@ -39,9 +39,14 @@ test.describe("classification-sidebar-filter-visibility", () => {
         "re-render-tag",
         () => true
       );
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
 
     // test case: visibility mode - show label
     await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["cat"],
@@ -71,16 +76,16 @@ test.describe("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
-    await sidebar.clickFieldDropdown("ground_truth");
-    await sidebar.waitForElement("categorical-filter-ground_truth.tags");
-    await sidebar.applyLabelFromList(
-      "ground_truth.detections.label",
-      ["frog"],
-      "show-samples-with-label"
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
     );
+
+    await sidebar.clickFieldDropdown("ground_truth");
+    await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["ship"],
+      ["frog", "ship"],
       "show-samples-with-label"
     );
 
@@ -132,8 +137,13 @@ test.describe("classification-sidebar-filter-visibility", () => {
     sidebar,
     eventUtils,
   }) => {
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
     await sidebar.clickFieldDropdown("ground_truth");
-    await sidebar.waitForElement("categorical-filter-ground_truth.tags");
+    await entryExpandPromise;
+
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["ship"],

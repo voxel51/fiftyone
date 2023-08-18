@@ -58,10 +58,6 @@ export class GridPom {
     await this.page.getByTestId("selector-slice").press("Enter");
   }
 
-  async delay(ms: number) {
-    this.page.waitForTimeout(ms);
-  }
-
   async waitForGridToLoad() {
     return this.page.waitForSelector("[data-cy=looker]", {
       timeout: 2000,

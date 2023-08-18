@@ -84,10 +84,14 @@ test.describe("date field and date time field can filter visibility", () => {
         "re-render-tag",
         () => true
       );
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
 
     await sidebar.clickFieldDropdown("dates");
     await sidebar.clickFieldCheckbox("dates");
-    await page.waitForTimeout(1000);
+    await entryExpandPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(2);
 
     await sidebar.setSliderStartValue("dates", 10);
@@ -112,10 +116,15 @@ test.describe("date field and date time field can filter visibility", () => {
         "re-render-tag",
         () => true
       );
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
 
     await sidebar.clickFieldDropdown("seconds");
     await sidebar.clickFieldCheckbox("seconds");
-    await page.waitForTimeout(1000);
+    await entryExpandPromise;
+
     expect(await page.getByTestId("tag-seconds").count()).toBe(2);
 
     await sidebar.setSliderStartValue("seconds", 10);
