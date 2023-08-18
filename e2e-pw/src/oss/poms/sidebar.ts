@@ -60,10 +60,8 @@ export class SidebarPom {
 
   async applyFilter(label: string) {
     const selectionDiv = this.sidebar.getByTestId(`checkbox-${label}`);
-    await selectionDiv.waitFor();
-    await selectionDiv.click({ delay: 50 });
-    const status = selectionDiv.locator(`data-testid=CheckBoxIcon`).isVisible();
-    expect(status).toBeTruthy();
+    await selectionDiv.waitFor({ state: "visible" });
+    await selectionDiv.locator("input").check();
   }
 
   // apply a filter to a field

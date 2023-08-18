@@ -1,4 +1,4 @@
-import { MutableRefObject } from "react";
+import React, { MutableRefObject } from "react";
 import {
   RecoilState,
   useRecoilState,
@@ -100,7 +100,7 @@ const Wrapper = ({
       </>
     );
   }
-
+  console.log(selectedSet);
   return (
     <>
       {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
