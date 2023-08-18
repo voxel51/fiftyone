@@ -59,7 +59,10 @@ export class SidebarPom {
   }
 
   async applyFilter(label: string) {
-    await this.sidebar.getByTestId(`checkbox-${label}`).click();
+    const selectionDiv = this.sidebar.getByTestId(`checkbox-${label}`);
+    await selectionDiv.waitFor();
+    await selectionDiv.locator("input").click();
+    await expect(selectionDiv.locator("input").isChecked()).toBeTruthy();
   }
 
   // apply a filter to a field
