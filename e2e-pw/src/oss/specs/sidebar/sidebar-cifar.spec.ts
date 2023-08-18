@@ -75,6 +75,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     grid,
     sidebar,
     eventUtils,
+    page,
   }) => {
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
@@ -85,7 +86,12 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await entryExpandPromise;
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["ship", "frog"],
+      ["frog"],
+      "show-samples-with-label"
+    );
+    await sidebar.applyLabelFromList(
+      "ground_truth.detections.label",
+      ["ship"],
       "show-samples-with-label"
     );
 
