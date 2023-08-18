@@ -90,10 +90,11 @@ export const Looker3d = () => {
   }, [settings]);
 
   useLayoutEffect(() => {
-    document
-      .getElementById(CANVAS_WRAPPER_ID)
-      .querySelector("canvas")
-      .setAttribute("sample-loaded", "true");
+    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
+
+    if (canvas) {
+      canvas.querySelector("canvas")?.setAttribute("sample-loaded", "true");
+    }
   }, []);
 
   const handleSelect = useCallback(
