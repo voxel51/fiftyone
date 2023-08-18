@@ -344,12 +344,6 @@ export const sidebarGroups = selectorFamily<
         }
       }
 
-      // if field visibility is active, remove empty groups
-      const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
-      if (isFieldVisibilityActive) {
-        return groups.filter((group) => group.paths.length > 0);
-      }
-
       return groups;
     },
   set:
@@ -441,9 +435,18 @@ export const sidebarEntries = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
+      const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
       const entries = [
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
+            // if field visibility is active, return a hidden group
+            if (isFieldVisibilityActive && paths?.length === 0) {
+              return {
+                kind: EntryKind.EMPTY,
+                shown: false,
+              };
+            }
+
             const group: GroupEntry = {
               name: name,
               kind: EntryKind.GROUP,
