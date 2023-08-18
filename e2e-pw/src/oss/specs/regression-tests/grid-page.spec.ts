@@ -43,8 +43,8 @@ test("grid has correct second page (all 21 samples)", async ({
   grid,
   page,
 }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
-  await grid.assert.assertNLookers(21);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  await grid.assert.isLookerCountEqualTo(21);
 });
 
 test("modal group carousel has correct second page (all 21 samples)", async ({
@@ -53,8 +53,8 @@ test("modal group carousel has correct second page (all 21 samples)", async ({
   modal,
   page,
 }) => {
-  await fiftyoneLoader.waitUntilLoad(page, groupDatasetName);
-  await grid.openFirstLooker();
+  await fiftyoneLoader.waitUntilGridVisible(page, groupDatasetName);
+  await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.waitForCarouselToLoad();
   await modal.scrollCarousel();
@@ -68,8 +68,10 @@ test("modal dynamic group carousel has correct second page (all 21 samples)", as
   modal,
   page,
 }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName, "group");
-  await grid.openFirstLooker();
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    savedView: "group",
+  });
+  await grid.openFirstSample();
   await modal.waitForCarouselToLoad();
   await modal.scrollCarousel();
   await modal.navigateSlice("i", "20", true);
