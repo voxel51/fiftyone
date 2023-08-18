@@ -108,8 +108,8 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name):
-    """Loads the FiftyOne dataset with the given name.
+def load_dataset(name, snapshot=None):
+    """Loads the FiftyOne dataset or snapshot with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
 
@@ -121,10 +121,29 @@ def load_dataset(name):
 
     Args:
         name: the name of the dataset
+        snapshot(None): an optional snapshot name
 
     Returns:
         a :class:`Dataset`
     """
+    if snapshot is not None:
+        head_name = name
+
+        head_dataset = Dataset(head_name, _create=False)
+        dataset_id = str(head_dataset._doc.id)
+        name = f"_snapshot__{dataset_id}_{snapshot}"
+        try:
+            return Dataset(
+                name,
+                _create=False,
+                _head_name=head_name,
+                _snapshot_name=snapshot,
+            )
+        except ValueError:
+            raise ValueError(
+                "Snapshot '%s' for dataset '%s' not found"
+                % (snapshot, head_name)
+            ) from None
     return Dataset(name, _create=False)
 
 
@@ -269,10 +288,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
+        _head_name=None,
+        _snapshot_name=None,
         **kwargs,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
+
+        self._head_name = _head_name
+        self._snapshot_name = _snapshot_name
 
         if overwrite and dataset_exists(name):
             delete_dataset(name)
@@ -652,6 +676,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._instances[name] = self
 
     @property
+    def head_name(self):
+        return self._head_name or self.name
+
+    @property
+    def snapshot_name(self):
+        return self._snapshot_name
+
+    @property
     def slug(self):
         """The slug of the dataset."""
         return self._doc.slug
@@ -1028,8 +1060,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        elements = [
-            ("Name:", self.name),
+        elements = [("Name:", self.head_name)]
+        if self.is_snapshot:
+            elements += [("Snapshot:", self.snapshot_name)]
+        elements += [
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),
             ("Persistent:", self.persistent),
