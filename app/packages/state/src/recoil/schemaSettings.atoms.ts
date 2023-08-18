@@ -309,3 +309,16 @@ export const selectedFieldsStageState = atom<any>({
     },
   ],
 });
+
+export const isFieldVisibilityActive = selector({
+  key: "isClearFieldVisibilityVisible",
+  get: ({ get }) => {
+    const isSelectedFieldsStageActive = get(fos.selectedFieldsStageState);
+    const affectedCount = get(fos.affectedPathCountState);
+
+    return isSelectedFieldsStageActive && affectedCount > 0;
+  },
+  cachePolicy_UNSTABLE: {
+    eviction: "most-recent",
+  },
+});

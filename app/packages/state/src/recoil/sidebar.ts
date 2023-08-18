@@ -41,6 +41,7 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -341,6 +342,12 @@ export const sidebarGroups = selectorFamily<
         ) {
           groups[framesIndex].expanded = false;
         }
+      }
+
+      // if field visibility is active, remove empty groups
+      const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
+      if (isFieldVisibilityActive) {
+        return groups.filter((group) => group.paths.length > 0);
       }
 
       return groups;
