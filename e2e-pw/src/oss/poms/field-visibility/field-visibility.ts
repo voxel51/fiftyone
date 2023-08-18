@@ -55,7 +55,7 @@ export class FieldVisibilityPom {
     return this.modalContainer().getByTestId("field-visibility-btn-apply");
   }
 
-  // TODO: possibly replace when sidebar pom available
+  // TODO: replace with sidebar pom coming up
   sidebarField(fieldName: string) {
     return this.sidebar
       .getByTestId(`${fieldName}-field`)
@@ -64,7 +64,7 @@ export class FieldVisibilityPom {
       .nth(1);
   }
 
-  // TODO: move to sidebar pom when available
+  // TODO: move to sidebar pom coming up
   groupField(groupName: string) {
     return this.sidebar.getByTestId(`sidebar-group-${groupName}-field`);
   }
@@ -98,6 +98,6 @@ class FieldVisibilityAsserter {
   }
 
   async assertSidebarGroupIsHidden(groupName: string) {
-    await expect(this.svp.groupField(groupName)).toBeHidden();
+    await expect(this.svp.groupField(groupName)).toBeHidden({ timeout: 1000 });
   }
 }

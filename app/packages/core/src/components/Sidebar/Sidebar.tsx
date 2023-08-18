@@ -700,7 +700,6 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
-  console.log("items", items);
 
   return shown ? (
     <Resizable

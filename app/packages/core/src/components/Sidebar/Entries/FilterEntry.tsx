@@ -5,12 +5,7 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { FilterInputDiv } from "./utils";
 
@@ -21,7 +16,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
 
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
-  const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
     fos.selectedFieldsStageState
   );
@@ -31,6 +25,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
     resetExcludedPaths,
     affectedPathCount,
     mergedSchema,
+    isFieldVisibilityActive,
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
@@ -92,7 +87,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
       </Box>
       {!modal && (
         <Box display="flex" alignItems="center">
-          {selectedFieldsStage && affectedPathCount > 0 && (
+          {isFieldVisibilityActive && (
             <Tooltip text="Clear field selection" placement="bottom-center">
               <Box
                 data-cy="field-visibility-btn-clear"

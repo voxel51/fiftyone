@@ -40,7 +40,6 @@ test.describe("field visibility", () => {
       "ground_truth",
     ]);
 
-    // TODO - fix me
     await fieldVisibility.assert.assertSidebarGroupIsHidden("labels");
 
     await fieldVisibility.clearFieldVisibilityChanges();
