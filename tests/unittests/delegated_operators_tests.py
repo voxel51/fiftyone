@@ -170,14 +170,23 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             context=ExecutionContext(request_params={"foo": "bar"}),
         )
 
+        original_updated_at = doc.updated_at
+
         self.docs_to_delete.append(doc)
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+        time.sleep(0.1)
 
         doc = self.svc.set_running(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.RUNNING)
+        self.assertNotEquals(doc.updated_at, original_updated_at)
+        original_updated_at = doc.updated_at
+        time.sleep(0.1)
 
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertNotEquals(doc.updated_at, original_updated_at)
+        original_updated_at = doc.updated_at
+        time.sleep(0.1)
 
         doc = self.svc.set_failed(
             doc_id=doc.id,
@@ -185,6 +194,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
         self.assertIsNotNone(doc.result.error)
+        self.assertNotEquals(doc.updated_at, original_updated_at)
 
     @patch(
         "fiftyone.operators.registry.OperatorRegistry.operator_exists",
@@ -298,7 +308,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         rerun_doc = self.svc.rerun_operation(doc.id)
         self.docs_to_delete.append(rerun_doc)
-        self.assertNotEquals(doc.id, rerun_doc.id)
+        self.assertNotEqual(doc.id, rerun_doc.id)
         self.assertEqual(rerun_doc.run_state, ExecutionRunState.QUEUED)
         self.assertIsNotNone(rerun_doc.queued_at)
         self.assertIsNone(rerun_doc.started_at)

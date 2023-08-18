@@ -32,6 +32,7 @@ class DelegatedOperationDocument(object):
             ExecutionRunState.QUEUED
         )  # default to queued state on create
         self.queued_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
         self.dataset_id = None
         self.started_at = None
         self.pinned = False
@@ -45,6 +46,7 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
+        self.updated_at = doc["updated_at"]
         self.run_state = doc["run_state"]
         # optional fields
         self.delegation_target = (
