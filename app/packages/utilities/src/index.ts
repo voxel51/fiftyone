@@ -308,6 +308,7 @@ export const STRING_FIELD = "fiftyone.core.fields.StringField";
 export const LIST_FIELD = "fiftyone.core.fields.ListField";
 export const JUST_FIELD = "fiftyone.core.fields.Field";
 export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
+export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
 export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
@@ -691,3 +692,10 @@ export function pluralize(
 ) {
   return number === 1 ? singular : plural;
 }
+
+// vite-plugin-relay inexplicably removes import.meta.env
+// @fiftyone/utilities does not use the plugin, so this helper
+// is defined
+export const env = (): ImportMetaEnv => {
+  return import.meta.env;
+};

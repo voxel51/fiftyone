@@ -46,6 +46,7 @@ export class ThumbnailSelectorElement<
     element.title = SELECTION_TEXT;
 
     this.title = document.createElement("div");
+    this.title.setAttribute("data-cy", "thumbnail-title");
     element.append(this.title);
 
     return element;

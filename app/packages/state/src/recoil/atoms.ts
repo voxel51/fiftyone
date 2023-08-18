@@ -1,7 +1,14 @@
 import { Sample } from "@fiftyone/looker/src/state";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { Field } from "@fiftyone/utilities";
-import { AtomEffect, atom, atomFamily, useRecoilCallback } from "recoil";
+import {
+  AtomEffect,
+  atom,
+  atomFamily,
+  selector,
+  useRecoilCallback,
+} from "recoil";
+import { groupMediaTypesSet } from "./groups";
 import { ColorSchemeSetting, State } from "./types";
 
 export const refresher = atom<number>({
@@ -138,12 +145,12 @@ export const viewCounter = atom({
 
 export const DEFAULT_ALPHA = 0.7;
 
-export const alpha = atomFamily<number, boolean>({
+export const alpha = atom<number>({
   key: "alpha",
   default: DEFAULT_ALPHA,
 });
 
-export const colorSeed = atomFamily<number, boolean>({
+export const colorSeed = atom<number>({
   key: "colorSeed",
   default: 0,
 });
@@ -171,11 +178,6 @@ export const savingFilters = atom<boolean>({
 export const similaritySorting = atom<boolean>({
   key: "similaritySorting",
   default: false,
-});
-
-export const pinned3DSample = atom<string | null>({
-  key: "pinned3DSample",
-  default: null,
 });
 
 export const extendedSelection = atom<{ selection: string[]; scope?: string }>({
@@ -289,8 +291,8 @@ export const getBrowserStorageEffectForKey =
     })();
   };
 
-export const groupMediaIsCarouselVisible = atom<boolean>({
-  key: "groupMediaIsCarouselVisible",
+export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
+  key: "groupMediaIsCarouselVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
@@ -300,8 +302,8 @@ export const groupMediaIsCarouselVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIs3DVisible = atom<boolean>({
-  key: "groupMediaIs3DVisible",
+export const groupMedia3dVisibleSetting = atom<boolean>({
+  key: "groupMediaIs3dVisibleSetting",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
@@ -311,15 +313,42 @@ export const groupMediaIs3DVisible = atom<boolean>({
   ],
 });
 
-export const groupMediaIsImageVisible = atom<boolean>({
-  key: "groupMediaIsImageVisible",
+export const onlyPcd = selector<boolean>({
+  key: "onlyPcd",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return set.size === 1 && hasPcd;
+  },
+});
+
+export const groupMediaIs3dVisible = selector<boolean>({
+  key: "groupMedia3dVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMedia3dVisibleSetting) && hasPcd;
+  },
+});
+
+export const groupMediaIsMainVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMainVisibleSetting",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("groupMediaIsImageVisible", {
+    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
       sessionStorage: true,
       valueClass: "boolean",
     }),
   ],
+});
+
+export const groupMediaIsMainVisible = selector<boolean>({
+  key: "groupMediaIsMainVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+  },
 });
 
 export const theme = atom<"dark" | "light">({

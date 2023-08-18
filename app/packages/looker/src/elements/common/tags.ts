@@ -24,18 +24,14 @@ import {
   STRING_FIELD,
   withPath,
 } from "@fiftyone/utilities";
+import _ from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
+import { isValidColor } from "../../overlays/util";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
-import {
-  getColorFromOptions,
-  getColorFromOptionsPrimitives,
-  prettify,
-} from "./util";
-
-import _ from "lodash";
+import { getAssignedColor, prettify } from "./util";
 
 interface TagData {
   color: string;
@@ -100,16 +96,23 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
 
     const PRIMITIVE_RENDERERS = {
       [BOOLEAN_FIELD]: (path, value: boolean) => {
-        const v = value ? "True" : "False";
+        let v;
+        if (Array.isArray(value)) {
+          v = value.map((v) => (v ? "True" : "False")).join(", ");
+        } else {
+          v = value ? "True" : "False";
+        }
+
         return {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -119,11 +122,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -134,11 +138,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -149,11 +154,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -163,11 +169,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -178,11 +185,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -192,11 +200,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -205,24 +214,32 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value,
           title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          color: getAssignedColor({
             coloring,
             path,
             value,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
       [STRING_FIELD]: (path, value: string) => {
+        let v;
+        if (Array.isArray(value)) {
+          v = value.join(", ");
+        } else {
+          v = value;
+        }
         return {
           path,
-          value,
-          title: `${path}: ${value}`,
-          color: getColorFromOptionsPrimitives({
+          value: v,
+          title: `${path}: ${v}`,
+          color: getAssignedColor({
             coloring,
             path,
-            value,
+            value: v,
             customizeColorSetting,
+            isValidColor,
           }),
         };
       },
@@ -236,12 +253,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         path,
         value: param.label,
         title: `${path}: ${param.label}`,
-        color: getColorFromOptions({
+        color: getAssignedColor({
           coloring,
           path,
           param,
           customizeColorSetting,
-          labelDefault: true,
+          isValidColor,
         }),
       };
     };
@@ -255,12 +272,13 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           value: v,
           title: `${path}: ${v}`,
-          color: getColorFromOptions({
+          color: getAssignedColor({
             coloring,
             path,
             param,
             customizeColorSetting,
-            labelDefault: false,
+            fallbackLabel: "value",
+            isValidColor,
           }),
         };
       },
@@ -271,15 +289,16 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (path === "tags") {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
-            if (filter(path, tag)) {
+            if (filter(path, [tag])) {
               const v = coloring.by === "value" ? tag : "tags";
               elements.push({
-                color: getColorFromOptions({
+                color: getAssignedColor({
                   coloring,
                   path,
                   param: tag,
                   customizeColorSetting,
-                  labelDefault: false,
+                  fallbackLabel: "value",
+                  isValidColor,
                 }),
                 title: tag,
                 value: tag,
@@ -292,12 +311,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           const v = coloring.by === "value" ? tag : path;
-          elements.push({
-            color: getColor(coloring.pool, coloring.seed, v),
-            title: value,
-            value: value,
-            path: v,
-          });
+          if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
+            elements.push({
+              color: getColor(coloring.pool, coloring.seed, v),
+              title: value,
+              value: value,
+              path: v,
+            });
+          }
         });
       } else {
         const [field, value] = getFieldAndValue(sample, fieldSchema, path);
@@ -418,16 +439,21 @@ const prettyNumber = (value: number | NONFINITE): string => {
   if (typeof value === "string") {
     return value;
   }
-
   let string = null;
-  if (value % 1 === 0) {
-    string = value.toFixed(0);
-  } else if (value < 0.001) {
-    string = value.toFixed(6);
+
+  if (Array.isArray(value)) {
+    string = value.map((v) => prettyNumber(v)).join(", ");
+    return string;
   } else {
-    string = value.toFixed(3);
+    if (value % 1 === 0) {
+      string = value.toFixed(0);
+    } else if (value < 0.001) {
+      string = value.toFixed(6);
+    } else {
+      string = value.toFixed(3);
+    }
+    return Number(string).toLocaleString();
   }
-  return Number(string).toLocaleString();
 };
 
 const unwind = (
@@ -482,8 +508,7 @@ const getFieldAndValue = (
     ) {
       return [null, null];
     }
-
-    if (values.length && field) {
+    if (values?.length && field) {
       values = unwind(field.dbField, values as RegularLabel[]).filter(
         (v) => v !== undefined && v !== null
       );
@@ -554,3 +579,13 @@ function sortObjectArrays(a, b) {
   }
   return 0;
 }
+
+const shouldShowLabelTag = (labelTag: string, visibility: object) => {
+  if (!visibility) return true;
+
+  const values = visibility["values"];
+  const exclude = visibility["exclude"];
+
+  const contains = values.includes(labelTag);
+  return exclude ? !contains : contains;
+};

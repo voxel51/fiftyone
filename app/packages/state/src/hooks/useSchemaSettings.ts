@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { isEmpty, keyBy } from "lodash";
+import _, { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import { useRefetchableFragment } from "react-relay";
 import {
@@ -9,13 +9,12 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
+import useSetShowNestedFields from "./schema/useSetShowNestedFields";
 import {
   disabledField,
   getSubPaths,
   skipField,
 } from "./useSchemaSettings.utils";
-import useSetShowNestedFields from "./schema/useSetShowNestedFields";
-import _ from "lodash";
 
 const SELECT_ALL = "SELECT_ALL";
 

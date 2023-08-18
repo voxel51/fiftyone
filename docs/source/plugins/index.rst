@@ -252,6 +252,8 @@ below:
             types,
         } from "@fiftyone/operators";
 
+        const PLUGIN_NAME = "@my-org/my-plugin";
+
         class OpenEmbeddingsPanel extends Operator {
             get config() {
                 return new OperatorConfig({
@@ -259,7 +261,7 @@ below:
                     label: "Example: open Embeddings panel",
                 });
             }
-            useHooks(): {
+            useHooks() {
                 const openPanelOperator = useOperatorExecutor("open_panel");
                 return { openPanelOperator };
             }
@@ -282,7 +284,7 @@ below:
             }
         }
 
-        registerOperator(OpenEmbeddingsPanel, "@voxel51/examples");
+        registerOperator(OpenEmbeddingsPanel, PLUGIN_NAME);
 
 Plugin runtime
 --------------
@@ -722,7 +724,7 @@ Adding a custom FiftyOne Visualizer
 .. code-block:: jsx
 
     import * as fop from "@fiftyone/plugins";
-    import * as fos from "@fiftyone/visualizer";
+    import * as fos from "@fiftyone/state";
 
     function PointCloud({ src }) {
         // TODO: implement your visualizer using React
@@ -738,13 +740,19 @@ Adding a custom FiftyOne Visualizer
         return <PointCloud src={src} />;
     }
 
+    function myActivator({ dataset }) {
+        return dataset.mediaType ??
+            dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
+            undefined
+    }   
+
     fop.registerComponent({
         // component to delegate to
         component: CustomVisualizer,
         // tell FiftyOne you want to provide a Visualizer
-        type: PluginComponentTypes.Visualizer,
+        type: PluginComponentType.Visualizer,
         // activate this plugin when the mediaType is PointCloud
-        activator: ({ dataset }) => dataset.mediaType === "PointCloud",
+        activator: myActivator,
     });
 
 Adding a custom Plot

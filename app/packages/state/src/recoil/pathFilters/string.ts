@@ -195,7 +195,15 @@ export const string = selectorFamily<
       if (filter && visibility) {
         const visibilityFn = helperStringFunction(visibility);
         const filterFn = helperStringFunction(filter);
-        return (value: string | null) => filterFn(value) && visibilityFn(value);
+        if (filter.isMatching) {
+          return (value: string | null) => {
+            return visibilityFn(value);
+          };
+        }
+
+        return (value: string | null) => {
+          return filterFn(value) && visibilityFn(value);
+        };
       }
 
       return () => true; // not needed, but eslint complains
@@ -311,8 +319,8 @@ const handleValues = (
 ) => {
   const r =
     (isVisibility
-      ? values.some((v) => value?.includes(v))
-      : values.every((v) => value?.includes(v)) || (none && NONE.has(value))) &&
-    Boolean(value);
+      ? values?.some((v) => value?.includes(v))
+      : values?.every((v) => value?.includes(v)) ||
+        (none && NONE.has(value))) && Boolean(value);
   return exclude ? !r : r;
 };

@@ -3333,8 +3333,8 @@ class SampleCollection(object):
 
         Args:
             eval_key: an evaluation key
-            select_fields (False): whether to select only the fields involved
-                in the evaluation
+            select_fields (False): whether to exclude fields involved in other
+                evaluations
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -3435,8 +3435,8 @@ class SampleCollection(object):
 
         Args:
             brain_key: a brain key
-            select_fields (False): whether to select only the fields involved
-                in the brain method run
+            select_fields (False): whether to exclude fields involved in other
+                brain method runs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -5768,7 +5768,11 @@ class SampleCollection(object):
 
     @view_stage
     def select_group_slices(
-        self, slices=None, media_type=None, _allow_mixed=False
+        self,
+        slices=None,
+        media_type=None,
+        _allow_mixed=False,
+        _force_mixed=False,
     ):
         """Selects the samples in the group collection from the given slice(s).
 
@@ -5852,6 +5856,7 @@ class SampleCollection(object):
                 slices=slices,
                 media_type=media_type,
                 _allow_mixed=_allow_mixed,
+                _force_mixed=_force_mixed,
             )
         )
 
@@ -8364,8 +8369,8 @@ class SampleCollection(object):
 
         Args:
             anno_key: an annotation key
-            select_fields (False): whether to select only the fields involved
-                in the annotation run
+            select_fields (False): whether to exclude fields involved in other
+                annotation runs
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`

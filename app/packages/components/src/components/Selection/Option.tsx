@@ -78,6 +78,7 @@ export default function SelectionOption(props: Props) {
             <Box>
               {isHovered && item.id !== "1" && (
                 <Edit
+                  data-cy="btn-edit-selection"
                   fontSize="small"
                   sx={{
                     color: theme.neutral[400],

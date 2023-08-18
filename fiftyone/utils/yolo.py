@@ -479,7 +479,7 @@ class YOLOv5DatasetImporter(
 
         dataset_path = d.get("path", "")
         data = os.path.normpath(os.path.join(dataset_path, d[self.split]))
-        classes = d.get("names", None)
+        classes = _parse_yolo_classes(d.get("names", None))
 
         if etau.is_str(data) and data.endswith(".txt"):
             txt_path = _parse_yolo_v5_path(data, self.yaml_path)
@@ -931,7 +931,7 @@ class YOLOv5DatasetExporter(
         else:
             classes = list(self.classes)
 
-        if "names" in d and classes != d["names"]:
+        if "names" in d and classes != _parse_yolo_classes(d["names"]):
             raise ValueError(
                 "Aborting export of YOLOv5 split '%s' because its class list "
                 "does not match the existing class list in '%s'.\nIf you are "
@@ -944,8 +944,9 @@ class YOLOv5DatasetExporter(
             d["path"] = os.path.dirname(self.yaml_path)
 
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
-        d["nc"] = len(classes)
-        d["names"] = classes
+
+        # New data.yaml format https://docs.ultralytics.com/datasets/detect/
+        d["names"] = dict(enumerate(classes))  # class names dictionary
 
         _write_yaml_file(d, self.yaml_path, default_flow_style=False)
 
@@ -1115,6 +1116,15 @@ def _make_yolo_row(bounding_box, target, confidence=None):
         row += " %f" % confidence
 
     return row
+
+
+def _parse_yolo_classes(classes):
+    # Convert from {0: class0, ...} to [class0, ...]
+    if isinstance(classes, dict):
+        nc = max(classes.keys()) + 1
+        classes = [classes.get(i, str(i)) for i in range(nc)]
+
+    return classes
 
 
 def _read_yaml_file(path):

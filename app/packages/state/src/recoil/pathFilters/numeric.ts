@@ -308,8 +308,13 @@ export const numericIsMatchingAtom = selectorFamily<
     },
 });
 
+type DatetimeValue = {
+  datetime: number;
+  _cls: "DateTime";
+};
+
 const helperFunction = (
-  value: number | null,
+  value: DatetimeValue | number | string | null,
   exclude: boolean,
   start: number,
   end: number,
@@ -334,6 +339,19 @@ const helperFunction = (
 
   if ((value === null || value === undefined) && none) {
     return !exclude;
+  }
+
+  if (
+    typeof value !== "string" &&
+    typeof value !== "number" &&
+    Number(value?.datetime)
+  ) {
+    const time = value.datetime;
+    return noRange
+      ? true
+      : exclude
+      ? Number(time) < start || Number(time) > end
+      : Number(time) >= start && Number(time) <= end;
   }
 
   if (typeof Number(value) === "number") {

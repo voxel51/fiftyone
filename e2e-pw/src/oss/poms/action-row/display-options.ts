@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Page } from "src/oss/fixtures";
 
 type SidebarStatisticsMode = "slice" | "group";
 type SidebarMode = "fast" | "best" | "all";
@@ -6,8 +6,6 @@ type SidebarSortMode = "count" | "value";
 
 export class DisplayOptionsPom {
   readonly page: Page;
-
-  readonly grid: Locator;
 
   constructor(page: Page) {
     this.page = page;
