@@ -209,6 +209,7 @@ const Tag = ({
           close={() => setOpen(false)}
           lookerRef={lookerRef}
           anchorRef={ref}
+          data-cy="selected-pill-button"
         />
       )}
     </ActionDiv>

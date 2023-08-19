@@ -27,11 +27,11 @@ const EntryCounts = ({
   }
 
   if (count === subcount || count === 0) {
-    return <span>{count!.toLocaleString()}</span>;
+    return <span data-cy="entry-count-all">{count!.toLocaleString()}</span>;
   }
 
   return (
-    <span style={{ whiteSpace: "nowrap" }}>
+    <span style={{ whiteSpace: "nowrap" }} data-cy="entry-count-part">
       {subcount?.toLocaleString() ?? "0"} of {count.toLocaleString()}
     </span>
   );

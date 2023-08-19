@@ -58,6 +58,6 @@ export class GridActionsRowPom {
   }
 
   toPatchesByLabelField(fieldName: string) {
-    return this.page.getByTestId(`labels-patches-${fieldName}`);
+    return this.page.getByTestId(`item-action-${fieldName}`);
   }
 }
