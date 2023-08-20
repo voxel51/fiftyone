@@ -38,6 +38,7 @@ import fiftyone.utils.quickstart as fouq
 import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
+from fiftyone import ViewField as F
 
 # pylint: disable=import-error,no-name-in-module
 import fiftyone.brain as fob
@@ -768,6 +769,11 @@ class DatasetsExportCommand(Command):
         # Export the dataset to disk in JSON format
         fiftyone datasets export <name> --json-path <json-path>
 
+        # Only export cats and dogs from the validation split
+        fiftyone datasets export <name> \\
+            --filters tags=validation ground_truth=cat,dog \\
+            --export-dir <export-dir> --type <type> --label-field ground_truth
+
         # Perform a customized export of a dataset
         fiftyone datasets export <name> \\
             --type <type> \\
@@ -806,6 +812,18 @@ class DatasetsExportCommand(Command):
             help="the fiftyone.types.Dataset type in which to export",
         )
         parser.add_argument(
+            "--filters",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "specific sample tags or class labels to export. To use "
+                "sample tags, pass tags as `tags=train,val` and to use label "
+                "filters, pass label field and values as in "
+                "ground_truth=car,person,dog"
+            ),
+        )
+        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -816,18 +834,6 @@ class DatasetsExportCommand(Command):
                 "`fiftyone.core.collections.SampleCollection.export()`"
             ),
         )
-        parser.add_argument(
-            "--filters",
-            nargs="+",
-            metavar="KEY=VAL",
-            action=_ParseKwargsAction,
-            help=(
-                "Sample tags or class labels to filter dataset. "
-                "To use sample tags, pass tags as `tags=train,val` and "
-                "to use label filters, pass label field and values as in "
-                "ground_truth=car,person,dog"
-            ),
-        )
 
     @staticmethod
     def execute(parser, args):
@@ -836,22 +842,19 @@ class DatasetsExportCommand(Command):
         json_path = args.json_path
         dataset_type = etau.get_class(args.type) if args.type else None
         label_field = args.label_field
-        kwargs = args.kwargs or {}
         label_filters = args.filters or {}
         tags = label_filters.pop("tags", [])
+        kwargs = args.kwargs or {}
 
         dataset = fod.load_dataset(name)
 
         if tags:
             dataset = dataset.match_tags(tags)
-        for k, v in label_filters.items():
-            if not dataset.has_sample_field(k):
-                warnings.warn(
-                    f"Dataset {dataset.name!r} does not contain label field {k!r}"
-                )
-                continue
-            filter_fn = fo.ViewField("label").is_in(v)
-            dataset = dataset.filter_labels(k, filter_fn)
+
+        for field_name, labels in label_filters.items():
+            dataset = dataset.filter_labels(
+                field_name, F("label").is_in(labels)
+            )
 
         if json_path:
             dataset.write_json(json_path)
