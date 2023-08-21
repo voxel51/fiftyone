@@ -2,20 +2,20 @@ import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
+import { Link } from "@mui/material";
+import colorString from "color-string";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
-import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
-import colorString from "color-string";
-import { Link } from "@mui/material";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const editorRef = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
   const sessionColor = useRecoilValue(fos.sessionColorScheme);
 
   const setting = useMemo(() => {
@@ -30,6 +30,14 @@ const JSONViewer: React.FC = () => {
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
+    // dispatch a custom event for e2e test to capture
+    if (ref?.current) {
+      ref.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   };
 
   const onApply = () => {
@@ -59,6 +67,13 @@ const JSONViewer: React.FC = () => {
 
   useEffect(() => {
     setData(setting);
+    if (ref?.current) {
+      ref?.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   }, [setting]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
@@ -67,6 +82,7 @@ const JSONViewer: React.FC = () => {
     <div
       data-cy="color-scheme-editor"
       style={{ width: "100%", height: "100%", overflow: "hidden" }}
+      ref={ref}
     >
       <SectionWrapper>
         <p style={{ margin: 0, lineHeight: "1.3rem" }}>
