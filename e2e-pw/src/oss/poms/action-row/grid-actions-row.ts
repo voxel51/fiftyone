@@ -44,4 +44,20 @@ export class GridActionsRowPom {
   async toggleColorSettings() {
     return this.openAction("action-color-settings");
   }
+
+  async clickToPatchesByLabelField(fieldName: string) {
+    await this.toPatchesByLabelField(fieldName).click();
+  }
+
+  async groupBy(path: string) {
+    await this.gridActionsRow.getByTestId("group-by-selector").click();
+    await this.gridActionsRow.getByTestId("group-by-selector").type(path);
+
+    await this.gridActionsRow.getByTestId("group-by-selector").press("Enter");
+    await this.gridActionsRow.getByTestId("dynamic-group-btn-submit").click();
+  }
+
+  toPatchesByLabelField(fieldName: string) {
+    return this.page.getByTestId(`item-action-${fieldName}`);
+  }
 }

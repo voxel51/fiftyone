@@ -22,6 +22,7 @@ const Header: React.FC<
       <div className={style.left}>
         <div
           className={style.title}
+          data-cy="refresh-fo"
           onClick={() => {
             setToggle(!toggle);
             onRefresh && onRefresh();
