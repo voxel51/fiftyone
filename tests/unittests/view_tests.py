@@ -2149,6 +2149,128 @@ class ViewStageTests(unittest.TestCase):
             self.assertEqual(sample.exclude_fields_field2, 1)
         self._exclude_fields_teardown()
 
+    def test_exclude_fields_multiple(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(
+                filepath="image2.jpg",
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="cat",
+                            foo="bar",
+                            spam="eggs",
+                        )
+                    ]
+                ),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="dog",
+                            foo="baz",
+                            spam="eggz",
+                        )
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, dynamic=True)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertIn("predictions.classifications.foo", flat_schema)
+        self.assertIn("predictions.classifications.spam", flat_schema)
+
+        view = dataset.exclude_fields(["spam", "predictions"])
+
+        schema = view.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertTrue(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertFalse(sample.has_field("predictions"))
+
+        view = dataset.exclude_fields(
+            ["foo", "predictions.classifications.foo"]
+        ).exclude_fields(["spam", "predictions.classifications.spam"])
+
+        schema = view.get_field_schema()
+
+        self.assertNotIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertNotIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertFalse(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertIsNotNone(sample.ground_truth.classifications[0].foo)
+        self.assertIsNotNone(sample.ground_truth.classifications[0].spam)
+        self.assertTrue(sample.has_field("predictions"))
+        with self.assertRaises(AttributeError):
+            sample.predictions.classifications[0].foo
+        with self.assertRaises(AttributeError):
+            sample.predictions.classifications[0].spam
+
     def test_exclude_fields_stats(self):
         self._exclude_fields_setup()
         base_size = self.dataset.exclude_fields(
@@ -3523,6 +3645,133 @@ class ViewStageTests(unittest.TestCase):
             with self.assertRaises(AttributeError):
                 sample.select_fields_field
         self._select_field_teardown()
+
+    def test_select_fields_multiple(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(
+                filepath="image2.jpg",
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="cat",
+                            foo="bar",
+                            spam="eggs",
+                        )
+                    ]
+                ),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="dog",
+                            foo="baz",
+                            spam="eggz",
+                        )
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, dynamic=True)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertIn("predictions.classifications.foo", flat_schema)
+        self.assertIn("predictions.classifications.spam", flat_schema)
+
+        view = dataset.select_fields(["foo", "ground_truth"])
+
+        schema = view.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertTrue(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertFalse(sample.has_field("predictions"))
+
+        # Can't select disjoint fields
+        with self.assertRaises(ValueError):
+            _ = dataset.select_fields("foo").select_fields(
+                "ground_truth.classifications.foo"
+            )
+
+        view = (
+            dataset.select_fields(["foo", "ground_truth"])
+            .select_fields(["foo", "ground_truth.classifications"])
+            .select_fields("ground_truth.classifications.foo")
+        )
+
+        schema = view.get_field_schema()
+
+        self.assertNotIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertNotIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertNotIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertFalse(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertIsNotNone(sample.ground_truth.classifications[0].foo)
+        with self.assertRaises(AttributeError):
+            sample.ground_truth.classifications[0].spam
+        self.assertFalse(sample.has_field("predictions"))
 
     def test_select_fields_stats(self):
         self._select_field_setup()
