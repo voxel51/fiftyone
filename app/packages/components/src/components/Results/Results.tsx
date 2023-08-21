@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 
 import style from "./Results.module.css";
 
@@ -73,17 +73,21 @@ const Results = <T extends unknown>({
   toKey = (value: T) => String(value),
   total,
 }: ResultsProps<T>) => {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    ref.current?.dispatchEvent(
+      new CustomEvent(`selector-results-${cy}`, { bubbles: true })
+    );
+  }, [cy, ref]);
+
   return (
     <div className={style.container}>
       <div
         className={style.scrollContainer}
         style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
         data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
-        ref={(ref) => {
-          ref?.dispatchEvent(
-            new CustomEvent(`selector-results-${cy}`, { bubbles: true })
-          );
-        }}
+        ref={ref}
       >
         {results.map((result, i) => (
           <Result

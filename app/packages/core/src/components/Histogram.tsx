@@ -6,7 +6,7 @@ import {
   DATE_TIME_FIELD,
   scrollbarStyles,
 } from "@fiftyone/utilities";
-import React, { PureComponent, Suspense, useRef } from "react";
+import React, { PureComponent, Suspense, useLayoutEffect } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
 import { useRecoilValue } from "recoil";
@@ -142,7 +142,6 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
-  const container = useRef(null);
   const stroke = theme.text.secondary;
   const fill = stroke;
   const isDateTime = useRecoilValue(
@@ -175,18 +174,16 @@ const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
           ticks,
         };
 
+  useLayoutEffect(() => {
+    document
+      .getElementById(`histogram-${path}`)
+      ?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
+  }, [path, ref]);
+
   return data.length ? (
-    <Container
-      ref={(el) => {
-        el?.dispatchEvent(
-          new CustomEvent(`histogram-${path}`, { bubbles: true })
-        );
-        ref(el);
-      }}
-    >
+    <Container id={`histogram-${path}`} ref={ref}>
       {hasMore && <Title>{`First ${data?.length} results`}</Title>}
       <BarChart
-        ref={container}
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
