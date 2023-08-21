@@ -3,16 +3,14 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 export class ColorModalPom {
   readonly page: Page;
   readonly colorModal: Locator;
-  readonly assert: ColorModalAsserter;
 
   constructor(page: Page) {
     this.page = page;
-    this.assert = new ColorModalAsserter(this);
     this.colorModal = page.locator("#colorModal");
   }
 
   async closeColorModal() {
-    const closeButton = this.page.getByTestId("close-color-modal");
+    const closeButton = this.colorModal.getByTestId("close-color-modal");
     return closeButton.click();
   }
 
@@ -67,18 +65,41 @@ export class ColorModalPom {
 
   // field level setting
   async toggleColorMode() {
-    const toggleButton = this.page.getByTestId("color-by-toggle");
+    const toggleButton = this.page.getByTestId(
+      "button-toggle between color by value or color by field mode"
+    );
     return toggleButton.click();
   }
 
   async useSpecialFieldColor(fieldName: string) {
-    const checkbox = this.page.getByTestId(
-      `checkbox-Use custom color for ${fieldName} field`
-    );
-    return checkbox.click();
+    return this.page
+      .getByTitle(`Use custom color for ${fieldName} field`)
+      .first()
+      .click({ force: true });
   }
 
-  async setSpecialFieldColor(fieldName: string, color: string) {}
+  async setSpecialFieldColor(color: string) {
+    const container = this.page.getByTestId("field-color-div");
+    await container.isVisible();
+    await container.getByRole("textbox").fill(color);
+  }
+
+  // value level setting
+  async selectColorByAttribute(field: string) {
+    await this.colorModal
+      .getByTestId("select-attribute")
+      .click({ force: true });
+    await this.colorModal
+      .getByTestId(`filter-option-${field}`)
+      .click({ force: true });
+  }
+
+  async addANewPair(value: string, color: string) {
+    const addButton = this.page.getByTestId("button-add a new pair");
+    await addButton.click();
+    await this.page.getByPlaceholder("Value (e.g. 'car')").last().fill(value);
+    await this.page.getByPlaceholder("#dd00dd").last().fill(color);
+  }
 
   async getJSONEditor() {
     return this.page.getByTestId("color-scheme-editor");
@@ -91,17 +112,4 @@ export class ColorModalPom {
   async resetColorScheme() {}
 
   async clearDefault() {}
-}
-
-class ColorModalAsserter {
-  constructor(private readonly ColorModalPom: ColorModalPom) {}
-
-  async verifyColorInColorPalette(colors: string[]) {
-    colors.forEach((color, index) => {
-      const actualColor = this.ColorModalPom.page
-        .locator(`color-palette-${index}`)
-        .getAttribute("color");
-      expect(actualColor).toEqual(color);
-    });
-  }
 }

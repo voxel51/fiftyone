@@ -4,7 +4,13 @@ import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
 import { Link } from "@mui/material";
 import colorString from "color-string";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
@@ -65,9 +71,11 @@ const JSONViewer: React.FC = () => {
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setData(setting);
+    console.info("setData");
     if (ref?.current) {
+      console.log(ref?.current);
       ref?.current.dispatchEvent(
         new CustomEvent("json-viewer-update", {
           bubbles: true,
