@@ -1,5 +1,6 @@
 import { spawnSync } from "child_process";
 import { Duration, getPythonCommand } from "src/oss/utils";
+import { dedentPythonCode } from "src/oss/utils/dedent";
 
 /**
  * This function creates a new pcd file with the specified number of points.
@@ -8,17 +9,37 @@ import { Duration, getPythonCommand } from "src/oss/utils";
 export const createPcd = (options: {
   outputPath: string;
   numPoints: number;
+  shape: "diagonal" | "cube";
+  imputeNaN?: {
+    indices: Array<number[]>;
+  };
 }) => {
-  const { outputPath, numPoints } = options;
+  const { outputPath, numPoints, imputeNaN } = options;
+
   const startTime = performance.now();
   console.log(`Creating blank pcd with options: ${JSON.stringify(options)}`);
-  const pythonCode = `import open3d as o3d
+  const pythonCode = `
+  import open3d as o3d
   pcd = o3d.geometry.PointCloud()
-  pcd.points = o3d.utility.Vector3dVector([[i, i, i] for i in range(${numPoints})])
-  o3d.io.write_point_cloud('${outputPath}', pcd)`;
 
-  const pythonCodeSingleLine = pythonCode.split("\n").join(";");
-  const command = getPythonCommand(["-c", `"${pythonCodeSingleLine}"`]);
+  if "${options.shape}" == "diagonal":
+    points = [[i, i, i] for i in range(${numPoints})]
+  elif "${options.shape}" == "cube":
+    loop_stop = int(${numPoints} ** (1/3))
+    points = [[i, j, k] for i in range(loop_stop) for j in range(loop_stop) for k in range(loop_stop)]
+
+  if ${imputeNaN?.indices ? "True" : "False"}:
+    for index in ${JSON.stringify(imputeNaN?.indices)}:
+      points[index[0]][index[1]] = float("nan")
+
+  pcd.points = o3d.utility.Vector3dVector(points)
+  o3d.io.write_point_cloud("${outputPath}", pcd, write_ascii=True)
+  `;
+
+  const command = getPythonCommand([
+    "-c",
+    `'''${dedentPythonCode(pythonCode)}'''`,
+  ]);
   const proc = spawnSync(command, {
     shell: true,
     timeout: Duration.Seconds(5),
