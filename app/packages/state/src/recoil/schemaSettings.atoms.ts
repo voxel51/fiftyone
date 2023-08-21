@@ -6,6 +6,7 @@ import {
 } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
+import { sessionAtom } from "../session";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -291,7 +292,7 @@ export const excludedPathsState = atomFamily({
   ],
 });
 
-export const selectedFieldsStageState = fos.sessionAtom({
+export const selectedFieldsStageState = sessionAtom({
   key: "selectedFields",
   default: null,
 });

@@ -482,7 +482,7 @@ const WRITE_HANDLERS: {
     });
   },
   selectedFields: (router, _, selectedFields, __) => {
-    router.history.push(
+    router.history.replace(
       `${router.history.location.pathname}${router.history.location.search}`,
       {
         ...router.get().state,
