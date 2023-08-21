@@ -60,7 +60,7 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.clickOnLooker();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
-  await modal.navigateSlice("group", "right", true);
+  await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.clickOnLooker3d();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
