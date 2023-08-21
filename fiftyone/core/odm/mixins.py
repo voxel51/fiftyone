@@ -23,7 +23,6 @@ from .utils import (
     create_implied_field,
     validate_field_name,
     get_field_kwargs,
-    get_implied_field_kwargs,
     validate_fields_match,
 )
 
@@ -709,23 +708,23 @@ class DatasetMixin(object):
 
             del_schema_paths.append(path)
 
-        if not del_paths:
-            return
-
         # This fixes https://github.com/voxel51/fiftyone/issues/3185
         # @todo improve list field updates in general so this isn't necessary
         if del_schema_paths:
             cls._reload_fields()
 
-        cls._delete_fields_simple(del_paths)
+        if del_paths:
+            cls._delete_fields_simple(del_paths)
 
         for del_path in del_schema_paths:
             cls._delete_field_schema(del_path)
 
         if is_frame_field:
-            del_paths = [dataset._FRAMES_PREFIX + p for p in del_paths]
+            del_schema_paths = [
+                dataset._FRAMES_PREFIX + p for p in del_schema_paths
+            ]
 
-        dataset_doc.app_config._delete_paths(del_paths)
+        dataset_doc.app_config._delete_paths(del_schema_paths)
         dataset_doc.save()
 
     @classmethod

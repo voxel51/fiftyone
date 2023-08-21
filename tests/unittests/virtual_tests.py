@@ -369,7 +369,7 @@ class VirtualFieldTests(unittest.TestCase):
             {"num_objects", "ground_truth.detections.area"},
         )
 
-        view = dataset2.exclude_fields(
+        dataset2.exclude_fields(
             ["num_objects", "ground_truth.detections.area"]
         ).keep_fields()
 

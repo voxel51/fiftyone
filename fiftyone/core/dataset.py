@@ -460,7 +460,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name
         )
         frame_doc_cls = _create_frame_document_cls(
-            self, frame_collection_name, field_docs=self._doc.frame_fields
+            self, frame_collection_name, fields=self._doc.frame_fields
         )
 
         _create_indexes(None, frame_collection_name)

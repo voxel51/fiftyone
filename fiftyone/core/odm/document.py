@@ -342,14 +342,16 @@ class MongoEngineBaseDocument(SerializableDocument):
             doc = self.get_field(chunks[0])
             return doc.set_field(chunks[1], value, create=create)
 
-        if self.has_field(field_name):
-            # pylint: disable=no-member
-            if self._fields[field_name].is_virtual:
+        try:
+            field = self._get_field(field_name)
+            if field.is_virtual:
                 raise ValueError("Virtual fields cannot be edited")
-        elif not create:
-            raise ValueError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
+        except (KeyError, AttributeError):
+            if not create:
+                raise ValueError(
+                    "%s has no field '%s'"
+                    % (self.__class__.__name__, field_name)
+                )
 
         setattr(self, field_name, value)
 
