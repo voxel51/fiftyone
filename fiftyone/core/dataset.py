@@ -5992,7 +5992,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dataset._doc.default_group_slice = d.get(
                 "default_group_slice", None
             )
-            dataset.save()
 
         if media_type is not None:
             dataset.media_type = media_type

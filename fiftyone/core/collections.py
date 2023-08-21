@@ -1489,30 +1489,6 @@ class SampleCollection(object):
 
         return self.get_field(self._FRAMES_PREFIX + path) is not None
 
-    @property
-    def has_virtual_sample_fields(self):
-        """Whether this collection has any virtual sample fields."""
-        return bool(
-            self.get_field_schema(
-                include_private=True, virtual=True, flat=True
-            )
-        )
-
-    @property
-    def has_virtual_frame_fields(self):
-        """Whether this collection has any virtual frame fields."""
-        return bool(
-            self.get_frame_field_schema(
-                include_private=True, virtual=True, flat=True
-            )
-        )
-
-
-
-
-
-
-
     def validate_fields_exist(self, fields, include_private=False):
         """Validates that the collection has field(s) with the given name(s).
 
