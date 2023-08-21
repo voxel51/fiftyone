@@ -1,4 +1,4 @@
-import { colorSchemeFragment$data, subscribe } from "@fiftyone/relay";
+import { ColorSchemeInput, subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { DefaultValue, RecoilState, atom, selector } from "recoil";
@@ -12,7 +12,7 @@ export interface Session {
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   selectedFields?: State.Stage;
-  colorScheme: Omit<colorSchemeFragment$data, " $fragmentType">;
+  colorScheme: ColorSchemeInput;
 }
 
 type Setter = <K extends keyof Session>(key: K, value: Session[K]) => void;

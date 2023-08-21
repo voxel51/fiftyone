@@ -1,17 +1,15 @@
+import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-
-import * as fos from "@fiftyone/state";
-
+import React from "react";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
-import ColorPalette from "./colorPalette/ColorPalette";
-
 import {
   ControlGroupWrapper,
   LabelTitle,
   SectionWrapper,
 } from "./ShareStyledDiv";
+import ColorPalette from "./colorPalette/ColorPalette";
 import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting = () => {

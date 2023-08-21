@@ -1,10 +1,13 @@
+import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 import CloseIcon from "@mui/icons-material/Close";
+import Typography from "@mui/material/Typography";
+import { Resizable } from "re-resizable";
 import React, { Fragment, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";
@@ -16,11 +19,6 @@ import {
   DraggableModalTitle,
   ModalWrapper,
 } from "./ShareStyledDiv";
-
-import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
-import Typography from "@mui/material/Typography";
-import { Resizable } from "re-resizable";
-import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import SidebarList from "./SidebarList";
 import { ACTIVE_FIELD } from "./utils";
 

@@ -1,4 +1,4 @@
-import { CustomizeColorInput } from "@fiftyone/relay";
+import { ColorSchemeInput } from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
@@ -44,7 +44,9 @@ const getValidLabelColors = (labelColors: unknown[]) => {
 };
 
 // should return a valid customize color object that can be used to setCustomizeColor
-export const validateJSONSetting = (json: CustomizeColorInput[]) => {
+export const validateJSONSetting = (
+  json: ColorSchemeInput["fields"]
+): ColorSchemeInput["fields"] => {
   const filtered =
     json?.filter((s) => s && isObject(s) && isString(s["path"])) || [];
 
@@ -56,7 +58,7 @@ export const validateJSONSetting = (json: CustomizeColorInput[]) => {
       : null,
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
-      : null,
+      : [],
   }));
 
   return f.filter((x) => {
