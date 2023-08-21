@@ -387,6 +387,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             dataset_name=dataset_name,
             paging=DelegatedOpPagingParams(
                 skip=0,
+                limit=1000,
+                sort_by=SortByField.UPDATED_AT,
+                sort_direction=SortDirection.DESCENDING,
+            ),
+        )
+
+        self.assertEqual(len(docs), 100)
+        self.assertEqual(docs[0].id, failed[24].id)
+
+        docs = self.svc.list_operations(
+            dataset_name=dataset_name,
+            paging=DelegatedOpPagingParams(
+                skip=0,
                 limit=1,
                 sort_by=SortByField.QUEUED_AT,
                 sort_direction=SortDirection.ASCENDING,
