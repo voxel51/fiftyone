@@ -46,6 +46,7 @@ gcs_client = None
 azure_client = None
 minio_client = None
 http_client = None
+available_file_systems = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
@@ -71,6 +72,7 @@ def init_storage():
     global gcs_client
     global azure_client
     global minio_client
+    global available_file_systems
     global bucket_regions
     global region_clients
     global minio_alias_prefix
@@ -87,6 +89,7 @@ def init_storage():
     gcs_client = None
     azure_client = None
     minio_client = None
+    available_file_systems = None
     bucket_regions.clear()
     region_clients.clear()
 
@@ -226,6 +229,34 @@ def get_file_system(path):
         return FileSystem.HTTP
 
     return FileSystem.LOCAL
+
+
+def get_available_file_systems():
+    """Returns the list of file systems that are currently available for use
+    with methods like :func:`list_files` and :func:`list_buckets`.
+
+    Returns:
+        a list of :class:`FileSystem` values
+    """
+    global available_file_systems
+
+    if available_file_systems is None:
+        available_file_systems = _get_available_file_systems()
+
+    return available_file_systems
+
+
+def _get_available_file_systems():
+    file_systems = [FileSystem.LOCAL]
+
+    for fs in _FILE_SYSTEMS_WITH_BUCKETS:
+        try:
+            _ = get_client(fs=fs)
+            file_systems.append(fs)
+        except:
+            pass
+
+    return file_systems
 
 
 def split_prefix(path):
