@@ -24,6 +24,7 @@ const ModeControl: React.FC = () => {
         <Text>Color by </Text>
         <Button
           text={props.colorBy}
+          data-cy="color-by-toggle"
           title={`toggle between color by value or color by field mode`}
           onClick={() =>
             props.setColorBy(props.colorBy === "value" ? "field" : "value")

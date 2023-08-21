@@ -186,6 +186,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
           />
           {state?.useFieldColor && (
             <div
+              data-cy="field-color-div"
               style={{
                 margin: "1rem",
                 display: "flex",

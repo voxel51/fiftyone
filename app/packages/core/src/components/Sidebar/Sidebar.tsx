@@ -481,6 +481,16 @@ const InteractiveSidebar = ({
             ...config.stiff,
             bounce: 0,
           },
+          onRest: () => {
+            // fires event for e2e testing to avoid using onWait
+            if (container?.current) {
+              container?.current.dispatchEvent(
+                new CustomEvent("animation-onRest", {
+                  bubbles: true,
+                })
+              );
+            }
+          },
           overflow: "visible",
         }),
         entry,
@@ -738,12 +748,13 @@ const InteractiveSidebar = ({
             borderTopRightRadius: 8,
           }}
         >
-          <ViewSelection />
+          <ViewSelection id="saved-views" />
         </Box>
       )}
       <Filter modal={modal} />
       <SidebarColumn
         ref={container}
+        data-cy="sidebar-column"
         onScroll={({ target }) => {
           if (start.current !== null) {
             start.current += scroll.current - target.scrollTop;

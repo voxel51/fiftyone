@@ -5,7 +5,14 @@ import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
 import { Link } from "@mui/material";
 import colorString from "color-string";
-import React, { useEffect, useMemo, useState } from "react";
+import {
+  default as React,
+  default as React,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
@@ -16,6 +23,8 @@ const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const colorScheme = useRecoilValue(fos.colorScheme);
+  const editorRef = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {
     return {
@@ -28,6 +37,14 @@ const JSONViewer: React.FC = () => {
 
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
+    // dispatch a custom event for e2e test to capture
+    if (ref?.current) {
+      ref.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   };
 
   const onApply = () => {
@@ -57,14 +74,27 @@ const JSONViewer: React.FC = () => {
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setData(setting);
+    console.info("setData");
+    if (ref?.current) {
+      console.log(ref?.current);
+      ref?.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   }, [setting]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 
   return (
-    <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+    <div
+      data-cy="color-scheme-editor"
+      style={{ width: "100%", height: "100%", overflow: "hidden" }}
+      ref={ref}
+    >
       <SectionWrapper>
         <p style={{ margin: 0, lineHeight: "1.3rem" }}>
           You can use the JSON editor below to copy/edit your current color

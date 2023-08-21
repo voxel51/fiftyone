@@ -160,6 +160,11 @@ export default class Flashlight<K> {
     this.state = this.getEmptyState(this.config);
 
     this.showPixels();
+    this.element.dispatchEvent(
+      new CustomEvent("flashlight-refreshing", {
+        bubbles: true,
+      })
+    );
 
     const { width, height } = getDims(
       this.config.horizontal,
