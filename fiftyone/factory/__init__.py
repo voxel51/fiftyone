@@ -8,6 +8,7 @@ from enum import Enum
 
 
 class SortByField(Enum):
+    UPDATED_AT = "updated_at"
     QUEUED_AT = "queued_at"
     COMPLETED_AT = "completed_at"
     STARTED_AT = "started_at"
