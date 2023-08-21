@@ -5,7 +5,6 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import datetime
 import os
 import unittest
 

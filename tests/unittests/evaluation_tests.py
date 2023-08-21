@@ -552,6 +552,42 @@ class ClassificationTests(unittest.TestCase):
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
 
+    def test_shared_run_results(self):
+        dataset = self._make_classification_dataset()
+
+        results = dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+        original_results = results.serialize()
+
+        results_id = dataset._doc.evaluations["eval"].results.grid_id
+
+        # Clone dataset and results should be shared
+        clone = dataset.clone()
+        results_clone = clone.load_evaluation_results("eval", cache=False)
+        results_id2 = clone._doc.evaluations["eval"].results.grid_id
+        self.assertEqual(results_id, results_id2)
+        self.assertEqual(original_results, results_clone.serialize())
+
+        # Update and save new results, should have a new results ID
+        results.ypred[-1] = "cat"
+        results.save()
+        results_id = dataset._doc.evaluations["eval"].results.grid_id
+        self.assertNotEqual(results_id, results_id2)
+
+        # Loaded clone of original results should still be equal
+        clone.load_evaluation_results("eval")
+        results_clone = clone.load_evaluation_results("eval", cache=False)
+        results_id2 = clone._doc.evaluations["eval"].results.grid_id
+        self.assertNotEqual(results_id, results_id2)
+        self.assertEqual(original_results, results_clone.serialize())
+
+        dataset.delete_evaluation("eval")
+        clone.delete_evaluation("eval")
+
 
 class VideoClassificationTests(unittest.TestCase):
     def _make_video_classification_dataset(self):

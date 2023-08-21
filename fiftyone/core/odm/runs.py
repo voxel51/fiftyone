@@ -5,7 +5,6 @@ Dataset run documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from mongoengine import FileField
 
 from fiftyone.core.fields import (
     DateTimeField,
@@ -16,6 +15,7 @@ from fiftyone.core.fields import (
 )
 
 from .document import Document
+from .fields import SharedFileField
 
 
 class RunDocument(Document):
@@ -30,4 +30,4 @@ class RunDocument(Document):
     timestamp = DateTimeField()
     config = DictField()
     view_stages = ListField(StringField())
-    results = FileField()
+    results = SharedFileField()
