@@ -23,6 +23,7 @@ class DatasetSnapshotStatus(enum.Enum):
 
 @dataclasses.dataclass
 class SampleChangeSummary:
+    total_samples: int
     num_samples_added: int
     num_samples_deleted: int
     num_samples_changed: int
@@ -37,7 +38,6 @@ class DatasetSnapshot:
     linear_change_summary: Optional[SampleChangeSummary]
     load_status: DatasetSnapshotStatus
     name: str
-    num_samples: int
     slug: str
 
     def __post_init__(self):
@@ -65,10 +65,10 @@ fragment snapshotFrag on DatasetSnapshot {
         numSamplesAdded,
         numSamplesDeleted,
         numSamplesChanged,
+        totalSamples
     },
     loadStatus,
     name,
-    numSamples,
     slug,
 }
 """

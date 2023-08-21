@@ -627,8 +627,71 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     ######################### Snapshots
+    now = datetime.datetime.utcnow()
+    SNAPSHOT_DATA = [
+        {
+            "createdAt": now,
+            "createdBy": EMAIL,
+            "description": SNAPSHOT_DESCRIPTION,
+            "id": "123456",
+            "linearChangeSummary": {
+                "numSamplesAdded": 1,
+                "numSamplesChanged": 2,
+                "numSamplesDeleted": 3,
+                "totalSamples": 200,
+            },
+            "loadStatus": "LOADING",
+            "name": SNAPSHOT_NAME,
+            "slug": "snappy-51",
+        },
+        {
+            "createdAt": None,
+            "createdBy": EMAIL,
+            "description": None,
+            "id": "654321",
+            "linearChangeSummary": None,
+            "loadStatus": "UNLOADED",
+            "name": SNAPSHOT_NAME + "2",
+            "slug": "snappy-52",
+        },
+    ]
+
+    SNAPSHOT_OBJS = [
+        fom.DatasetSnapshot(
+            created_at=now,
+            created_by=EMAIL,
+            description=SNAPSHOT_DESCRIPTION,
+            id="123456",
+            linear_change_summary=fom.SampleChangeSummary(
+                num_samples_added=1,
+                num_samples_changed=2,
+                num_samples_deleted=3,
+                total_samples=200,
+            ),
+            load_status=fom.DatasetSnapshotStatus.LOADING,
+            name=SNAPSHOT_NAME,
+            slug="snappy-51",
+        ),
+        fom.DatasetSnapshot(
+            created_at=None,
+            created_by=EMAIL,
+            description=None,
+            id="654321",
+            linear_change_summary=None,
+            load_status=fom.DatasetSnapshotStatus.UNLOADED,
+            name=SNAPSHOT_NAME + "2",
+            slug="snappy-52",
+        ),
+    ]
+
     def test_create_snapshot(self):
-        fom.create_snapshot(
+        snap_data, expected_snap = self.SNAPSHOT_DATA[0], self.SNAPSHOT_OBJS[0]
+
+        self.client.post_graphql_request.return_value = {
+            "createDatasetSnapshot": snap_data
+        }
+
+        return_value = fom.create_snapshot(
             self.DATASET_NAME, self.SNAPSHOT_NAME, self.SNAPSHOT_DESCRIPTION
         )
         self.client.post_graphql_request.assert_called_with(
@@ -639,6 +702,7 @@ class ManagementSdkTests(unittest.TestCase):
                 "description": self.SNAPSHOT_DESCRIPTION,
             },
         )
+        self.assertEqual(return_value, expected_snap)
 
     def test_delete_snapshot(self):
         fom.delete_snapshot(self.DATASET_NAME, self.SNAPSHOT_NAME)
@@ -651,45 +715,15 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_get_snapshot_info(self):
-        now = datetime.datetime.utcnow()
-        snapshot = {
-            "createdAt": now,
-            "createdBy": self.EMAIL,
-            "description": self.SNAPSHOT_DESCRIPTION,
-            "id": "123456",
-            "linearChangeSummary": {
-                "numSamplesAdded": 1,
-                "numSamplesChanged": 2,
-                "numSamplesDeleted": 3,
-            },
-            "loadStatus": "LOADING",
-            "name": self.SNAPSHOT_NAME,
-            "numSamples": 200,
-            "slug": "snappy-51",
-        }
-        expected = fom.DatasetSnapshot(
-            created_at=now,
-            created_by=self.EMAIL,
-            description=self.SNAPSHOT_DESCRIPTION,
-            id="123456",
-            linear_change_summary=fom.SampleChangeSummary(
-                num_samples_added=1,
-                num_samples_changed=2,
-                num_samples_deleted=3,
-            ),
-            load_status=fom.DatasetSnapshotStatus.LOADING,
-            name=self.SNAPSHOT_NAME,
-            num_samples=200,
-            slug="snappy-51",
-        )
+        snap_data, expected_snap = self.SNAPSHOT_DATA[0], self.SNAPSHOT_OBJS[0]
         self.client.post_graphql_request.return_value = {
-            "dataset": {"snapshot": snapshot}
+            "dataset": {"snapshot": snap_data}
         }
 
         return_value = fom.get_snapshot_info(
             self.DATASET_NAME, self.SNAPSHOT_NAME
         )
-        self.assertEqual(return_value, expected)
+        self.assertEqual(return_value, expected_snap)
 
         self.client.post_graphql_request.assert_called_with(
             query=fom.snapshot._GET_SNAPSHOT_INFO_QUERY,
@@ -717,70 +751,13 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_list_snapshots(self):
-        now = datetime.datetime.utcnow()
-        snapshots = [
-            {
-                "createdAt": now,
-                "createdBy": self.EMAIL,
-                "description": self.SNAPSHOT_DESCRIPTION,
-                "id": "123456",
-                "linearChangeSummary": {
-                    "numSamplesAdded": 1,
-                    "numSamplesChanged": 2,
-                    "numSamplesDeleted": 3,
-                },
-                "loadStatus": "LOADING",
-                "name": self.SNAPSHOT_NAME,
-                "numSamples": 200,
-                "slug": "snappy-51",
-            },
-            {
-                "createdAt": None,
-                "createdBy": self.EMAIL,
-                "description": None,
-                "id": "654321",
-                "linearChangeSummary": None,
-                "loadStatus": "UNLOADED",
-                "name": self.SNAPSHOT_NAME + "2",
-                "numSamples": 300,
-                "slug": "snappy-52",
-            },
-        ]
-        expected = [
-            fom.DatasetSnapshot(
-                created_at=now,
-                created_by=self.EMAIL,
-                description=self.SNAPSHOT_DESCRIPTION,
-                id="123456",
-                linear_change_summary=fom.SampleChangeSummary(
-                    num_samples_added=1,
-                    num_samples_changed=2,
-                    num_samples_deleted=3,
-                ),
-                load_status=fom.DatasetSnapshotStatus.LOADING,
-                name=self.SNAPSHOT_NAME,
-                num_samples=200,
-                slug="snappy-51",
-            ),
-            fom.DatasetSnapshot(
-                created_at=None,
-                created_by=self.EMAIL,
-                description=None,
-                id="654321",
-                linear_change_summary=None,
-                load_status=fom.DatasetSnapshotStatus.UNLOADED,
-                name=self.SNAPSHOT_NAME + "2",
-                num_samples=300,
-                slug="snappy-52",
-            ),
-        ]
 
         self.client.post_graphql_request.return_value = {
-            "dataset": {"snapshots": snapshots}
+            "dataset": {"snapshots": self.SNAPSHOT_DATA}
         }
 
         return_value = fom.list_snapshots(self.DATASET_NAME)
-        self.assertEqual(return_value, expected)
+        self.assertEqual(return_value, self.SNAPSHOT_OBJS)
 
         self.client.post_graphql_request.assert_called_with(
             query=fom.snapshot._LIST_SNAPSHOTS_QUERY,
