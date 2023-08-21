@@ -11,6 +11,8 @@ import {
   DETECTION,
   DETECTIONS,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
   KEYPOINT,
   KEYPOINTS,
@@ -179,9 +181,13 @@ export const distribution = selectorFamily({
           return get(histogramValues(path));
         case DATE_TIME_FIELD:
           return get(histogramValues(path));
-        case INT_FIELD:
-          return get(histogramValues(path));
         case FLOAT_FIELD:
+          return get(histogramValues(path));
+        case FRAME_NUMBER_FIELD:
+          return get(histogramValues(path));
+        case FRAME_SUPPORT_FIELD:
+          return get(histogramValues(path));
+        case INT_FIELD:
           return get(histogramValues(path));
         case STRING_FIELD:
           return get(countValues(path));
