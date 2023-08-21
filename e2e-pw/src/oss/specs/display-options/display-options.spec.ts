@@ -45,9 +45,6 @@ test.describe("Display Options", () => {
     await actionsRow.toggleDisplayOptions();
     await panel.bringPanelToForeground("Histograms");
 
-    await panel.histogramDistributionContainer.waitFor({ state: "visible" });
-    await panel.histogramDistributionContainer.click();
-
     await histogram.assert.isLoaded();
   });
 });
