@@ -46,8 +46,9 @@ class DelegatedOperationDocument(object):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
-        self.updated_at = doc["updated_at"]
         self.run_state = doc["run_state"]
+        self.updated_at = doc["updated_at"] if "updated_at" in doc else None
+
         # optional fields
         self.delegation_target = (
             doc["delegation_target"] if "delegation_target" in doc else None

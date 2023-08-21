@@ -131,6 +131,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             )
 
+        if "run_by_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("context.user", pymongo.ASCENDING)], name="run_by_1"
+                )
+            )
+
         if indices_to_create:
             self._collection.create_indexes(indices_to_create)
 
