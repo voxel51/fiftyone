@@ -9,7 +9,10 @@ FiftyOne dataset-snapshot related unit tests.
 import re
 import unittest
 
+import bson
+
 import fiftyone as fo
+import fiftyone.core.dataset as fod
 
 from decorators import drop_datasets
 
@@ -46,6 +49,11 @@ class DatasetSnapshotTests(unittest.TestCase):
         # Load snapshot dataset and test its name properties
         snapshot = fo.load_dataset(dataset_name, snapshot=snapshot_name)
 
+        # Also try loading directly from materialized name, it should be the
+        #   same instance.
+        snapshot2 = fo.load_dataset(_internal_snapshot_name)
+        assert snapshot2 is snapshot
+
         def _check_snapshot_collection(collection, summary_dataset_label):
             self.assertEqual(collection.snapshot_name, snapshot_name)
             self.assertEqual(collection.head_name, dataset_name)
@@ -58,8 +66,20 @@ class DatasetSnapshotTests(unittest.TestCase):
             self.assertNotIn(_internal_snapshot_name, summary)
 
         _check_snapshot_collection(snapshot, "Name")
+        _check_snapshot_collection(snapshot2, "Name")
         view = snapshot.limit(1)
+        view2 = snapshot2.limit(1)
         _check_snapshot_collection(view, "Dataset")
+        _check_snapshot_collection(view2, "Dataset")
+
+    def test_unknown_snapshot(self):
+        dataset_name = self.test_unknown_snapshot.__name__
+
+        head_dataset = fo.Dataset(dataset_name)
+
+        _internal_snapshot_name = fod._snapshot_to_materialized_dataset_name(
+            head_dataset._doc.id, "unknown"
+        )
 
         # Test unknown snapshots
         self.assertRaises(ValueError, fo.load_dataset, dataset_name, "unknown")
@@ -67,3 +87,15 @@ class DatasetSnapshotTests(unittest.TestCase):
             fo.load_dataset(dataset_name, snapshot="unknown")
         except ValueError as e:
             self.assertNotIn(_internal_snapshot_name, str(e))
+
+        # Materialized name for unknown snapshot
+        self.assertRaises(ValueError, fo.load_dataset, _internal_snapshot_name)
+
+        # Materialized name for unknown dataset
+        self.assertRaises(
+            ValueError,
+            fo.load_dataset,
+            fod._snapshot_to_materialized_dataset_name(
+                bson.ObjectId(), "unknown"
+            ),
+        )

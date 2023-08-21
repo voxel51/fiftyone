@@ -14,6 +14,7 @@ import logging
 import numbers
 import os
 import random
+import re
 import string
 
 from bson import json_util, ObjectId, DBRef
@@ -108,6 +109,35 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
+_SNAPSHOT_MATERIALIZED_NAME_RE = re.compile(r"_snapshot__([a-z0-9]{24})_(.*)$")
+
+
+def _snapshot_to_materialized_dataset_name(dataset_id, snapshot_name):
+    """Create materialized dataset snapshot name from dataset_id, snapshot"""
+    return f"_snapshot__{str(dataset_id)}_{snapshot_name}"
+
+
+def _parse_materialized_dataset_name(materialized_dataset_name):
+    """Parse materialized dataset snapshot into dataset_id,snapshot"""
+    match = _SNAPSHOT_MATERIALIZED_NAME_RE.match(materialized_dataset_name)
+    return (match.group(1), match.group(2)) if match else None
+
+
+def _load_snapshot_dataset(materialized_name, head_name, snapshot_name):
+    try:
+        return Dataset(
+            materialized_name,
+            _create=False,
+            _head_name=head_name,
+            _snapshot_name=snapshot_name,
+        )
+    except ValueError:
+        raise ValueError(
+            "Snapshot '%s' for dataset '%s' not found"
+            % (snapshot_name, head_name)
+        ) from None
+
+
 def load_dataset(name, snapshot=None):
     """Loads the FiftyOne dataset or snapshot with the given name.
 
@@ -126,24 +156,30 @@ def load_dataset(name, snapshot=None):
     Returns:
         a :class:`Dataset`
     """
+    parsed_snapshot = _parse_materialized_dataset_name(name)
+
     if snapshot is not None:
+        # Explicitly passed snapshot name
         head_name = name
 
         head_dataset = Dataset(head_name, _create=False)
         dataset_id = str(head_dataset._doc.id)
-        name = f"_snapshot__{dataset_id}_{snapshot}"
-        try:
-            return Dataset(
-                name,
-                _create=False,
-                _head_name=head_name,
-                _snapshot_name=snapshot,
-            )
-        except ValueError:
+        name = _snapshot_to_materialized_dataset_name(dataset_id, snapshot)
+        return _load_snapshot_dataset(name, head_name, snapshot)
+    elif parsed_snapshot is not None:
+        # Name passed is in the form of a materialized dataset name
+        dataset_id, snapshot = parsed_snapshot
+        conn = foo.get_db_conn()
+        dataset_doc = conn.datasets.find_one(
+            {"_id": ObjectId(dataset_id)}, {"name": True}
+        )
+        if not dataset_doc:
             raise ValueError(
-                "Snapshot '%s' for dataset '%s' not found"
-                % (snapshot, head_name)
+                "Could not find dataset id '%s'" % dataset_id
             ) from None
+        head_name = dataset_doc["name"]
+        return _load_snapshot_dataset(name, head_name, snapshot)
+
     return Dataset(name, _create=False)
 
 
