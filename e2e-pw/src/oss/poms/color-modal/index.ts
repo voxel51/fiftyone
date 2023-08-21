@@ -20,7 +20,7 @@ export class ColorModalPom {
     const fieldSelector = this.page.getByTestId(
       `color-modal-list-item-${fieldName}`
     );
-    return fieldSelector.selectOption(fieldName);
+    return fieldSelector.click();
   }
 
   async setColorBy(mode: "value" | "field") {
