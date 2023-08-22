@@ -4,14 +4,17 @@ FiftyOne Delegated Operation Repository Document
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import logging
 from datetime import datetime
 
+from fiftyone.operators import OperatorRegistry
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperationDocument(object):
@@ -22,6 +25,7 @@ class DelegatedOperationDocument(object):
         context: dict = None,
     ):
         self.operator = operator
+        self.operatorLabel = None
         self.delegation_target = delegation_target
         self.context = (
             context.__dict__
@@ -85,6 +89,20 @@ class DelegatedOperationDocument(object):
         self.id = doc["_id"]
         self._doc = doc
 
+        # generated fields:
+        try:
+            registry = OperatorRegistry()
+            if registry.operator_exists(self.operator) is False:
+                raise ValueError(
+                    "Operator '%s' does not exist" % self.operator
+                )
+
+            self.operatorLabel = registry.get_operator(
+                self.operator
+            ).config.label
+        except Exception as e:
+            logger.error("Error getting operator label: %s" % e)
+
         return self
 
     def to_pymongo(self) -> dict:
@@ -96,4 +114,5 @@ class DelegatedOperationDocument(object):
         )
         d.pop("_doc")
         d.pop("id")
+        # d = {k: v for k, v in d.items() if v is not None}  # remove all None key: values
         return d
