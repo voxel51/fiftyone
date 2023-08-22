@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<dfb674f806fdafc8ddf06e6f8546fe81>>
+ * @generated SignedSource<<b0572b9908b4f2b4a6e40a11c5caec2a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,7 +21,7 @@ export type datasetAppConfigFragment$data = {
       readonly valueColors: ReadonlyArray<{
         readonly color: string;
         readonly value: string;
-      }>;
+      }> | null;
     }> | null;
     readonly id: string;
   } | null;

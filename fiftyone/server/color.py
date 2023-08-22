@@ -28,7 +28,7 @@ class ValueColor:
 @gql.type
 class CustomizeColor:
     path: str
-    valueColors: t.List[ValueColor]
+    valueColors: t.Optional[t.List[ValueColor]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
 
@@ -49,7 +49,7 @@ class ValueColorInput:
 @gql.input
 class CustomizeColorInput:
     path: str
-    valueColors: t.List[ValueColorInput]
+    valueColors: t.Optional[t.List[ValueColorInput]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
 
