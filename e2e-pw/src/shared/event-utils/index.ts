@@ -16,11 +16,13 @@ export class EventUtils {
     return this.page.evaluate(
       ({ eventName_, exposedFunctionName_ }) =>
         new Promise<void>((resolve) => {
-          document.addEventListener(eventName_, (e: CustomEvent) => {
+          const cb = (e: CustomEvent) => {
             if (window[exposedFunctionName_](e)) {
               resolve();
+              document.removeEventListener(eventName_, cb);
             }
-          });
+          };
+          document.addEventListener(eventName_, cb);
         }),
       { eventName_: eventName, exposedFunctionName_: exposedFunctionName }
     );

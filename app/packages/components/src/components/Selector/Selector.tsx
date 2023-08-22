@@ -11,9 +11,7 @@ import React, {
 import Input from "react-input-autosize";
 import { UseLayerOptions, useLayer } from "react-laag";
 import LoadingDots from "../Loading/LoadingDots";
-
 import Results from "../Results/Results";
-
 import style from "./Selector.module.css";
 
 export type UseSearch<T> = {
@@ -22,6 +20,7 @@ export type UseSearch<T> = {
 
 type Props<T> = {
   active?: number;
+  cy?: string;
   search: string;
   useSearch: UseSearch<T>;
   onSelect: (value: T) => void;
@@ -32,12 +31,13 @@ type Props<T> = {
 
 const SelectorResults = <T extends unknown>({
   active,
-  onSelect,
-  useSearch,
-  search,
-  onResults,
   component,
+  cy,
+  onResults,
+  onSelect,
+  search,
   toKey = (value) => String(value),
+  useSearch,
 }: Props<T>) => {
   const { values, total } = useSearch(search);
 
@@ -53,6 +53,7 @@ const SelectorResults = <T extends unknown>({
       results={values}
       onSelect={onSelect}
       total={total}
+      cy={cy}
     />
   );
 };
@@ -71,6 +72,7 @@ export interface SelectorProps<T> {
   resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
   onMouseEnter?: React.MouseEventHandler;
+  cy?: string;
 }
 
 const Selector = <T extends unknown>(props: SelectorProps<T>) => {
@@ -88,6 +90,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
     resultsPlacement,
     overflow = false,
     onMouseEnter,
+    cy,
     ...otherProps
   } = props;
 
@@ -129,7 +132,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
     isOpen: editing,
-    overflowContainer: true,
+    overflowContainer: false,
     auto: true,
     snap: true,
     placement: resultsPlacement ? resultsPlacement : "bottom-center",
@@ -163,7 +166,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
         className={style.input}
         value={editing ? search : local.current}
         placeholder={placeholder}
-        data-cy={`selector-${placeholder}`}
+        data-cy={`selector-${cy || placeholder}`}
         onFocus={() => setEditing(true)}
         onBlur={(e) => {
           if (!editing) return;
@@ -179,16 +182,15 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
         onChange={(e) => {
           setSearch(e.target.value);
         }}
-        onKeyPress={(e) => {
+        onKeyDown={(e) => {
           if (e.key === "Enter") {
             const found = valuesRef.current
               .map((v) => toKey(v))
               .indexOf(search);
             found >= 0 && onSelectWrapper(valuesRef.current[found]);
             active !== undefined && onSelectWrapper(valuesRef.current[active]);
+            return;
           }
-        }}
-        onKeyDown={(e) => {
           const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
@@ -237,6 +239,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
                   component={component}
                   onResults={onResults}
                   toKey={toKey}
+                  cy={cy}
                 />
               </Suspense>
             </motion.div>

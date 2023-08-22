@@ -46,8 +46,8 @@ const pageParams = selector({
     return (page: number, pageSize: number) => {
       return {
         ...params,
-        after: page ? String(page * pageSize) : null,
-        first: pageSize,
+        after: page ? String(page * pageSize - 1) : null,
+        count: pageSize,
       };
     };
   },
