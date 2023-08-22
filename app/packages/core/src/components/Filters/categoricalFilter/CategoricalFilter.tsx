@@ -3,7 +3,7 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
-import { MutableRefObject, useEffect, useRef } from "react";
+import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
   RecoilState,
   RecoilValue,
