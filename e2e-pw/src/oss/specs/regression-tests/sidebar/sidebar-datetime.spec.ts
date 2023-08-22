@@ -18,8 +18,8 @@ const test = base.extend<{
   modal: ModalPom;
   sidebar: SidebarPom;
 }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));

@@ -9,8 +9,8 @@ const FIRST_SAMPLE_FILENAME = "003037.png";
 const SECOND_SAMPLE_FILENAME = "007195.png";
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
