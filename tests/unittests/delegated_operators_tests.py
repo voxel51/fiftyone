@@ -13,16 +13,17 @@ from bson import ObjectId
 
 from fiftyone import Dataset
 from fiftyone.factory import (
-    DelegatedOpPagingParams,
+    DelegatedOperationPagingParams,
     SortDirection,
     SortByField,
 )
-from fiftyone.operators.executor import ExecutionContext, ExecutionResult
-from fiftyone.operators.operator import Operator, OperatorConfig
-from fiftyone.operators.delegated import (
-    DelegatedOperationService,
+from fiftyone.operators.delegated import DelegatedOperationService
+from fiftyone.operators.executor import (
+    ExecutionContext,
+    ExecutionResult,
     ExecutionRunState,
 )
+from fiftyone.operators.operator import Operator, OperatorConfig
 
 
 class MockOperator(Operator):
@@ -372,7 +373,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         # test paging - get a page of everything
         docs = self.svc.list_operations(
             dataset_name=dataset_name,
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=25,
                 sort_by=SortByField.QUEUED_AT,
@@ -385,7 +386,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             dataset_name=dataset_name,
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=1000,
                 sort_by=SortByField.UPDATED_AT,
@@ -398,7 +399,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             dataset_name=dataset_name,
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=1,
                 sort_by=SortByField.QUEUED_AT,
@@ -411,7 +412,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_0",
-            paging=DelegatedOpPagingParams(skip=0, limit=100),
+            paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
@@ -419,7 +420,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_1",
-            paging=DelegatedOpPagingParams(skip=0, limit=100),
+            paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
@@ -427,7 +428,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_2",
-            paging=DelegatedOpPagingParams(skip=0, limit=100),
+            paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
@@ -435,7 +436,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             operator=f"@voxelfiftyone/operator/test_3",
-            paging=DelegatedOpPagingParams(skip=0, limit=100),
+            paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
         self.assertEqual(len(docs), 25)
         states = [doc.run_state for doc in docs]
@@ -450,7 +451,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             docs = self.svc.list_operations(
                 dataset_name=dataset_name,
                 run_state=ExecutionRunState.QUEUED,
-                paging=DelegatedOpPagingParams(
+                paging=DelegatedOperationPagingParams(
                     skip=pages * limit,
                     limit=limit,
                     sort_by=SortByField.QUEUED_AT,
@@ -522,7 +523,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         ops = self.svc.list_operations(
             dataset_name=dataset_name,
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=100,
                 sort_by=SortByField.QUEUED_AT,
@@ -536,7 +537,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         ops = self.svc.list_operations(
             dataset_name=dataset_name,
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=100,
                 sort_by=SortByField.QUEUED_AT,
@@ -578,7 +579,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         # test paging - get a page of everything
         docs = self.svc.list_operations(
             search={"operator\/test": {"operator"}},
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=5000,
                 sort_by=SortByField.QUEUED_AT,
@@ -590,7 +591,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         docs = self.svc.list_operations(
             search={"test_0": {"operator"}},
-            paging=DelegatedOpPagingParams(
+            paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=5000,
                 sort_by=SortByField.QUEUED_AT,

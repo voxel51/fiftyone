@@ -1,13 +1,15 @@
 """
-FiftyOne Repository Factory
+FiftyOne repository factory.
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
 
 
-class SortByField(Enum):
+class SortByField(object):
+    """Sort by enum for delegated operations."""
+
     UPDATED_AT = "updated_at"
     QUEUED_AT = "queued_at"
     COMPLETED_AT = "completed_at"
@@ -16,12 +18,16 @@ class SortByField(Enum):
     OPERATOR = "operator"
 
 
-class SortDirection(Enum):
+class SortDirection(object):
+    """Sort direction enum for delegated operations."""
+
     ASCENDING = 1
     DESCENDING = -1
 
 
-class DelegatedOpPagingParams:
+class DelegatedOperationPagingParams(object):
+    """Paging parameters for delegated operations."""
+
     def __init__(
         self,
         sort_by: SortByField = SortByField.QUEUED_AT,
