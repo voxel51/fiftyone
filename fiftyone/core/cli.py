@@ -2770,9 +2770,12 @@ class DelegatedLaunchCommand(Command):
 
 
 def _launch_delegated_local():
+    from fiftyone.core.session.session import _WELCOME_MESSAGE
+
     try:
         dos = food.DelegatedOperationService()
 
+        print(_WELCOME_MESSAGE.format(foc.VERSION))
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
