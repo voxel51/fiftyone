@@ -35,7 +35,7 @@ class MockOperator(Operator):
     def config(self):
         return OperatorConfig(
             name="mock_operator",
-            label="mock_operator",
+            label="Mock Operator",
             disable_schema_validation=True,
         )
 
@@ -100,6 +100,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
+        self.assertEqual(doc.operatorLabel, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
     @patch(
@@ -250,6 +251,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
         mock_get_operator.return_value = MockOperator(success=False)
+
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
@@ -282,7 +284,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
-        mock_load_dataset.return_value.id = dataset_id
+        mock_load_dataset.return_value._doc.id = dataset_id
 
         get_op_mock.return_value = MockOperator(success=False)
 
@@ -613,6 +615,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        mock_get_operator.return_value = MockOperator()
 
         dataset_name = f"test_dataset_{ObjectId()}"
         delegation_target = f"delegation_target{ObjectId()}"
