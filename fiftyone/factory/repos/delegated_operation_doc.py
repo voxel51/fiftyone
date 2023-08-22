@@ -25,7 +25,7 @@ class DelegatedOperationDocument(object):
         context: dict = None,
     ):
         self.operator = operator
-        self.operatorLabel = None
+        self.operator_label = None
         self.delegation_target = delegation_target
         self.context = (
             context.__dict__
@@ -97,7 +97,7 @@ class DelegatedOperationDocument(object):
                     "Operator '%s' does not exist" % self.operator
                 )
 
-            self.operatorLabel = registry.get_operator(
+            self.operator_label = registry.get_operator(
                 self.operator
             ).config.label
         except Exception as e:

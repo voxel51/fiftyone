@@ -100,7 +100,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
-        self.assertEqual(doc.operatorLabel, "Mock Operator")
+        self.assertEqual(doc.operator_label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
     @patch(
