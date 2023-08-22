@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f764328e89b826ed26da8df7bdffd444>>
+ * @generated SignedSource<<1d5d90c0cbe5503bc84c1985d8a0fef1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -34,7 +34,7 @@ export type DatasetPageQuery$data = {
           readonly valueColors: ReadonlyArray<{
             readonly color: string;
             readonly value: string;
-          }>;
+          }> | null;
         }> | null;
         readonly id: string;
       } | null;
