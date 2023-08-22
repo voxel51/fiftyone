@@ -17,10 +17,6 @@ export class PanelPom {
     return this.locator.getByTitle("New panel");
   }
 
-  get histogramDistributionContainer() {
-    return this.page.getByTestId("distribution-container");
-  }
-
   get errorBoundary() {
     return this.page.getByTestId("error-boundary");
   }
@@ -45,10 +41,6 @@ export class PanelPom {
 
 class PanelAsserter {
   constructor(private readonly panelPom: PanelPom) {}
-
-  async isHistogramLoaded() {
-    await expect(this.panelPom.histogramDistributionContainer).toBeVisible();
-  }
 
   async hasError() {
     await expect(this.panelPom.errorBoundary).toBeVisible();
