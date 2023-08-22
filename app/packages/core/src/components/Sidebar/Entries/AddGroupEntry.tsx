@@ -30,6 +30,7 @@ const AddGroup = () => {
         const view = await snapshot.getPromise(fos.view);
         set(fos.sidebarGroupsDefinition(false), newGroups);
         fos.persistSidebarGroups({
+          subscription: await snapshot.getPromise(fos.stateSubscription),
           dataset: getDatasetName(context),
           stages: view,
           sidebarGroups: newGroups,
