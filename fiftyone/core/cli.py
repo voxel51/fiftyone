@@ -2928,7 +2928,7 @@ def _print_delegated_list(ops):
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
-                "state": op.run_state.value,
+                "state": op.run_state,
                 "completed": op.run_state == ExecutionRunState.COMPLETED,
             }
         )
