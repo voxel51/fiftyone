@@ -40,7 +40,7 @@ const AddGroup = () => {
   );
 
   return (
-    <InputDiv>
+    <InputDiv style={{ margin: 0 }}>
       <input
         type={"text"}
         placeholder={"+ add group"}
