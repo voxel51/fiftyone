@@ -75,7 +75,6 @@ test.describe("classification-sidebar-filter-visibility", () => {
     grid,
     sidebar,
     eventUtils,
-    page,
   }) => {
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",

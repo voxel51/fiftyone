@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Page } from "src/oss/fixtures";
 
 type TaggerMode = "sample" | "label";
 

@@ -11,7 +11,7 @@ export class GridPom {
   readonly locator: Locator;
 
   constructor(
-    private readonly page: Page,
+    public readonly page: Page,
     private readonly eventUtils: EventUtils
   ) {
     this.actionsRow = new GridActionsRowPom(page);

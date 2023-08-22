@@ -94,7 +94,7 @@ test.describe("date field and date time field can filter visibility", () => {
     await entryExpandPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(2);
 
-    await sidebar.setSliderStartValue("dates", 10);
+    await sidebar.changeSliderStartValue("dates");
 
     await gridRefreshedEventPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(1);
@@ -127,7 +127,7 @@ test.describe("date field and date time field can filter visibility", () => {
 
     expect(await page.getByTestId("tag-seconds").count()).toBe(2);
 
-    await sidebar.setSliderStartValue("seconds", 10);
+    await sidebar.changeSliderStartValue("seconds");
     await gridRefreshedEventPromise;
     // check screenshot
     expect(await page.getByTestId("tag-seconds").count()).toBe(1);
