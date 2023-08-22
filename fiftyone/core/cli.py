@@ -2869,15 +2869,10 @@ class DelegatedListCommand(Command):
 
 
 def _parse_state(state):
-    from fiftyone.operators.executor import ExecutionRunState
+    if state is None:
+        return None
 
-    if state is not None:
-        try:
-            state = ExecutionRunState[state.upper()]
-        except:
-            raise ValueError("Invalid run state '%s'" % state)
-
-    return state
+    return state.lower()
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):
