@@ -2770,9 +2770,12 @@ class DelegatedLaunchCommand(Command):
 
 
 def _launch_delegated_local():
+    from fiftyone.core.session.session import _WELCOME_MESSAGE
+
     try:
         dos = food.DelegatedOperationService()
 
+        print(_WELCOME_MESSAGE.format(foc.VERSION))
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
@@ -2866,15 +2869,10 @@ class DelegatedListCommand(Command):
 
 
 def _parse_state(state):
-    from fiftyone.operators.executor import ExecutionRunState
+    if state is None:
+        return None
 
-    if state is not None:
-        try:
-            state = ExecutionRunState[state.upper()]
-        except:
-            raise ValueError("Invalid run state '%s'" % state)
-
-    return state
+    return state.lower()
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):
@@ -2925,7 +2923,7 @@ def _print_delegated_list(ops):
                 "operator": op.operator,
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
-                "state": op.run_state.value,
+                "state": op.run_state,
                 "completed": op.run_state == ExecutionRunState.COMPLETED,
             }
         )
