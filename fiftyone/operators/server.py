@@ -23,6 +23,14 @@ from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 
 
+def resolve_dataset_name(request_params: dict):
+    try:
+        ctx = ExecutionContext(request_params)
+        return ctx.dataset.head_name
+    except:
+        return request_params.get("dataset_name", None)
+
+
 class ListOperators(HTTPEndpoint):
     @route
     async def get(self, request: Request, data: dict):
@@ -46,7 +54,7 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
@@ -68,7 +76,7 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
@@ -117,7 +125,7 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
@@ -160,7 +168,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
