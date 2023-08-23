@@ -6,12 +6,12 @@ FiftyOne operator execution.
 |
 """
 import asyncio
-import types as python_types
 import traceback
-from enum import Enum
+import types as python_types
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
@@ -19,10 +19,11 @@ import fiftyone.operators.types as types
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
-from fiftyone.core.utils import run_sync_task
 
 
-class ExecutionRunState:
+class ExecutionRunState(object):
+    """Enumeration of the available operator run states."""
+
     QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -160,7 +161,7 @@ async def execute_or_delegate_operator(operator_uri, request_params, user):
             raw_result = await (
                 operator.execute(ctx)
                 if asyncio.iscoroutinefunction(operator.execute)
-                else run_sync_task(operator.execute, ctx)
+                else fou.run_sync_task(operator.execute, ctx)
             )
 
         except Exception as e:

@@ -34,6 +34,7 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
 import fiftyone.operators.delegated as food
+import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
@@ -2986,36 +2987,32 @@ def _parse_state(state):
 
 
 def _parse_paging(sort_by=None, reverse=None, limit=None):
-    from fiftyone.factory import DelegatedOpPagingParams
+    from fiftyone.factory import DelegatedOperationPagingParams
 
     sort_by = _parse_sort_by(sort_by)
     sort_direction = _parse_reverse(reverse)
-    return DelegatedOpPagingParams(
+    return DelegatedOperationPagingParams(
         sort_by=sort_by, sort_direction=sort_direction, limit=limit
     )
 
 
 def _parse_sort_by(sort_by):
-    from fiftyone.factory import SortByField
+    if sort_by is None:
+        return None
 
-    if sort_by is not None:
-        try:
-            sort_by = SortByField[sort_by.upper()]
-        except:
-            raise ValueError("Invalid sort by '%s'" % sort_by)
-
-    return sort_by
+    return sort_by.lower()
 
 
 def _parse_reverse(reverse):
     from fiftyone.factory import SortDirection
 
+    if reverse is None:
+        return None
+
     return SortDirection.ASCENDING if reverse else SortDirection.DESCENDING
 
 
 def _print_delegated_list(ops):
-    from fiftyone.operators.executor import ExecutionRunState
-
     headers = [
         "id",
         "operator",
@@ -3034,7 +3031,7 @@ def _print_delegated_list(ops):
                 "dataset": op.context.request_params.get("dataset_name", None),
                 "queued_at": op.queued_at,
                 "state": op.run_state,
-                "completed": op.run_state == ExecutionRunState.COMPLETED,
+                "completed": op.run_state == fooe.ExecutionRunState.COMPLETED,
             }
         )
 
@@ -3160,9 +3157,7 @@ def _cleanup_orphan_delegated(dry_run=False):
 
 
 def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
-    from fiftyone.operators.executor import ExecutionRunState
-
-    if state == ExecutionRunState.RUNNING:
+    if state == fooe.ExecutionRunState.RUNNING:
         raise ValueError(
             "Deleting operations that are currently running is not allowed"
         )
@@ -3176,7 +3171,7 @@ def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
 
     del_ids = set()
     for op in ops:
-        if op.run_state != ExecutionRunState.RUNNING:
+        if op.run_state != fooe.ExecutionRunState.RUNNING:
             del_ids.add(op.id)
 
     num_del = len(del_ids)
