@@ -1,5 +1,6 @@
 """
-FiftyOne Delegated Operation Repository
+FiftyOne delegated operation repository.
+
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -7,19 +8,15 @@ FiftyOne Delegated Operation Repository
 from datetime import datetime
 from typing import Any, List
 
-import pymongo
 from bson import ObjectId
+import pymongo
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-from fiftyone.factory import (
-    DelegatedOpPagingParams,
-    SortByField,
-    SortDirection,
-)
+import fiftyone.core.dataset as fod
+from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import ExecutionResult, ExecutionRunState
-import fiftyone.core.dataset as fod
 
 
 class DelegatedOperationRepo(object):
@@ -41,7 +38,9 @@ class DelegatedOperationRepo(object):
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
 
-    def get_queued_operations(self, operator: str = None, dataset_name=None):
+    def get_queued_operations(
+        self, operator: str = None, dataset_name=None
+    ) -> List[DelegatedOperationDocument]:
         """Get all queued operations."""
         raise NotImplementedError(
             "subclass must implement get_queued_operations()"
@@ -54,11 +53,11 @@ class DelegatedOperationRepo(object):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
-        paging: DelegatedOpPagingParams = None,
-        search: dict = None,
         pinned: bool = None,
+        paging: DelegatedOperationPagingParams = None,
+        search: dict = None,
         **kwargs: Any,
-    ):
+    ) -> List[DelegatedOperationDocument]:
         """List all operations."""
         raise NotImplementedError("subclass must implement list_operations()")
 
@@ -66,9 +65,7 @@ class DelegatedOperationRepo(object):
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
-    def delete_for_dataset(
-        self, dataset_id: ObjectId
-    ) -> List[DelegatedOperationDocument]:
+    def delete_for_dataset(self, dataset_id: ObjectId):
         """Delete an operation."""
         raise NotImplementedError("subclass must implement delete_operation()")
 
@@ -82,7 +79,7 @@ class DelegatedOperationRepo(object):
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
 
-    def count(self, filters, search) -> int:
+    def count(self, filters: dict = None, search: dict = None) -> int:
         """Count all operations."""
         raise NotImplementedError("subclass must implement count()")
 
@@ -172,7 +169,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
     ) -> DelegatedOperationDocument:
-
         update = None
 
         execution_result = result
@@ -225,7 +221,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         operator: str = None,
         dataset_name: ObjectId = None,
-    ):
+    ) -> List[DelegatedOperationDocument]:
         return self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
@@ -240,10 +236,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
         pinned: bool = None,
-        paging: DelegatedOpPagingParams = None,
+        paging: DelegatedOperationPagingParams = None,
         search: dict = None,
         **kwargs: Any,
-    ):
+    ) -> List[DelegatedOperationDocument]:
         query = {}
         if operator:
             query["operator"] = operator
@@ -261,41 +257,29 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         for arg in kwargs:
             query[arg] = kwargs[arg]
 
-        if not paging:
-            paging = DelegatedOpPagingParams(limit=1000)
-
-        if isinstance(paging, dict):
-            paging = DelegatedOpPagingParams(**paging)
-
-        if not isinstance(paging.sort_by, SortByField):
-            paging.sort_by = SortByField(paging.sort_by)
-
-        if not isinstance(paging.sort_direction, SortDirection):
-            paging.sort_direction = SortDirection(paging.sort_direction)
+        if paging is None:
+            # force a limit of 1000 if no paging supplied
+            paging = DelegatedOperationPagingParams(limit=1000)
+        elif isinstance(paging, dict):
+            paging = DelegatedOperationPagingParams(**paging)
 
         if search:
             for term in search:
                 for field in search[term]:
-                    if field not in ["operator", "delegated_operation"]:
+                    if field not in ("operator", "delegated_operation"):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
                     query[field] = {"$regex": term}
 
-        if paging:
-            docs = self._collection.find(query)
-            if paging.sort_by.value:
-                docs = docs.sort(
-                    paging.sort_by.value, paging.sort_direction.value
-                )
-            if paging.skip:
-                docs = docs.skip(paging.skip)
-            if paging.limit:
-                docs = docs.limit(paging.limit)
-        else:
-            docs = self._collection.find(query).limit(
-                1000
-            )  # force a limit of 1000 if no paging supplied
+        docs = self._collection.find(query)
+        if paging.sort_by:
+            docs = docs.sort(paging.sort_by, paging.sort_direction)
+        if paging.skip:
+            docs = docs.skip(paging.skip)
+        if paging.limit:
+            docs = docs.limit(paging.limit)
+
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
@@ -312,13 +296,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one(filter={"_id": _id})
         return DelegatedOperationDocument().from_pymongo(doc)
 
-    def count(self, filters=None, search=None) -> int:
+    def count(self, filters: dict = None, search: dict = None) -> int:
         if filters is None and search is not None:
             filters = {}
         if search:
             for term in search:
                 for field in search[term]:
-                    if field not in ["operator", "delegated_operation"]:
+                    if field not in ("operator", "delegated_operation"):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )

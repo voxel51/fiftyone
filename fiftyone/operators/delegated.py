@@ -1,202 +1,198 @@
+"""
+FiftyOne delegated operations.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import asyncio
 import logging
 import traceback
 
-from fiftyone.core.expressions import ObjectId
-from fiftyone.factory import DelegatedOpPagingParams
 from fiftyone.factory.repo_factory import RepositoryFactory
-from fiftyone.factory.repos import DelegatedOperationDocument
-from fiftyone.factory.repos.delegated_operation import (
-    DelegatedOperationRepo,
-)
-
+from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.operators.executor import (
     prepare_operator_executor,
     ExecutionResult,
-    ExecutionContext,
     ExecutionRunState,
 )
-from fiftyone.operators.types import List
+
 
 logger = logging.getLogger(__name__)
 
 
-class DelegatedOperationService:
-    """Base class for delegated operations.
+class DelegatedOperationService(object):
+    """Service for executing delegated operations."""
 
-    Delegated operations are used to define custom operations that can be
-    applied to datasets and views.
+    def __init__(self, repo=None):
+        if repo is None:
+            repo = RepositoryFactory.delegated_operation_repo()
 
-    """
+        self._repo = repo
 
-    def __init__(self, repo: DelegatedOperationRepo = None):
-        self._repo = (
-            repo
-            if repo is not None
-            else RepositoryFactory.delegated_operation_repo()
-        )
+    def queue_operation(self, operator, delegation_target=None, context=None):
+        """Queues the given delegated operation for execution.
 
-    def queue_operation(
-        self,
-        operator: str,
-        delegation_target: str = None,
-        context: ExecutionContext = None,
-    ) -> DelegatedOperationDocument:
-        """Returns a queued :class:`fiftyone.core.odm.DelegatedOperationDocument` instance for the operation.
+        Args:
+            operator: the operator name
+            delegation_target (None): an optional delegation target
+            context (None): an
+                :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
-
         return self._repo.queue_operation(
             operator=operator,
             delegation_target=delegation_target,
             context=context,
         )
 
-    def set_running(self, doc_id: ObjectId) -> DelegatedOperationDocument:
-        """
-        Sets the :class:`fiftyone.core.odm.DelegatedOperationDocument` to running state.
+    def set_running(self, doc_id):
+        """Sets the given delegated operation to running state.
+
         Args:
-            doc_id: the id of the delegated operation document
+            doc_id: the ID of the delegated operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
             _id=doc_id, run_state=ExecutionRunState.RUNNING
         )
 
-    def set_completed(
-        self, doc_id: ObjectId, result: ExecutionResult = None
-    ) -> DelegatedOperationDocument:
-        """
-        Sets the :class:`fiftyone.core.odm.DelegatedOperationDocument` to completed state.
+    def set_completed(self, doc_id, result=None):
+        """Sets the given delegated operation to completed state.
+
         Args:
-            doc_id: the id of the delegated operation document
-            result: the :class:`fiftyone.operators.ExecutionResult` result of the operation
+            doc_id: the ID of the delegated operation
+            result (None): the
+                :class:`fiftyone.operators.executor.ExecutionResult` of the
+                operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
             _id=doc_id, run_state=ExecutionRunState.COMPLETED, result=result
         )
 
-    def set_failed(
-        self, doc_id: ObjectId, result: ExecutionResult
-    ) -> DelegatedOperationDocument:
-        """
-        Sets the :class:`fiftyone.core.odm.DelegatedOperationDocument` to failed state.
+    def set_failed(self, doc_id, result=None):
+        """Sets the given delegated operation to failed state.
+
         Args:
-            doc_id: the id of the delegated operation document
-            result: the :class:`fiftyone.operators.ExecutionResult` result of the operation
+            doc_id: the ID of the delegated operation
+            result (None): the
+                :class:`fiftyone.operators.executor.ExecutionResult` of the
+                operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
             _id=doc_id, run_state=ExecutionRunState.FAILED, result=result
         )
 
-    def set_pinned(
-        self, doc_id: ObjectId, pinned: bool = True
-    ) -> DelegatedOperationDocument:
-        """
-        Sets the :class:`fiftyone.core.odm.DelegatedOperationDocument` pinned flag.
+    def set_pinned(self, doc_id, pinned=True):
+        """Sets the pinned flag for the given delegated operation.
+
         Args:
-            doc_id: the id of the delegated operation document
-            pinned: the boolean pinned flag
+            doc_id: the ID of the delegated operation
+            pinned (True): the boolean pinned flag
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.set_pinned(_id=doc_id, pinned=pinned)
 
-    def delete_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
-        """
-        Deletes the :class:`fiftyone.core.odm.DelegatedOperationDocument`
+    def delete_operation(self, doc_id):
+        """Deletes the given delegated operation.
+
         Args:
-            doc_id: the id of the delegated operation document
+            doc_id: the ID of the delegated operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.delete_operation(_id=doc_id)
 
-    def delete_for_dataset(self, dataset_id: ObjectId):
-        """
-        Deletes all :class:`fiftyone.core.odm.DelegatedOperationDocument` for the dataset.
-        Args:
-            dataset_id: the id of the dataset to delete all the delegated operations for
+    def delete_for_dataset(self, dataset_id):
+        """Deletes all delegated operations associated with the given dataset.
 
+        Args:
+            dataset_id: the ID of the dataset
         """
         return self._repo.delete_for_dataset(dataset_id=dataset_id)
 
-    def rerun_operation(self, doc_id: ObjectId) -> DelegatedOperationDocument:
-        """
-        Reruns the :class:`fiftyone.core.odm.DelegatedOperationDocument`
+    def rerun_operation(self, doc_id):
+        """Reruns the specified delegated operation.
+
         Args:
-            doc_id: the id of the delegated operation document
+            doc_id: the ID of the delegated operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
-
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         doc = self._repo.get(_id=doc_id)
         return self._repo.queue_operation(**doc.__dict__)
 
-    def get_queued_operations(
-        self, operator: str = None, dataset_name: str = None
-    ):
-        """
-        Returns all queued :class:`fiftyone.core.odm.DelegatedOperationDocument` .
+    def get_queued_operations(self, operator=None, dataset_name=None):
+        """Returns all queued delegated operations.
+
         Args:
-            operator: the optional name of the operator to return all the queued delegated operations for
-            dataset_name: the optional name of the dataset to return all the queued delegated operations for
+            operator (None): the optional name of the operator to return all
+                the queued delegated operations for
+            dataset_name (None): the optional name of the dataset to return all
+                the queued delegated operations for
 
         Returns:
-
+            a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.get_queued_operations(
             operator=operator, dataset_name=dataset_name
         )
 
-    def get(self, doc_id: ObjectId) -> DelegatedOperationDocument:
-        """
-        Returns the :class:`fiftyone.core.odm.DelegatedOperationDocument` for the id.
+    def get(self, doc_id):
+        """Returns the delegated operation with the given ID.
+
         Args:
-            doc_id: the id of the delegated operation document
+            doc_id: the ID of the delegated operation
 
         Returns:
-            a :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.get(_id=doc_id)
 
     def list_operations(
         self,
-        operator: str = None,
-        dataset_name: str = None,
-        dataset_id: ObjectId = None,
-        run_state: ExecutionRunState = None,
-        delegation_target: str = None,
-        paging: DelegatedOpPagingParams = None,
-        search: dict = None,
+        operator=None,
+        dataset_name=None,
+        dataset_id=None,
+        run_state=None,
+        delegation_target=None,
+        paging=None,
+        search=None,
         **kwargs,
     ):
-        """
-        Returns a list of :class:`fiftyone.core.odm.DelegatedOperationDocument` .
+        """Lists the delegated operations matching the given criteria.
+
         Args:
-            operator: the optional name of the operator to return all the delegated operations for
-            dataset_name: the optional name of the dataset to return all the delegated operations for
-            dataset_id: the optional id of the dataset to return all the delegated operations for
-            run_state: the optional run state of the delegated operations to return
-            delegation_target: the optional delegation target of the delegated operations to return
-            paging: the optional paging parameters
-            **kwargs:
+            operator (None): the optional name of the operator to return all
+                the delegated operations for
+            dataset_name (None): the optional name of the dataset to return all
+                the delegated operations for
+            dataset_id (None): the optional id of the dataset to return all the
+                delegated operations for
+            run_state (None): the optional run state of the delegated
+                operations to return
+            delegation_target (None): the optional delegation target of the
+                delegated operations to return
+            paging (None): optional
+                :class:`fiftyone.factory.DelegatedOperationPagingParams`
+            search (None): optional search term dict
 
         Returns:
-            a list of :class:`fiftyone.core.odm.DelegatedOperationDocument`
+            a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.list_operations(
             operator=operator,
@@ -211,26 +207,31 @@ class DelegatedOperationService:
 
     def execute_queued_operations(
         self,
-        operator: str = None,
-        delegation_target: str = None,
-        dataset_name: str = None,
-        limit: int = None,
-        log: bool = False,
+        operator=None,
+        delegation_target=None,
+        dataset_name=None,
+        limit=None,
+        log=False,
         **kwargs,
     ):
-        """
-        Executes all queued :class:`fiftyone.core.odm.DelegatedOperationDocument` .
+        """Executes queued delegated operations matching the given criteria.
+
         Args:
-            operator: the optional name of the operator to execute all the queued delegated operations for
-            delegation_target: the optional delegation target of the delegated operations to execute
-            dataset_name: the optional name of the dataset to execute all the queued delegated operations for
-            limit: the optional limit of the number of delegated operations to execute
-            log: the optional boolean flag to log the execution of the delegated operations
-            **kwargs:
+            operator (None): the optional name of the operator to execute all
+                the queued delegated operations for
+            delegation_target (None): the optional delegation target of the
+                delegated operations to execute
+            dataset_name (None): the optional name of the dataset to execute
+                all the queued delegated operations for
+            limit (None): the optional limit of the number of delegated
+                operations to execute
+            log (False): the optional boolean flag to log the execution of the
+                delegated operations
         """
-        paging = None
         if limit is not None:
-            paging = DelegatedOpPagingParams(limit=limit)
+            paging = DelegatedOperationPagingParams(limit=limit)
+        else:
+            paging = None
 
         queued_ops = self.list_operations(
             operator=operator,
@@ -251,16 +252,25 @@ class DelegatedOperationService:
                 self.set_completed(doc_id=op.id, result=result)
                 if log:
                     logger.info("Operation %s complete", op.id)
-            except Exception as e:
+            except:
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
                 if log:
                     logger.info("Operation %s failed", op.id)
 
-    def count(self, filters=None, search=None) -> int:
+    def count(self, filters=None, search=None):
+        """Counts the delegated operations matching the given criteria.
+
+        Args:
+            filters (None): a filter dict
+            search (None): a search term dict
+
+        Returns:
+            the number of matching operations
+        """
         return self._repo.count(filters=filters, search=search)
 
-    async def _execute_operator(self, doc: DelegatedOperationDocument):
+    async def _execute_operator(self, doc):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
