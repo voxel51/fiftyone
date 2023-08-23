@@ -1,5 +1,6 @@
 import { Locator, Page } from "src/oss/fixtures";
 import { DisplayOptionsPom } from "./display-options";
+import { SelectorPom } from "../selector";
 
 export class GridActionsRowPom {
   readonly page: Page;
@@ -49,11 +50,9 @@ export class GridActionsRowPom {
     await this.toPatchesByLabelField(fieldName).click();
   }
 
-  async groupBy(path: string) {
-    await this.gridActionsRow.getByTestId("group-by-selector").click();
-    await this.gridActionsRow.getByTestId("group-by-selector").type(path);
-
-    await this.gridActionsRow.getByTestId("group-by-selector").press("Enter");
+  async groupBy(path: string, selector: SelectorPom) {
+    await selector.openResults();
+    await selector.selectResult(path);
     await this.gridActionsRow.getByTestId("dynamic-group-btn-submit").click();
   }
 
