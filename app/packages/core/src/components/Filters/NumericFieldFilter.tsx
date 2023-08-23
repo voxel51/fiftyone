@@ -149,7 +149,6 @@ const NumericFieldFilter = ({
     ? useSetRecoilState(isMatchingAtom)
     : null;
 
-  const setFilter = useSetRecoilState(fos.filter({ modal, path }));
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
