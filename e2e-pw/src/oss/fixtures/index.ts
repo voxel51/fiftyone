@@ -1,15 +1,24 @@
 import { test as base } from "@playwright/test";
+import { EventUtils } from "src/shared/event-utils";
 import { MediaFactory } from "src/shared/media-factory";
 import { AbstractFiftyoneLoader } from "../../shared/abstract-loader";
 import { OssLoader } from "./loader";
 
-export type CustomFixtures = {
+// note: this difference between "with" and "without" is only for type safety
+
+// these fixtures do not have access to the {page} fixture
+export type CustomFixturesWithoutPage = {
   fiftyoneLoader: AbstractFiftyoneLoader;
   fiftyoneServerPort: number;
   mediaFactory: typeof MediaFactory;
 };
 
-export const test = base.extend<{}, CustomFixtures>({
+// these fixtures have access to the {page} fixture
+export type CustomFixturesWithPage = {
+  eventUtils: EventUtils;
+};
+
+const customFixtures = base.extend<object, CustomFixturesWithoutPage>({
   fiftyoneServerPort: [
     async ({}, use, workerInfo) => {
       if (process.env.USE_DEV_BUILD) {
@@ -41,6 +50,12 @@ export const test = base.extend<{}, CustomFixtures>({
     },
     { scope: "worker" },
   ],
+});
+
+export const test = customFixtures.extend<CustomFixturesWithPage>({
+  eventUtils: async ({ page }, use) => {
+    await use(new EventUtils(page));
+  },
   baseURL: async ({ fiftyoneServerPort }, use) => {
     if (process.env.USE_DEV_BUILD) {
       if (process.env.IS_UTILITY_DOCKER) {
@@ -56,4 +71,4 @@ export const test = base.extend<{}, CustomFixtures>({
   },
 });
 
-export { Locator, Page, expect } from "@playwright/test";
+export { Locator, Page, expect, Browser } from "@playwright/test";

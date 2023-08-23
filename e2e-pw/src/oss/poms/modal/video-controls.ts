@@ -48,7 +48,7 @@ export class ModalVideoControlsPom {
   async clickUseFrameNumber() {
     await this.clickSettings();
     await this.optionsPanel
-      .getByTestId("looker-video-controls-settings-Use frame number")
+      .getByTestId("looker-checkbox-Use frame number")
       .click();
     await this.clickSettings();
   }
