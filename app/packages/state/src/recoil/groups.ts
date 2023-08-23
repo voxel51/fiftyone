@@ -73,8 +73,9 @@ export const groupSlice = graphQLSyncFragmentAtom<
           commitLocalUpdate(
             getPageQuery().pageQuery.preloadedQuery.environment,
             (store) => {
-              getPromise(dataset).then(({ id }) => {
-                store.get(id).setValue(newValue, "groupSlice");
+              getPromise(dataset).then((dataset) => {
+                dataset?.id &&
+                  store.get(dataset.id).setValue(newValue, "groupSlice");
               });
             }
           );

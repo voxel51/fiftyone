@@ -6,7 +6,7 @@ Session events.
 |
 """
 import base64
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import re
 import typing as t
 
@@ -158,9 +158,9 @@ class ValueColor:
 @dataclass
 class CustomizeColor:
     path: str
-    field_color: str
-    color_by_attribute: bool = False
-    value_colors: t.Optional[t.List[ValueColor]] = None
+    fieldColor: t.Optional[str] = None
+    colorByAttribute: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColor]] = None
 
 
 @dataclass
@@ -180,9 +180,14 @@ class SetColorScheme(Event):
         return cls(color_scheme=from_dict(ColorScheme, color_scheme.to_dict()))
 
     def to_odm(self):
+        fields = (
+            [asdict(field) for field in self.color_scheme.fields]
+            if self.color_scheme.fields
+            else None
+        )
         return foo.ColorScheme(
             color_pool=self.color_scheme.color_pool,
-            fields=self.color_scheme.fields,
+            fields=fields,
         )
 
 

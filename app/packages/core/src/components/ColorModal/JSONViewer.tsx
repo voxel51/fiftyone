@@ -76,7 +76,6 @@ const JSONViewer: React.FC = () => {
 
   useLayoutEffect(() => {
     setData(setting);
-    console.info("setData");
     if (ref?.current) {
       console.log(ref?.current);
       ref?.current.dispatchEvent(
