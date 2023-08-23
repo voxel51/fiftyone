@@ -5,7 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form, Property
+from .types import Object, Form, Property, PromptView
 
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
@@ -189,10 +189,15 @@ class Operator(object):
             a :class:`fiftyone.operators.types.Property`, or None
         """
         if type == "inputs":
-            # @todo support forms in UI
-            # if input_property.view is None:
-            #     input_property.view = Form()
-            return self.resolve_input(ctx)
+            # pylint: disable=assignment-from-none
+            input_property = self.resolve_input(ctx)
+            if input_property.view is None:
+                should_delegate = self.resolve_delegation(ctx)
+                if should_delegate:
+                    input_property.view = PromptView(
+                        submit_button_label="Schedule"
+                    )
+            return input_property
 
         if type == "outputs":
             return self.resolve_output(ctx)

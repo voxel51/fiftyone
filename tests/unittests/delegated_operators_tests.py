@@ -9,6 +9,7 @@ import time
 import unittest
 from unittest.mock import patch
 
+import fiftyone
 from bson import ObjectId
 
 from fiftyone import Dataset
@@ -35,7 +36,7 @@ class MockOperator(Operator):
     def config(self):
         return OperatorConfig(
             name="mock_operator",
-            label="mock_operator",
+            label="Mock Operator",
             disable_schema_validation=True,
         )
 
@@ -51,8 +52,15 @@ class MockOperator(Operator):
         return ExecutionResult(result={"executed": True})
 
 
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.operator_exists",
+    return_value=True,
+)
+@patch(
+    "fiftyone.operators.registry.OperatorRegistry.get_operator",
+    return_value=MockOperator(),
+)
 class DelegatedOperationServiceTests(unittest.TestCase):
-
     _should_fail = False
 
     def setUp(self):
@@ -63,13 +71,23 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.delete_test_data()
 
     def delete_test_data(self):
-        for doc in self.docs_to_delete:
-            self.svc.delete_operation(doc_id=doc.id)
+        with patch.object(
+            fiftyone.operators.registry.OperatorRegistry, "operator_exists"
+        ) as operator_exists:
+            with patch.object(
+                fiftyone.operators.registry.OperatorRegistry, "get_operator"
+            ) as get_operator:
+                operator_exists.return_value = True
+                get_operator.return_value = MockOperator()
+                for doc in self.docs_to_delete:
+                    self.svc.delete_operation(doc_id=doc.id)
 
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_delegate_operation(self, mock_load_dataset):
+    def test_delegate_operation(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
@@ -83,12 +101,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
+        self.assertEqual(doc.operator_label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
 
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_list_queued_operations(self, mock_load_dataset):
+    def test_list_queued_operations(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
 
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -164,7 +185,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         running = self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
         self.assertEqual(len(running), 10 + initial_running)
 
-    def test_set_run_states(self):
+    def test_set_run_states(self, mock_get_operator, mock_operator_exists):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
@@ -179,13 +200,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc = self.svc.set_running(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.RUNNING)
-        self.assertNotEquals(doc.updated_at, original_updated_at)
+        self.assertNotEqual(doc.updated_at, original_updated_at)
         original_updated_at = doc.updated_at
         time.sleep(0.1)
 
         doc = self.svc.set_completed(doc_id=doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
-        self.assertNotEquals(doc.updated_at, original_updated_at)
+        self.assertNotEqual(doc.updated_at, original_updated_at)
         original_updated_at = doc.updated_at
         time.sleep(0.1)
 
@@ -195,16 +216,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
         self.assertIsNotNone(doc.result.error)
-        self.assertNotEquals(doc.updated_at, original_updated_at)
+        self.assertNotEqual(doc.updated_at, original_updated_at)
 
-    @patch(
-        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
-        return_value=True,
-    )
-    @patch(
-        "fiftyone.operators.registry.OperatorRegistry.get_operator",
-        return_value=MockOperator(),
-    )
     def test_full_run_success(self, mock_get_operator, mock_operator_exists):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
@@ -229,14 +242,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.result.result, {"executed": True})
 
     @patch(
-        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
-        return_value=True,
-    )
-    @patch(
-        "fiftyone.operators.registry.OperatorRegistry.get_operator",
-        return_value=MockOperator(success=False),
-    )
-    @patch(
         "fiftyone.core.dataset.load_dataset",
     )
     def test_full_run_fail(
@@ -246,6 +251,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+        mock_get_operator.return_value = MockOperator(success=False)
+
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
         doc = self.svc.queue_operation(
@@ -270,14 +277,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.failed_at)
 
     @patch(
-        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
-        return_value=True,
-    )
-    @patch(
-        "fiftyone.operators.registry.OperatorRegistry.get_operator",
-        return_value=MockOperator(success=False),
-    )
-    @patch(
         "fiftyone.core.dataset.load_dataset",
     )
     def test_rerun_failed(
@@ -287,6 +286,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        get_op_mock.return_value = MockOperator(success=False)
 
         ctx = ExecutionContext()
         ctx.request_params = {"foo": "bar"}
@@ -324,7 +325,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_paging_sorting(self, mock_load_dataset):
+    def test_paging_sorting(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
@@ -466,14 +469,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(total, 25)
 
     @patch(
-        "fiftyone.operators.registry.OperatorRegistry.operator_exists",
-        return_value=True,
-    )
-    @patch(
-        "fiftyone.operators.registry.OperatorRegistry.get_operator",
-        return_value=MockOperator(success=False),
-    )
-    @patch(
         "fiftyone.core.dataset.load_dataset",
     )
     def test_gets_dataset_id_from_name(self, mock_load_dataset, *args):
@@ -497,7 +492,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_deletes_by_dataset_id(self, mock_load_dataset):
+    def test_deletes_by_dataset_id(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
@@ -550,7 +547,9 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_search(self, mock_load_dataset):
+    def test_search(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
@@ -578,7 +577,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # test paging - get a page of everything
         docs = self.svc.list_operations(
-            search={"operator\/test": {"operator"}},
+            search={"operator/test": {"operator"}},
             paging=DelegatedOperationPagingParams(
                 skip=0,
                 limit=5000,
@@ -604,11 +603,15 @@ class DelegatedOperationServiceTests(unittest.TestCase):
     @patch(
         "fiftyone.core.dataset.load_dataset",
     )
-    def test_count(self, mock_load_dataset):
+    def test_count(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
         mock_load_dataset.return_value.name = dataset_name
         mock_load_dataset.return_value._doc.id = dataset_id
+
+        mock_get_operator.return_value = MockOperator()
 
         dataset_name = f"test_dataset_{ObjectId()}"
         delegation_target = f"delegation_target{ObjectId()}"
@@ -632,7 +635,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         # test paging - get a page of everything
         docs = self.svc.count(
-            search={"operator\/test": {"operator"}},
+            search={"operator/test": {"operator"}},
         )
 
         self.assertEqual(docs, 100)

@@ -167,7 +167,9 @@ async def execute_or_delegate_operator(operator_uri, request_params):
                 delegation_target=operator.delegation_target,
             )
 
-            execution = ExecutionResult(op.__dict__, executor, None)
+            execution = ExecutionResult(
+                op.__dict__, executor, None, delegated=True
+            )
             execution.result["context"] = (
                 execution.result["context"].serialize()
                 if execution.result["context"]
@@ -275,6 +277,18 @@ class ExecutionContext(object):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+
+    @property
+    def results(self):
+        """A ``dict`` of results for the current operation. This is only availble
+        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        return self.request_params.get("results", {})
+
+    @property
+    def delegated(self):
+        """``True`` if the operator's execution was delegated to an orchestrator. This is only availble
+        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        return self.request_params.get("delegated", False)
 
     @property
     def view(self):
@@ -385,11 +399,13 @@ class ExecutionResult(object):
         executor=None,
         error=None,
         validation_ctx=None,
+        delegated=False,
     ):
         self.result = result
         self.executor = executor
         self.error = error
         self.validation_ctx = validation_ctx
+        self.delegated = delegated
 
     @property
     def is_generator(self):
@@ -423,6 +439,7 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "delegated": self.delegated,
             "validation_ctx": self.validation_ctx.to_json()
             if self.validation_ctx
             else None,

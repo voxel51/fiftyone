@@ -5,13 +5,17 @@ FiftyOne delegated operation repository document.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from datetime import datetime
 
+from fiftyone.operators import OperatorRegistry
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperationDocument(object):
@@ -22,6 +26,7 @@ class DelegatedOperationDocument(object):
         context: dict = None,
     ):
         self.operator = operator
+        self.operator_label = None
         self.delegation_target = delegation_target
         self.context = (
             context.__dict__
@@ -84,6 +89,20 @@ class DelegatedOperationDocument(object):
         # internal fields
         self.id = doc["_id"]
         self._doc = doc
+
+        # generated fields:
+        try:
+            registry = OperatorRegistry()
+            if registry.operator_exists(self.operator) is False:
+                raise ValueError(
+                    "Operator '%s' does not exist" % self.operator
+                )
+
+            self.operator_label = registry.get_operator(
+                self.operator
+            ).config.label
+        except Exception as e:
+            logger.error("Error getting operator label: %s" % e)
 
         return self
 
