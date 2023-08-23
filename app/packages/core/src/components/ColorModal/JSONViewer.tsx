@@ -73,16 +73,14 @@ const JSONViewer: React.FC = () => {
 
   useLayoutEffect(() => {
     setData(setting);
-    console.info("setData");
     if (ref?.current) {
-      console.log(ref?.current);
       ref?.current.dispatchEvent(
         new CustomEvent("json-viewer-update", {
           bubbles: true,
         })
       );
     }
-  }, [setting]);
+  }, [setting, ref]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 

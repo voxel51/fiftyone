@@ -72,18 +72,17 @@ test.describe("color scheme basic functionality with quickstart", () => {
     await gridActionsRow.toggleColorSettings();
     await colorModal.selectActiveField("JSON editor");
     // mount eventListener
-    // const editorUpdatePromise =
-    // eventUtils.getEventReceivedPromiseForPredicate(
-    //   "json-viewer-update",
-    //   () => true
-    // );
+    const editorUpdatePromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "json-viewer-update",
+      () => true
+    );
     await colorModal.selectActiveField("Global settings");
     await colorModal.useColorBlindColors();
     // verify the color palette is updated in JSON editor
     await colorModal.selectActiveField("JSON editor");
     // mount eventListener
-    // await editorUpdatePromise
-    page.waitForTimeout(2000);
+    await editorUpdatePromise;
+
     // wait for json editor to load
     await expect(await colorModal.getJSONEditor()).toHaveScreenshot(
       "change-color-palette-json-editor.png",
