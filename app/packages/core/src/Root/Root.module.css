@@ -13,3 +13,10 @@
 .icons {
   flex-shrink: 0;
 }
+
+.lock {
+  align-items: center;
+  display: flex;
+  height: 100%;
+  margin-right: 1rem;
+}

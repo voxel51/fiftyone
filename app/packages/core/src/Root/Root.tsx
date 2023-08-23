@@ -20,6 +20,7 @@ import {
   GitHubLink,
   Header,
   SlackLink,
+  Tooltip,
   iconContainer,
 } from "@fiftyone/components";
 
@@ -41,7 +42,7 @@ import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
-import { DarkMode, LightMode } from "@mui/icons-material";
+import { DarkMode, LightMode, Lock } from "@mui/icons-material";
 import { IconButton, useColorScheme } from "@mui/material";
 import DatasetSelector from "../components/DatasetSelector";
 
@@ -160,6 +161,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const dataset = getDatasetName(context);
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
+  const datasetHead = useRecoilValue(fos.datasetHeadName);
+  const datasetSnapshot = useRecoilValue(fos.datasetSnapshotName);
 
   return (
     <>
@@ -168,6 +171,19 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
+        {datasetHead && datasetSnapshot && (
+          <div className={style.lock}>
+            <Tooltip
+              text={
+                `You are viewing the snapshot "${datasetSnapshot}" of the` +
+                ` dataset "${datasetHead}" (Readonly mode)`
+              }
+              placement="bottom-center"
+            >
+              <Lock color="primary" />
+            </Tooltip>
+          </div>
+        )}
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>

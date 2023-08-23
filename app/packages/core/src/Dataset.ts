@@ -39,6 +39,8 @@ export const DatasetNodeQuery = graphql`
       stages(slug: $savedViewSlug)
       id
       name
+      headName
+      snapshotName
       mediaType
       parentMediaType
       defaultGroupSlice
