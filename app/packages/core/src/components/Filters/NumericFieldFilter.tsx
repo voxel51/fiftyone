@@ -136,7 +136,7 @@ const NumericFieldFilter = ({
     modal,
     defaultRange,
   });
-  const values = useRecoilValue(
+  const [values, setValues] = useRecoilState(
     fos.rangeAtom({
       modal,
       path,
@@ -149,7 +149,6 @@ const NumericFieldFilter = ({
     ? useSetRecoilState(isMatchingAtom)
     : null;
 
-  const setFilter = useSetRecoilState(fos.filter({ modal, path }));
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
@@ -203,9 +202,9 @@ const NumericFieldFilter = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setFilter([null, null]);
+    setValues([null, null]);
     setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(!nestedField);
+    isFilterMode && setIsMatching && setIsMatching(!nestedField);
   };
 
   // we do not want to show nestedfield's index field
