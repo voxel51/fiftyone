@@ -9,8 +9,8 @@ const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
 });
 
@@ -75,7 +75,6 @@ test.describe("classification-sidebar-filter-visibility", () => {
     grid,
     sidebar,
     eventUtils,
-    page,
   }) => {
     const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
       "animation-onRest",
