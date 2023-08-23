@@ -321,14 +321,19 @@ def list_files(path):
     files = [
         {
             "name": filename,
-            "dateModified": datetime.datetime.fromtimestamp(
+            "date_modified": datetime.datetime.fromtimestamp(
                 stat.st_mtime
             ).isoformat(),
             "type": "file" if os.path.isfile(filepath) else "directory",
             "size": stat.st_size,
+            "absolute_path": os.path.join(path, filename),
         }
         for filename, filepath, stat in zip(filenames, filepaths, stats)
     ]
+
+    # sort the list based on file.name
+    files.sort(key=lambda file: file["name"])
+
     return files
 
 

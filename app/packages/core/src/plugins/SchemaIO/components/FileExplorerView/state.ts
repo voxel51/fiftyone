@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
 
-export function useCurrentFiles(currentPath) {
+export function useCurrentFiles(defaultPath) {
+  const [currentPath, setCurrentPath] = useState(defaultPath);
   const executor = useOperatorExecutor("list_files");
-  const files = executor.result?.files || [];
+  const currentFiles = executor.result?.files || [];
 
   useEffect(() => {
     executor.execute({ path: currentPath });
@@ -13,5 +14,5 @@ export function useCurrentFiles(currentPath) {
     throw executor.error;
   }
 
-  return files;
+  return { setCurrentPath, currentFiles, currentPath };
 }

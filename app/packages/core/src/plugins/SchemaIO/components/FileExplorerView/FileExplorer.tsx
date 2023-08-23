@@ -21,10 +21,14 @@ const ModalContent = styled.div`
 
 export default function FileExplorer({ defaultPath }) {
   const [open, setOpen] = React.useState(false);
-  const [currentPath, setCurrentPath] = React.useState(defaultPath);
   const [selectedFile, setSelectedFile] = React.useState(null);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const currentFiles = useCurrentFiles(currentPath);
+  const { currentFiles, setCurrentPath, currentPath } =
+    useCurrentFiles(defaultPath);
+  const submitMode =
+    selectedFile && selectedFile.type === "directory" ? "open" : "choose";
+  const isOpen = submitMode === "open";
+  const isChoose = submitMode === "choose";
 
   const handleClickOpen = () => {
     setOpen(true);
@@ -33,6 +37,12 @@ export default function FileExplorer({ defaultPath }) {
   const handleClose = () => {
     setOpen(false);
   };
+
+  const handleOpen = () => {
+    if (selectedFile) console.log({ selectedFile });
+    setCurrentPath(selectedFile.absolute_path);
+  };
+  const handleChoose = () => {};
 
   return (
     <div>
@@ -114,9 +124,16 @@ export default function FileExplorer({ defaultPath }) {
                     >
                       Cancel
                     </Button>
-                    <Button onClick={handleClose} autoFocus>
-                      Choose
-                    </Button>
+                    {isOpen && (
+                      <Button onClick={handleOpen} autoFocus>
+                        Open
+                      </Button>
+                    )}
+                    {isChoose && (
+                      <Button onClick={handleChoose} autoFocus>
+                        Choose
+                      </Button>
+                    )}
                   </Box>
                 </Box>
               </Grid>

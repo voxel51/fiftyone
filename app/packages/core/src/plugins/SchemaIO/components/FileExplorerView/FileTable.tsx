@@ -21,7 +21,14 @@ const useStyles = makeStyles({
 });
 
 const Wrapper = ({ children }) => (
-  <div style={{ border: "solid 1px #e8e8e8", borderBottom: "none" }}>
+  <div
+    style={{
+      border: "solid 1px #e8e8e8",
+      borderBottom: "none",
+      height: "500px",
+      overflowY: "scroll",
+    }}
+  >
     {children}
   </div>
 );
@@ -60,7 +67,7 @@ function FileTable({ files, selectedFile, setSelectedFile }) {
                   <Box paddingLeft={1}>{file.name}</Box>
                 </Box>
               </TableCell>
-              <TableCell>{moment(file.dateModified).fromNow()}</TableCell>
+              <TableCell>{moment(file.date_modified).fromNow()}</TableCell>
               <TableCell>{file.size}</TableCell>
             </TableRow>
           ))}
