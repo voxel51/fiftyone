@@ -14,7 +14,7 @@ from starlette.responses import JSONResponse, StreamingResponse
 from fiftyone.server.decorators import route
 
 from .executor import (
-    execute_operator,
+    execute_or_delegate_operator,
     resolve_type,
     resolve_placement,
     ExecutionContext,
@@ -99,6 +99,8 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+
+        user = request.user
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -119,7 +121,9 @@ class ExecuteOperator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await execute_operator(operator_uri, data)
+        result = await execute_or_delegate_operator(
+            operator_uri, data, user=user.sub
+        )
         return result.to_json()
 
 
@@ -148,6 +152,7 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
+        user = request.user
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -168,7 +173,9 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        execution_result = await execute_operator(operator_uri, data)
+        execution_result = await execute_or_delegate_operator(
+            operator_uri, data, user
+        )
         if execution_result.is_generator:
             result = execution_result.result
             generator = (
