@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { readOnly } from "@fiftyone/state";
+import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
@@ -20,11 +20,14 @@ const Draggable: React.FC<
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
   const isReadOnly = useRecoilValue(readOnly);
+  const isFieldVisibilityApplied = useRecoilValue(isFieldVisibilityActive);
+
   const disableDrag =
     !entryKey ||
     entryKey.split(",")[1]?.includes("tags") ||
     entryKey.split(",")[1]?.includes("_label_tags") ||
-    isReadOnly;
+    isReadOnly ||
+    isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
 
   const style = useSpring({
@@ -46,7 +49,7 @@ const Draggable: React.FC<
           event.stopPropagation();
         }}
         onMouseDown={
-          trigger && !isReadOnly
+          !disableDrag && trigger && !isReadOnly
             ? (event) => {
                 setDragging(true);
                 trigger(event, entryKey, () => setDragging(false));

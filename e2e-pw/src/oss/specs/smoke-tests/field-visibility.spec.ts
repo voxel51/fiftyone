@@ -49,4 +49,18 @@ test.describe("field visibility", () => {
       "ground_truth",
     ]);
   });
+
+  test("sidebar entries are not draggable when field visibility is active", async ({
+    fieldVisibility,
+  }) => {
+    // TODO: assert draggable
+
+    await fieldVisibility.hideFields(["predictions", "ground_truth"]);
+    await fieldVisibility.assert.assertFieldsNotInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
+
+    // TODO: assert not draggable
+  });
 });
