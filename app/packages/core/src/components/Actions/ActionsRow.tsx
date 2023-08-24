@@ -211,6 +211,7 @@ const Tag = ({
           close={() => setOpen(false)}
           lookerRef={lookerRef}
           anchorRef={ref}
+          data-cy="selected-pill-button"
         />
       )}
     </ActionDiv>
@@ -366,32 +367,33 @@ const SaveFilters = () => {
   const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
-    ({ snapshot, set }) => async () => {
-      const loading = await snapshot.getPromise(fos.savingFilters);
-      const selected = await snapshot.getPromise(fos.selectedSamples);
+    ({ snapshot, set }) =>
+      async () => {
+        const loading = await snapshot.getPromise(fos.savingFilters);
+        const selected = await snapshot.getPromise(fos.selectedSamples);
 
-      if (loading) {
-        return;
-      }
+        if (loading) {
+          return;
+        }
 
-      set(fos.savingFilters, true);
-      if (selected.size > 0) {
-        setView(
-          (v) => [
-            ...v,
-            {
-              _cls: "fiftyone.core.stages.Select",
-              kwargs: [["sample_ids", [...selected]]],
-            },
-          ],
-          undefined,
-          undefined,
-          true
-        );
-      } else {
-        setView((v) => v);
-      }
-    },
+        set(fos.savingFilters, true);
+        if (selected.size > 0) {
+          setView(
+            (v) => [
+              ...v,
+              {
+                _cls: "fiftyone.core.stages.Select",
+                kwargs: [["sample_ids", [...selected]]],
+              },
+            ],
+            undefined,
+            undefined,
+            true
+          );
+        } else {
+          setView((v) => v);
+        }
+      },
     []
   );
 

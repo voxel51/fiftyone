@@ -575,6 +575,7 @@ Export FiftyOne datasets to disk in supported formats.
 
     fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH]
                              [-f LABEL_FIELD] [-t TYPE]
+                             [--filters KEY=VAL [KEY=VAL ...]]
                              [-k KEY=VAL [KEY=VAL ...]]
                              NAME
 
@@ -594,6 +595,11 @@ Export FiftyOne datasets to disk in supported formats.
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
+      --filters KEY=VAL [KEY=VAL ...]
+                            specific sample tags or class labels to export. To
+                            use sample tags, pass tags as `tags=train,val` and
+                            to use label filters, pass label field and values
+                            as in ground_truth=car,person,dog
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             additional type-specific keyword arguments for
                             `fiftyone.core.collections.SampleCollection.export()`
@@ -610,6 +616,13 @@ Export FiftyOne datasets to disk in supported formats.
 
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
+
+.. code-block:: shell
+
+    # Only export cats and dogs from the validation split
+    fiftyone datasets export <name> \\
+        --filters tags=validation ground_truth=cat,dog \\
+        --export-dir <export-dir> --type <type> --label-field ground_truth
 
 .. code-block:: shell
 

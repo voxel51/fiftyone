@@ -35,8 +35,8 @@ export default function Space({ node, id }: SpaceProps) {
       spaces.setNodeActive(activeChild);
     }
     return (
-      <PanelContainer data-type="panel-container" data-cy="panel-container">
-        <PanelTabs>
+      <PanelContainer>
+        <PanelTabs data-type="panel-container" data-cy="panel-container">
           <ReactSortable
             group="panel-tabs"
             list={node.children}

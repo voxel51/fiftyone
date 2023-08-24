@@ -721,11 +721,11 @@ def _parse_point_cloud(
         min_bound, max_bound = bounds
 
     if _contains_none(min_bound):
-        _min_bound = np.amin(np.asarray(pc.points), axis=0)
+        _min_bound = np.nanmin(np.asarray(pc.points), axis=0)
         min_bound = _fill_none(min_bound, _min_bound)
 
     if _contains_none(max_bound):
-        _max_bound = np.amax(np.asarray(pc.points), axis=0)
+        _max_bound = np.nanmax(np.asarray(pc.points), axis=0)
         max_bound = _fill_none(max_bound, _max_bound)
 
     bbox = o3d.geometry.AxisAlignedBoundingBox(

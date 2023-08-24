@@ -20,7 +20,7 @@ export const SampleWrapper = ({
 }: React.PropsWithChildren<{
   lookerRef?: MutableRefObject<Lookers | undefined>;
   actions?: boolean;
-  sampleAtom: RecoilValueReadOnly<ModalSample>;
+  sampleAtom?: RecoilValueReadOnly<ModalSample>;
 }>) => {
   const [hovering, setHovering] = useState(false);
 
@@ -64,8 +64,8 @@ export const SampleWrapper = ({
 };
 
 interface SampleProps {
-  lookerRefCallback: (looker: AbstractLooker) => void;
-  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  lookerRefCallback: (looker: Lookers) => void;
+  lookerRef?: MutableRefObject<Lookers | undefined>;
   actions?: boolean;
 }
 
@@ -74,8 +74,7 @@ const Sample = ({
   lookerRef: propsLookerRef,
   actions,
 }: SampleProps) => {
-  const clearModal = useClearModal();
-  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
+  const lookerRef = useRef<Lookers | undefined>(undefined);
 
   const ref = propsLookerRef || lookerRef;
 
@@ -87,7 +86,6 @@ const Sample = ({
         key={`looker-${id}`}
         lookerRef={ref}
         lookerRefCallback={lookerRefCallback}
-        onClose={clearModal}
       />
     </SampleWrapper>
   );

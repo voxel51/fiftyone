@@ -215,6 +215,8 @@ const NumericFieldFilter = ({
     return null;
   }
 
+  const key = path.replace(/[ ,.]/g, "-");
+
   return (
     <NamedRangeSliderContainer
       onClick={(e) => {
@@ -237,6 +239,7 @@ const NumericFieldFilter = ({
       <RangeSliderContainer
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
+        data-cy={`numeric-slider-container-${key}`}
       >
         {!hasBounds && !named && !hasNonfinites && (
           <Checkbox
@@ -263,6 +266,7 @@ const NumericFieldFilter = ({
               defaultRange,
             })}
             color={color}
+            key={key}
           />
         ) : hasBounds ? (
           <Checkbox
