@@ -177,35 +177,23 @@ class DelegatedOperationService(object):
     ):
         """Lists the delegated operations matching the given criteria.
 
-                Args:
-        <<<<<<< HEAD
-                    operator: the optional name of the operator to return all the delegated operations for
-                    dataset_name: the optional name of the dataset to return all the delegated operations for
-                    dataset_id: the optional id of the dataset to return all the delegated operations for
-                    run_state: the optional run state of the delegated operations to return
-                    delegation_target: the optional delegation target of the delegated operations to return
-                    paging: the optional paging parameters
-                    search: the optional search parameters
-                    run_by: the optional user who ran the delegated operations
-                    **kwargs:
-        =======
-                    operator (None): the optional name of the operator to return all
-                        the delegated operations for
-                    dataset_name (None): the optional name of the dataset to return all
-                        the delegated operations for
-                    dataset_id (None): the optional id of the dataset to return all the
-                        delegated operations for
-                    run_state (None): the optional run state of the delegated
-                        operations to return
-                    delegation_target (None): the optional delegation target of the
-                        delegated operations to return
-                    paging (None): optional
-                        :class:`fiftyone.factory.DelegatedOperationPagingParams`
-                    search (None): optional search term dict
-        >>>>>>> 257ce7ec6... Delegated operators linting (#3442)
+        Args:
+            operator (None): the optional name of the operator to return all
+                the delegated operations for
+            dataset_name (None): the optional name of the dataset to return all
+                the delegated operations for
+            dataset_id (None): the optional id of the dataset to return all the
+                delegated operations for
+            run_state (None): the optional run state of the delegated
+                operations to return
+            delegation_target (None): the optional delegation target of the
+                delegated operations to return
+            paging (None): optional
+                :class:`fiftyone.factory.DelegatedOperationPagingParams`
+            search (None): optional search term dict
 
-                Returns:
-                    a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        Returns:
+            a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.list_operations(
             operator=operator,
