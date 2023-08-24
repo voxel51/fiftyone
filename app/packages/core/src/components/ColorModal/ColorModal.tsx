@@ -139,7 +139,10 @@ const ColorModal = () => {
                     {field === ACTIVE_FIELD.global && <GlobalSetting />}
                     {field === ACTIVE_FIELD.json && <JSONViewer />}
                     {typeof field !== "string" && field && (
-                      <FieldSetting prop={activeColorModalField} />
+                      <FieldSetting
+                        key={activeColorModalField?.field.path}
+                        prop={activeColorModalField}
+                      />
                     )}
                   </Display>
                 </DraggableContent>

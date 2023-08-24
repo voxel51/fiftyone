@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { ConcreteRequest } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorPool: ReadonlyArray<string>;
   fields: ReadonlyArray<CustomizeColorInput>;
