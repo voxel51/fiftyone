@@ -22,11 +22,9 @@ export const Dataset: fos.Route<DatasetQuery> = ({ prepared }) => {
 
   useEffect(() => {
     const readOnly = Boolean(dataset?.headName && dataset?.snapshotName);
-    if (readOnly) {
-      setReadOnly(true);
-      setCanChangeSavedViews(false);
-      setCanChangeCustomColors(false);
-    }
+    setReadOnly(readOnly);
+    setCanChangeSavedViews(!readOnly);
+    setCanChangeCustomColors(!readOnly);
   }, [dataset, setReadOnly, setCanChangeSavedViews, setCanChangeCustomColors]);
 
   if (!ready) return null;
