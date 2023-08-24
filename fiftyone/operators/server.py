@@ -18,6 +18,8 @@ from .executor import (
     resolve_type,
     resolve_placement,
     ExecutionContext,
+    can_execute_or_not_snapshot,
+    raise_snapshot_execute_error,
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
@@ -55,12 +57,18 @@ class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
         dataset_name = resolve_dataset_name(data)
+        if dataset_name is None:
+            raise ValueError("Dataset name must be provided")
+
         dataset_ids = [dataset_name]
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=dataset_ids
         )
+        dataset_raw_name = data.get("dataset_name", None)
         placements = []
         for operator in registry.list_operators():
+            if not can_execute_or_not_snapshot(dataset_raw_name, operator):
+                continue
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append(
@@ -186,6 +194,12 @@ class ResolveType(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+
+        dataset_raw_name = data.get("dataset_name", None)
+        operator = registry.get_operator(operator_uri)
+
+        if not can_execute_or_not_snapshot(dataset_raw_name, operator):
+            raise_snapshot_execute_error()
 
         result = resolve_type(registry, operator_uri, data)
         return result.to_json() if result else {}

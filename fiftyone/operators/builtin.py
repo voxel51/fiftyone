@@ -272,6 +272,7 @@ class PrintStdout(foo.Operator):
             name="print_stdout",
             label="Print to stdout",
             unlisted=True,
+            read_only=True,
         )
 
     def resolve_input(self, ctx):

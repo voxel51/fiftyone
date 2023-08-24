@@ -30,6 +30,7 @@ import {
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
+import { canExecuteOrNotReadonly, getOperatorReadonlyError } from "./utils";
 
 export const promptingOperatorState = atom({
   key: "promptingOperator",
@@ -136,7 +137,7 @@ export const useOperatorPrompt = () => {
     promptingOperatorState
   );
   const containerRef = useRef();
-  const resolveTypeError = useRef();
+  const resolveTypeError = useRef<Error>();
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
   const operator = getLocalOrRemoteOperator(operatorName).operator;
@@ -202,6 +203,13 @@ export const useOperatorPrompt = () => {
   );
 
   useEffect(() => {
+    if (!operator.isRemote && !canExecuteOrNotReadonly(operator)) {
+      setResolving(false);
+      setInputFields(null);
+      setResolvedCtx(ctx);
+      resolveTypeError.current = new Error(getOperatorReadonlyError());
+      return;
+    }
     resolveInputFields();
   }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
   const [validationErrors, setValidationErrors] = useState([]);
@@ -383,6 +391,7 @@ export const availableOperators = selector({
         icon: operator.config.icon,
         darkIcon: operator.config.darkIcon,
         lightIcon: operator.config.lightIcon,
+        readOnly: operator.config.readOnly,
       };
     });
   },
@@ -733,6 +742,9 @@ export const operatorPlacementsSelector = selector({
   key: "operatorPlacementsSelector",
   get: async ({ get }) => {
     const throttledContext = get(operatorThrottledContext);
+    if (!throttledContext || !throttledContext.datasetName) {
+      return [];
+    }
     const ctx = new ExecutionContext({}, throttledContext);
     const remotePlacements = await fetchRemotePlacements(ctx);
     const localPlacements = await resolveLocalPlacements(ctx);

@@ -12,6 +12,7 @@ import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorIcon, { CustomIconPropsType } from "./OperatorIcon";
 import OperatorPalette from "./OperatorPalette";
 import { PaletteContentContainer } from "./styled-components";
+import { canExecuteOrNotReadonly } from "./utils";
 
 const QueryInput = styled.input`
   width: 100%;
@@ -57,7 +58,9 @@ const Choice = (props: ChoicePropsType) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { onClick, choice, selected } = props;
   const { label, name, canExecute } = choice;
-  const disabled = canExecute === false;
+  const disabled =
+    canExecute === false ||
+    !canExecuteOrNotReadonly({ config: { readOnly: choice.readOnly } });
 
   useEffect(() => {
     const containerElem = containerRef.current;

@@ -180,7 +180,9 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
               }
               placement="bottom-center"
             >
-              <Lock color="primary" />
+              <Lock
+                sx={{ color: (theme) => theme.palette.primary.main, mt: 1 }}
+              />
             </Tooltip>
           </div>
         )}

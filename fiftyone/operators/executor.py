@@ -17,6 +17,7 @@ from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
 from fiftyone.core.utils import run_sync_task
+from .operator import Operator
 
 
 class InvocationRequest(object):
@@ -102,6 +103,14 @@ async def execute_operator(operator_name, request_params):
         return ExecutionResult(
             error="Validation Error", validation_ctx=validation_ctx
         )
+
+    dataset_name = request_params.get("dataset_name", None)
+
+    can_execute_on_dataset = can_execute_or_not_snapshot(
+        dataset_name, operator
+    )
+    if not can_execute_on_dataset:
+        raise_snapshot_execute_error()
 
     try:
         raw_result = await (
@@ -501,3 +510,33 @@ class ValidationContext(object):
 
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)
+
+
+def is_snapshot(dataset_name: str) -> bool:
+    try:
+        ctx = ExecutionContext({"dataset_name": dataset_name})
+        snapshot_name = ctx.dataset.snapshot_name
+        return isinstance(snapshot_name, str)
+    except:
+        return False
+
+
+def raise_snapshot_execute_error():
+    raise PermissionError("cannot execute non-readonly operator on a snapshot")
+
+
+def can_execute_or_not_snapshot(dataset_name: str, operator: Operator):
+    """Returns True if either the dataset_name provided is not a snapshot or
+    the operator provided is a readonly operator and can be executed on a
+    snapshot.
+
+    Args:
+        dataset_name: raw name of the dataset
+        operator: the :class:`fiftyone.operators.operator.Operator`
+
+    Returns:
+        True/False
+    """
+    dataset_is_snapshot = is_snapshot(dataset_name)
+    operator_can_execute_on_snapshot = operator.config.read_only == True
+    return not dataset_is_snapshot or operator_can_execute_on_snapshot

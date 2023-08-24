@@ -1,3 +1,4 @@
+import { nonReactiveStore } from "@fiftyone/state";
 import { getFetchOrigin } from "@fiftyone/utilities";
 import { KeyboardEventHandler } from "react";
 
@@ -26,4 +27,14 @@ export function onEnter(
 export function resolveServerPath(plugin) {
   const origin = getFetchOrigin();
   return origin + plugin.serverPath;
+}
+
+export function canExecuteOrNotReadonly(operator) {
+  const isReadOnly = nonReactiveStore.get("readOnly");
+  const canExecuteInReadOnly = operator.config.readOnly;
+  return !isReadOnly || canExecuteInReadOnly;
+}
+
+export function getOperatorReadonlyError() {
+  return "Cannot execute non-readonly operator in readonly mode";
 }

@@ -27,6 +27,7 @@ class OperatorConfig(object):
         on_startup (False): whether the operator should be executed on startup
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
+        read_only (False): whether the operator is read_only
     """
 
     def __init__(
@@ -42,6 +43,7 @@ class OperatorConfig(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
+        read_only=False,
     ):
         self.name = name
         self.label = label or name
@@ -54,6 +56,7 @@ class OperatorConfig(object):
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.read_only = read_only
 
     def to_json(self):
         return {
@@ -68,6 +71,7 @@ class OperatorConfig(object):
             "icon": self.icon,
             "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "read_only": self.read_only,
         }
 
 

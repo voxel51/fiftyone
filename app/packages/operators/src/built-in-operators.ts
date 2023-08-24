@@ -30,6 +30,7 @@ class ReloadSamples extends Operator {
     return new OperatorConfig({
       name: "reload_samples",
       label: "Reload samples from the dataset",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -43,6 +44,7 @@ class ReloadDataset extends Operator {
     return new OperatorConfig({
       name: "reload_dataset",
       label: "Reload the dataset",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -57,6 +59,7 @@ class ClearSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "clear_selected_samples",
       label: "Clear selected samples",
+      readOnly: true,
     });
   }
   useHooks() {
@@ -77,6 +80,7 @@ class CopyViewAsJSON extends Operator {
     return new OperatorConfig({
       name: "copy_view_as_json",
       label: "Copy view as JSON",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -92,6 +96,7 @@ class ViewFromJSON extends Operator {
     return new OperatorConfig({
       name: "view_from_clipboard",
       label: "Paste view from clipboard",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -112,6 +117,7 @@ class OpenPanel extends Operator {
       name: "open_panel",
       label: "Open a panel",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -183,6 +189,7 @@ class OpenAllPanels extends Operator {
     return new OperatorConfig({
       name: "open_all_panel",
       label: "Open all panels",
+      readOnly: true,
     });
   }
   useHooks(): object {
@@ -210,6 +217,7 @@ class ClosePanel extends Operator {
       name: "close_panel",
       label: "Close a panel",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -256,6 +264,7 @@ class CloseAllPanels extends Operator {
     return new OperatorConfig({
       name: "close_all_panel",
       label: "Close all panels",
+      readOnly: true,
     });
   }
   useHooks(): object {
@@ -281,6 +290,7 @@ class SplitPanel extends Operator {
       name: "split_panel",
       label: "Split Panel",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(): Promise<types.Property> {
@@ -313,6 +323,7 @@ class OpenDataset extends Operator {
       name: "open_dataset",
       label: "Open Dataset",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -336,6 +347,7 @@ class ClearView extends Operator {
     return new OperatorConfig({
       name: "clear_view",
       label: "Clear view bar",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -348,6 +360,7 @@ class ClearSidebarFilters extends Operator {
     return new OperatorConfig({
       name: "clear_sidebar_filters",
       label: "Clear sidebar filters",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -361,6 +374,7 @@ class ClearAllStages extends Operator {
     return new OperatorConfig({
       name: "clear_all_stages",
       label: "Clear all selections, filters, and view",
+      readOnly: true,
     });
   }
   useHooks(): {} {
@@ -384,6 +398,7 @@ class RefreshColors extends Operator {
     return new OperatorConfig({
       name: "refresh_colors",
       label: "Refresh colors",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {
@@ -398,6 +413,7 @@ class ShowSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "show_selected_samples",
       label: "Show selected samples",
+      readOnly: true,
     });
   }
   useHooks(): {} {
@@ -422,6 +438,7 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     return new OperatorConfig({
       name: "convert_extended_selection_to_selected_samples",
       label: "Convert extended selection to selected samples",
+      readOnly: true,
     });
   }
   useHooks(): {} {
@@ -449,6 +466,7 @@ class SetSelectedSamples extends Operator {
       name: "set_selected_samples",
       label: "Set selected samples",
       unlisted: true,
+      readOnly: true,
     });
   }
   useHooks(): {} {
@@ -468,6 +486,7 @@ class SetView extends Operator {
       name: "set_view",
       label: "Set view",
       unlisted: true,
+      readOnly: true,
     });
   }
   useHooks(ctx: ExecutionContext): {} {
@@ -497,6 +516,7 @@ class ShowSamples extends Operator {
       name: "show_samples",
       label: "Show samples",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -549,6 +569,7 @@ class ShowSamples extends Operator {
 //     return new OperatorConfig({
 //       name: "clear_show_samples",
 //       label: "Clear show samples",
+//       readOnly: true,
 //     });
 //   }
 //   async execute(ctx: ExecutionContext) {
@@ -563,6 +584,7 @@ class ConsoleLog extends Operator {
       name: "console_log",
       label: "Console Log",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -585,6 +607,7 @@ class ShowOutput extends Operator {
       name: "show_output",
       label: "Show Output",
       unlisted: true,
+      readOnly: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -620,6 +643,7 @@ class TestOperator extends Operator {
       name: "test_operator",
       label: "Test an Operator",
       dynamic: true,
+      readOnly: true,
     });
   }
   parseParams(rawParams: string) {
@@ -677,6 +701,7 @@ class SetSelectedLabels extends Operator {
       name: "set_selected_labels",
       label: "Set selected labels",
       unlisted: true,
+      readOnly: true,
     });
   }
   useHooks(ctx: ExecutionContext): {} {
@@ -694,6 +719,7 @@ class ClearSelectedLabels extends Operator {
     return new OperatorConfig({
       name: "clear_selected_labels",
       label: "Clear selected labels",
+      readOnly: true,
     });
   }
   async execute({ state }: ExecutionContext) {

@@ -1,7 +1,11 @@
 import { getFetchFunction, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import * as types from "./types";
-import { stringifyError } from "./utils";
+import {
+  canExecuteOrNotReadonly,
+  getOperatorReadonlyError,
+  stringifyError,
+} from "./utils";
 
 class InvocationRequest {
   constructor(public operatorURI: string, public params: any = {}) {}
@@ -112,6 +116,7 @@ export type OperatorConfigOptions = {
   icon?: string;
   darkIcon?: string;
   lightIcon?: string;
+  readOnly?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -126,6 +131,7 @@ export class OperatorConfig {
   public icon = null;
   public darkIcon = null;
   public lightIcon = null;
+  public readOnly = false;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -140,6 +146,7 @@ export class OperatorConfig {
     this.icon = options.icon;
     this.darkIcon = options.darkIcon;
     this.lightIcon = options.lightIcon;
+    this.readOnly = options.readOnly === true ? true : false;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -155,6 +162,7 @@ export class OperatorConfig {
       icon: json.icon,
       darkIcon: json.dark_icon,
       lightIcon: json.light_icon,
+      readOnly: json.read_only,
     });
   }
 }
@@ -522,6 +530,9 @@ export async function executeOperatorWithContext(
       executor = serverResult.executor;
     }
   } else {
+    if (!canExecuteOrNotReadonly(operator)) {
+      throw new Error(getOperatorReadonlyError());
+    }
     try {
       result = await operator.execute(ctx);
       executor = ctx.executor;
