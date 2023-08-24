@@ -127,7 +127,7 @@ and use it to generate object detections:
                         label=row.name,
                         bounding_box=[
                             row.xcenter - 0.5 * row.width,
-                            row.ycenter - row.height,
+                            row.ycenter - 0.5 * row.height,
                             row.width,
                             row.height,
                         ],
