@@ -1,4 +1,4 @@
-import { MutableRefObject } from "react";
+import React, { MutableRefObject } from "react";
 import {
   RecoilState,
   useRecoilState,
@@ -83,7 +83,12 @@ const Wrapper = ({
 
   const initializeSettings = () => {
     excluded && setExcluded(false);
-    setIsMatching(!nestedField);
+    isFilterMode && setIsMatching(!nestedField);
+  };
+
+  const handleReset = () => {
+    setSelected([]);
+    initializeSettings();
   };
 
   if (totalCount === 0) {
@@ -111,7 +116,7 @@ const Wrapper = ({
           name={value}
           count={
             count < 0 || !isFilterMode
-              ? null
+              ? undefined
               : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
@@ -150,10 +155,7 @@ const Wrapper = ({
           <Button
             text={"Reset"}
             color={color}
-            onClick={() => {
-              setSelected([]);
-              initializeSettings();
-            }}
+            onClick={handleReset}
             style={{
               margin: "0.25rem -0.5rem",
               height: "2rem",

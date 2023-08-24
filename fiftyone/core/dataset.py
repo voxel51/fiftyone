@@ -3060,7 +3060,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
 
         -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
             delete via their IDs and/or tags
@@ -3078,7 +3078,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             labels (None): a list of dicts specifying the labels to delete in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
             view (None): a :class:`fiftyone.core.view.DatasetView` into this
@@ -6850,6 +6850,10 @@ def _delete_dataset_doc(dataset_doc):
             run_doc.results.delete()
 
         run_doc.delete()
+
+    from fiftyone.operators.delegated import DelegatedOperationService
+
+    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
 
     dataset_doc.delete()
 

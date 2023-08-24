@@ -60,8 +60,7 @@ const useClearSelectedLabels = () => {
 interface LookerProps {
   sample?: fos.ModalSample;
   lookerRef?: MutableRefObject<any>;
-  lookerRefCallback?: (looker: AbstractLooker) => void;
-  onClose?: EventCallback;
+  lookerRefCallback?: (looker: fos.Lookers) => void;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
 }
 
@@ -69,7 +68,6 @@ const Looker = ({
   sample: propsSampleData,
   lookerRef,
   lookerRefCallback,
-  onClose,
 }: LookerProps) => {
   const [id] = useState(() => uuid());
 
@@ -130,10 +128,9 @@ const Looker = ({
     setReset((c) => !c);
   });
 
-  useEventHandler(looker, "close", () => {
+  useEventHandler(looker, "close", (e: Event) => {
     jsonPanel.close();
     helpPanel.close();
-    onClose();
   });
 
   useEventHandler(looker, "select", useOnSelectLabel());
@@ -160,8 +157,6 @@ const Looker = ({
       );
     }
   );
-
-  onClose && useEventHandler(looker, "close", onClose);
 
   useEffect(() => {
     initialRef.current = false;
