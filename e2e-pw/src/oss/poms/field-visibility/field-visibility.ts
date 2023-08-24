@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { SidebarPom } from "../sidebar";
 
 export class FieldVisibilityPom {
   readonly page: Page;
@@ -9,7 +10,8 @@ export class FieldVisibilityPom {
 
   constructor(page: Page) {
     this.page = page;
-    this.assert = new FieldVisibilityAsserter(this);
+
+    this.assert = new FieldVisibilityAsserter(this, new SidebarPom(page));
 
     this.sidebar = page.getByTestId("sidebar");
   }
@@ -54,50 +56,11 @@ export class FieldVisibilityPom {
   applyBtn() {
     return this.modalContainer().getByTestId("field-visibility-btn-apply");
   }
-
-  // TODO: replace with sidebar pom coming up
-  sidebarField(fieldName: string) {
-    return this.sidebar
-      .getByTestId(`${fieldName}-field`)
-      .locator("div")
-      .filter({ hasText: fieldName })
-      .nth(1);
-  }
-
-  // TODO: move to sidebar pom coming up
-  groupField(groupName: string) {
-    return this.sidebar.getByTestId(`sidebar-group-${groupName}-field`);
-  }
 }
 
 class FieldVisibilityAsserter {
-  constructor(private readonly svp: FieldVisibilityPom) {}
-
-  async assertFieldInSidebar(fieldName: string) {
-    await expect(this.svp.sidebarField(fieldName)).toBeVisible();
-  }
-
-  async assertFieldsInSidebar(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertFieldInSidebar(fieldNames[i]);
-    }
-  }
-
-  async assertFieldsNotInSidebar(fieldNames: string[]) {
-    for (let i = 0; i < fieldNames.length; i++) {
-      await this.assertFieldNotInSidebar(fieldNames[i]);
-    }
-  }
-
-  async assertFieldNotInSidebar(fieldName: string) {
-    await expect(this.svp.sidebarField(fieldName)).toBeHidden();
-  }
-
-  async assertSidebarGroupIsVisibile(groupName: string) {
-    await expect(this.svp.groupField(groupName)).toBeVisible();
-  }
-
-  async assertSidebarGroupIsHidden(groupName: string) {
-    await expect(this.svp.groupField(groupName)).toBeHidden({ timeout: 1000 });
-  }
+  constructor(
+    private readonly fv: FieldVisibilityPom,
+    private readonly sb: SidebarPom
+  ) {}
 }

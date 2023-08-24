@@ -41,10 +41,16 @@ const Draggable: React.FC<
         : "grab"
       : "pointer",
   });
+  const dataCyKey = entryKey
+    ?.split(",")?.[1]
+    ?.replace(/["]/g, "")
+    ?.replace("]", "");
 
   return (
     <>
       <animated.div
+        data-draggable={!disableDrag && trigger && !isReadOnly}
+        data-cy={`sidebar-entry-draggable-${dataCyKey}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
