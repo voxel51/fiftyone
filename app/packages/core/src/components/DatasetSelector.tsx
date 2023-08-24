@@ -1,14 +1,13 @@
 import { Link, Selector } from "@fiftyone/components";
 import {
-  datasetHeadName,
-  datasetName,
-  datasetSnapshotName,
-  getDatasetName,
   RouterContext,
+  datasetName,
+  getDatasetName,
   useSetDataset,
 } from "@fiftyone/state";
 import React, { useContext, useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { datasetHeadName, datasetSnapshotName } from "../versionSelectors";
 
 const DatasetLink: React.FC<{ value: string; className: string }> = ({
   className,
