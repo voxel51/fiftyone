@@ -3814,7 +3814,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to exclude
+            :attr:`fiftyone.core.session.Session.selected_labels`, to exclude
             specific labels
 
         -   Provide the ``ids`` argument to exclude labels with specific IDs
@@ -3893,7 +3893,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to exclude in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to exclude
             tags (None): a tag or iterable of tags of labels to exclude
             fields (None): a field or iterable of fields from which to exclude
@@ -5180,7 +5180,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to match
+            :attr:`fiftyone.core.session.Session.selected_labels`, to match
             specific labels
 
         -   Provide the ``ids`` argument to match labels with specific IDs
@@ -5275,7 +5275,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to select in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
             tags (None): a tag or iterable of tags of labels to select
             filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
@@ -5873,7 +5873,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to select
+            :attr:`fiftyone.core.session.Session.selected_labels`, to select
             specific labels
 
         -   Provide the ``ids`` argument to select labels with specific IDs
@@ -5945,7 +5945,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to select in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
