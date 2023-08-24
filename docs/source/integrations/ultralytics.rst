@@ -1,4 +1,4 @@
-.. _ultralytics:
+.. _ultralytics-integration:
 
 Ultralytics Integration
 =======================

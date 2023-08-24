@@ -1,4 +1,4 @@
-.. _pytorch-hub:
+.. _pytorch-hub-integration:
 
 PyTorch Hub Integration
 =======================
@@ -160,7 +160,7 @@ and use it to generate object detections:
 
     Did you know? Ultralytics YOLOv5 is natievly available in the
     :ref:`FiftyOne Model Zoo <model-zoo-yolov5m-coco-torch>`. You should also
-    check out the :ref:`Ultralytics intergration <ultralytics>`!
+    check out the :ref:`Ultralytics intergration <ultralytics-integration>`!
 
 Example: DINOv2
 ---------------
