@@ -1,25 +1,15 @@
 import React, { useState } from "react";
-import { IconButton, TextField, Box } from "@material-ui/core";
-import ArrowUpwardIcon from "@material-ui/icons/ArrowUpward";
-import RefreshIcon from "@material-ui/icons/Refresh";
+import { IconButton, TextField, Box } from "@mui/material";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import FilterDramaIcon from "@mui/icons-material/FilterDrama";
 
 function ExplorerActions({
   onPathChange,
-  currentPath: givenPath,
+  currentPath,
   onSidebarClick,
+  onRefresh,
 }) {
-  const [currentPath, setCurrentPath] = useState(givenPath);
-
-  const handlePathSubmit = (event) => {
-    event.preventDefault();
-    onPathChange(currentPath);
-  };
-
-  const handlePathChange = (event) => {
-    setCurrentPath(event.target.value);
-  };
-
   return (
     <Box display="flex" alignItems="center" gap={1} style={{ width: "100%" }}>
       <IconButton onClick={() => onSidebarClick()}>
@@ -27,9 +17,14 @@ function ExplorerActions({
       </IconButton>
       <TextField
         size="small"
-        defaultValue={givenPath}
-        onChange={handlePathChange}
-        onSubmit={handlePathSubmit}
+        key={currentPath}
+        defaultValue={currentPath}
+        onKeyDown={(ev) => {
+          if (ev.key === "Enter") {
+            onPathChange(ev.target.value);
+            ev.preventDefault();
+          }
+        }}
         variant="outlined"
         fullWidth
       />
@@ -40,7 +35,7 @@ function ExplorerActions({
       >
         <ArrowUpwardIcon />
       </IconButton>
-      <IconButton onClick={() => onPathChange(currentPath)}>
+      <IconButton onClick={onRefresh}>
         <RefreshIcon />
       </IconButton>
     </Box>

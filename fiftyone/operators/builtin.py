@@ -300,9 +300,6 @@ class ListFiles(foo.Operator):
 
     def execute(self, ctx):
         path = ctx.params.get("path", None)
-
-        # a date of 10 seconds ago
-        date = datetime.datetime.now()
         # convert date into seconds from epoch
         return {"files": list_files(path)}
 
@@ -316,7 +313,7 @@ def list_files(path):
     # map the filenames to their full file paths
     filepaths = [os.path.join(path, filename) for filename in filenames]
     # get the stats for each file
-    stats = [os.stat(filepath) for filepath in filepaths]
+    stats = [os.stat(filepath, follow_symlinks=True) for filepath in filepaths]
     # map the stats to a dictionary of the file name, date modified, and size in bytes
     files = [
         {

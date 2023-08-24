@@ -6,13 +6,15 @@ export function useCurrentFiles(defaultPath) {
   const executor = useOperatorExecutor("list_files");
   const currentFiles = executor.result?.files || [];
 
-  useEffect(() => {
+  const refresh = () => {
     executor.execute({ path: currentPath });
-  }, [currentPath]);
+  };
+
+  useEffect(refresh, [currentPath]);
 
   if (executor.error) {
     throw executor.error;
   }
 
-  return { setCurrentPath, currentFiles, currentPath };
+  return { setCurrentPath, refresh, currentFiles, currentPath };
 }

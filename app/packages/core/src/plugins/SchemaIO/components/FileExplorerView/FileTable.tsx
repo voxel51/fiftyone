@@ -7,42 +7,62 @@ import {
   TableHead,
   TableRow,
   Paper,
-  makeStyles,
   Box,
-} from "@material-ui/core";
-import FolderIcon from "@material-ui/icons/Folder";
-import InsertDriveFileIcon from "@material-ui/icons/InsertDriveFile";
+} from "@mui/material";
+import FolderIcon from "@mui/icons-material/Folder";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import moment from "moment";
-
-const useStyles = makeStyles({
-  selected: {
-    backgroundColor: "#ddd",
-  },
-});
+import styled from "styled-components";
+import { scrollable } from "@fiftyone/components";
 
 const Wrapper = ({ children }) => (
-  <div
+  <Paper
     style={{
-      border: "solid 1px #e8e8e8",
-      borderBottom: "none",
       height: "500px",
-      overflowY: "scroll",
+      maxHeight: "80vh",
+      minHeight: "40vh",
+      overflowY: "auto",
+      width: "100%",
     }}
+    className={scrollable}
   >
     {children}
-  </div>
+  </Paper>
 );
 
-function FileTable({ files, selectedFile, setSelectedFile }) {
-  const handleRowClick = (file) => {
-    setSelectedFile(file);
-  };
+function humanReadableBytes(bytes: number): string {
+  const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
-  const classes = useStyles({});
+  if (bytes === 0) return "0 Byte";
+
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
+}
+
+function FileTable({
+  chooseMode,
+  files,
+  selectedFile,
+  onSelectFile,
+  onChoose,
+  onOpenDir,
+}) {
+  const handleRowClick = (file) => {
+    onSelectFile(file);
+  };
+  const handleRowDoubleClick = (file) => {
+    if (file.type === "directory") {
+      onOpenDir(file);
+    } else {
+      onChoose(file);
+    }
+  };
 
   return (
     <TableContainer component={Wrapper}>
-      <Table size="small">
+      <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
             <TableCell>Name</TableCell>
@@ -55,7 +75,20 @@ function FileTable({ files, selectedFile, setSelectedFile }) {
             <TableRow
               key={file.name}
               onClick={() => handleRowClick(file)}
-              className={selectedFile === file ? classes.selected : ""}
+              onDoubleClick={() => handleRowDoubleClick(file)}
+              sx={{
+                td: {
+                  color: (theme) =>
+                    chooseMode !== file.type
+                      ? theme.palette.text.secondary
+                      : "inherit",
+                },
+                backgroundColor: (theme) =>
+                  selectedFile === file
+                    ? theme.palette.background.paper
+                    : "none",
+                "&:last-child td, &:last-child th": { border: 0 },
+              }}
             >
               <TableCell>
                 <Box display="flex" alignItems="center">
@@ -68,7 +101,7 @@ function FileTable({ files, selectedFile, setSelectedFile }) {
                 </Box>
               </TableCell>
               <TableCell>{moment(file.date_modified).fromNow()}</TableCell>
-              <TableCell>{file.size}</TableCell>
+              <TableCell>{humanReadableBytes(file.size)}</TableCell>
             </TableRow>
           ))}
         </TableBody>

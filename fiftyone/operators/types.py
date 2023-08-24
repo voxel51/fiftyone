@@ -192,6 +192,15 @@ class Object(BaseType):
         """
         return self.define_property(name, Object(), **kwargs)
 
+    def file(self, name, **kwargs):
+        """Defines a property on the object that is a file.
+
+        Args:
+            name: the name of the property
+            view (None): the :class:`FileExplorerView` of the property
+        """
+        return self.define_property(name, File(), **kwargs)
+
     def view(self, name, view, **kwargs):
         """Defines a view-only property.
 

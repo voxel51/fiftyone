@@ -1,37 +1,68 @@
 import * as React from "react";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
-import { Box, Grid, Modal, Paper, TextField } from "@material-ui/core";
+import { Button } from "@fiftyone/components";
 import ExplorerActions from "./ExplorerActions";
 import FileTable from "./FileTable";
 import VolumeSelector from "./VolumeSelector";
 import styled from "styled-components";
-import { Typography } from "@mui/material";
+import {
+  Dialog,
+  Typography,
+  Box,
+  Grid,
+  Modal,
+  Paper,
+  Stack,
+  TextField,
+} from "@mui/material";
 import { useCurrentFiles } from "./state";
 
 const ModalContent = styled.div`
-  background: #ffffff;
-  margin: 100px auto 0 auto;
-  max-width: 1000px;
+  max-width: 90vw;
+  width: 500px;
+  min-width: 50vw;
+  margin: 2rem;
 `;
 
-export default function FileExplorer({ defaultPath }) {
-  const [open, setOpen] = React.useState(false);
+function useSelectedFile(currentPath, chooseMode) {
   const [selectedFile, setSelectedFile] = React.useState(null);
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const { currentFiles, setCurrentPath, currentPath } =
-    useCurrentFiles(defaultPath);
-  const submitMode =
-    selectedFile && selectedFile.type === "directory" ? "open" : "choose";
-  const isOpen = submitMode === "open";
-  const isChoose = submitMode === "choose";
+  const fileIsSelected = selectedFile?.type === "file";
+  const dirIsSelected = selectedFile?.type === "directory";
+  const showOpenButton =
+    selectedFile?.type === "directory" &&
+    currentPath !== selectedFile?.absolute_path;
+  const canChooseDir = chooseMode === "directory" && dirIsSelected;
+  const canChooseFile = chooseMode === "file" && fileIsSelected;
+  const showChooseButton = canChooseDir || canChooseFile;
 
-  const handleClickOpen = () => {
+  const handleSelectFile = (file) => {
+    const allowed = file.type == chooseMode;
+    if (allowed) setSelectedFile(file);
+  };
+
+  return { selectedFile, handleSelectFile, showOpenButton, showChooseButton };
+}
+
+export default function FileExplorer({
+  label,
+  description,
+  chooseButtonLabel,
+  buttonLabel,
+  defaultPath,
+  chooseMode,
+  onChoose,
+}) {
+  const [open, setOpen] = React.useState(false);
+  const { currentFiles, setCurrentPath, currentPath, refresh } =
+    useCurrentFiles(defaultPath);
+  const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
+    useSelectedFile(currentPath, chooseMode);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+  const [chosenFile, setChosenFile] = React.useState(null);
+
+  const handleClickOpen = (e) => {
     setOpen(true);
+    e.preventDefault();
   };
 
   const handleClose = () => {
@@ -39,72 +70,79 @@ export default function FileExplorer({ defaultPath }) {
   };
 
   const handleOpen = () => {
-    if (selectedFile) console.log({ selectedFile });
     setCurrentPath(selectedFile.absolute_path);
   };
-  const handleChoose = () => {};
+  const handleChoose = () => {
+    setOpen(false);
+    setChosenFile(selectedFile);
+    onChoose(selectedFile);
+  };
 
   return (
     <div>
       <Box>
-        <TextField />
-        <Button variant="outlined" onClick={handleClickOpen}>
-          Choose a file
-        </Button>
+        {chosenFile && (
+          <TextField
+            disabled={true}
+            key={chosenFile?.name}
+            defaultValue={chosenFile?.name}
+          />
+        )}
+        {!chosenFile && (
+          <Button variant="outlined" onClick={handleClickOpen}>
+            {buttonLabel || "Choose"}
+          </Button>
+        )}
+        {chosenFile && (
+          <Button variant="outlined" onClick={() => setChosenFile(null)}>
+            Clear
+          </Button>
+        )}
       </Box>
-      <Modal
+      <Dialog
         open={open}
         onClose={handleClose}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
-        fullWidth
+        PaperProps={{ sx: { backgroundImage: "none" } }}
+        maxWidth={false}
       >
         <ModalContent>
           <Grid container direction="row" spacing={1}>
-            {sidebarOpen && (
-              <Grid xs={2} item style={{ background: "#e8e8e8" }}>
-                <VolumeSelector />
-              </Grid>
-            )}
-            <Grid
-              xs={sidebarOpen ? 10 : null}
-              container
-              item
-              style={{
-                padding: sidebarOpen ? "0 3rem 0 3rem" : "1rem 2rem 1rem 2rem",
-              }}
-              spacing={sidebarOpen ? 0 : 1}
-            >
+            <Grid container item spacing={2}>
               <Grid item>
-                <Typography
-                  variant="h6"
-                  style={{
-                    margin: sidebarOpen ? "1rem 0 -3rem 1rem" : "1rem 0 0 0",
-                  }}
-                >
-                  Choose a file...
-                </Typography>
+                <Typography variant="h6">{label}</Typography>
+                {description && (
+                  <Typography variant="body2">{description}</Typography>
+                )}
               </Grid>
               <Grid item container>
                 <ExplorerActions
                   onSidebarClick={() => setSidebarOpen((open) => !open)}
                   currentPath={currentPath}
                   selectedFile={selectedFile}
+                  onPathChange={(path) => setCurrentPath(path)}
+                  onRefresh={refresh}
                 />
               </Grid>
-              <Grid item style={{ width: "100%" }}>
-                <FileTable
-                  files={currentFiles}
-                  fullWidth
-                  selectedFile={selectedFile}
-                  setSelectedFile={setSelectedFile}
-                />
+              <Grid spacing={2} item container>
+                {sidebarOpen && (
+                  <Grid item>
+                    <VolumeSelector />
+                  </Grid>
+                )}
+                <Grid item sx={{ flex: 1 }}>
+                  <FileTable
+                    chooseMode={chooseMode}
+                    files={currentFiles}
+                    selectedFile={selectedFile}
+                    onSelectFile={handleSelectFile}
+                    onOpenDir={(file) => setCurrentPath(file.absolute_path)}
+                    onChooseFile={handleChoose}
+                  />
+                </Grid>
               </Grid>
-              <Grid
-                item
-                container
-                style={{ margin: sidebarOpen ? "0" : "0 0 1rem 0" }}
-              >
+              <Grid item xs={12}>
                 <Box
                   display="flex"
                   alignItems="center"
@@ -117,30 +155,23 @@ export default function FileExplorer({ defaultPath }) {
                     size="small"
                     fullWidth
                   />
-                  <Box display="flex" style={{ margin: "0 1rem 0 1rem" }}>
-                    <Button
-                      onClick={handleClose}
-                      style={{ marginRight: "1rem" }}
-                    >
-                      Cancel
-                    </Button>
-                    {isOpen && (
-                      <Button onClick={handleOpen} autoFocus>
-                        Open
-                      </Button>
+                  <Stack direction="row" spacing={2}>
+                    <Button onClick={handleClose}>Cancel</Button>
+                    {showOpenButton && (
+                      <Button onClick={handleOpen}>Open</Button>
                     )}
-                    {isChoose && (
+                    {showChooseButton && (
                       <Button onClick={handleChoose} autoFocus>
-                        Choose
+                        {chooseButtonLabel || "Choose"}
                       </Button>
                     )}
-                  </Box>
+                  </Stack>
                 </Box>
               </Grid>
             </Grid>
           </Grid>
         </ModalContent>
-      </Modal>
+      </Dialog>
     </div>
   );
 }
