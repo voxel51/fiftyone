@@ -2025,6 +2025,156 @@
             },
             "tags": ["embeddings", "torch"],
             "date_added": "2023-07-31 10:17:51"
+        },
+        {
+            "base_name": "yolov5n-coco-torch",
+            "description": "Ultralytics YOLOv5n model trained on COCO",
+            "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "size_bytes": 7936,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "ultralytics/yolov5",
+                        "model": "yolov5n",
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch"],
+            "date_added": "2023-08-22 19:22:51"
+        },
+        {
+            "base_name": "yolov5s-coco-torch",
+            "description": "Ultralytics YOLOv5s model trained on COCO",
+            "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "size_bytes": 28928,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "ultralytics/yolov5",
+                        "model": "yolov5s",
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch"],
+            "date_added": "2023-08-22 19:22:51"
+        },
+        {
+            "base_name": "yolov5m-coco-torch",
+            "description": "Ultralytics YOLOv5m model trained on COCO",
+            "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "size_bytes": 83872,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "ultralytics/yolov5",
+                        "model": "yolov5m",
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch"],
+            "date_added": "2023-08-22 19:22:51"
+        },
+        {
+            "base_name": "yolov5l-coco-torch",
+            "description": "Ultralytics YOLOv5l model trained on COCO",
+            "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "size_bytes": 197504,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "ultralytics/yolov5",
+                        "model": "yolov5l",
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch"],
+            "date_added": "2023-08-22 19:22:51"
+        },
+        {
+            "base_name": "yolov5x-coco-torch",
+            "description": "Ultralytics YOLOv5x model trained on COCO",
+            "source": "https://pytorch.org/hub/ultralytics_yolov5",
+            "size_bytes": 360496,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.torch.TorchImageModel",
+                "config": {
+                    "entrypoint_fcn": "fiftyone.utils.torch.load_torch_hub_raw_model",
+                    "entrypoint_args": {
+                        "repo_or_dir": "ultralytics/yolov5",
+                        "model": "yolov5x",
+                        "pretrained": true
+                    },
+                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["detection", "coco", "torch"],
+            "date_added": "2023-08-22 19:22:51"
         }
     ]
 }
