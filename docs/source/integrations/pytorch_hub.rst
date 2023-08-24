@@ -156,6 +156,12 @@ and use it to generate object detections:
     dataset.limit(10).apply_model(model, label_field="yolov5")
     dataset.count("yolov5.detections")  # 26
 
+.. note::
+
+    Did you know? Ultralytics YOLOv5 is natievly available in the
+    :ref:`FiftyOne Model Zoo <model-zoo-yolov5m-coco-torch>`. You should also
+    check out the :ref:`Ultralytics intergration <ultralytics>`!
+
 Example: DINOv2
 ---------------
 
