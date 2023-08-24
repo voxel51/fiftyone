@@ -9,6 +9,7 @@ import _ from "lodash";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -55,6 +56,7 @@ type View = "pov" | "top";
 
 const MODAL_TRUE = true;
 const DEFAULT_GREEN = "#00ff00";
+const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
 export const Looker3d = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
@@ -86,6 +88,14 @@ export const Looker3d = () => {
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
+
+  useLayoutEffect(() => {
+    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
+
+    if (canvas) {
+      canvas.querySelector("canvas")?.setAttribute("sample-loaded", "true");
+    }
+  }, []);
 
   const handleSelect = useCallback(
     (label: OverlayLabel) => {
@@ -493,7 +503,7 @@ export const Looker3d = () => {
   return (
     <ErrorBoundary>
       <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
-        <Canvas onClick={() => setCurrentAction(null)}>
+        <Canvas id={CANVAS_WRAPPER_ID} onClick={() => setCurrentAction(null)}>
           <Screenshot />
           <Environment
             controlsRef={controlsRef}
@@ -508,6 +518,7 @@ export const Looker3d = () => {
         </Canvas>
         {(hoveringRef.current || hovering) && (
           <ActionBarContainer
+            data-cy="looker3d-action-bar"
             onMouseEnter={() => (hoveringRef.current = true)}
             onMouseLeave={() => (hoveringRef.current = false)}
           >
@@ -559,9 +570,11 @@ class ErrorBoundary extends React.Component<
       // not an error
       return (
         <Loading dataCy={"looker3d"}>
-          {this.state.error instanceof Error
-            ? this.state.error.message
-            : this.state.error}
+          <div data-cy="looker-error-info">
+            {this.state.error instanceof Error
+              ? this.state.error.message
+              : this.state.error}
+          </div>
         </Loading>
       );
     }

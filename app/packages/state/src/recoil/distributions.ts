@@ -1,31 +1,21 @@
-import { VariablesOf } from "react-relay";
-import { graphQLSelectorFamily } from "recoil-relay";
-
 import {
   countValues as countValuesGraphQL,
   countValuesQuery,
   histogramValues as histogramValuesGraphQL,
   histogramValuesQuery,
 } from "@fiftyone/relay";
-
-import { RelayEnvironmentKey } from "./relay";
-
-import { datasetName } from "./selectors";
-import { view } from "./view";
-import { selector, selectorFamily } from "recoil";
-import { expandPath, fieldPaths, field, labelFields, fields } from "./schema";
 import {
   BOOLEAN_FIELD,
   DATE_FIELD,
   DATE_TIME_FIELD,
   DETECTION,
   DETECTIONS,
-  EMBEDDED_DOCUMENT_FIELD,
   FLOAT_FIELD,
+  FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
   INT_FIELD,
   KEYPOINT,
   KEYPOINTS,
-  LABELS,
   LABELS_PATH,
   LIST_FIELD,
   POLYLINE,
@@ -34,10 +24,17 @@ import {
   VALID_DISTRIBUTION_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { State } from "./types";
+import { VariablesOf } from "react-relay";
+import { selector, selectorFamily } from "recoil";
+import { graphQLSelectorFamily } from "recoil-relay";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
 import { groupSlice, groupStatistics } from "./groups";
+import { RelayEnvironmentKey } from "./relay";
+import { field, fieldPaths } from "./schema";
+import { datasetName } from "./selectors";
+import { State } from "./types";
+import { view } from "./view";
 
 /**
  * A generic type that extracts the response type from a GraphQL query.
@@ -105,9 +102,10 @@ export const countValues = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
       const data = get(countValuesData(path));
 
@@ -116,13 +114,13 @@ export const countValues = selectorFamily({
           if (data.__typename === "BoolCountValuesResponse") {
             return data;
           }
+          break;
         case STRING_FIELD:
           if (data.__typename === "StrCountValuesResponse") {
             return data;
           }
-        default:
-          throw new Error("invalid request");
       }
+      throw new Error("invalid request");
     },
 });
 
@@ -131,9 +129,10 @@ export const histogramValues = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
       const data = get(histogramValuesData(path));
 
@@ -142,21 +141,25 @@ export const histogramValues = selectorFamily({
           if (data.__typename === "IntHistogramValuesResponse") {
             return data;
           }
+          break;
         case DATE_FIELD:
           if (data.__typename === "DatetimeHistogramValuesResponse") {
             return data;
           }
+          break;
         case DATE_TIME_FIELD:
           if (data.__typename === "DatetimeHistogramValuesResponse") {
             return data;
           }
+          break;
         case FLOAT_FIELD:
           if (data.__typename === "FloatHistogramValuesResponse") {
             return data;
           }
-        default:
-          throw new Error("invalid request");
+          break;
       }
+
+      throw new Error("invalid request");
     },
 });
 
@@ -165,10 +168,12 @@ export const distribution = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      let { ftype, subfield } = get(field(path));
+      const f = get(field(path));
+      let ftype = f.ftype;
       if (ftype === LIST_FIELD) {
-        ftype = subfield;
+        ftype = f.subfield;
       }
+
       switch (ftype) {
         case BOOLEAN_FIELD:
           return get(countValues(path));
@@ -176,9 +181,13 @@ export const distribution = selectorFamily({
           return get(histogramValues(path));
         case DATE_TIME_FIELD:
           return get(histogramValues(path));
-        case INT_FIELD:
-          return get(histogramValues(path));
         case FLOAT_FIELD:
+          return get(histogramValues(path));
+        case FRAME_NUMBER_FIELD:
+          return get(histogramValues(path));
+        case FRAME_SUPPORT_FIELD:
+          return get(histogramValues(path));
+        case INT_FIELD:
           return get(histogramValues(path));
         case STRING_FIELD:
           return get(countValues(path));
@@ -197,98 +206,24 @@ const SKIP_FIELDS = {
   [withPath(LABELS_PATH, POLYLINES)]: ["points"],
 };
 
-export const distributionPaths = selectorFamily<string[], string>({
+export const distributionPaths = selector<string[]>({
   key: "distributionPaths",
-  get:
-    (group) =>
-    ({ get }) => {
-      group = group.toLowerCase();
-
-      switch (group) {
-        case "labels":
-          const labels = get(labelFields({})).map((l) => [
-            l,
-            get(expandPath(l)),
-          ]);
-          let paths = [];
-          for (let index = 0; index < labels.length; index++) {
-            const [parentPath, path] = labels[index];
-            paths = [
-              ...paths,
-              ...get(fields({ path, ftype: VALID_DISTRIBUTION_TYPES }))
-                .filter(({ name }) => {
-                  const parent = get(field(parentPath));
-
-                  return (
-                    !SKIP_FIELDS[parent.embeddedDocType] ||
-                    !SKIP_FIELDS[parent.embeddedDocType].includes(name)
-                  );
-                })
-                .map(({ name }) => [path, name].join(".")),
-            ];
-          }
-          return paths;
-        case "label tags":
-          return get(labelFields({})).map((l) => get(expandPath(l)) + ".tags");
-        case "sample tags":
-          return ["tags"];
-        case "other fields":
-          const top = get(
-            fieldPaths({
-              space: State.SPACE.SAMPLE,
-              ftype: VALID_DISTRIBUTION_TYPES,
-            })
-          ).filter((path) => !["filepath", "tags"].includes(path));
-
-          const embedded = get(
-            fieldPaths({
-              space: State.SPACE.SAMPLE,
-              ftype: EMBEDDED_DOCUMENT_FIELD,
-            })
-          );
-
-          return [
-            ...top,
-            ...embedded
-              .filter(
-                (path) => !LABELS.includes(get(field(path)).embeddedDocType)
-              )
-              .flatMap((path) =>
-                get(fieldPaths({ path, ftype: VALID_DISTRIBUTION_TYPES })).map(
-                  (name) => [path, name].join(".")
-                )
-              ),
-          ];
-        default:
-          throw new Error("unknown group");
-      }
-    },
-});
-
-export const noDistributionPathsData = selectorFamily<boolean, string>({
-  key: "noDistributionPathsData",
-  get:
-    (group) =>
-    ({ get }) => {
-      const paths = get(distributionPaths(group));
-
-      return paths.every((path) => {
-        const data = get(distribution(path));
-
-        switch (data.__typename) {
-          case "BoolCountValuesResponse":
-            return !data.values.length;
-          case "IntHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "DatetimeHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "FloatHistogramValuesResponse":
-            return data.counts.length === 1 && data.counts[0] === 0;
-          case "StrCountValuesResponse":
-            return !data.values.length;
-          default:
-            throw new Error("invalid request");
-        }
-      });
-    },
+  get: ({ get }) =>
+    get(
+      fieldPaths({
+        space: State.SPACE.SAMPLE,
+        ftype: VALID_DISTRIBUTION_TYPES,
+      })
+    )
+      .filter((path) => !["filepath", "id"].includes(path))
+      .filter((path) => {
+        const keys = path.split(".");
+        const parent = get(field(keys.slice(0, -1).join(".")));
+        return (
+          !parent ||
+          !SKIP_FIELDS[parent.embeddedDocType] ||
+          !SKIP_FIELDS[parent.embeddedDocType].includes(keys.slice(-1)[0])
+        );
+      })
+      .sort(),
 });

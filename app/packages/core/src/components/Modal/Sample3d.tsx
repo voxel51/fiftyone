@@ -1,10 +1,19 @@
 import { Loading } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense } from "react";
+import React, { Suspense, useRef } from "react";
 import { useRecoilValue } from "recoil";
+import styled from "styled-components";
+import { SampleWrapper } from "./Sample";
 
-const PluginWrapper = () => {
+const Sample3dContainer = styled.div`
+  width: 100%;
+  height: 100%;
+  position: relative;
+`;
+
+const Looker3dPluginWrapper = () => {
   const groupId = useRecoilValue(fos.groupId);
   const modal = useRecoilValue(fos.currentModalSample);
 
@@ -30,9 +39,20 @@ const PluginWrapper = () => {
 };
 
 export const Sample3d = () => {
+  const lookerRef = useRef<fos.Lookers | undefined>(undefined);
+  const isGroup = useRecoilValue(fos.isGroup);
+
   return (
     <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <PluginWrapper />
+      <Sample3dContainer data-cy="modal-looker-container">
+        {isGroup ? (
+          <Looker3dPluginWrapper />
+        ) : (
+          <SampleWrapper lookerRef={lookerRef}>
+            <Looker3dPluginWrapper />
+          </SampleWrapper>
+        )}
+      </Sample3dContainer>
     </Suspense>
   );
 };

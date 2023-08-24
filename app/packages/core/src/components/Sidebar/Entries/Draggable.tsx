@@ -1,8 +1,9 @@
 import { useTheme } from "@fiftyone/components";
-import { disabledPaths } from "@fiftyone/state";
+import { readOnly } from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
 import React, { useState } from "react";
+import { useRecoilValue } from "recoil";
 
 const Draggable: React.FC<
   React.PropsWithChildren<{
@@ -18,11 +19,12 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
-
+  const isReadOnly = useRecoilValue(readOnly);
   const disableDrag =
     !entryKey ||
     entryKey.split(",")[1]?.includes("tags") ||
-    entryKey.split(",")[1]?.includes("_label_tags");
+    entryKey.split(",")[1]?.includes("_label_tags") ||
+    isReadOnly;
   const active = trigger && (dragging || hovering) && !disableDrag;
 
   const style = useSpring({
@@ -44,19 +46,20 @@ const Draggable: React.FC<
           event.stopPropagation();
         }}
         onMouseDown={
-          trigger
+          trigger && !isReadOnly
             ? (event) => {
                 setDragging(true);
                 trigger(event, entryKey, () => setDragging(false));
               }
-            : null
+            : undefined
         }
-        onMouseEnter={() => trigger && setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
+        onMouseEnter={
+          isReadOnly ? undefined : () => trigger && setHovering(true)
+        }
+        onMouseLeave={isReadOnly ? undefined : () => setHovering(false)}
         style={{
           backgroundColor: color,
           position: "absolute",
-          left: 0,
           top: 0,
           zIndex: active ? 100 : 0,
           borderRadius: 2,

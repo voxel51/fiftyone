@@ -1168,6 +1168,10 @@ class OpenLABELPoint(OpenLABELShape):
     """An OpenLABEL keypoint."""
 
     @classmethod
+    def _get_empty_value_for_type(cls, example_type):
+        return example_type()
+
+    @classmethod
     def _sort_by_skeleton(cls, points, attrs, label_order, skeleton_order):
         if len(points) != len(label_order):
             return points, attrs
@@ -1182,6 +1186,8 @@ class OpenLABELPoint(OpenLABELShape):
             if isinstance(v, list) and len(v) == len(points):
                 attrs_to_sort[k] = v
                 sorted_attrs[k] = []
+            elif isinstance(v, list) and len(v) == 0:
+                continue
             else:
                 sorted_attrs[k] = v
 
@@ -1189,7 +1195,9 @@ class OpenLABELPoint(OpenLABELShape):
             if label not in label_order:
                 sorted_points.append([float("nan"), float("nan")])
                 for k in attrs_to_sort:
-                    sorted_attrs[k].append(None)
+                    example_type = type(attrs_to_sort[k][0])
+                    empty_value = cls._get_empty_value_for_type(example_type)
+                    sorted_attrs[k].append(empty_value)
             else:
                 ind = label_order.index(label)
                 sorted_points.append(points[ind])

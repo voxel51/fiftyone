@@ -147,6 +147,7 @@ const GroupEntry = React.memo(
           >
             <GroupHeader
               title={title}
+              data-cy={`sidebar-group-${title}`}
               onMouseEnter={() => !hovering && setHovering(true)}
               onMouseLeave={() => hovering && setHovering(false)}
               onMouseDown={(event) => {

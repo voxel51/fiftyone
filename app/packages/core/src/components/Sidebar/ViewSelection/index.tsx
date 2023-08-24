@@ -46,6 +46,11 @@ export default function ViewSelection() {
   const setEditView = useSetRecoilState(viewDialogContent);
   const setView = fos.useSetView();
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
+  const isReadOnly = useRecoilValue(fos.readOnly);
+  const canEdit = useMemo(
+    () => canEditSavedViews && !isReadOnly,
+    [canEditSavedViews, isReadOnly]
+  );
 
   const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
 
@@ -153,7 +158,7 @@ export default function ViewSelection() {
 
   useEffect(() => {
     const callback = (event: KeyboardEvent) => {
-      if (!canEditSavedViews) {
+      if (!canEdit) {
         return;
       }
       if ((event.metaKey || event.ctrlKey) && event.code === "KeyS") {
@@ -168,13 +173,14 @@ export default function ViewSelection() {
     return () => {
       document.removeEventListener("keydown", callback);
     };
-  }, [isEmptyView, canEditSavedViews]);
+  }, [isEmptyView, canEdit]);
 
   return (
     <Suspense fallback="Loading saved views...">
       <Box>
         <ViewDialog
-          canEdit={canEditSavedViews}
+          canEdit={canEdit}
+          id="saved-views"
           savedViews={items}
           onEditSuccess={(
             createSavedView: fos.State.SavedView,
@@ -184,7 +190,7 @@ export default function ViewSelection() {
               { name: datasetName },
               {
                 fetchPolicy: "network-only",
-                onComplete: (newOptions) => {
+                onComplete: () => {
                   if (createSavedView && reload) {
                     setView([], undefined, createSavedView.slug);
                     setSelected({
@@ -211,7 +217,8 @@ export default function ViewSelection() {
           }}
         />
         <Selection
-          readonly={!canEditSavedViews}
+          readonly={!canEdit}
+          id="saved-views"
           selected={selected}
           setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
@@ -240,15 +247,14 @@ export default function ViewSelection() {
           }}
           lastFixedOption={
             <LastOption
-              onClick={() =>
-                canEditSavedViews && !isEmptyView && setIsOpen(true)
-              }
-              disabled={isEmptyView || !canEditSavedViews}
+              data-cy={`saved-views-create-new`}
+              onClick={() => canEdit && !isEmptyView && setIsOpen(true)}
+              disabled={isEmptyView || !canEdit}
             >
               <Box style={{ width: "12%" }}>
-                <AddIcon fontSize="small" disabled={isEmptyView} />
+                <AddIcon fontSize="small" disabled={isEmptyView || !canEdit} />
               </Box>
-              <TextContainer disabled={isEmptyView}>
+              <TextContainer disabled={isEmptyView || !canEdit}>
                 Save current filters as view
               </TextContainer>
             </LastOption>

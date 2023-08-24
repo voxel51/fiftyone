@@ -20,7 +20,9 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName, undefined, false);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    isEmptyDataset: true,
+  });
 });
 
 test("empty dataset without default slice", async ({ panel }) => {

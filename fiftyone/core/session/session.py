@@ -181,19 +181,6 @@ def launch_app(
         a :class:`Session`
     """
     global _session  # pylint: disable=global-statement
-
-    #
-    # Note, we always `close_app()` here rather than just calling
-    # `session.open()` if a session already exists, because the app may have
-    # been closed in some way other than `session.close()` --- e.g., the user
-    # closing the GUI --- in which case the underlying Electron process may
-    # still exist; in this case, `session.open()` does not seem to reopen the
-    # app
-    #
-    # @todo this can probably be improved
-    #
-    close_app()
-
     _session = Session(
         dataset=dataset,
         view=view,

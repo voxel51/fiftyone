@@ -228,6 +228,7 @@ const CategoricalFilter = <T extends V = V>({
 
   return (
     <NamedCategoricalFilterContainer
+      data-cy={`categorical-filter-${path}`}
       onClick={(e) => {
         e.stopPropagation();
       }}
@@ -265,6 +266,7 @@ const CategoricalFilter = <T extends V = V>({
               }}
               containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
               toKey={({ value }) => String(value)}
+              id={path}
             />
           )}
         <Wrapper
