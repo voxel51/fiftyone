@@ -94,19 +94,33 @@ def execute_operator(operator_uri, ctx, params):
 
     Args:
         operator_uri: the URI of the operator
-        ctx: a dictionary of parameters defining the execution context
-        params: a dictionary of parameters for the operator
+        ctx: a dictionary of parameters defining the execution context. The
+            supported keys are:
+
+            -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
+                name of a dataset to process. This is required unless a
+                ``view`` is provided
+            -   ``view``: an optional :class:`fiftyone.core.view.DatasetView`
+                to process
+            -   ``selected``: an optional list of selected sample IDs
+            -   ``selected_labels``: an optional list of selected labels in the
+                format returned by
+                :attr:`fiftyone.core.session.Session.selected_labels`
+
+        params: a dictionary of parameters for the operator. Consult the
+            operator's documentation for details
 
     Returns:
         an :class:`ExecutionResult`
     """
-    dataset_name, view_stages, selected = _parse_ctx(ctx)
+    dataset_name, view_stages, selected, selected_labels = _parse_ctx(ctx)
 
     request_params = dict(
         operator_uri=operator_uri,
         dataset_name=dataset_name,
         view=view_stages,
         selected=selected,
+        selected_labels=selected_labels,
         params=params,
     )
 
@@ -116,10 +130,10 @@ def execute_operator(operator_uri, ctx, params):
 
 
 def _parse_ctx(ctx):
-    # @todo add selected_labels
     dataset = ctx.get("dataset", None)
     view = ctx.get("view", None)
     selected = ctx.get("selected", None)
+    selected_labels = ctx.get("selected_labels", None)
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
@@ -137,7 +151,7 @@ def _parse_ctx(ctx):
     else:
         dataset_name = dataset
 
-    return dataset_name, view_stages, selected
+    return dataset_name, view_stages, selected, selected_labels
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
