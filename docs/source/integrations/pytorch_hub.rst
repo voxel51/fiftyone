@@ -191,6 +191,11 @@ use it to compute embeddings:
     embeddings = dataset.limit(10).compute_embeddings(model)
     print(embeddings.shape)  # (10, 384)
 
+.. note::
+
+    Did you know? DINOv2 is natively available in the
+    :ref:`FiftyOne Model Zoo <model-zoo-dinov2-vitb14-torch>`!
+
 .. _pytorch-hub-load-model:
 
 Adding Hub models to your local zoo

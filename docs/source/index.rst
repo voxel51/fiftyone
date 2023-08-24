@@ -142,6 +142,11 @@ learn how:
     :image_title: CVAT
 
 .. customimagelink::
+    :image_link: integrations/labelstudio.html
+    :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
+    :image_title: Label Studio
+
+.. customimagelink::
     :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
