@@ -15,6 +15,7 @@ import {
   LONG_BUTTON_STYLE,
   ModalActionButtonContainer,
 } from "./ShareStyledDiv";
+import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -24,9 +25,8 @@ const ColorFooter: React.FC = () => {
     [canEditCustomColors, isReadOnly]
   );
   const setColorScheme = fos.useSetSessionColorScheme();
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.activeColorField
-  );
+  const [activeColorModalField, setActiveColorModalField] =
+    useRecoilState(activeColorEntry);
   const [setDatasetColorScheme] =
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -136,7 +136,10 @@ const useUpdateDatasetColorScheme = () => {
             });
 
             colorSchemeRecord.setLinkedRecords(fields, "fields");
-            colorSchemeRecord.setValue([...colorScheme.colorPool], "colorPool");
+            colorSchemeRecord.setValue(
+              [...(colorScheme.colorPool || [])],
+              "colorPool"
+            );
           });
       },
     [environment]

@@ -15,6 +15,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
+import { activeColorField } from "../state";
 import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`
@@ -68,16 +69,16 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 }) => {
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activeField = useRecoilValue(fos.activeColorField);
-  const activePath = useMemo(() => activeField.field.path, [activeField]);
-  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
+  const activeField = useRecoilValue(activeColorField);
+  const { colorPool = [], fields } = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => fields.find((s) => s.path == activePath),
+    () => fields.find((s) => s.path == activeField.path),
     [activeField, fields]
   );
+
   const index = useMemo(
-    () => fields.findIndex((s) => s.path == activePath),
+    () => fields.findIndex((s) => s.path == activeField.path),
     [activeField, fields]
   );
 
@@ -87,7 +88,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   };
 
   const values = setting?.valueColors;
-  const [input, setInput] = useState<Input[]>(values);
+
+  const [input, setInput] = useState<Input[]>([]);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
@@ -172,7 +174,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(fields);
-      const idx = fields.findIndex((s) => s.path == activePath);
+      const idx = fields.findIndex((s) => s.path == activeField.path);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
         setColorScheme({ colorPool, fields: copy });
@@ -185,11 +187,11 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePath]);
+  }, [activeField.path]);
 
   useEffect(() => {
-    if (!useLabelColors) setInput([]);
-  }, [useLabelColors]);
+    setInput(!useLabelColors ? [] : values);
+  }, [useLabelColors, values]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowPicker(Array(values?.length ?? 0).fill(false));

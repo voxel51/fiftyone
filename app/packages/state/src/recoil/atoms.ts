@@ -13,7 +13,7 @@ import {
   sampleFieldsFragment$data,
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
-import { Field, StrictField } from "@fiftyone/utilities";
+import { StrictField } from "@fiftyone/utilities";
 import { AtomEffect, DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { sessionAtom } from "../session";
@@ -494,14 +494,6 @@ export const SPACES_DEFAULT = {
 export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
   default: SPACES_DEFAULT,
-});
-
-// the active field for customize color modal
-export const activeColorField = atom<
-  { field: Field; expandedPath: string } | string | null
->({
-  key: "activeColorField",
-  default: null,
 });
 
 export const colorScheme = sessionAtom({

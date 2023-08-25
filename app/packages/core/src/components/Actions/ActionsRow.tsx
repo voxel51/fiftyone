@@ -44,6 +44,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { activeColorEntry } from "../ColorModal/state";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
@@ -304,11 +305,11 @@ const Options = ({ modal }) => {
 const Colors = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+  const [activeField, setActiveField] = useRecoilState(activeColorEntry);
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField(ACTIVE_FIELD.global);
+    setActiveField(ACTIVE_FIELD.GLOBAL);
   };
 
   useEffect(() => {

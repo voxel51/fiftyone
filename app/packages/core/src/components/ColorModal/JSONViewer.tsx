@@ -7,7 +7,6 @@ import { Link } from "@mui/material";
 import colorString from "color-string";
 import {
   default as React,
-  default as React,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -23,7 +22,6 @@ const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const editorRef = useRef(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {

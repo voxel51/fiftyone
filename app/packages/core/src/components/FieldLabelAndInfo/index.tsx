@@ -1,6 +1,6 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { activeColorField, coloring } from "@fiftyone/state";
+import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
 import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
@@ -19,6 +19,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -249,7 +250,7 @@ function FieldInfoExpanded({
     descTooLong || tooManyInfoKeys
   );
 
-  const setIsCustomizingColor = useSetRecoilState(activeColorField);
+  const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";

@@ -1,9 +1,10 @@
 import { subscribe } from "@fiftyone/relay";
-import { activeColorField, isModalActive } from "@fiftyone/state";
+import { isModalActive } from "@fiftyone/state";
 import React, { useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import ColorModal from "./ColorModal/ColorModal";
+import { activeColorEntry } from "./ColorModal/state";
 import Modal from "./Modal";
 import SamplesContainer from "./SamplesContainer";
 
@@ -24,11 +25,11 @@ const Body = styled.div`
 
 function Dataset() {
   const isModalOpen = useRecoilValue(isModalActive);
-  const isCustomizeColorModalActive = useRecoilValue(activeColorField);
+  const isCustomizeColorModalActive = useRecoilValue(activeColorEntry);
 
   useEffect(() => {
     return subscribe((_, { reset }) => {
-      reset(activeColorField);
+      reset(activeColorEntry);
     });
   }, []);
 

@@ -2,13 +2,8 @@ import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
-  BOOLEAN_FIELD,
   FLOAT_FIELD,
-  Field,
-  INT_FIELD,
-  LIST_FIELD,
   NOT_VISIBLE_LIST,
-  STRING_FIELD,
   VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
@@ -34,10 +29,6 @@ import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
-type Prop = {
-  prop: { field: Field; expandedPath: string };
-};
-
 const fieldColorSetting = selectorFamily<
   Omit<CustomizeColorInput, "path"> | undefined,
   string
@@ -60,7 +51,10 @@ const fieldColorSetting = selectorFamily<
     ({ set }, newSetting) => {
       set(fos.colorScheme, (current) => {
         if (!newSetting || newSetting instanceof DefaultValue) {
-          return current.fields.filter((field) => field.path !== path);
+          return {
+            ...current,
+            fields: current.fields.filter((field) => field.path !== path),
+          };
         }
 
         const setting = { ...newSetting, path };
@@ -83,19 +77,23 @@ const fieldColorSetting = selectorFamily<
     },
 });
 
-const FieldSetting: React.FC<Prop> = ({ prop }) => {
+const FieldSetting = ({ path }: { path: string }) => {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const pickerRef = React.useRef<TwitterPicker>(null);
-  const { field, expandedPath } = prop;
-  const path = field?.path;
+  const field = useRecoilValue(fos.field(path));
+
+  if (!field) {
+    throw new Error(`path ${path} is not a field`);
+  }
+
   const { colorPool, fields } = useRecoilValue(fos.colorScheme);
-  const [setting, setSetting] = useRecoilState(fieldColorSetting(field.path));
+  const [setting, setSetting] = useRecoilState(fieldColorSetting(path));
   const coloring = useRecoilValue(fos.coloring);
 
   const colorMap = useRecoilValue(fos.colorMap);
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(setting?.fieldColor);
-  const [colors, setColors] = useState(colorPool);
+  const [colors, setColors] = useState(colorPool || []);
   const state = useMemo(
     () => ({
       useLabelColors: Boolean(
@@ -105,7 +103,6 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     }),
     [setting]
   );
-  const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
 
   const isMaskType =
     field.embeddedDocType &&
@@ -115,18 +112,6 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
   // non video frames. field expanded path
-  const commonExpandedPath = useRecoilValue(
-    fos.expandPath(expandedPath.startsWith("frames.") ? expandedPath : path)
-  );
-
-  const colorFields = useRecoilValue(
-    fos.fields({
-      path: commonExpandedPath,
-      ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
-    })
-  ).filter((field) =>
-    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield)
-  );
 
   const onChangeFieldColor = useCallback(
     (color: string) => {
@@ -203,7 +188,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
               setInput(colorMap(field.path));
             }}
           />
-          {state?.useFieldColor && (
+          {state?.useFieldColor && input && (
             <div
               data-cy="field-color-div"
               style={{
@@ -270,7 +255,24 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
               setValue={(v: boolean) => {
                 setSetting((cur) => {
                   if (!cur) {
-                    throw new Error("not defined");
+                    cur = { valueColors: [] };
+                  }
+
+                  if (!cur?.valueColors?.length && v) {
+                    cur = {
+                      ...cur,
+                      valueColors: [
+                        {
+                          value: "",
+                          color:
+                            colorPool[
+                              Math.floor(Math.random() * colorPool.length)
+                            ],
+                        },
+                      ],
+                    };
+                  } else if (!v) {
+                    cur = { ...cur, valueColors: [] };
                   }
 
                   return {
@@ -285,10 +287,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
             <SectionWrapper>
               {path && field.embeddedDocType && state.useLabelColors && (
                 <>
-                  <ColorAttribute
-                    eligibleFields={colorFields}
-                    style={FieldCHILD_STYLE}
-                  />
+                  <ColorAttribute style={FieldCHILD_STYLE} />
                   <br />
                   <div style={FieldCHILD_STYLE}>
                     Use specific colors for the following values

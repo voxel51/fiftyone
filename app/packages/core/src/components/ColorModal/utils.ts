@@ -16,11 +16,11 @@ export const colorBlindFriendlyPalette = [
   "#cc79a7", // reddish purple
 ];
 
-export const ACTIVE_FIELD = {
-  ["json"]: "JSON editor",
-  ["global"]: "Global settings",
-  ["_label_tags"]: "label tags",
-};
+export enum ACTIVE_FIELD {
+  JSON = "JSON editor",
+  GLOBAL = "Global settings",
+  LABEL_TAGS = "label tags",
+}
 
 // disregard the order
 export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {
@@ -69,9 +69,13 @@ export const validateJSONSetting = (
   });
 };
 
-export const getDisplayName = (path: string) => {
-  if (path === "tags") {
-    return "sample tags";
+export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
+  if (typeof path === "object") {
+    if (path.path === "tags") {
+      return "sample tags";
+    }
+    return path.path;
   }
+
   return path;
 };
