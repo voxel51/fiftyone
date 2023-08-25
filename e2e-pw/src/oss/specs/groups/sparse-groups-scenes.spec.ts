@@ -5,8 +5,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`sparse-groups-scene`);
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));

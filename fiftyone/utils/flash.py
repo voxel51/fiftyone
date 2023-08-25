@@ -73,7 +73,7 @@ def apply_flash_model(
             image. This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         transform_kwargs (None): an optional dict of transform kwargs to pass
             into the created data module used by some models
         trainer_kwargs (None): an optional dict of kwargs used to initialize the

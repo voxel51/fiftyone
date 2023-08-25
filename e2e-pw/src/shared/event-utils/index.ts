@@ -5,7 +5,7 @@ export class EventUtils {
 
   public async getEventReceivedPromiseForPredicate(
     eventName: string,
-    predicate: (e: CustomEvent) => boolean
+    predicate: (e: CustomEvent) => boolean = () => true
   ) {
     const exposedFunctionName = getFunctionNameWithRandomSuffix(eventName);
     this.page.exposeFunction(exposedFunctionName, (e: CustomEvent) => {

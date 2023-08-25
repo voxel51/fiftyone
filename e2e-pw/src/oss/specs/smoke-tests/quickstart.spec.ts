@@ -1,16 +1,30 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { SelectorPom } from "src/oss/poms/selector";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
-const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+const test = base.extend<{
+  grid: GridPom;
+  modal: ModalPom;
+  selector: SelectorPom;
+}>({
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
+  },
+  selector: async ({ page, eventUtils }, use) => {
+    await use(
+      new SelectorPom(
+        page.getByTestId("fo-grid-actions"),
+        eventUtils,
+        "group by"
+      )
+    );
   },
 });
 
@@ -33,14 +47,23 @@ test.describe("quickstart", () => {
     await modal.waitForSampleLoadDomAttribute();
   });
 
-  test("entry counts text when toPatches then groupedBy", async ({ grid }) => {
+  test("entry counts text when toPatches then groupedBy", async ({
+    grid,
+    selector,
+  }) => {
     await grid.actionsRow.toggleToClipsOrPatches();
+
+    const gridRefreshPromisePredictions = grid.getWaitForGridRefreshPromise();
     await grid.actionsRow.clickToPatchesByLabelField("predictions");
+    await gridRefreshPromisePredictions;
 
     await grid.assert.isEntryCountTextEqualTo("122 patches");
 
     await grid.actionsRow.toggleCreateDynamicGroups();
-    await grid.actionsRow.groupBy("predictions.label");
+
+    const gridRefreshPromiseGroupByLabel = grid.getWaitForGridRefreshPromise();
+    await grid.actionsRow.groupBy("predictions.label", selector);
+    await gridRefreshPromiseGroupByLabel;
 
     await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
   });

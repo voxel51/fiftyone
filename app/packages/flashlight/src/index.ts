@@ -180,10 +180,16 @@ export default class Flashlight<K> {
     return Boolean(this.element.parentElement);
   }
   private showPixels() {
+    this.container.dispatchEvent(
+      new CustomEvent("flashlight-show-loading-pixels", { bubbles: true })
+    );
     this.config.showPixels && this.container.classList.add(flashlightPixels);
   }
 
   private hidePixels() {
+    this.container.dispatchEvent(
+      new CustomEvent("flashlight-hide-loading-pixels", { bubbles: true })
+    );
     this.container.classList.remove(flashlightPixels);
   }
 

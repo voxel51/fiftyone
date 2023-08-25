@@ -41,11 +41,12 @@ from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-fost = fou.lazy_import("fiftyone.core.stages")
+fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
@@ -3059,7 +3060,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
 
         -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
             delete via their IDs and/or tags
@@ -3077,7 +3078,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             labels (None): a list of dicts specifying the labels to delete in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
             view (None): a :class:`fiftyone.core.view.DatasetView` into this
@@ -5875,7 +5876,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -5891,7 +5892,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir)
+            rel_dir = fost.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name, persistent=persistent, overwrite=overwrite)
@@ -5993,7 +5994,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -6849,6 +6850,10 @@ def _delete_dataset_doc(dataset_doc):
             run_doc.results.delete()
 
         run_doc.delete()
+
+    from fiftyone.operators.delegated import DelegatedOperationService
+
+    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
 
     dataset_doc.delete()
 
@@ -8236,14 +8241,14 @@ def _always_select_field(sample_collection, field):
 
     view = sample_collection
 
-    if not any(isinstance(stage, fost.SelectFields) for stage in view._stages):
+    if not any(isinstance(stage, fot.SelectFields) for stage in view._stages):
         return view
 
     # Manually insert `field` into all `SelectFields` stages
     _view = view._base_view
     for stage in view._stages:
-        if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(
+        if isinstance(stage, fot.SelectFields):
+            stage = fot.SelectFields(
                 stage.field_names + [field], _allow_missing=True
             )
 

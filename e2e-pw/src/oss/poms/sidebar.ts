@@ -1,8 +1,5 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 
-type filterMode = "select" | "exclude" | "show" | "omit";
-type visibilityMode = "show" | "hide";
-
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
@@ -26,7 +23,7 @@ export class SidebarPom {
   async waitForElement(dataCy: string) {
     const selector = this.sidebar.getByTestId(dataCy);
     await selector.waitFor();
-    expect(selector).toBeVisible();
+    await expect(selector).toBeVisible();
   }
 
   // when less than 25 entries, it's displayed in a list
@@ -36,7 +33,7 @@ export class SidebarPom {
     return item.getByTestId(`entry-count-all`);
   }
 
-  async setSliderStartValue(field: string, value: number) {
+  async changeSliderStartValue(field: string) {
     const container = this.sidebar.getByTestId(
       `numeric-slider-container-${field}`
     );

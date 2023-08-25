@@ -1,18 +1,19 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
-import { Duration } from "src/oss/utils";
 
 export class GridPom {
-  readonly page: Page;
   readonly actionsRow: GridActionsRowPom;
   readonly sliceSelector: GridSliceSelectorPom;
   readonly assert: GridAsserter;
 
   readonly locator: Locator;
 
-  constructor(page: Page) {
-    this.page = page;
+  constructor(
+    public readonly page: Page,
+    private readonly eventUtils: EventUtils
+  ) {
     this.actionsRow = new GridActionsRowPom(page);
     this.sliceSelector = new GridSliceSelectorPom(page);
 
@@ -53,18 +54,34 @@ export class GridPom {
     return this.page.getByTestId("entry-counts").textContent();
   }
 
-  async selectSlice(slice: string) {
-    await this.page.getByTestId("selector-slice").fill(slice);
-    await this.page.getByTestId("selector-slice").press("Enter");
-  }
   async getNthFlashlightSection(n: number) {
     return this.page.getByTestId("flashlight-section").nth(n);
   }
 
+  async selectSlice(slice: string) {
+    await this.page.getByTestId("selector-slice").fill(slice);
+    await this.page.getByTestId("selector-slice").press("Enter");
+  }
+
+  /**
+   * @deprecated Use `getWaitForGridRefreshPromise` instead.
+   */
   async waitForGridToLoad() {
     return this.page.waitForSelector("[data-cy=looker]", {
       timeout: 2000,
     });
+  }
+
+  async getWaitForGridRefreshPromise() {
+    const refreshStartPromise =
+      this.eventUtils.getEventReceivedPromiseForPredicate(
+        "flashlight-show-loading-pixels"
+      );
+    const refreshEndPromise =
+      this.eventUtils.getEventReceivedPromiseForPredicate(
+        "flashlight-hide-loading-pixels"
+      );
+    return Promise.all([refreshStartPromise, refreshEndPromise]);
   }
 }
 

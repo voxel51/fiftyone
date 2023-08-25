@@ -19,7 +19,7 @@ const outputComponentsByType = {
   OneOf: "OneOfView",
   Tuple: "TupleView",
 };
-const baseViews = ["View"];
+const baseViews = ["View", "PromptView"];
 const viewAliases = {
   Button: "ButtonView",
   Dropdown: "DropdownView",
