@@ -1219,8 +1219,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except StopIteration:
                 pass
 
-        doc = self._sample_dict_to_doc(d)
-        return fos.Sample.from_doc(doc, dataset=self)
+        return self._make_sample(d)
 
     def view(self):
         """Returns a :class:`fiftyone.core.view.DatasetView` containing the
