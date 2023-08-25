@@ -93,6 +93,7 @@ class Client:
                                     "select_labels",
                                     "select_samples",
                                     "set_color_scheme",
+                                    "set_dataset_color_scheme",
                                     "set_group_slice",
                                     "set_spaces",
                                     "state_update",

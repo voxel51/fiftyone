@@ -62,10 +62,7 @@ class Event:
             "fiftyone.core.session.events",
         )
 
-        if event_cls == Refresh:
-            data["config"] = AppConfig.from_dict(data["config"])
-
-        if event_cls == StateUpdate:
+        if event_cls in {Refresh, StateUpdate}:
             data["state"] = fos.StateDescription.from_dict(data["state"])
 
         return from_dict(
@@ -132,7 +129,7 @@ class ReactivateNotebookCell(Event):
 class Refresh(Event):
     """Refresh event"""
 
-    config: AppConfig
+    state: fos.StateDescription
 
 
 @dataclass
@@ -189,6 +186,13 @@ class SetColorScheme(Event):
             color_pool=self.color_scheme.color_pool,
             fields=fields,
         )
+
+
+@dataclass
+class SetDatasetColorScheme(Event):
+    """Set dataset color scheme event"""
+
+    pass
 
 
 @dataclass

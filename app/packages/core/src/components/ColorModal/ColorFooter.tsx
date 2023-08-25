@@ -34,6 +34,7 @@ const ColorFooter: React.FC = () => {
   const defaultColorPool = useRecoilValue(fos.config).colorPool;
   const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
+  const subscription = useRecoilValue(fos.stateSubscription);
 
   if (!activeColorModalField) return null;
 
@@ -66,6 +67,7 @@ const ColorFooter: React.FC = () => {
 
               setDatasetColorScheme({
                 variables: {
+                  subscription,
                   datasetName,
                   colorScheme: {
                     fields: colorScheme.fields || [],
@@ -85,7 +87,7 @@ const ColorFooter: React.FC = () => {
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
-                variables: { datasetName, colorScheme: null },
+                variables: { subscription, datasetName, colorScheme: null },
               });
               setColorScheme({ fields: [], colorPool: defaultColorPool });
             }}

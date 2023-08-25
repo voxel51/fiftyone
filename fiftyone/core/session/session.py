@@ -52,6 +52,7 @@ from fiftyone.core.session.events import (
     SelectLabels,
     SelectSamples,
     SetColorScheme,
+    SetDatasetColorScheme,
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
@@ -736,7 +737,7 @@ class Session(object):
 
     def refresh(self) -> None:
         """Refreshes the current App window."""
-        self._client.send_event(Refresh(config=self.config))
+        self._client.send_event(Refresh(state=self._state))
 
     @property
     def selected(self) -> t.List[str]:
@@ -1125,8 +1126,8 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("close_session", on_close_session)
 
-    on_refresh: t.Callable[[Refresh], None] = lambda event: setattr(
-        session._state, "config", event.config
+    on_refresh: t.Callable[[Refresh], None] = lambda event: _on_refresh(
+        session, event.state
     )
     session._client.add_event_listener("refresh", on_refresh)
 
@@ -1149,6 +1150,13 @@ def _attach_listeners(session: "Session"):
         [SetColorScheme], None
     ] = lambda event: setattr(session._state, "color_scheme", event.to_odm())
     session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
+
+    on_set_dataset_color_scheme: t.Callable[
+        [SetDatasetColorScheme], None
+    ] = lambda _: _on_refresh(session, None)
+    session._client.add_event_listener(
+        "set_dataset_color_scheme", on_set_dataset_color_scheme
+    )
 
     on_set_group_slice: t.Callable[
         [SetGroupSlice], None
@@ -1273,3 +1281,12 @@ def _log_welcome_message_if_allowed():
         etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)
     except:
         pass
+
+
+def _on_refresh(session: Session, state: t.Optional[StateDescription]):
+    """Refreshes session state, including a dataset reload."""
+    if state:
+        session._state = state
+
+    if session.dataset is not None:
+        session.dataset.reload()

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<f7c22df30451147a158f94e02537f51a>>
+ * @generated SignedSource<<6ed63c5bc43999f3b120e8ee5c2160cd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -8,10 +8,10 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ConcreteRequest } from 'relay-runtime';
+import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorPool: ReadonlyArray<string>;
-  fields: ReadonlyArray<CustomizeColorInput>;
+  fields?: ReadonlyArray<CustomizeColorInput> | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;

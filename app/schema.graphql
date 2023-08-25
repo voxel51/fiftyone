@@ -121,7 +121,7 @@ type ColorScheme {
 
 input ColorSchemeInput {
   colorPool: [String!]!
-  fields: [CustomizeColorInput!]!
+  fields: [CustomizeColorInput!] = null
 }
 
 input Count {
@@ -330,6 +330,7 @@ type Mutation {
     colorScheme: ColorSchemeInput!
   ): Boolean!
   setDatasetColorScheme(
+    subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
   ): Void

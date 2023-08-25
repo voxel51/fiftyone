@@ -1,5 +1,6 @@
 import { Loading } from "@fiftyone/components";
 import {
+  ColorSchemeInput,
   setColorScheme,
   setColorSchemeMutation,
   setDataset,
@@ -106,6 +107,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               screenshot();
               break;
             case Events.REFRESH:
+              processState(setter, JSON.parse(msg.data).state);
               refresh();
               break;
             case Events.SET_COLOR_SCHEME:
@@ -130,21 +132,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               break;
             case Events.STATE_UPDATE: {
               const payload = JSON.parse(msg.data);
-              setter(
-                "colorScheme",
-                ensureColorScheme(payload.state.color_scheme)
-              );
-              if (!stateless) {
-                setter("selectedSamples", new Set(payload.state.selected));
-                setter(
-                  "selectedLabels",
-                  toCamelCase(
-                    payload.state.selected_labels
-                  ) as State.SelectedLabel[]
-                );
-                payload.state.spaces &&
-                  setter("sessionSpaces", payload.state.spaces);
-              }
+              processState(setter, payload.state);
 
               const searchParams = new URLSearchParams(
                 router.history.location.search
@@ -521,9 +509,24 @@ const getSavedViewName = (search: string) => {
   return null;
 };
 
-const ensureColorScheme = (colorScheme) => {
+const ensureColorScheme = (colorScheme: any): ColorSchemeInput => {
   return {
     colorPool: colorScheme.color_pool || colorScheme.colorPool,
-    fields: toCamelCase(colorScheme.fields || []),
+    fields: toCamelCase(colorScheme.fields || []) as ColorSchemeInput["fields"],
   };
+};
+
+const processState = (setter: ReturnType<typeof useSession>, state: any) => {
+  setter(
+    "colorScheme",
+    ensureColorScheme(state.color_scheme as ColorSchemeInput)
+  );
+  if (!env().VITE_NO_STATE) {
+    setter("selectedSamples", new Set(state.selected));
+    setter(
+      "selectedLabels",
+      toCamelCase(state.selected_labels) as State.SelectedLabel[]
+    );
+    state.spaces && setter("sessionSpaces", state.spaces);
+  }
 };

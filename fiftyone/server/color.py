@@ -57,7 +57,7 @@ class CustomizeColorInput:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.List[str]
-    fields: t.List[CustomizeColorInput]
+    fields: t.Optional[t.List[CustomizeColorInput]] = None
 
 
 @gql.type
@@ -79,6 +79,7 @@ class SetColorScheme:
     @gql.field
     async def set_dataset_color_scheme(
         self,
+        subscription: str,
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
     ) -> None:
@@ -97,6 +98,7 @@ class SetColorScheme:
             dataset.save()
 
         await fou.run_sync_task(run)
+        await dispatch_event(subscription, fose.SetDatasetColorScheme())
 
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):

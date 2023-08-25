@@ -66,9 +66,6 @@ async def dispatch_event(
         add_screenshot(event)
         return
 
-    if isinstance(event, Refresh):
-        _state.config = event.config
-
     if isinstance(event, SelectLabels):
         _state.selected_labels = event.labels
 
@@ -80,7 +77,7 @@ async def dispatch_event(
             asdict(event.color_scheme)
         )
 
-    if isinstance(event, StateUpdate):
+    if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state
 
     if isinstance(event, ReactivateNotebookCell):
