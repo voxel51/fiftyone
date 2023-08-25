@@ -1,8 +1,8 @@
 import { ColorSchemeInput, subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { DefaultValue, RecoilState, atom, selector } from "recoil";
-import { State } from "./recoil";
+import { atom, DefaultValue, RecoilState, selector } from "recoil";
+import { SPACES_DEFAULT, State } from "./recoil";
 
 export interface Session {
   canEditCustomColors: boolean;
@@ -15,7 +15,21 @@ export interface Session {
   colorScheme: ColorSchemeInput;
 }
 
-type Setter = <K extends keyof Session>(key: K, value: Session[K]) => void;
+export const SESSION_DEFAULT: Session = {
+  canEditCustomColors: true,
+  canEditSavedViews: true,
+  readOnly: false,
+  selectedSamples: new Set(),
+  selectedLabels: [],
+  sessionSpaces: SPACES_DEFAULT,
+  colorScheme: { colorPool: [], fields: [] },
+};
+
+type SetterKeys = keyof Omit<
+  Session,
+  "canEditCustomColors" | "canEditSavedViews" | "readOnly"
+>;
+type Setter = <K extends SetterKeys>(key: K, value: Session[K]) => void;
 
 type SessionAtomOptions<K extends keyof Session> = {
   key: K;
@@ -25,13 +39,8 @@ type SessionAtomOptions<K extends keyof Session> = {
 let sessionRef: Session;
 let setterRef: Setter;
 
-type Setters<
-  K extends keyof Session = keyof Omit<
-    Session,
-    "canEditCustomColors" | "canEditSavedViews" | "readOnly"
-  >
-> = Partial<{
-  [key in K]: (value: Session[K]) => void;
+type Setters = Partial<{
+  [K in SetterKeys]: (value: Session[K]) => void;
 }>;
 const setters: Setters = {};
 
@@ -39,22 +48,11 @@ export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
   sessionRef = ref;
 
-  return useCallback(
-    <
-      K extends keyof Omit<
-        Session,
-        "canEditCustomColors" | "canEditSavedViews" | "readOnly"
-      >
-    >(
-      key: K,
-      value: Session[K]
-    ) => {
-      const setter = setters[key];
-      setter && setter(value);
-      sessionRef[key] = value;
-    },
-    []
-  );
+  return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
+    const setter = setters[key];
+    setter && setter(value);
+    sessionRef[key] = value;
+  }, []);
 };
 
 export function sessionAtom<K extends keyof Session>(
@@ -106,6 +104,14 @@ export function sessionAtom<K extends keyof Session>(
     set: ({ set }, newValue) => {
       if (newValue instanceof DefaultValue) {
         newValue = options.default;
+      }
+      if (
+        options.key === "canEditCustomColors" ||
+        options.key === "readOnly" ||
+        options.key === "canEditSavedViews" ||
+        typeof newValue === "boolean"
+      ) {
+        throw new Error(`cannot set ${options.key}`);
       }
       setterRef(options.key, newValue);
       sessionRef[options.key] = newValue;

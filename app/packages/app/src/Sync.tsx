@@ -23,6 +23,7 @@ import * as fos from "@fiftyone/state";
 import {
   datasetName,
   Session,
+  SESSION_DEFAULT,
   State,
   stateSubscription,
   useClearModal,
@@ -38,6 +39,8 @@ import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { commitMutation, IEnvironment, OperationType } from "relay-runtime";
 import Setup from "./components/Setup";
+import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import { pendingEntry } from "./Renderer";
 import { Entry, matchPath, RoutingContext, useRouterContext } from "./routing";
 import useRefresh from "./useRefresh";
@@ -79,7 +82,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
       | "databricks"
       | undefined
   );
-  const sessionRef = useRef<Session>({});
+  const sessionRef = useRef<Session>(SESSION_DEFAULT);
   const setter = useSession((key, value) => {
     WRITE_HANDLERS[key](router, environment, value, subscription);
   }, sessionRef.current);
@@ -90,7 +93,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
     getEventSource(
       "/events",
       {
-        onopen: async () => {},
+        onopen: async () => null,
         onmessage: (msg) => {
           if (controller.signal.aborted) {
             return;
@@ -341,9 +344,11 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               sessionRef.current.selectedLabels = [];
 
               const next = router.get();
-              // @ts-ignore
+
               if (
+                // @ts-ignore
                 current.preloadedQuery.variables.name !==
+                // @ts-ignore
                 entry.preloadedQuery.variables.name
               ) {
                 sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
@@ -383,7 +388,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const dispatchSideEffect = (
-  entry: Entry<OperationType>,
+  entry: Entry<IndexPageQuery | DatasetPageQuery>,
   action: Action | undefined,
   subscription: string
 ) => {
@@ -417,7 +422,7 @@ const WRITE_HANDLERS: {
     Session,
     "canEditCustomColors" | "canEditSavedViews" | "readOnly"
   >]: (
-    router: RoutingContext<OperationType>,
+    router: RoutingContext<IndexPageQuery | DatasetPageQuery>,
     environment: IEnvironment,
     value: Session[K] | DefaultValue,
     subscription: string

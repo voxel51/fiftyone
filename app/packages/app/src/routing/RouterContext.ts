@@ -19,10 +19,9 @@ import {
   OperationType,
   VariablesOf,
 } from "relay-runtime";
-
 import { Route } from ".";
-import { IndexPageQuery } from "../pages/__generated__/IndexPageQuery.graphql";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { IndexPageQuery } from "../pages/__generated__/IndexPageQuery.graphql";
 import { LocationState, matchPath, MatchPathResult } from "./matchPath";
 import RouteDefinition from "./RouteDefinition";
 
@@ -44,10 +43,13 @@ export interface Entry<T extends OperationType> extends FiftyOneLocation {
   cleanup: () => void;
 }
 
-type Subscription = (entry: Entry<OperationType>, action?: Action) => void;
+type Subscription<T extends OperationType> = (
+  entry: Entry<T>,
+  action?: Action
+) => void;
 
-type Subscribe = (
-  subscription: Subscription,
+type Subscribe<T extends OperationType> = (
+  subscription: Subscription<T>,
   onPending?: () => void
 ) => () => void;
 
@@ -55,7 +57,7 @@ export interface RoutingContext<T extends OperationType> {
   history: ReturnType<typeof createBrowserHistory>;
   get: () => Entry<T>;
   load: (hard?: boolean) => Promise<Entry<T>>;
-  subscribe: Subscribe;
+  subscribe: Subscribe<T>;
 }
 
 export interface Router<T extends OperationType> {
@@ -63,21 +65,21 @@ export interface Router<T extends OperationType> {
   context: RoutingContext<T>;
 }
 
-export const createRouter = (
+export const createRouter = <T extends OperationType>(
   environment: Environment,
-  routes: RouteDefinition<OperationType>[]
-): Router<OperationType> => {
+  routes: RouteDefinition<T>[]
+): Router<T> => {
   const history =
     isElectron() || isNotebook()
       ? createMemoryHistory()
       : createBrowserHistory();
 
-  let currentEntryResource: Resource<Entry<OperationType>>;
+  let currentEntryResource: Resource<Entry<T>>;
 
   let nextId = 0;
   const subscribers = new Map<
     number,
-    [Subscription, (() => void) | undefined]
+    [Subscription<T>, (() => void) | undefined]
   >();
 
   const update = (location: FiftyOneLocation, action?: Action) => {
@@ -85,7 +87,7 @@ export const createRouter = (
       subscribers.forEach(([_, onPending]) => onPending && onPending())
     );
     currentEntryResource.load().then(({ cleanup }) => {
-      const nextCurrentEntryResource = getEntryResource(
+      const nextCurrentEntryResource = getEntryResource<T>(
         environment,
         routes,
         location as FiftyOneLocation
@@ -107,7 +109,7 @@ export const createRouter = (
     update(location as FiftyOneLocation, action);
   });
 
-  const context: RoutingContext<OperationType> = {
+  const context: RoutingContext<T> = {
     history,
 
     load(hard = false) {
@@ -203,7 +205,7 @@ const getEntryResource = <T extends OperationType>(
           { fetchPolicy }
         ).subscribe({
           next: (data) => {
-            const { state, ...rest } = location;
+            const { state: _, ...rest } = location;
             resolveEntry({
               state: matchResult.variables as LocationState<T>,
               ...rest,
