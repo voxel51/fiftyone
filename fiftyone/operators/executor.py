@@ -15,6 +15,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+from fiftyone.plugins.secrets import PluginSecretsResolver
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -210,7 +211,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_uri, request_params):
+async def prepare_operator_executor(operator_uri, request_params):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -224,6 +225,8 @@ def prepare_operator_executor(operator_uri, request_params):
         return ExecutionResult(
             error="Validation error", validation_ctx=validation_ctx
         )
+
+    await ctx.resolve_secret_values(operator._plugin_secrets)
 
     return operator, executor, ctx
 
@@ -291,6 +294,8 @@ class ExecutionContext(object):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
 
     @property
     def results(self):
@@ -384,6 +389,24 @@ class ExecutionContext(object):
             message: a message to log
         """
         self.trigger("console_log", {"message": message})
+
+    def secret(self, key):
+        return self._secrets.get(key, None)
+
+    @property
+    def secrets(self) -> dict:
+        return self._secrets
+
+    async def resolve_secret_values(self, keys, request_token=None):
+        if None in (self._secrets_client, keys):
+            return None
+        for key in keys:
+            secret = await self._secrets_client.get_secret(
+                key, auth_token=request_token
+            )
+
+            if secret:
+                self._secrets[secret.key] = secret.value
 
     def serialize(self):
         """Serializes the execution context.
