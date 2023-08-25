@@ -23,6 +23,7 @@ import fiftyone.core.utils as fou
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+foui = fou.lazy_import("fiftyone.utils.image")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
 )
@@ -1469,12 +1470,12 @@ _LABEL_LIST_TO_SINGLE_MAP = {
 
 def _read_mask(mask_path):
     # pylint: disable=no-member
-    return etai.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
+    return foui.read(mask_path, flag=cv2.IMREAD_UNCHANGED)
 
 
 def _write_mask(mask, mask_path):
     mask = _mask_to_image(mask)
-    etai.write(mask, mask_path)
+    foui.write(mask, mask_path)
 
 
 def _transform_mask(in_mask, targets_map):
@@ -1529,12 +1530,12 @@ def _mask_to_image(mask):
 
 def _read_heatmap(map_path):
     # pylint: disable=no-member
-    return etai.read(map_path, flag=cv2.IMREAD_UNCHANGED)
+    return foui.read(map_path, flag=cv2.IMREAD_UNCHANGED)
 
 
 def _write_heatmap(map, map_path, range):
     map = _heatmap_to_image(map, range)
-    etai.write(map, map_path)
+    foui.write(map, map_path)
 
 
 def _heatmap_to_image(map, range):

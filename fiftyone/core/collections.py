@@ -37,6 +37,7 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -2735,7 +2736,7 @@ class SampleCollection(object):
                 segmentation image. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -6669,7 +6670,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the filepath of
                 each video, if possible. The path is converted to an absolute
                 path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. This argument can
+                :func:`fiftyone.core.storage.normalize_path`. This argument can
                 be used in conjunction with ``output_dir`` to cause the sampled
                 frames to be written in a nested directory structure within
                 ``output_dir`` matching the shape of the input video's folder
@@ -7862,7 +7863,7 @@ class SampleCollection(object):
                 annotated media. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             label_fields (None): a label field or list of label fields to
                 render. By default, all :class:`fiftyone.core.labels.Label`
                 fields are drawn
@@ -8065,7 +8066,7 @@ class SampleCollection(object):
                 media. This argument allows for populating nested
                 subdirectories that match the shape of the input paths. The
                 path is converted to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`
+                :func:`fiftyone.core.storage.normalize_path`
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples. When provided, parameters such as
@@ -8717,7 +8718,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -8739,7 +8740,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir) + os.path.sep
+            rel_dir = fost.normalize_path(rel_dir) + os.path.sep
 
         contains_videos = self._contains_videos(any_slice=True)
         write_frame_labels = (
@@ -8828,7 +8829,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -8872,7 +8873,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory

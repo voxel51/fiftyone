@@ -37,6 +37,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.annotations as foua
 import fiftyone.utils.data as foud
@@ -610,7 +611,7 @@ class CVATImageDatasetImporter(
             else:
                 key = i.name
 
-            cvat_images_map[fou.normpath(key)] = i
+            cvat_images_map[fos.normpath(key)] = i
 
         filenames = set(cvat_images_map.keys())
 
@@ -779,7 +780,7 @@ class CVATVideoDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            labels_path = fou.normpath(self.labels_path)
+            labels_path = fos.normpath(self.labels_path)
             labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(labels_path, p)
                 for p in etau.list_files(labels_path, recursive=True)
@@ -865,7 +866,7 @@ class CVATImageDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         image_format (None): the image format to use when writing in-memory
@@ -1047,7 +1048,7 @@ class CVATVideoDatasetExporter(
             generate an output path for each exported video. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
     """
 
     def __init__(
