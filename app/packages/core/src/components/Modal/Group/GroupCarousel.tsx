@@ -1,142 +1,93 @@
-import { useTheme } from "@fiftyone/components";
-import Flashlight, { Response } from "@fiftyone/flashlight";
-import { Sample, freeVideos, zoomAspectRatio } from "@fiftyone/looker";
-import * as foq from "@fiftyone/relay";
+import { Loading, useTheme } from "@fiftyone/components";
+import Flashlight from "@fiftyone/flashlight";
+import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  groupPaginationFragment,
-  selectedSamples,
-  useBrowserStorage,
-} from "@fiftyone/state";
+import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
 import React, {
-  MutableRefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
-import { useErrorHandler } from "react-error-boundary";
-import { usePaginationFragment } from "react-relay";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
+import useFlashlightPager from "../../../useFlashlightPager";
 import useSetGroupSample from "./useSetGroupSample";
 
-const process = (
-  next: MutableRefObject<number>,
-  store: fos.LookerStore<any>,
-  zoom: boolean,
-  edges: foq.paginateGroup_query$data["samples"]["edges"]
-) =>
-  edges.reduce((acc, { node }) => {
-    if (
-      node.__typename === "ImageSample" ||
-      node.__typename === "VideoSample"
-    ) {
-      let data: any = {
-        sample: node.sample,
-        aspectRatio: node.aspectRatio,
-        urls: Object.fromEntries(
-          node.urls.map(({ field, url }) => [field, url])
-        ),
-      };
+const groupCarouselSlices = selector<string[]>({
+  key: "groupCarouselSlices",
+  get: ({ get }) => {
+    const mediaTypesSet = get(fos.groupMediaTypesSet);
+    const slices = get(fos.groupSlices);
 
-      if (node.__typename === "VideoSample") {
-        data = {
-          ...data,
-          frameRate: node.frameRate,
-          frameNumber: node.sample.frame_number,
-        };
-      }
-
-      store.samples.set(node.sample._id, data);
-      store.indices.set(next.current, node.sample._id);
-      next.current++;
-
-      return [
-        ...acc,
-        {
-          aspectRatio: zoom
-            ? zoomAspectRatio(node.sample as any, node.aspectRatio)
-            : node.aspectRatio,
-          id: (node.sample as any)._id as string,
-        },
-      ];
+    if (mediaTypesSet.size === 1 && mediaTypesSet.has("point-cloud")) {
+      return slices;
     }
 
-    return acc;
-  }, []);
+    const mediaTypes = Object.fromEntries(
+      get(fos.groupMediaTypes).map(({ name, mediaType }) => [name, mediaType])
+    );
+
+    return slices.filter((slice) => mediaTypes[slice] !== "point_cloud");
+  },
+});
+
+const pageParams = selector({
+  key: "paginateGroupVariables",
+  get: ({ get }) => {
+    const params = {
+      dataset: get(fos.datasetName),
+      view: get(fos.view),
+      filter: {
+        group: {
+          slice: get(fos.groupSlice(false)),
+          id: get(fos.groupId),
+          slices: get(groupCarouselSlices),
+        },
+      },
+    };
+    return (page: number, pageSize: number) => {
+      return {
+        ...params,
+        after: page ? String(page * pageSize - 1) : null,
+        count: pageSize,
+      };
+    };
+  },
+});
 
 const Column: React.FC = () => {
   const [id] = useState(() => uuid());
-  const pageCount = useRef(0);
-
-  const { data, hasNext, loadNext } = usePaginationFragment(
-    foq.paginateGroupPaginationFragment,
-    useRecoilValue(groupPaginationFragment)
-  );
-
-  const samples = {
-    ...data.samples,
-    edges: data.samples.edges.filter(
-      (s) => s.node.sample._media_type !== "point-cloud"
-    ),
-  };
-
   const store = fos.useLookerStore();
   const opts = fos.useLookerOptions(true);
+
   const groupField = useRecoilValue(fos.groupField);
   const currentSlice = useRecoilValue(fos.groupSlice(true));
+
   const highlight = useCallback(
-    (sample: Sample) => {
-      return get(sample, groupField).name === currentSlice;
-    },
+    (sample) => get(sample, groupField).name === currentSlice,
     [currentSlice, groupField]
   );
+
   const createLooker = fos.useCreateLooker(
-    true,
+    false,
     true,
     {
       ...opts,
-      thumbnailTitle: (sample) => {
-        return sample[groupField]?.name;
-      },
+      thumbnailTitle: (sample) => get(sample, groupField).name,
     },
     highlight
   );
-
-  const hasNextRef = useRef(true);
-  hasNextRef.current = hasNext;
-  const countRef = useRef(0);
-  const handleError = useErrorHandler();
-
-  const resolveRef = useRef<((value: Response<number>) => void) | null>(null);
-  const nextRef = useRef(loadNext);
-  nextRef.current = loadNext;
-
-  useEffect(() => {
-    if (resolveRef.current && countRef.current !== samples.edges.length) {
-      pageCount.current += 1;
-      resolveRef.current({
-        items: process(
-          countRef,
-          store,
-          false,
-          samples.edges.slice(countRef.current)
-        ),
-        nextRequestKey: pageCount.current,
-      });
-      countRef.current = samples.edges.length;
-      resolveRef.current = null;
-    }
-  }, [samples]);
 
   const select = fos.useSelectSample();
   const selectSample = useRef(select);
   selectSample.current = select;
   const setGroupSample = useSetGroupSample(store);
+  const { init, deferred } = fos.useDeferrer();
+  const { isEmpty, reset, page } = useFlashlightPager(store, pageParams);
 
   const [flashlight] = useState(() => {
     const flashlight = new Flashlight({
@@ -146,23 +97,7 @@ const Column: React.FC = () => {
       options: {
         rowAspectRatioThreshold: 0,
       },
-      get: (page) => {
-        pageCount.current = page + 1;
-        if (pageCount.current === 1) {
-          return Promise.resolve({
-            items: process(countRef, store, false, samples.edges),
-            nextRequestKey: hasNext ? pageCount.current : null,
-          });
-        } else {
-          hasNextRef.current &&
-            nextRef.current(20, {
-              onComplete: (error) => error && handleError(error),
-            });
-          return new Promise((resolve) => {
-            resolveRef.current = resolve;
-          });
-        }
-      },
+      get: page,
       render: (sampleId, element, dimensions, soft, hide) => {
         const result = store.samples.get(sampleId);
 
@@ -191,15 +126,18 @@ const Column: React.FC = () => {
     return flashlight;
   });
 
+  const mediaField = useRecoilValue(fos.selectedMediaField(true));
   useLayoutEffect(() => {
-    if (!flashlight.isAttached()) {
-      return;
-    }
+    deferred(() => {
+      if (!flashlight.isAttached()) {
+        return;
+      }
 
-    flashlight.reset();
+      flashlight.reset();
 
-    freeVideos();
-  }, [useRecoilValue(fos.selectedMediaField(true))]);
+      freeVideos();
+    });
+  }, [deferred, reset, flashlight, mediaField]);
 
   useLayoutEffect(() => {
     flashlight.attach(id);
@@ -220,27 +158,30 @@ const Column: React.FC = () => {
     [highlight, opts, selected, store]
   );
 
+  const options = useRecoilValueLoadable(
+    fos.lookerOptions({ modal: true, withFilter: true })
+  );
   useLayoutEffect(() => {
-    flashlight.updateItems(updateItem);
-  }, [
-    flashlight,
-    updateItem,
-    useRecoilValueLoadable(
-      fos.lookerOptions({ modal: true, withFilter: true })
-    ),
-    useRecoilValue(fos.selectedSamples),
-  ]);
+    deferred(() => flashlight.updateItems(updateItem));
+  }, [deferred, flashlight, updateItem, options, selected]);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   return (
-    <div
-      style={{
-        display: "block",
-        width: "100%",
-        height: "100%",
-        position: "relative",
-      }}
-      id={id}
-    ></div>
+    <>
+      {isEmpty && <Loading>No data</Loading>}
+      <div
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          position: "relative",
+        }}
+        id={id}
+      ></div>
+    </>
   );
 };
 
@@ -276,6 +217,7 @@ export const GroupCarousel: React.FC<{ fullHeight?: boolean }> = ({
       onResizeStop={(e, direction, ref, { height: delta }) => {
         setHeight(Math.max(height + delta, 100));
       }}
+      data-cy={"group-carousel"}
     >
       <Column />
     </Resizable>

@@ -1252,7 +1252,7 @@ class ExcludeLabels(ViewStage):
 
     -   Provide the ``labels`` argument, which should contain a list of dicts
         in the format returned by
-        :meth:`fiftyone.core.session.Session.selected_labels`, to exclude
+        :attr:`fiftyone.core.session.Session.selected_labels`, to exclude
         specific labels
 
     -   Provide the ``ids`` argument to exclude labels with specific IDs
@@ -1333,7 +1333,7 @@ class ExcludeLabels(ViewStage):
     Args:
         labels (None): a list of dicts specifying the labels to exclude in the
             format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to exclude
         tags (None): a tag or iterable of tags of labels to exclude
         fields (None): a field or iterable of fields from which to exclude
@@ -4470,10 +4470,17 @@ class SelectGroupSlices(ViewStage):
         media_type (None): a media type whose slice(s) to select
     """
 
-    def __init__(self, slices=None, media_type=None, _allow_mixed=False):
+    def __init__(
+        self,
+        slices=None,
+        media_type=None,
+        _allow_mixed=False,
+        _force_mixed=False,
+    ):
         self._slices = slices
         self._media_type = media_type
         self._allow_mixed = _allow_mixed
+        self._force_mixed = _force_mixed
 
     @property
     def slices(self):
@@ -4518,7 +4525,7 @@ class SelectGroupSlices(ViewStage):
         elif slices is not None:
             expr &= F(name_field) == slices
 
-        return [
+        pipeline = [
             {"$project": {group_field: True}},
             {
                 "$lookup": {
@@ -4532,7 +4539,27 @@ class SelectGroupSlices(ViewStage):
             {"$replaceRoot": {"newRoot": "$groups"}},
         ]
 
+        # @note(SelectGroupSlices)
+        # Must re-apply field selection/exclusion after the $lookup
+        if isinstance(sample_collection, fov.DatasetView):
+            selected_fields, excluded_fields = _get_selected_excluded_fields(
+                sample_collection
+            )
+
+            if selected_fields:
+                stage = SelectFields(selected_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+            if excluded_fields:
+                stage = ExcludeFields(excluded_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+        return pipeline
+
     def get_media_type(self, sample_collection):
+        if self._force_mixed:
+            return fom.MIXED
+
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
@@ -4625,7 +4652,7 @@ class SelectGroupSlices(ViewStage):
         return {
             slice_name: media_type
             for slice_name, media_type in group_media_types.items()
-            if slice_name in slices
+            if slice_name in slices or self._force_mixed
         }
 
     def _kwargs(self):
@@ -4768,7 +4795,7 @@ class MatchLabels(ViewStage):
 
     -   Provide the ``labels`` argument, which should contain a list of dicts
         in the format returned by
-        :meth:`fiftyone.core.session.Session.selected_labels`, to match
+        :attr:`fiftyone.core.session.Session.selected_labels`, to match
         specific labels
 
     -   Provide the ``ids`` argument to match labels with specific IDs
@@ -4866,7 +4893,7 @@ class MatchLabels(ViewStage):
     Args:
         labels (None): a list of dicts specifying the labels to select in the
             format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to select
         tags (None): a tag or iterable of tags of labels to select
         filter (None): a :class:`fiftyone.core.expressions.ViewExpression` or
@@ -6196,7 +6223,7 @@ class SelectLabels(ViewStage):
 
     -   Provide the ``labels`` argument, which should contain a list of dicts
         in the format returned by
-        :meth:`fiftyone.core.session.Session.selected_labels`, to select
+        :attr:`fiftyone.core.session.Session.selected_labels`, to select
         specific labels
 
     -   Provide the ``ids`` argument to select labels with specific IDs
@@ -6271,7 +6298,7 @@ class SelectLabels(ViewStage):
     Args:
         labels (None): a list of dicts specifying the labels to select in the
             format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
         ids (None): an ID or iterable of IDs of the labels to select
         tags (None): a tag or iterable of tags of labels to select
         fields (None): a field or iterable of fields from which to select
@@ -8294,6 +8321,33 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
         warnings.warn(msg)
 
     return brain_key
+
+
+def _get_selected_excluded_fields(view):
+    selected_fields, excluded_fields = view._get_selected_excluded_fields()
+
+    if not view._has_frame_fields():
+        return selected_fields, excluded_fields
+
+    _selected_fields, _excluded_fields = view._get_selected_excluded_fields(
+        frames=True
+    )
+
+    if _selected_fields:
+        _selected_fields = {view._FRAMES_PREFIX + f for f in _selected_fields}
+        if selected_fields:
+            selected_fields.update(_selected_fields)
+        else:
+            selected_fields = _selected_fields
+
+    if _excluded_fields:
+        _excluded_fields = {view._FRAMES_PREFIX + f for f in _excluded_fields}
+        if excluded_fields:
+            excluded_fields.update(_excluded_fields)
+        else:
+            excluded_fields = _excluded_fields
+
+    return selected_fields, excluded_fields
 
 
 class _ViewStageRepr(reprlib.Repr):

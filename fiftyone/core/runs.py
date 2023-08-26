@@ -650,8 +650,8 @@ class Run(Configurable):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
-            select_fields (False): whether to select only the fields involved
-                in the run
+            select_fields (False): whether to exclude fields involved in other
+                runs of the same type
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -665,25 +665,24 @@ class Run(Configurable):
         if not select_fields:
             return view
 
-        #
-        # Select run fields
-        #
-
         fields = cls._get_run_fields(samples, key)
         root_fields = samples._get_root_fields(fields)
-
-        view = view.select_fields(root_fields)
-
-        #
-        # Hide any ancillary info on the same fields
-        #
 
         exclude_fields = []
         for _key in cls.list_runs(samples):
             if _key == key:
                 continue
 
-            for field in cls._get_run_fields(samples, _key):
+            _fields = cls._get_run_fields(samples, _key)
+            _root_fields = samples._get_root_fields(_fields)
+
+            # Exclude top-level fields involved in other runs
+            for field in _root_fields:
+                if field not in root_fields:
+                    exclude_fields.append(field)
+
+            # Exclude nested fields from other runs on this run's fields
+            for field in _fields:
                 if any(field.startswith(r + ".") for r in root_fields):
                     exclude_fields.append(field)
 

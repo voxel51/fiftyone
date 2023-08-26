@@ -1,7 +1,7 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
@@ -85,9 +85,10 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? get(groupId) || null : null,
           mixed,
-          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          slice: get(fos.groupSlice(false)),
+          slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
           sample_id:
-            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
+            modal && !get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }
@@ -202,8 +203,13 @@ const CategoricalFilter = <T extends V = V>({
     ? "label tag"
     : name;
 
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const selectedCounts = useRef(new Map<V["value"], number>());
-  const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
+  const selectVisibility = useRef(new Map<V["value"], number>());
+  const onSelect = useOnSelect(
+    selectedValuesAtom,
+    isFilterMode ? selectedCounts : selectVisibility
+  );
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
@@ -222,6 +228,7 @@ const CategoricalFilter = <T extends V = V>({
 
   return (
     <NamedCategoricalFilterContainer
+      data-cy={`categorical-filter-${path}`}
       onClick={(e) => {
         e.stopPropagation();
       }}
@@ -247,7 +254,9 @@ const CategoricalFilter = <T extends V = V>({
           !skeleton && (
             <Selector
               useSearch={useSearch}
-              placeholder={`+ filter by ${name}`}
+              placeholder={`+ ${
+                isFilterMode ? "filter" : "set visibility"
+              } by ${name}`}
               component={ResultComponent}
               onSelect={onSelect}
               inputStyle={{
@@ -257,6 +266,7 @@ const CategoricalFilter = <T extends V = V>({
               }}
               containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
               toKey={({ value }) => String(value)}
+              id={path}
             />
           )}
         <Wrapper

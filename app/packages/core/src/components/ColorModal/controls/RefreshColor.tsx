@@ -5,7 +5,7 @@ import { Button } from "../../utils";
 import { Autorenew } from "@mui/icons-material";
 
 const ShuffleColor: React.FC = () => {
-  const [colorSeed, setColorSeed] = useRecoilState(fos.colorSeed(false));
+  const [colorSeed, setColorSeed] = useRecoilState(fos.colorSeed);
   return (
     <>
       <Button

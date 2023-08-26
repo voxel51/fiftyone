@@ -1,13 +1,22 @@
 import { Page } from "@playwright/test";
 import { spawn } from "child_process";
 import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
-import { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import {
+  AbstractFiftyoneLoader,
+  WaitUntilGridVisibleOptions,
+} from "src/shared/abstract-loader";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import kill from "tree-kill";
 import waitOn from "wait-on";
 import { Duration } from "../utils";
 
+type WebServerProcessConfig = {
+  port: number;
+  processId: number;
+};
 export class OssLoader extends AbstractFiftyoneLoader {
+  protected webserverProcessConfig: WebServerProcessConfig;
+
   constructor() {
     super();
     this.pythonRunner = new PythonRunner(getPythonCommand);
@@ -22,8 +31,12 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     process.env.FIFTYONE_DATABASE_NAME = `${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
 
+    const mainPyPath = process.env.FIFTYONE_ROOT_DIR
+      ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
+      : "../fiftyone/server/main.py";
+
     const procString = getPythonCommand([
-      "../fiftyone/server/main.py",
+      mainPyPath,
       "--address",
       "0.0.0.0",
       "--port",
@@ -94,7 +107,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     );
   }
 
-  async loadTestDataset(name: string) {
+  async loadTestDataset() {
     throw new Error("Method not implemented.");
   }
 
@@ -102,17 +115,26 @@ export class OssLoader extends AbstractFiftyoneLoader {
     return this.pythonRunner.exec(code);
   }
 
-  async executePythonFixture(fixturePath: string) {
+  async executePythonFixture() {
     throw new Error("Method not implemented.");
   }
 
-  async waitUntilLoad(page: Page, datasetName: string) {
+  async waitUntilGridVisible(
+    page: Page,
+    datasetName: string,
+    options?: WaitUntilGridVisibleOptions
+  ) {
+    const { isEmptyDataset, savedView, withGrid } = options ?? {
+      isEmptyDataset: false,
+      savedView: undefined,
+      withGrid: true,
+    };
+
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
       await page.getByTestId(`selector-Select dataset`).click();
 
       if (datasetName) {
-        console.log("attempting to click", `selector-result-${datasetName}`);
         await page.getByTestId(`selector-result-${datasetName}`).click();
       } else {
         const firstSelectorResult = page.locator(
@@ -122,19 +144,49 @@ export class OssLoader extends AbstractFiftyoneLoader {
       }
     };
 
-    if (!datasetName) {
-      await forceDatasetFromSelector();
+    if (savedView) {
+      await page.goto(`/datasets/${datasetName}?view=${savedView}`);
     } else {
       await page.goto(`/datasets/${datasetName}`);
-      const location = await page.evaluate(() => window.location.href);
+    }
 
-      if (!location.includes("datasets")) {
-        await forceDatasetFromSelector();
+    const pathname = await page.evaluate(() => window.location.pathname);
+    if (pathname !== `/datasets/${datasetName}`) {
+      await forceDatasetFromSelector();
+    }
+
+    if (savedView) {
+      const search = await page.evaluate(() => window.location.search);
+
+      if (search !== `?view=${savedView}`) {
+        throw new Error("wrong view");
       }
     }
 
-    await page.waitForSelector("[data-cy=flashlight-section]", {
-      state: "visible",
-    });
+    await page.waitForSelector(
+      `[data-cy=${withGrid ? "flashlight-section" : "panel-container"}]`,
+      {
+        state: "visible",
+      }
+    );
+
+    if (isEmptyDataset) {
+      return;
+    }
+
+    await page.waitForFunction(
+      () => {
+        if (document.querySelector(`[data-cy=looker-error-info]`)) {
+          return true;
+        }
+
+        return (
+          document.querySelector(`canvas`)?.getAttribute("sample-loaded") ===
+          "true"
+        );
+      },
+      {},
+      { timeout: Duration.Seconds(10) }
+    );
   }
 }

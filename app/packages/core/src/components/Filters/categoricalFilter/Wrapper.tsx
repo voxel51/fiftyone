@@ -41,11 +41,10 @@ const Wrapper = ({
   const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
   const selectedSet = new Set(selected);
-  const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setIsMatching = isMatchingAtom
-    ? useSetRecoilState(isMatchingAtom)
-    : null;
+  const [excluded, setExcluded] = useRecoilState(excludeAtom);
+  const setIsMatching = useSetRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const counts = Object.fromEntries(results);
   let allValues: V[] = selected.map<V>((value) => ({
@@ -83,8 +82,13 @@ const Wrapper = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(!nestedField);
+    excluded && setExcluded(false);
+    isFilterMode && setIsMatching(!nestedField);
+  };
+
+  const handleReset = () => {
+    setSelected([]);
+    initializeSettings();
   };
 
   if (totalCount === 0) {
@@ -111,8 +115,8 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={
-            count < 0
-              ? null
+            count < 0 || !isFilterMode
+              ? undefined
               : selectedCounts.current.has(value)
               ? selectedCounts.current.get(value)
               : count
@@ -138,7 +142,7 @@ const Wrapper = ({
           {
             <FilterOption
               nestedField={nestedField}
-              shouldNotShowExclude={shouldNotShowExclude}
+              shouldNotShowExclude={Boolean(shouldNotShowExclude)}
               excludeAtom={excludeAtom}
               isMatchingAtom={isMatchingAtom}
               valueName={name}
@@ -151,10 +155,7 @@ const Wrapper = ({
           <Button
             text={"Reset"}
             color={color}
-            onClick={() => {
-              setSelected([]);
-              initializeSettings();
-            }}
+            onClick={handleReset}
             style={{
               margin: "0.25rem -0.5rem",
               height: "2rem",

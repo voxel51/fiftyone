@@ -125,6 +125,7 @@ const NumericFieldFilter = ({
   color,
 }: Props) => {
   const name = path.split(".").slice(-1)[0];
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const excludeAtom = fos.numericExcludeAtom({
     path,
     modal,
@@ -135,7 +136,7 @@ const NumericFieldFilter = ({
     modal,
     defaultRange,
   });
-  const values = useRecoilValue(
+  const [values, setValues] = useRecoilState(
     fos.rangeAtom({
       modal,
       path,
@@ -148,7 +149,6 @@ const NumericFieldFilter = ({
     ? useSetRecoilState(isMatchingAtom)
     : null;
 
-  const setFilter = useSetRecoilState(fos.filter({ modal, path }));
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
@@ -161,6 +161,9 @@ const NumericFieldFilter = ({
   });
 
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const hasVisibilitySetting = useRecoilValue(
+    fos.fieldHasVisibilitySetting({ modal, path })
+  );
 
   const bounded = useRecoilValue(
     fos.boundedCount({ modal, path, extended: false })
@@ -199,9 +202,9 @@ const NumericFieldFilter = ({
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
   const initializeSettings = () => {
-    setFilter([null, null]);
+    setValues([null, null]);
     setExcluded && setExcluded(false);
-    setIsMatching && setIsMatching(!nestedField);
+    isFilterMode && setIsMatching && setIsMatching(!nestedField);
   };
 
   // we do not want to show nestedfield's index field
@@ -210,6 +213,8 @@ const NumericFieldFilter = ({
   if (!field || (!hasBounds && !hasNonfinites && hasNone)) {
     return null;
   }
+
+  const key = path.replace(/[ ,.]/g, "-");
 
   return (
     <NamedRangeSliderContainer
@@ -233,6 +238,7 @@ const NumericFieldFilter = ({
       <RangeSliderContainer
         onMouseDown={(event) => event.stopPropagation()}
         style={{ cursor: "default" }}
+        data-cy={`numeric-slider-container-${key}`}
       >
         {!hasBounds && !named && !hasNonfinites && (
           <Checkbox
@@ -259,6 +265,7 @@ const NumericFieldFilter = ({
               defaultRange,
             })}
             color={color}
+            key={key}
           />
         ) : hasBounds ? (
           <Checkbox
@@ -267,7 +274,7 @@ const NumericFieldFilter = ({
             disabled={true}
             name={bounds[0]}
             setValue={() => {}}
-            count={bounded}
+            count={isFilterMode ? bounded : undefined} // visibility mode does not show count
             subcountAtom={fos.boundedCount({
               modal,
               path,
@@ -305,7 +312,7 @@ const NumericFieldFilter = ({
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {isFiltered && (
+        {(isFiltered || hasVisibilitySetting) && (
           <Button
             text={"Reset"}
             color={color}

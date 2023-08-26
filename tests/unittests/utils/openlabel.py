@@ -1,5 +1,11 @@
+"""
+FiftyOne OpenLABEL test utils
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 from collections import defaultdict
-from copy import deepcopy
 import os
 
 import eta.core.serial as etas
@@ -216,10 +222,18 @@ def _make_image_labels(tmp_dir):
         "pose_point2", [20, 30], "point2d", as_list=False
     )
     pose_obj_data_2.add_attribute("skeleton_key", "point2")
+    pose_obj_data_2.add_attribute("str_attr", "test")
+    pose_obj_data_2.add_attribute("int_attr", 51)
+    pose_obj_data_2.add_attribute("float_attr", 51.51)
+    pose_obj_data_2.add_attribute("bool_attr", True)
     pose_obj_data_1 = OpenLABELObjectData(
         "pose_point1", [10, 20], "point2d", as_list=False
     )
     pose_obj_data_1.add_attribute("skeleton_key", "point1")
+    pose_obj_data_1.add_attribute("str_attr", "test")
+    pose_obj_data_1.add_attribute("int_attr", 51)
+    pose_obj_data_1.add_attribute("float_attr", 51.51)
+    pose_obj_data_1.add_attribute("bool_attr", True)
     pose_obj_datas = [pose_obj_data_2, pose_obj_data_1]
     pose_obj_data = _merge_object_datas(pose_obj_datas)
     pose_obj = OpenLABELObject("pose1", "Keypoints")

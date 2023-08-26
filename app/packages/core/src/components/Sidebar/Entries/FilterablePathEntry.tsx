@@ -275,7 +275,8 @@ const FilterableEntry = ({
     pathIsExpanded({ modal, path: expandedPath })
   );
   const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
-  const activeColor = useRecoilValue(fos.pathColor({ path, modal }));
+  const activeColor = useRecoilValue(fos.pathColor(path));
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const color = disabled ? theme.background.level2 : activeColor;
   const fields = useRecoilValue(
@@ -330,8 +331,11 @@ const FilterableEntry = ({
               color={color}
               expandedPath={expandedPath}
               template={({ hoverHandlers, hoverTarget, container }) => (
-                <NameAndCountContainer ref={container}>
-                  <span key="path">
+                <NameAndCountContainer
+                  ref={container}
+                  data-cy={`sidebar-field-container-${path}`}
+                >
+                  <span key="path" data-cy={`sidebar-field-${path}`}>
                     <span ref={hoverTarget} {...hoverHandlers}>
                       {PATH_OVERRIDES[path] || path}
                     </span>
@@ -341,14 +345,18 @@ const FilterableEntry = ({
                       <Hidden path={path} />
                     </Suspense>
                   )}
-                  <PathEntryCounts
-                    key="count"
-                    modal={modal}
-                    path={expandedPath}
-                  />
+                  {isFilterMode && (
+                    <PathEntryCounts
+                      key="count"
+                      modal={modal}
+                      path={expandedPath}
+                    />
+                  )}
+
                   {!disabled && (
                     <Arrow
                       key="arrow"
+                      data-cy={`sidebar-field-arrow-${path}`}
                       style={{ cursor: "pointer", margin: 0 }}
                       onClick={(event) => {
                         event.preventDefault();

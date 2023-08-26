@@ -1,12 +1,15 @@
 import { Loading, useTheme } from "@fiftyone/components";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -48,12 +51,12 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "./state";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 
 type View = "pov" | "top";
 
 const MODAL_TRUE = true;
 const DEFAULT_GREEN = "#00ff00";
+const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
 export const Looker3d = () => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
@@ -63,39 +66,36 @@ export const Looker3d = () => {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = useRecoilValue(fos.alpha(MODAL_TRUE));
+  const labelAlpha = useRecoilValue(fos.alpha);
   const onSelectLabel = fos.useOnSelectLabel();
+
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = useRecoilValue(fos.colorMap(true));
+  const getColor = useRecoilValue(fos.colorMap);
   const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
     fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
   );
-  const [activePcdSlices, setActivePcdSlices] = useRecoilState(
-    fos.activePcdSlices
-  );
-  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
-  const defaultPcdSlice = useRecoilValue(fos.defaultPcdSlice);
 
-  useEffect(() => {
-    if (
-      (!activePcdSlices || activePcdSlices.length === 0) &&
-      defaultPcdSlice?.length > 0
-    ) {
-      setActivePcdSlices([defaultPcdSlice]);
-    }
-  }, [activePcdSlices, setActivePcdSlices, defaultPcdSlice]);
+  const allPcdSlices = useRecoilValue(fos.allPcdSlices);
 
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
-  const sampleMap = useRecoilValue(fos.activePcdSliceToSampleMap);
+  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
 
   useEffect(() => {
     Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
+
+  useLayoutEffect(() => {
+    const canvas = document.getElementById(CANVAS_WRAPPER_ID);
+
+    if (canvas) {
+      canvas.querySelector("canvas")?.setAttribute("sample-loaded", "true");
+    }
+  }, []);
 
   const handleSelect = useCallback(
     (label: OverlayLabel) => {
@@ -196,7 +196,6 @@ export const Looker3d = () => {
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
-
   const pcRotationSetting = _.get(settings, "pointCloud.rotation", [0, 0, 0]);
   const minZ = _.get(settings, "pointCloud.minZ", null);
 
@@ -260,8 +259,8 @@ export const Looker3d = () => {
           return;
         }
       }
-      const hovered = get(fos.hoveredSample) as Sample;
-      if (hovered && hovered._id !== sample._id) {
+      const hovered = get(fos.hoveredSample);
+      if (hovered && hovered._id !== sample.id) {
         return;
       }
 
@@ -274,7 +273,7 @@ export const Looker3d = () => {
       const changed = onChangeView("top");
       if (changed) return;
 
-      set(fos.modal, null);
+      set(fos.currentModalSample, null);
     },
     [jsonPanel, helpPanel, selectedLabels, hovering]
   );
@@ -328,39 +327,52 @@ export const Looker3d = () => {
 
   const filteredSamples = useMemo(
     () =>
-      Object.entries(sampleMap).map(([slice, sample]) => {
-        let mediaUrl;
+      Object.entries(sampleMap)
+        .map(([slice, sample]) => {
+          let mediaUrlUnresolved;
 
-        if (Array.isArray(sample.urls)) {
-          mediaUrl = fos.getSampleSrc(
-            sample.urls.find((u) => u.field === mediaField).url
+          if (Array.isArray(sample.urls)) {
+            const mediaFieldObj = sample.urls.find(
+              (u) => u.field === mediaField
+            );
+            if (mediaFieldObj) {
+              mediaUrlUnresolved = mediaFieldObj.url;
+            } else {
+              return null;
+            }
+          } else {
+            mediaUrlUnresolved = sample.urls[mediaField];
+          }
+
+          if (!mediaUrlUnresolved) {
+            return null;
+          }
+
+          const mediaUrl = fos.getSampleSrc(mediaUrlUnresolved);
+
+          const customColor =
+            (customColorMap &&
+              customColorMap[isPointcloudDataset ? "default" : slice]) ??
+            "#00ff00";
+
+          return (
+            <PointCloudMesh
+              key={slice}
+              minZ={minZ}
+              shadeBy={shadeBy}
+              customColor={customColor}
+              pointSize={pointSize}
+              src={mediaUrl}
+              rotation={pcRotation}
+              onLoad={(boundingBox) => {
+                if (!pointCloudBounds) setPointCloudBounds(boundingBox);
+              }}
+              defaultShadingColor={theme.text.primary}
+              isPointSizeAttenuated={isPointSizeAttenuated}
+            />
           );
-        } else {
-          mediaUrl = fos.getSampleSrc(sample.urls[mediaField]);
-        }
-
-        const customColor =
-          (customColorMap &&
-            customColorMap[isPointcloudDataset ? "default" : slice]) ??
-          "#00ff00";
-
-        return (
-          <PointCloudMesh
-            key={slice}
-            minZ={minZ}
-            shadeBy={shadeBy}
-            customColor={customColor}
-            pointSize={pointSize}
-            src={mediaUrl}
-            rotation={pcRotation}
-            onLoad={(boundingBox) => {
-              if (!pointCloudBounds) setPointCloudBounds(boundingBox);
-            }}
-            defaultShadingColor={theme.text.primary}
-            isPointSizeAttenuated={isPointSizeAttenuated}
-          />
-        );
-      }),
+        })
+        .filter((e) => e !== null),
     [
       sampleMap,
       mediaField,
@@ -391,12 +403,22 @@ export const Looker3d = () => {
             }
           }
           if (coloring.by === "value") {
-            const key =
-              setting.colorByAttribute === "index"
-                ? l._id
-                : setting.colorByAttribute === "label"
-                ? l.label
-                : l.attributes[setting.colorByAttribute] ?? l.label;
+            let key;
+            if (setting?.colorByAttribute) {
+              if (setting.colorByAttribute === "index") {
+                key = l._id;
+              } else if (setting.colorByAttribute === "label") {
+                key = l.label;
+              } else if (l.attributes[setting.colorByAttribute]) {
+                key = l.attributes[setting.colorByAttribute];
+              } else {
+                key = l.label;
+              }
+            } else {
+              // fallback to label if colorByAttribute is not set
+              key = l.label;
+            }
+
             if (
               setting &&
               setting.valueColors &&
@@ -418,7 +440,7 @@ export const Looker3d = () => {
           return { ...l, color, id: l._id };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sampleMap, selectedLabels]
+    [coloring, getColor, pathFilter, sampleMap, selectedLabels, colorScheme]
   );
 
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {
@@ -468,10 +490,20 @@ export const Looker3d = () => {
     settings,
   ]);
 
+  if (filteredSamples.length === 0) {
+    return (
+      <Container style={{ padding: "2em" }}>
+        <Typography>
+          No point-cloud samples detected for media field "{mediaField}"
+        </Typography>
+      </Container>
+    );
+  }
+
   return (
     <ErrorBoundary>
-      <Container onMouseOver={update} onMouseMove={update}>
-        <Canvas onClick={() => setCurrentAction(null)} data-cy="looker3d">
+      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
+        <Canvas id={CANVAS_WRAPPER_ID} onClick={() => setCurrentAction(null)}>
           <Screenshot />
           <Environment
             controlsRef={controlsRef}
@@ -486,6 +518,7 @@ export const Looker3d = () => {
         </Canvas>
         {(hoveringRef.current || hovering) && (
           <ActionBarContainer
+            data-cy="looker3d-action-bar"
             onMouseEnter={() => (hoveringRef.current = true)}
             onMouseLeave={() => (hoveringRef.current = false)}
           >
@@ -518,9 +551,9 @@ export const Looker3d = () => {
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
-  { error: Error | null }
+  { error: Error | string | null }
 > {
-  state = { error: null };
+  state = { error: null, hasError: false };
 
   static getDerivedStateFromError = (error: Error) => ({
     hasError: true,
@@ -532,8 +565,18 @@ class ErrorBoundary extends React.Component<
   }
 
   render() {
-    if (this.state.error) {
-      return <Loading>{this.state.error}</Loading>;
+    if (this.state.hasError) {
+      // useLoader from @react-three/fiber throws a raw string for PCD 404
+      // not an error
+      return (
+        <Loading dataCy={"looker3d"}>
+          <div data-cy="looker-error-info">
+            {this.state.error instanceof Error
+              ? this.state.error.message
+              : this.state.error}
+          </div>
+        </Loading>
+      );
     }
 
     return this.props.children;

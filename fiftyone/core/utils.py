@@ -20,9 +20,7 @@ import io
 import itertools
 import logging
 import multiprocessing
-import ntpath
 import os
-import posixpath
 import platform
 import re
 import signal
@@ -352,38 +350,6 @@ def find_files(root_dir, patt, max_depth=1):
             paths += glob.glob(os.path.join(root, p))
 
     return paths
-
-
-def normpath(path):
-    """Normalizes the given path by converting all slashes to forward slashes
-    on Unix and backslashes on Windows and removing duplicate slashes.
-
-    Use this function when you need a version of ``os.path.normpath`` that
-    converts ``\\`` to ``/`` on Unix.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    if os.name == "nt":
-        return ntpath.normpath(path)
-
-    return posixpath.normpath(path.replace("\\", "/"))
-
-
-def normalize_path(path):
-    """Normalizes the given path by converting it to an absolute path and
-    expanding the user directory, if necessary.
-
-    Args:
-        path: a path
-
-    Returns:
-        the normalized path
-    """
-    return os.path.abspath(os.path.expanduser(path))
 
 
 def install_package(requirement_str, error_level=None, error_msg=None):
@@ -1230,7 +1196,7 @@ class UniqueFilenameMaker(object):
         output_dir (None): a directory in which to generate output paths
         rel_dir (None): an optional relative directory to strip from each path.
             The path is converted to an absolute path (if necessary) via
-            :func:`normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         alt_dir (None): an optional alternate directory in which to generate
             paths when :meth:`get_alt_path` is called
         default_ext (None): the file extension to use when generating default
@@ -1255,7 +1221,7 @@ class UniqueFilenameMaker(object):
         idempotent=True,
     ):
         if rel_dir is not None:
-            rel_dir = normalize_path(rel_dir)
+            rel_dir = fos.normalize_path(rel_dir)
 
         self.output_dir = output_dir
         self.rel_dir = rel_dir
@@ -1299,7 +1265,7 @@ class UniqueFilenameMaker(object):
         Returns:
             True/False
         """
-        return normalize_path(input_path) in self._filepath_map
+        return fos.normalize_path(input_path) in self._filepath_map
 
     def get_output_path(self, input_path=None, output_ext=None):
         """Returns a unique output path.
@@ -1314,7 +1280,7 @@ class UniqueFilenameMaker(object):
         found_input = bool(input_path)
 
         if found_input:
-            input_path = normalize_path(input_path)
+            input_path = fos.normalize_path(input_path)
 
             if self.idempotent and input_path in self._filepath_map:
                 return self._filepath_map[input_path]
@@ -1970,3 +1936,6 @@ def validate_hex_color(value):
         raise ValueError(
             "%s is not a valid hex color string (eg: '#FF6D04')" % value
         )
+
+
+fos = lazy_import("fiftyone.core.storage")

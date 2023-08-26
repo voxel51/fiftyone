@@ -3,17 +3,28 @@ import dotenv from "dotenv";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import dedent from "ts-dedent";
+import { dedentPythonCode } from "src/oss/utils/dedent";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
 
 export type PythonCommandGenerator = (argv: string[]) => string;
 
 export class PythonRunner {
-  constructor(private pythonCommandGenerator: PythonCommandGenerator) {}
+  constructor(
+    private readonly pythonCommandGenerator: PythonCommandGenerator,
+    private readonly env?: Record<string, string>
+  ) {
+    this.pythonCommandGenerator = pythonCommandGenerator;
+
+    if (env) {
+      Object.entries(env).forEach(([key, value]) => {
+        process.env[key] = value;
+      });
+    }
+  }
 
   public exec(sourceCode: string) {
-    const dedentedSourceCode = dedent(sourceCode);
+    const dedentedSourceCode = dedentPythonCode(sourceCode);
     const randomFileName = Math.random().toString(36).substring(8);
     const sourceFilePath = path.join(os.tmpdir(), `${randomFileName}.py`);
     fs.writeFileSync(sourceFilePath, dedentedSourceCode, "utf-8");

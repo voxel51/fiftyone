@@ -492,7 +492,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
     Args:
         filepath: the path to the data on disk. The path is converted to an
             absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         tags (None): a list of tags for the sample
         metadata (None): a :class:`fiftyone.core.metadata.Metadata` instance
         **kwargs: additional fields to dynamically set on the sample
@@ -776,8 +776,6 @@ def _apply_confidence_thresh(label, confidence_thresh):
 
 
 def _is_frames_dict(label):
-    return (
-        label
-        and isinstance(label, dict)
-        and fofu.is_frame_number(next(iter(label.keys())))
+    return isinstance(label, dict) and fofu.is_frame_number(
+        next(iter(label.keys()))
     )

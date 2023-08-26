@@ -84,7 +84,6 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const isGroup = await snapshot.getPromise(fos.isGroup);
     const selected = await snapshot.getPromise(fos.selectedLabels);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
 
@@ -269,6 +268,7 @@ interface SelectionActionsProps {
     VideoLooker | ImageLooker | FrameLooker | undefined
   >;
   bounds: any;
+  anchorRef?: MutableRefObject<unknown>;
 }
 
 const SelectionActions = ({
@@ -276,6 +276,7 @@ const SelectionActions = ({
   close,
   lookerRef,
   bounds,
+  anchorRef,
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
     lookerRef &&
@@ -290,7 +291,7 @@ const SelectionActions = ({
   lookerRef && useEventHandler(lookerRef.current, "play", close);
 
   return (
-    <Popout modal={modal} bounds={bounds}>
+    <Popout modal={modal} bounds={bounds} fixed anchorRef={anchorRef} data-cy="selected-popout">
       {actions.map((props, i) => (
         <ActionOption {...props} key={i} />
       ))}

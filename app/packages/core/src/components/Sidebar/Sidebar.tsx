@@ -6,13 +6,13 @@ import { move } from "@fiftyone/utilities";
 
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEventHandler } from "@fiftyone/state";
+import { useEventHandler, replace } from "@fiftyone/state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import SchemaSettings from "../Schema/SchemaSettings";
-import { replace } from "./Entries/GroupEntries";
+import Filter from "./Entries/FilterEntry";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
@@ -484,6 +484,16 @@ const InteractiveSidebar = ({
             ...config.stiff,
             bounce: 0,
           },
+          onRest: () => {
+            // fires event for e2e testing to avoid using onWait
+            if (container?.current) {
+              container?.current.dispatchEvent(
+                new CustomEvent("animation-onRest", {
+                  bubbles: true,
+                })
+              );
+            }
+          },
           overflow: "visible",
         }),
         entry,
@@ -742,13 +752,15 @@ const InteractiveSidebar = ({
               borderTopRightRadius: 8,
             }}
           >
-            <ViewSelection />
+            <ViewSelection id="saved-views" />
           </Box>
         </Suspense>
       )}
       <Suspense>
+        <Filter modal={modal} />
         <SidebarColumn
           ref={container}
+          data-cy="sidebar-column"
           onScroll={({ target }) => {
             if (start.current !== null) {
               start.current += scroll.current - target.scrollTop;

@@ -1,13 +1,7 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  Lookers,
-  currentSlice,
-  groupId,
-  groupStatistics,
-  refresher,
-} from "@fiftyone/state";
+import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
@@ -135,11 +129,12 @@ const Section = ({
 
   return (
     <>
-      <TaggingContainerInput>
+      <TaggingContainerInput data-cy="tagger-container">
         {isLoading ? (
           <LoadingDots text="" style={{ color: theme.text.secondary }} />
         ) : (
           <TaggingInput
+            data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
               count == 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
@@ -176,7 +171,7 @@ const Section = ({
                   }`
                 : null
             }
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter" && hasCreate) {
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
@@ -240,7 +235,7 @@ const Section = ({
           )}
           {hasChanges && !value.length && (
             <Button
-              text={"Apply"}
+              text="Apply"
               onClick={() => submitWrapper(changes)}
               style={{
                 margin: "0.25rem -0.5rem",
@@ -328,11 +323,8 @@ const useTagCallback = (
   return useRecoilCallback(
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
-        const modalData = modal
-          ? await snapshot.getPromise(fos.modalSample)
-          : null;
         const isGroup = await snapshot.getPromise(fos.isGroup);
-        const slice = await snapshot.getPromise(currentSlice(modal));
+        const slices = await snapshot.getPromise(fos.currentSlices(modal));
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
             activeFields: await snapshot.getPromise(
@@ -346,7 +338,8 @@ const useTagCallback = (
             groupData: isGroup
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
-                  slices: slice ? [slice] : [],
+                  slices,
+                  slice: await snapshot.getPromise(fos.groupSlice(false)),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,
@@ -375,13 +368,6 @@ const useTagCallback = (
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
-          samples.forEach((sample) => {
-            if (modalData?.id === sample._id) {
-              lookerRef &&
-                lookerRef.current &&
-                lookerRef.current.updateSample(sample);
-            }
-          });
         }
 
         set(fos.anyTagging, false);
@@ -459,9 +445,16 @@ type TaggerProps = {
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
   >;
+  anchorRef?: MutableRefObject<HTMLDivElement>;
 };
 
-const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
+const Tagger = ({
+  modal,
+  bounds,
+  close,
+  lookerRef,
+  anchorRef,
+}: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
@@ -483,15 +476,23 @@ const Tagger = ({ modal, bounds, close, lookerRef }: TaggerProps) => {
   const labelPlaceholder = useLabelPlaceHolder(modal, elementNames);
   const samplePlaceholder = useSamplePlaceHolder(modal, elementNames);
   return (
-    <Popout style={{ width: "12rem" }} modal={modal} bounds={bounds}>
+    <Popout
+      style={{ width: "12rem" }}
+      modal={modal}
+      bounds={bounds}
+      fixed
+      anchorRef={anchorRef}
+    >
       <SwitcherDiv>
         <SwitchDiv
+          data-cy="tagger-switch-sample"
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
           {modal ? elementNames.singular : elementNames.plural}
         </SwitchDiv>
         <SwitchDiv
+          data-cy="tagger-switch-label"
           style={labelProps}
           onClick={() => !labels && setLabels(true)}
         >

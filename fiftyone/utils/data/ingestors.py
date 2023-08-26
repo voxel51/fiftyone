@@ -7,11 +7,11 @@ Dataset ingestors.
 """
 import logging
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.utils as fou
+import fiftyone.utils.image as foui
 
 from .importers import (
     UnlabeledImageDatasetImporter,
@@ -67,7 +67,7 @@ class ImageIngestor(object):
     def _ingest_in_memory_image(self, sample_parser):
         img = sample_parser.get_image()
         image_path = self._filename_maker.get_output_path()
-        etai.write(img, image_path)
+        foui.write(img, image_path)
         return image_path
 
     def _setup(self):

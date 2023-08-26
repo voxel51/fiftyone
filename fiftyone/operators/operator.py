@@ -5,7 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form, Property
+from .types import Object, Form, Property, PromptView
 
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
@@ -39,6 +39,7 @@ class OperatorConfig(object):
         unlisted=False,
         on_startup=False,
         disable_schema_validation=False,
+        delegation_target=None,
         icon=None,
         light_icon=None,
         dark_icon=None,
@@ -51,6 +52,7 @@ class OperatorConfig(object):
         self.unlisted = unlisted
         self.on_startup = on_startup
         self.disable_schema_validation = disable_schema_validation
+        self.delegation_target = delegation_target
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
@@ -65,6 +67,7 @@ class OperatorConfig(object):
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
             "disable_schema_validation": self.disable_schema_validation,
+            "delegation_target": self.delegation_target,
             "icon": self.icon,
             "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
@@ -93,6 +96,10 @@ class Operator(object):
     @property
     def name(self):
         return self.config.name
+
+    @property
+    def delegation_target(self):
+        return self.config.delegation_target
 
     @property
     def uri(self):
@@ -146,6 +153,20 @@ class Operator(object):
 
         return definition
 
+    def resolve_delegation(self, ctx) -> bool:
+        """Returns the resolved delegation flag.
+
+        Subclasses can implement this method to define the logic which decides
+        if the operation should be queued for delegation
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            a boolean
+        """
+        return False
+
     def execute(self, ctx):
         """Executes the operator.
 
@@ -168,10 +189,15 @@ class Operator(object):
             a :class:`fiftyone.operators.types.Property`, or None
         """
         if type == "inputs":
-            # @todo support forms in UI
-            # if input_property.view is None:
-            #     input_property.view = Form()
-            return self.resolve_input(ctx)
+            # pylint: disable=assignment-from-none
+            input_property = self.resolve_input(ctx)
+            if input_property.view is None:
+                should_delegate = self.resolve_delegation(ctx)
+                if should_delegate:
+                    input_property.view = PromptView(
+                        submit_button_label="Schedule"
+                    )
+            return input_property
 
         if type == "outputs":
             return self.resolve_output(ctx)

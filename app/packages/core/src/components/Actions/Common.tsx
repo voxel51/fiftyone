@@ -8,6 +8,7 @@ import { ItemAction } from "./ItemAction";
 import { useHighlightHover } from "./utils";
 
 type ActionOptionProps = {
+  id: string;
   onClick?: (event?: Event) => void;
   href?: string;
   text: string;
@@ -20,6 +21,7 @@ type ActionOptionProps = {
 
 export const ActionOption = React.memo(
   ({
+    id,
     onClick,
     text,
     href,
@@ -32,15 +34,20 @@ export const ActionOption = React.memo(
     const { style: animationStyles, ...rest } = useHighlightHover(disabled);
     const theme = useTheme();
     onClick = href ? useExternalLink(href) : onClick;
+
+    const convertedText = text.replace(/[\s.,/]/g, "-").toLowerCase();
+
     if (hidden) {
       return null;
     }
     return (
       <ItemAction
+        data-cy={`${id}-${text}`}
         title={title ? title : text}
         onClick={disabled ? null : onClick}
         {...rest}
         style={style ?? animationStyles}
+        data-cy={`item-action-${convertedText}`}
       >
         <span style={href ? { textDecoration: "underline" } : {}}>
           {href ? (

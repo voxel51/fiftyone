@@ -1200,6 +1200,33 @@ class DatasetTests(unittest.TestCase):
         self.assertListEqual(s1["tags"], [])
 
     @drop_datasets
+    def test_merge_sample_group(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        sample1 = fo.Sample("test.png", group=group.element("thumbnail"))
+        sample2 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="spam"
+        )
+        sample3 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="eggs"
+        )
+
+        dataset.merge_sample(sample1)
+        dataset.merge_sample(sample2)
+        dataset.merge_sample(sample3)  # should be merged with `sample2`
+
+        self.assertEqual(
+            len(dataset.select_group_slices(_allow_mixed=True)), 2
+        )
+
+        dataset.group_slice = "video"
+        self.assertEqual(len(dataset), 1)
+
+        sample = dataset.first()
+        self.assertEqual(sample.foo, "eggs")
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
@@ -4029,6 +4056,38 @@ class DynamicFieldTests(unittest.TestCase):
         with self.assertRaises(Exception):
             sample.frames[1]["ground_truth"].detections[0].mood = False
             sample.save()
+
+    @drop_datasets
+    def test_dynamic_has_field(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.8, 0.8],
+                        foo="bar",
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        detection = sample.ground_truth.detections[0]
+
+        self.assertTrue(dataset.has_field("ground_truth.detections.label"))
+        self.assertTrue(sample.has_field("ground_truth.detections.label"))
+        self.assertTrue(detection.has_field("label"))
+
+        self.assertTrue(dataset.has_field("ground_truth.detections.foo"))
+        self.assertTrue(sample.has_field("ground_truth.detections.foo"))
+        self.assertTrue(detection.has_field("foo"))
+
+        self.assertFalse(dataset.has_field("ground_truth.detections.spam"))
+        self.assertFalse(sample.has_field("ground_truth.detections.spam"))
+        self.assertFalse(detection.has_field("spam"))
 
     @drop_datasets
     def test_dynamic_list_fields(self):
