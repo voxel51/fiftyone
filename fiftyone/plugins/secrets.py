@@ -1,3 +1,11 @@
+"""
+Plugin secrets resolver.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
 from typing import Optional
 from ..internal import secrets as fois
 
@@ -18,9 +26,17 @@ class PluginSecretsResolver:
             self._instance = self.__new__(self.__class__)
         return self._instance.client
 
-    async def get_secret(self, key, auth_token=None) -> Optional[fois.ISecret]:
+    async def get_secret(self, key, **kwargs) -> Optional[fois.ISecret]:
+        """
+        Get the value of a secret.
+
+        Args:
+            key (str): unique secret identifier
+            kwargs: additional keyword arguments to pass to the secrets
+            client for authentication if required
+        """
         # pylint: disable=no-member
-        resolved_secret = await self.client.get(key, auth_token=auth_token)
+        resolved_secret = await self.client.get(key, **kwargs)
         return resolved_secret
 
 

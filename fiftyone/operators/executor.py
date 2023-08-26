@@ -397,13 +397,19 @@ class ExecutionContext(object):
     def secrets(self) -> dict:
         return self._secrets
 
-    async def resolve_secret_values(self, keys, request_token=None):
+    async def resolve_secret_values(self, keys, **kwargs):
+        """
+        Resolves the values of the given secrets keys.
+
+        Args:
+            keys: a list of secret keys
+            kwargs: additional keyword arguments to pass to the secrets
+            client for authentication if required
+        """
         if None in (self._secrets_client, keys):
             return None
         for key in keys:
-            secret = await self._secrets_client.get_secret(
-                key, auth_token=request_token
-            )
+            secret = await self._secrets_client.get_secret(key, **kwargs)
 
             if secret:
                 self._secrets[secret.key] = secret.value
