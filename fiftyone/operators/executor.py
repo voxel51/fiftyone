@@ -166,7 +166,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
     Returns:
         an :class:`ExecutionResult`
     """
-    prepared = prepare_operator_executor(operator_uri, request_params)
+    prepared = await prepare_operator_executor(operator_uri, request_params)
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:

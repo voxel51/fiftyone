@@ -6,11 +6,13 @@ FiftyOne plugin context.
 |
 """
 import importlib
+import inspect
 import logging
 import os
 import sys
 import traceback
 
+import fiftyone as fo
 import fiftyone.plugins as fop
 
 from fiftyone.operators.decorators import plugins_cache
@@ -18,6 +20,8 @@ from fiftyone.operators.operator import Operator
 
 
 logger = logging.getLogger(__name__)
+
+INIT_FILENAME = "__init__.py"
 
 
 @plugins_cache
@@ -34,6 +38,7 @@ def build_plugin_contexts(enabled=True):
     plugin_contexts = []
     for pd in fop.list_plugins(enabled=enabled):
         pctx = PluginContext(pd)
+        print("pctx", pctx.__dict__)
         pctx.register_all()
         plugin_contexts.append(pctx)
 
@@ -97,6 +102,8 @@ class PluginContext(object):
         """
         try:
             instance = cls()
+            print("self.instances", self.instances)
+            print("instance", instance.definition.__dict__)
             if self.can_register(instance):
                 instance.plugin_name = self.name
                 if self.secrets:
@@ -119,17 +126,24 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, "../operators/__init__.py")
+            module_path = os.path.join(module_dir, INIT_FILENAME)
             if not os.path.isfile(module_path):
                 return
 
-            parent_dir = os.path.dirname(module_dir)
+            module_name = os.path.relpath(
+                module_dir, fo.config.plugins_dir
+            ).replace("/", ".")
             spec = importlib.util.spec_from_file_location(
-                parent_dir, module_path
+                module_name, module_path
             )
             module = importlib.util.module_from_spec(spec)
             sys.modules[module.__name__] = module
             spec.loader.exec_module(module)
+            print("module.__dict__", module.__dict__)
+            for name, cls in inspect.getmembers(module, inspect.isclass):
+                print("name", name)
+                print("cls", cls)
+                # self.register(cls)
             module.register(self)
         except:
             logger.warning(
