@@ -14,12 +14,12 @@ import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
 
 
-def to_detections(results, thresh=None):
+def to_detections(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` boxes to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        thresh (None): a confidence threshold to use to filter boxes
+        confidence_thresh (None): a confidence threshold to filter boxes
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Detections`
@@ -28,7 +28,9 @@ def to_detections(results, thresh=None):
     if single:
         results = [results]
 
-    batch = [_to_detections(r, thresh=thresh) for r in results]
+    batch = [
+        _to_detections(r, confidence_thresh=confidence_thresh) for r in results
+    ]
 
     if single:
         return batch[0]
@@ -36,7 +38,7 @@ def to_detections(results, thresh=None):
     return batch
 
 
-def _to_detections(result, thresh=None):
+def _to_detections(result, confidence_thresh=None):
     if result.boxes is None:
         return None
 
@@ -46,7 +48,7 @@ def _to_detections(result, thresh=None):
 
     detections = []
     for cls, box, conf in zip(classes, boxes, confs):
-        if thresh is not None and conf < thresh:
+        if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
         label = result.names[cls]
@@ -62,12 +64,12 @@ def _to_detections(result, thresh=None):
     return fol.Detections(detections=detections)
 
 
-def to_instances(results, thresh=None):
+def to_instances(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        thresh (None): a confidence threshold to use to filter boxes
+        confidence_thresh (None): a confidence threshold to filter boxes
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Detections`
@@ -76,7 +78,9 @@ def to_instances(results, thresh=None):
     if single:
         results = [results]
 
-    batch = [_to_instances(r, thresh=thresh) for r in results]
+    batch = [
+        _to_instances(r, confidence_thresh=confidence_thresh) for r in results
+    ]
 
     if single:
         return batch[0]
@@ -84,7 +88,7 @@ def to_instances(results, thresh=None):
     return batch
 
 
-def _to_instances(result, thresh=None):
+def _to_instances(result, confidence_thresh=None):
     if result.masks is None:
         return None
 
@@ -98,7 +102,7 @@ def _to_instances(result, thresh=None):
     for cls, box, bound, mask, conf in zip(
         classes, boxes, bounds, masks, confs
     ):
-        if thresh is not None and conf < thresh:
+        if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
         label = result.names[cls]
@@ -116,12 +120,12 @@ def _to_instances(result, thresh=None):
     return fol.Detections(detections=detections)
 
 
-def to_polylines(results, thresh=None, tolerance=2, filled=True):
+def to_polylines(results, confidence_thresh=None, tolerance=2, filled=True):
     """Converts ``ultralytics.YOLO`` instance segmentations to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        thresh (None): a confidence threshold to use to filter boxes
+        confidence_thresh (None): a confidence threshold to filter boxes
         tolerance (2): a tolerance, in pixels, when generating approximate
             polylines for instance masks. Typical values are 1-3 pixels
         filled (True): whether the polyline should be filled
@@ -134,7 +138,10 @@ def to_polylines(results, thresh=None, tolerance=2, filled=True):
         results = [results]
 
     batch = [
-        _to_polylines(r, tolerance, filled, thresh=thresh) for r in results
+        _to_polylines(
+            r, tolerance, filled, confidence_thresh=confidence_thresh
+        )
+        for r in results
     ]
 
     if single:
@@ -143,7 +150,7 @@ def to_polylines(results, thresh=None, tolerance=2, filled=True):
     return batch
 
 
-def _to_polylines(result, tolerance, filled, thresh=None):
+def _to_polylines(result, tolerance, filled, confidence_thresh=None):
     if result.masks is None:
         return None
 
@@ -159,7 +166,7 @@ def _to_polylines(result, tolerance, filled, thresh=None):
 
     polylines = []
     for cls, mask, _points, conf in zip(classes, masks, points, confs):
-        if thresh is not None and conf < thresh:
+        if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
         if _points is None:
@@ -181,12 +188,12 @@ def _to_polylines(result, tolerance, filled, thresh=None):
     return fol.Polylines(polylines=polylines)
 
 
-def to_keypoints(results, thresh=None):
+def to_keypoints(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` keypoints to FiftyOne format.
 
     Args:
         results: a single or list of ``ultralytics.engine.results.Results``
-        thresh (None): a confidence threshold to use to filter keypoints
+        confidence_thresh (None): a confidence threshold to filter keypoints
 
     Returns:
         a single or list of :class:`fiftyone.core.labels.Keypoints`
@@ -195,7 +202,9 @@ def to_keypoints(results, thresh=None):
     if single:
         results = [results]
 
-    batch = [_to_keypoints(r, thresh=thresh) for r in results]
+    batch = [
+        _to_keypoints(r, confidence_thresh=confidence_thresh) for r in results
+    ]
 
     if single:
         return batch[0]
@@ -203,7 +212,7 @@ def to_keypoints(results, thresh=None):
     return batch
 
 
-def _to_keypoints(result, thresh=None):
+def _to_keypoints(result, confidence_thresh=None):
     if result.keypoints is None:
         return None
 
@@ -216,8 +225,8 @@ def _to_keypoints(result, thresh=None):
 
     keypoints = []
     for cls, _points, _confs in zip(classes, points, confs):
-        if thresh is not None:
-            _points[_points < thresh] = np.nan
+        if confidence_thresh is not None:
+            _points[_confs < confidence_thresh] = np.nan
 
         label = result.names[cls]
         _confidence = _confs.tolist() if _confs is not None else None
