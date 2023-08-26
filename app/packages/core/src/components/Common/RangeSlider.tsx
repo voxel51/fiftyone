@@ -163,6 +163,7 @@ const BaseSlider = <T extends Range | number>({
       <SliderContainer style={style}>
         {showBounds && formatter(bounds[0])}
         <SliderStyled
+          data-cy="slider"
           onMouseDown={() => setClicking(true)}
           onMouseUp={() => setClicking(false)}
           value={value}
@@ -220,6 +221,7 @@ type SliderProps = {
   onChange?: boolean;
   int?: boolean;
   style?: React.CSSProperties;
+  key?: string;
 };
 
 export const Slider = ({ valueAtom, onChange, ...rest }: SliderProps) => {

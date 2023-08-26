@@ -301,6 +301,14 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.name
 
     @property
+    def head_name(self):
+        return self._root_dataset.head_name
+
+    @property
+    def snapshot_name(self):
+        return self._root_dataset.snapshot_name
+
+    @property
     def tags(self):
         return self._root_dataset.tags
 
@@ -386,8 +394,10 @@ class DatasetView(foc.SampleCollection):
         Returns:
             a string summary
         """
-        elements = [
-            ("Dataset:", self.dataset_name),
+        elements = [("Dataset:", self.head_name)]
+        if self.is_snapshot:
+            elements += [("Snapshot:", self.snapshot_name)]
+        elements += [
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),
         ]

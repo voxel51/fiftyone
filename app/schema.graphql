@@ -175,6 +175,8 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  headName: String
+  snapshotName: String
   stages(slug: String = null): BSONArray
 }
 

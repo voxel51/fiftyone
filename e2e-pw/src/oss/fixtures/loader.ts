@@ -1,13 +1,22 @@
 import { Page } from "@playwright/test";
 import { spawn } from "child_process";
 import { getPythonCommand, getStringifiedKwargs } from "src/oss/utils/commands";
-import { AbstractFiftyoneLoader } from "src/shared/abstract-loader";
+import {
+  AbstractFiftyoneLoader,
+  WaitUntilGridVisibleOptions,
+} from "src/shared/abstract-loader";
 import { PythonRunner } from "src/shared/python-runner/python-runner";
 import kill from "tree-kill";
 import waitOn from "wait-on";
 import { Duration } from "../utils";
 
+type WebServerProcessConfig = {
+  port: number;
+  processId: number;
+};
 export class OssLoader extends AbstractFiftyoneLoader {
+  protected webserverProcessConfig: WebServerProcessConfig;
+
   constructor() {
     super();
     this.pythonRunner = new PythonRunner(getPythonCommand);
@@ -98,7 +107,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
     );
   }
 
-  async loadTestDataset(name: string) {
+  async loadTestDataset() {
     throw new Error("Method not implemented.");
   }
 
@@ -106,16 +115,21 @@ export class OssLoader extends AbstractFiftyoneLoader {
     return this.pythonRunner.exec(code);
   }
 
-  async executePythonFixture(fixturePath: string) {
+  async executePythonFixture() {
     throw new Error("Method not implemented.");
   }
 
-  async waitUntilLoad(
+  async waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    savedView?: string,
-    withGrid = true
+    options?: WaitUntilGridVisibleOptions
   ) {
+    const { isEmptyDataset, savedView, withGrid } = options ?? {
+      isEmptyDataset: false,
+      savedView: undefined,
+      withGrid: true,
+    };
+
     const forceDatasetFromSelector = async () => {
       await page.goto("/");
       await page.getByTestId(`selector-Select dataset`).click();
@@ -154,6 +168,25 @@ export class OssLoader extends AbstractFiftyoneLoader {
       {
         state: "visible",
       }
+    );
+
+    if (isEmptyDataset) {
+      return;
+    }
+
+    await page.waitForFunction(
+      () => {
+        if (document.querySelector(`[data-cy=looker-error-info]`)) {
+          return true;
+        }
+
+        return (
+          document.querySelector(`canvas`)?.getAttribute("sample-loaded") ===
+          "true"
+        );
+      },
+      {},
+      { timeout: Duration.Seconds(10) }
     );
   }
 }

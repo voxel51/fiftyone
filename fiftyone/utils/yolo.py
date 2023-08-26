@@ -989,7 +989,9 @@ class YOLOv5DatasetExporter(
             d["path"] = os.path.dirname(self.yaml_path)
 
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
-        d["names"] = dict(enumerate(classes))
+
+        # New data.yaml format https://docs.ultralytics.com/datasets/detect/
+        d["names"] = dict(enumerate(classes))  # class names dictionary
 
         fos.write_yaml(d, self.yaml_path, default_flow_style=False)
 
