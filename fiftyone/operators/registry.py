@@ -48,7 +48,6 @@ class OperatorRegistry(object):
     """
 
     def __init__(self, enabled=True):
-        print("OperatorRegistry.__init__")
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
     def list_operators(self, include_builtin=True):
@@ -62,13 +61,10 @@ class OperatorRegistry(object):
         """
         operators = []
         for pctx in self.plugin_contexts:
-            print(pctx)
             operators.extend(pctx.instances)
 
         if include_builtin:
             operators.extend(BUILTIN_OPERATORS)
-
-        print("OperatorRegistry.list_operators", operators)
 
         return operators
 

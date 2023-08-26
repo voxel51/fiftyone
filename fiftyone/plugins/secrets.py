@@ -9,7 +9,6 @@ class PluginSecretsResolver:
 
     def __new__(cls):
         if cls._instance is None:
-            print("Creating PluginSecretsProvider instance")
             cls._instance = super(PluginSecretsResolver, cls).__new__(cls)
             cls._instance.client = _get_secrets_client()
         return cls._instance
@@ -22,7 +21,6 @@ class PluginSecretsResolver:
     async def get_secret(self, key, auth_token=None) -> Optional[fois.ISecret]:
         # pylint: disable=no-member
         resolved_secret = await self.client.get(key, auth_token=auth_token)
-        print("resolved_secret", resolved_secret)
         return resolved_secret
 
 
@@ -30,6 +28,5 @@ def _get_secrets_client():
     try:
         client = getattr(fois, "SecretsManager")
     except:  # pylint: disable=bare-except
-        print("Failed to import SecretsManager, using EnvSecretProvider")
         client = getattr(fois, "EnvSecretProvider")
     return client()

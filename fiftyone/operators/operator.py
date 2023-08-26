@@ -283,5 +283,4 @@ class Operator(object):
         """
         if not self._plugin_secrets:
             self._plugin_secrets = []
-        print("adding secrets to operator", self.name, secrets)
         self._plugin_secrets.extend(secrets)
