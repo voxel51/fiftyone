@@ -772,12 +772,12 @@ class ImportPathsMixin(object):
         manifest file into a UUID -> filepath map.
         """
         if ignore_exts:
-            to_uuid = lambda p: os.path.splitext(p)[0]
+            to_uuid = lambda p: fos.normpath(os.path.splitext(p)[0])
         else:
-            to_uuid = lambda p: p
+            to_uuid = lambda p: fos.normpath(p)
 
         if isinstance(data_path, dict):
-            return {to_uuid(k): v for k, v in data_path.items()}
+            return {to_uuid(k): fos.normpath(v) for k, v in data_path.items()}
 
         if not data_path:
             return {}
@@ -791,14 +791,15 @@ class ImportPathsMixin(object):
             data_map = fos.read_json(data_path)
             data_root = os.path.dirname(data_path)
             return {
-                to_uuid(k): fos.join(data_root, v) for k, v in data_map.items()
+                to_uuid(k): fos.normpath(fos.join(data_root, v))
+                for k, v in data_map.items()
             }
 
         if not fos.isdir(data_path):
             raise ValueError("Data directory '%s' does not exist" % data_path)
 
         return {
-            to_uuid(p): fos.join(data_path, p)
+            to_uuid(p): fos.normpath(fos.join(data_path, p))
             for p in fos.list_files(data_path, recursive=recursive)
         }
 
@@ -2522,6 +2523,7 @@ class FiftyOneImageClassificationDatasetImporter(
 
         if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -3013,6 +3015,7 @@ class FiftyOneImageDetectionDatasetImporter(
 
         if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -3214,6 +3217,7 @@ class FiftyOneTemporalDetectionDatasetImporter(
 
         if self.labels_path is not None and fos.isfile(self.labels_path):
             labels = fos.read_json(self.labels_path)
+            labels = {fos.normpath(k): v for k, v in labels.items()}
         else:
             labels = {}
 
@@ -3413,9 +3417,10 @@ class ImageSegmentationDirectoryImporter(
             self.data_path, ignore_exts=True, recursive=True
         )
 
+        labels_path = fos.normpath(self.labels_path)
         labels_paths_map = {
-            os.path.splitext(p)[0]: fos.join(self.labels_path, p)
-            for p in fos.list_files(self.labels_path, recursive=True)
+            os.path.splitext(p)[0]: fos.join(labels_path, p)
+            for p in fos.list_files(labels_path, recursive=True)
         }
 
         uuids = set(labels_paths_map.keys())
@@ -3579,8 +3584,12 @@ class FiftyOneImageLabelsDatasetImporter(LabeledImageDatasetImporter):
         label_paths = []
         for idx in inds:
             record = index[idx]
-            image_paths.append(fos.join(self.dataset_dir, record.data))
-            label_paths.append(fos.join(self.dataset_dir, record.labels))
+            image_paths.append(
+                fos.normpath(fos.join(self.dataset_dir, record.data))
+            )
+            label_paths.append(
+                fos.normpath(fos.join(self.dataset_dir, record.labels))
+            )
 
         local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
         label_paths = local_files.__enter__()
@@ -3732,8 +3741,12 @@ class FiftyOneVideoLabelsDatasetImporter(LabeledVideoDatasetImporter):
         label_paths = []
         for idx in inds:
             record = index[idx]
-            video_paths.append(fos.join(self.dataset_dir, record.data))
-            label_paths.append(fos.join(self.dataset_dir, record.labels))
+            video_paths.append(
+                fos.normpath(fos.join(self.dataset_dir, record.data))
+            )
+            label_paths.append(
+                fos.normpath(fos.join(self.dataset_dir, record.labels))
+            )
 
         local_files = fos.LocalFiles(label_paths, "r", type_str="labels")
         label_paths = local_files.__enter__()

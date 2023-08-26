@@ -15,10 +15,10 @@ import os
 import numpy as np
 import pytest
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.utils.image as foui
 import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.zoo as foz
 from fiftyone import ViewField as F
@@ -49,7 +49,7 @@ def _make_classification_dataset(img, images_dir, num_samples=4):
         filepath = os.path.join(
             images_dir, "%06d%s" % (idx, exts[idx % len(exts)])
         )
-        etai.write(img, filepath)
+        foui.write(img, filepath)
 
         label = random.choice(["sun", "rain", "snow"])
         samples.append(
@@ -73,7 +73,7 @@ def _make_detection_dataset(
         filepath = os.path.join(
             images_dir, "%06d%s" % (idx, exts[idx % len(exts)])
         )
-        etai.write(img, filepath)
+        foui.write(img, filepath)
 
         detections = []
         for _ in range(num_objects_per_sample):
@@ -110,7 +110,7 @@ def _make_image_labels_dataset(
         filepath = os.path.join(
             images_dir, "%06d%s" % (idx, exts[idx % len(exts)])
         )
-        etai.write(img, filepath)
+        foui.write(img, filepath)
 
         sample = fo.Sample(filepath=filepath)
 
@@ -141,7 +141,7 @@ def _make_image_labels_dataset(
 
 def _make_labeled_dataset_with_no_labels(img, images_dir):
     filepath = os.path.join(images_dir, "test.png")
-    etai.write(img, filepath)
+    foui.write(img, filepath)
 
     dataset = fo.Dataset()
     dataset.add_sample(fo.Sample(filepath=filepath))
@@ -184,7 +184,7 @@ def _make_labeled_dataset_with_no_labels(img, images_dir):
 
 def _make_multilabel_dataset(img, images_dir):
     image_path = os.path.join(images_dir, "image.jpg")
-    etai.write(img, image_path)
+    foui.write(img, image_path)
 
     sample = fo.Sample.from_dict(
         {

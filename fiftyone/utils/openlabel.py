@@ -19,7 +19,6 @@ import eta.core.video as etav
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -220,15 +219,17 @@ class OpenLABELImageDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -435,15 +436,17 @@ class OpenLABELVideoDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
