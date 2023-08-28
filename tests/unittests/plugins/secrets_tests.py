@@ -1,4 +1,3 @@
-import os
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -13,13 +12,7 @@ from fiftyone.operators.executor import ExecutionContext
 SECRET_KEY = "MY_SECRET_KEY"
 SECRET_KEY2 = "MY_SECRET_KEY2"
 SECRET_VALUE = "password123"
-
 SECRET_VALUE2 = "another password123"
-
-#
-# class TestPluginContextSecrets(unittest.TestCase):
-#     def test_resolve_secret_values():
-#         ...
 
 
 class MockSecret(UnencryptedSecret):
@@ -120,24 +113,3 @@ class TestGetSecret(unittest.TestCase):
 
         self.assertEqual(result, "mocked_secret_value")
         mock_client.get.assert_called_once_with("my_secret_key")
-
-
-def check_environment_variable(variable_name):
-    return os.environ.get(variable_name)
-
-
-def test_check_environment_variable_with_existing_variable(mocker):
-    mocker.patch.dict(os.environ, {"MY_VARIABLE": "my_value"})
-
-    result = check_environment_variable("MY_VARIABLE")
-
-    assert result == "my_value"
-
-
-def test_check_environment_variable_with_non_existing_variable(mocker):
-    # Mock os.environ to return None for the variable
-    mocker.patch.dict(os.environ, {})
-
-    result = check_environment_variable("NON_EXISTING_VARIABLE")
-
-    assert result is None
