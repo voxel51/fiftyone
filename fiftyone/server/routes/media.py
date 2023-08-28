@@ -5,8 +5,10 @@ FiftyOne Server /media route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 import typing as t
 
+import anyio
 import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.os import stat as aio_stat
@@ -58,6 +60,12 @@ class Media(HTTPEndpoint):
         path = request.query_params["filepath"]
 
         response: t.Union[FileResponse, StreamingResponse]
+
+        try:
+            await anyio.to_thread.run_sync(os.stat, path)
+        except FileNotFoundError:
+            return Response(content="Not found", status_code=404)
+
         if request.headers.get("range"):
             response = await self.ranged_file_response(path, request)
         else:
