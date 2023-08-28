@@ -96,6 +96,9 @@ export const SchemaSelectionControls = () => {
                       checked={checked}
                       onChange={onChange}
                       disabled={disabled}
+                      data-cy={`field-visibility-controls-${label
+                        .toLowerCase()
+                        .replace(/ /g, "-")}`}
                     />
                   }
                   label={label}

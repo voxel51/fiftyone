@@ -19,13 +19,91 @@ const test = base.extend<{
 
 test.describe("field visibility", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+      import fiftyone.zoo as foz
+
+      dataset = foz.load_zoo_dataset("quickstart", dataset_name="${datasetName}")
+      dataset.persistent = True
+      dataset.save()
+
+      field = dataset.get_field("ground_truth")
+      field.description = "ground_truth description"
+      field.info = {"url": "https://fiftyone.ai"}
+      field.save()
+
+      field = dataset.get_field("metadata.width")
+      field.description = "metadata.width description"
+      field.info = {"url": "https://fiftyone.ai"}
+      field.save()
+
+      dataset.add_samples([fo.Sample(filepath=f"{i}.png", group=1, i=i) for i in range(0, 21)])
+      dataset.save()
+    `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
+  });
+
+  test("modal opens", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+  });
+
+  test("correct tooltip when hovering over feature icon", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.asserter.fieldVisibilityIconHasTooltip();
+  });
+
+  test("all fields are selected initially", async ({ fieldVisibility }) => {
+    await fieldVisibility.asserter.assertAllFieldsSelected();
+  });
+
+  test("deselect all fields works - deselects enabled fields", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.toggleAllSelection();
+    await fieldVisibility.asserter.assertEnabledFieldsAreUnselected();
+  });
+
+  test("show nested field works", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.toggleShowNestedFields();
+    await fieldVisibility.asserter.assertNestedFieldsVisible();
+  });
+
+  test("show metadata works", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.asserter.assertMetadataInvisibile();
+    await fieldVisibility.toggleShowMetadata();
+    await fieldVisibility.asserter.assertMetadataVisibile();
+  });
+
+  test("show metadata works for nested fields", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.asserter.assertMetadataInvisibile("metadata.width");
+    await fieldVisibility.toggleShowNestedFields();
+    await fieldVisibility.toggleShowMetadata();
+    await fieldVisibility.asserter.assertMetadataVisibile("metadata.width");
+  });
+
+  test("reset works", async ({ fieldVisibility, sidebar }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.hideFields(["predictions", "ground_truth"]);
+    await sidebar.asserter.assertFieldsNotInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
+
+    // reopen modal
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.clickReset();
+    await sidebar.asserter.assertFieldsInSidebar([
+      "predictions",
+      "ground_truth",
+    ]);
   });
 
   test("sidebar group is hidden if all its fields are hidden using field visibility", async ({
@@ -38,6 +116,7 @@ test.describe("field visibility", () => {
       "ground_truth",
     ]);
 
+    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["predictions", "ground_truth"]);
     await sidebar.asserter.assertFieldsNotInSidebar([
       "predictions",
@@ -61,6 +140,7 @@ test.describe("field visibility", () => {
     // drag predictions to metadata group succeeds
     await sidebar.asserter.assertCanDragFieldToGroup("predictions", "metadata");
 
+    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["ground_truth"]);
     await sidebar.asserter.assertFieldsNotInSidebar(["ground_truth"]);
 

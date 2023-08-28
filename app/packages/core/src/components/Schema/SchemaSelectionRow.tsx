@@ -199,8 +199,13 @@ export const SchemaSelectionRow = (props: Props) => {
       </Box>
       <Box>
         {expandedPathsKeys.has(path) && (
-          <Box maxHeight={MAX_ROW_HEIGHT} overflow="auto" position="relative">
-            {renderInfo(info, path)}
+          <Box
+            maxHeight={MAX_ROW_HEIGHT}
+            overflow="auto"
+            position="relative"
+            data-cy={`schema-selection-info-container-${path}`}
+          >
+            {renderInfo()}
             {description && (
               <MetaInfoBlock key={description}>
                 <MetaInfoKey>Description: </MetaInfoKey>
