@@ -34,7 +34,7 @@ test.skip("valid candidates for group-by keys", async ({ grid }) => {
 });
 
 const verifyCandidateFields = async (grid: GridPom, fields: string[]) => {
-  await grid.actionsRow.gridActionsRow.getByTestId("group-by-selector").click();
+  await grid.actionsRow.gridActionsRow.getByTestId("group by").click();
   const results = grid.actionsRow.gridActionsRow.getByTestId(
     "selector-results-container"
   );

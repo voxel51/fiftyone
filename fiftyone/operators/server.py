@@ -181,7 +181,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
             raise HTTPException(status_code=404, detail=error_detail)
 
         execution_result = await execute_or_delegate_operator(
-            operator_uri, data, user
+            operator_uri, data, user=user
         )
         if execution_result.is_generator:
             result = execution_result.result

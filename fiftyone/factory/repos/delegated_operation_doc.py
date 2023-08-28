@@ -116,5 +116,4 @@ class DelegatedOperationDocument(object):
         )
         d.pop("_doc")
         d.pop("id")
-        # d = {k: v for k, v in d.items() if v is not None}  # remove all None key: values
         return d

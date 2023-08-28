@@ -58,7 +58,8 @@ News
 - Added `DINOv2 <https://github.com/facebookresearch/dinov2>`_ to the
   :ref:`Model Zoo <model-zoo>`!
   `#2951 <https://github.com/voxel51/fiftyone/pull/2951>`_
-- Added support for loading models from the :ref:`PyTorch Hub <pytorch-hub>`!
+- Added support for loading models from
+  :ref:`PyTorch Hub <pytorch-hub-integration>`!
   `#2949 <https://github.com/voxel51/fiftyone/pull/2949>`_
 
 App
