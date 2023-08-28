@@ -128,6 +128,11 @@ async def execute_or_delegate_operator(operator_uri, request_params, user):
     """
     prepared = prepare_operator_executor(operator_uri, request_params, user)
 
+    # teams-only
+    dataset_name = request_params.get("dataset_name", None)
+    if is_snapshot(dataset_name):
+        return raise_snapshot_error(operator_uri)
+
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
@@ -629,3 +634,20 @@ class ValidationContext(object):
 
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)
+
+
+# teams-only
+
+
+def is_snapshot(dataset_name: str) -> bool:
+    try:
+        ctx = ExecutionContext({"dataset_name": dataset_name})
+        snapshot_name = ctx.dataset.snapshot_name
+        return isinstance(snapshot_name, str)
+    except:
+        return False
+
+
+def raise_snapshot_error(operator):
+    message = "Cannot execute operator '%s' on a snapshot" % operator
+    raise PermissionError(message)

@@ -18,6 +18,7 @@ from .executor import (
     resolve_type,
     resolve_placement,
     ExecutionContext,
+    is_snapshot,  # teams-only
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
@@ -83,6 +84,12 @@ class ResolvePlacements(HTTPEndpoint):
             ResolvePlacements, request, dataset_ids=dataset_ids
         )
         placements = []
+
+        # teams-only
+        dataset_raw_name = data.get("dataset_name", None)
+        if is_snapshot(dataset_raw_name):
+            return {"placements": placements}
+
         for operator in registry.list_operators():
             placement = resolve_placement(operator, data)
             if placement is not None:
