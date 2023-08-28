@@ -174,11 +174,11 @@ class LabelboxBackend(foua.AnnotationBackend):
             _experimental=self.config._experimental,
         )
 
-    def upload_annotations(self, samples, anno_key, launch_editor=False):
+    def upload_annotations(self, samples, anno_key, content_types=None, launch_editor=False):
         api = self.connect_to_api()
 
         logger.info("Uploading media to Labelbox...")
-        results = api.upload_samples(samples, anno_key, self)
+        results = api.upload_samples(samples, anno_key, self, content_types)
         logger.info("Upload complete")
 
         if launch_editor:
@@ -482,7 +482,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         webbrowser.open(url, new=2)
 
-    def upload_data(self, samples, lb_dataset, media_field="filepath"):
+    def upload_data(self, samples, lb_dataset, media_field="filepath", content_types=None):
         """Uploads the media for the given samples to Labelbox.
 
         This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
@@ -496,14 +496,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 add the media
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
+            content_type (None): string or list of strings containing mime type of the media files
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
 
         upload_info = []
 
         with fou.ProgressBar(iters_str="samples") as pb:
-            for media_path, sample_id in pb(zip(media_paths, sample_ids)):
-                item_url = self._client.upload_file(media_path)
+            for media_path, sample_id, content_type in pb(zip(media_paths, sample_ids, content_types)):
+                if content_type is None:
+                    content_type, _ = mimetypes.guess_type(media_path)
+                filename = os.path.basename(media_path)
+                with open(media_path, "rb") as f:
+                    item_url = self._client.upload_data(content=f.read(), filename=filename, content_type=content_type)
                 upload_info.append(
                     {
                         lb.DataRow.row_data: item_url,
@@ -514,7 +519,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         task = lb_dataset.create_data_rows(upload_info)
         task.wait_till_done()
 
-    def upload_samples(self, samples, anno_key, backend):
+    def upload_samples(self, samples, anno_key, backend, content_types=None):
         """Uploads the given samples to Labelbox according to the given
         backend's annotation and server configuration.
 
@@ -547,7 +552,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_name = "FiftyOne_%s" % _dataset_name
 
         dataset = self._client.create_dataset(name=project_name)
-        self.upload_data(samples, dataset, media_field=media_field)
+        self.upload_data(samples, dataset, media_field=media_field, content_types=content_types)
 
         project = self._setup_project(
             project_name, dataset, label_schema, classes_as_attrs, is_video
