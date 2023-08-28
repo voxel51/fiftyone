@@ -59,10 +59,10 @@ state in Python. For `selected`, this consists of the following:
 ### Session server state
 
 With the Python client implementation defined, the session server requires only
-a small number additions.
+a small number of additions.
 
 -   [State assignment](https://github.com/voxel51/fiftyone/blob/9502b4c9d948791fadbe55096c2a2a8605db795c/fiftyone/server/events.py#L72)
-    for the Python via dataclass event
+    for the server state via dataclass event
 -   Any mutation definitions for the App that should trigger the event. For
     `select_samples`, this consists of just the
     [`set_selected` mutation](https://github.com/voxel51/fiftyone/blob/9502b4c9d948791fadbe55096c2a2a8605db795c/fiftyone/server/mutation.py#L131)
@@ -70,7 +70,7 @@ a small number additions.
 Note that in GraphQL mutations, the
 [dispatch_event](https://github.com/voxel51/fiftyone/blob/9502b4c9d948791fadbe55096c2a2a8605db795c/fiftyone/server/events.py#L55)
 function is called to dispatch the event to all subscribed clients. By
-including the `subscription` id, we avoid dispatching the event to the client
+including a `subscription` id, we avoid dispatching the event to the client
 that triggered the event.
 
 ### Connecting the App
