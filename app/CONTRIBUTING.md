@@ -18,21 +18,22 @@ See the App's [README.md](README.md) for installation instructions.
 
 ## Extending the Session
 
-An App `session` is represented by single [server](../fiftyone/server/main.py)
-holding which holds a [StateDescription](../fiftyone/core/state.py). The
-`state` object is held by the
-[`fiftyone.server.events`](../fiftyone.server.events.py) Python module and can
-be access via
-[`fiftyone.server.events.get_state`](../fiftyone.server.events.py).
+An App `session` is represented by a single
+[server](../fiftyone/server/main.py) which holds a
+[StateDescription](../fiftyone/core/state.py). This `state` object is held by
+the [`fiftyone.server.events`](../fiftyone.server.events.py) Python module and
+can be accessed via the
+[`fiftyone.server.events.get_state`](../fiftyone.server.events.py) function in
+Python when running in the server process.
 
 The purpose of the `StateDescription` is to hold session values such as
-selected labels across App page loads, and for state changes to synchronized
+selected labels across App page loads, and for state changes to be synchronized
 between Python and the App. The most simple of example of state in the a
 session is the currently selected samples, accessible in a Python `Session` via
-the `selected` attributed.
+the `selected` attribute.
 
 Using the `selected` samples property as an example, we can walk through the
-minimal set declarations required to connection Python and App session state.
+minimal set declarations required to connect Python and App session state.
 
 ### Python client state
 
