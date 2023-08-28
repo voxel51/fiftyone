@@ -20,8 +20,9 @@ const processSamplePageData = (
       throw new Error("unexpected sample type");
     }
 
-    store.samples.set(edge.node.id, edge.node as fos.ModalSample);
-    store.indices.set(offset + i, edge.node.id);
+    const node = edge.node as fos.ModalSample;
+    store.samples.set(node.sample._id, node);
+    store.indices.set(offset + i, node.sample._id);
 
     return {
       aspectRatio: zoom
