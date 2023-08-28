@@ -15,6 +15,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+from fiftyone.plugins.secrets import PluginSecretsResolver
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -168,7 +169,7 @@ async def execute_or_delegate_operator(
     Returns:
         an :class:`ExecutionResult`
     """
-    prepared = prepare_operator_executor(
+    prepared = await prepare_operator_executor(
         operator_uri, request_params, user=user
     )
 
@@ -221,7 +222,7 @@ async def execute_or_delegate_operator(
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_uri, request_params, user=None):
+async def prepare_operator_executor(operator_uri, request_params, user=None):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -235,6 +236,8 @@ def prepare_operator_executor(operator_uri, request_params, user=None):
         return ExecutionResult(
             error="Validation error", validation_ctx=validation_ctx
         )
+
+    await ctx.resolve_secret_values(operator._plugin_secrets)
 
     return operator, executor, ctx
 
@@ -302,6 +305,8 @@ class ExecutionContext(object):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
         self.user = user
 
     @property
@@ -397,6 +402,30 @@ class ExecutionContext(object):
         """
         self.trigger("console_log", {"message": message})
 
+    def secret(self, key):
+        return self._secrets.get(key, None)
+
+    @property
+    def secrets(self) -> dict:
+        return self._secrets
+
+    async def resolve_secret_values(self, keys, **kwargs):
+        """
+        Resolves the values of the given secrets keys.
+
+        Args:
+            keys: a list of secret keys
+            kwargs: additional keyword arguments to pass to the secrets
+            client for authentication if required
+        """
+        if None in (self._secrets_client, keys):
+            return None
+        for key in keys:
+            secret = await self._secrets_client.get_secret(key, **kwargs)
+
+            if secret:
+                self._secrets[secret.key] = secret.value
+
     def serialize(self):
         """Serializes the execution context.
 
@@ -407,6 +436,12 @@ class ExecutionContext(object):
             "request_params": self.request_params,
             "params": self.params,
             "user": self.user,
+        }
+
+    def to_dict(self):
+        """Returns the properties of the execution context as a dict."""
+        return {
+            k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
 
