@@ -85,9 +85,11 @@ export class OperatorResult {
     public operator: Operator,
     public result: any = {},
     public executor: Executor = null,
-    public error: any
+    public error: any,
+    public delegated: boolean = false
   ) {}
   hasOutputContent() {
+    if (this.delegated) return false;
     return isObjWithContent(this.result) || isObjWithContent(this.error);
   }
   toJSON() {
@@ -224,7 +226,7 @@ export class Operator {
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
     if (this.config.dynamic && this.isRemote) {
-      return resolveRemoteType(this.uri, ctx, "outputs");
+      return resolveRemoteType(this.uri, ctx, "outputs", result);
     } else if (this.isRemote) {
       return this.definition.getProperty("outputs");
     }
@@ -486,6 +488,7 @@ export async function executeOperatorWithContext(
   let result;
   let error;
   let executor;
+  let delegated = false;
 
   if (isRemote) {
     if (operator.config.executeAsGenerator) {
@@ -520,6 +523,7 @@ export async function executeOperatorWithContext(
       result = serverResult.result;
       error = serverResult.error;
       executor = serverResult.executor;
+      delegated = serverResult.delegated;
     }
   } else {
     try {
@@ -538,13 +542,14 @@ export async function executeOperatorWithContext(
 
   if (executor) executor.queueRequests();
 
-  return new OperatorResult(operator, result, executor, error);
+  return new OperatorResult(operator, result, executor, error, delegated);
 }
 
 export async function resolveRemoteType(
   operatorURI,
   ctx: ExecutionContext,
-  target: "inputs" | "outputs"
+  target: "inputs" | "outputs",
+  results: OperatorResult = null
 ) {
   const currentContext = ctx._currentContext;
   const typeAsJSON = await getFetchFunction()(
@@ -562,6 +567,8 @@ export async function resolveRemoteType(
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      results: results ? results.result : null,
+      delegated: results ? results.delegated : null,
     }
   );
 

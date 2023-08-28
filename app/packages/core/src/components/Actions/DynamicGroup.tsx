@@ -165,7 +165,7 @@ export default ({
             <PopoutSectionTitle>Group By</PopoutSectionTitle>
             <Selector
               id={SELECTOR_RESULTS_ID}
-              data-cy="group-by-selector"
+              cy="group by"
               inputStyle={{
                 fontSize: "1rem",
                 minWidth: "100%",

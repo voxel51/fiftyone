@@ -129,11 +129,12 @@ const Section = ({
 
   return (
     <>
-      <TaggingContainerInput>
+      <TaggingContainerInput data-cy="tagger-container">
         {isLoading ? (
           <LoadingDots text="" style={{ color: theme.text.secondary }} />
         ) : (
           <TaggingInput
+            data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
               count == 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
@@ -170,7 +171,7 @@ const Section = ({
                   }`
                 : null
             }
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter" && hasCreate) {
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
@@ -234,7 +235,7 @@ const Section = ({
           )}
           {hasChanges && !value.length && (
             <Button
-              text={"Apply"}
+              text="Apply"
               onClick={() => submitWrapper(changes)}
               style={{
                 margin: "0.25rem -0.5rem",
@@ -484,12 +485,14 @@ const Tagger = ({
     >
       <SwitcherDiv>
         <SwitchDiv
+          data-cy="tagger-switch-sample"
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
           {modal ? elementNames.singular : elementNames.plural}
         </SwitchDiv>
         <SwitchDiv
+          data-cy="tagger-switch-label"
           style={labelProps}
           onClick={() => !labels && setLabels(true)}
         >

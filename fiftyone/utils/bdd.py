@@ -176,6 +176,9 @@ class BDDDatasetImporter(
 
         if self.labels_path is not None and fos.isfile(self.labels_path):
             anno_dict_map = load_bdd_annotations(self.labels_path)
+            anno_dict_map = {
+                fos.normpath(k): v for k, v in anno_dict_map.items()
+            }
         else:
             anno_dict_map = {}
 

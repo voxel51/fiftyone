@@ -33,6 +33,51 @@
 -   Refrain from using `page.waitForTimeout()`. There is always a better
     alternative.
 
+#### Template for POMs
+
+```typescript
+class MyPOM {
+    readonly semanticLocator1: Locator;
+    readonly semanticLocator2: Locator;
+    readonly assert: MyPOMAsserter;
+
+    constructor(private readonly page) {
+        this.semanticLocator1 = this.page.locator("...");
+        this.semanticLocator2 = this.page.locator("...");
+        this.assert = new MyPOMAsserter(this);
+    }
+
+    /**
+     * All methods that return static locators should be decorated with `get`.
+     */
+    get someElement() {
+        return this.page.locator("...");
+    }
+
+    /**
+     * All methods that return dynamic locators should be prefixed with `get`.
+     */
+    getMyElement(param: string) {
+        return this.page.locator(`...${param}...`);
+    }
+
+    /**
+     * All actions should be verbs or prefixed with a verb.
+     */
+    async doSomeAction() {
+        await this.someElement.click();
+    }
+}
+
+class MyPOMAsserter {
+    constructor(private readonly myPOM: MyPOM) {}
+
+    async isFooVisible() {
+        await expect(this.myPOM.someElement).toBeVisible();
+    }
+}
+```
+
 #### Screenshot Testing
 
 1. Read [Playwright docs](https://playwright.dev/docs/test-snapshots) on this
@@ -68,6 +113,10 @@ npx playwright test --update-snapshots -g "description of my test"
 
 #### Troubleshooting
 
--   Close all stray browser windows from previous test runs.
+The order of the steps is from the most to the least likely to fix the issue.
+
+-   Run `yarn kill-port 8787` to kill any stray processes that might be running
+    on port 8787.
 -   Reload VSCode developer window.
--   Try again.
+-   Close all browser windows from previous test runs.
+-   Restart the dev server.
