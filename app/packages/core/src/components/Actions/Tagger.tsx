@@ -364,7 +364,9 @@ const useTagCallback = (
               ids.add(sample.sample._id);
             });
           });
-          updateSamples(Array.from(ids).map((id) => [id, undefined]));
+          updateSamples(
+            Array.from(ids).map((id) => [id.split("-")[0], undefined])
+          );
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));

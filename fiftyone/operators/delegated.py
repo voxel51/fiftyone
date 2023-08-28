@@ -275,7 +275,7 @@ class DelegatedOperationService(object):
         context = doc.context
         context.request_params["run_doc"] = doc.id
 
-        prepared = prepare_operator_executor(
+        prepared = await prepare_operator_executor(
             operator_uri, context.request_params
         )
 

@@ -25,6 +25,8 @@ from .core import (
     ensure_plugin_compatibility,
 )
 from .definitions import PluginDefinition
+from .context import PluginContext
+from .secrets import PluginSecretsResolver
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [

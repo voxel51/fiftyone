@@ -19,7 +19,7 @@ const Sample3dWrapper = () => {
 
   return hasGroupView ? (
     <GroupSampleWrapper
-      sampleId={sample.id}
+      sampleId={sample.sample._id}
       pinned={pinned}
       onClick={() => setPinned(true)}
       {...hover.handlers}
@@ -53,7 +53,8 @@ export default () => {
           [k: string]: fos.ModalSample;
         }
       ) => {
-        let newSlice: string | null = samples[pinnedSlice] ? pinnedSlice : null;
+        let newSlice: string | null =
+          pinnedSlice && samples[pinnedSlice] ? pinnedSlice : null;
         for (let index = 0; index < slices.length; index++) {
           const element = slices[index];
           if (samples[element]) {

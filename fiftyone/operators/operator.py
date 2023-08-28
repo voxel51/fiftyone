@@ -88,6 +88,7 @@ class Operator(object):
         plugin_name = BUILTIN_OPERATOR_PREFIX if _builtin else None
 
         self._builtin = _builtin
+        self._plugin_secrets = None
         self.plugin_name = plugin_name
         self.definition = Object()
         self.definition.define_property("inputs", Object())
@@ -273,3 +274,13 @@ class Operator(object):
             "_builtin": self._builtin,
             "uri": self.uri,
         }
+
+    def add_secrets(self, secrets):
+        """Adds secrets to the operator.
+
+        Args:
+            secrets: a list of secrets
+        """
+        if not self._plugin_secrets:
+            self._plugin_secrets = []
+        self._plugin_secrets.extend(secrets)
