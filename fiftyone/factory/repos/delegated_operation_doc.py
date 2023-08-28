@@ -29,7 +29,7 @@ class DelegatedOperationDocument(object):
         self.operator_label = None
         self.delegation_target = delegation_target
         self.context = (
-            context.__dict__
+            context.to_dict()
             if isinstance(context, ExecutionContext)
             else context
         )
@@ -109,7 +109,7 @@ class DelegatedOperationDocument(object):
     def to_pymongo(self) -> dict:
         d = self.__dict__
         d["context"] = (
-            d["context"].__dict__
+            d["context"].to_dict()
             if isinstance(d["context"], ExecutionContext)
             else d["context"]
         )
