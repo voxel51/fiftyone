@@ -141,6 +141,7 @@ export namespace State {
     };
     groupSlice?: string;
     mediaType: MediaType;
+    parentMediaType: MediaType;
     name: string;
     sampleFields: StrictField[];
     version: string;

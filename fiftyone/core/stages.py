@@ -1791,6 +1791,7 @@ class FilterField(ViewStage):
 
         if is_frame_field:
             return _get_filter_frames_field_pipeline(
+                sample_collection,
                 field_name,
                 new_field,
                 self._filter,
@@ -1798,6 +1799,7 @@ class FilterField(ViewStage):
             )
 
         return _get_filter_field_pipeline(
+            sample_collection,
             field_name,
             new_field,
             self._filter,
@@ -1875,6 +1877,7 @@ class FilterField(ViewStage):
 
 
 def _get_filter_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -1908,25 +1911,40 @@ def _get_field_only_matches_expr(field):
 
 
 def _get_filter_frames_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_field_mongo_filter(filter_arg, prefix="$frame." + filter_field)
-    merge = {
-        "$cond": {
-            "if": cond,
-            "then": "$$frame." + filter_field,
-            "else": None,
-        }
-    }
 
     if "." in new_field:
-        parent, child = new_field.split(".")
-        obj = {parent: {child: merge}}
+        parent, child = new_field.split(".", 1)
+        obj = {
+            "$cond": {
+                "if": {"$gt": ["$$frame." + filter_field, None]},
+                "then": {
+                    "$cond": {
+                        "if": cond,
+                        "then": {parent: {child: "$$frame." + filter_field}},
+                        "else": None,
+                    }
+                },
+                "else": {},
+            },
+        }
+
     else:
-        obj = {new_field: merge}
+        obj = {
+            new_field: {
+                "$cond": {
+                    "if": cond,
+                    "then": "$$frame." + filter_field,
+                    "else": None,
+                }
+            }
+        }
 
     pipeline = [
         {
@@ -2333,6 +2351,7 @@ class FilterLabels(ViewStage):
             _make_filter_pipeline = _get_filter_field_pipeline
 
         filter_pipeline = _make_filter_pipeline(
+            sample_collection,
             labels_field,
             new_field,
             label_filter,
@@ -2433,6 +2452,7 @@ class FilterLabels(ViewStage):
 
 
 def _get_filter_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
@@ -2464,19 +2484,31 @@ def _get_list_field_only_matches_expr(field):
 
 
 def _get_filter_frames_list_field_pipeline(
+    sample_collection,
     filter_field,
     new_field,
     filter_arg,
     only_matches=True,
 ):
     cond = _get_list_field_mongo_filter(filter_arg)
-    label_field, labels_list = new_field.split(".")[-2:]
 
-    old_field = filter_field.split(".")[0]
+    parent, leaf = filter_field.split(".", 1)
+    new_parent, _ = new_field.split(".", 1)
+    if not issubclass(
+        sample_collection.get_field(f"frames.{parent}").document_type,
+        fol.Label,
+    ):
+        label_field, labels_list = leaf.split(".")
+        obj = lambda merge: {new_parent: {label_field: merge}}
+        label_path = f"{parent}.{label_field}"
+    else:
+        label_field, labels_list = new_parent, leaf
+        label_path = label_field
+        obj = lambda merge: {label_field: merge}
 
     merge = {
         "$mergeObjects": [
-            "$$frame." + old_field,
+            "$$frame." + label_path,
             {
                 labels_list: {
                     "$filter": {
@@ -2487,11 +2519,6 @@ def _get_filter_frames_list_field_pipeline(
             },
         ]
     }
-    if "." in label_field:
-        parent, label_field = label_field.split(".")
-        obj = {parent: {label_field: merge}}
-    else:
-        obj = {label_field: merge}
 
     pipeline = [
         {
@@ -2500,7 +2527,7 @@ def _get_filter_frames_list_field_pipeline(
                     "$map": {
                         "input": "$frames",
                         "as": "frame",
-                        "in": {"$mergeObjects": ["$$frame", obj]},
+                        "in": {"$mergeObjects": ["$$frame", obj(merge)]},
                     }
                 }
             }
@@ -2706,7 +2733,6 @@ class FilterKeypoints(ViewStage):
         _, points_path = sample_collection._get_label_field_path(
             self._field, "points"
         )
-        new_field = self._get_new_field(sample_collection)
 
         pipeline = []
 
@@ -2781,25 +2807,17 @@ class FilterKeypoints(ViewStage):
 
         if self._only_matches:
             # Remove Keypoint objects with no points after filtering
+            has_points = (
+                F("points").filter(F()[0] != float("nan")).length() > 0
+            )
             if is_list_field:
-                has_points = (
-                    F("points").filter(F()[0] != float("nan")).length() > 0
-                )
-                match_expr = F("keypoints").filter(has_points)
+                only_expr = F().filter(has_points)
             else:
-                field, _ = sample_collection._handle_frame_field(new_field)
-                has_points = (
-                    F(field + ".points")
-                    .filter(F()[0] != float("nan"))
-                    .length()
-                    > 0
-                )
-                match_expr = has_points.if_else(F(field), None)
+                only_expr = has_points.if_else(F(), None)
 
             _pipeline, _ = sample_collection._make_set_field_pipeline(
                 root_path,
-                match_expr,
-                embedded_root=True,
+                only_expr,
                 allow_missing=True,
                 new_field=self._new_field,
             )
@@ -4452,10 +4470,17 @@ class SelectGroupSlices(ViewStage):
         media_type (None): a media type whose slice(s) to select
     """
 
-    def __init__(self, slices=None, media_type=None, _allow_mixed=False):
+    def __init__(
+        self,
+        slices=None,
+        media_type=None,
+        _allow_mixed=False,
+        _force_mixed=False,
+    ):
         self._slices = slices
         self._media_type = media_type
         self._allow_mixed = _allow_mixed
+        self._force_mixed = _force_mixed
 
     @property
     def slices(self):
@@ -4500,7 +4525,7 @@ class SelectGroupSlices(ViewStage):
         elif slices is not None:
             expr &= F(name_field) == slices
 
-        return [
+        pipeline = [
             {"$project": {group_field: True}},
             {
                 "$lookup": {
@@ -4514,7 +4539,27 @@ class SelectGroupSlices(ViewStage):
             {"$replaceRoot": {"newRoot": "$groups"}},
         ]
 
+        # @note(SelectGroupSlices)
+        # Must re-apply field selection/exclusion after the $lookup
+        if isinstance(sample_collection, fov.DatasetView):
+            selected_fields, excluded_fields = _get_selected_excluded_fields(
+                sample_collection
+            )
+
+            if selected_fields:
+                stage = SelectFields(selected_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+            if excluded_fields:
+                stage = ExcludeFields(excluded_fields, _allow_missing=True)
+                pipeline.extend(stage.to_mongo(sample_collection))
+
+        return pipeline
+
     def get_media_type(self, sample_collection):
+        if self._force_mixed:
+            return fom.MIXED
+
         group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
@@ -4607,7 +4652,7 @@ class SelectGroupSlices(ViewStage):
         return {
             slice_name: media_type
             for slice_name, media_type in group_media_types.items()
-            if slice_name in slices
+            if slice_name in slices or self._force_mixed
         }
 
     def _kwargs(self):
@@ -8276,6 +8321,33 @@ def _get_default_similarity_run(sample_collection, supports_prompts=False):
         warnings.warn(msg)
 
     return brain_key
+
+
+def _get_selected_excluded_fields(view):
+    selected_fields, excluded_fields = view._get_selected_excluded_fields()
+
+    if not view._has_frame_fields():
+        return selected_fields, excluded_fields
+
+    _selected_fields, _excluded_fields = view._get_selected_excluded_fields(
+        frames=True
+    )
+
+    if _selected_fields:
+        _selected_fields = {view._FRAMES_PREFIX + f for f in _selected_fields}
+        if selected_fields:
+            selected_fields.update(_selected_fields)
+        else:
+            selected_fields = _selected_fields
+
+    if _excluded_fields:
+        _excluded_fields = {view._FRAMES_PREFIX + f for f in _excluded_fields}
+        if excluded_fields:
+            excluded_fields.update(_excluded_fields)
+        else:
+            excluded_fields = _excluded_fields
+
+    return selected_fields, excluded_fields
 
 
 class _ViewStageRepr(reprlib.Repr):

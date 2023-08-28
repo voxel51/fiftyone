@@ -15,6 +15,7 @@ export default function AddPanelItem({
   const { spaces } = useSpaces(spaceId);
   return (
     <StyledPanelItem
+      data-cy={`new-panel-option-${name}`}
       onClick={(e) => {
         const newNode = new SpaceNode();
         newNode.type = name;

@@ -2,12 +2,11 @@ import React from "react";
 
 import {
   isMatchingAtom,
-  onlyMatchAtom,
   stringExcludeAtom,
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
-import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 import { labelTagsCount } from "../Sidebar/Entries/EntryCounts";
+import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 
 const LabelTagFieldFilter = ({
   path,
@@ -27,7 +26,6 @@ const LabelTagFieldFilter = ({
     <CategoricalFilter<{ value: string | null; count: number }>
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
-      onlyMatchAtom={onlyMatchAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
       countsAtom={labelTagsCount({ modal, extended: false })}
       path={path}

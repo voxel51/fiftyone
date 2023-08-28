@@ -8,6 +8,7 @@ FiftyOne Server queries.
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
+import logging
 import os
 import typing as t
 
@@ -41,7 +42,7 @@ from fiftyone.server.samples import (
     SampleItem,
     paginate_samples,
 )
-from fiftyone.server.scalars import BSONArray, JSON
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.utils import from_dict
 
 
@@ -253,6 +254,7 @@ class Dataset:
     group_slice: t.Optional[str]
     default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
+    parent_media_type: t.Optional[MediaType]
     mask_targets: t.List[NamedTargets]
     default_mask_targets: t.Optional[t.List[Target]]
     sample_fields: t.List[SampleField]
@@ -415,9 +417,19 @@ class Query(fosa.AggregateQuery):
         first: t.Optional[int] = 20,
         after: t.Optional[str] = None,
         filter: t.Optional[SampleFilter] = None,
+        filters: t.Optional[BSON] = None,
+        extended_stages: t.Optional[BSON] = None,
+        pagination_data: t.Optional[bool] = True,
     ) -> Connection[SampleItem, str]:
         return await paginate_samples(
-            dataset, view, None, first, after, sample_filter=filter
+            dataset,
+            view,
+            filters,
+            first,
+            after,
+            sample_filter=filter,
+            extended_stages=extended_stages,
+            pagination_data=pagination_data,
         )
 
     @gql.field
@@ -524,7 +536,13 @@ def _flatten_fields(
 ) -> t.List[t.Dict]:
     result = []
     for field in fields:
-        key = field.pop("name")
+        key = field.pop("name", None)
+        if key is None:
+            # Issues with concurrency can cause this to happen.
+            # Until it's fixed, just ignore these fields to avoid throwing hard
+            # errors when loading in the app.
+            logging.debug("Skipping field with no name: %s", field)
+            continue
         field_path = path + [key]
         field["path"] = ".".join(field_path)
         result.append(field)
@@ -575,6 +593,7 @@ async def serialize_dataset(
                 data.view_cls = etau.get_class_name(view)
 
             if view.media_type != data.media_type:
+                data.parent_media_type = view._parent_media_type
                 data.media_type = view.media_type
 
             collection = view

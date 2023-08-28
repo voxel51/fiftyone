@@ -63,17 +63,17 @@ on the cards below to see how!
     :tags: Annotation
 
 .. customcarditem::
-    :header: Labelbox
-    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
-    :link: labelbox.html
-    :image: ../_static/images/integrations/labelbox.jpeg
-    :tags: Annotation
-
-.. customcarditem::
     :header: Label Studio
     :description: Annotate and edit your FiftyOne datasets in Label Studio through our integration.
     :link: labelstudio.html
     :image: ../_static/images/integrations/labelstudio.png
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
+    :link: labelbox.html
+    :image: ../_static/images/integrations/labelbox.jpeg
     :tags: Annotation
 
 .. customcarditem::
@@ -89,6 +89,27 @@ on the cards below to see how!
     :link: pinecone.html
     :image: ../_static/images/integrations/pinecone.png
     :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: Milvus
+    :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: milvus.html
+    :image: ../_static/images/integrations/milvus.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: LanceDB
+    :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
+    :link: lancedb.html
+    :image: ../_static/images/integrations/lancedb.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: PyTorch Hub
+    :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
+    :link: pytorch_hub.html
+    :image: ../_static/images/integrations/pytorch.png
+    :tags: Model-Zoo,Model-Evaluation
 
 .. customcarditem::
     :header: Lightning Flash
@@ -119,8 +140,11 @@ on the cards below to see how!
     Open Images <open_images.rst>
     ActivityNet <activitynet.rst>
     CVAT <cvat.rst>
-    Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
+    Labelbox <labelbox.rst>
     Qdrant <qdrant.rst>
     Pinecone <pinecone.rst>
+    Milvus <milvus.rst>
+    LanceDB <lancedb.rst>
+    PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>

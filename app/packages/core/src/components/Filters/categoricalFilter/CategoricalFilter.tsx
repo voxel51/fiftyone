@@ -1,9 +1,9 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
-import { currentSlice, groupId, groupStatistics } from "@fiftyone/state";
+import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
-import React, { MutableRefObject, useEffect, useRef } from "react";
+import { MutableRefObject, useEffect, useRef } from "react";
 import {
   RecoilState,
   RecoilValue,
@@ -85,9 +85,10 @@ const categoricalSearchResults = selectorFamily<
           selected,
           group_id: modal ? get(groupId) || null : null,
           mixed,
-          slices: mixed ? null : get(currentSlice(modal)), // when mixed, slice is not needed
+          slice: get(fos.groupSlice(false)),
+          slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
           sample_id:
-            modal && get(groupId) && !mixed ? get(fos.modalSampleId) : null,
+            modal && !get(groupId) && !mixed ? get(fos.modalSampleId) : null,
           ...sorting,
         });
       }
@@ -175,7 +176,6 @@ interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
-  onlyMatchAtom: RecoilState<boolean>; // toggles onlyMatch mode (omit empty samples)
   countsAtom: RecoilValue<{
     count: number;
     results: [T["value"], number][];
@@ -190,7 +190,6 @@ const CategoricalFilter = <T extends V = V>({
   countsAtom,
   selectedValuesAtom,
   excludeAtom,
-  onlyMatchAtom,
   isMatchingAtom,
   path,
   modal,
@@ -203,8 +202,14 @@ const CategoricalFilter = <T extends V = V>({
     : path.startsWith("_label_tags")
     ? "label tag"
     : name;
+
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const selectedCounts = useRef(new Map<V["value"], number>());
-  const onSelect = useOnSelect(selectedValuesAtom, selectedCounts);
+  const selectVisibility = useRef(new Map<V["value"], number>());
+  const onSelect = useOnSelect(
+    selectedValuesAtom,
+    isFilterMode ? selectedCounts : selectVisibility
+  );
   const useSearch = getUseSearch({ modal, path });
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
@@ -213,7 +218,7 @@ const CategoricalFilter = <T extends V = V>({
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
-
+  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
   if (countsLoadable.state !== "hasValue") return null;
   const { count, results } = countsLoadable.contents;
 
@@ -248,7 +253,9 @@ const CategoricalFilter = <T extends V = V>({
           !skeleton && (
             <Selector
               useSearch={useSearch}
-              placeholder={`+ filter by ${name}`}
+              placeholder={`+ ${
+                isFilterMode ? "filter" : "set visibility"
+              } by ${name}`}
               component={ResultComponent}
               onSelect={onSelect}
               inputStyle={{
@@ -267,7 +274,6 @@ const CategoricalFilter = <T extends V = V>({
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
-          onlyMatchAtom={onlyMatchAtom}
           modal={modal}
           totalCount={count}
           selectedCounts={selectedCounts}

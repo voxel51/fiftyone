@@ -3,6 +3,35 @@
 FiftyOne Teams
 ==============
 
+.. Social links ---------------------------------------------------------------
+
+.. raw:: html
+
+  <div class="social-links">
+    <table id="social-links-table">
+      <th>
+        <a target="_blank" href="https://voxel51.com/fiftyone-teams">
+          <img src="../_static/images/icons/browser-512px.png">
+          &nbsp Learn more
+        </a>
+      </th>
+      <th>
+        <a target="_blank" href="https://voxel51.com/schedule-teams-workshop">
+          <img src="../_static/images/icons/zoom-512px.png">
+          &nbsp Talk to us
+        </a>
+      </th>
+      <th>
+        <a target="_blank" href="https://try.fiftyone.ai">
+          <img src="../_static/images/icons/statistics-512px.png">
+          &nbsp Try it now
+        </a>
+      </th>
+    </table>
+  </div>
+
+.. End social links -----------------------------------------------------------
+
 `FiftyOne Teams <https://voxel51.com/fiftyone-teams/>`_ enables multiple users
 to securely collaborate on the same datasets and models, either on-premises or
 in the cloud, all built on top of the open source FiftyOne workflows that
@@ -11,11 +40,6 @@ you're already relying on.
 FiftyOne Teams is fully backwards-compatible with the
 `open source project <https://github.com/voxel51/fiftyone>`_, so all other
 pages on this site apply to Teams deployments as well.
-
-.. note::
-
-    Look interesting?
-    `Schedule a demo <https://voxel51.com/get-fiftyone-teams>`_ to get started!
 
 |br|
 
@@ -89,13 +113,19 @@ pages on this site apply to Teams deployments as well.
 
 .. End of callout items -------------------------------------------------------
 
+.. note::
+
+    Look interesting?
+    `Schedule a demo <https://voxel51.com/schedule-teams-workshop>`_ to get
+    started with Teams
+
 .. toctree::
     :maxdepth: 1
     :hidden:
 
     Overview <overview>
     Installation <installation>
-    API Connection <api_connection>
+    API connection <api_connection>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
     FiftyOne Teams App <teams_app>

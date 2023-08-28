@@ -203,7 +203,7 @@ export const stringCountResults = selectorFamily({
       const isSkeletonPoints =
         VALID_KEYPOINTS.includes(
           get(schemaAtoms.field(parent)).embeddedDocType
-        ) && keys[2] === "points";
+        ) && keys.slice(-1)[0] === "points";
 
       if (isSkeletonPoints) {
         const skeleton = get(selectors.skeleton(parent));
@@ -521,7 +521,7 @@ export const bounds = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
-      const { min, max } = get(aggregation(params));
+      const { min, max } = get(aggregation(params)) || {};
 
       return [min, max] as [number, number];
     },

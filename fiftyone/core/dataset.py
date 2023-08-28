@@ -2508,7 +2508,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
                 information. Only applicable when ``include_info`` is True
-            new_ids (False): whether to generate new sample/frame IDs. By
+            new_ids (False): whether to generate new sample/frame/group IDs. By
                 default, the IDs of the input collection are retained
 
         Returns:
@@ -2678,6 +2678,113 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             merge_info=merge_info,
             overwrite_info=overwrite_info,
         )
+
+    def merge_sample(
+        self,
+        sample,
+        key_field="filepath",
+        skip_existing=False,
+        insert_new=True,
+        fields=None,
+        omit_fields=None,
+        merge_lists=True,
+        overwrite=True,
+        expand_schema=True,
+        validate=True,
+        dynamic=False,
+    ):
+        """Merges the fields of the given sample into this dataset.
+
+        By default, the sample is merged with an existing sample with the same
+        absolute ``filepath``, if one exists. Otherwise a new sample is
+        inserted. You can customize this behavior via the ``key_field``,
+        ``skip_existing``, and ``insert_new`` parameters.
+
+        The behavior of this method is highly customizable. By default, all
+        top-level fields from the provided sample are merged in, overwriting
+        any existing values for those fields, with the exception of list fields
+        (e.g., ``tags``) and label list fields (e.g.,
+        :class:`fiftyone.core.labels.Detections` fields), in which case the
+        elements of the lists themselves are merged. In the case of label list
+        fields, labels with the same ``id`` in both samples are updated rather
+        than duplicated.
+
+        To avoid confusion between missing fields and fields whose value is
+        ``None``, ``None``-valued fields are always treated as missing while
+        merging.
+
+        This method can be configured in numerous ways, including:
+
+        -   Whether new fields can be added to the dataset schema
+        -   Whether list fields should be treated as ordinary fields and merged
+            as a whole rather than merging their elements
+        -   Whether to merge only specific fields, or all but certain fields
+        -   Mapping input sample fields to different field names of this sample
+
+        Args:
+            sample: a :class:`fiftyone.core.sample.Sample`
+            key_field ("filepath"): the sample field to use to decide whether
+                to join with an existing sample
+            skip_existing (False): whether to skip existing samples (True) or
+                merge them (False)
+            insert_new (True): whether to insert new samples (True) or skip
+                them (False)
+            fields (None): an optional field or iterable of fields to which to
+                restrict the merge. May contain frame fields for video samples.
+                This can also be a dict mapping field names of the input sample
+                to field names of this dataset
+            omit_fields (None): an optional field or iterable of fields to
+                exclude from the merge. May contain frame fields for video
+                samples
+            merge_lists (True): whether to merge the elements of list fields
+                (e.g., ``tags``) and label list fields (e.g.,
+                :class:`fiftyone.core.labels.Detections` fields) rather than
+                merging the entire top-level field like other field types.
+                For label lists fields, existing
+                :class:`fiftyone.core.label.Label` elements are either replaced
+                (when ``overwrite`` is True) or kept (when ``overwrite`` is
+                False) when their ``id`` matches a label from the provided
+                sample
+            overwrite (True): whether to overwrite (True) or skip (False)
+                existing fields and label elements
+            expand_schema (True): whether to dynamically add new fields
+                encountered to the dataset schema. If False, an error is raised
+                if any fields are not in the dataset schema
+            validate (True): whether to validate values for existing fields
+            dynamic (False): whether to declare dynamic embedded document
+                fields
+        """
+        try:
+            if self.media_type == fom.GROUP:
+                view = self.select_group_slices(_allow_mixed=True)
+            else:
+                view = self
+
+            F = foe.ViewField
+            existing_sample = view.one(F(key_field) == sample[key_field])
+        except ValueError:
+            if insert_new:
+                self.add_sample(
+                    sample,
+                    expand_schema=expand_schema,
+                    dynamic=dynamic,
+                    validate=validate,
+                )
+
+            return
+
+        if not skip_existing:
+            existing_sample.merge(
+                sample,
+                fields=fields,
+                omit_fields=omit_fields,
+                merge_lists=merge_lists,
+                overwrite=overwrite,
+                expand_schema=expand_schema,
+                validate=validate,
+                dynamic=dynamic,
+            )
+            existing_sample.save()
 
     def merge_samples(
         self,
@@ -3268,9 +3375,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         path, is_frame_field = self._handle_frame_field(field.path)
         if is_frame_field:
-            field_doc = self._frame_doc_cls._get_field_doc(path)
+            field_doc = self._frame_doc_cls._get_field_doc(path, reload=True)
         else:
-            field_doc = self._sample_doc_cls._get_field_doc(path)
+            field_doc = self._sample_doc_cls._get_field_doc(path, reload=True)
 
         field_doc.description = field.description
         field_doc.info = field.info
@@ -6754,6 +6861,9 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
         view = dataset_or_view
+
+        if view.media_type == fom.MIXED:
+            raise ValueError("Cloning mixed views is not allowed")
     else:
         dataset = dataset_or_view
         view = None
@@ -7312,48 +7422,31 @@ def _add_collection_with_new_ids(
     contains_videos = sample_collection._contains_videos(any_slice=True)
 
     if contains_groups:
+        dst_samples = dataset.select_group_slices(_allow_mixed=True)
         src_samples = sample_collection.select_group_slices(_allow_mixed=True)
     else:
+        dst_samples = dataset
         src_samples = sample_collection
 
-    if not contains_videos:
-        src_samples._aggregate(
-            detach_groups=True,
-            post_pipeline=[
-                {"$project": {"_id": False}},
-                {"$addFields": {"_dataset_id": dataset._doc.id}},
-                {
-                    "$merge": {
-                        "into": dataset._sample_collection_name,
-                        "whenMatched": "keepExisting",
-                        "whenNotMatched": "insert",
-                    }
-                },
-            ],
-        )
+    if contains_videos:
+        old_ids = src_samples.values("id")
+        num_ids = len(old_ids)
+    else:
+        num_ids = len(src_samples)
 
-        return
-
-    #
-    # For video datasets, we must take greater care, because sample IDs are
-    # used as foreign keys in the frame documents
-    #
+    add_fields = {"_dataset_id": dataset._doc.id}
 
     if contains_groups:
-        src_videos = sample_collection.select_group_slices(
-            media_type=fom.VIDEO
-        )
-    else:
-        src_videos = sample_collection
-
-    old_ids = src_samples.values("_id")
+        id_field = sample_collection.group_field + "._id"
+        tmp_field = sample_collection.group_field + "._tmp"
+        add_fields[tmp_field] = "$" + id_field
 
     src_samples._aggregate(
         detach_frames=True,
         detach_groups=True,
         post_pipeline=[
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {"$addFields": add_fields},
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
@@ -7364,13 +7457,37 @@ def _add_collection_with_new_ids(
         ],
     )
 
+    new_ids = dst_samples[-num_ids:].values("id")
+
+    if contains_groups:
+        ops = []
+        for old_id in src_samples.distinct(id_field):
+            new_id = ObjectId()
+            op = UpdateMany(
+                {tmp_field: old_id},
+                {"$set": {id_field: new_id}, "$unset": {tmp_field: ""}},
+            )
+            ops.append(op)
+
+        dataset._bulk_write(ops)
+
+    if not contains_videos:
+        return new_ids
+
+    if contains_groups:
+        src_videos = sample_collection.select_group_slices(
+            media_type=fom.VIDEO
+        )
+    else:
+        src_videos = sample_collection
+
     src_videos._aggregate(
         frames_only=True,
         post_pipeline=[
             {
                 "$addFields": {
                     "_tmp": "$_sample_id",
-                    "_sample_id": {"$rand": {}},
+                    "_sample_id": {"$rand": {}},  # must exist for index
                 }
             },
             {"$project": {"_id": False}},
@@ -7385,18 +7502,17 @@ def _add_collection_with_new_ids(
         ],
     )
 
-    new_ids = dataset[-len(old_ids) :].values("_id")
-
     ops = [
         UpdateMany(
-            {"_tmp": _old},
-            {"$set": {"_sample_id": _new}, "$unset": {"_tmp": ""}},
+            {"_tmp": ObjectId(old_id)},
+            {"$set": {"_sample_id": ObjectId(new_id)}, "$unset": {"_tmp": ""}},
         )
-        for _old, _new in zip(old_ids, new_ids)
+        for old_id, new_id in zip(old_ids, new_ids)
     ]
+
     dataset._bulk_write(ops, frames=True)
 
-    return [str(_id) for _id in new_ids]
+    return new_ids
 
 
 def _merge_samples_python(

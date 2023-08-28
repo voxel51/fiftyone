@@ -170,7 +170,7 @@ const NONE = [null, undefined];
 export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
-  sidebarGroups: State.SidebarGroup[],
+  sidebarGroups?: State.SidebarGroup[],
   current?: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
   let groups = sidebarGroups
@@ -262,6 +262,7 @@ const groupUpdater = (
     const index = groupNames.indexOf(name);
     if (index < 0) {
       groups.push({ name, paths, expanded: false });
+      groupNames.push(name);
       return;
     }
 
@@ -434,7 +435,6 @@ export const sidebarEntries = selectorFamily<
     (params) =>
     ({ get }) => {
       const entries = [
-        { type: "filter", kind: EntryKind.INPUT } as InputEntry,
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
             const group: GroupEntry = {

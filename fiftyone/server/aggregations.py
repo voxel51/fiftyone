@@ -120,6 +120,8 @@ async def aggregate_resolver(
         extended_stages=form.extended_stages,
         sample_filter=SampleFilter(
             group=GroupElementFilter(id=form.group_id, slices=form.slices)
+            if not form.sample_ids
+            else None
         ),
     )
 
@@ -142,7 +144,7 @@ async def aggregate_resolver(
         )
 
     if form.mixed and view.media_type == fom.GROUP and view.group_slices:
-        view = view.select_group_slices(_allow_mixed=True)
+        view = view.select_group_slices(_force_mixed=True)
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]

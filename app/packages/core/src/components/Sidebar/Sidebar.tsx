@@ -6,13 +6,13 @@ import { move } from "@fiftyone/utilities";
 
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEventHandler } from "@fiftyone/state";
+import { useEventHandler, replace } from "@fiftyone/state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Resizable } from "re-resizable";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
 import SchemaSettings from "../Schema/SchemaSettings";
-import { replace } from "./Entries/GroupEntries";
+import Filter from "./Entries/FilterEntry";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
@@ -693,6 +693,7 @@ const InteractiveSidebar = ({
 
   return shown ? (
     <Resizable
+      data-cy="sidebar"
       size={{ height: "100%", width }}
       minWidth={200}
       maxWidth={600}
@@ -746,6 +747,7 @@ const InteractiveSidebar = ({
         </Suspense>
       )}
       <Suspense>
+        <Filter modal={modal} />
         <SidebarColumn
           ref={container}
           onScroll={({ target }) => {

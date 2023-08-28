@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
-import { useSchemaSettings } from "@fiftyone/state";
+import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
 import styled from "styled-components";
 
 const ContainerBox = styled(Box)`
@@ -21,10 +21,12 @@ export const SchemaSelectionControls = () => {
     isFilterRuleActive,
     showMetadata,
     setShowMetadata,
-    searchResults,
     includeNestedFields,
     setIncludeNestedFields,
+    mergedSchema,
   } = useSchemaSettings();
+
+  const { searchResults } = useSearchSchemaFields(mergedSchema);
   const showMetadataVisible = !(isFilterRuleActive && !searchResults.length);
   const includeNestedVisible = !!(isFilterRuleActive && searchResults.length);
 

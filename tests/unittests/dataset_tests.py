@@ -1120,6 +1120,113 @@ class DatasetTests(unittest.TestCase):
         self.assertEqual(field.field.document_type, fo.DynamicEmbeddedDocument)
 
     @drop_datasets
+    def test_one(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.png"),
+            fo.Sample(filepath="image3.jpg"),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        filepath = dataset.first().filepath
+
+        sample = dataset.one(F("filepath") == filepath)
+
+        self.assertEqual(sample.filepath, filepath)
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath") == "bad")
+
+        sample = dataset.one(F("filepath").ends_with(".jpg"))
+
+        self.assertTrue(sample.filepath.endswith(".jpg"))
+
+        with self.assertRaises(ValueError):
+            _ = dataset.one(F("filepath").ends_with(".jpg"), exact=True)
+
+    @drop_datasets
+    def test_merge_sample(self):
+        sample1 = fo.Sample(filepath="image.jpg", foo="bar", tags=["a"])
+        sample2 = fo.Sample(filepath="image.jpg", spam="eggs", tags=["b"])
+        sample3 = fo.Sample(filepath="image.jpg", tags=[])
+
+        # No dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        s1.merge(s2)
+        s1.merge(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # In dataset
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2)
+        dataset.merge_sample(s3)
+
+        self.assertListEqual(s1["tags"], ["a", "b"])
+        self.assertEqual(s1["foo"], "bar")
+        self.assertEqual(s1["spam"], "eggs")
+
+        # List merging variations
+
+        s1 = sample1.copy()
+        s2 = sample2.copy()
+        s3 = sample3.copy()
+
+        dataset = fo.Dataset()
+        dataset.add_sample(s1)
+
+        dataset.merge_sample(s2, merge_lists=False)
+
+        self.assertListEqual(s1["tags"], ["b"])
+
+        # Tests an edge case when setting a typed list field to an empty list
+        dataset.merge_sample(s3, merge_lists=False, dynamic=True)
+
+        self.assertListEqual(s1["tags"], [])
+
+    @drop_datasets
+    def test_merge_sample_group(self):
+        dataset = fo.Dataset()
+
+        group = fo.Group()
+        sample1 = fo.Sample("test.png", group=group.element("thumbnail"))
+        sample2 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="spam"
+        )
+        sample3 = fo.Sample(
+            "test.mp4", group=group.element("video"), foo="eggs"
+        )
+
+        dataset.merge_sample(sample1)
+        dataset.merge_sample(sample2)
+        dataset.merge_sample(sample3)  # should be merged with `sample2`
+
+        self.assertEqual(
+            len(dataset.select_group_slices(_allow_mixed=True)), 2
+        )
+
+        dataset.group_slice = "video"
+        self.assertEqual(len(dataset), 1)
+
+        sample = dataset.first()
+        self.assertEqual(sample.foo, "eggs")
+
+    @drop_datasets
     def test_merge_samples1(self):
         # Windows compatibility
         def expand_path(path):
@@ -3951,6 +4058,38 @@ class DynamicFieldTests(unittest.TestCase):
             sample.save()
 
     @drop_datasets
+    def test_dynamic_has_field(self):
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="cat",
+                        bounding_box=[0.1, 0.1, 0.8, 0.8],
+                        foo="bar",
+                    ),
+                ]
+            ),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_sample(sample, dynamic=True)
+
+        detection = sample.ground_truth.detections[0]
+
+        self.assertTrue(dataset.has_field("ground_truth.detections.label"))
+        self.assertTrue(sample.has_field("ground_truth.detections.label"))
+        self.assertTrue(detection.has_field("label"))
+
+        self.assertTrue(dataset.has_field("ground_truth.detections.foo"))
+        self.assertTrue(sample.has_field("ground_truth.detections.foo"))
+        self.assertTrue(detection.has_field("foo"))
+
+        self.assertFalse(dataset.has_field("ground_truth.detections.spam"))
+        self.assertFalse(sample.has_field("ground_truth.detections.spam"))
+        self.assertFalse(detection.has_field("spam"))
+
+    @drop_datasets
     def test_dynamic_list_fields(self):
         sample1 = fo.Sample(
             filepath="image1.jpg",
@@ -4995,11 +5134,10 @@ class DatasetFactoryTests(unittest.TestCase):
             fo.Dataset.from_images(filepaths, name=dataset.name)
 
         dataset2 = fo.Dataset.from_images(
-            filepaths, name=dataset.name, overwrite=True, persistent=True
+            filepaths, name=dataset.name, overwrite=True
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertTrue(dataset2.persistent)
 
         samples = [{"filepath": "image.jpg"}]
         sample_parser = _ImageSampleParser()
@@ -5019,11 +5157,9 @@ class DatasetFactoryTests(unittest.TestCase):
             sample_parser=sample_parser,
             name=dataset.name,
             overwrite=True,
-            persistent=True,
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertTrue(dataset2.persistent)
 
     @drop_datasets
     def test_from_videos(self):
@@ -5036,11 +5172,10 @@ class DatasetFactoryTests(unittest.TestCase):
             fo.Dataset.from_videos(filepaths, name=dataset.name)
 
         dataset2 = fo.Dataset.from_videos(
-            filepaths, name=dataset.name, overwrite=True, persistent=True
+            filepaths, name=dataset.name, overwrite=True
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertTrue(dataset2.persistent)
 
         samples = [{"filepath": "video.mp4"}]
         sample_parser = _VideoSampleParser()
@@ -5060,11 +5195,9 @@ class DatasetFactoryTests(unittest.TestCase):
             sample_parser=sample_parser,
             name=dataset.name,
             overwrite=True,
-            persistent=True,
         )
 
         self.assertEqual(len(dataset2), 1)
-        self.assertTrue(dataset2.persistent)
 
     @drop_datasets
     def test_from_labeled_images(self):
@@ -5090,11 +5223,9 @@ class DatasetFactoryTests(unittest.TestCase):
             label_field="ground_truth",
             name=dataset.name,
             overwrite=True,
-            persistent=True,
         )
 
         self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
-        self.assertTrue(dataset2.persistent)
 
     @drop_datasets
     def test_from_labeled_videos(self):
@@ -5120,11 +5251,9 @@ class DatasetFactoryTests(unittest.TestCase):
             label_field="ground_truth",
             name=dataset.name,
             overwrite=True,
-            persistent=True,
         )
 
         self.assertEqual(dataset2.values("ground_truth.label"), ["label"])
-        self.assertTrue(dataset2.persistent)
 
 
 class _ImageSampleParser(foud.ImageSampleParser):

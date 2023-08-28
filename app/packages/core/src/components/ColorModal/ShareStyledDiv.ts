@@ -84,7 +84,7 @@ export const IconDiv = styled.div`
 `;
 
 export const ControlGroupWrapper = styled.div`
-  margin: 0.5rem 2rem;
+  margin: 0.5rem;
 `;
 
 export const SectionWrapper = styled.div`
@@ -92,8 +92,8 @@ export const SectionWrapper = styled.div`
 `;
 
 export const LabelTitle = styled.div`
-  margin: 0 -0.5rem;
-  padding: 0 0.5rem;
+  margin: 0;
+  padding: 0.5rem 0;
   font-size: 1rem;
   line-height: 2;
   font-weight: bold;

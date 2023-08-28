@@ -272,7 +272,7 @@ predictions of a |Model| instance are generated using the following pattern:
         import fiftyone as fo
 
         def read_rgb_image(path):
-            """Utility function that loads an image as an RGB numpy aray."""
+            """Utility function that loads an image as an RGB numpy array."""
             return np.asarray(Image.open(path).convert("rgb"))
 
         # Load a `Model` instance that processes images
@@ -505,7 +505,7 @@ and uses it both as a classifier and to generate image embeddings:
     config = fout.TorchImageModelConfig(
         {
             "entrypoint_fcn": "torchvision.models.mobilenet.mobilenet_v2",
-            "entrypoint_args": {"pretrained": True},
+            "entrypoint_args": {"weights": "MobileNet_V2_Weights.DEFAULT"},
             "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
             "labels_path": labels_path,
             "image_min_dim": 224,
@@ -521,9 +521,9 @@ and uses it both as a classifier and to generate image embeddings:
     embeddings = dataset.compute_embeddings(model)
 
 The necessary configuration is provided via the
-:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>` class,
-which exposes a number of builtin mechanisms for defining the model to load and
-any necessary preprocessing and post-processing.
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
+class, which exposes a number of builtin mechanisms for defining the model to
+load and any necessary preprocessing and post-processing.
 
 Under the hood, the torch model is loaded via:
 
@@ -534,15 +534,15 @@ Under the hood, the torch model is loaded via:
 which is assumed to return a :class:`torch:torch.nn.Module` whose `__call__()`
 method directly accepts Torch tensors (NCHW) as input.
 
-The :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>` class
-provides a number of builtin mechanisms for specifying the required
+The :class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
+class provides a number of builtin mechanisms for specifying the required
 preprocessing for your model, such as resizing and normalization. In the above
 example, `image_min_dim`, `image_max_dim`, `image_mean`, and `image_std` are
 used.
 
 The `output_processor_cls` parameter of
-:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>`  must be
-set to the fully-qualified class name of an
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`
+must be set to the fully-qualified class name of an
 :class:`OutputProcessor <fiftyone.utils.torch.OutputProcessor>` subclass that
 defines how to translate the model's raw output into the suitable FiftyOne
 |Label| types, and is instantiated as follows:
@@ -551,16 +551,20 @@ defines how to translate the model's raw output into the suitable FiftyOne
 
     output_processor = output_processor_cls(classes=classes, **output_processor_args)
 
-where your model's `classes` are loaded either via the `labels_string` or
-`labels_path` parameters of
-:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModel>`. The
-following builtin output processors are available for use, if applicable:
+where your model's classes can be specified via any of the `classes`,
+`labels_string`, or `labels_path` parameters of
+:class:`TorchImageModelConfig <fiftyone.utils.torch.TorchImageModelConfig>`.
+
+The following builtin output processors are available for use:
 
 - :class:`ClassifierOutputProcessor <fiftyone.utils.torch.ClassifierOutputProcessor>`
 - :class:`DetectorOutputProcessor <fiftyone.utils.torch.DetectorOutputProcessor>`
 - :class:`InstanceSegmenterOutputProcessor <fiftyone.utils.torch.InstanceSegmenterOutputProcessor>`
 - :class:`KeypointDetectorOutputProcessor <fiftyone.utils.torch.KeypointDetectorOutputProcessor>`
 - :class:`SemanticSegmenterOutputProcessor <fiftyone.utils.torch.SemanticSegmenterOutputProcessor>`
+
+or you can write your own
+:class:`OutputProcessor <fiftyone.utils.torch.OutputProcessor>` subclass.
 
 Finally, if you would like to pass your custom model to methods like
 :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,

@@ -2149,6 +2149,128 @@ class ViewStageTests(unittest.TestCase):
             self.assertEqual(sample.exclude_fields_field2, 1)
         self._exclude_fields_teardown()
 
+    def test_exclude_fields_multiple(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(
+                filepath="image2.jpg",
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="cat",
+                            foo="bar",
+                            spam="eggs",
+                        )
+                    ]
+                ),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="dog",
+                            foo="baz",
+                            spam="eggz",
+                        )
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, dynamic=True)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertIn("predictions.classifications.foo", flat_schema)
+        self.assertIn("predictions.classifications.spam", flat_schema)
+
+        view = dataset.exclude_fields(["spam", "predictions"])
+
+        schema = view.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertTrue(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertFalse(sample.has_field("predictions"))
+
+        view = dataset.exclude_fields(
+            ["foo", "predictions.classifications.foo"]
+        ).exclude_fields(["spam", "predictions.classifications.spam"])
+
+        schema = view.get_field_schema()
+
+        self.assertNotIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertNotIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertFalse(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertIsNotNone(sample.ground_truth.classifications[0].foo)
+        self.assertIsNotNone(sample.ground_truth.classifications[0].spam)
+        self.assertTrue(sample.has_field("predictions"))
+        with self.assertRaises(AttributeError):
+            sample.predictions.classifications[0].foo
+        with self.assertRaises(AttributeError):
+            sample.predictions.classifications[0].spam
+
     def test_exclude_fields_stats(self):
         self._exclude_fields_setup()
         base_size = self.dataset.exclude_fields(
@@ -2736,6 +2858,152 @@ class ViewStageTests(unittest.TestCase):
 
         # view with no matches
         view = dataset.filter_keypoints("kps", labels=[])
+        self.assertEqual(len(view), 0)
+
+    def test_filter_keypoints_embedded_document(self):
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            dynamic=fo.DynamicEmbeddedDocument(
+                kp=fo.Keypoint(
+                    label="person",
+                    points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+                    confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                ),
+                kps=fo.Keypoints(
+                    keypoints=[
+                        fo.Keypoint(
+                            label="person",
+                            points=[(0, 0), (0, 0), (0, 0), (0, 0), (0, 0)],
+                            confidence=[0.5, 0.6, 0.7, 0.8, 0.9],
+                        ),
+                        fo.Keypoint(),
+                    ]
+                ),
+            ),
+        )
+
+        sample2 = fo.Sample(filepath="image2.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2], dynamic=True)
+
+        dataset.default_skeleton = fo.KeypointSkeleton(
+            labels=["nose", "left eye", "right eye", "left ear", "right ear"],
+            edges=[[0, 1, 2, 0], [0, 3], [0, 4]],
+        )
+
+        count_nans = lambda points: len([p for p in points if np.isnan(p[0])])
+
+        #
+        # Test `Keypoint` sample fields
+        #
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "dynamic.kp", filter=F("confidence") > 0.75
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kp"].points), 5)
+        self.assertEqual(count_nans(sample["dynamic.kp"].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "dynamic.kp", filter=F("confidence") > 0.75, only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kp"].points), 5)
+        self.assertEqual(count_nans(sample["dynamic.kp"].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints(
+            "dynamic.kp", filter=F("confidence") > 0.95
+        )
+        self.assertEqual(len(view), 0)
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "dynamic.kp", labels=["left eye", "right eye"]
+        )
+        self.assertEqual(len(view), 1)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kp"].points), 5)
+        self.assertEqual(count_nans(sample["dynamic.kp"].points), 3)
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "dynamic.kp", labels=["left eye", "right eye"], only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kp"].points), 5)
+        self.assertEqual(count_nans(sample["dynamic.kp"].points), 3)
+
+        # view with no matches
+        view = dataset.filter_keypoints("dynamic.kp", labels=[])
+        self.assertEqual(len(view), 0)
+
+        #
+        # Test `Keypoints` sample fields
+        #
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "dynamic.kps", filter=F("confidence") > 0.75
+        )
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("dynamic.kps.keypoints"), 1)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kps"].keypoints[0].points), 5)
+        self.assertEqual(
+            count_nans(sample["dynamic.kps"].keypoints[0].points), 3
+        )
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "dynamic.kps", filter=F("confidence") > 0.75, only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.count("dynamic.kps.keypoints"), 2)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kps"].keypoints[0].points), 5)
+        self.assertEqual(
+            count_nans(sample["dynamic.kps"].keypoints[0].points), 3
+        )
+
+        # view with no matches
+        view = dataset.filter_keypoints(
+            "dynamic.kps", filter=F("confidence") > 0.95
+        )
+        self.assertEqual(len(view), 0)
+
+        # only_matches=True
+        view = dataset.filter_keypoints(
+            "dynamic.kps", labels=["left eye", "right eye"]
+        )
+        self.assertEqual(len(view), 1)
+        self.assertEqual(view.count("dynamic.kps.keypoints"), 1)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kps"].keypoints[0].points), 5)
+        self.assertEqual(
+            count_nans(sample["dynamic.kps"].keypoints[0].points), 3
+        )
+
+        # only_matches=False
+        view = dataset.filter_keypoints(
+            "dynamic.kps", labels=["left eye", "right eye"], only_matches=False
+        )
+        self.assertEqual(len(view), 2)
+        self.assertEqual(view.count("dynamic.kps.keypoints"), 2)
+        sample = view.first()
+        self.assertEqual(len(sample["dynamic.kps"].keypoints[0].points), 5)
+        self.assertEqual(
+            count_nans(sample["dynamic.kps"].keypoints[0].points), 3
+        )
+
+        # view with no matches
+        view = dataset.filter_keypoints("dynamic.kps", labels=[])
         self.assertEqual(len(view), 0)
 
     def test_filter_keypoints_frames(self):
@@ -3378,6 +3646,133 @@ class ViewStageTests(unittest.TestCase):
                 sample.select_fields_field
         self._select_field_teardown()
 
+    def test_select_fields_multiple(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(
+                filepath="image2.jpg",
+                foo="bar",
+                spam="eggs",
+                ground_truth=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="cat",
+                            foo="bar",
+                            spam="eggs",
+                        )
+                    ]
+                ),
+                predictions=fo.Classifications(
+                    classifications=[
+                        fo.Classification(
+                            label="dog",
+                            foo="baz",
+                            spam="eggz",
+                        )
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples, dynamic=True)
+
+        schema = dataset.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertIn("predictions", schema)
+
+        flat_schema = dataset.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertIn("predictions", flat_schema)
+        self.assertIn("predictions.classifications", flat_schema)
+        self.assertIn("predictions.classifications.label", flat_schema)
+        self.assertIn("predictions.classifications.foo", flat_schema)
+        self.assertIn("predictions.classifications.spam", flat_schema)
+
+        view = dataset.select_fields(["foo", "ground_truth"])
+
+        schema = view.get_field_schema()
+
+        self.assertIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertTrue(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertFalse(sample.has_field("predictions"))
+
+        # Can't select disjoint fields
+        with self.assertRaises(ValueError):
+            _ = dataset.select_fields("foo").select_fields(
+                "ground_truth.classifications.foo"
+            )
+
+        view = (
+            dataset.select_fields(["foo", "ground_truth"])
+            .select_fields(["foo", "ground_truth.classifications"])
+            .select_fields("ground_truth.classifications.foo")
+        )
+
+        schema = view.get_field_schema()
+
+        self.assertNotIn("foo", schema)
+        self.assertNotIn("spam", schema)
+        self.assertIn("ground_truth", schema)
+        self.assertNotIn("predictions", schema)
+
+        flat_schema = view.get_field_schema(flat=True)
+
+        self.assertNotIn("foo", flat_schema)
+        self.assertNotIn("spam", flat_schema)
+        self.assertIn("ground_truth", flat_schema)
+        self.assertIn("ground_truth.classifications", flat_schema)
+        self.assertIn("ground_truth.classifications.label", flat_schema)
+        self.assertIn("ground_truth.classifications.foo", flat_schema)
+        self.assertNotIn("ground_truth.classifications.spam", flat_schema)
+        self.assertNotIn("predictions", flat_schema)
+        self.assertNotIn("predictions.classifications.label", flat_schema)
+        self.assertNotIn("predictions.classifications.foo", flat_schema)
+        self.assertNotIn("predictions.classifications.spam", flat_schema)
+
+        sample = view.last()
+
+        self.assertFalse(sample.has_field("foo"))
+        self.assertFalse(sample.has_field("spam"))
+        self.assertTrue(sample.has_field("ground_truth"))
+        self.assertIsNotNone(sample.ground_truth.classifications[0].foo)
+        with self.assertRaises(AttributeError):
+            sample.ground_truth.classifications[0].spam
+        self.assertFalse(sample.has_field("predictions"))
+
     def test_select_fields_stats(self):
         self._select_field_setup()
 
@@ -3752,9 +4147,82 @@ class ViewStageTests(unittest.TestCase):
 
         sample_ids = dataset.add_samples(samples)
 
-        optimized_view = fov.make_optimized_select_view(dataset, sample_ids[0])
-        expected_stages = [fosg.Select(sample_ids[0])]
+        optimized_view = fov.make_optimized_select_view(
+            dataset, sample_ids[0], flatten=True
+        )
+        expected_stages = [
+            fosg.SelectGroupSlices(),
+            fosg.Select(sample_ids[0]),
+        ]
         self.assertEqual(optimized_view._all_stages, expected_stages)
+
+    def test_selected_samples_in_group_slices(self):
+        (dataset, selected_ids) = self._make_group_by_group_dataset()
+        view = dataset.view()
+        self.assertEqual(view.media_type, "group")
+
+        # treating sample_ids as groups will yield no sample
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[0], groups=True, flatten=True
+        )
+        self.assertEqual(len(optimized_view), 0)
+
+        # selects one sample from all group_slices
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[0], groups=False, flatten=True
+        )
+        self.assertEqual(len(optimized_view), 1)
+
+        # selects two sample from all group_slices
+        optimized_view = fov.make_optimized_select_view(
+            dataset, selected_ids[:2], groups=False, flatten=True
+        )
+        self.assertEqual(len(optimized_view), 2)
+
+    def _make_group_by_group_dataset(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group_field", default="left")
+
+        group1 = fo.Group()
+        group2 = fo.Group()
+        group3 = fo.Group()
+
+        samples = [
+            fo.Sample(
+                filepath="left-image1.jpg",
+                group_field=group1.element("left"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="right-image1.jpg",
+                group_field=group1.element("right"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="left-image2.jpg",
+                group_field=group2.element("left"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="right-image2.jpg",
+                group_field=group2.element("right"),
+                scene="foo",
+            ),
+            fo.Sample(
+                filepath="left-image3.jpg",
+                group_field=group3.element("left"),
+                scene="bar",
+            ),
+            fo.Sample(
+                filepath="right-image3.jpg",
+                group_field=group3.element("right"),
+                scene="bar",
+            ),
+        ]
+
+        dataset.add_samples(samples)
+
+        return (dataset, [s.id for s in samples])
 
 
 if __name__ == "__main__":

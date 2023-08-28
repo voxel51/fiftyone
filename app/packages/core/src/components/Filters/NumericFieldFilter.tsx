@@ -10,14 +10,14 @@ import styled from "styled-components";
 
 import * as fos from "@fiftyone/state";
 
-import RangeSlider from "../Common/RangeSlider";
-import Checkbox from "../Common/Checkbox";
-import { Button } from "../utils";
 import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
 import { formatDateTime } from "../../utils/generic";
-import withSuspense from "./withSuspense";
+import Checkbox from "../Common/Checkbox";
+import RangeSlider from "../Common/RangeSlider";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
+import { Button } from "../utils";
 import FilterOption from "./categoricalFilter/filterOption/FilterOption";
+import withSuspense from "./withSuspense";
 
 const NamedRangeSliderContainer = styled.div`
   margin: 3px;
@@ -125,17 +125,13 @@ const NumericFieldFilter = ({
   color,
 }: Props) => {
   const name = path.split(".").slice(-1)[0];
+  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const excludeAtom = fos.numericExcludeAtom({
     path,
     modal,
     defaultRange,
   });
   const isMatchingAtom = fos.numericIsMatchingAtom({
-    path,
-    modal,
-    defaultRange,
-  });
-  const onlyMatchAtom = fos.numericOnlyMatchAtom({
     path,
     modal,
     defaultRange,
@@ -149,7 +145,6 @@ const NumericFieldFilter = ({
     })
   );
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
-  const setOnlyMatch = onlyMatchAtom ? useSetRecoilState(onlyMatchAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
     : null;
@@ -167,6 +162,9 @@ const NumericFieldFilter = ({
   });
 
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
+  const hasVisibilitySetting = useRecoilValue(
+    fos.fieldHasVisibilitySetting({ modal, path })
+  );
 
   const bounded = useRecoilValue(
     fos.boundedCount({ modal, path, extended: false })
@@ -207,7 +205,6 @@ const NumericFieldFilter = ({
   const initializeSettings = () => {
     setFilter([null, null]);
     setExcluded && setExcluded(false);
-    setOnlyMatch && setOnlyMatch(true);
     setIsMatching && setIsMatching(!nestedField);
   };
 
@@ -274,7 +271,7 @@ const NumericFieldFilter = ({
             disabled={true}
             name={bounds[0]}
             setValue={() => {}}
-            count={bounded}
+            count={isFilterMode ? bounded : undefined} // visibility mode does not show count
             subcountAtom={fos.boundedCount({
               modal,
               path,
@@ -304,7 +301,6 @@ const NumericFieldFilter = ({
             nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
             excludeAtom={excludeAtom}
-            onlyMatchAtom={onlyMatchAtom}
             isMatchingAtom={isMatchingAtom}
             valueName={field?.name ?? ""}
             path={path}
@@ -313,7 +309,7 @@ const NumericFieldFilter = ({
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {isFiltered && (
+        {(isFiltered || hasVisibilitySetting) && (
           <Button
             text={"Reset"}
             color={color}

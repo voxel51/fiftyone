@@ -48,7 +48,7 @@ export const zoomToContent = <
   overlays: Overlay<State>[]
 ): State => {
   const points = overlays.map((o) => o.getPoints(state)).flat();
-  let [iw, ih] = state.dimensions;
+  const [iw, ih] = state.dimensions;
   let [w, h] = [iw, ih];
   const iAR = w / h;
   const {
@@ -57,7 +57,7 @@ export const zoomToContent = <
   } = adjustBox([w, h], getContainingBox(points));
 
   const [___, ____, ww, wh] = state.windowBBox;
-  let wAR = ww / wh;
+  const wAR = ww / wh;
 
   let scale = 1;
   let pan: Coordinates = [0, 0];
@@ -100,9 +100,7 @@ export const zoomToContent = <
 };
 
 export const zoomAspectRatio = (
-  sample: {
-    [key: string]: { _cls: string };
-  },
+  sample: object,
   mediaAspectRatio: number
 ): number => {
   let points = [];

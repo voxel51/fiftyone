@@ -49,6 +49,7 @@ class PointCloudSample(Sample):
 
 @gql.type
 class VideoSample(Sample):
+    frame_number: int
     frame_rate: float
 
 
@@ -78,42 +79,22 @@ async def paginate_samples(
         stages=stages,
         filters=filters,
         pagination_data=pagination_data,
-        count_label_tags=True,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
         reload=reload,
     )
-
-    root_view = fosv.get_view(dataset, stages=stages)
     try:
         view = await run_sync_task(run, False)
     except:
         view = await run_sync_task(run, True)
 
-    try:
-        root_view = await run_sync_task(
-            lambda: fosv.get_view(dataset, stages=stages, reload=False)
-        )
-    except:
-        root_view = await run_sync_task(
-            lambda: fosv.get_view(dataset, stages=stages, reload=True)
-        )
-
-    media = view.media_type
-    if media == fom.MIXED:
-        media = root_view.group_media_types[root_view.default_group_slice]
-
-    if media == fom.GROUP:
-        if view.group_slice is not None:
-            media = view.group_media_types[view.group_slice]
-        else:
-            # todo: this is a temp hack
-            media = fom.IMAGE
+    # check frame field schema explicitly, media type is not reliable for groups
+    has_frames = view.get_frame_field_schema() is not None
 
     # TODO: Remove this once we have a better way to handle large videos. This
     # is a temporary fix to reduce the $lookup overhead for sample frames on
     # full datasets.
-    full_lookup = media == fom.VIDEO and (filters or stages)
+    full_lookup = has_frames and (filters or stages)
     support = [1, 1] if not full_lookup else None
     if after is None:
         after = "-1"
@@ -122,7 +103,7 @@ async def paginate_samples(
         view = view.skip(int(after) + 1)
 
     pipeline = view._pipeline(
-        attach_frames=media == fom.VIDEO,
+        attach_frames=has_frames,
         detach_frames=False,
         manual_group_select=sample_filter
         and sample_filter.group
@@ -131,7 +112,7 @@ async def paginate_samples(
     )
 
     # Only return the first frame of each video sample for the grid thumbnail
-    if media == fom.VIDEO:
+    if has_frames:
         pipeline.append({"$addFields": {"frames": {"$slice": ["$frames", 1]}}})
 
     samples = await foo.aggregate(
@@ -193,5 +174,8 @@ async def _create_sample_item(
     metadata = await fosm.get_metadata(
         dataset, sample, media_type, metadata_cache, url_cache
     )
+
+    if cls == VideoSample:
+        metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
 
     return from_dict(cls, {"id": sample["_id"], "sample": sample, **metadata})

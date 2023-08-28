@@ -63,8 +63,8 @@ async def load_view(
             if form.sample_ids:
                 view = fov.make_optimized_select_view(view, form.sample_ids)
 
-            if form.mixed:
-                view = view.select_group_slices(_allow_mixed=True)
+            if form.mixed and view.media_type == fom.GROUP:
+                view = view.select_group_slices(_force_mixed=True)
 
             return view
 
@@ -77,7 +77,6 @@ def get_view(
     stages=None,
     filters=None,
     pagination_data=False,
-    count_label_tags=False,
     extended_stages=None,
     sample_filter=None,
     reload=True,
@@ -90,8 +89,6 @@ def get_view(
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
         filters (None): an optional ``dict`` of App defined filters
-        count_label_tags (False): whether to includes hidden ``_label_tags``
-            counts on sample documents
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
@@ -120,12 +117,17 @@ def get_view(
 
     if sample_filter is not None:
         if sample_filter.group:
+            if sample_filter.group.slice:
+                view.group_slice = sample_filter.group.slice
+
             if sample_filter.group.id:
                 view = fov.make_optimized_select_view(
                     view, sample_filter.group.id, groups=True
                 )
             if sample_filter.group.slices:
-                view = view.select_group_slices(sample_filter.group.slices)
+                view = view.select_group_slices(
+                    sample_filter.group.slices, _force_mixed=True
+                )
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
@@ -134,11 +136,10 @@ def get_view(
         # omit all dict field values for performance, not needed by grid
         view = _project_pagination_paths(view)
 
-    if filters or extended_stages:
+    if filters or extended_stages or pagination_data:
         view = get_extended_view(
             view,
             filters,
-            count_label_tags=count_label_tags,
             pagination_data=pagination_data,
             extended_stages=extended_stages,
         )
@@ -149,7 +150,6 @@ def get_view(
 def get_extended_view(
     view,
     filters=None,
-    count_label_tags=False,
     extended_stages=None,
     pagination_data=False,
 ):
@@ -158,8 +158,6 @@ def get_extended_view(
     Args:
         view: a :class:`fiftyone.core.collections.SampleCollection`
         filters: an optional ``dict`` of App defined filters
-        count_label_tags (False): whether to set the hidden ``_label_tags``
-            field with counts of tags with respect to all label fields
         extended_stages (None): extended view stages
         pagination_data (False): filters label data
 
@@ -187,17 +185,12 @@ def get_extended_view(
         if label_tags:
             view = _match_label_tags(view, label_tags)
 
-        stages = _make_filter_stages(
-            view,
-            filters,
-            count_label_tags=count_label_tags,
-            pagination_data=pagination_data,
-        )
+        stages = _make_filter_stages(view, filters)
 
         for stage in stages:
             view = view.add_stage(stage)
 
-    if count_label_tags:
+    if pagination_data:
         view = _add_labels_tags_counts(view)
 
     return view
@@ -272,85 +265,83 @@ def _project_pagination_paths(view: foc.SampleCollection):
 def _make_filter_stages(
     view,
     filters,
-    count_label_tags=False,
-    pagination_data=False,
 ):
     stages = []
     queries = []
-    for path, field, prefix, args in _iter_paths(view, filters):
+    for path, label_path, field, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
-        only_matches = args.get("onlyMatch", True)
-
+        path_field = view.get_field(path)
         is_label_field = _is_label(field)
-        if is_label_field and issubclass(
-            field.document_type, (fol.Keypoint, fol.Keypoints)
+        if (
+            is_label_field
+            and issubclass(field.document_type, (fol.Keypoint, fol.Keypoints))
+            and isinstance(path_field, (fof.KeypointsField, fof.ListField))
         ):
             continue
 
-        if not is_label_field or (is_matching or only_matches):
-            queries.append(_make_query(path, view.get_field(path), args))
+        if args.get("exclude") and not is_matching:
+            continue
+
+        queries.append(_make_query(path, path_field, args))
 
     if queries:
         stages.append(fosg.Match({"$and": queries}))
 
-    for path, field, prefix, args in _iter_paths(view, filters):
-        if not _is_label(field):
-            continue
-
+    for path, label_path, label_field, args in _iter_paths(
+        view, filters, labels=True
+    ):
         is_matching = args.get("isMatching", True)
-        only_matches = args.get("onlyMatch", True)
-        parent = field
         field = view.get_field(path)
-        if issubclass(parent.document_type, (fol.Keypoint, fol.Keypoints)):
+        if issubclass(
+            label_field.document_type, (fol.Keypoint, fol.Keypoints)
+        ) and isinstance(field, fof.ListField):
             expr = _make_keypoint_list_filter(args, view, path, field)
             if expr is not None:
                 stages.append(
                     fosg.FilterKeypoints(
-                        prefix + parent.name,
-                        only_matches=only_matches,
+                        label_path,
+                        only_matches=True,
                         **expr,
                     )
                 )
 
-        elif not is_matching and (pagination_data or not count_label_tags):
+        elif not is_matching:
             key = field.db_field if field.db_field else field.name
             expr = _make_scalar_expression(F(key), args, field, is_label=True)
             if expr is not None:
                 stages.append(
                     fosg.FilterLabels(
-                        prefix + parent.name,
+                        label_path,
                         expr,
-                        only_matches=False,
+                        only_matches=not args.get("exclude", False),
                     )
                 )
 
     return stages
 
 
-def _iter_paths(view, filters):
-    field_schema = view.get_field_schema()
-    if view.media_type != fom.IMAGE:
-        frame_field_schema = view.get_frame_field_schema()
-    else:
-        frame_field_schema = None
-
+def _iter_paths(view, filters, labels=False):
     for path in sorted(filters):
         if path == "tags" or path.startswith("_"):
             continue
 
-        args = filters[path]
-        frames = path.startswith(view._FRAMES_PREFIX)
-        keys = path.split(".")
-        if frames:
-            field = frame_field_schema[keys[1]]
-            keys = keys[2:]
-            prefix = "frames."
+        if "." in path:
+            parent_path = ".".join(path.split(".")[:-1])
         else:
-            field = field_schema[keys[0]]
-            keys = keys[1:]
-            prefix = ""
+            parent_path = path
 
-        yield path, field, prefix, args
+        parent_field = view.get_field(parent_path)
+        if isinstance(parent_field, fof.ListField) and isinstance(
+            parent_field.field, fof.EmbeddedDocumentField
+        ):
+            if issubclass(parent_field.field.document_type, fol.Label):
+                parent_path = ".".join(parent_path.split(".")[:-1])
+                parent_field = view.get_field(parent_path)
+
+        if labels and not _is_label(parent_field):
+            continue
+
+        yield path, parent_path, parent_field, filters[path]
 
 
 def _is_support(field):
@@ -378,11 +369,14 @@ def _is_label(field):
 
 
 def _make_query(path, field, args):
-    if isinstance(field, fof.ListField):
+    keys = path.split(".")
+    path = ".".join(keys[:-1] + [field.db_field or field.name])
+    if isinstance(field, fof.ListField) and field.field:
         field = field.field
 
     if isinstance(
-        field, (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField)
+        field,
+        (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField),
     ):
         mn, mx = args["range"]
         if isinstance(field, (fof.DateField, fof.DateTimeField)):
@@ -403,7 +397,7 @@ def _make_query(path, field, args):
             ]
         }
 
-    values = args["values"]
+    values = args.get("values", None)
     if isinstance(field, fof.ObjectIdField):
         values = list(map(lambda v: ObjectId(v), args["values"]))
 
@@ -418,10 +412,10 @@ def _make_query(path, field, args):
             }
 
         if not true and false:
-            return {path: {"$neq" if args["exclude"] else "$eq": False}}
+            return {path: {"$ne" if args["exclude"] else "$eq": False}}
 
         if true and not false:
-            return {path: {"$neq" if args["exclude"] else "$eq": True}}
+            return {path: {"$ne" if args["exclude"] else "$eq": True}}
 
         if not true and not false:
             return {
@@ -473,6 +467,10 @@ def _make_scalar_expression(f, args, field, list_field=False, is_label=False):
         values = filter(lambda v: v is not None, values)
         expr = f.is_in(values)
         exclude = args["exclude"]
+
+        if exclude:
+            # pylint: disable=invalid-unary-operand-type
+            expr = ~expr
 
         if none and not is_label and not list_field:
             if exclude:
@@ -681,18 +679,19 @@ def _match_label_tags(view: foc.SampleCollection, label_tags):
     matching = label_tags["isMatching"]
     expr = lambda exclude, values: {"$nin" if exclude else "$in": values}
 
-    view = view.mongo(
-        [
-            {
-                "$match": {
-                    "$or": [
-                        {f"{path}.tags": expr(exclude, values)}
-                        for path in label_paths
-                    ]
+    if not exclude or matching:
+        view = view.mongo(
+            [
+                {
+                    "$match": {
+                        "$or": [
+                            {f"{path}.tags": expr(exclude, values)}
+                            for path in label_paths
+                        ]
+                    }
                 }
-            }
-        ]
-    )
+            ]
+        )
 
     if not matching and exclude:
         view = view.exclude_labels(
