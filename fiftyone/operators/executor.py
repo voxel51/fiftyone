@@ -425,6 +425,12 @@ class ExecutionContext(object):
             "params": self.params,
         }
 
+    def to_dict(self):
+        """Returns the properties of the execution context as a dict."""
+        return {
+            k: v for k, v in self.__dict__.items() if not k.startswith("_")
+        }
+
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
