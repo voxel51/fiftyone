@@ -21,8 +21,9 @@ See the App's [README.md](README.md) for installation instructions.
 An App `session` is represented by single [server](../fiftyone/server/main.py)
 holding which holds a [StateDescription](../fiftyone/core/state.py). The
 `state` object is held by the
-`fiftyone.server.events`(../fiftyone.server.events.py) Python module and can be
-access via `fiftyone.server.events.get_state`(../fiftyone.server.events.py).
+[`fiftyone.server.events`](../fiftyone.server.events.py) Python module and can
+be access via
+[`fiftyone.server.events.get_state`](../fiftyone.server.events.py).
 
 The purpose of the `StateDescription` is to hold session values such as
 selected labels across App page loads, and for state changes to synchronized
