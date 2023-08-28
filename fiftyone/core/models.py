@@ -303,7 +303,7 @@ def _apply_image_model_single(
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             try:
-                img = foui.read(sample.filepath)
+                img = foui.read(sample.local_path)
 
                 if needs_samples:
                     labels = model.predict(img, sample=sample)
@@ -341,7 +341,9 @@ def _apply_image_model_batch(
     with fou.ProgressBar(samples) as pb:
         for sample_batch in samples_loader:
             try:
-                imgs = [foui.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    foui.read(sample.local_path) for sample in sample_batch
+                ]
 
                 if needs_samples:
                     labels_batch = model.predict_all(

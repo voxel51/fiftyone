@@ -456,7 +456,7 @@ class GeoJSONDatasetImporter(
                 properties = feature["properties"]
                 if "filename" in properties:
                     filename = fos.normpath(properties.pop("filename"))
-                    if os.path.isabs(filename):
+                    if fos.isabs(filename):
                         filepath = filename
                     else:
                         filepath = media_paths_map.get(filename, None)

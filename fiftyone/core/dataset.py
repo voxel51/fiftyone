@@ -14,6 +14,7 @@ import logging
 import numbers
 import os
 import random
+import re
 import string
 
 from bson import json_util, ObjectId, DBRef
@@ -40,7 +41,6 @@ from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
@@ -109,8 +109,37 @@ def _validate_dataset_name(name, skip=None):
     return slug
 
 
-def load_dataset(name):
-    """Loads the FiftyOne dataset with the given name.
+_SNAPSHOT_MATERIALIZED_NAME_RE = re.compile(r"_snapshot__([a-z0-9]{24})_(.*)$")
+
+
+def _snapshot_to_materialized_dataset_name(dataset_id, snapshot_name):
+    """Create materialized dataset snapshot name from dataset_id, snapshot"""
+    return f"_snapshot__{str(dataset_id)}_{snapshot_name}"
+
+
+def _parse_materialized_dataset_name(materialized_dataset_name):
+    """Parse materialized dataset snapshot into dataset_id,snapshot"""
+    match = _SNAPSHOT_MATERIALIZED_NAME_RE.match(materialized_dataset_name)
+    return (match.group(1), match.group(2)) if match else None
+
+
+def _load_snapshot_dataset(materialized_name, head_name, snapshot_name):
+    try:
+        return Dataset(
+            materialized_name,
+            _create=False,
+            _head_name=head_name,
+            _snapshot_name=snapshot_name,
+        )
+    except ValueError:
+        raise ValueError(
+            "Snapshot '%s' for dataset '%s' not found"
+            % (snapshot_name, head_name)
+        ) from None
+
+
+def load_dataset(name, snapshot=None):
+    """Loads the FiftyOne dataset or snapshot with the given name.
 
     To create a new dataset, use the :class:`Dataset` constructor.
 
@@ -122,10 +151,35 @@ def load_dataset(name):
 
     Args:
         name: the name of the dataset
+        snapshot(None): an optional snapshot name
 
     Returns:
         a :class:`Dataset`
     """
+    parsed_snapshot = _parse_materialized_dataset_name(name)
+
+    if snapshot is not None:
+        # Explicitly passed snapshot name
+        head_name = name
+
+        head_dataset = Dataset(head_name, _create=False)
+        dataset_id = str(head_dataset._doc.id)
+        name = _snapshot_to_materialized_dataset_name(dataset_id, snapshot)
+        return _load_snapshot_dataset(name, head_name, snapshot)
+    elif parsed_snapshot is not None:
+        # Name passed is in the form of a materialized dataset name
+        dataset_id, snapshot = parsed_snapshot
+        conn = foo.get_db_conn()
+        dataset_doc = conn.datasets.find_one(
+            {"_id": ObjectId(dataset_id)}, {"name": True}
+        )
+        if not dataset_doc:
+            raise ValueError(
+                "Could not find dataset id '%s'" % dataset_id
+            ) from None
+        head_name = dataset_doc["name"]
+        return _load_snapshot_dataset(name, head_name, snapshot)
+
     return Dataset(name, _create=False)
 
 
@@ -270,10 +324,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
+        _head_name=None,
+        _snapshot_name=None,
         **kwargs,
     ):
         if name is None and _create:
             name = get_default_dataset_name()
+
+        self._head_name = _head_name
+        self._snapshot_name = _snapshot_name
 
         if overwrite and dataset_exists(name):
             delete_dataset(name)
@@ -653,6 +712,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._instances[name] = self
 
     @property
+    def head_name(self):
+        return self._head_name or self.name
+
+    @property
+    def snapshot_name(self):
+        return self._snapshot_name
+
+    @property
     def slug(self):
         """The slug of the dataset."""
         return self._doc.slug
@@ -1029,8 +1096,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a string summary
         """
-        elements = [
-            ("Name:", self.name),
+        elements = [("Name:", self.head_name)]
+        if self.is_snapshot:
+            elements += [("Snapshot:", self.snapshot_name)]
+        elements += [
             ("Media type:", self.media_type),
             ("Num %s:" % self._elements_str, self.count()),
             ("Persistent:", self.persistent),

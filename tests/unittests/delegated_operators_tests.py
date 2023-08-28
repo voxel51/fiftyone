@@ -339,6 +339,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         completed = []
         failed = []
         dataset_name = f"test_dataset_{ObjectId()}"
+        user = f"test_user_{ObjectId()}"
         for i in range(4):
             operator = f"@voxelfiftyone/operator/test_{i}"
             for j in range(25):
@@ -348,7 +349,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                         request_params={
                             "foo": "bar",
                             "dataset_name": dataset_name,
-                        }
+                        },
+                        user=f"{user}_{i}",
                     ),
                 )
                 time.sleep(
@@ -414,6 +416,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs[0].id, queued[0].id)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_0",
             operator=f"@voxelfiftyone/operator/test_0",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -422,6 +425,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.QUEUED] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_1",
             operator=f"@voxelfiftyone/operator/test_1",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -430,6 +434,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.RUNNING] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_2",
             operator=f"@voxelfiftyone/operator/test_2",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )
@@ -438,6 +443,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(states, [ExecutionRunState.COMPLETED] * 25)
 
         docs = self.svc.list_operations(
+            run_by=f"{user}_3",
             operator=f"@voxelfiftyone/operator/test_3",
             paging=DelegatedOperationPagingParams(skip=0, limit=100),
         )

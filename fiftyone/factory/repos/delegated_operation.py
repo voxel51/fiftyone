@@ -53,6 +53,7 @@ class DelegatedOperationRepo(object):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
+        run_by: str = None,
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
@@ -124,6 +125,13 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             indices_to_create.append(
                 IndexModel(
                     [("run_state", pymongo.ASCENDING)], name="run_state_1"
+                )
+            )
+
+        if "run_by_1" not in index_names:
+            indices_to_create.append(
+                IndexModel(
+                    [("context.user", pymongo.ASCENDING)], name="run_by_1"
                 )
             )
 
@@ -235,6 +243,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         dataset_id: ObjectId = None,
         run_state: ExecutionRunState = None,
         delegation_target: str = None,
+        run_by: str = None,
         pinned: bool = None,
         paging: DelegatedOperationPagingParams = None,
         search: dict = None,
@@ -251,6 +260,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["run_state"] = run_state
         if delegation_target:
             query["delegation_target"] = delegation_target
+        if run_by:
+            query["context.user"] = run_by
         if dataset_id:
             query["dataset_id"] = dataset_id
 
@@ -299,6 +310,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def count(self, filters: dict = None, search: dict = None) -> int:
         if filters is None and search is not None:
             filters = {}
+
+        query = filters
+
+        if "dataset_name" in query:
+            query["context.request_params.dataset_name"] = query[
+                "dataset_name"
+            ]
+            del query["dataset_name"]
+        if "run_by" in query:
+            query["context.user"] = query["run_by"]
+            del query["run_by"]
+
         if search:
             for term in search:
                 for field in search[term]:
@@ -306,6 +329,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
-                    filters[field] = {"$regex": term}
+                    query[field] = {"$regex": term}
 
-        return self._collection.count_documents(filter=filters)
+        return self._collection.count_documents(filter=query)

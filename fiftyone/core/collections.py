@@ -351,6 +351,28 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement name")
 
     @property
+    def head_name(self):
+        """The name of the HEAD dataset from which this collection is
+        derived.
+
+        This is typically the same as the backing dataset's ``name``
+        property, but may differ in some cases like if :meth:`is_snapshot`.
+        """
+        raise NotImplementedError("Subclass must implement head_name")
+
+    @property
+    def snapshot_name(self):
+        """The name of the dataset snapshot backing this collection,
+        or ``None`` if it's not a snapshot.
+        """
+        raise NotImplementedError("Subclass must implement snapshot_name")
+
+    @property
+    def is_snapshot(self):
+        """Whether this collection is backed by a dataset snapshot."""
+        return self.snapshot_name is not None
+
+    @property
     def media_type(self):
         """The media type of the collection."""
         raise NotImplementedError("Subclass must implement media_type")

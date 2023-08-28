@@ -19,7 +19,6 @@ import eta.core.video as etav
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 

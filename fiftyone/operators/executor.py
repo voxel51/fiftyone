@@ -155,17 +155,23 @@ def _parse_ctx(ctx):
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_or_delegate_operator(operator_uri, request_params):
+async def execute_or_delegate_operator(
+    operator_uri, request_params, user=None
+):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
+        user (None): the user executing the operator
 
     Returns:
         an :class:`ExecutionResult`
     """
-    prepared = prepare_operator_executor(operator_uri, request_params)
+    prepared = prepare_operator_executor(
+        operator_uri, request_params, user=user
+    )
+
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
@@ -210,14 +216,14 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_uri, request_params):
+def prepare_operator_executor(operator_uri, request_params, user=None):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
-    ctx = ExecutionContext(request_params, executor)
+    ctx = ExecutionContext(request_params, executor, user=user)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
@@ -287,10 +293,11 @@ class ExecutionContext(object):
         executor (None): an optional :class:`Executor` instance
     """
 
-    def __init__(self, request_params=None, executor=None):
+    def __init__(self, request_params=None, executor=None, user=None):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
+        self.user = user
 
     @property
     def results(self):
@@ -394,6 +401,7 @@ class ExecutionContext(object):
         return {
             "request_params": self.request_params,
             "params": self.params,
+            "user": self.user,
         }
 
 
