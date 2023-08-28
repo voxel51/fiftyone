@@ -60,10 +60,12 @@ export const fieldsMatcher = (
   present?: Set<string>,
   prefix = ""
 ): string[] => {
-  return fields
+  const res = fields
     .filter((field) => matcher(field))
     .map((field) => `${prefix}${field.name}`)
     .filter((path) => !present || !present.has(path));
+
+  return res;
 };
 
 export const primitivesMatcher = (field: StrictField) => {

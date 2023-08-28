@@ -761,15 +761,19 @@ const InteractiveSidebar = ({
         <Container style={containerController.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;
+            console.log("order", order, entry);
             if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
 
-            const { shadow, cursor, ...springs } =
-              items.current[key].controller.springs;
+            const { shadow, cursor, ...springs } = items.current[
+              key
+            ].controller.springs;
             const keyTrigger = ["tags", "_label_tags"].includes(key[1])
               ? null
               : trigger;
+
+            console.log("k", key, group, entry);
             const { children } = render(
               key,
               group,
@@ -807,20 +811,7 @@ const InteractiveSidebar = ({
                   ...style,
                 }}
               >
-                <div
-                  ref={(node) => {
-                    if (!items.current[key]) {
-                      return;
-                    }
-
-                    items.current[key].el &&
-                      observer.unobserve(items.current[key].el);
-                    node && observer.observe(node);
-                    items.current[key].el = node;
-                  }}
-                >
-                  {children}
-                </div>
+                {children}
               </animated.div>
             );
           })}

@@ -82,6 +82,45 @@ const ScalarValueEntry = ({
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
 
+  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
+
+  if (isFieldVisibilityApplied && !slices) {
+    return (
+      <Suspense fallback={<LoadingDots text="" />}>
+        <Loadable
+          hideEmptyValues={isFieldVisibilityApplied}
+          path={path}
+          field={
+            <RegularEntry
+              entryKey={entryKey}
+              backgroundColor={backgroundColor}
+              color={color}
+              heading={null}
+              trigger={trigger}
+            >
+              <ScalarDiv>
+                <FieldLabelAndInfo
+                  field={field ?? pseudoField}
+                  color={color}
+                  template={({ label, hoverTarget }) => (
+                    <div
+                      style={{
+                        fontSize: "0.8rem",
+                        color: theme.text.secondary,
+                      }}
+                    >
+                      <span ref={hoverTarget}>{label}</span>
+                    </div>
+                  )}
+                />
+              </ScalarDiv>
+            </RegularEntry>
+          }
+        />
+      </Suspense>
+    );
+  }
+
   return (
     <RegularEntry
       entryKey={entryKey}
@@ -347,13 +386,25 @@ const useSlicesData = <T extends unknown>(path: string) => {
   return data as { [slice: string]: T };
 };
 
-const Loadable = ({ path }: { path: string }) => {
+const Loadable = ({
+  path,
+  field,
+  hideEmptyValues,
+}: {
+  path: string;
+  field?: any;
+  hideEmptyValues?: boolean;
+}) => {
   const value = useData<string | number | null>(path);
   const none = value === null || value === undefined;
   const { ftype } = useRecoilValue(fos.field(path)) ?? makePseudoField(path);
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
+
+  if (none && hideEmptyValues) {
+    return null;
+  }
 
   return (
     <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
