@@ -14,7 +14,7 @@ import yaml
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
-import fiftyone.core.utils as fou
+import fiftyone.core.storage as fos
 import fiftyone.utils.data as foud
 
 
@@ -302,7 +302,7 @@ class YOLOv4DatasetImporter(
                 if not os.path.isabs(path):
                     path = os.path.join(root_dir, path)
 
-                image_paths.append(fou.normpath(path))
+                image_paths.append(fos.normpath(path))
         else:
             if self.images_path is not None:
                 logger.warning(
@@ -313,7 +313,7 @@ class YOLOv4DatasetImporter(
                 )
 
             image_paths = [
-                fou.normpath(p)
+                fos.normpath(p)
                 for p in etau.list_files(
                     self.data_path, abs_paths=True, recursive=True
                 )
@@ -330,7 +330,7 @@ class YOLOv4DatasetImporter(
                 # Labels are in same directory as images
                 labels_path = os.path.splitext(image_path)[0] + ".txt"
 
-            labels_path = fou.normpath(labels_path)
+            labels_path = fos.normpath(labels_path)
 
             if os.path.isfile(labels_path):
                 labels_paths_map[image_path] = labels_path
@@ -478,13 +478,13 @@ class YOLOv5DatasetImporter(
             )
 
         dataset_path = d.get("path", "")
-        data = os.path.normpath(os.path.join(dataset_path, d[self.split]))
+        data = fos.normpath(os.path.join(dataset_path, d[self.split]))
         classes = _parse_yolo_classes(d.get("names", None))
 
         if etau.is_str(data) and data.endswith(".txt"):
             txt_path = _parse_yolo_v5_path(data, self.yaml_path)
             image_paths = [
-                _parse_yolo_v5_path(fou.normpath(p), txt_path)
+                _parse_yolo_v5_path(fos.normpath(p), txt_path)
                 for p in _read_file_lines(txt_path)
             ]
         else:
@@ -495,7 +495,7 @@ class YOLOv5DatasetImporter(
 
             image_paths = []
             for data_dir in data_dirs:
-                data_dir = fou.normpath(
+                data_dir = fos.normpath(
                     _parse_yolo_v5_path(data_dir, self.yaml_path)
                 )
                 image_paths.extend(
@@ -609,7 +609,7 @@ class YOLOv4DatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
@@ -808,7 +808,7 @@ class YOLOv5DatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         classes (None): the list of possible class labels
         include_confidence (False): whether to include detection confidences in
             the export, if they exist
@@ -944,7 +944,9 @@ class YOLOv5DatasetExporter(
             d["path"] = os.path.dirname(self.yaml_path)
 
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
-        d["names"] = dict(enumerate(classes))
+
+        # New data.yaml format https://docs.ultralytics.com/datasets/detect/
+        d["names"] = dict(enumerate(classes))  # class names dictionary
 
         _write_yaml_file(d, self.yaml_path, default_flow_style=False)
 
@@ -1040,7 +1042,7 @@ def _parse_yolo_v5_path(filepath, yaml_path):
 
     # Interpret relative to YAML file
     root_dir = os.path.dirname(yaml_path)
-    return os.path.normpath(os.path.join(root_dir, filepath))
+    return fos.normpath(os.path.join(root_dir, filepath))
 
 
 def _make_yolo_v5_path(filepath, yaml_path):

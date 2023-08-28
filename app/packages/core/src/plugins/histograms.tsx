@@ -1,60 +1,100 @@
-import { Selector } from "@fiftyone/components";
+import { Loading, Selector } from "@fiftyone/components";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
-import { usePanelStatePartial, usePanelTitle } from "@fiftyone/spaces";
+import { usePanelTitle } from "@fiftyone/spaces";
+import { datasetName, distributionPaths, field } from "@fiftyone/state";
 import { BarChart } from "@mui/icons-material";
 import React, { useEffect } from "react";
+import {
+  DefaultValue,
+  atomFamily,
+  selector,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import styled from "styled-components";
-import Distributions from "../components/Distributions";
-import { scrollbarStyles } from "@fiftyone/utilities";
-import { OperatorPlacements, types } from "@fiftyone/operators";
+import Histogram from "../components/Histogram";
 
-const DistributionsContainer = styled.div`
+const HistogramsContainer = styled.div`
+  position: relative;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  overflow: hidden;
-  ${scrollbarStyles}
+  width: 100%;
+  max-height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
 `;
 
 const ControlsContainer = styled.div`
   display: flex;
   gap: 1rem;
-  padding-left: 1rem;
-  padding-top: 1rem;
+  margin: 1rem;
 `;
 
-const plots = ["Sample tags", "Label tags", "Labels", "Other fields"];
+const plotPaths = atomFamily<string | null, string>({
+  key: "plotPaths",
+  default: null,
+});
+
+const plotPath = selector<string>({
+  key: "plotPath",
+  get: ({ get }) => {
+    const plotPath = plotPaths(get(datasetName));
+    const path = get(plotPath);
+
+    if (!path || !get(field(path))) return get(distributionPaths)[0];
+
+    return path;
+  },
+  set: ({ get, set }, newValue) => {
+    set(
+      plotPaths(get(datasetName)),
+      newValue instanceof DefaultValue ? null : newValue
+    );
+  },
+});
+
+const PlotSelector = () => {
+  const paths = useRecoilValue(distributionPaths);
+  const [path, setPath] = useRecoilState(plotPath);
+  return (
+    <Selector
+      component={({ value }) => <>{value}</>}
+      containerStyle={{ position: "relative" }}
+      onSelect={setPath}
+      overflow={true}
+      resultsPlacement="bottom-start"
+      placeholder={"Select field"}
+      useSearch={(search) => {
+        const values = paths.filter((name) => name.includes(search));
+        return { values, total: paths.length };
+      }}
+      value={path || ""}
+      cy={"histograms"}
+    />
+  );
+};
 
 function Plots() {
   const [_, setTitle] = usePanelTitle();
-  const [plot, setPlot] = usePanelStatePartial("plot", plots[0]);
-
+  const path = useRecoilValue(plotPath);
   useEffect(() => {
-    setTitle(plot);
-  }, [plot]);
+    setTitle(path);
+  }, [path]);
 
   return (
-    <DistributionsContainer data-cy="distribution-container">
+    <HistogramsContainer data-cy="histograms-container">
       <ControlsContainer>
-        <Selector
-          component={({ value }) => <>{value}</>}
-          containerStyle={{ position: "relative", width: "12rem" }}
-          inputStyle={{
-            width: "12rem",
-          }}
-          onSelect={(plot) => {
-            setPlot(plot);
-          }}
-          overflow={true}
-          placeholder={"Select histogram"}
-          useSearch={(search) => {
-            const values = plots.filter((name) => name.includes(search));
-            return { values, total: plots.length };
-          }}
-          value={plot}
-        />
+        <PlotSelector />
         <OperatorPlacements place={types.Places.HISTOGRAM_ACTIONS} />
       </ControlsContainer>
-      <Distributions key={plot} group={plot} style={{ margin: "1rem" }} />
-    </DistributionsContainer>
+      {path ? (
+        <Histogram key={path} path={path} />
+      ) : (
+        <Loading>Select a field</Loading>
+      )}
+    </HistogramsContainer>
   );
 }
 

@@ -6,17 +6,28 @@ FiftyOne operator execution.
 |
 """
 import asyncio
-import types as python_types
 import traceback
+import types as python_types
 
 import fiftyone as fo
+import fiftyone.core.dataset as fod
+import fiftyone.core.utils as fou
+import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
-from fiftyone.core.utils import run_sync_task
+
+
+class ExecutionRunState(object):
+    """Enumeration of the available operator run states."""
+
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 
 class InvocationRequest(object):
@@ -78,41 +89,143 @@ class Executor(object):
         }
 
 
-@coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_operator(operator_name, request_params):
+def execute_operator(operator_uri, ctx, params):
     """Executes the operator with the given name.
 
     Args:
-        operator_name: the name of the operator
+        operator_uri: the URI of the operator
+        ctx: a dictionary of parameters defining the execution context. The
+            supported keys are:
+
+            -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
+                name of a dataset to process. This is required unless a
+                ``view`` is provided
+            -   ``view``: an optional :class:`fiftyone.core.view.DatasetView`
+                to process
+            -   ``selected``: an optional list of selected sample IDs
+            -   ``selected_labels``: an optional list of selected labels in the
+                format returned by
+                :attr:`fiftyone.core.session.Session.selected_labels`
+
+        params: a dictionary of parameters for the operator. Consult the
+            operator's documentation for details
+
+    Returns:
+        an :class:`ExecutionResult`
+    """
+    dataset_name, view_stages, selected, selected_labels = _parse_ctx(ctx)
+
+    request_params = dict(
+        operator_uri=operator_uri,
+        dataset_name=dataset_name,
+        view=view_stages,
+        selected=selected,
+        selected_labels=selected_labels,
+        params=params,
+    )
+
+    return asyncio.run(
+        execute_or_delegate_operator(operator_uri, request_params)
+    )
+
+
+def _parse_ctx(ctx):
+    dataset = ctx.get("dataset", None)
+    view = ctx.get("view", None)
+    selected = ctx.get("selected", None)
+    selected_labels = ctx.get("selected_labels", None)
+
+    if dataset is None and isinstance(view, fov.DatasetView):
+        dataset = view._root_dataset
+
+    if view is None:
+        if isinstance(dataset, str):
+            dataset = fod.load_dataset(dataset)
+
+        view = dataset.view()
+
+    view_stages = view._serialize()
+
+    if isinstance(dataset, fod.Dataset):
+        dataset_name = dataset.name
+    else:
+        dataset_name = dataset
+
+    return dataset_name, view_stages, selected, selected_labels
+
+
+@coroutine_timeout(seconds=fo.config.operator_timeout)
+async def execute_or_delegate_operator(operator_uri, request_params):
+    """Executes the operator with the given name.
+
+    Args:
+        operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
 
     Returns:
-        the result of the operator as a dictionary or ``None``
+        an :class:`ExecutionResult`
     """
-    registry = OperatorRegistry()
-    if registry.operator_exists(operator_name) is False:
-        raise ValueError("Operator '%s' does not exist" % operator_name)
+    prepared = prepare_operator_executor(operator_uri, request_params)
+    if isinstance(prepared, ExecutionResult):
+        raise prepared.to_exception()
+    else:
+        operator, executor, ctx = prepared
 
-    operator = registry.get_operator(operator_name)
+    if operator.resolve_delegation(ctx):
+        try:
+            from .delegated import DelegatedOperationService
+
+            op = DelegatedOperationService().queue_operation(
+                operator=operator.uri,
+                context=ctx.serialize(),
+                delegation_target=operator.delegation_target,
+            )
+
+            execution = ExecutionResult(
+                op.__dict__, executor, None, delegated=True
+            )
+            execution.result["context"] = (
+                execution.result["context"].serialize()
+                if execution.result["context"]
+                else None
+            )
+            return execution
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
+    else:
+        try:
+            raw_result = await (
+                operator.execute(ctx)
+                if asyncio.iscoroutinefunction(operator.execute)
+                else fou.run_sync_task(operator.execute, ctx)
+            )
+
+        except Exception as e:
+            return ExecutionResult(
+                executor=executor, error=traceback.format_exc()
+            )
+
+        return ExecutionResult(result=raw_result, executor=executor)
+
+
+def prepare_operator_executor(operator_uri, request_params):
+    registry = OperatorRegistry()
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
+
+    operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
-            error="Validation Error", validation_ctx=validation_ctx
+            error="Validation error", validation_ctx=validation_ctx
         )
 
-    try:
-        raw_result = await (
-            operator.execute(ctx)
-            if asyncio.iscoroutinefunction(operator.execute)
-            else run_sync_task(operator.execute, ctx)
-        )
-    except Exception as e:
-        return ExecutionResult(executor=executor, error=traceback.format_exc())
-
-    return ExecutionResult(result=raw_result, executor=executor)
+    return operator, executor, ctx
 
 
 def _is_generator(value):
@@ -180,6 +293,18 @@ class ExecutionContext(object):
         self.executor = executor
 
     @property
+    def results(self):
+        """A ``dict`` of results for the current operation. This is only availble
+        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        return self.request_params.get("results", {})
+
+    @property
+    def delegated(self):
+        """``True`` if the operator's execution was delegated to an orchestrator. This is only availble
+        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        return self.request_params.get("delegated", False)
+
+    @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` to operate on.
 
@@ -205,9 +330,7 @@ class ExecutionContext(object):
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
-
         Items are dictionaries with the following keys:
-
         -   ``label_id``: the ID of the label
         -   ``sample_id``: the ID of the sample containing the label
         -   ``field``: the field name containing the label
@@ -220,7 +343,7 @@ class ExecutionContext(object):
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` to operate on."""
         dataset_name = self.request_params.get("dataset_name", None)
-        d = fo.load_dataset(dataset_name)
+        d = fod.load_dataset(dataset_name)
         return d
 
     @property
@@ -229,6 +352,13 @@ class ExecutionContext(object):
         on.
         """
         return self.request_params.get("dataset_name", None)
+
+    @property
+    def dataset_id(self):
+        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate
+        on.
+        """
+        return self.request_params.get("dataset_id", None)
 
     def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
@@ -255,6 +385,17 @@ class ExecutionContext(object):
         """
         self.trigger("console_log", {"message": message})
 
+    def serialize(self):
+        """Serializes the execution context.
+
+        Returns:
+            a JSON dict
+        """
+        return {
+            "request_params": self.request_params,
+            "params": self.params,
+        }
+
 
 class ExecutionResult(object):
     """Represents the result of an operator execution.
@@ -272,16 +413,35 @@ class ExecutionResult(object):
         executor=None,
         error=None,
         validation_ctx=None,
+        delegated=False,
     ):
         self.result = result
         self.executor = executor
         self.error = error
         self.validation_ctx = validation_ctx
+        self.delegated = delegated
 
     @property
     def is_generator(self):
         """Whether the result is a generator or an async generator."""
         return _is_generator(self.result)
+
+    def to_exception(self):
+        """Returns an :class:`ExecutionError` representing a failed execution
+        result.
+
+        Returns:
+            a :class:`ExecutionError`
+        """
+        msg = self.error
+
+        if self.validation_ctx.invalid:
+            val_error = self.validation_ctx.errors[0]
+            path = val_error.path.lstrip(".")
+            reason = val_error.reason
+            msg += f". Path: {path}. Reason: {reason}"
+
+        return ExecutionError(msg)
 
     def to_json(self):
         """Returns a JSON dict representation of the result.
@@ -293,10 +453,15 @@ class ExecutionResult(object):
             "result": self.result,
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
+            "delegated": self.delegated,
             "validation_ctx": self.validation_ctx.to_json()
             if self.validation_ctx
             else None,
         }
+
+
+class ExecutionError(Exception):
+    """An error that occurs while executing an operator."""
 
 
 class ValidationError(object):
@@ -341,13 +506,12 @@ class ValidationContext(object):
         self.ctx = ctx
         self.params = ctx.params
         self.inputs_property = inputs_property
-        self._errors = []
+        self.errors = []
         self.disable_schema_validation = (
             operator.config.disable_schema_validation
         )
         if self.inputs_property is None:
             self.invalid = False
-            self.errors = []
         else:
             self.errors = self._validate()
             self.invalid = len(self.errors) > 0
@@ -371,7 +535,7 @@ class ValidationContext(object):
         """
         if self.disable_schema_validation and error.custom != True:
             return
-        self._errors.append(error)
+        self.errors.append(error)
 
     def _validate(self):
         params = self.params
@@ -381,7 +545,7 @@ class ValidationContext(object):
         if validation_error:
             self.add_error(validation_error)
 
-        return self._errors
+        return self.errors
 
     def validate_enum(self, path, property, value):
         """Validates an enum value.

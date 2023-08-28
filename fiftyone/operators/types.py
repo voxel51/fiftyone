@@ -1391,3 +1391,30 @@ class FileExplorerView(View):
             **super().to_json(),
             "defaultPath": self.default_path,
         }
+
+
+class PromptView(View):
+    """Customizes how a prompt is rendered.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        prompt = types.Prompt(
+            label="This is the title",
+            submit_button_label="Click me",
+            cancel_button_label="Abort"
+        )
+        inputs = types.Object()
+        inputs.str("message", label="Message")
+        return types.Property(inputs, view=prompt)
+
+    Args:
+        label (None): the title for the prompt
+        submit_button_label (None): the label for the submit button
+        cancel_button_label (None): the label for the cancel button
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)

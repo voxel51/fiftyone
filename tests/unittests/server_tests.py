@@ -819,6 +819,7 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
                     slice="first", id=first.group.id, slices=["first"]
                 )
             ),
+            pagination_data=True,
         )
         self.assertEqual(len(first_samples.edges), 1)
         self.assertEqual(first_samples.edges[0].node.id, first._id)
@@ -833,6 +834,7 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
                     slice="second", id=second.group.id, slices=["second"]
                 )
             ),
+            pagination_data=True,
         )
         self.assertEqual(len(second_samples.edges), 1)
         self.assertEqual(second_samples.edges[0].node.id, second._id)

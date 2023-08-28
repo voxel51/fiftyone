@@ -1,5 +1,6 @@
 import { Locator, Page } from "src/oss/fixtures";
 import { DisplayOptionsPom } from "./display-options";
+import { SelectorPom } from "../selector";
 
 export class GridActionsRowPom {
   readonly page: Page;
@@ -17,31 +18,45 @@ export class GridActionsRowPom {
     return selector.click();
   }
 
-  async openDisplayOptions() {
+  async toggleDisplayOptions() {
     return this.openAction("action-display-options");
   }
 
-  async openBrowseOperations() {
+  async toggleBrowseOperations() {
     return this.openAction("action-browse-operations");
   }
 
-  async openCreateDynamicGroups() {
+  async toggleCreateDynamicGroups() {
     return this.openAction("action-create-dynamic-groups");
   }
 
-  async openSortBySimilarity() {
+  async toggleSortBySimilarity() {
     return this.openAction("action-sort-by-similarity");
   }
 
-  async openToClipsOrPatches() {
+  async toggleToClipsOrPatches() {
     return this.openAction("action-clips-patches");
   }
 
-  async openTagSamplesOrLabels() {
+  async toggleTagSamplesOrLabels() {
     return this.openAction("action-tag-sample-labels");
   }
 
-  async openColorSettings() {
+  async toggleColorSettings() {
     return this.openAction("action-color-settings");
+  }
+
+  async clickToPatchesByLabelField(fieldName: string) {
+    await this.toPatchesByLabelField(fieldName).click();
+  }
+
+  async groupBy(path: string, selector: SelectorPom) {
+    await selector.openResults();
+    await selector.selectResult(path);
+    await this.gridActionsRow.getByTestId("dynamic-group-btn-submit").click();
+  }
+
+  toPatchesByLabelField(fieldName: string) {
+    return this.page.getByTestId(`item-action-${fieldName}`);
   }
 }

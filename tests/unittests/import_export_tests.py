@@ -14,12 +14,12 @@ import cv2
 import numpy as np
 import pytest
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.utils.coco as fouc
+import fiftyone.utils.image as foui
 import fiftyone.utils.labels as foul
 import fiftyone.utils.yolo as fouy
 from fiftyone import ViewField as F
@@ -39,7 +39,7 @@ class ImageDatasetTests(unittest.TestCase):
         images_dir = os.path.join(root_dir, "_images")
 
         img = np.random.randint(255, size=(480, 640, 3), dtype=np.uint8)
-        etai.write(img, ref_image_path)
+        foui.write(img, ref_image_path)
 
         self.root_dir = root_dir
         self.images_dir = images_dir
@@ -755,8 +755,8 @@ class ImageChannelsDatasetTests(ImageDatasetTests):
             outpath = os.path.join(export_dir1, label, "%06d.png" % idx)
 
             # pylint: disable=no-member
-            img = etai.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
-            etai.write(img, outpath)
+            img = foui.read(sample.filepath, flag=cv2.IMREAD_GRAYSCALE)
+            foui.write(img, outpath)
 
         gray_dataset1 = fo.Dataset.from_dir(
             dataset_dir=export_dir1,
@@ -3356,6 +3356,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             label_types="keypoints",
             skeleton_key=skeleton_key,
             skeleton=skeleton,
+            dynamic=True,
         )
         dataset.default_skeleton = skeleton
 

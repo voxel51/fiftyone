@@ -988,6 +988,27 @@ export class FileExplorerView extends View {
 }
 
 /**
+ * Operator class for rendering a prompt.
+ */
+export class PromptView extends View {
+  constructor(
+    public label: string,
+    public submitButtonLabel: string,
+    public cancelButtonLabel: string
+  ) {
+    super({ label });
+    this.name = "PromptView";
+  }
+  static fromJSON(json) {
+    return new PromptView(
+      json.label,
+      json.submit_button_label,
+      json.cancel_button_label
+    );
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1049,6 +1070,7 @@ const VIEWS = {
   MapView,
   ProgressView,
   MarkdownView,
+  PromptView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {

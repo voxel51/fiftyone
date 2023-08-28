@@ -5,8 +5,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`sparse-groups-scene`);
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
@@ -50,17 +50,17 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test(`ego default group slice transitions`, async ({ grid, modal }) => {
-  await grid.assert.waitForEntryCountTextToEqual("50 groups with slice");
-  await grid.openFirstLooker();
+  await grid.assert.isEntryCountTextEqualTo("50 groups with slice");
+  await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.clickOnLooker();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
-  await modal.navigateSlice("group", "right", true);
+  await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.clickOnLooker3d();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");

@@ -16,6 +16,7 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
@@ -146,7 +147,7 @@ class VOCDetectionDatasetImporter(
                 _uuid = None
 
             if _uuid is not None:
-                _uuid = fou.normpath(_uuid)
+                _uuid = fos.normpath(_uuid)
 
             if _uuid not in self._image_paths_map:
                 _uuid = uuid
@@ -186,7 +187,7 @@ class VOCDetectionDatasetImporter(
         )
 
         if self.labels_path is not None and os.path.isdir(self.labels_path):
-            labels_path = fou.normpath(self.labels_path)
+            labels_path = fos.normpath(self.labels_path)
             labels_paths_map = {
                 os.path.splitext(p)[0]: os.path.join(labels_path, p)
                 for p in etau.list_files(labels_path, recursive=True)
@@ -269,7 +270,7 @@ class VOCDetectionDatasetExporter(
             and labels file. This argument allows for populating nested
             subdirectories that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         include_paths (True): whether to include the absolute paths to the
             images in the ``<path>`` elements of the exported XML
         image_format (None): the image format to use when writing in-memory

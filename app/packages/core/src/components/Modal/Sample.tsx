@@ -1,10 +1,8 @@
-import { AbstractLooker } from "@fiftyone/looker";
 import {
   Lookers,
   ModalSample,
   modalSample,
   modalSampleId,
-  useClearModal,
   useHoveredSample,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
@@ -20,7 +18,7 @@ export const SampleWrapper = ({
 }: React.PropsWithChildren<{
   lookerRef?: MutableRefObject<Lookers | undefined>;
   actions?: boolean;
-  sampleAtom: RecoilValueReadOnly<ModalSample>;
+  sampleAtom?: RecoilValueReadOnly<ModalSample>;
 }>) => {
   const [hovering, setHovering] = useState(false);
 
@@ -52,7 +50,7 @@ export const SampleWrapper = ({
       {...hover.handlers}
     >
       <SampleBar
-        sampleId={sample.id}
+        sampleId={sample.sample._id}
         lookerRef={lookerRef}
         visible={hovering}
         hoveringRef={hoveringRef}
@@ -64,8 +62,8 @@ export const SampleWrapper = ({
 };
 
 interface SampleProps {
-  lookerRefCallback: (looker: AbstractLooker) => void;
-  lookerRef?: MutableRefObject<AbstractLooker | undefined>;
+  lookerRefCallback: (looker: Lookers) => void;
+  lookerRef?: MutableRefObject<Lookers | undefined>;
   actions?: boolean;
 }
 
@@ -74,8 +72,7 @@ const Sample = ({
   lookerRef: propsLookerRef,
   actions,
 }: SampleProps) => {
-  const clearModal = useClearModal();
-  const lookerRef = useRef<AbstractLooker | undefined>(undefined);
+  const lookerRef = useRef<Lookers | undefined>(undefined);
 
   const ref = propsLookerRef || lookerRef;
 
@@ -87,7 +84,6 @@ const Sample = ({
         key={`looker-${id}`}
         lookerRef={ref}
         lookerRefCallback={lookerRefCallback}
-        onClose={clearModal}
       />
     </SampleWrapper>
   );

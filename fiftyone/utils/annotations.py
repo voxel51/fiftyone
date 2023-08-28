@@ -14,7 +14,6 @@ import os
 from bson import ObjectId
 
 import eta.core.annotations as etaa
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
@@ -28,6 +27,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
+import fiftyone.utils.image as foui
 
 
 logger = logging.getLogger(__name__)
@@ -2307,7 +2307,7 @@ def draw_labeled_images(
             This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
@@ -2359,12 +2359,12 @@ def draw_labeled_image(
     config = _parse_draw_config(config, kwargs)
 
     fov.validate_image_sample(sample)
-    img = etai.read(sample.filepath)
+    img = foui.read(sample.filepath)
 
     image_labels = _to_image_labels(sample, label_fields=label_fields)
 
     anno_img = etaa.annotate_image(img, image_labels, annotation_config=config)
-    etai.write(anno_img, outpath)
+    foui.write(anno_img, outpath)
 
 
 def draw_labeled_videos(
@@ -2388,7 +2388,7 @@ def draw_labeled_videos(
             This argument allows for populating nested subdirectories in
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.utils.normalize_path`
+            :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
