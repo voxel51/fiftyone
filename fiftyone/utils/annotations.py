@@ -68,6 +68,7 @@ def annotate(
     label_field=None,
     label_type=None,
     classes=None,
+    content_types=None,
     attributes=True,
     mask_targets=None,
     allow_additions=True,
@@ -145,6 +146,12 @@ def annotate(
             one of the supported methods. For existing label fields, if classes
             are not provided by this argument nor ``label_schema``, the
             observed labels on your dataset are used
+        content_type (None): specified the mime type of the provided samples. 
+            Can be any of the follwing:
+
+            - a string : extrapolate mime type for all the samples with the given string.
+            - a list of strings: string defining mime for each sample.
+            - None: Default value, the mime type is inferred.  
         attributes (True): specifies the label attributes of each label field
             to include (other than their ``label``, which is always included)
             in the annotation export. Can be any of the following:
