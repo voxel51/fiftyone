@@ -500,6 +500,15 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
 
+        num_samples = len(sample_ids)
+        if isinstance(content_types, list):
+            if len(content_types) != num_samples:
+                raise ValueError("Size of content_types list does not match size of samples.")
+        elif isinstance(content_types, str) or content_types is None:
+            content_types = [content_types] * num_samples
+        else:
+            raise ValueError("Invalid value for content_types.")
+
         upload_info = []
 
         with fou.ProgressBar(iters_str="samples") as pb:
