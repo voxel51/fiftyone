@@ -17,6 +17,9 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
+import fiftyone.core.patches as fop
+import fiftyone.core.clips as focl
+import fiftyone.core.video as fov
 
 
 _cache = cachetools.TTLCache(maxsize=10, ttl=900)  # ttl in seconds
@@ -92,6 +95,11 @@ def change_label_tags(sample_collection, changes, label_fields=None):
 
     if del_tags:
         sample_collection.untag_labels(del_tags, label_fields=label_fields)
+
+    if isinstance(
+        sample_collection, (focl.ClipView, fov.FramesView, fop.PatchesView)
+    ):
+        sample_collection.reload()
 
 
 def from_dict(data_class: t.Type[T], data: Data) -> T:
