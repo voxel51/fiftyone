@@ -88,7 +88,7 @@ def dir_state(dirpath):
     if not os.path.isdir(dirpath):
         return None
     # use glob instead of os.listdir to ignore hidden files (eg .DS_STORE)
-    dirs = glob.glob(os.path.join(dirpath, "*"))
-    if not dirs:
-        return None
-    return max(os.path.getmtime(f) for f in dirs)
+    return max(
+        (os.path.getmtime(f) for f in glob.glob(os.path.join(dirpath, "*"))),
+        default=None,
+    )
