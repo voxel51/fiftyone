@@ -71,4 +71,13 @@ test.describe("field visibility", () => {
     // drag predictions back to labels group fails
     await sidebar.asserter.assertCannotDragField("predictions");
   });
+
+  test("sidebar add group input is hidden when field visibility is active", async ({
+    sidebar,
+    fieldVisibility,
+  }) => {
+    await sidebar.asserter.assertAddGroupVisible();
+    await fieldVisibility.hideFields(["ground_truth"]);
+    await sidebar.asserter.assertAddGroupHidden();
+  });
 });
