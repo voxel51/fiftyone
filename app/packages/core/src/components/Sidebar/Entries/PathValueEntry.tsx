@@ -82,13 +82,13 @@ const ScalarValueEntry = ({
   const field = useRecoilValue(fos.field(path));
   const pseudoField = makePseudoField(path);
 
-  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
+  const shouldHideNoneFields = useRecoilValue(fos.hideNoneFields);
 
-  if (isFieldVisibilityApplied && !slices) {
+  if (shouldHideNoneFields && !slices) {
     return (
       <Suspense fallback={<LoadingDots text="" />}>
         <Loadable
-          hideEmptyValues={isFieldVisibilityApplied}
+          hideEmptyValues={shouldHideNoneFields}
           path={path}
           field={
             <RegularEntry

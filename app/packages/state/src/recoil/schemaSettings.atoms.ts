@@ -72,6 +72,11 @@ export const affectedPathCountState = atom({
   default: 0,
 });
 
+export const hideNoneFields = atom<boolean>({
+  key: "hideNoneFields",
+  default: false,
+});
+
 export const searchMetaFilterState = atom({
   key: "searchMetaFilterState",
   default: {},

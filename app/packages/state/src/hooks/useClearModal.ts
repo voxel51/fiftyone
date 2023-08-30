@@ -34,6 +34,7 @@ export default () => {
         reset(fos.selectedLabels);
         reset(fos.hiddenLabels);
         set(fos.currentModalSample, null);
+        set(fos.hideNoneFields, false);
       },
     []
   );

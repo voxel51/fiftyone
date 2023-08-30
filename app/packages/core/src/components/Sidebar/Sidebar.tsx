@@ -2,8 +2,8 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
-import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
+import { Box, Switch, Typography } from "@mui/material";
 import { Resizable } from "re-resizable";
 import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -430,6 +430,11 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+  const [hideNoneFields, setHideNoneFields] = useRecoilState<boolean>(
+    fos.hideNoneFields
+  );
+
+  const modalContainer = document.getElementById("modal");
 
   if (entries instanceof Error) {
     throw entries;
@@ -691,6 +696,7 @@ const InteractiveSidebar = ({
   );
   const theme = useTheme();
   const resizableSide = modal ? "left" : "right";
+  const label = { inputProps: { "aria-label": "Switch demo" } };
 
   return shown ? (
     <Resizable
@@ -732,6 +738,29 @@ const InteractiveSidebar = ({
       }}
     >
       <SchemaSettings />
+      {modal && (
+        <Box
+          display="flex"
+          padding="0.5rem 1rem 0rem 1rem"
+          alignItems="center"
+          sx={{ background: (theme) => theme.palette.background.paper }}
+          justifyContent="space-between"
+        >
+          <Typography pl={1} fontSize={16}>
+            Hide &quot;None&quot; values
+          </Typography>
+          <Box height="100%" display="flex" alignItems="center">
+            <Switch
+              {...label}
+              value={hideNoneFields}
+              onChange={() => {
+                setHideNoneFields(!hideNoneFields);
+              }}
+            />
+          </Box>
+        </Box>
+      )}
+      {modalContainer && <SchemaSettings />}
       {!modal && (
         <Box
           style={{
