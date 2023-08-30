@@ -33,6 +33,7 @@
         "html2canvas": "1.0.0-rc.7",
         "lodash": "^4.17.21",
         "lru-cache": "^6.0.0",
+        "notistack": "^3.0.1",
         "numeral": "^2.0.6",
         "path-to-regexp": "^6.2.0",
         "re-resizable": "^6.8.0",
