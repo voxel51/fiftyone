@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 
 const Draggable: React.FC<
@@ -46,16 +46,21 @@ const Draggable: React.FC<
     ?.replace(/["]/g, "")
     ?.replace("]", "");
 
+  const isDraggable = useMemo(
+    () => !disableDrag && trigger && !isReadOnly,
+    [disableDrag, trigger, isReadOnly]
+  );
+
   return (
     <>
       <animated.div
-        data-draggable={!disableDrag && trigger && !isReadOnly}
+        data-draggable={isDraggable}
         data-cy={`sidebar-entry-draggable-${dataCyKey}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
         onMouseDown={
-          !disableDrag && trigger && !isReadOnly
+          isDraggable
             ? (event) => {
                 setDragging(true);
                 trigger(event, entryKey, () => setDragging(false));
