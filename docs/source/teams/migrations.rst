@@ -187,7 +187,21 @@ builtin utility for this:
         progress=True,
     )
 
-Or, if the files already exist in cloud buckets, you can manually update the
+.. note::
+
+    By default, the above method only uploads the media in the ``filepath``
+    field of your samples. If your dataset contains other media fields (e.g.
+    :ref:`thumbnails <dataset-app-config-media-fields>`,
+    :ref:`segmentations <semantic-segmentation>`, or
+    :ref:`heatmaps <heatmaps>`) simply run the above command multiple times,
+    using the ``media_field`` argument to specify the appropriate fields to
+    upload.
+
+    If any media fields use the same filenames as other fields, be sure to
+    provide different ``remote_dir`` paths each time you call the above method
+    to avoid overwriting existing media.
+
+If the files already exist in cloud buckets, you can manually update the
 filepaths on the dataset:
 
 .. code-block:: python
