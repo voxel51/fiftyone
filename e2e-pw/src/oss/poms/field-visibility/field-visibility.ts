@@ -5,7 +5,7 @@ export class FieldVisibilityPom {
   readonly page: Page;
   readonly assert: FieldVisibilityAsserter;
 
-  readonly sidebar: Locator;
+  readonly sidebarLocator: Locator;
   readonly dialogLocator: Locator;
 
   constructor(page: Page) {
@@ -13,19 +13,19 @@ export class FieldVisibilityPom {
 
     this.assert = new FieldVisibilityAsserter(this, new SidebarPom(page));
 
-    this.sidebar = page.getByTestId("sidebar");
+    this.sidebarLocator = page.getByTestId("sidebar");
   }
 
-  modalContainer() {
+  get modalContainer() {
     return this.page.getByTestId("field-visibility-container");
   }
 
-  fieldVisibilityBtn() {
-    return this.sidebar.getByTestId("field-visibility-icon");
+  get fieldVisibilityBtn() {
+    return this.sidebarLocator.getByTestId("field-visibility-icon");
   }
 
   async openFieldVisibilityModal() {
-    await this.fieldVisibilityBtn().click();
+    await this.fieldVisibilityBtn.click();
   }
 
   async hideFields(paths: string[]) {
@@ -42,19 +42,19 @@ export class FieldVisibilityPom {
   }
 
   async submitFieldVisibilityChanges() {
-    await this.applyBtn().click();
+    await this.applyBtn.click();
   }
 
   async clearFieldVisibilityChanges() {
-    await this.clearBtn().click();
+    await this.clearBtn.click();
   }
 
-  clearBtn() {
-    return this.sidebar.getByTestId("field-visibility-btn-clear");
+  get clearBtn() {
+    return this.sidebarLocator.getByTestId("field-visibility-btn-clear");
   }
 
-  applyBtn() {
-    return this.modalContainer().getByTestId("field-visibility-btn-apply");
+  get applyBtn() {
+    return this.modalContainer.getByTestId("field-visibility-btn-apply");
   }
 }
 
