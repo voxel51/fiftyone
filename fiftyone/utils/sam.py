@@ -324,17 +324,16 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         outputs = []
         for img in imgs:
             inp = _to_sam_input(img)
-            output = mask_generator.generate(inp)
-
-            mask = None
-            for i, out in enumerate(output, 1):
-                segi = out["segmentation"]
-                if mask is None:
-                    mask = np.zeros(segi.shape, dtype=np.uint8)
-
-                mask[segi] = i
-
-            outputs.append(fol.Segmentation(mask=mask))
+            detections = []
+            for data in mask_generator.generate(inp):
+                detection = fol.Detection.from_mask(
+                    mask=data["segmentation"],
+                    score=data["predicted_iou"],
+                    stability=data["stability_score"],
+                )
+                detections.append(detection)
+            detections = fol.Detections(detections=detections)
+            outputs.append(detections)
 
         return outputs
 
