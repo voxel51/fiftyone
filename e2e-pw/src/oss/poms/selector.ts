@@ -1,4 +1,4 @@
-import { expect, Locator } from "src/oss/fixtures";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 
 export class SelectorPom {
@@ -8,7 +8,7 @@ export class SelectorPom {
   readonly resultsContainer: Locator;
 
   constructor(
-    private readonly parent: Locator,
+    private readonly parent: Locator | Page,
     private readonly eventUtils: EventUtils,
     private readonly title: string
   ) {

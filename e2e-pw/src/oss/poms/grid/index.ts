@@ -1,7 +1,7 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { GridActionsRowPom } from "../action-row/grid-actions-row";
 import { GridSliceSelectorPom } from "../action-row/grid-slice-selector";
-import { EventUtils } from "src/shared/event-utils";
 
 export class GridPom {
   readonly actionsRow: GridActionsRowPom;
@@ -14,7 +14,7 @@ export class GridPom {
     public readonly page: Page,
     private readonly eventUtils: EventUtils
   ) {
-    this.actionsRow = new GridActionsRowPom(page);
+    this.actionsRow = new GridActionsRowPom(page, eventUtils);
     this.sliceSelector = new GridSliceSelectorPom(page);
 
     this.assert = new GridAsserter(this);
