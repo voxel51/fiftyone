@@ -49,7 +49,7 @@ class SelectorAsserter {
     await expect(this.selectorPom.input).toHaveValue(value);
   }
 
-  async verifyResults(values: string[]) {
+  async verifyPage(values: string[]) {
     await this.selectorPom.openResults();
 
     const count = await this.selectorPom.results.count();

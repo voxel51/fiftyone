@@ -1,14 +1,17 @@
 import { Page, expect } from "src/oss/fixtures";
 import { ModalPom } from ".";
+import { DynamicGroupPaginationPom } from "./dynamic-group-pagination-bar";
 
 export class ModalGroupActionsPom {
   readonly page: Page;
   readonly modal: ModalPom;
   readonly assert: ModalGroupActionsAsserter;
+  readonly dynamicGroupPagination: DynamicGroupPaginationPom;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
+    this.dynamicGroupPagination = new DynamicGroupPaginationPom(page, modal);
     this.assert = new ModalGroupActionsAsserter(this);
   }
 

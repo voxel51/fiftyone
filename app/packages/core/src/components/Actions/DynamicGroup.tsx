@@ -173,6 +173,7 @@ export default ({
               component={SelectorValueComponent}
               onSelect={setGroupBy}
               overflow={true}
+              overflowContainer={true}
               placeholder={"group by"}
               useSearch={groupByOptionsSearchSelector}
               value={groupBy ?? ""}
@@ -201,6 +202,7 @@ export default ({
                 component={SelectorValueComponent}
                 onSelect={setOrderBy}
                 overflow={true}
+                overflowContainer={true}
                 placeholder={"order by"}
                 useSearch={groupByOptionsSearchSelector}
                 value={orderBy ?? ""}
