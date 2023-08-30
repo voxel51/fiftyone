@@ -16,6 +16,10 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`sidebar-group-${groupName}-field`);
   }
 
+  get addGroupField() {
+    return this.sidebar.getByTestId("sidebar-field-add-group-input");
+  }
+
   field(fieldName: string) {
     return this.sidebar
       .getByTestId(`${fieldName}-field`)
@@ -146,6 +150,14 @@ class SidebarAsserter {
 
   async assertSidebarGroupIsHidden(groupName: string) {
     await expect(this.sb.groupField(groupName)).toBeHidden({ timeout: 1000 });
+  }
+
+  async assertAddGroupVisible() {
+    await expect(this.sb.addGroupField).toBeVisible({ timeout: 1000 });
+  }
+
+  async assertAddGroupHidden() {
+    await expect(this.sb.addGroupField).toBeHidden({ timeout: 1000 });
   }
 
   async assertCanDragFieldToGroup(fieldName: string, groupName: string) {
