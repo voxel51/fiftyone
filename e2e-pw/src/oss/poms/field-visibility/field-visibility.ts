@@ -4,7 +4,7 @@ import { SidebarPom } from "../sidebar";
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
 const disabledParentPaths = ["filepath", "id", "metadata", "tags"];
 const allParentPaths = [...enabledParentPaths, ...disabledParentPaths];
-const annotationSubpaths = (type: "detections" | "ground_truth") => [
+const annotationSubpaths = (type: "predictions" | "ground_truth") => [
   `${type}.detections.confidence`,
   `${type}.detections.id`,
   `${type}.detections.label`,
@@ -18,11 +18,21 @@ const metadataSubpaths = [
   "metadata.width",
 ];
 const allSubpaths = [
-  ...annotationSubpaths("detections"),
+  ...annotationSubpaths("predictions"),
   ...annotationSubpaths("ground_truth"),
   ...metadataSubpaths,
 ];
 const allPaths = [...allParentPaths, ...allSubpaths];
+const defaultParentPaths = ["id", "filepath", "metadata", "tags"];
+const defaultAllPaths = [
+  "id",
+  "filepath",
+  "metadata",
+  "tags",
+  ...metadataSubpaths,
+];
+
+type TabType = "Filter rule" | "Selection";
 
 export class FieldVisibilityPom {
   readonly page: Page;
@@ -60,7 +70,12 @@ export class FieldVisibilityPom {
 
   async getSelectionFields(
     status: "checked" | "unchecked" | "all" = "checked",
-    mode: "parents-only" | "nested-only" | "all" = "parents-only"
+    mode:
+      | "parents-only"
+      | "nested-only"
+      | "all"
+      | "customFields" = "parents-only",
+    customFields?: string[]
   ) {
     let paths = [];
     switch (mode) {
@@ -73,6 +88,7 @@ export class FieldVisibilityPom {
       case "all":
         paths = allPaths;
         break;
+      case "customFields":
       default:
         break;
     }
@@ -89,7 +105,7 @@ export class FieldVisibilityPom {
 
       const isCheckedFinal = await cc.isChecked();
       if ((checked && isCheckedFinal) || (!checked && !isCheckedFinal)) {
-        fields.push(cc);
+        fields.push(paths[i]);
       }
     }
     return fields;
@@ -168,6 +184,29 @@ export class FieldVisibilityPom {
   async clickReset() {
     return await this.getResetBtn().click();
   }
+
+  getTab(tabName: TabType) {
+    return this.modalContainer().getByTitle(tabName);
+  }
+
+  async openTab(tabName: TabType) {
+    return await this.getTab(tabName).click();
+  }
+
+  getFilterRuleContainer() {
+    return this.modalContainer().getByTestId("filter-rule-container");
+  }
+
+  getFilterRuleInput() {
+    return this.modalContainer().getByTestId(
+      "filter-visibility-filter-rule-input"
+    );
+  }
+
+  async addFilterRuleInput(input: string) {
+    await this.getFilterRuleInput().type(input);
+    await this.getFilterRuleInput().press("Enter");
+  }
 }
 
 class FieldVisibilityAsserter {
@@ -215,8 +254,31 @@ class FieldVisibilityAsserter {
     await expect(
       fieldInfoContainer.getByText(`${path} description`)
     ).toBeVisible();
-    await expect(
-      fieldInfoContainer.getByText("https://fiftyone.ai")
-    ).toBeVisible();
+  }
+
+  async assertFilterRuleExamplesVisibile() {
+    const exampleContainer = this.fv.getFilterRuleContainer();
+    console.log("exampleContainer", exampleContainer);
+    await expect(exampleContainer).toBeVisible();
+  }
+
+  async assertDefaultParentPathsSelected() {
+    const fields = await this.fv.getSelectionFields("checked", "parents-only");
+    expect(fields.length).toEqual(defaultParentPaths.length);
+  }
+
+  async assertDefaultPathsSelected() {
+    const fields = await this.fv.getSelectionFields("checked", "all");
+    expect(fields).toHaveLength(defaultAllPaths.length);
+  }
+
+  async assertFieldsAreSelected(fieldNames: string[]) {
+    const selectedFields = await this.fv.getSelectionFields(
+      "checked",
+      "parents-only"
+    );
+    for (let i = 0; i < fieldNames.length; i++) {
+      expect(selectedFields).toContain(fieldNames[i]);
+    }
   }
 }

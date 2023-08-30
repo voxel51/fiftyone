@@ -29,12 +29,12 @@ test.describe("field visibility", () => {
 
       field = dataset.get_field("ground_truth")
       field.description = "ground_truth description"
-      field.info = {"url": "https://fiftyone.ai"}
+      field.info = {"owner": "bob"}
       field.save()
 
       field = dataset.get_field("metadata.width")
       field.description = "metadata.width description"
-      field.info = {"url": "https://fiftyone.ai"}
+      field.info = {"owner": "bob"}
       field.save()
 
       dataset.add_samples([fo.Sample(filepath=f"{i}.png", group=1, i=i) for i in range(0, 21)])
@@ -104,6 +104,57 @@ test.describe("field visibility", () => {
       "predictions",
       "ground_truth",
     ]);
+  });
+
+  test("filter rule tab has Examples when no filter rule", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.asserter.assertFilterRuleExamplesVisibile();
+  });
+
+  test("non-matching filter rule shows default paths as results", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.addFilterRuleInput("metadata");
+    await fieldVisibility.asserter.assertDefaultPathsSelected();
+  });
+
+  test("filter rule by info shows results", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.addFilterRuleInput("owner:bob");
+    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
+  });
+
+  test("filter rule by description shows results", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.addFilterRuleInput(
+      "description:ground_truth description"
+    );
+    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
+  });
+
+  test("filter rule by name shows results", async ({ fieldVisibility }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.addFilterRuleInput("name:predictions");
+    await fieldVisibility.asserter.assertFieldsAreSelected(["predictions"]);
+  });
+
+  test("filter rule by free text shows results if text in field info", async ({
+    fieldVisibility,
+  }) => {
+    await fieldVisibility.openFieldVisibilityModal();
+    await fieldVisibility.openTab("Filter rule");
+    await fieldVisibility.addFilterRuleInput("bob");
+    await fieldVisibility.asserter.assertFieldsAreSelected(["ground_truth"]);
   });
 
   test("sidebar group is hidden if all its fields are hidden using field visibility", async ({
