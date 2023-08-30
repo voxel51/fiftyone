@@ -84,6 +84,53 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
+    await modal.sidebar.assert.verifySidebarEntryText("scene", "a");
+    await modal.sidebar.assert.verifySidebarEntryText("frame", "0");
+    await modal.group.dynamicGroupPagination.assert.verifyPage(2);
+    await modal.group.dynamicGroupPagination.assert.verifyTooltip(
+      1,
+      "frame: 0"
+    );
+    await modal.group.dynamicGroupPagination.assert.verifyTooltip(
+      2,
+      "frame: 1"
+    );
+    await modal.group.dynamicGroupPagination.navigatePage(2);
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
+    await modal.sidebar.assert.verifySidebarEntryText("scene", "a");
+    await modal.sidebar.assert.verifySidebarEntryText("frame", "1");
+    await modal.close();
+  });
+
+  test(`${extension} right slice`, async ({
+    fiftyoneLoader,
+    page,
+    grid,
+    modal,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      savedView: "group",
+    });
+    await grid.selectSlice("right");
+    await grid.assert.isEntryCountTextEqualTo("1 group with slice");
+    await grid.openFirstSample();
+    await modal.sidebar.toggleSidebarGroup("GROUP");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
+    await modal.sidebar.assert.verifySidebarEntryText("scene", "b");
+    await modal.sidebar.assert.verifySidebarEntryText("frame", "0");
+    await modal.group.dynamicGroupPagination.assert.verifyPage(2);
+    await modal.group.dynamicGroupPagination.assert.verifyTooltip(
+      1,
+      "frame: 0"
+    );
+    await modal.group.dynamicGroupPagination.assert.verifyTooltip(
+      2,
+      "frame: 1"
+    );
+    await modal.group.dynamicGroupPagination.navigatePage(2);
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
+    await modal.sidebar.assert.verifySidebarEntryText("scene", "b");
+    await modal.sidebar.assert.verifySidebarEntryText("frame", "1");
     await modal.close();
   });
 });

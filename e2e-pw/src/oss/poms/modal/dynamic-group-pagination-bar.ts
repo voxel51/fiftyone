@@ -13,12 +13,16 @@ export class DynamicGroupPaginationPom {
   }
 
   async navigatePage(page: number) {
-    await this.input.fill(`${page}`);
+    await this.getPageButton(page).click();
     await this.modal.waitForCarouselToLoad();
   }
 
   getPageButton(page: number) {
     return this.locator.getByTestId(`dynamic-group-pagination-item-${page}`);
+  }
+
+  getTooltip(text: string) {
+    return this.page.getByTestId(`tooltip-${text}`);
   }
 }
 
@@ -34,7 +38,7 @@ class DynamicGroupPaginationAsserter {
   async verifyTooltip(page: number, text: string) {
     const button = this.nestedGroupPom.getPageButton(page);
     await button.hover();
-    const tooltip = this.nestedGroupPom.locator.getByTestId(`tooltip-${text}`);
+    const tooltip = this.nestedGroupPom.getTooltip(text);
     await expect(tooltip).toBeVisible();
     await expect(tooltip).toHaveText(text);
   }
