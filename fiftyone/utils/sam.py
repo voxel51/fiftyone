@@ -132,9 +132,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     def _download_model(self, config):
         config.download_model_if_necessary()
 
-    def _load_network(self, config):
+    def _load_model(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
-        return entrypoint(checkpoint=config.model_path)
+        model = entrypoint(checkpoint=config.model_path)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
 
     def predict_all(self, imgs, samples=None):
         field_name = self._get_field()
