@@ -2806,6 +2806,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the given samples into this dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_collection` if you want to add samples from one
+            collection to another dataset without a uniqueness constraint.
+
         By default, samples with the same absolute ``filepath`` are merged, but
         you can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
@@ -4084,6 +4092,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given directory into the dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_dir` if you want to add samples without a uniqueness
+            constraint.
+
         You can perform imports with this method via the following basic
         patterns:
 
@@ -4400,6 +4416,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given archive into the dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_archive` if you want to add samples without a
+            uniqueness constraint.
+
         If a directory with the same root name as ``archive_path`` exists, it
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
@@ -4642,6 +4666,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Merges the samples from the given
         :class:`fiftyone.utils.data.importers.DatasetImporter` into the
         dataset.
+
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_importer` if you want to add samples without a
+            uniqueness constraint.
 
         See :ref:`this guide <custom-dataset-importer>` for more details about
         importing datasets in custom formats by defining your own
