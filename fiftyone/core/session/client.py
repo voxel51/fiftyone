@@ -92,6 +92,7 @@ class Client:
                                     "reload_session",
                                     "select_labels",
                                     "select_samples",
+                                    "select_visible_paths",
                                     "set_color_scheme",
                                     "set_dataset_color_scheme",
                                     "set_group_slice",

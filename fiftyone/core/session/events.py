@@ -146,6 +146,13 @@ class SelectSamples(Event):
 
 
 @dataclass
+class VisiblePaths(Event):
+    """Visible paths"""
+
+    visible_paths: t.List[str]
+
+
+@dataclass
 class ValueColor:
     color: str
     value: str

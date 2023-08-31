@@ -19,6 +19,7 @@ export { default as setDataset } from "./setDataset";
 export { default as setDatasetColorScheme } from "./setDatasetColorScheme";
 export { default as setGroupSlice } from "./setGroupSlice";
 export { default as setSelected } from "./setSelected";
+export { default as setVisiblePaths } from "./setVisiblePaths";
 export { default as setSelectedLabels } from "./setSelectedLabels";
 export { default as setSidebarGroups } from "./setSidebarGroups";
 export { default as setSpaces } from "./setSpaces";

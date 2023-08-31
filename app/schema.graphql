@@ -357,6 +357,11 @@ type Mutation {
     session: String
     selected: [String!]!
   ): Boolean!
+  setVisiblePaths(
+    subscription: String!
+    session: String
+    visiblePaths: [String!]
+  ): Boolean!
   setSelectedLabels(
     subscription: String!
     session: String

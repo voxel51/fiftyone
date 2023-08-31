@@ -47,6 +47,7 @@ class StateDescription(etas.Serializable):
         view (None): the current :class:`fiftyone.core.view.DatasetView`
         view_name (None): the name of the view if the current view is a
             saved view
+        visible_paths (None): visible_paths
     """
 
     def __init__(
@@ -59,6 +60,7 @@ class StateDescription(etas.Serializable):
         color_scheme=None,
         view=None,
         view_name=None,
+        visible_paths=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
@@ -73,6 +75,7 @@ class StateDescription(etas.Serializable):
         )
         self.spaces = spaces
         self.color_scheme = color_scheme or build_color_scheme()
+        self.visible_paths = visible_paths or []
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -194,6 +197,7 @@ class StateDescription(etas.Serializable):
             view=view,
             spaces=spaces,
             color_scheme=color_scheme,
+            visible_paths=d.get("visible_paths", []),
         )
 
 

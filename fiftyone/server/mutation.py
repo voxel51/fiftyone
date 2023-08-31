@@ -140,6 +140,18 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
+    async def set_visible_paths(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        visible_paths: t.List[str],
+    ) -> bool:
+        await dispatch_event(
+            subscription, fose.VisiblePaths(visible_paths=visible_paths)
+        )
+        return True
+
+    @gql.mutation
     async def set_selected_labels(
         self,
         subscription: str,

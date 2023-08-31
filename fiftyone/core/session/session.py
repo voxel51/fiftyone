@@ -51,6 +51,7 @@ from fiftyone.core.session.events import (
     Refresh,
     SelectLabels,
     SelectSamples,
+    VisiblePaths,
     SetColorScheme,
     SetDatasetColorScheme,
     SetSpaces,
@@ -740,6 +741,18 @@ class Session(object):
         self._client.send_event(Refresh(state=self._state))
 
     @property
+    def visible_paths(self) -> t.List[str]:
+        """A list of selected visibile paths."""
+        return list(self._state.visible_paths)
+
+    @visible_paths.setter  # type: ignore
+    def visible_paths(self, visible_paths: t.List[str]) -> None:
+        self._state.visible_paths = (
+            list(visible_paths) if visible_paths else []
+        )
+        self._client.send_event(VisiblePaths(visible_paths))
+
+    @property
     def selected(self) -> t.List[str]:
         """A list of sample IDs of the currently selected samples in the App,
         if any.
@@ -1140,6 +1153,15 @@ def _attach_listeners(session: "Session"):
         [SelectSamples], None
     ] = lambda event: setattr(session._state, "selected", event.sample_ids)
     session._client.add_event_listener("select_samples", on_select_samples)
+
+    on_select_visible_paths: t.Callable[
+        [VisiblePaths], None
+    ] = lambda event: setattr(
+        session._state, "visible_paths", event.visible_paths
+    )
+    session._client.add_event_listener(
+        "visible_paths", on_select_visible_paths
+    )
 
     on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(
         session._state, "selected_labels", event.labels

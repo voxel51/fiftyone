@@ -201,6 +201,11 @@ export const selectedSamples = sessionAtom({
   default: new Set<string>(),
 });
 
+export const visiblePaths = sessionAtom({
+  key: "visiblePaths",
+  default: [],
+});
+
 export const selectedSampleObjects = atom<Map<string, Sample>>({
   key: "selectedSampleObjects",
   default: new Map(),
