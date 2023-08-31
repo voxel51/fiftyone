@@ -24,8 +24,6 @@ export const ViewHelp = (props: {
 }) => {
   const { helpPanel } = props;
 
-  const [currentAction, setAction] = recoil.useRecoilState(currentActionAtom);
-
   return (
     <>
       <ActionItem>
@@ -33,10 +31,6 @@ export const ViewHelp = (props: {
           sx={{ fontSize: 24 }}
           color="inherit"
           onClick={(e) => {
-            const targetAction = ACTION_VIEW_HELP;
-            const nextAction =
-              currentAction === targetAction ? null : targetAction;
-            setAction(nextAction);
             helpPanel.toggle(LOOKER3D_HELP_ITEMS);
             e.stopPropagation();
             e.preventDefault();

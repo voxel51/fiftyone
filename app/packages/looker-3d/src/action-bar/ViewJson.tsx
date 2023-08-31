@@ -10,7 +10,6 @@ export const ViewJSON = (props: {
   jsonPanel: ReturnType<typeof useJSONPanel>;
 }) => {
   const { sample, jsonPanel } = props;
-  const [currentAction, setAction] = recoil.useRecoilState(currentActionAtom);
 
   return (
     <>
@@ -19,10 +18,6 @@ export const ViewJSON = (props: {
           sx={{ fontSize: 24 }}
           color="inherit"
           onClick={(e) => {
-            const targetAction = ACTION_VIEW_JSON;
-            const nextAction =
-              currentAction === targetAction ? null : targetAction;
-            setAction(nextAction);
             jsonPanel.toggle(sample);
             e.stopPropagation();
             e.preventDefault();
