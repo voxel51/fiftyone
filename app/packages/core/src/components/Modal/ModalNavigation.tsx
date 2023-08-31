@@ -72,8 +72,6 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
         navigateNext();
       } else if (e.key === "c") {
         setIsNavigationHidden((prev) => !prev);
-      } else if (e.key === "Escape") {
-        clearModal();
       }
       // note: don't stop event propagation here
     },

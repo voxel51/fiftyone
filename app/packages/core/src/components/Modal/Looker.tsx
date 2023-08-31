@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
   MutableRefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -88,6 +89,7 @@ const Looker = ({
   const { sample } = sampleData;
 
   const theme = useTheme();
+  const clearModal = fos.useClearModal();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
@@ -128,15 +130,24 @@ const Looker = ({
     setReset((c) => !c);
   });
 
-  useEventHandler(looker, "close", (e: Event) => {
-    jsonPanel.close();
-    helpPanel.close();
-  });
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+
+  useEventHandler(
+    looker,
+    "close",
+    useCallback(
+      (e: Event) => {
+        jsonPanel.close();
+        helpPanel.close();
+        clearModal();
+      },
+      [clearModal, jsonPanel, helpPanel]
+    )
+  );
 
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
   useEventHandler(
     looker,
     "panels",
