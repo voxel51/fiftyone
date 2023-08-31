@@ -11,8 +11,7 @@ import datetime
 import fiftyone as fo
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-
-# import fiftyone.core.storage as fos
+import fiftyone.core.storage as fos
 
 
 class CloneSelectedSamples(foo.Operator):
@@ -300,21 +299,27 @@ class ListFiles(foo.Operator):
 
     def execute(self, ctx):
         path = ctx.params.get("path", None)
-        # convert date into seconds from epoch
-        return {"files": list_files(path)}
+        list_filesystems = ctx.params.get("list_filesystems", False)
+        if list_filesystems:
+            return {"filesystems": fos.get_available_file_systems()}
+        if path:
+            return {"files": list_files(path)}
 
 
-# a function that given a path to a directory, returns a list of files in that directory
-# each file should have the file name, date modified, and size in bytes
-# the date modified should be in ISO format
 def list_files(path):
-    # get a list of files in the directory
-    filenames = os.listdir(path)
-    # map the filenames to their full file paths
+    """
+    List all files and directories in a given path.
+
+    Args:
+        path (str): Path to list files and directories from.
+
+    Returns:
+        list: A list of dictionaries containing file information.
+    """
+
+    filenames = fos.list_files(path) + fos.list_subdirs(path)
     filepaths = [os.path.join(path, filename) for filename in filenames]
-    # get the stats for each file
     stats = [os.stat(filepath, follow_symlinks=True) for filepath in filepaths]
-    # map the stats to a dictionary of the file name, date modified, and size in bytes
     files = [
         {
             "name": filename,
@@ -328,8 +333,7 @@ def list_files(path):
         for filename, filepath, stat in zip(filenames, filepaths, stats)
     ]
 
-    # sort the list based on file.name
-    files.sort(key=lambda file: file["name"])
+    files.sort(key=lambda file: file["type"])
 
     return files
 

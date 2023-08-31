@@ -83,6 +83,7 @@ export default function FileExplorer({
       <Box>
         {chosenFile && (
           <TextField
+            size="small"
             disabled={true}
             key={chosenFile?.name}
             defaultValue={chosenFile?.name}
@@ -128,7 +129,9 @@ export default function FileExplorer({
               <Grid spacing={2} item container>
                 {sidebarOpen && (
                   <Grid item>
-                    <VolumeSelector />
+                    <VolumeSelector
+                      onOpenPath={(path) => setCurrentPath(path)}
+                    />
                   </Grid>
                 )}
                 <Grid item sx={{ flex: 1 }}>
@@ -150,7 +153,9 @@ export default function FileExplorer({
                   style={{ width: "100%" }}
                 >
                   <TextField
-                    value={selectedFile ? selectedFile.name : ""}
+                    disabled={!!chooseMode}
+                    key={selectedFile ? selectedFile.name : undefined}
+                    defaultValue={selectedFile ? selectedFile.name : ""}
                     variant="outlined"
                     size="small"
                     fullWidth

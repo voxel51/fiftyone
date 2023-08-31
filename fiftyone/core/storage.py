@@ -624,6 +624,16 @@ def list_buckets(fs, abs_paths=False):
     return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
 
 
+def get_available_file_systems():
+    """Returns the list of file systems that are currently available for use
+    with methods like :func:`list_files` and :func:`list_buckets`.
+
+    Returns:
+        a list of :class:`FileSystem` values
+    """
+    return [FileSystem.LOCAL]
+
+
 def get_glob_matches(glob_patt):
     """Returns a list of file paths matching the given glob pattern.
 
