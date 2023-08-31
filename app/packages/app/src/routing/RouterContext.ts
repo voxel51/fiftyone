@@ -20,8 +20,7 @@ import {
   VariablesOf,
 } from "relay-runtime";
 import { Route } from ".";
-import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { IndexPageQuery } from "../pages/__generated__/IndexPageQuery.graphql";
+import { Queries } from "../makeRoutes";
 import { LocationState, matchPath, MatchPathResult } from "./matchPath";
 import RouteDefinition from "./RouteDefinition";
 
@@ -229,5 +228,5 @@ const getEntryResource = <T extends OperationType>(
 };
 
 export const RouterContext = React.createContext<
-  RoutingContext<IndexPageQuery | DatasetPageQuery> | undefined
+  RoutingContext<Queries> | undefined
 >(undefined);

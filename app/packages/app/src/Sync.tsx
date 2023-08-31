@@ -5,15 +5,12 @@ import {
   setColorSchemeMutation,
   setDataset,
   setDatasetMutation,
-  setGroupSlice,
-  setGroupSliceMutation,
   setSelected,
   setSelectedLabels,
   setSelectedLabelsMutation,
   setSelectedMutation,
   setSpaces,
   setSpacesMutation,
-  Setter,
   setView,
   setViewMutation,
   subscribe,
@@ -21,7 +18,6 @@ import {
 } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
-  datasetName,
   Session,
   SESSION_DEFAULT,
   State,
@@ -29,7 +25,6 @@ import {
   useClearModal,
   useScreenshot,
   useSession,
-  viewStateForm_INTERNAL,
 } from "@fiftyone/state";
 import { env, getEventSource, toCamelCase } from "@fiftyone/utilities";
 import { Action } from "history";
@@ -39,11 +34,11 @@ import { useRelayEnvironment } from "react-relay";
 import { DefaultValue, useRecoilValue } from "recoil";
 import { commitMutation, IEnvironment, OperationType } from "relay-runtime";
 import Setup from "./components/Setup";
-import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
-import { pendingEntry } from "./Renderer";
+import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, matchPath, RoutingContext, useRouterContext } from "./routing";
 import useRefresh from "./useRefresh";
+import useSetters from "./useSetters";
 
 enum Events {
   DEACTIVATE_NOTEBOOK_CELL = "deactivate_notebook_cell",
@@ -216,6 +211,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
       reset(fos.currentModalSample);
     });
   }, []);
+  const setters = useSetters(environment, router, sessionRef);
 
   return (
     <SessionContext.Provider value={sessionRef.current}>
@@ -233,148 +229,9 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
               preloadedQuery,
             };
           }}
-          setters={
-            new Map<string, Setter>([
-              [
-                "view",
-                ({ get, set }, view: State.Stage[]) => {
-                  set(pendingEntry, true);
-                  if (view instanceof DefaultValue) {
-                    view = [];
-                  }
-                  commitMutation<setViewMutation>(environment, {
-                    mutation: setView,
-                    variables: {
-                      view,
-                      datasetName: get(datasetName) as string,
-                      subscription: get(stateSubscription),
-                      form: get(viewStateForm_INTERNAL) || {},
-                    },
-                    onCompleted: ({ setView: view }) => {
-                      sessionRef.current.selectedSamples = new Set();
-                      sessionRef.current.selectedLabels = [];
-                      sessionRef.current.selectedFields = undefined;
-                      router.history.push(`${router.get().pathname}`, {
-                        view,
-                      });
-                    },
-                  });
-                },
-              ],
-              [
-                "viewName",
-                ({ get, set }, slug: string | DefaultValue | null) => {
-                  set(pendingEntry, true);
-                  if (slug instanceof DefaultValue) {
-                    slug = null;
-                  }
-                  const params = new URLSearchParams(router.get().search);
-                  const current = params.get("view");
-                  if (current === slug) {
-                    return;
-                  }
-
-                  if (slug) {
-                    params.set("view", slug);
-                  } else {
-                    params.delete("view");
-                  }
-
-                  let search = params.toString();
-                  if (search.length) {
-                    search = `?${search}`;
-                  }
-                  commitMutation<setViewMutation>(environment, {
-                    mutation: setView,
-                    variables: {
-                      subscription,
-                      view: [],
-                      savedViewSlug: slug,
-                      datasetName: get(datasetName) as string,
-                      form: {},
-                    },
-                  });
-
-                  router.history.push(`${router.get().pathname}${search}`, {
-                    view: [],
-                  });
-                },
-              ],
-              [
-                "groupSlice",
-                (_, slice) => {
-                  !env().VITE_NO_STATE &&
-                    commitMutation<setGroupSliceMutation>(environment, {
-                      mutation: setGroupSlice,
-                      variables: {
-                        slice,
-                        subscription,
-                      },
-                    });
-                },
-              ],
-              [
-                "refreshPage",
-                () => {
-                  router.load(true);
-                },
-              ],
-              [
-                "similarityParameters",
-                () => {
-                  const unsubscribe = subscribe((_, { set }) => {
-                    set(fos.similaritySorting, false);
-                    set(fos.savedLookerOptions, (cur) => ({
-                      ...cur,
-                      showJSON: false,
-                    }));
-                    set(fos.hiddenLabels, {});
-                    unsubscribe();
-                  });
-
-                  router.load(true);
-                },
-              ],
-            ])
-          }
+          setters={setters}
           subscribe={(fn) => {
-            let current = router.get();
             return router.subscribe((entry, action) => {
-              sessionRef.current.selectedSamples = new Set();
-              sessionRef.current.selectedLabels = [];
-
-              const next = router.get();
-
-              if (
-                // @ts-ignore
-                current.preloadedQuery.variables.name !==
-                // @ts-ignore
-                entry.preloadedQuery.variables.name
-              ) {
-                sessionRef.current.sessionSpaces = fos.SPACES_DEFAULT;
-                sessionRef.current.selectedFields = undefined;
-              }
-
-              if (
-                !fos.viewsAreEqual(
-                  current.state?.view || [],
-                  next.state?.view || []
-                )
-              ) {
-                sessionRef.current.selectedFields = undefined;
-              }
-
-              // @ts-ignore
-              sessionRef.current.colorScheme = ensureColorScheme(
-                // @ts-ignore
-                entry.data.dataset?.appConfig?.colorScheme || {
-                  // @ts-ignore
-                  colorPool: entry.data.config.colorPool,
-                  fields: [],
-                }
-              );
-
-              current = next;
               dispatchSideEffect(entry, action, subscription);
               fn(entry);
             });
@@ -395,6 +252,7 @@ const dispatchSideEffect = (
   if (action !== "POP") {
     return;
   }
+
   if (entry.pathname === "/") {
     commitMutation<setDatasetMutation>(entry.preloadedQuery.environment, {
       mutation: setDataset,
