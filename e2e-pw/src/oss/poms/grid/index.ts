@@ -59,8 +59,7 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
-    await this.page.getByTestId("selector-slice").fill(slice);
-    await this.page.getByTestId("selector-slice").press("Enter");
+    await this.sliceSelector.selectSlice(slice);
   }
 
   /**

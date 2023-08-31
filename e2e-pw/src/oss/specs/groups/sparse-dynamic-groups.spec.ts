@@ -60,6 +60,7 @@ test(`left slice (default)`, async ({ fiftyoneLoader, page, grid, modal }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 
   const groupByRefresh = grid.getWaitForGridRefreshPromise();
+  await grid.actionsRow.toggleCreateDynamicGroups();
   await grid.actionsRow.groupBy("scene", "frame");
   await groupByRefresh;
   await grid.assert.isEntryCountTextEqualTo("1 group with slice");

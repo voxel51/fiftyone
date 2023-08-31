@@ -55,7 +55,7 @@ export const DynamicGroupAction = () => {
         style={{
           cursor: "pointer",
         }}
-        data-cy="dynamic-group-action-button"
+        data-cy="action-create-dynamic-groups"
       />
       {open && (
         <DynamicGroup

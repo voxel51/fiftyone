@@ -3,7 +3,6 @@ import { EventUtils } from "src/shared/event-utils";
 import { SelectorPom } from "../selector";
 
 export class DynamicGroupPom {
-  private readonly actionBtn: Locator;
   private readonly container: Locator;
   private readonly resetBtn: Locator;
   private readonly submitBtn: Locator;
@@ -12,7 +11,6 @@ export class DynamicGroupPom {
   readonly orderBy: SelectorPom;
 
   constructor(private readonly page: Page, eventUtils: EventUtils) {
-    this.actionBtn = this.page.getByTestId("dynamic-group-action-button");
     this.container = this.page.getByTestId("dynamic-group-action-container");
     this.groupBy = new SelectorPom(
       page,
@@ -38,9 +36,5 @@ export class DynamicGroupPom {
 
   async submit() {
     await this.submitBtn.click();
-  }
-
-  async toggle() {
-    await this.actionBtn.click();
   }
 }

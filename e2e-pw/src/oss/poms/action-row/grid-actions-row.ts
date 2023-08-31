@@ -56,12 +56,14 @@ export class GridActionsRowPom {
   }
 
   async groupBy(groupBy: string, orderBy?: string) {
-    await this.dynamicGroup.toggle();
+    await this.dynamicGroup.groupBy.openResults();
     await this.dynamicGroup.groupBy.selectResult(groupBy);
     if (orderBy) {
       await this.dynamicGroup.selectTabOption("Ordered");
+      await this.dynamicGroup.orderBy.openResults();
       await this.dynamicGroup.orderBy.selectResult(orderBy);
     }
+
     await this.dynamicGroup.submit();
   }
 

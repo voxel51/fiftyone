@@ -46,7 +46,6 @@ test.describe("quickstart", () => {
     await grid.assert.isEntryCountTextEqualTo("122 patches");
 
     await grid.actionsRow.toggleCreateDynamicGroups();
-
     const gridRefreshPromiseGroupByLabel = grid.getWaitForGridRefreshPromise();
     await grid.actionsRow.groupBy("predictions.label");
     await gridRefreshPromiseGroupByLabel;
