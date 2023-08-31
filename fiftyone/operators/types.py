@@ -480,16 +480,18 @@ class Map(BaseType):
 
 
 class File(Object):
-    "Represents a file and related metadata."
+    """Represents a file and related metadata for use with the FileExplorerView."""
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.str("path", label="Path", description="The path to the file")
+        self.str(
+            "absolute_path", label="Path", description="The path to the file"
+        )
         self.str("name", label="Name", description="The name of the file")
-        self.bool(
-            "is_directory",
-            label="Is Directory",
-            description="Whether the file is a directory",
+        self.str(
+            "type",
+            label="Type",
+            description="The type of the file - either file or directory",
         )
         self.define_property(
             "size",
@@ -497,22 +499,10 @@ class File(Object):
             label="Size",
             description="The size of the file in bytes",
         )
-        self.define_property(
-            "last_modified",
-            Number(int=True),
+        self.str(
+            "date_modified",
             label="Last Modified",
-            description="The last modified time of the file in milliseconds since the epoch",
-        )
-        self.define_property(
-            "directory_contents",
-            List(String()),
-            label="Directory Contents",
-            description="The contents of the directory",
-        )
-        self.bool(
-            "multiple",
-            label="Multiple",
-            description="Whether multiple files are selected",
+            description="The last modified time of the file in isoformat",
         )
 
 
@@ -1380,7 +1370,34 @@ class MarkdownView(View):
 
 
 class FileExplorerView(View):
-    """Displays a file explorer for interacting with files."""
+    """Displays a file explorer for interacting with files.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        inputs = types.Object()
+
+        # create an explorer that allows the user to choose a directory
+        my_explorer = types.FileExplorerView(
+            choose_dir=True,
+            button_label="Choose a directory...",
+            choose_button_label="Accept",
+            default_path=os.environ.get("HOME")
+        )
+
+        # define a types.File property
+        my_file_prop = inputs.file(
+            "directory",
+            label="My directory",
+            required=True,
+            description="Choose a directory",
+            view=my_explorer
+        )
+        chosen_directory = ctx.params.get("directory", {}).get("absolute_path", None)
+
+
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
