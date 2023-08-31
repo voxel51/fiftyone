@@ -1,8 +1,22 @@
 import { ColorSchemeInput, subscribe } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { atom, DefaultValue, RecoilState, selector } from "recoil";
-import { SPACES_DEFAULT, State } from "./recoil";
+import { DefaultValue, RecoilState, atom, selector } from "recoil";
+import { State } from "./recoil";
+
+export const SPACES_DEFAULT = {
+  id: "root",
+  children: [
+    {
+      id: "default-samples-node",
+      children: [],
+      type: "Samples",
+      pinned: true,
+    },
+  ],
+  type: "panel-container",
+  activeChild: "default-samples-node",
+};
 
 export interface Session {
   canEditCustomColors: boolean;

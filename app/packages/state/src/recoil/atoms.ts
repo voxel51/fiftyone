@@ -16,7 +16,7 @@ import {
 import { StrictField } from "@fiftyone/utilities";
 import { AtomEffect, DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
-import { sessionAtom } from "../session";
+import { SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
 import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
@@ -476,20 +476,6 @@ export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,
 });
-
-export const SPACES_DEFAULT = {
-  id: "root",
-  children: [
-    {
-      id: "default-samples-node",
-      children: [],
-      type: "Samples",
-      pinned: true,
-    },
-  ],
-  type: "panel-container",
-  activeChild: "default-samples-node",
-};
 
 export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
