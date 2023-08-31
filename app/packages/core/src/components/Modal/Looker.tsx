@@ -1,5 +1,4 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
@@ -13,8 +12,6 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-
-type EventCallback = (event: CustomEvent) => void;
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -136,14 +133,11 @@ const Looker = ({
   useEventHandler(
     looker,
     "close",
-    useCallback(
-      (e: Event) => {
-        jsonPanel.close();
-        helpPanel.close();
-        clearModal();
-      },
-      [clearModal, jsonPanel, helpPanel]
-    )
+    useCallback(() => {
+      jsonPanel.close();
+      helpPanel.close();
+      clearModal();
+    }, [clearModal, jsonPanel, helpPanel])
   );
 
   useEventHandler(looker, "select", useOnSelectLabel());

@@ -1,9 +1,8 @@
 import { JSONIcon } from "@fiftyone/components";
 import { Sample } from "@fiftyone/looker/src/state";
 import { useJSONPanel } from "@fiftyone/state";
-import * as recoil from "recoil";
 import { ActionItem } from "../containers";
-import { ACTION_VIEW_JSON, currentActionAtom } from "../state";
+import { ACTION_VIEW_JSON } from "../state";
 
 export const ViewJSON = (props: {
   sample: Sample;

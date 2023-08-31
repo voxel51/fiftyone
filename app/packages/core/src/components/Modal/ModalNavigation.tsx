@@ -46,7 +46,6 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
 
   const index = useRecoilValue(fos.modalSampleIndex);
   const setModal = fos.useSetExpandedSample();
-  const clearModal = fos.useClearModal();
 
   const navigateNext = useCallback(() => {
     onNavigate();
