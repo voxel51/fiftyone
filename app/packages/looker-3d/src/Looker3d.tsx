@@ -252,7 +252,6 @@ export const Looker3d = () => {
 
       for (const panel of ["help", "json"]) {
         if (panels[panel].isOpen) {
-          console.log("here panel open");
           set(fos.lookerPanels, {
             ...panels,
             [panel]: { ...panels[panel], isOpen: false },
