@@ -281,8 +281,11 @@ class DelegatedOperationService(object):
             operator_uri, context.request_params
         )
 
+        # if a validation error happened during preparation,
+        # only an ExecutionResult with an error is returned.
+        # Raise it so the delegated operation is marked as a failure.
         if isinstance(prepared, ExecutionResult):
-            self.set_failed(doc_id=doc.id, result=prepared)
+            raise prepared.to_exception()
         else:
             operator, _, ctx = prepared
             self.set_running(doc_id=doc.id)
