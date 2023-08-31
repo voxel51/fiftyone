@@ -8,7 +8,7 @@ Dataset snapshot management.
 import dataclasses
 import datetime
 import enum
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from fiftyone.management import connection, util
 
@@ -27,6 +27,14 @@ class SampleChangeSummary:
     num_samples_added: int
     num_samples_deleted: int
     num_samples_changed: int
+    updated_at: Optional[datetime.datetime] = None
+
+    def __post_init__(self):
+        date_format = "%Y-%m-%dT%H:%M:%S.%f%z"
+        if isinstance(self.updated_at, str):
+            self.updated_at = datetime.datetime.strptime(
+                self.updated_at, date_format
+            )
 
 
 @dataclasses.dataclass
@@ -73,11 +81,23 @@ fragment snapshotFrag on DatasetSnapshot {
 }
 """
 
+_CALCULATE_LATEST_CHANGES_QUERY = """
+mutation ($dataset: String!) {
+    calculateDatasetLatestChanges(datasetIdentifier: $dataset) {
+        numSamplesAdded,
+        numSamplesDeleted,
+        numSamplesChanged,
+        totalSamples
+        updatedAt
+    }
+}
+"""
+
 
 _CREATE_SNAPSHOT_QUERY = (
     _SNAPSHOT_FRAGMENT
     + """
-mutation ($dataset: String!, $snapshot: String!, $description: String){
+mutation ($dataset: String!, $snapshot: String!, $description: String) {
     createDatasetSnapshot(
         datasetIdentifier: $dataset,
         snapshotName: $snapshot,
@@ -105,6 +125,20 @@ mutation ($dataset: String!, $snapshot: String!){
 }
 """
 
+_GET_LATEST_CHANGES_SUMMARY_QUERY = """
+query($dataset: String!) {
+    dataset(identifier: $dataset) {
+        latestChanges {
+            numSamplesAdded,
+            numSamplesDeleted,
+            numSamplesChanged,
+            totalSamples,
+            updatedAt
+        }
+    }
+}
+"""
+
 _GET_SNAPSHOT_INFO_QUERY = (
     _SNAPSHOT_FRAGMENT
     + """
@@ -118,18 +152,61 @@ _GET_SNAPSHOT_INFO_QUERY = (
     """
 )
 
-_LIST_SNAPSHOTS_QUERY = (
-    _SNAPSHOT_FRAGMENT
-    + """
-    query($dataset: String!) {
-        dataset (identifier: $dataset) {
-            snapshots {
-                ...snapshotFrag
+_LIST_SNAPSHOTS_QUERY = """
+query($dataset: String!, $after: String) {
+    dataset (identifier: $dataset) {
+        snapshotsConnection(first:2, after: $after) {
+            pageInfo{
+                hasNextPage
+                endCursor
+            }
+            edges {
+                node {
+                    name
+                }
             }
         }
     }
+}
+"""
+
+
+def calculate_dataset_latest_changes_summary(
+    dataset_name: str,
+) -> SampleChangeSummary:
+    """Calculate change summary between recent snapshot and HEAD of dataset.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        old = fom.calculate_dataset_latest_changes_summary(dataset.name)
+        assert old == fom.get_dataset_latest_changes_summary(dataset.name)
+
+        dataset.delete_samples(dataset.take(5))
+
+        # Cached summary hasn't been updated
+        assert old == fom.get_dataset_latest_changes_summary(dataset.name)
+
+        new = fom.calculate_dataset_latest_changes_summary(dataset.name)
+        assert new.updated_at > changes.updated_at
+
+    Args:
+        dataset_name: the dataset name
+
+    Returns:
+        Change summary between most recent snapshot and HEAD of this dataset.
+
     """
-)
+    client = connection.APIClientConnection().client
+    result = client.post_graphql_request(
+        query=_CALCULATE_LATEST_CHANGES_QUERY,
+        variables={
+            "dataset": dataset_name,
+        },
+    )
+    change_summary = result["calculateDatasetLatestChanges"]
+    return SampleChangeSummary(**util.camel_to_snake_container(change_summary))
 
 
 def create_snapshot(
@@ -203,6 +280,52 @@ def delete_snapshot(dataset_name: str, snapshot_name: str):
     )
 
 
+def get_dataset_latest_changes_summary(
+    dataset_name: str,
+) -> SampleChangeSummary:
+    """Gets change summary between most recent snapshot and HEAD of dataset
+
+    .. note::
+
+        This summary is not continuously computed, the result of this function
+        may be stale. Use :meth:`calculate_dataset_latest_changes_summary`
+        to recalculate.
+
+    Examples::
+
+        import fiftyone.management as fom
+
+        fom.get_dataset_latest_changes_summary(dataset.name)
+
+    Args:
+        dataset_name: the dataset name
+
+    Returns:
+        Change summary between most recent snapshot and HEAD of this dataset.
+            Or ``None`` if no summary has been calculated yet.
+
+    Raises:
+        ValueError: if dataset doesn't exist or no access
+    """
+    client = connection.APIClientConnection().client
+
+    dataset = client.post_graphql_request(
+        query=_GET_LATEST_CHANGES_SUMMARY_QUERY,
+        variables={"dataset": dataset_name},
+    )["dataset"]
+    if dataset is None:
+        raise ValueError(f"Unknown dataset {dataset_name}")
+    change_summary = dataset["latestChanges"]
+
+    return (
+        None
+        if change_summary is None
+        else SampleChangeSummary(
+            **util.camel_to_snake_container(change_summary)
+        )
+    )
+
+
 def get_snapshot_info(
     dataset_name: str, snapshot_name: str
 ) -> Optional[DatasetSnapshot]:
@@ -221,6 +344,9 @@ def get_snapshot_info(
     Args:
         dataset_name: the dataset name
         snapshot_name: the snapshot name
+
+    Raises:
+        ValueError: if dataset doesn't exist or no access
     """
     client = connection.APIClientConnection().client
 
@@ -239,8 +365,8 @@ def get_snapshot_info(
     )
 
 
-def list_snapshots(dataset_name: str) -> List[DatasetSnapshot]:
-    """Returns a list of all snapshots of a dataset.
+def list_snapshots(dataset_name: str) -> List[str]:
+    """Returns a list of all snapshots of a dataset in order of creation.
 
     Examples::
 
@@ -251,6 +377,7 @@ def list_snapshots(dataset_name: str) -> List[DatasetSnapshot]:
     Args:
         dataset_name: the dataset name
 
+
     Raises:
         ValueError: if dataset doesn't exist or no access
 
@@ -259,18 +386,26 @@ def list_snapshots(dataset_name: str) -> List[DatasetSnapshot]:
     """
     client = connection.APIClientConnection().client
 
-    dataset = client.post_graphql_request(
-        query=_LIST_SNAPSHOTS_QUERY,
-        variables={"dataset": dataset_name},
-    )["dataset"]
-    if dataset is None:
-        raise ValueError(f"Unknown dataset {dataset_name}")
-    snapshots = dataset["snapshots"]
+    try:
+        snapshots = client.post_graphql_connectioned_request(
+            query=_LIST_SNAPSHOTS_QUERY,
+            connection_property="dataset.snapshotsConnection",
+            variables={"dataset": dataset_name},
+        )
+    except ValueError as e:
+        # Looking for the specific error from post_graphql_connectioned_request
+        #   that tells us dataset was not found, to add a more helpful message.
+        #   Otherwise, just reraise the same error.
+        if (
+            len(e.args) > 0
+            and isinstance(e.args[0], str)
+            and e.args[0].startswith("No property dataset found")
+        ):
+            raise ValueError(f"Unknown dataset {dataset_name}") from e
+        else:
+            raise e
 
-    return [
-        DatasetSnapshot(**snapshot)
-        for snapshot in util.camel_to_snake_container(snapshots)
-    ]
+    return [snapshot["name"] for snapshot in snapshots]
 
 
 def revert_dataset_to_snapshot(dataset_name: str, snapshot_name: str):

@@ -122,6 +122,12 @@ class Client:
     def post_graphql_request(
         self, query: str, variables: Optional[Mapping[str, Any]] = None
     ) -> Mapping[str, Any]:
+        """Post a GraphQL request
+
+        Args:
+            query:  The GraphQL query string
+            variables: Optional variables to pass to query
+        """
         url_path = "graphql/v1"
         payload = {"query": query, "variables": variables}
 
@@ -140,7 +146,21 @@ class Client:
         connection_property: str,
         variables: Optional[Mapping[str, Any]] = None,
     ):
+        """Post a GraphQL request that uses the connection paging method
+
+        Args:
+            query:  The GraphQL query string
+            connection_property: The property name that contains the
+                paged data. Pass a '.'-separated string to indicate nested
+                fields; fieldA.fieldB -> data['fieldA']['fieldB']
+            variables: Optional variables to pass to query
+
+        Raises:
+            ValueError: If one of the subproperties is not found for the
+                return data.
+        """
         variables = variables or {}
+        sub_properties = connection_property.split(".")
 
         after = None
         return_value = []
@@ -148,13 +168,21 @@ class Client:
             variables["after"] = after
             data = self.post_graphql_request(query=query, variables=variables)
 
-            for edge in data[connection_property]["edges"]:
+            for sub_property in sub_properties:
+                if (
+                    sub_property != sub_properties[-1]
+                    and data[sub_property] is None
+                ):
+                    raise ValueError(f"No property {sub_property} found")
+                data = data[sub_property]
+
+            for edge in data["edges"]:
                 return_value.append(edge["node"])
 
-            if not data[connection_property]["pageInfo"]["hasNextPage"]:
+            if not data["pageInfo"]["hasNextPage"]:
                 break
 
-            after = data[connection_property]["pageInfo"]["endCursor"]
+            after = data["pageInfo"]["endCursor"]
 
         return return_value
 
