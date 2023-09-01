@@ -69,5 +69,5 @@ type PopoutPropsType = {
   style?: React.CSSProperties;
   modal?: boolean;
   fixed?: boolean;
-  anchorRef?: RefObject<HTMLDivElement>;
+  anchorRef?: RefObject<HTMLElement>;
 };
