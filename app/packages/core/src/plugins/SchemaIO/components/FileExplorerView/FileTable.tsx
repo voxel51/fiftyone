@@ -31,6 +31,8 @@ const Wrapper = ({ children }) => (
 );
 
 function humanReadableBytes(bytes: number): string {
+  if (!bytes) return "";
+
   const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
   if (bytes === 0) return "0 Byte";
