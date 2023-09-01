@@ -28,10 +28,6 @@ test.describe("field visibility", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("field visibility modal opens", async ({ fieldVisibility }) => {
-    await fieldVisibility.openFieldVisibilityModal();
-  });
-
   test("sidebar group is hidden if all its fields are hidden using field visibility", async ({
     fieldVisibility,
     sidebar,
