@@ -5,11 +5,13 @@ import { Environment } from "react-relay";
 import { Queries } from "../makeRoutes";
 import { RoutingContext } from "../routing";
 
-export type RegisteredSetter = (
-  environment: Environment,
-  router: RoutingContext<Queries>,
-  sessionRef: MutableRefObject<Session>
-) => Setter;
+type SetterContext = {
+  environment: Environment;
+  router: RoutingContext<Queries>;
+  sessionRef: MutableRefObject<Session>;
+};
+
+export type RegisteredSetter = (ctx: SetterContext) => Setter;
 
 export const REGISTERED_SETTERS = new Map<string, RegisteredSetter>();
 

@@ -11,7 +11,7 @@ import { pendingEntry } from "../Renderer";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
-  (environment, router, sessionRef) =>
+  ({ environment, router, sessionRef }) =>
   ({ get, set }, view: State.Stage[]) => {
     set(pendingEntry, true);
     if (view instanceof DefaultValue) {

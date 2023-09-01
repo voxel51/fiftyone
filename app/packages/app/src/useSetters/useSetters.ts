@@ -13,8 +13,9 @@ const useSetters = (
 ) => {
   return useMemo(() => {
     const setters = new Map<string, Setter>();
+    const ctx = { environment, router, sessionRef };
     REGISTERED_SETTERS.forEach((value, key) => {
-      setters.set(key, value(environment, router, sessionRef));
+      setters.set(key, value(ctx));
     });
 
     return setters;

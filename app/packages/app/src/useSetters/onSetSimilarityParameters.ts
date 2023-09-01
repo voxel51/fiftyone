@@ -7,7 +7,8 @@ import {
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetSimilarityParameters: RegisteredSetter =
-  (_, router, sessionRef) => () => {
+  ({ router, sessionRef }) =>
+  () => {
     const unsubscribe = subscribe((_, { set }) => {
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();

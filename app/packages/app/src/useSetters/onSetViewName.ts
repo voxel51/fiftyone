@@ -6,7 +6,7 @@ import { pendingEntry } from "../Renderer";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetViewName: RegisteredSetter =
-  (environment, router, sessionRef) =>
+  ({ environment, router, sessionRef }) =>
   ({ get, set }, slug: string | DefaultValue | null) => {
     set(pendingEntry, true);
     if (slug instanceof DefaultValue) {

@@ -9,7 +9,7 @@ import { commitMutation } from "relay-runtime";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetGroupSlice: RegisteredSetter =
-  (environment, _, sessionRef) =>
+  ({ environment, sessionRef }) =>
   ({ get }, slice: string) => {
     const unsubscribe = subscribe(() => {
       sessionRef.current.selectedLabels = [];
