@@ -219,14 +219,13 @@ async def prepare_operator_executor(operator_uri, request_params):
     operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
             error="Validation error", validation_ctx=validation_ctx
         )
-
-    await ctx.resolve_secret_values(operator._plugin_secrets)
 
     return operator, executor, ctx
 
@@ -391,10 +390,14 @@ class ExecutionContext(object):
         self.trigger("console_log", {"message": message})
 
     def secret(self, key):
+        """Returns the secret with the given key from the context."""
         return self._secrets.get(key, None)
 
     @property
     def secrets(self) -> dict:
+        """
+        Returns all the secrets in the context.
+        """
         return self._secrets
 
     async def resolve_secret_values(self, keys, **kwargs):
