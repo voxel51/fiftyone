@@ -21,26 +21,26 @@ import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
 import useEventSource, { getDatasetName } from "./useEventSource";
 import useSetters from "./useSetters";
-import useWriters from "./useWriters/useWriters";
+import useWriters from "./useWriters";
 
-export const SessionContext = React.createContext<Session>({});
+export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
   const subscription = useRecoilValue(stateSubscription);
+
   const router = useRouterContext();
+  const readyState = useEventSource(router);
 
   const sessionRef = useRef<Session>(SESSION_DEFAULT);
+  const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
-
-  const readyState = useEventSource(router);
 
   useEffect(() => {
     subscribe((_, { reset }) => {
       reset(fos.currentModalSample);
     });
   }, []);
-  const setters = useSetters(environment, router, sessionRef);
 
   return (
     <SessionContext.Provider value={sessionRef.current}>

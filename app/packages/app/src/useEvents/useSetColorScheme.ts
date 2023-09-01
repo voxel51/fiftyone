@@ -1,8 +1,9 @@
 import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
+import { EventHandlerHook } from "./registerEvent";
 import { ensureColorScheme } from "./utils";
 
-const useSetColorScheme = () => {
+const useSetColorScheme: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {

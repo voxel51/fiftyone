@@ -3,11 +3,11 @@ import { toCamelCase } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { EventHandlerHook } from "./registerEvent";
 
-const useSetSelectedLabels: EventHandlerHook = () => {
+const useSelectLabels: EventHandlerHook = () => {
   const setter = useSessionSetter();
 
   return useCallback(
-    (payload: any) => {
+    (payload) => {
       setter(
         "selectedLabels",
         toCamelCase(payload.labels) as State.SelectedLabel[]
@@ -17,4 +17,4 @@ const useSetSelectedLabels: EventHandlerHook = () => {
   );
 };
 
-export default useSetSelectedLabels;
+export default useSelectLabels;

@@ -15,7 +15,11 @@ const useEventSource = (router: RoutingContext<Queries>) => {
   readyStateRef.current = readyState;
   const controller = useMemo(() => new AbortController(), []);
   const subscription = useRecoilValue(stateSubscription);
-  const { subscriptions, handler } = useEvents(router, controller);
+  const { subscriptions, handler } = useEvents(
+    router,
+    controller,
+    readyStateRef
+  );
   const handleError = useErrorHandler();
   const clearModal = useClearModal();
 
@@ -33,7 +37,7 @@ const useEventSource = (router: RoutingContext<Queries>) => {
             return;
           }
 
-          handler(msg.event, JSON.parse(msg.data));
+          handler(msg.event, msg.data);
         },
         onerror: (e) => handleError(e),
         onclose: () => {

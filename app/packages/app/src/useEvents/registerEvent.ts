@@ -1,3 +1,4 @@
+import { snakeCase } from "lodash";
 import { MutableRefObject } from "react";
 import { Queries } from "../makeRoutes";
 import { RoutingContext } from "../routing";
@@ -23,5 +24,5 @@ export const EVENTS: {
 } = {};
 
 export default (event: string, hook: EventHandlerHook) => {
-  EVENTS[event] = hook;
+  EVENTS[snakeCase(event)] = hook;
 };

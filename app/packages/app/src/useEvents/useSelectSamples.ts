@@ -2,7 +2,7 @@ import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import { EventHandlerHook } from "./registerEvent";
 
-const useSetSelectedSamples: EventHandlerHook = () => {
+const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {
@@ -12,4 +12,4 @@ const useSetSelectedSamples: EventHandlerHook = () => {
   );
 };
 
-export default useSetSelectedSamples;
+export default useSelectSamples;
