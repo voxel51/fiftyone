@@ -318,7 +318,4 @@ export const isFieldVisibilityActive = selector({
 
     return isSelectedFieldsStageActive && affectedCount > 0;
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });

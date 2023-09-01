@@ -1,4 +1,4 @@
-import { expect, Locator, Page } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 import { SidebarPom } from "../sidebar";
 
 export class FieldVisibilityPom {
