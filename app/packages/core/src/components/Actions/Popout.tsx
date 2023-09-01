@@ -1,5 +1,5 @@
-import React, { Ref, RefObject, useLayoutEffect, useState } from "react";
 import { useSpring } from "@react-spring/web";
+import React, { RefObject, useLayoutEffect, useState } from "react";
 
 import { PopoutDiv } from "../utils";
 
@@ -48,7 +48,7 @@ export default React.memo(Popout);
 
 type PopoutPropsType = {
   children;
-  style: object;
+  style?: object;
   modal?: boolean;
   fixed?: boolean;
   anchorRef?: RefObject<HTMLDivElement>;

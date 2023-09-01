@@ -2,7 +2,7 @@ import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { useRef, useState } from "react";
+import { MutableRefObject, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
@@ -20,7 +20,13 @@ const Container = styled.div`
   position: relative;
 `;
 
-const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
+const GroupMediaVisibilityPopout = ({
+  modal,
+  anchorRef,
+}: {
+  modal: boolean;
+  anchorRef: MutableRefObject<HTMLDivElement>;
+}) => {
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
     fos.groupMedia3dVisibleSetting
   );
@@ -35,7 +41,7 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
   );
 
   return (
-    <Popout modal={modal}>
+    <Popout fixed anchorRef={anchorRef} modal={modal}>
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
       {pointCloudSliceExists && (
         <Checkbox
@@ -84,7 +90,7 @@ export const GroupMediaVisibilityContainer = ({
         highlight={open}
         ref={mRef}
       />
-      {open && <GroupMediaVisibilityPopout modal={modal} />}
+      {open && <GroupMediaVisibilityPopout anchorRef={ref} modal={modal} />}
     </Container>
   );
 };
