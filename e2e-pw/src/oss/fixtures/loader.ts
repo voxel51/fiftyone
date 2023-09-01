@@ -14,6 +14,7 @@ type WebServerProcessConfig = {
   port: number;
   processId: number;
 };
+
 export class OssLoader extends AbstractFiftyoneLoader {
   protected webserverProcessConfig: WebServerProcessConfig;
 
@@ -29,7 +30,9 @@ export class OssLoader extends AbstractFiftyoneLoader {
 
     console.log("starting webserver on port", port);
 
-    process.env.FIFTYONE_DATABASE_NAME = `${process.env.FIFTYONE_DATABASE_NAME}-${port}`;
+    process.env.FIFTYONE_DATABASE_NAME = `${
+      process.env.FIFTYONE_DATABASE_NAME ?? "playwright"
+    }-${port}${process.env.CI ? Math.random().toString(36).substring(7) : ""}`;
 
     const mainPyPath = process.env.FIFTYONE_ROOT_DIR
       ? `${process.env.FIFTYONE_ROOT_DIR}/fiftyone/server/main.py`
