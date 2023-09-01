@@ -65,7 +65,7 @@ const Popout = ({
 export default React.memo(Popout);
 
 type PopoutPropsType = {
-  children;
+  children: React.ReactNode;
   style?: React.CSSProperties;
   modal?: boolean;
   fixed?: boolean;
