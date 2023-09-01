@@ -5,12 +5,14 @@ export class PanelPom {
   readonly page: Page;
   readonly locator: Locator;
   readonly assert: PanelAsserter;
+  readonly selectionCount: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.assert = new PanelAsserter(this);
 
     this.locator = this.page.getByTestId("panel-container");
+    this.selectionCount = this.page.getByTestId("selection-count-container");
   }
 
   get newPanelBtn() {

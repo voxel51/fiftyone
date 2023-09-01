@@ -22,7 +22,7 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import { Link } from "@mui/material";
+import { Link, Box } from "@mui/material";
 import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 
@@ -62,10 +62,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
 
   if (canSelect)
     return (
-      <EmbeddingsContainer ref={el}>
+      <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
           <div>
             <Selector
+              cy="embeddings"
               {...brainResultSelector.handlers}
               placeholder={"Select brain key"}
               overflow={true}
@@ -75,6 +76,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
             />
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
               <Selector
+                cy="embeddings-colorby"
                 {...labelSelector.handlers}
                 placeholder={"Color by"}
                 overflow={true}
@@ -96,13 +98,15 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 <PlotOption to={() => resetZoom()} title={"Reset zoom (Esc)"}>
                   <CenterFocusWeak />
                 </PlotOption>
-                <PlotOption
-                  style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
-                  to={() => setDragMode("lasso")}
-                  title={"Select (s)"}
-                >
-                  <HighlightAlt />
-                </PlotOption>
+                <Box data-cy="embeddings-plot-option-lasso" display="flex">
+                  <PlotOption
+                    style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
+                    to={() => setDragMode("lasso")}
+                    title={"Select (s)"}
+                  >
+                    <HighlightAlt />
+                  </PlotOption>
+                </Box>
 
                 <PlotOption
                   style={{ opacity: dragMode !== "pan" ? 0.5 : 1 }}
