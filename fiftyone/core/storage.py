@@ -624,9 +624,9 @@ def list_buckets(fs, abs_paths=False):
     return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
 
 
-def get_available_file_systems():
-    """Returns the list of file systems that are currently available for use
-    with methods like :func:`list_files` and :func:`list_buckets`.
+def list_available_file_systems():
+    """Lists the file systems that are currently available for use with methods
+    like :func:`list_files` and :func:`list_buckets`.
 
     Returns:
         a list of :class:`FileSystem` values

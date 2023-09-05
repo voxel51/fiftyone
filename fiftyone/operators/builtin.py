@@ -5,13 +5,10 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
-import datetime
-
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
-import fiftyone.core.storage as fos
 
 
 class CloneSelectedSamples(foo.Operator):
@@ -301,41 +298,32 @@ class ListFiles(foo.Operator):
         path = ctx.params.get("path", None)
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
-            return {"filesystems": fos.get_available_file_systems()}
+            return {"filesystems": fos.list_available_file_systems()}
+
         if path:
             return {"files": list_files(path)}
 
 
-def list_files(path):
-    """
-    List all files and directories in a given path.
-
-    Args:
-        path (str): Path to list files and directories from.
-
-    Returns:
-        list: A list of dictionaries containing file information.
-    """
-
-    filenames = fos.list_files(path) + fos.list_subdirs(path)
-    filepaths = [os.path.join(path, filename) for filename in filenames]
-    stats = [os.stat(filepath, follow_symlinks=True) for filepath in filepaths]
+def list_files(dirpath):
+    dirs = [
+        {
+            "name": name,
+            "type": "directory",
+            "absolute_path": fos.join(dirpath, name),
+        }
+        for name in fos.list_subdirs(dirpath)
+    ]
     files = [
         {
-            "name": filename,
-            "date_modified": datetime.datetime.fromtimestamp(
-                stat.st_mtime
-            ).isoformat(),
-            "type": "file" if os.path.isfile(filepath) else "directory",
-            "size": stat.st_size,
-            "absolute_path": os.path.join(path, filename),
+            "name": d["name"],
+            "date_modified": d["last_modified"].isoformat(),
+            "type": "file",
+            "size": d["size"],
+            "absolute_path": fos.join(dirpath, d["name"]),
         }
-        for filename, filepath, stat in zip(filenames, filepaths, stats)
+        for d in fos.list_files(dirpath, return_metadata=True)
     ]
-
-    files.sort(key=lambda file: file["type"])
-
-    return files
+    return dirs + files
 
 
 BUILTIN_OPERATORS = [

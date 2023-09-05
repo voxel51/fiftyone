@@ -480,7 +480,9 @@ class Map(BaseType):
 
 
 class File(Object):
-    """Represents a file and related metadata for use with the FileExplorerView."""
+    """Represents a file and related metadata for use with
+    :class:`FileExplorerView`.
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1374,29 +1376,29 @@ class FileExplorerView(View):
 
     Examples::
 
+        import os
         import fiftyone.operators.types as types
 
         inputs = types.Object()
 
-        # create an explorer that allows the user to choose a directory
-        my_explorer = types.FileExplorerView(
+        # Create an explorer that allows the user to choose a directory
+        file_explorer = types.FileExplorerView(
             choose_dir=True,
             button_label="Choose a directory...",
             choose_button_label="Accept",
-            default_path=os.environ.get("HOME")
+            default_path=os.environ.get("HOME"),
         )
 
-        # define a types.File property
-        my_file_prop = inputs.file(
+        # Define a types.File property
+        file_prop = inputs.file(
             "directory",
-            label="My directory",
             required=True,
+            label="Directory",
             description="Choose a directory",
-            view=my_explorer
+            view=file_explorer,
         )
-        chosen_directory = ctx.params.get("directory", {}).get("absolute_path", None)
 
-
+        directory = ctx.params.get("directory", {}).get("absolute_path", None)
     """
 
     def __init__(self, **kwargs):
