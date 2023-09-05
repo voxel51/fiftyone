@@ -33,6 +33,7 @@ const Popout = ({
   modal,
   fixed,
   anchorRef,
+  testId,
 }: PopoutPropsType) => {
   const show = useSpring({
     opacity: 1,
@@ -56,6 +57,7 @@ const Popout = ({
         ...alignStyle,
         ...positionStyle,
       }}
+      data-cy={testId ?? "popout"}
     >
       {children}
     </PopoutDiv>
@@ -70,4 +72,5 @@ type PopoutPropsType = {
   modal?: boolean;
   fixed?: boolean;
   anchorRef?: RefObject<HTMLElement>;
+  testId?: string;
 };

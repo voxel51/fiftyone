@@ -40,7 +40,12 @@ const GroupMediaVisibilityPopout = ({
   );
 
   return (
-    <Popout fixed anchorRef={anchorRef} modal={modal}>
+    <Popout
+      fixed
+      anchorRef={anchorRef}
+      modal={modal}
+      testId="group-media-visibility-popout"
+    >
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
       {pointCloudSliceExists && (
         <Checkbox
@@ -75,7 +80,7 @@ export const GroupMediaVisibilityContainer = ({
   useOutsideClick(ref, () => open && setOpen(false));
 
   return (
-    <Container ref={ref}>
+    <Container ref={ref} data-cy="action-toggle-group-media-visibility">
       <PillButton
         icon={
           <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />

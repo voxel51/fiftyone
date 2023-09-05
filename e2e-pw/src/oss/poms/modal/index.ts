@@ -28,6 +28,20 @@ export class ModalPom {
     this.video = new ModalVideoControlsPom(page, this);
   }
 
+  get groupLooker() {
+    return this.locator
+      .getByTestId("group-sample-wrapper")
+      .getByTestId("looker");
+  }
+
+  get looker3d() {
+    return this.locator.getByTestId("looker3d");
+  }
+
+  get carousel() {
+    return this.locator.getByTestId("group-carousel");
+  }
+
   async toggleSelection() {
     await this.looker.hover();
     await this.locator.getByTestId("selectable-bar").click();
@@ -145,20 +159,12 @@ export class ModalPom {
     return this.navigateSample("backward", allowErrorInfo);
   }
 
-  getLooker3d() {
-    return this.locator.getByTestId("looker3d");
-  }
-
   async clickOnLooker3d() {
-    return this.getLooker3d().click();
+    return this.looker3d.click();
   }
 
   async clickOnLooker() {
     return this.looker.click();
-  }
-
-  getGroupContainer() {
-    return this.locator.getByTestId("group-container");
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
