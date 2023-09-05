@@ -82,18 +82,17 @@ test.describe("quickstart-groups", () => {
     });
 
     test("group media visibility toggle works", async ({ modal }) => {
-      // todo: uncomment after #3479 is merged
       // make sure popout is right aligned to the toggle button
+      await modal.group.toggleMediaButton.click();
+      const popoutBoundingBox =
+        await modal.group.groupMediaVisibilityPopout.boundingBox();
+      const toggleButtonBoundingBox =
+        await modal.group.toggleMediaButton.boundingBox();
 
-      // await modal.group.toggleMediaButton.click();
-      // const popoutBoundingBox =
-      //   await modal.group.groupMediaVisibilityPopout.boundingBox();
-      // const toggleButtonBoundingBox =
-      //   await modal.group.toggleMediaButton.boundingBox();
-      // expect(popoutBoundingBox.x + popoutBoundingBox.width).toBeCloseTo(
-      //   toggleButtonBoundingBox.x + toggleButtonBoundingBox.width,
-      //   0
-      // );
+      expect(popoutBoundingBox.x + popoutBoundingBox.width).toBeCloseTo(
+        toggleButtonBoundingBox.x + toggleButtonBoundingBox.width,
+        0
+      );
 
       await expect(modal.looker3d).toBeVisible();
       await modal.group.toggleMedia("3d");
