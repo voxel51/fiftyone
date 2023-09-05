@@ -81,7 +81,7 @@ give you a sense of the basic workflow for a few tasks:
           import glob
           import fiftyone as fo
 
-          images_patt = "/path/to/images/*"
+          images_path = "/path/to/images/*"
 
           # Ex: your custom label format
           annotations = {
