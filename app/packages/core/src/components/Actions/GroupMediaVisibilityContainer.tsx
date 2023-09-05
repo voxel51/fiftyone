@@ -2,8 +2,7 @@ import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { useRef, useState } from "react";
-import useMeasure from "react-use-measure";
+import React from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
@@ -65,10 +64,9 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
 export const GroupMediaVisibilityContainer = ({
   modal,
 }: GroupMediaVisibilityProps) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef] = useMeasure();
 
   return (
     <Container ref={ref}>
@@ -82,7 +80,6 @@ export const GroupMediaVisibilityContainer = ({
         }}
         title={TITLE}
         highlight={open}
-        ref={mRef}
       />
       {open && <GroupMediaVisibilityPopout modal={modal} />}
     </Container>

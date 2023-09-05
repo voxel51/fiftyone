@@ -6,10 +6,11 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { atom, useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import { useExternalLink } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useBrowserStorage } from "@fiftyone/state";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
@@ -17,6 +18,7 @@ import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
 import MaxKWarning from "./MaxKWarning";
+import Warning from "./Warning";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -24,8 +26,6 @@ import {
   sortType,
   useSortBySimilarity,
 } from "./utils";
-import Warning from "./Warning";
-import { useBrowserStorage } from "@fiftyone/state";
 
 const DEFAULT_K = 25;
 
@@ -40,13 +40,11 @@ interface SortBySimilarityProps {
   isImageSearch: boolean;
   modal: boolean;
   close: () => void;
-  bounds?: any; // fix me
-  anchorRef?: MutableRefObject<unknown>;
+  anchorRef?: MutableRefObject<HTMLElement>;
 }
 
 const SortBySimilarity = ({
   modal,
-  bounds,
   close,
   isImageSearch,
   anchorRef,
@@ -188,13 +186,7 @@ const SortBySimilarity = ({
   );
 
   return (
-    <Popout
-      modal={modal}
-      bounds={bounds}
-      style={{ minWidth: 280 }}
-      fixed
-      anchorRef={anchorRef}
-    >
+    <Popout modal={modal} style={{ minWidth: 280 }} fixed anchorRef={anchorRef}>
       {hasSimilarityKeys && (
         <div
           style={{

@@ -1,7 +1,31 @@
-import React, { Ref, RefObject, useLayoutEffect, useState } from "react";
 import { useSpring } from "@react-spring/web";
+import React, {
+  MutableRefObject,
+  RefObject,
+  useLayoutEffect,
+  useState,
+} from "react";
 
 import { PopoutDiv } from "../utils";
+
+const useAlign = (
+  anchorRef: MutableRefObject<HTMLElement>,
+  modal?: boolean
+) => {
+  const [align, setAlign] = useState("auto");
+  useLayoutEffect(() => {
+    const anchorElem = anchorRef?.current;
+    if (anchorElem) {
+      let offset = anchorElem.getBoundingClientRect()[modal ? "right" : "left"];
+      if (modal) {
+        offset = window.innerWidth - offset;
+      }
+      setAlign(`${offset}px`);
+    }
+  }, [anchorRef, modal]);
+
+  return modal ? { right: align } : { left: align };
+};
 
 const Popout = ({
   children,
@@ -10,7 +34,6 @@ const Popout = ({
   fixed,
   anchorRef,
 }: PopoutPropsType) => {
-  const [left, setLeft] = useState("auto");
   const show = useSpring({
     opacity: 1,
     from: {
@@ -20,22 +43,17 @@ const Popout = ({
       duration: 100,
     },
   });
-  useLayoutEffect(() => {
-    const anchorElem = anchorRef?.current;
-    if (anchorElem) {
-      setLeft(`${anchorElem.getBoundingClientRect().left}px`);
-    }
-  }, [anchorRef]);
+  const alignStyle = useAlign(anchorRef, modal);
 
-  const positionStyle = fixed ? { position: "fixed", left } : {};
+  const positionStyle = fixed ? { position: "fixed" } : {};
 
   return (
     <PopoutDiv
       style={{
+        zIndex: 100001,
         ...show,
         ...style,
-        zIndex: 100001,
-        right: modal ? 0 : "unset",
+        ...alignStyle,
         ...positionStyle,
       }}
     >
@@ -48,8 +66,8 @@ export default React.memo(Popout);
 
 type PopoutPropsType = {
   children;
-  style: object;
+  style?: React.CSSProperties;
   modal?: boolean;
   fixed?: boolean;
-  anchorRef?: RefObject<HTMLDivElement>;
+  anchorRef?: RefObject<HTMLElement>;
 };
