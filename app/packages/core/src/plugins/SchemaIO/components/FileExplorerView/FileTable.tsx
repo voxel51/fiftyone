@@ -84,6 +84,7 @@ function FileTable({
                     chooseMode !== file.type
                       ? theme.palette.text.secondary
                       : "inherit",
+                  cursor: "pointer",
                 },
                 backgroundColor: (theme) =>
                   selectedFile === file
@@ -102,7 +103,9 @@ function FileTable({
                   <Box paddingLeft={1}>{file.name}</Box>
                 </Box>
               </TableCell>
-              <TableCell>{moment(file.date_modified).fromNow()}</TableCell>
+              <TableCell>
+                {file.date_modified && moment(file.date_modified).fromNow()}
+              </TableCell>
               <TableCell>{humanReadableBytes(file.size)}</TableCell>
             </TableRow>
           ))}
