@@ -66,16 +66,22 @@ test(`left slice (default)`, async ({ fiftyoneLoader, page, grid, modal }) => {
   await grid.assert.isEntryCountTextEqualTo("1 group with slice");
   await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
-  await modal.sidebar.assert.verifySidebarEntryText("scene", "a");
-  await modal.sidebar.assert.verifySidebarEntryText("frame", "0");
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame: "0",
+    "group.name": "left",
+    scene: "a",
+  });
   await modal.group.dynamicGroupPagination.assert.verifyPage(2);
-  await modal.group.dynamicGroupPagination.assert.verifyTooltip(1, "frame: 0");
-  await modal.group.dynamicGroupPagination.assert.verifyTooltip(2, "frame: 1");
+  await modal.group.dynamicGroupPagination.assert.verifyTooltips({
+    1: "frame: 0",
+    2: "frame: 1",
+  });
   await modal.group.dynamicGroupPagination.navigatePage(2);
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
-  await modal.sidebar.assert.verifySidebarEntryText("scene", "a");
-  await modal.sidebar.assert.verifySidebarEntryText("frame", "1");
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame: "1",
+    "group.name": "left",
+    scene: "a",
+  });
   await modal.close();
 });
 
@@ -87,15 +93,21 @@ test(`right slice`, async ({ fiftyoneLoader, page, grid, modal }) => {
   await grid.assert.isEntryCountTextEqualTo("1 group with slice");
   await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
-  await modal.sidebar.assert.verifySidebarEntryText("scene", "b");
-  await modal.sidebar.assert.verifySidebarEntryText("frame", "0");
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame: "0",
+    "group.name": "right",
+    scene: "b",
+  });
   await modal.group.dynamicGroupPagination.assert.verifyPage(2);
-  await modal.group.dynamicGroupPagination.assert.verifyTooltip(1, "frame: 0");
-  await modal.group.dynamicGroupPagination.assert.verifyTooltip(2, "frame: 1");
+  await modal.group.dynamicGroupPagination.assert.verifyTooltips({
+    1: "frame: 0",
+    2: "frame: 1",
+  });
   await modal.group.dynamicGroupPagination.navigatePage(2);
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
-  await modal.sidebar.assert.verifySidebarEntryText("scene", "b");
-  await modal.sidebar.assert.verifySidebarEntryText("frame", "1");
+  await modal.sidebar.assert.verifySidebarEntryTexts({
+    frame: "1",
+    "group.name": "right",
+    scene: "b",
+  });
   await modal.close();
 });

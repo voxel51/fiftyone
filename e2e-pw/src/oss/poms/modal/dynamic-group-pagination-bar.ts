@@ -42,4 +42,12 @@ class DynamicGroupPaginationAsserter {
     await expect(tooltip).toBeVisible();
     await expect(tooltip).toHaveText(text);
   }
+
+  async verifyTooltips(pages: { [page: number]: string }) {
+    await Promise.all(
+      Object.entries(pages).map(([page, text]) =>
+        this.verifyTooltip(Number(page), text)
+      )
+    );
+  }
 }
