@@ -242,22 +242,18 @@ const isDisabledEntry = (
 ) => {
   if (entry.kind === fos.EntryKind.PATH) {
     return (
-      entry.path.startsWith("tags.") ||
-      entry.path.startsWith("_label_tags.") ||
+      entry.path === "tags" ||
+      entry.path === "_label_tags" ||
       disabled.has(entry.path)
     );
   }
 
   if (entry.kind === fos.EntryKind.EMPTY) {
-    return entry.group === "tags" || entry.group === "label tags";
+    return entry.group === "tags";
   }
 
   if (excludeGroups && entry.kind === fos.EntryKind.GROUP) {
-    return (
-      entry.name === "tags" ||
-      entry.name === "label tags" ||
-      entry.name === "other"
-    );
+    return entry.name === "tags" || entry.name === "other";
   }
 
   if (entry.kind === fos.EntryKind.INPUT) {
@@ -788,8 +784,18 @@ const InteractiveSidebar = ({
               style.zIndex = 0;
             }
 
+            let dataCy = `-field`;
+            if (entry.kind === fos.EntryKind.GROUP) {
+              dataCy = `sidebar-group-${entry.name}` + dataCy;
+            } else if (entry.kind === fos.EntryKind.PATH) {
+              dataCy = entry.path + dataCy;
+            } else {
+              dataCy = "sidebar" + dataCy;
+            }
+
             return (
               <animated.div
+                data-cy={dataCy}
                 onMouseDownCapture={() => {
                   lastTouched.current = undefined;
                   placeItems();
