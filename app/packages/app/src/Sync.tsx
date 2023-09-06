@@ -40,11 +40,13 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
 
-  useEffect(() => {
-    subscribe((_, { reset }) => {
-      reset(fos.currentModalSample);
-    });
-  }, []);
+  useEffect(
+    () =>
+      subscribe((_, { reset }) => {
+        reset(fos.currentModalSample);
+      }),
+    []
+  );
 
   return (
     <SessionContext.Provider value={sessionRef.current}>
