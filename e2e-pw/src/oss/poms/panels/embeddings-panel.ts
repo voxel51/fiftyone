@@ -47,7 +47,7 @@ class EmebddingsAsserter {
 
   async verifyLassoSelectsSamples() {
     await this.emPom.selector.openResults();
-    await this.emPom.selector.selectResult("gt_viz");
+    await this.emPom.selector.selectResult("img_viz");
     await this.emPom.plotContainer.waitFor({
       state: "visible",
       timeout: 500,
