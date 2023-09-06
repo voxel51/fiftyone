@@ -44,10 +44,8 @@ class DynamicGroupPaginationAsserter {
   }
 
   async verifyTooltips(pages: { [page: number]: string }) {
-    await Promise.all(
-      Object.entries(pages).map(([page, text]) =>
-        this.verifyTooltip(Number(page), text)
-      )
-    );
+    for (const page in pages) {
+      await this.verifyTooltip(Number(page), pages[page]);
+    }
   }
 }
