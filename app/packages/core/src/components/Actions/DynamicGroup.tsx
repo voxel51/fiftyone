@@ -40,7 +40,7 @@ export default ({
   close: (e?: React.MouseEvent<Element>) => void;
   isProcessing: boolean;
   setIsProcessing: (value: boolean) => void;
-  anchorRef: MutableRefObject<unknown>;
+  anchorRef: MutableRefObject<HTMLElement>;
 }) => {
   const [groupBy, setGroupBy] = useState<string>("");
   const [orderBy, setOrderBy] = useState<string>("");
