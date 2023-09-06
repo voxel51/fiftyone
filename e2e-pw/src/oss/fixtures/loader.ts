@@ -94,17 +94,14 @@ export class OssLoader extends AbstractFiftyoneLoader {
   ) {
     const kwargsStringified = getStringifiedKwargs(kwargs);
 
-    return this.pythonRunner.exec(
-      `
-      import fiftyone as fo
+    return this.pythonRunner.exec(`
       import fiftyone.zoo as foz
 
-      quickstart_groups_dataset = foz.load_zoo_dataset(
+      dataset = foz.load_zoo_dataset(
         "${zooDatasetName}", dataset_name="${id}"${kwargsStringified}
       )
-      quickstart_groups_dataset.persistent = True
-    `
-    );
+      dataset.persistent = True
+    `);
   }
 
   async loadTestDataset() {
