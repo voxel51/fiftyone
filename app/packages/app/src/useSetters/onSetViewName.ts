@@ -1,4 +1,4 @@
-import { setView, setViewMutation, subscribe } from "@fiftyone/relay";
+import { setView, setViewMutation } from "@fiftyone/relay";
 import { datasetName, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
@@ -38,13 +38,10 @@ const onSetViewName: RegisteredSetter =
         form: {},
       },
     });
-    const unsubscribe = subscribe(() => {
-      sessionRef.current.selectedLabels = [];
-      sessionRef.current.selectedSamples = new Set();
-      sessionRef.current.selectedFields = undefined;
-      unsubscribe();
-    });
 
+    sessionRef.current.selectedLabels = [];
+    sessionRef.current.selectedSamples = new Set();
+    sessionRef.current.selectedFields = undefined;
     router.history.push(`${router.get().pathname}${search}`, {
       view: [],
     });

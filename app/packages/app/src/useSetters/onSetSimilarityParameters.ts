@@ -9,9 +9,9 @@ import { RegisteredSetter } from "./registerSetter";
 const onSetSimilarityParameters: RegisteredSetter =
   ({ router, sessionRef }) =>
   () => {
+    sessionRef.current.selectedLabels = [];
+    sessionRef.current.selectedSamples = new Set();
     const unsubscribe = subscribe((_, { set }) => {
-      sessionRef.current.selectedLabels = [];
-      sessionRef.current.selectedSamples = new Set();
       set(similaritySorting, false);
       set(savedLookerOptions, (cur) => ({
         ...cur,

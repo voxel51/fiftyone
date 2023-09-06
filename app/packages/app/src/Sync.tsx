@@ -13,12 +13,16 @@ import { Action } from "history";
 import React, { useEffect, useRef } from "react";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilValue } from "recoil";
-import { commitMutation, OperationType } from "relay-runtime";
+import { commitMutation, Environment, OperationType } from "relay-runtime";
 import Setup from "./components/Setup";
 import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
-import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
+import {
+  DatasetPageQuery,
+  DatasetPageQuery$data,
+} from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
+import { ensureColorScheme } from "./useEvents/utils";
 import useEventSource, { getDatasetName } from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
@@ -61,7 +65,14 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
           setters={setters}
           subscribe={(fn) => {
             return router.subscribe((entry, action) => {
-              dispatchSideEffect(entry, action, subscription);
+              dispatchSideEffect({
+                action,
+                currentEntry: router.get(),
+                environment,
+                nextEntry: entry,
+                subscription,
+                session: sessionRef.current,
+              });
               fn(entry);
             });
           }}
@@ -73,17 +84,32 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
   );
 };
 
-const dispatchSideEffect = (
-  entry: Entry<IndexPageQuery | DatasetPageQuery>,
-  action: Action | undefined,
-  subscription: string
-) => {
+const dispatchSideEffect = ({
+  action,
+  currentEntry,
+  environment,
+  nextEntry,
+  subscription,
+  session,
+}: {
+  currentEntry: Entry<IndexPageQuery | DatasetPageQuery>;
+  environment: Environment;
+  nextEntry: Entry<IndexPageQuery | DatasetPageQuery>;
+  action: Action | undefined;
+  session: Session;
+  subscription: string;
+}) => {
   if (action !== "POP") {
     return;
   }
 
-  if (entry.pathname === "/") {
-    commitMutation<setDatasetMutation>(entry.preloadedQuery.environment, {
+  session.selectedLabels = [];
+  session.selectedSamples = new Set();
+  session.selectedFields = undefined;
+
+  if (nextEntry.pathname === "/") {
+    session.sessionSpaces = fos.SPACES_DEFAULT;
+    commitMutation<setDatasetMutation>(nextEntry.preloadedQuery.environment, {
       mutation: setDataset,
       variables: {
         subscription,
@@ -92,13 +118,27 @@ const dispatchSideEffect = (
     return;
   }
 
-  commitMutation<setViewMutation>(entry.preloadedQuery.environment, {
+  const currentDataset = getDatasetName(currentEntry.pathname);
+  const nextDataset = getDatasetName(nextEntry.pathname);
+
+  // @ts-ignore
+  const data: DatasetPageQuery$data = nextEntry.data;
+  if (currentDataset !== nextDataset) {
+    session.sessionSpaces = fos.SPACES_DEFAULT;
+    session.colorScheme = ensureColorScheme(
+      data.dataset?.appConfig?.colorScheme || {
+        colorPool: data.config.colorPool,
+      }
+    );
+  }
+
+  commitMutation<setViewMutation>(environment, {
     mutation: setView,
     variables: {
-      view: entry.state.view,
-      savedViewSlug: entry.state.savedViewSlug,
+      view: nextEntry.state.view,
+      savedViewSlug: nextEntry.state.savedViewSlug,
       form: {},
-      datasetName: getDatasetName(entry.pathname) as string,
+      datasetName: getDatasetName(nextEntry.pathname) as string,
       subscription,
     },
   });

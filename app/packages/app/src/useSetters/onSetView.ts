@@ -1,4 +1,4 @@
-import { setView, setViewMutation, subscribe } from "@fiftyone/relay";
+import { setView, setViewMutation } from "@fiftyone/relay";
 import {
   State,
   datasetName,
@@ -26,12 +26,9 @@ const onSetView: RegisteredSetter =
         form: get(viewStateForm_INTERNAL) || {},
       },
       onCompleted: ({ setView: view }) => {
-        const unsubscribe = subscribe(() => {
-          sessionRef.current.selectedLabels = [];
-          sessionRef.current.selectedSamples = new Set();
-          sessionRef.current.selectedFields = undefined;
-          unsubscribe();
-        });
+        sessionRef.current.selectedLabels = [];
+        sessionRef.current.selectedSamples = new Set();
+        sessionRef.current.selectedFields = undefined;
         router.history.push(`${router.get().pathname}`, {
           view,
         });

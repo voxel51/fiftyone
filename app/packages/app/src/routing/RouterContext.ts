@@ -74,6 +74,7 @@ export const createRouter = <T extends OperationType>(
       : createBrowserHistory();
 
   let currentEntryResource: Resource<Entry<T>>;
+  let nextCurrentEntryResource: Resource<Entry<T>>;
 
   let nextId = 0;
   const subscribers = new Map<
@@ -86,17 +87,18 @@ export const createRouter = <T extends OperationType>(
       subscribers.forEach(([_, onPending]) => onPending && onPending())
     );
     currentEntryResource.load().then(({ cleanup }) => {
-      const nextCurrentEntryResource = getEntryResource<T>(
+      nextCurrentEntryResource = getEntryResource<T>(
         environment,
         routes,
         location as FiftyOneLocation
       );
-      currentEntryResource = nextCurrentEntryResource;
 
-      currentEntryResource.load().then((entry) => {
-        nextCurrentEntryResource === currentEntryResource &&
+      const loadingResource = nextCurrentEntryResource;
+      loadingResource.load().then((entry) => {
+        nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
             subscribers.forEach(([cb]) => cb(entry, action));
+            currentEntryResource = loadingResource;
             cleanup();
           });
       });
