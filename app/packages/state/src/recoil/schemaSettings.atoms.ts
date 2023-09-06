@@ -296,3 +296,13 @@ export const selectedFieldsStageState = sessionAtom({
   key: "selectedFields",
   default: null,
 });
+
+export const isFieldVisibilityActive = selector({
+  key: "isClearFieldVisibilityVisible",
+  get: ({ get }) => {
+    const isSelectedFieldsStageActive = get(fos.selectedFieldsStageState);
+    const affectedCount = get(fos.affectedPathCountState);
+
+    return isSelectedFieldsStageActive && affectedCount > 0;
+  },
+});

@@ -1,44 +1,53 @@
 import * as fos from "@fiftyone/state";
-import React, { useContext, useState } from "react";
-import { useRecoilCallback } from "recoil";
+import React, { useState } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import { InputDiv } from "./utils";
 
 const AddGroup = () => {
   const [value, setValue] = useState("");
+  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
+  const readOnly = useRecoilValue(fos.readOnly);
 
   const addGroup = useRecoilCallback(
-    ({ set, snapshot }) => async (newGroup: string) => {
-      const current = await snapshot.getPromise(
-        fos.sidebarGroupsDefinition(false)
-      );
-      if (
-        !fos.validateGroupName(
-          current.map(({ name }) => name),
-          newGroup
-        )
-      ) {
-        return;
-      }
-      const newGroups: fos.State.SidebarGroup[] = [
-        ...current,
-        { name: newGroup, paths: [] },
-      ];
+    ({ set, snapshot }) =>
+      async (newGroup: string) => {
+        const current = await snapshot.getPromise(
+          fos.sidebarGroupsDefinition(false)
+        );
+        if (
+          !fos.validateGroupName(
+            current.map(({ name }) => name),
+            newGroup
+          )
+        ) {
+          return;
+        }
+        const newGroups: fos.State.SidebarGroup[] = [
+          ...current,
+          { name: newGroup, paths: [] },
+        ];
 
-      const view = await snapshot.getPromise(fos.view);
-      set(fos.sidebarGroupsDefinition(false), newGroups);
-      fos.persistSidebarGroups({
-        dataset: "",
-        stages: view,
-        sidebarGroups: newGroups,
-      });
-    },
+        const view = await snapshot.getPromise(fos.view);
+        set(fos.sidebarGroupsDefinition(false), newGroups);
+        fos.persistSidebarGroups({
+          subscription: await snapshot.getPromise(fos.stateSubscription),
+          dataset: (await snapshot.getPromise(fos.datasetName)) as string,
+          stages: view,
+          sidebarGroups: newGroups,
+        });
+      },
     []
   );
 
+  if (isFieldVisibilityApplied || readOnly) {
+    return null;
+  }
+
   return (
-    <InputDiv>
+    <InputDiv style={{ margin: 0 }}>
       <input
+        data-cy="sidebar-field-add-group-input"
         type={"text"}
         placeholder={"+ add group"}
         value={value}

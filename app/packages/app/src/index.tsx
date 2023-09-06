@@ -1,11 +1,11 @@
 import { ErrorBoundary, Loading, ThemeProvider } from "@fiftyone/components";
 import { usePlugins } from "@fiftyone/plugins";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
+import { SnackbarProvider } from "notistack";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot } from "recoil";
 import Network from "./Network";
-
 import "./index.css";
 import { useRouter } from "./routing";
 
@@ -24,7 +24,9 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
     <ThemeProvider>
       <ErrorBoundary>
         <BeforeScreenshotContext.Provider value={screenshotCallbacks}>
-          <App />
+          <SnackbarProvider>
+            <App />
+          </SnackbarProvider>
         </BeforeScreenshotContext.Provider>
       </ErrorBoundary>
     </ThemeProvider>
