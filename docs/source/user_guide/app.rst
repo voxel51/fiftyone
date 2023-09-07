@@ -16,7 +16,7 @@ visualize, browse, and interact directly with your
 .. note::
 
     Did you know? You can use FiftyOne's
-    :ref:`plugin framework <fiftyone-plugins>` to customize and extend the
+    :ref:`plugin framework <fiftyone-plugins-docs>` to customize and extend the
     behavior of the App!
 
 App environments
@@ -1127,7 +1127,7 @@ FiftyOne natively includes the following Panel types:
 
 .. note::
 
-    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins>`!
+    You can also configure custom Panels :ref:`via plugins <fiftyone-plugins-docs>`!
 
 .. image:: /images/app/app-spaces-hero.png
     :alt: spaces-hero

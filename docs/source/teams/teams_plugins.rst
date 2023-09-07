@@ -10,7 +10,7 @@ log into your central Teams UI.
 
 .. note::
 
-    See :ref:`this page <fiftyone-plugins>` for more information about creating
+    See :ref:`fiftyone-plugins-docs` for more information about creating
     and downloading existing plugins.
 
 Plugin Page
@@ -305,13 +305,19 @@ By default, the initial permissions are:
     | Minimum Dataset Permission    | Edit          |
     +-------------------------------+---------------+
 
-but these defaults can be configured by navigating to the page at
+Teams UI
+^^^^^^^^
+
+Default operator permissions can be configured by navigating to the page at
 Settings > Security and looking under the Plugins header. Click the dropdown
 for the permission you want to change and select the new value.
 
 .. image:: /images/teams/plugins_org_settings.png
    :alt: teams-plugins-page-org-settings
    :align: center
+
+SDK
+^^^
 
 Alternatively, you can use the
 :meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`
@@ -326,3 +332,12 @@ method from the Management SDK:
         default_operator_minimum_role=fom.MEMBER,
         default_operator_minimum_dataset_permission=fom.EDIT,
     )
+
+.. _teams-plugins-managing-operators-runs:
+
+Managing Delegated Operator Runs
+________________________________
+
+
+Teams UI
+--------

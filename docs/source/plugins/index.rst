@@ -1,4 +1,4 @@
-.. _fiftyone-plugins:
+.. _fiftyone-plugins-docs:
 
 FiftyOne Plugins
 ================
