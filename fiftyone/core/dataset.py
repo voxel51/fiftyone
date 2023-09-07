@@ -53,11 +53,13 @@ foud = fou.lazy_import("fiftyone.utils.data")
 logger = logging.getLogger(__name__)
 
 
-def list_datasets(glob_patt=None, info=False):
+def list_datasets(glob_patt=None, tags=None, info=False):
     """Lists the available FiftyOne datasets.
 
     Args:
         glob_patt (None): an optional glob pattern of names to return
+        tags (None): only include datasets that have the specified tag or list
+            of tags
         info (False): whether to return info dicts describing each dataset
             rather than just their names
 
@@ -65,9 +67,9 @@ def list_datasets(glob_patt=None, info=False):
         a list of dataset names or info dicts
     """
     if info:
-        return _list_dataset_info(glob_patt=glob_patt)
+        return _list_dataset_info(glob_patt=glob_patt, tags=tags)
 
-    return _list_datasets(glob_patt=glob_patt)
+    return _list_datasets(glob_patt=glob_patt, tags=tags)
 
 
 def dataset_exists(name):
@@ -6593,7 +6595,7 @@ def _get_random_characters(n):
     )
 
 
-def _list_datasets(include_private=False, glob_patt=None):
+def _list_datasets(include_private=False, glob_patt=None, tags=None):
     conn = foo.get_db_conn()
 
     if include_private:
@@ -6606,16 +6608,21 @@ def _list_datasets(include_private=False, glob_patt=None):
     if glob_patt is not None:
         query["name"] = {"$regex": fnmatch.translate(glob_patt)}
 
+    if etau.is_str(tags):
+        query["tags"] = tags
+    elif tags is not None:
+        query["tags"] = {"$in": list(tags)}
+
     # We don't want an error here if `name == None`
     _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
 
     return _sort(conn.datasets.find(query).distinct("name"))
 
 
-def _list_dataset_info(include_private=False, glob_patt=None):
+def _list_dataset_info(include_private=False, glob_patt=None, tags=None):
     info = []
     for name in _list_datasets(
-        include_private=include_private, glob_patt=glob_patt
+        include_private=include_private, glob_patt=glob_patt, tags=tags
     ):
         try:
             dataset = Dataset(name, _create=False, _virtual=True)
