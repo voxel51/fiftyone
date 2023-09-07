@@ -1700,10 +1700,13 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
 
         return dirs
 
-    dirs = {os.path.dirname(p) for p in list_files(dirpath, recursive=True)}
-
-    if not recursive:
-        dirs = {d.split("/", 1)[0] for d in dirs}
+    if recursive:
+        filepaths = list_files(dirpath, recursive=True)
+        dirs = {os.path.dirname(p) for p in filepaths}
+    else:
+        client = get_client(path=dirpath)
+        dirs = client.list_subfolders(dirpath)
+        dirs = [os.path.relpath(d, dirpath) for d in dirs]
 
     dirs = sorted(d for d in dirs if d and not d.startswith("."))
 
