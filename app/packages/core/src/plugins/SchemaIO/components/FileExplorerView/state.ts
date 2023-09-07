@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useOperatorExecutor } from "@fiftyone/operators";
+import * as utils from "@fiftyone/utilities";
 
 export function useCurrentFiles(defaultPath) {
-  const [currentPath, setCurrentPath] = useState(defaultPath);
+  const [currentPath, _setCurrentPath] = useState(defaultPath);
   const executor = useOperatorExecutor("list_files");
   const currentFiles = executor.result?.files || [];
   const errorMessage = executor.error || executor.result?.error;
@@ -10,10 +11,24 @@ export function useCurrentFiles(defaultPath) {
   const refresh = () => {
     executor.execute({ path: currentPath });
   };
+  const setCurrentPath = (path) => {
+    if (path) _setCurrentPath(path);
+  };
+  const onUpDir = () => {
+    const parentPath = utils.resolveParent(currentPath);
+    if (parentPath) _setCurrentPath(parentPath);
+  };
 
   useEffect(refresh, [currentPath]);
 
-  return { setCurrentPath, refresh, currentFiles, currentPath, errorMessage };
+  return {
+    setCurrentPath,
+    refresh,
+    currentFiles,
+    currentPath,
+    errorMessage,
+    onUpDir,
+  };
 }
 
 export function useAvailableFileSystems() {

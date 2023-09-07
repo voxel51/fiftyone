@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { useCurrentFiles } from "./state";
 import { setSelected } from "@fiftyone/relay";
+import { getBasename, joinPaths } from "@fiftyone/utilities";
 
 const ModalContent = styled.div`
   max-width: 90vw;
@@ -24,14 +25,8 @@ const ModalContent = styled.div`
   margin: 2rem;
 `;
 
-function joinPaths(...paths) {
-  if (paths.length === 1) return paths[0];
-  return paths.join("/");
-}
-
 function getNameFromPath(path) {
-  const parts = path.split("/");
-  return parts[parts.length - 1];
+  return getBasename(path);
 }
 
 function useSelectedFile(currentPath, chooseMode) {
@@ -49,6 +44,7 @@ function useSelectedFile(currentPath, chooseMode) {
   const showChooseButton = canChooseDir || canChooseFile || unknownSelectedFile;
 
   const handleSelectFile = (file) => {
+    if (!file) return setSelectedFile(null);
     const allowed = file.type == chooseMode;
     if (allowed) setSelectedFile(file);
   };
@@ -65,13 +61,21 @@ export default function FileExplorer({
   chooseMode,
   onChoose,
 }) {
+  const [currentDirectory, setCurrentDirectory] = React.useState({
+    absolute_path: defaultPath,
+  });
   const [open, setOpen] = React.useState(false);
-  const { currentFiles, setCurrentPath, currentPath, refresh, errorMessage } =
-    useCurrentFiles(defaultPath);
+  const {
+    currentFiles,
+    setCurrentPath,
+    currentPath,
+    refresh,
+    errorMessage,
+    onUpDir,
+  } = useCurrentFiles(defaultPath);
   const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
     useSelectedFile(currentPath, chooseMode);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const customFilepathInputRef = React.useRef(null);
   const [chosenFile, setChosenFile] = React.useState(null);
 
   const handleClickOpen = (e) => {
@@ -83,15 +87,18 @@ export default function FileExplorer({
     setOpen(false);
   };
 
-  const handleOpen = () => {
-    if (customFilepathInputRef.current) {
-      customFilepathInputRef.current.value = "";
-    }
-    setCurrentPath(selectedFile.absolute_path);
+  const handleOpen = (overrideSelectedFile) => {
+    let targetFile = overrideSelectedFile || selectedFile;
+    setCurrentDirectory(targetFile);
+    setCurrentPath(targetFile.absolute_path);
+    handleSelectFile(null);
   };
 
   const onRelPathChange = (e) => {
     const provideFilepath = e.target.value;
+    if (!provideFilepath) {
+      return handleSelectFile(null);
+    }
     const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
     const matchingExistingFile = currentFiles.find(
       (f) => f.absolute_path === resolvedProvidedFilepath
@@ -113,7 +120,7 @@ export default function FileExplorer({
   const handleChoose = () => {
     setOpen(false);
     setChosenFile(selectedFile);
-    onChoose && onChoose(selectedFile);
+    onChoose && onChoose(selectedFile || currentDirectory);
   };
 
   return (
@@ -123,9 +130,8 @@ export default function FileExplorer({
           <TextField
             size="small"
             disabled={true}
-            key={chosenFile?.name}
             fullWidth
-            defaultValue={chosenFile?.absolute_path}
+            value={chosenFile?.absolute_path || ""}
           />
         )}
         {!chosenFile && (
@@ -163,6 +169,7 @@ export default function FileExplorer({
                   selectedFile={selectedFile}
                   onPathChange={(path) => setCurrentPath(path)}
                   onRefresh={refresh}
+                  onUpDir={onUpDir}
                   errorMessage={errorMessage}
                 />
               </Grid>
@@ -180,7 +187,7 @@ export default function FileExplorer({
                     files={currentFiles}
                     selectedFile={selectedFile}
                     onSelectFile={handleSelectFile}
-                    onOpenDir={(file) => setCurrentPath(file.absolute_path)}
+                    onOpenDir={handleOpen}
                     onChooseFile={handleChoose}
                   />
                 </Grid>
@@ -196,7 +203,7 @@ export default function FileExplorer({
                     variant="outlined"
                     size="small"
                     fullWidth
-                    value={selectedFile?.name}
+                    value={selectedFile?.name || ""}
                     onChange={onRelPathChange}
                   />
                   <Stack direction="row" spacing={2}>

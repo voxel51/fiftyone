@@ -16,6 +16,7 @@ function ExplorerActions({
   currentPath,
   onSidebarClick,
   onRefresh,
+  onUpDir,
   errorMessage,
 }) {
   return (
@@ -47,11 +48,7 @@ function ExplorerActions({
           ),
         }}
       />
-      <IconButton
-        onClick={() =>
-          onPathChange(currentPath.split("/").slice(0, -1).join("/"))
-        }
-      >
+      <IconButton onClick={onUpDir}>
         <ArrowUpwardIcon />
       </IconButton>
       <IconButton onClick={onRefresh}>
