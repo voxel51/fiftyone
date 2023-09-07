@@ -69,18 +69,23 @@ That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
 Teams App or their Python workflows.
 
-.. note::
-
-    If your datasets will include cloud-backed :ref:`point-cloud files <point-cloud-datasets>`
-    or :ref:`segmentation maps <semantic-segmentation>`, you may also need to configure 
-    cross-origin resource sharing (CORS) for your cloud buckets. Details are provided below
-    for each cloud platform.
-
 
 .. _teams-cloud-credentials:
 
 Cloud credentials and configuration
 -----------------
+
+
+.. _teams-cors:
+
+Cross-Origin Resource Sharing (CORS)
+_________
+
+If your datasets will include cloud-backed :ref:`point-cloud files <point-cloud-datasets>`
+or :ref:`segmentation maps <semantic-segmentation>`, you may also need to configure 
+cross-origin resource sharing (CORS) for your cloud buckets. Details are provided below
+for each cloud platform.
+
 
 .. _teams-amazon-s3:
 
