@@ -317,13 +317,25 @@ To delegate execution of an operator to an external orchestrator, the operator m
 
 When an operation is delegated, the following happens:
 
-1. The operation and all the context required to execute it is serialized and stored, with the run status set to `queued`
+1. The operation and all the context required to execute it is serialized and stored, with the run status set to `queued`.
 
-2. When an orchestrator is ready to execute the operation, it will pull the operation from the queue and execute it. The status will be set to `running`
+2. When an operation is executed, the status will be set to `running`.
 
-3. When the operation is complete, the orchestrator will update the status to `complete` and store the result
+3. When the operation is complete, the status will be updated to `complete` and result stored.
 
-4. If the execution fails, the status will be set to `failed` and the error will be stored
+4. If the execution fails, the status will be set to `failed` and the error will be stored.
+
+To execute the queued operations, you can run the following command:
+`fiftyone delegated launch`
+
+The environment executing the queued delegated operations must meet the following criteria:
+
+- The environment must have the plugins installed.
+
+- the environment must have the same version of fiftyone installed.
+
+- fiftyone must be configured to use the same database as the instance of fiftyone which queued the operation.
+
 
 
 .. _plugins-directory:
