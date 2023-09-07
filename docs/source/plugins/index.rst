@@ -10,7 +10,7 @@ FiftyOne provides a powerful plugin framework that allows for extending and cust
 .. note::
 
     Check out the
-    `fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_
+    `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can easily
     :ref:`download <plugins-download>` and use locally!
 
