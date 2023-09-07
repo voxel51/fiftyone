@@ -298,10 +298,14 @@ class ListFiles(foo.Operator):
         path = ctx.params.get("path", None)
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
+            # this should
             return {"filesystems": fos.list_available_file_systems()}
 
         if path:
-            return {"files": list_files(path)}
+            try:
+                return {"files": list_files(path)}
+            except Exception as e:
+                return {"files": [], "error": str(e)}
 
 
 def list_files(dirpath):

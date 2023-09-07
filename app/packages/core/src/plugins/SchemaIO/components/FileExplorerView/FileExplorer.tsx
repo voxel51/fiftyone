@@ -15,6 +15,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useCurrentFiles } from "./state";
+import { setSelected } from "@fiftyone/relay";
 
 const ModalContent = styled.div`
   max-width: 90vw;
@@ -23,16 +24,29 @@ const ModalContent = styled.div`
   margin: 2rem;
 `;
 
+function joinPaths(...paths) {
+  if (paths.length === 1) return paths[0];
+  return paths.join("/");
+}
+
+function getNameFromPath(path) {
+  const parts = path.split("/");
+  return parts[parts.length - 1];
+}
+
 function useSelectedFile(currentPath, chooseMode) {
   const [selectedFile, setSelectedFile] = React.useState(null);
   const fileIsSelected = selectedFile?.type === "file";
   const dirIsSelected = selectedFile?.type === "directory";
+  const unknownSelectedFile = selectedFile?.type === undefined;
   const showOpenButton =
     selectedFile?.type === "directory" &&
+    selectedFile?.absolute_path !== currentPath &&
+    selectedFile?.exists !== false &&
     currentPath !== selectedFile?.absolute_path;
   const canChooseDir = chooseMode === "directory" && dirIsSelected;
   const canChooseFile = chooseMode === "file" && fileIsSelected;
-  const showChooseButton = canChooseDir || canChooseFile;
+  const showChooseButton = canChooseDir || canChooseFile || unknownSelectedFile;
 
   const handleSelectFile = (file) => {
     const allowed = file.type == chooseMode;
@@ -52,12 +66,12 @@ export default function FileExplorer({
   onChoose,
 }) {
   const [open, setOpen] = React.useState(false);
-  const { currentFiles, setCurrentPath, currentPath, refresh } =
+  const { currentFiles, setCurrentPath, currentPath, refresh, errorMessage } =
     useCurrentFiles(defaultPath);
   const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
     useSelectedFile(currentPath, chooseMode);
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
-
+  const customFilepathInputRef = React.useRef(null);
   const [chosenFile, setChosenFile] = React.useState(null);
 
   const handleClickOpen = (e) => {
@@ -70,12 +84,36 @@ export default function FileExplorer({
   };
 
   const handleOpen = () => {
+    if (customFilepathInputRef.current) {
+      customFilepathInputRef.current.value = "";
+    }
     setCurrentPath(selectedFile.absolute_path);
   };
+
+  const onRelPathChange = (e) => {
+    const provideFilepath = e.target.value;
+    const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
+    const matchingExistingFile = currentFiles.find(
+      (f) => f.absolute_path === resolvedProvidedFilepath
+    );
+    let chosenFile = selectedFile;
+    if (matchingExistingFile) {
+      chosenFile = matchingExistingFile;
+    } else if (provideFilepath) {
+      chosenFile = {
+        absolute_path: resolvedProvidedFilepath,
+        name: getNameFromPath(resolvedProvidedFilepath),
+        exists: false,
+        type: chooseMode,
+      };
+    }
+    handleSelectFile(chosenFile);
+  };
+
   const handleChoose = () => {
     setOpen(false);
     setChosenFile(selectedFile);
-    onChoose(selectedFile);
+    onChoose && onChoose(selectedFile);
   };
 
   return (
@@ -86,7 +124,8 @@ export default function FileExplorer({
             size="small"
             disabled={true}
             key={chosenFile?.name}
-            defaultValue={chosenFile?.name}
+            fullWidth
+            defaultValue={chosenFile?.absolute_path}
           />
         )}
         {!chosenFile && (
@@ -124,6 +163,7 @@ export default function FileExplorer({
                   selectedFile={selectedFile}
                   onPathChange={(path) => setCurrentPath(path)}
                   onRefresh={refresh}
+                  errorMessage={errorMessage}
                 />
               </Grid>
               <Grid spacing={2} item container>
@@ -153,12 +193,11 @@ export default function FileExplorer({
                   style={{ width: "100%" }}
                 >
                   <TextField
-                    disabled={!!chooseMode}
-                    key={selectedFile ? selectedFile.name : undefined}
-                    defaultValue={selectedFile ? selectedFile.name : ""}
                     variant="outlined"
                     size="small"
                     fullWidth
+                    value={selectedFile?.name}
+                    onChange={onRelPathChange}
                   />
                   <Stack direction="row" spacing={2}>
                     <Button onClick={handleClose}>Cancel</Button>
