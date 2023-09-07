@@ -137,12 +137,12 @@ class FileSystem(object):
     LOCAL = "local"
 
 
-_FILE_SYSTEMS_WITH_BUCKETS = {
+_FILE_SYSTEMS_WITH_BUCKETS = [
     FileSystem.S3,
     FileSystem.GCS,
     FileSystem.AZURE,
     FileSystem.MINIO,
-}
+]
 _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
 _UNKNOWN_REGION = "unknown"
 
