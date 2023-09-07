@@ -22,7 +22,7 @@ import { useWarnings } from "./useWarnings";
 import { EmbeddingsPlot } from "./EmbeddingsPlot";
 import { usePlotSelection } from "./usePlotSelection";
 import { useResetPlotZoom } from "./useResetPlotZoom";
-import { Link, Box } from "@mui/material";
+import { Link } from "@mui/material";
 import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 
@@ -98,15 +98,14 @@ export default function Embeddings({ containerHeight, dimensions }) {
                 <PlotOption to={() => resetZoom()} title={"Reset zoom (Esc)"}>
                   <CenterFocusWeak />
                 </PlotOption>
-                <Box data-cy="embeddings-plot-option-lasso" display="flex">
-                  <PlotOption
-                    style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
-                    to={() => setDragMode("lasso")}
-                    title={"Select (s)"}
-                  >
-                    <HighlightAlt />
-                  </PlotOption>
-                </Box>
+                <PlotOption
+                  cy="embeddings-plot-option-lasso"
+                  style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
+                  to={() => setDragMode("lasso")}
+                  title={"Select (s)"}
+                >
+                  <HighlightAlt />
+                </PlotOption>
 
                 <PlotOption
                   style={{ opacity: dragMode !== "pan" ? 0.5 : 1 }}

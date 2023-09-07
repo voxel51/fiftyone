@@ -6,14 +6,18 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
-const test = base.extend<{ grid: GridPom; panel: PanelPom }>({
-  grid: async ({ page, eventUtils }, use) => {
+const test = base.extend<{
+  embeddings: EmbeddingsPom;
+  grid: GridPom;
+  panel: PanelPom;
+}>({
+  grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   panel: async ({ page }, use) => {
     await use(new PanelPom(page));
   },
-  embeddings: async ({ page, eventUtils }, use) => {
+  embeddings: async ({ eventUtils, page }, use) => {
     await use(new EmbeddingsPom(page, eventUtils));
   },
 });
@@ -37,18 +41,32 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
   );
 });
 
-test.beforeEach(async ({ page, fiftyoneLoader }) => {
+test.beforeEach(async ({ fiftyoneLoader, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test.describe("quickstart", () => {
-  test("embeddings panel opens", async ({ panel, embeddings }) => {
+  test("embeddings panel opens", async ({
+    embeddings,
+    panel,
+  }: {
+    embeddings: EmbeddingsPom;
+    panel: PanelPom;
+  }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifySelectorVisible();
+    await panel.close("Embeddings");
   });
 
-  test("lasso samples work", async ({ panel, embeddings }) => {
+  test("lasso samples work", async ({
+    embeddings,
+    panel,
+  }: {
+    embeddings: EmbeddingsPom;
+    panel: PanelPom;
+  }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifyLassoSelectsSamples();
+    await panel.close("Embeddings");
   });
 });

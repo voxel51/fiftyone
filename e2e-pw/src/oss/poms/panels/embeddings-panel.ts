@@ -9,25 +9,36 @@ export class EmbeddingsPom {
   readonly selector: SelectorPom;
   readonly colorbySelector: SelectorPom;
   readonly asserter: EmebddingsAsserter;
-  readonly pp: Locator;
   readonly lassoTool: Locator;
 
-  constructor(
-    private readonly page: Page,
-    private readonly eutils: EventUtils
-  ) {
-    this.pp = page;
+  constructor(readonly page: Page, eventUtils: EventUtils) {
     this.locator = this.page.getByTestId("embeddings-container");
-    this.selector = new SelectorPom(this.locator, eutils, "embeddings");
+    this.selector = new SelectorPom(this.locator, eventUtils, "embeddings");
     this.colorbySelector = new SelectorPom(
       this.locator,
-      eutils,
+      eventUtils,
       "embeddings-colorby"
     );
 
     this.plotContainer = this.page.getByTestId("embeddings-plot-container");
     this.asserter = new EmebddingsAsserter(this, new PanelPom(page));
     this.lassoTool = this.locator.getByTestId("embeddings-plot-option-lasso");
+  }
+
+  async selectAll() {
+    const { x, y, width, height } = await this.plotContainer.boundingBox();
+
+    const [x1, y1] = [x, y + 100];
+    const [x2, y2] = [x + width, y + 100];
+    const [x3, y3] = [x + width, y + height - 50];
+
+    await this.page.mouse.move(x1, y1);
+    await this.page.mouse.down();
+    await this.page.mouse.move(x2, y2);
+    await this.page.mouse.move(x3, y3);
+    await this.page.mouse.move(x1, y3);
+    await this.page.mouse.move(x1, y1);
+    await this.page.mouse.up();
   }
 }
 
@@ -54,22 +65,7 @@ class EmebddingsAsserter {
     });
 
     await this.emPom.lassoTool.click({ timeout: 500 });
-
-    const { x, y, width, height } =
-      await this.emPom.plotContainer.boundingBox();
-
-    const [x1, y1] = [x, y + 100];
-    const [x2, y2] = [x + width, y + 100];
-    const [x3, y3] = [x + width, y + height - 50];
-
-    await this.emPom.pp.mouse.move(x1, y1);
-    await this.emPom.pp.mouse.down();
-    await this.emPom.pp.mouse.move(x2, y2);
-    await this.emPom.pp.mouse.move(x3, y3);
-    await this.emPom.pp.mouse.move(x1, y3);
-    await this.emPom.pp.mouse.move(x1, y1);
-    await this.emPom.pp.mouse.up();
-
+    await this.emPom.selectAll();
     await expect(this.panelPom.selectionCount).toBeVisible({ timeout: 500 });
   }
 }
