@@ -72,7 +72,7 @@ Teams App or their Python workflows.
 
 .. _teams-cloud-credentials:
 
-Cloud credentials and configuration
+Cloud credentials
 -----------------
 
 
