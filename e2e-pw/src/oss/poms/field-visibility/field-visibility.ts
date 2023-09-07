@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { Locator, Page, expect } from "src/oss/fixtures";
 import { SidebarPom } from "../sidebar";
 
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];
@@ -58,8 +58,30 @@ export class FieldVisibilityPom {
     return this.sidebarLocator.getByTestId("field-visibility-icon");
   }
 
-  getFieldVisibilityToggleTooltip() {
+  get fieldVisibilityToggleTooltip() {
     return this.page.getByText("Change field visibility");
+  }
+
+  get clearBtn() {
+    return this.sidebarLocator.getByTestId("field-visibility-btn-clear");
+  }
+
+  get applyBtn() {
+    return this.containerLocator.getByTestId("field-visibility-btn-apply");
+  }
+
+  get resetBtn() {
+    return this.containerLocator.getByTestId("field-visibility-btn-reset");
+  }
+
+  get filterRuleContainer() {
+    return this.containerLocator.getByTestId("filter-rule-container");
+  }
+
+  get filterRuleInput() {
+    return this.containerLocator.getByTestId(
+      "filter-visibility-filter-rule-input"
+    );
   }
 
   getFieldCheckbox(name: string) {
@@ -68,16 +90,35 @@ export class FieldVisibilityPom {
       .getByRole("checkbox");
   }
 
+  getFieldVisibilityControl(label: string) {
+    return this.containerLocator.getByTestId(
+      `field-visibility-controls-${label}`
+    );
+  }
+
+  getControl(name: "select-all" | "show-metadata" | "show-nested-fields") {
+    return this.getFieldVisibilityControl(name);
+  }
+
+  getFieldInfoContainer(path: string) {
+    return this.containerLocator.getByTestId(
+      `schema-selection-info-container-${path}`
+    );
+  }
+
+  getTab(tabName: TabType) {
+    return this.containerLocator.getByTitle(tabName);
+  }
+
   async getSelectionFields(
     status: "checked" | "unchecked" | "all" = "checked",
     mode:
       | "parents-only"
       | "nested-only"
       | "all"
-      | "customFields" = "parents-only",
-    customFields?: string[]
+      | "customFields" = "parents-only"
   ) {
-    let paths = [];
+    let paths: string[] = [];
     switch (mode) {
       case "parents-only":
         paths = allParentPaths;
@@ -94,7 +135,7 @@ export class FieldVisibilityPom {
     }
 
     const checked = status === "checked";
-    const fields = [];
+    const fields: string[] = [];
 
     for (let i = 0; i < paths.length; i++) {
       const cc = this.getFieldCheckbox(paths[i]);
@@ -109,20 +150,6 @@ export class FieldVisibilityPom {
       }
     }
     return fields;
-  }
-
-  getFieldVisibilityBtn() {
-    return this.sidebarLocator.getByTestId("field-visibility-icon");
-  }
-
-  getFieldVisibilityControl(label: string) {
-    return this.containerLocator.getByTestId(
-      `field-visibility-controls-${label}`
-    );
-  }
-
-  getControl(name: "select-all" | "show-nested-fields" | "show-metadata") {
-    return this.getFieldVisibilityControl(name);
   }
 
   async toggleAllSelection() {
@@ -163,49 +190,17 @@ export class FieldVisibilityPom {
     await this.clearBtn.click();
   }
 
-  get clearBtn() {
-    return this.sidebarLocator.getByTestId("field-visibility-btn-clear");
-  }
-
-  get applyBtn() {
-    return this.modalContainer.getByTestId("field-visibility-btn-apply");
-  }
-
-  getFieldInfoContainer(path: string) {
-    return this.modalContainer().getByTestId(
-      `schema-selection-info-container-${path}`
-    );
-  }
-
-  getResetBtn() {
-    return this.modalContainer().getByTestId("field-visibility-btn-reset");
-  }
-
   async clickReset() {
-    return await this.getResetBtn().click();
-  }
-
-  getTab(tabName: TabType) {
-    return this.modalContainer().getByTitle(tabName);
+    return await this.resetBtn.click();
   }
 
   async openTab(tabName: TabType) {
     return await this.getTab(tabName).click();
   }
 
-  getFilterRuleContainer() {
-    return this.modalContainer().getByTestId("filter-rule-container");
-  }
-
-  getFilterRuleInput() {
-    return this.modalContainer().getByTestId(
-      "filter-visibility-filter-rule-input"
-    );
-  }
-
   async addFilterRuleInput(input: string) {
-    await this.getFilterRuleInput().type(input);
-    await this.getFilterRuleInput().press("Enter");
+    await this.filterRuleInput.type(input);
+    await this.filterRuleInput.press("Enter");
   }
 }
 
@@ -216,9 +211,8 @@ class FieldVisibilityAsserter {
   ) {}
 
   async fieldVisibilityIconHasTooltip() {
-    const visibilityIcon = this.fv.getFieldVisibilityBtn();
-    await visibilityIcon.hover();
-    await expect(this.fv.getFieldVisibilityToggleTooltip()).toBeVisible();
+    await this.fv.fieldVisibilityBtn.hover();
+    await expect(this.fv.fieldVisibilityToggleTooltip).toBeVisible();
   }
 
   async assertAllFieldsSelected() {
@@ -257,9 +251,7 @@ class FieldVisibilityAsserter {
   }
 
   async assertFilterRuleExamplesVisibile() {
-    const exampleContainer = this.fv.getFilterRuleContainer();
-    console.log("exampleContainer", exampleContainer);
-    await expect(exampleContainer).toBeVisible();
+    await expect(this.fv.filterRuleContainer).toBeVisible();
   }
 
   async assertDefaultParentPathsSelected() {
