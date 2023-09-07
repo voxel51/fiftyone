@@ -303,22 +303,28 @@ When running the fiftyone app server locally, the plugin server is executed as a
 
 As part of running the fiftyone app server (either locally or in the teams environment) a sub process is executed called the plugin server. This server is only accessible via ipc. Its interface (similar to JSON rpc) allows for functions to be called over inter process communication. This allows for user python code to be isolated from core code. It also allows for the operating system to manage the separate process as it exists in the same process tree as the root fiftyone, ipython, or even Jupyter process.
 
-Executing Brain methods and other long running functions
+Executing Brain methods via Long running task orchestration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Python operators typically use local execution for simple operations such as queries, tagging, mutating samples, annotation runs, short imports or exports. However for most interesting operations (computing similarity or mistakenness, computing visualizations), long running task orchestration is required. For this we recommend Apache Airflow, although similar tools can be used instead.
+Python operators typically use local execution for simple operations such as queries, tagging, mutating samples, annotation runs, short imports or exports. However for most interesting operations (computing similarity or mistakenness, computing visualizations), long running task orchestration is required. For this we recommend delegating the long running operations out to an orchestrator, like Apache Airflow. Similar tools can be used instead.
 
-A typical long running operation would look like this:
+To delegate execution of an operator to an external orchestrator, the operator must implement the `resolve_delegation` method.
 
-1. Operators are registered in the local execution environment
-2. Browser fetches description of all registered operators
-3. Browser requests execution of a long running operator
-4. Local execution environment executes the operator
-5. Operator makes API request to airflow or another data orchestration platform to schedule a long running task
-   a. Operator returns a unique identifier, that is used to reference this long running task
-6. Browser requests updates on status via an operator that in turn calls the airflow status API
-    a. Browser correlates the previous execution using unique identifier it stored earlier
-    b. Browser displays status of all relevant tasks
+.. code-block:: python
+  def resolve_delegation(self, ctx):
+      # the ctx can be used to decide if this operation should be delegated - the number of samples in the view, the number of samples selected, etc.
+      return True
+
+When an operation is delegated, the following happens:
+
+1. The operation and all the context required to execute it is serialized and stored, with the run status set to `queued`
+
+2. When an orchestrator is ready to execute the operation, it will pull the operation from the queue and execute it. The status will be set to `running`
+
+3. When the operation is complete, the orchestrator will update the status to `complete` and store the result
+
+4. If the execution fails, the status will be set to `failed` and the error will be stored
+
 
 .. _plugins-directory:
 
