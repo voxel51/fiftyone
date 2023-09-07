@@ -324,7 +324,7 @@ List FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets list [-h] [-p PATT]
+    fiftyone datasets list [-h] [-p PATT] [-t TAG [TAG ...]]
 
 **Arguments**
 
@@ -334,6 +334,8 @@ List FiftyOne datasets.
       -h, --help        show this help message and exit
       -p PATT, --glob-patt PATT
                         an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                        only show datasets with the given tag(s)
 
 **Examples**
 
@@ -342,8 +344,15 @@ List FiftyOne datasets.
     # List available datasets
     fiftyone datasets list
 
+.. code-block:: shell
+
     # List datasets matching a given pattern
     fiftyone datasets list --glob-patt 'quickstart-*'
+
+.. code-block:: shell
+
+    # List datasets with the given tag(s)
+    fiftyone datasets list --tags automotive healthcare
 
 .. _cli-fiftyone-datasets-info:
 
@@ -354,7 +363,7 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] [-p PATT] [-s FIELD] [-r] [NAME]
+    fiftyone datasets info [-h] [-p PATT] [-t TAG [TAG ...]] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
@@ -367,6 +376,8 @@ Print information about FiftyOne datasets.
       -h, --help            show this help message and exit
       -p PATT, --glob-patt PATT
                             an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                            only show datasets with the given tag(s)
       -s FIELD, --sort-by FIELD
                             a field to sort the dataset rows by
       -r, --reverse         whether to print the results in reverse order
@@ -378,6 +389,7 @@ Print information about FiftyOne datasets.
     # Print basic information about multiple datasets
     fiftyone datasets info
     fiftyone datasets info --glob-patt 'quickstart-*'
+    fiftyone datasets info --tags automotive healthcare
     fiftyone datasets info --sort-by created_at
     fiftyone datasets info --sort-by name --reverse
 
