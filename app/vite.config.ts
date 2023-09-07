@@ -21,4 +21,7 @@ export default defineConfig({
     },
   },
   plugins: [relay],
+  alias: {
+    path: "path-browserify",
+  },
 });
