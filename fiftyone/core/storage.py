@@ -33,6 +33,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import fiftyone.internal as fi
 import fiftyone.internal.credentials as fic
 
 foc = fou.lazy_import("fiftyone.core.cache")
@@ -231,9 +232,9 @@ def get_file_system(path):
     return FileSystem.LOCAL
 
 
-def get_available_file_systems():
-    """Returns the list of file systems that are currently available for use
-    with methods like :func:`list_files` and :func:`list_buckets`.
+def list_available_file_systems():
+    """Lists the file systems that are currently available for use with methods
+    like :func:`list_files` and :func:`list_buckets`.
 
     Returns:
         a list of :class:`FileSystem` values
@@ -247,7 +248,10 @@ def get_available_file_systems():
 
 
 def _get_available_file_systems():
-    file_systems = [FileSystem.LOCAL]
+    file_systems = []
+
+    if not fi.is_internal_service():
+        file_systems.append(FileSystem.LOCAL)
 
     for fs in _FILE_SYSTEMS_WITH_BUCKETS:
         try:
