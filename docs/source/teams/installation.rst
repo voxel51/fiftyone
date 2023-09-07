@@ -134,8 +134,8 @@ here is an example configuration:
         {
             "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
             "method": ["GET", "HEAD"],
-            "responseHeader": ["*"]
-            "maxAgeSeconds": 86400,
+            "responseHeader": ["*"],
+            "maxAgeSeconds": 86400
         }
     ] 
 
