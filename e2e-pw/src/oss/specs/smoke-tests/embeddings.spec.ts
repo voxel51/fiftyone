@@ -30,6 +30,7 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
         import fiftyone.brain as fob
         import numpy as np
 
+        np.random.seed(42)
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5, dataset_name="${datasetName}")
         dataset.persistent = True
 
@@ -45,7 +46,7 @@ test.beforeEach(async ({ fiftyoneLoader, page }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test.describe("quickstart", () => {
+test.describe("embeddings on quickstart dataset", () => {
   test("embeddings panel opens", async ({
     embeddings,
     panel,

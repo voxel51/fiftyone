@@ -44,28 +44,28 @@ export class EmbeddingsPom {
 
 class EmebddingsAsserter {
   constructor(
-    private readonly emPom: EmbeddingsPom,
+    private readonly embeddingsPom: EmbeddingsPom,
     private readonly panelPom: PanelPom
   ) {}
 
   async verifyPanelVisible() {
-    await expect(this.emPom.locator).toBeVisible();
+    await expect(this.embeddingsPom.locator).toBeVisible();
   }
 
   async verifySelectorVisible() {
-    await expect(this.emPom.selector.input).toBeVisible();
+    await expect(this.embeddingsPom.selector.input).toBeVisible();
   }
 
   async verifyLassoSelectsSamples() {
-    await this.emPom.selector.openResults();
-    await this.emPom.selector.selectResult("img_viz");
-    await this.emPom.plotContainer.waitFor({
+    await this.embeddingsPom.selector.openResults();
+    await this.embeddingsPom.selector.selectResult("img_viz");
+    await this.embeddingsPom.plotContainer.waitFor({
       state: "visible",
       timeout: 500,
     });
 
-    await this.emPom.lassoTool.click({ timeout: 500 });
-    await this.emPom.selectAll();
+    await this.embeddingsPom.lassoTool.click({ timeout: 500 });
+    await this.embeddingsPom.selectAll();
     await expect(this.panelPom.selectionCount).toBeVisible({ timeout: 500 });
   }
 }

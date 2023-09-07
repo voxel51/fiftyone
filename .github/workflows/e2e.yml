@@ -30,8 +30,7 @@ jobs:
 
       - name: Install requirements.txt
         run: |
-          pip install -r requirements/github.txt
-          pip install umap-learn
+          pip install -r requirements/e2e.txt
 
       - name: Cache Node Modules
         id: app-node-cache
