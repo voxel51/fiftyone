@@ -133,7 +133,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
   const handleOpen = (overrideSelectedFile) => {
     let targetFile = overrideSelectedFile || selectedFile;
     setCurrentDirectory(targetFile);
-    setCurrentPath(targetFile.absolute_path);
+    _setCurrentPath(targetFile.absolute_path);
     handleSelectFile(null);
   };
 
