@@ -31,17 +31,23 @@ export function useCurrentFiles(defaultPath) {
   };
 }
 
+function getFilesystemsFromList(filesystems) {
+  const azure = filesystems.find((fs) => fs.name.toLowerCase() === "azure");
+  const s3 = filesystems.find((fs) => fs.name.toLowerCase() === "s3");
+  const gcp = filesystems.find((fs) => fs.name.toLowerCase() === "gcp");
+  const minio = filesystems.find((fs) => fs.name.toLowerCase() === "minio");
+  const local = filesystems.find((fs) => fs.name.toLowerCase() === "local");
+  return { azure, s3, gcp, minio, local };
+}
+
 export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
   const filesystems = executor.result?.filesystems || [];
   const available = filesystems.length > 0;
   const names = new Set(filesystems.map((fs) => fs.name.toLowerCase()));
   const hasAzure = names.has("azure");
-  const hasS3 = names.has("s3");
-  const hasGCP = names.has("gcp");
-  const hasMinIO = names.has("minio");
-  const hasLocal = names.has("local");
-  const hasCloud = hasAzure || hasS3 || hasGCP || hasMinIO;
+  const { azure, s3, gcp, minio, local } = getFilesystemsFromList(filesystems);
+  const hasCloud = azure || s3 || gcp || minio;
   const defaultFilesystem = filesystems[0];
   const defaultPath = defaultFilesystem?.default_path;
   const defaultFile = defaultPath ? { absolute_path: defaultPath } : null;
@@ -62,11 +68,11 @@ export function useAvailableFileSystems() {
     available,
     defaultFile,
     hasCloud,
-    hasAzure,
-    hasS3,
-    hasGCP,
-    hasMinIO,
-    hasLocal,
+    azure,
+    s3,
+    gcp,
+    minio,
+    local,
   };
 }
 
@@ -104,7 +110,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
   const [open, setOpen] = React.useState(false);
   const {
     currentFiles,
-    setCurrentPath,
+    setCurrentPath: _setCurrentPath,
     currentPath,
     refresh,
     errorMessage,
@@ -169,7 +175,10 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     currentDirectory,
     setCurrentDirectory,
     currentFiles,
-    setCurrentPath,
+    setCurrentPath(path) {
+      _setCurrentPath(path);
+      setSidebarOpen(false);
+    },
     currentPath,
     refresh,
     errorMessage,

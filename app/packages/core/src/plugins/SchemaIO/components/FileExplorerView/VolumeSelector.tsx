@@ -19,31 +19,43 @@ export default function VolumeSelector({ onOpenPath }) {
           Clouds
         </Typography>
       )}
-      {fs.hasAzure && (
+      {fs.azure && (
         <VolumeChoice
           onOpen={onOpenPath}
           label="Azure"
+          path={fs.azure.default_path}
           Icon={icons.AzureIcon}
         />
       )}
-      {fs.hasS3 && (
-        <VolumeChoice onOpen={onOpenPath} label="S3" Icon={icons.AWSIcon} />
+      {fs.s3 && (
+        <VolumeChoice
+          onOpen={onOpenPath}
+          path={fs.s3.default_path}
+          label="S3"
+          Icon={icons.AWSIcon}
+        />
       )}
       {fs.hasGCP && (
-        <VolumeChoice onOpen={onOpenPath} label="GCP" Icon={icons.GCPIcon} />
+        <VolumeChoice
+          onOpen={onOpenPath}
+          path={fs.gcp.default_path}
+          label="GCP"
+          Icon={icons.GCPIcon}
+        />
       )}
       {fs.hasMinIO && (
         <VolumeChoice
           onOpen={onOpenPath}
           label="MinIO"
+          path={fs.minio.default_path}
           Icon={icons.MinIOIcon}
         />
       )}
-      {fs.hasLocal && <Typography variant="overline">Local</Typography>}
-      {fs.hasLocal && (
+      {fs.local && <Typography variant="overline">Local</Typography>}
+      {fs.local && (
         <VolumeChoice
           onOpen={onOpenPath}
-          path="/"
+          path={fs.local.default_path}
           label="Local"
           Icon={FolderIcon}
         />
