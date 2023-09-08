@@ -162,8 +162,9 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
 
   const handleChoose = () => {
     setOpen(false);
-    setChosenFile(selectedFile);
-    onChoose && onChoose(selectedFile || currentDirectory);
+    let file = selectedFile || currentDirectory;
+    setChosenFile(file);
+    onChoose && onChoose(file);
   };
 
   return {
@@ -175,6 +176,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     currentDirectory,
     setCurrentDirectory,
     currentFiles,
+    setChosenFile,
     setCurrentPath(path) {
       _setCurrentPath(path);
       setSidebarOpen(false);

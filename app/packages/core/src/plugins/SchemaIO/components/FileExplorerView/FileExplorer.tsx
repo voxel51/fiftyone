@@ -47,6 +47,7 @@ export default function FileExplorer({
     currentDirectory,
     setCurrentDirectory,
     currentFiles,
+    setChosenFile,
     setCurrentPath,
     currentPath,
     refresh,
