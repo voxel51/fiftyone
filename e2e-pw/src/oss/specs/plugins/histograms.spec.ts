@@ -45,8 +45,11 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test("histograms panel", async ({ histogram, panel }) => {
   await panel.open("Histograms");
+  await histogram.assert.isLoaded();
+
   await histogram.assert.verifyField("bool");
 
+  await histogram.selector.openResults();
   await histogram.assert.verifyFields([
     "bool",
     "classification.confidence",
@@ -70,11 +73,10 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
-
-  await histogram.assert.isLoaded();
   await expect(await histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });
+
   await histogram.selectField("float");
   await expect(await histogram.locator).toHaveScreenshot(
     "float-histogram.png",

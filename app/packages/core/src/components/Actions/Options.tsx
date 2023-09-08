@@ -1,4 +1,3 @@
-import { Autorenew } from "@mui/icons-material";
 import React, { MutableRefObject } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 
@@ -125,16 +124,15 @@ const SidebarMode = ({ modal }) => {
 
 type OptionsProps = {
   modal: boolean;
-  bounds: [number, number];
-  anchorRef: MutableRefObject<unknown>;
+  anchorRef: MutableRefObject<HTMLElement>;
 };
 
-const Options = ({ modal, bounds, anchorRef }: OptionsProps) => {
+const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
 
   return (
-    <Popout modal={modal} bounds={bounds} fixed anchorRef={anchorRef}>
+    <Popout modal={modal} fixed anchorRef={anchorRef}>
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
