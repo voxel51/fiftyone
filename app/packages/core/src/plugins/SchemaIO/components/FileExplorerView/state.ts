@@ -4,7 +4,7 @@ import * as utils from "@fiftyone/utilities";
 import { set } from "lodash";
 
 const LIST_FILES = "list_files";
-const DEFAULT_LIMIT = 100;
+const DEFAULT_LIMIT = 1000;
 
 function limitFiles(currentFiles, limit) {
   const files = currentFiles.filter((f) => f.type === "file");
