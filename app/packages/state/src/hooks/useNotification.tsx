@@ -10,7 +10,6 @@ export default function useNotification(): (
 ) => void {
   return (options: NotificationOption) => {
     const { msg } = options;
-    closeSnackbar();
     enqueueSnackbar({
       key: msg,
       message: msg,
