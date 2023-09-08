@@ -1,13 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { snapshot_UNSTABLE } from "../../../../__mocks__/recoil";
-import * as ss from "./schemaSettings.atoms";
 import { selectedMediaField, selectedMediaFieldAtomFamily } from "./options";
-import { fieldSchema } from "./schema";
-import { State } from "./types";
 import { dataset } from "./atoms";
-// import { FIELDS } from "../hooks/useSchemaSettings.utils.test";
 
-const NON_EXISTENT_PATH = "non-existent-path";
 const testDataset = {
   sampleFields: [
     {
