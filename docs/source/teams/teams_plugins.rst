@@ -352,7 +352,7 @@ To set up Airflow as an Orchestrator to run delegated operations, you will need 
 
 - Ensure Python is installed
 
-- Install Apache Airflow // @todo: add link
+- Install `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_ on the VM
 
 - Install the same version of FiftyOne as the instance of FiftyOne which queued the operation
 
@@ -371,7 +371,8 @@ To set up Airflow as an Orchestrator to run delegated operations, you will need 
 
 .. note:: Ensure that the plugins are available to the Orchestrator, either by installing them on the same machine or by making them available via a shared filesystem
 
-- Install the FiftyOne Airflow DAG // todo: link this
+- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator. The airflow dag folder path can be found at `/home/<user>/airflow/dags` on the Orchestrator.
+
 
 Teams UI
 --------
