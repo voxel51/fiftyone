@@ -15,6 +15,7 @@ export const selectedMediaField = selectorFamily<string, boolean>({
     ({ get }) => {
       const value = get(selectedMediaFieldAtomFamily(modal));
 
+      const res = get(fieldSchema({ space: State.SPACE.SAMPLE }));
       const selectedFields = Object.keys(
         get(fieldSchema({ space: State.SPACE.SAMPLE }))
       );
