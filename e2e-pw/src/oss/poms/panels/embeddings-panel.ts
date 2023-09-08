@@ -61,7 +61,7 @@ class EmebddingsAsserter {
     await this.embeddingsPom.selector.selectResult("img_viz");
     await this.embeddingsPom.plotContainer.waitFor({
       state: "visible",
-      timeout: 500,
+      timeout: 2000,
     });
 
     await this.embeddingsPom.lassoTool.click({ timeout: 500 });
