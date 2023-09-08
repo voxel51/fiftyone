@@ -326,7 +326,10 @@ When an operation is delegated, the following happens:
 4. If the execution fails, the status will be set to `failed` and the error will be stored.
 
 To execute the queued operations, you can run the following command:
+
 `fiftyone delegated launch`
+
+see :ref:`fiftyone delegated operations <cli-fiftyone-operators>` for more delegated operation cli commands.
 
 The environment executing the queued delegated operations must meet the following criteria:
 
@@ -1102,7 +1105,7 @@ In a FiftyOne plugin this same query can be performed using the
         });
         const availableFields = findAvailableFields(dataset.sampleFields);
         const [selectedField, setField] = React.useState(availableFields[0]);
-
+:ref:`fiftyone operators <cli-fiftyone-operators>`
         React.useEffect(() => {
             aggregate([
                 new foa.aggregations.Values({
