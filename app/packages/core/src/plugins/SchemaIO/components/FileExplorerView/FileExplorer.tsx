@@ -33,6 +33,7 @@ export default function FileExplorer({
   fsInfo,
 }) {
   const {
+    clear,
     open,
     handleClickOpen,
     handleClose,
@@ -75,7 +76,7 @@ export default function FileExplorer({
               endAdornment: (
                 <IconButton
                   onClick={(e) => {
-                    setChosenFile(null);
+                    clear();
                     e.stopPropagation();
                   }}
                   title="Clear"

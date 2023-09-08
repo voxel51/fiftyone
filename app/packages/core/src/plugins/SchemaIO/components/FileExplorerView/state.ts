@@ -163,7 +163,14 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     onChoose && onChoose(file);
   };
 
+  const clear = () => {
+    setChosenFile(null);
+    setOpen(false);
+    onChoose && onChoose(null);
+  };
+
   return {
+    clear,
     open,
     handleClickOpen,
     handleClose,
