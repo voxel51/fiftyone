@@ -5,9 +5,30 @@ import {
   datasetAppConfig,
   isVideoDataset,
 } from "./selectors";
+import { fieldSchema } from "./schema";
+import { State } from "./types";
 
-export const selectedMediaField = atomFamily<string, boolean>({
+export const selectedMediaField = selectorFamily<string, boolean>({
   key: "selectedMediaField",
+  get:
+    (modal) =>
+    ({ get }) => {
+      const value = get(selectedMediaFieldAtomFamily(modal));
+
+      const selectedFields = Object.keys(
+        get(fieldSchema({ space: State.SPACE.SAMPLE }))
+      );
+
+      return selectedFields.includes(value) ? value : "filepath";
+    },
+  set:
+    (modal) =>
+    ({ set }, value) =>
+      set(selectedMediaFieldAtomFamily(modal), value),
+});
+
+export const selectedMediaFieldAtomFamily = atomFamily<string, boolean>({
+  key: "selectedMediaFieldAtomFamily",
   default: "filepath",
 });
 
