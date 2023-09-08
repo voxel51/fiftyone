@@ -1,9 +1,11 @@
+import React from "react";
 import FileExplorer from "./FileExplorer";
 import FieldWrapper from "../FieldWrapper";
 import { useAvailableFileSystems } from "./state";
+import { CircularProgress } from "@mui/material";
 
 export default function FileExplorerView(props) {
-  const { schema, data, onChange } = props;
+  const { schema, onChange } = props;
   const { view = {} } = schema;
   const { label, description, button_label, choose_button_label } = view;
   const chooseMode = view.choose_dir ? "directory" : "file";
@@ -14,20 +16,18 @@ export default function FileExplorerView(props) {
 
   const fsInfo = useAvailableFileSystems();
 
-  console.log(fsInfo);
+  if (!fsInfo.ready) {
+    return (
+      <FieldWrapper {...props}>
+        <CircularProgress size={16} />
+      </FieldWrapper>
+    );
+  }
 
   if (fsInfo.available === false) {
     return (
       <FieldWrapper {...props}>
         <p>File system not available</p>
-      </FieldWrapper>
-    );
-  }
-
-  if (!fsInfo.ready) {
-    return (
-      <FieldWrapper {...props}>
-        <p>Loading...</p>
       </FieldWrapper>
     );
   }

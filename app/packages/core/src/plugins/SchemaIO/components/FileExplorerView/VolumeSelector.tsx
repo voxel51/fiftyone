@@ -1,4 +1,4 @@
-import { Grid, Typography, Box } from "@mui/material";
+import { Grid, Typography, Box, CircularProgress, Stack } from "@mui/material";
 import React from "react";
 import * as icons from "./icons/index";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -8,17 +8,13 @@ export default function VolumeSelector({ onOpenPath }) {
   const fs = useAvailableFileSystems();
 
   return (
-    <Box
-      sx={{
-        backgroundColor: (theme) => theme.palette.background.level2,
-        textAlign: "center",
-      }}
-    >
-      {fs.hasCloud && (
-        <Typography onOpen={onOpenPath} variant="overline">
-          Clouds
-        </Typography>
+    <Box sx={{ minWidth: 36, textAlign: "center" }}>
+      {!fs.ready && (
+        <Box pt={2} textAlign="center">
+          <CircularProgress size={16} />
+        </Box>
       )}
+      {fs.hasCloud && <Typography variant="overline">Clouds</Typography>}
       {fs.azure && (
         <VolumeChoice
           onOpen={onOpenPath}
@@ -75,9 +71,10 @@ const VolumeChoice = ({ label, onOpen, path, Icon }) => (
       }}
       onClick={() => onOpen(path)}
     >
-      <div>
+      <Stack alignItems="center">
+        <Typography variant="overline">{label}</Typography>
         <Icon size={36} />
-      </div>
+      </Stack>
     </div>
   </Grid>
 );

@@ -28,6 +28,7 @@ export function useCurrentFiles(defaultPath) {
     currentPath,
     errorMessage,
     onUpDir,
+    loading: executor.isExecuting,
   };
 }
 
@@ -44,8 +45,6 @@ export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
   const filesystems = executor.result?.filesystems || [];
   const available = filesystems.length > 0;
-  const names = new Set(filesystems.map((fs) => fs.name.toLowerCase()));
-  const hasAzure = names.has("azure");
   const { azure, s3, gcp, minio, local } = getFilesystemsFromList(filesystems);
   const hasCloud = azure || s3 || gcp || minio;
   const defaultFilesystem = filesystems[0];
@@ -77,37 +76,28 @@ export function useAvailableFileSystems() {
 }
 
 function getNameFromPath(path) {
-  return getBasename(path);
+  return utils.getBasename(path);
 }
 
 export function useSelectedFile(currentPath, chooseMode) {
-  const [selectedFile, setSelectedFile] = React.useState(null);
-  const fileIsSelected = selectedFile?.type === "file";
-  const dirIsSelected = selectedFile?.type === "directory";
-  const unknownSelectedFile = selectedFile?.type === undefined;
+  const [selectedFile, setSelectedFile] = useState(null);
   const showOpenButton =
     selectedFile?.type === "directory" &&
     selectedFile?.absolute_path !== currentPath &&
     selectedFile?.exists !== false &&
     currentPath !== selectedFile?.absolute_path;
-  const canChooseDir = chooseMode === "directory" && dirIsSelected;
-  const canChooseFile = chooseMode === "file" && fileIsSelected;
-  const showChooseButton = canChooseDir || canChooseFile || unknownSelectedFile;
 
   const handleSelectFile = (file) => {
     if (!file) return setSelectedFile(null);
-    const allowed = file.type == chooseMode;
-    if (allowed) setSelectedFile(file);
+    setSelectedFile(file);
   };
 
-  return { selectedFile, handleSelectFile, showOpenButton, showChooseButton };
+  return { selectedFile, handleSelectFile, showOpenButton };
 }
 
 export function useFileExplorer(fsInfo, chooseMode, onChoose) {
-  const [currentDirectory, setCurrentDirectory] = React.useState(
-    fsInfo.defaultFile
-  );
-  const [open, setOpen] = React.useState(false);
+  const [currentDirectory, setCurrentDirectory] = useState(fsInfo.defaultFile);
+  const [open, setOpen] = useState(false);
   const {
     currentFiles,
     setCurrentPath: _setCurrentPath,
@@ -115,11 +105,14 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     refresh,
     errorMessage,
     onUpDir,
+    loading,
   } = useCurrentFiles(fsInfo.defaultFile?.absolute_path);
-  const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
-    useSelectedFile(currentPath, chooseMode);
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [chosenFile, setChosenFile] = React.useState(null);
+  const { selectedFile, handleSelectFile, showOpenButton } = useSelectedFile(
+    currentPath,
+    chooseMode
+  );
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chosenFile, setChosenFile] = useState(null);
 
   const handleClickOpen = (e) => {
     setOpen(true);
@@ -130,8 +123,8 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     setOpen(false);
   };
 
-  const handleOpen = (overrideSelectedFile) => {
-    let targetFile = overrideSelectedFile || selectedFile;
+  const handleOpen = (overrideSelectedFile?) => {
+    const targetFile = overrideSelectedFile || selectedFile;
     setCurrentDirectory(targetFile);
     _setCurrentPath(targetFile.absolute_path);
     handleSelectFile(null);
@@ -142,7 +135,10 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     if (!provideFilepath) {
       return handleSelectFile(null);
     }
-    const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
+    const resolvedProvidedFilepath = utils.joinPaths(
+      currentPath,
+      provideFilepath
+    );
     const matchingExistingFile = currentFiles.find(
       (f) => f.absolute_path === resolvedProvidedFilepath
     );
@@ -162,7 +158,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
 
   const handleChoose = () => {
     setOpen(false);
-    let file = selectedFile || currentDirectory;
+    const file = selectedFile || currentDirectory;
     setChosenFile(file);
     onChoose && onChoose(file);
   };
@@ -187,11 +183,11 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     onUpDir,
     handleSelectFile,
     selectedFile,
-    showChooseButton,
     showOpenButton,
     onRelPathChange,
     sidebarOpen,
     setSidebarOpen,
     chosenFile,
+    loading,
   };
 }
