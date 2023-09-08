@@ -1,16 +1,36 @@
 import FileExplorer from "./FileExplorer";
 import FieldWrapper from "../FieldWrapper";
+import { useAvailableFileSystems } from "./state";
 
 export default function FileExplorerView(props) {
   const { schema, data, onChange } = props;
   const { view = {} } = schema;
-  const { label, description, button_label, choose_button_label, defaultPath } =
-    view;
+  const { label, description, button_label, choose_button_label } = view;
   const chooseMode = view.choose_dir ? "directory" : "file";
 
   const handleChoose = (selectedFile) => {
     onChange(props.path, selectedFile);
   };
+
+  const fsInfo = useAvailableFileSystems();
+
+  console.log(fsInfo);
+
+  if (fsInfo.available === false) {
+    return (
+      <FieldWrapper {...props}>
+        <p>File system not available</p>
+      </FieldWrapper>
+    );
+  }
+
+  if (!fsInfo.ready) {
+    return (
+      <FieldWrapper {...props}>
+        <p>Loading...</p>
+      </FieldWrapper>
+    );
+  }
 
   return (
     <FieldWrapper {...props}>
@@ -19,9 +39,9 @@ export default function FileExplorerView(props) {
         description={description}
         buttonLabel={button_label}
         chooseButtonLabel={choose_button_label}
-        defaultPath={defaultPath}
         chooseMode={chooseMode}
         onChoose={handleChoose}
+        fsInfo={fsInfo}
       />
     </FieldWrapper>
   );

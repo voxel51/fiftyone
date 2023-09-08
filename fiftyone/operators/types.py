@@ -1385,8 +1385,7 @@ class FileExplorerView(View):
         file_explorer = types.FileExplorerView(
             choose_dir=True,
             button_label="Choose a directory...",
-            choose_button_label="Accept",
-            default_path=os.environ.get("HOME"),
+            choose_button_label="Accept"
         )
 
         # Define a types.File property
@@ -1403,13 +1402,6 @@ class FileExplorerView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.default_path = kwargs.get("default_path", "/")
-
-    def to_json(self):
-        return {
-            **super().to_json(),
-            "defaultPath": self.default_path,
-        }
 
 
 class PromptView(View):

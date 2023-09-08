@@ -33,14 +33,18 @@ export function useCurrentFiles(defaultPath) {
 
 export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
-  const raw = executor.result?.filesystems || [];
-  const filesystems = new Set(raw.map((name) => name.toLowerCase()));
-  const hasAzure = filesystems.has("azure");
-  const hasS3 = filesystems.has("s3");
-  const hasGCP = filesystems.has("gcp");
-  const hasMinIO = filesystems.has("minio");
-  const hasLocal = filesystems.has("local");
+  const filesystems = executor.result?.filesystems || [];
+  const available = filesystems.length > 0;
+  const names = new Set(filesystems.map((fs) => fs.name.toLowerCase()));
+  const hasAzure = names.has("azure");
+  const hasS3 = names.has("s3");
+  const hasGCP = names.has("gcp");
+  const hasMinIO = names.has("minio");
+  const hasLocal = names.has("local");
   const hasCloud = hasAzure || hasS3 || hasGCP || hasMinIO;
+  const defaultFilesystem = filesystems[0];
+  const defaultPath = defaultFilesystem?.default_path;
+  const defaultFile = defaultPath ? { absolute_path: defaultPath } : null;
   const refresh = () => {
     executor.execute({ list_filesystems: true });
   };
@@ -51,5 +55,132 @@ export function useAvailableFileSystems() {
     throw executor.error;
   }
 
-  return { refresh, hasCloud, hasAzure, hasS3, hasGCP, hasMinIO, hasLocal };
+  return {
+    ready: executor.hasResultOrError,
+    refresh,
+    filesystems,
+    available,
+    defaultFile,
+    hasCloud,
+    hasAzure,
+    hasS3,
+    hasGCP,
+    hasMinIO,
+    hasLocal,
+  };
+}
+
+function getNameFromPath(path) {
+  return getBasename(path);
+}
+
+export function useSelectedFile(currentPath, chooseMode) {
+  const [selectedFile, setSelectedFile] = React.useState(null);
+  const fileIsSelected = selectedFile?.type === "file";
+  const dirIsSelected = selectedFile?.type === "directory";
+  const unknownSelectedFile = selectedFile?.type === undefined;
+  const showOpenButton =
+    selectedFile?.type === "directory" &&
+    selectedFile?.absolute_path !== currentPath &&
+    selectedFile?.exists !== false &&
+    currentPath !== selectedFile?.absolute_path;
+  const canChooseDir = chooseMode === "directory" && dirIsSelected;
+  const canChooseFile = chooseMode === "file" && fileIsSelected;
+  const showChooseButton = canChooseDir || canChooseFile || unknownSelectedFile;
+
+  const handleSelectFile = (file) => {
+    if (!file) return setSelectedFile(null);
+    const allowed = file.type == chooseMode;
+    if (allowed) setSelectedFile(file);
+  };
+
+  return { selectedFile, handleSelectFile, showOpenButton, showChooseButton };
+}
+
+export function useFileExplorer(fsInfo, chooseMode, onChoose) {
+  const [currentDirectory, setCurrentDirectory] = React.useState(
+    fsInfo.defaultFile
+  );
+  const [open, setOpen] = React.useState(false);
+  const {
+    currentFiles,
+    setCurrentPath,
+    currentPath,
+    refresh,
+    errorMessage,
+    onUpDir,
+  } = useCurrentFiles(fsInfo.defaultFile?.absolute_path);
+  const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
+    useSelectedFile(currentPath, chooseMode);
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [chosenFile, setChosenFile] = React.useState(null);
+
+  const handleClickOpen = (e) => {
+    setOpen(true);
+    e.preventDefault();
+  };
+
+  const handleClose = () => {
+    setOpen(false);
+  };
+
+  const handleOpen = (overrideSelectedFile) => {
+    let targetFile = overrideSelectedFile || selectedFile;
+    setCurrentDirectory(targetFile);
+    setCurrentPath(targetFile.absolute_path);
+    handleSelectFile(null);
+  };
+
+  const onRelPathChange = (e) => {
+    const provideFilepath = e.target.value;
+    if (!provideFilepath) {
+      return handleSelectFile(null);
+    }
+    const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
+    const matchingExistingFile = currentFiles.find(
+      (f) => f.absolute_path === resolvedProvidedFilepath
+    );
+    let chosenFile = selectedFile;
+    if (matchingExistingFile) {
+      chosenFile = matchingExistingFile;
+    } else if (provideFilepath) {
+      chosenFile = {
+        absolute_path: resolvedProvidedFilepath,
+        name: getNameFromPath(resolvedProvidedFilepath),
+        exists: false,
+        type: chooseMode,
+      };
+    }
+    handleSelectFile(chosenFile);
+  };
+
+  const handleChoose = () => {
+    setOpen(false);
+    setChosenFile(selectedFile);
+    onChoose && onChoose(selectedFile || currentDirectory);
+  };
+
+  return {
+    open,
+    handleClickOpen,
+    handleClose,
+    handleOpen,
+    handleChoose,
+    currentDirectory,
+    setCurrentDirectory,
+    currentFiles,
+    setCurrentPath,
+    currentPath,
+    refresh,
+    errorMessage,
+    onUpDir,
+    handleSelectFile,
+    selectedFile,
+    showChooseButton,
+    showOpenButton,
+    onRelPathChange,
+    sidebarOpen,
+    setSidebarOpen,
+    chosenFile,
+  };
 }

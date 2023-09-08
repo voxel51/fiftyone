@@ -14,7 +14,11 @@ import {
   Stack,
   TextField,
 } from "@mui/material";
-import { useCurrentFiles } from "./state";
+import {
+  useAvailableFileSystems,
+  useCurrentFiles,
+  useFileExplorer,
+} from "./state";
 import { setSelected } from "@fiftyone/relay";
 import { getBasename, joinPaths } from "@fiftyone/utilities";
 
@@ -25,103 +29,40 @@ const ModalContent = styled.div`
   margin: 2rem;
 `;
 
-function getNameFromPath(path) {
-  return getBasename(path);
-}
-
-function useSelectedFile(currentPath, chooseMode) {
-  const [selectedFile, setSelectedFile] = React.useState(null);
-  const fileIsSelected = selectedFile?.type === "file";
-  const dirIsSelected = selectedFile?.type === "directory";
-  const unknownSelectedFile = selectedFile?.type === undefined;
-  const showOpenButton =
-    selectedFile?.type === "directory" &&
-    selectedFile?.absolute_path !== currentPath &&
-    selectedFile?.exists !== false &&
-    currentPath !== selectedFile?.absolute_path;
-  const canChooseDir = chooseMode === "directory" && dirIsSelected;
-  const canChooseFile = chooseMode === "file" && fileIsSelected;
-  const showChooseButton = canChooseDir || canChooseFile || unknownSelectedFile;
-
-  const handleSelectFile = (file) => {
-    if (!file) return setSelectedFile(null);
-    const allowed = file.type == chooseMode;
-    if (allowed) setSelectedFile(file);
-  };
-
-  return { selectedFile, handleSelectFile, showOpenButton, showChooseButton };
-}
-
 export default function FileExplorer({
   label,
   description,
   chooseButtonLabel,
   buttonLabel,
-  defaultPath,
   chooseMode,
   onChoose,
+  fsInfo,
 }) {
-  const [currentDirectory, setCurrentDirectory] = React.useState({
-    absolute_path: defaultPath,
-  });
-  const [open, setOpen] = React.useState(false);
   const {
+    open,
+    handleClickOpen,
+    handleClose,
+    handleOpen,
+    handleChoose,
+    currentDirectory,
+    setCurrentDirectory,
     currentFiles,
     setCurrentPath,
     currentPath,
     refresh,
     errorMessage,
     onUpDir,
-  } = useCurrentFiles(defaultPath);
-  const { selectedFile, handleSelectFile, showChooseButton, showOpenButton } =
-    useSelectedFile(currentPath, chooseMode);
-  const [sidebarOpen, setSidebarOpen] = React.useState(false);
-  const [chosenFile, setChosenFile] = React.useState(null);
+    handleSelectFile,
+    selectedFile,
+    showChooseButton,
+    showOpenButton,
+    onRelPathChange,
+    sidebarOpen,
+    setSidebarOpen,
+    chosenFile,
+  } = useFileExplorer(fsInfo, chooseMode, onChoose);
 
-  const handleClickOpen = (e) => {
-    setOpen(true);
-    e.preventDefault();
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const handleOpen = (overrideSelectedFile) => {
-    let targetFile = overrideSelectedFile || selectedFile;
-    setCurrentDirectory(targetFile);
-    setCurrentPath(targetFile.absolute_path);
-    handleSelectFile(null);
-  };
-
-  const onRelPathChange = (e) => {
-    const provideFilepath = e.target.value;
-    if (!provideFilepath) {
-      return handleSelectFile(null);
-    }
-    const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
-    const matchingExistingFile = currentFiles.find(
-      (f) => f.absolute_path === resolvedProvidedFilepath
-    );
-    let chosenFile = selectedFile;
-    if (matchingExistingFile) {
-      chosenFile = matchingExistingFile;
-    } else if (provideFilepath) {
-      chosenFile = {
-        absolute_path: resolvedProvidedFilepath,
-        name: getNameFromPath(resolvedProvidedFilepath),
-        exists: false,
-        type: chooseMode,
-      };
-    }
-    handleSelectFile(chosenFile);
-  };
-
-  const handleChoose = () => {
-    setOpen(false);
-    setChosenFile(selectedFile);
-    onChoose && onChoose(selectedFile || currentDirectory);
-  };
+  console.log({ fsInfo });
 
   return (
     <div>

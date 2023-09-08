@@ -7,6 +7,7 @@ File storage utilities.
 """
 from contextlib import contextmanager
 from datetime import datetime
+import enum
 import json
 import logging
 import multiprocessing.dummy
@@ -31,7 +32,7 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-class FileSystem(object):
+class FileSystem(enum.Enum):
     """Enumeration of the available file systems."""
 
     LOCAL = "local"

@@ -5,6 +5,8 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone as fo
 import fiftyone.core.storage as fos
 import fiftyone.operators as foo
@@ -299,13 +301,39 @@ class ListFiles(foo.Operator):
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
             # this should
-            return {"filesystems": fos.list_available_file_systems()}
+            return {"filesystems": list_fileystems()}
 
         if path:
             try:
                 return {"files": list_files(path)}
             except Exception as e:
                 return {"files": [], "error": str(e)}
+
+
+def get_default_path_for_filesystem(fs):
+    if fs == fos.FileSystem.LOCAL:
+        HOME = os.environ.get("HOME", None)
+        return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
+    # elif fs == fos.FileSystem.GCS:
+    #     return "gs://"
+    # elif fs == fos.FileSystem.S3:
+    #     return "s3://"
+    else:
+        raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def list_fileystems():
+    filesystems = fos.list_available_file_systems()
+    results = []
+    for fs in fos.FileSystem:
+        if fs in filesystems:
+            results.append(
+                {
+                    "name": fs.name,
+                    "default_path": get_default_path_for_filesystem(fs),
+                }
+            )
+    return results
 
 
 def list_files(dirpath):
