@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   IconButton,
   TextField,
   Box,
   InputAdornment,
   Tooltip,
+  CircularProgress,
 } from "@mui/material";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -18,6 +19,7 @@ function ExplorerActions({
   onRefresh,
   onUpDir,
   errorMessage,
+  loading,
 }) {
   return (
     <Box display="flex" alignItems="center" gap={1} style={{ width: "100%" }}>
@@ -37,13 +39,18 @@ function ExplorerActions({
         variant="outlined"
         fullWidth
         InputProps={{
-          endAdornment: errorMessage && (
+          endAdornment: (errorMessage || loading) && (
             <InputAdornment position="end">
-              <Tooltip title={errorMessage}>
-                <IconButton>
-                  <Error sx={{ color: (theme) => theme.palette.error.main }} />
-                </IconButton>
-              </Tooltip>
+              {loading && <CircularProgress size={20} />}
+              {errorMessage && (
+                <Tooltip title={errorMessage}>
+                  <IconButton>
+                    <Error
+                      sx={{ color: (theme) => theme.palette.error.main }}
+                    />
+                  </IconButton>
+                </Tooltip>
+              )}
             </InputAdornment>
           ),
         }}

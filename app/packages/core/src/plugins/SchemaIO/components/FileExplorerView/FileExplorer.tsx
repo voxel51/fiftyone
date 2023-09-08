@@ -9,18 +9,12 @@ import {
   Typography,
   Box,
   Grid,
-  Modal,
-  Paper,
   Stack,
   TextField,
+  IconButton,
 } from "@mui/material";
-import {
-  useAvailableFileSystems,
-  useCurrentFiles,
-  useFileExplorer,
-} from "./state";
-import { setSelected } from "@fiftyone/relay";
-import { getBasename, joinPaths } from "@fiftyone/utilities";
+import { useFileExplorer } from "./state";
+import Close from "@mui/icons-material/Close";
 
 const ModalContent = styled.div`
   max-width: 90vw;
@@ -45,7 +39,6 @@ export default function FileExplorer({
     handleOpen,
     handleChoose,
     currentDirectory,
-    setCurrentDirectory,
     currentFiles,
     setChosenFile,
     setCurrentPath,
@@ -55,15 +48,20 @@ export default function FileExplorer({
     onUpDir,
     handleSelectFile,
     selectedFile,
-    showChooseButton,
     showOpenButton,
     onRelPathChange,
     sidebarOpen,
     setSidebarOpen,
     chosenFile,
+    loading,
   } = useFileExplorer(fsInfo, chooseMode, onChoose);
 
-  console.log({ fsInfo });
+  const disableChoose = chooseMode !== (selectedFile || currentDirectory)?.type;
+
+  const handleUpDir = () => {
+    onUpDir();
+    handleSelectFile(null);
+  };
 
   return (
     <div>
@@ -71,19 +69,29 @@ export default function FileExplorer({
         {chosenFile && (
           <TextField
             size="small"
-            disabled={true}
             fullWidth
             value={chosenFile?.absolute_path || ""}
+            InputProps={{
+              endAdornment: (
+                <IconButton
+                  onClick={(e) => {
+                    setChosenFile(null);
+                    e.stopPropagation();
+                  }}
+                  title="Clear"
+                >
+                  <Close />
+                </IconButton>
+              ),
+              readOnly: true,
+            }}
+            sx={{ input: { cursor: "pointer" } }}
+            onClick={handleClickOpen}
           />
         )}
         {!chosenFile && (
           <Button variant="outlined" onClick={handleClickOpen}>
             {buttonLabel || "Choose"}
-          </Button>
-        )}
-        {chosenFile && (
-          <Button variant="outlined" onClick={() => setChosenFile(null)}>
-            Clear
           </Button>
         )}
       </Box>
@@ -111,8 +119,9 @@ export default function FileExplorer({
                   selectedFile={selectedFile}
                   onPathChange={(path) => setCurrentPath(path)}
                   onRefresh={refresh}
-                  onUpDir={onUpDir}
+                  onUpDir={handleUpDir}
                   errorMessage={errorMessage}
+                  loading={loading}
                 />
               </Grid>
               <Grid spacing={2} item container>
@@ -130,7 +139,7 @@ export default function FileExplorer({
                     selectedFile={selectedFile}
                     onSelectFile={handleSelectFile}
                     onOpenDir={handleOpen}
-                    onChooseFile={handleChoose}
+                    onChoose={handleChoose}
                   />
                 </Grid>
               </Grid>
@@ -138,7 +147,7 @@ export default function FileExplorer({
                 <Box
                   display="flex"
                   alignItems="center"
-                  gap={1}
+                  gap={2}
                   style={{ width: "100%" }}
                 >
                   <TextField
@@ -147,17 +156,31 @@ export default function FileExplorer({
                     fullWidth
                     value={selectedFile?.name || ""}
                     onChange={onRelPathChange}
+                    placeholder={`Select a ${chooseMode} or type a name or path`}
                   />
-                  <Stack direction="row" spacing={2}>
+                  <Stack direction="row" spacing={1}>
                     <Button onClick={handleClose}>Cancel</Button>
                     {showOpenButton && (
-                      <Button onClick={handleOpen}>Open</Button>
-                    )}
-                    {showChooseButton && (
-                      <Button onClick={handleChoose} autoFocus>
-                        {chooseButtonLabel || "Choose"}
+                      <Button
+                        onClick={() => {
+                          handleOpen();
+                        }}
+                      >
+                        Open
                       </Button>
                     )}
+                    <Button
+                      onClick={handleChoose}
+                      autoFocus
+                      disabled={disableChoose}
+                      title={
+                        disableChoose
+                          ? `You must select a ${chooseMode}`
+                          : undefined
+                      }
+                    >
+                      {chooseButtonLabel || "Choose"}
+                    </Button>
                   </Stack>
                 </Box>
               </Grid>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -12,15 +12,14 @@ import {
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import moment from "moment";
-import styled from "styled-components";
 import { scrollable } from "@fiftyone/components";
 
 const Wrapper = ({ children }) => (
   <Paper
     style={{
-      height: "500px",
-      maxHeight: "80vh",
-      minHeight: "40vh",
+      height: "50vh",
+      maxHeight: "calc(100vh - 270px)",
+      minHeight: "135px",
       overflowY: "auto",
       width: "100%",
     }}
@@ -57,7 +56,7 @@ function FileTable({
   const handleRowDoubleClick = (file) => {
     if (file.type === "directory") {
       onOpenDir(file);
-    } else {
+    } else if (chooseMode === "file") {
       onChoose(file);
     }
   };
