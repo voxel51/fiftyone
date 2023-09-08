@@ -81,18 +81,25 @@ function getNameFromPath(path) {
 
 export function useSelectedFile(currentPath, chooseMode) {
   const [selectedFile, setSelectedFile] = useState(null);
+  const fileIsSelected = selectedFile?.type === "file";
+  const dirIsSelected = selectedFile?.type === "directory";
+  const unknownSelectedFile = selectedFile?.type === undefined;
   const showOpenButton =
     selectedFile?.type === "directory" &&
     selectedFile?.absolute_path !== currentPath &&
     selectedFile?.exists !== false &&
     currentPath !== selectedFile?.absolute_path;
+  const canChooseDir = chooseMode === "directory" && dirIsSelected;
+  const canChooseFile = chooseMode === "file" && fileIsSelected;
+  const enableChooseButton =
+    canChooseDir || canChooseFile || unknownSelectedFile;
 
   const handleSelectFile = (file) => {
     if (!file) return setSelectedFile(null);
     setSelectedFile(file);
   };
 
-  return { selectedFile, handleSelectFile, showOpenButton };
+  return { selectedFile, handleSelectFile, showOpenButton, enableChooseButton };
 }
 
 export function useFileExplorer(fsInfo, chooseMode, onChoose) {
@@ -107,10 +114,8 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     onUpDir,
     loading,
   } = useCurrentFiles(fsInfo.defaultFile?.absolute_path);
-  const { selectedFile, handleSelectFile, showOpenButton } = useSelectedFile(
-    currentPath,
-    chooseMode
-  );
+  const { selectedFile, handleSelectFile, showOpenButton, enableChooseButton } =
+    useSelectedFile(currentPath, chooseMode);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chosenFile, setChosenFile] = useState(null);
 
@@ -158,7 +163,8 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
 
   const handleChoose = () => {
     setOpen(false);
-    const file = selectedFile || currentDirectory;
+    const file = selectedFile ||
+      currentDirectory || { absolute_path: currentPath };
     setChosenFile(file);
     onChoose && onChoose(file);
   };
@@ -169,6 +175,12 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     onChoose && onChoose(null);
   };
 
+  const handleUpDir = () => {
+    onUpDir();
+    handleSelectFile(null);
+    setCurrentDirectory(null);
+  };
+
   return {
     clear,
     open,
@@ -176,8 +188,6 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     handleClose,
     handleOpen,
     handleChoose,
-    currentDirectory,
-    setCurrentDirectory,
     currentFiles,
     setChosenFile,
     setCurrentPath(path) {
@@ -196,5 +206,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     setSidebarOpen,
     chosenFile,
     loading,
+    enableChooseButton,
+    handleUpDir,
   };
 }

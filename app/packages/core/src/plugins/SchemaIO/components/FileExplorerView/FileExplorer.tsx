@@ -39,14 +39,11 @@ export default function FileExplorer({
     handleClose,
     handleOpen,
     handleChoose,
-    currentDirectory,
     currentFiles,
-    setChosenFile,
     setCurrentPath,
     currentPath,
     refresh,
     errorMessage,
-    onUpDir,
     handleSelectFile,
     selectedFile,
     showOpenButton,
@@ -55,14 +52,9 @@ export default function FileExplorer({
     setSidebarOpen,
     chosenFile,
     loading,
+    enableChooseButton,
+    handleUpDir,
   } = useFileExplorer(fsInfo, chooseMode, onChoose);
-
-  const disableChoose = chooseMode !== (selectedFile || currentDirectory)?.type;
-
-  const handleUpDir = () => {
-    onUpDir();
-    handleSelectFile(null);
-  };
 
   return (
     <div>
@@ -173,9 +165,9 @@ export default function FileExplorer({
                     <Button
                       onClick={handleChoose}
                       autoFocus
-                      disabled={disableChoose}
+                      disabled={!enableChooseButton}
                       title={
-                        disableChoose
+                        !enableChooseButton
                           ? `You must select a ${chooseMode}`
                           : undefined
                       }
