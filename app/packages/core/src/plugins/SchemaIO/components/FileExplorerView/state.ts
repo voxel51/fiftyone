@@ -1,15 +1,34 @@
 import { useEffect, useState } from "react";
-import { useOperatorExecutor } from "@fiftyone/operators";
+import { useOperatorExecutor, abortOperationsByURI } from "@fiftyone/operators";
 import * as utils from "@fiftyone/utilities";
+import { set } from "lodash";
+
+const LIST_FILES = "list_files";
+const DEFAULT_LIMIT = 100;
+
+function limitFiles(currentFiles, limit) {
+  const files = currentFiles.filter((f) => f.type === "file");
+  const dirs = currentFiles.filter((f) => f.type === "directory");
+  return {
+    limitedFiles: [...dirs, ...files.slice(0, limit)],
+    fileCount: files.length,
+  };
+}
 
 export function useCurrentFiles(defaultPath) {
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [currentPath, _setCurrentPath] = useState(defaultPath);
-  const executor = useOperatorExecutor("list_files");
-  const currentFiles = executor.result?.files || [];
+  const [aborted, setAborted] = useState(false);
+  const executor = useOperatorExecutor(LIST_FILES);
+  const currentFiles = aborted ? [] : executor.result?.files || [];
   const errorMessage = executor.error || executor.result?.error;
 
   const refresh = () => {
+    setAborted(false);
     executor.execute({ path: currentPath });
+  };
+  const abort = () => {
+    setAborted(true);
   };
   const setCurrentPath = (path) => {
     if (path) _setCurrentPath(path);
@@ -18,17 +37,25 @@ export function useCurrentFiles(defaultPath) {
     const parentPath = utils.resolveParent(currentPath);
     if (parentPath) _setCurrentPath(parentPath);
   };
+  const nextPage = () => {
+    setLimit((limit) => limit + DEFAULT_LIMIT);
+  };
+  const { limitedFiles, fileCount } = limitFiles(currentFiles, limit);
+  const hasNextPage = fileCount >= limit;
 
   useEffect(refresh, [currentPath]);
 
   return {
+    abort,
     setCurrentPath,
     refresh,
-    currentFiles,
+    currentFiles: limitedFiles,
     currentPath,
-    errorMessage,
+    errorMessage: aborted ? "Listing files cancelled." : errorMessage,
     onUpDir,
-    loading: executor.isExecuting,
+    loading: aborted ? false : executor.isExecuting,
+    nextPage,
+    hasNextPage,
   };
 }
 
@@ -106,6 +133,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
   const [currentDirectory, setCurrentDirectory] = useState(fsInfo.defaultFile);
   const [open, setOpen] = useState(false);
   const {
+    abort,
     currentFiles,
     setCurrentPath: _setCurrentPath,
     currentPath,
@@ -113,6 +141,8 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     errorMessage,
     onUpDir,
     loading,
+    nextPage,
+    hasNextPage,
   } = useCurrentFiles(fsInfo.defaultFile?.absolute_path);
   const { selectedFile, handleSelectFile, showOpenButton, enableChooseButton } =
     useSelectedFile(currentPath, chooseMode);
@@ -182,6 +212,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
   };
 
   return {
+    abort,
     clear,
     open,
     handleClickOpen,
@@ -208,5 +239,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     loading,
     enableChooseButton,
     handleUpDir,
+    nextPage,
+    hasNextPage,
   };
 }

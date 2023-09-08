@@ -9,6 +9,7 @@ import {
   Paper,
   Box,
 } from "@mui/material";
+import { Button } from "@fiftyone/components";
 import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import moment from "moment";
@@ -49,6 +50,8 @@ function FileTable({
   onSelectFile,
   onChoose,
   onOpenDir,
+  nextPage,
+  hasNextPage,
 }) {
   const handleRowClick = (file) => {
     onSelectFile(file);
@@ -108,6 +111,15 @@ function FileTable({
               <TableCell>{humanReadableBytes(file.size)}</TableCell>
             </TableRow>
           ))}
+          {hasNextPage && (
+            <TableRow>
+              <TableCell colSpan={3}>
+                <Box display="flex" justifyContent="center" padding={2}>
+                  <Button onClick={nextPage}>Load more</Button>
+                </Box>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </TableContainer>

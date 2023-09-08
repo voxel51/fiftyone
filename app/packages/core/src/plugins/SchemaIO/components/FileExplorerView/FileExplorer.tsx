@@ -33,6 +33,7 @@ export default function FileExplorer({
   fsInfo,
 }) {
   const {
+    abort,
     clear,
     open,
     handleClickOpen,
@@ -54,6 +55,8 @@ export default function FileExplorer({
     loading,
     enableChooseButton,
     handleUpDir,
+    nextPage,
+    hasNextPage,
   } = useFileExplorer(fsInfo, chooseMode, onChoose);
 
   return (
@@ -115,6 +118,7 @@ export default function FileExplorer({
                   onUpDir={handleUpDir}
                   errorMessage={errorMessage}
                   loading={loading}
+                  abort={abort}
                 />
               </Grid>
               <Grid spacing={2} item container>
@@ -133,6 +137,8 @@ export default function FileExplorer({
                     onSelectFile={handleSelectFile}
                     onOpenDir={handleOpen}
                     onChoose={handleChoose}
+                    nextPage={nextPage}
+                    hasNextPage={hasNextPage}
                   />
                 </Grid>
               </Grid>

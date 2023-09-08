@@ -11,6 +11,7 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import FilterDramaIcon from "@mui/icons-material/FilterDrama";
 import Error from "@mui/icons-material/Error";
+import { Cancel } from "@mui/icons-material";
 
 function ExplorerActions({
   onPathChange,
@@ -20,6 +21,7 @@ function ExplorerActions({
   onUpDir,
   errorMessage,
   loading,
+  abort,
 }) {
   return (
     <Box display="flex" alignItems="center" gap={1} style={{ width: "100%" }}>
@@ -48,6 +50,13 @@ function ExplorerActions({
                     <Error
                       sx={{ color: (theme) => theme.palette.error.main }}
                     />
+                  </IconButton>
+                </Tooltip>
+              )}
+              {loading && (
+                <Tooltip title="Abort">
+                  <IconButton onClick={abort}>
+                    <Cancel />
                   </IconButton>
                 </Tooltip>
               )}
