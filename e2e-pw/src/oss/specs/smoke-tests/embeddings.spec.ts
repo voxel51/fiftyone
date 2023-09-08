@@ -29,8 +29,8 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
         import fiftyone.zoo as foz
         import fiftyone.brain as fob
         import numpy as np
-
         np.random.seed(42)
+
         dataset = foz.load_zoo_dataset("quickstart", max_samples=5, dataset_name="${datasetName}")
         dataset.persistent = True
 
