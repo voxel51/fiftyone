@@ -31,7 +31,7 @@ describe("Resolves media fields only if they exist", () => {
     expect(test()).toEqual("thumbnail_path");
   });
 
-  it("grid media field is 'filepath' if the media field atom value is not a field path", async () => {
+  it("grid media field is 'filepath' if the media field atom value is not a field path", () => {
     const test = <TestSelectorFamily<typeof options.selectedMediaField>>(
       (<unknown>options.selectedMediaField(false))
     );
