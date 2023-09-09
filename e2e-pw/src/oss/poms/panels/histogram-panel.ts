@@ -1,6 +1,6 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
-import { SelectorPom } from "./selector";
+import { SelectorPom } from "../selector";
 
 export class HistogramPom {
   readonly assert: HistogramAsserter;

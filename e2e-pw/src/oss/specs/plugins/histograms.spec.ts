@@ -1,6 +1,6 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { HistogramPom } from "src/oss/poms/histogram-panel";
-import { PanelPom } from "src/oss/poms/panel";
+import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`histograms`);
