@@ -1,11 +1,11 @@
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
+import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
   datasetAppConfig,
   isVideoDataset,
 } from "./selectors";
-import { fieldSchema } from "./schema";
 import { State } from "./types";
 
 export const selectedMediaField = selectorFamily<string, boolean>({
@@ -14,13 +14,9 @@ export const selectedMediaField = selectorFamily<string, boolean>({
     (modal) =>
     ({ get }) => {
       const value = get(selectedMediaFieldAtomFamily(modal));
-
-      const res = get(fieldSchema({ space: State.SPACE.SAMPLE }));
-      const selectedFields = Object.keys(
-        get(fieldSchema({ space: State.SPACE.SAMPLE }))
-      );
-
-      return selectedFields.includes(value) ? value : "filepath";
+      return get(fieldPaths({ space: State.SPACE.SAMPLE })).includes(value)
+        ? value
+        : "filepath";
     },
   set:
     (modal) =>
