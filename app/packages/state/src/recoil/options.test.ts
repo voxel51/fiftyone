@@ -12,8 +12,8 @@ import {
 import * as options from "./options";
 import { State } from "./types";
 
-describe("Resolves selected media field that exists", () => {
-  it("media field is not 'filepath' if the selected field is in the schema", () => {
+describe("Resolves media fields only if they exist", () => {
+  it("grid media field is not 'filepath' if the media field atom value is a field path", () => {
     const test = <TestSelectorFamily<typeof options.selectedMediaField>>(
       (<unknown>options.selectedMediaField(false))
     );
@@ -31,7 +31,7 @@ describe("Resolves selected media field that exists", () => {
     expect(test()).toEqual("thumbnail_path");
   });
 
-  it(" media field is 'filepath' if other selected field is not in the dataset schema", async () => {
+  it("grid media field is 'filepath' if the media field atom value is not a field path", async () => {
     const test = <TestSelectorFamily<typeof options.selectedMediaField>>(
       (<unknown>options.selectedMediaField(false))
     );
