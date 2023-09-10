@@ -293,6 +293,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
             boxes, labels, scores, masks = [], [], [], []
 
+            ## If no keypoints, return empty tensors instead of running SAM
+            if len(keypoints.keypoints) == 0:
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, h, w]),
+                    }
+                )
+                continue
+
             for kp in keypoints.keypoints:
                 sam_points, sam_labels = _to_sam_points(kp.points, w, h)
 
