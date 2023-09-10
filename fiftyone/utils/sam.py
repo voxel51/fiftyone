@@ -233,6 +233,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         outputs = []
         for img, detections in zip(imgs, self._curr_prompts):
+            ## If no detections, return empty tensors instead of running SAM
+            if len(detections.detections) == 0:
+                H, W = img.shape[1], img.shape[2]
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, H, W]),
+                    }
+                )
+                continue
             inp = _to_sam_input(img)
             sam_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
@@ -252,16 +263,19 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 device=sam_predictor.device,
             )
 
-            masks, _, _ = sam_predictor.predict_torch(
-                point_coords=None,
-                point_labels=None,
-                boxes=transformed_boxes,
-                multimask_output=False,
-            )
+            try:
+                masks, _, _ = sam_predictor.predict_torch(
+                    point_coords=None,
+                    point_labels=None,
+                    boxes=transformed_boxes,
+                    multimask_output=False,
+                )
+                outputs.append(
+                    {"boxes": input_boxes, "labels": labels, "masks": masks}
+                )
 
-            outputs.append(
-                {"boxes": input_boxes, "labels": labels, "masks": masks}
-            )
+            except ValueError:
+                print("ValueError in sam_predictor.predict_torch")
 
         return outputs
 
