@@ -4271,6 +4271,7 @@ __metadata:
     html2canvas: 1.0.0-rc.7
     lodash: ^4.17.21
     lru-cache: ^6.0.0
+    notistack: ^3.0.1
     numeral: ^2.0.6
     path-to-regexp: ^6.2.0
     prettier: 2.2.1
@@ -4603,6 +4604,7 @@ __metadata:
     "@fiftyone/utilities": "workspace:^"
     "@types/react": ^18.0.12
     jest: ^28.1.1
+    moment: ^2.29.4
     prettier: 2.2.1
     typescript: 4.2.4
     vite: 2.4.2
@@ -4668,6 +4670,7 @@ __metadata:
     fetch-retry: ^5.0.3
     lodash: ^4.17.21
     mime: ^2.5.2
+    path-browserify: ^1.0.1
     prettier: ^2.7.1
     typescript: ^4.7.4
     typescript-plugin-css-modules: ^3.4.0
@@ -11773,7 +11776,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"clsx@npm:^1.0.4, clsx@npm:^1.1.1, clsx@npm:^1.2.1":
+"clsx@npm:^1.0.4, clsx@npm:^1.1.0, clsx@npm:^1.1.1, clsx@npm:^1.2.1":
   version: 1.2.1
   resolution: "clsx@npm:1.2.1"
   checksum: 30befca8019b2eb7dbad38cff6266cf543091dae2825c856a62a8ccf2c3ab9c2907c4d12b288b73101196767f66812365400a227581484a05f968b0307cfaf12
@@ -16556,6 +16559,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"goober@npm:^2.0.33":
+  version: 2.1.13
+  resolution: "goober@npm:2.1.13"
+  peerDependencies:
+    csstype: ^3.0.10
+  checksum: 0c00b90d26d1a2fad432e311fd4f47bc9fef1eee2a733158d9e2c72a89cf76d414090d063a8d20fe378f2b2b8087df0a83b0f00a3244d1466b97a0d3b14344a7
+  languageName: node
+  linkType: hard
+
 "gopd@npm:^1.0.1":
   version: 1.0.1
   resolution: "gopd@npm:1.0.1"
@@ -20978,6 +20990,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"moment@npm:^2.29.4":
+  version: 2.29.4
+  resolution: "moment@npm:2.29.4"
+  checksum: 0ec3f9c2bcba38dc2451b1daed5daded747f17610b92427bebe1d08d48d8b7bdd8d9197500b072d14e326dd0ccf3e326b9e3d07c5895d3d49e39b6803b76e80e
+  languageName: node
+  linkType: hard
+
 "mouse-change@npm:^1.4.0":
   version: 1.4.0
   resolution: "mouse-change@npm:1.4.0"
@@ -21453,6 +21472,19 @@ __metadata:
   version: 4.5.1
   resolution: "normalize-url@npm:4.5.1"
   checksum: 9a9dee01df02ad23e171171893e56e22d752f7cff86fb96aafeae074819b572ea655b60f8302e2d85dbb834dc885c972cc1c573892fea24df46b2765065dd05a
+  languageName: node
+  linkType: hard
+
+"notistack@npm:^3.0.1":
+  version: 3.0.1
+  resolution: "notistack@npm:3.0.1"
+  dependencies:
+    clsx: ^1.1.0
+    goober: ^2.0.33
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: 421c970308690b8c8cb2e275e7f66020db7c1955e104f638e7fa562396a6b9322ff95f0e62492b07f3d36b0ef72adb4de2c2ce9803089c1c8f028d1a3b088e01
   languageName: node
   linkType: hard
 
@@ -22179,6 +22211,13 @@ __metadata:
   version: 0.0.1
   resolution: "path-browserify@npm:0.0.1"
   checksum: ae8dcd45d0d3cfbaf595af4f206bf3ed82d77f72b4877ae7e77328079e1468c84f9386754bb417d994d5a19bf47882fd253565c18441cd5c5c90ae5187599e35
+  languageName: node
+  linkType: hard
+
+"path-browserify@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "path-browserify@npm:1.0.1"
+  checksum: c6d7fa376423fe35b95b2d67990060c3ee304fc815ff0a2dc1c6c3cfaff2bd0d572ee67e18f19d0ea3bbe32e8add2a05021132ac40509416459fffee35200699
   languageName: node
   linkType: hard
 

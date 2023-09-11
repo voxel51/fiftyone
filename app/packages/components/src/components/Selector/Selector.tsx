@@ -70,6 +70,7 @@ export interface SelectorProps<T> {
   containerStyle?: React.CSSProperties;
   resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
+  overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
 }
@@ -88,6 +89,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
     containerStyle,
     resultsPlacement,
     overflow = false,
+    overflowContainer = false,
     onMouseEnter,
     cy,
     ...otherProps
@@ -123,7 +125,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
     isOpen: editing,
-    overflowContainer: false,
+    overflowContainer,
     auto: true,
     snap: true,
     placement: resultsPlacement ? resultsPlacement : "bottom-center",

@@ -19,9 +19,6 @@ including Kubernetes and Docker.
     all necessary components, are made available by your Voxel51 CS engineer
     during the onboarding process.
 
-    This page focuses on SDK installation for technical users that wish to
-    interact with their team's dataests via Python.
-
 .. _teams-python-sdk:
 
 Python SDK
@@ -72,10 +69,23 @@ That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
 Teams App or their Python workflows.
 
+
 .. _teams-cloud-credentials:
 
 Cloud credentials
 -----------------
+
+
+.. _teams-cors:
+
+Cross-Origin Resource Sharing (CORS)
+_________
+
+If your datasets will include cloud-backed :ref:`point-cloud files <point-cloud-datasets>`
+or :ref:`segmentation maps <semantic-segmentation>`, you may also need to configure 
+cross-origin resource sharing (CORS) for your cloud buckets. Details are provided below
+for each cloud platform.
+
 
 .. _teams-amazon-s3:
 
@@ -115,6 +125,20 @@ In the above, the `.ini` file should use the syntax of the
     the `s3:ListBucket` permission, as `s3:GetBucketLocation` does not support
     this.
 
+If you need to `configure CORS on your AWS buckets <https://docs.aws.amazon.com/AmazonS3/latest/userguide/enabling-cors-examples.html>`_,
+here is an example configuration:
+
+.. code-block:: json
+
+    [
+        {
+            "origin": ["https://fiftyone-teams-deployment.yourcompany.com"],
+            "method": ["GET", "HEAD"],
+            "responseHeader": ["*"],
+            "maxAgeSeconds": 86400
+        }
+    ] 
+
 .. _teams-google-cloud:
 
 Google Cloud Storage
@@ -133,6 +157,32 @@ following key to your :ref:`media cache config <teams-media-cache-config>`:
     {
         "google_application_credentials": "/path/to/gcp-service-account.json"
     }
+
+If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
+here is an example configuration:
+
+.. code-block:: json
+
+    [
+        {
+            "AllowedHeaders": [
+                "*"
+            ],
+            "AllowedMethods": [
+                "GET",
+                "HEAD",
+            ],
+            "AllowedOrigins": [
+                "https://fiftyone-teams-deployment.yourcompany.com"
+            ],
+            "ExposeHeaders": [
+                "x-amz-server-side-encryption",
+                "x-amz-request-id",
+                "x-amz-id-2"
+            ],
+            "MaxAgeSeconds": 3000
+        }
+    ]
 
 .. _teams-azure:
 
