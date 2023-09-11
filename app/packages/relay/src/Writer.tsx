@@ -23,6 +23,19 @@ export type PageSubscription<T extends OperationType> = (
 let pageQueryReader: <T extends OperationType>() => PageQuery<T>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+const subscribersBefore = new Set<PageSubscription<any>>();
+
+export function subscribeBefore<T extends OperationType>(
+  subscription: PageSubscription<T>
+) {
+  subscribersBefore.add(subscription);
+
+  return () => {
+    subscribersBefore.delete(subscription);
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const subscribers = new Set<PageSubscription<any>>();
 
 export function subscribe<T extends OperationType>(
@@ -38,6 +51,7 @@ export function subscribe<T extends OperationType>(
 export function getPageQuery<T extends OperationType>() {
   return { pageQuery: pageQueryReader<T>(), subscribe };
 }
+
 /**
  * Effect for restting an atom's value when the view or dataset changes.
  * Can be limited to only dataset changes when viewChange is false
@@ -98,9 +112,10 @@ export function Writer<T extends OperationType>({
     return subscribe((pageQuery) => {
       // @ts-ignore
       pageQueryReader = () => pageQuery;
-      set((transactionInterface) =>
-        subscribers.forEach((cb) => cb(pageQuery, transactionInterface))
-      );
+      set((transactionInterface) => {
+        subscribersBefore.forEach((cb) => cb(pageQuery, transactionInterface));
+        subscribers.forEach((cb) => cb(pageQuery, transactionInterface));
+      });
     });
   }, [set, subscribe]);
 

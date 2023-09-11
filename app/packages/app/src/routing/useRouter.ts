@@ -1,8 +1,8 @@
 import { getEnvironment, setCurrentEnvironment } from "@fiftyone/state";
 import { useMemo, useRef } from "react";
 
-import { createRouter, Queries, Router } from ".";
-import makeRoutes from "../makeRoutes";
+import { createRouter, Router } from ".";
+import makeRoutes, { Queries } from "../makeRoutes";
 
 const environment = getEnvironment();
 setCurrentEnvironment(environment);
@@ -13,7 +13,7 @@ const useRouter = () => {
   router.current = useMemo(() => {
     router.current && router.current.cleanup();
 
-    return createRouter(environment, makeRoutes());
+    return createRouter<Queries>(environment, makeRoutes());
   }, []);
 
   return { context: router.current.context, environment };

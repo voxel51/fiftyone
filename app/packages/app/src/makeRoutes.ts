@@ -1,20 +1,18 @@
 import { createResourceGroup } from "@fiftyone/utilities";
-import { ConcreteRequest, OperationType } from "relay-runtime";
-
-import { datasetQuery } from "@fiftyone/relay";
-import { pagesQuery } from "./pages/__generated__/pagesQuery.graphql";
+import { ConcreteRequest } from "relay-runtime";
+import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
+import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Route, RouteDefinition, RouteOptions } from "./routing";
 
 interface Routes {
-  "/": RouteOptions<pagesQuery>;
-  "/datasets/:name": RouteOptions<datasetQuery>;
+  "/": RouteOptions<IndexPageQuery>;
+  "/datasets/:name": RouteOptions<DatasetPageQuery>;
 }
 
-const components = createResourceGroup<Route<OperationType>>();
+export type Queries = DatasetPageQuery | IndexPageQuery;
+const components = createResourceGroup<Route<Queries>>();
 
-const makeRouteDefinitions = (
-  routes: Routes
-): RouteDefinition<OperationType>[] => {
+const makeRouteDefinitions = (routes: Routes): RouteDefinition<Queries>[] => {
   const queries = createResourceGroup<ConcreteRequest>();
 
   return Object.entries(routes).map(([path, { component, query, ...rest }]) => {

@@ -61,7 +61,9 @@ const setters: Setters = {};
 export const useSession = (setter: Setter, ref: Session) => {
   setterRef = setter;
   sessionRef = ref;
+};
 
+export const useSessionSetter = () => {
   return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
     const setter = setters[key];
     setter && setter(value);
