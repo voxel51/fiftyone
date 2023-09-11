@@ -6,12 +6,9 @@ import {
   attributeVisibility,
   modalAttributeVisibility,
   sidebarGroupsDefinition,
-} from "../../src";
-import {
-  useClearFiltered,
-  useClearVisibility,
-} from "../../src/hooks/useGroupEntries";
-import { filters, modalFilters } from "../../src/recoil/filters";
+} from "..";
+import { filters, modalFilters } from "../recoil/filters";
+import { useClearFiltered, useClearVisibility } from "./useGroupEntries";
 
 const Root1: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   return (

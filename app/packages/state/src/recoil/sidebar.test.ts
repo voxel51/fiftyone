@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as sidebar from "../../src/recoil/sidebar";
+import * as sidebar from "./sidebar";
 
 const mockFields = {
   sampleFields: [
@@ -237,7 +237,6 @@ describe("ResolveGroups works", () => {
       mockSidebarGroups
     );
 
-    console.log(test);
     expect(test.length).toBe(7);
     expect(test[4].name).toBe("other");
     expect(test[4].expanded).toBeFalsy();

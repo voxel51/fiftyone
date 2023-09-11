@@ -3,7 +3,7 @@ vi.mock("recoil");
 vi.mock("recoil-relay");
 
 import { setMockAtoms, TestSelectorFamily } from "../../../../__mocks__/recoil";
-import * as filters from "../../src/recoil/filters";
+import * as filters from "./filters";
 
 describe("filter resolves correctly", () => {
   const testModal = <TestSelectorFamily<typeof filters.filter>>(
