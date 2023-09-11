@@ -4,7 +4,7 @@ import { useResetExtendedSelection } from "@fiftyone/state";
 import { useRecoilValue } from "recoil";
 import { SELECTION_SCOPE } from "./constants";
 
-export default function EmbeddingsTabIndicator() {
+export default function MapTabIndicator() {
   const { selection, scope } = useRecoilValue(fos.extendedSelection);
   const resetExtendedSelection = useResetExtendedSelection();
 
