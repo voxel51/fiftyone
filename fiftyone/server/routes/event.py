@@ -23,4 +23,5 @@ class Event(HTTPEndpoint):
             data["subscription"],
             await fose.Event.from_data_async(data["event"], data["data"]),
         )
+
         return {}

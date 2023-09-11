@@ -266,11 +266,13 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     )
     if not isinstance(payload.initializer, fos.StateDescription):
         update = False
+        dataset_change = False
         if (
             payload.initializer.dataset
             and payload.initializer.dataset != current
         ):
             update = True
+            dataset_change = True
             try:
                 state.dataset = fod.load_dataset(payload.initializer.dataset)
                 state.selected = []
@@ -313,9 +315,10 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 pass
 
         if update:
-            state.color_scheme = fos.build_color_scheme(
-                None, state.dataset, state.config
-            )
+            if dataset_change:
+                state.color_scheme = fos.build_color_scheme(
+                    None, state.dataset, state.config
+                )
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:
