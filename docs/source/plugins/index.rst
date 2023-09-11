@@ -56,7 +56,10 @@ Python and JS plugins can read their settings at the dataset scope or app scope,
 
 .. note::
 
-    Settings are readable by users in the browser. Use environment variables and Python Operators for sensitive/secret values.
+    Settings are readable by users in the browser. For setting
+sensitive/secret values, set them as environment variables and access them
+in your plugin code via `PluginContext.secrets` .
+
 
 .. _fiftyone-operators:
 
@@ -507,6 +510,8 @@ are available for defining the plugin:
 - `fiftyone`: A dictionary containing information about the compatibility of the plugin with FiftyOne.
 - `fiftyone.version`: A semver version range specifying the required FiftyOne version for the plugin to work properly.
 - `operators`: A list of operator names provided by the plugin.
+- `secrets`: A list of secret keys that are required by the plugin. These
+secrets are stored in the plugin context and can be accessed via `ctx.secrets`.
 
 Optional files
 ~~~~~~~~~~~~~~
