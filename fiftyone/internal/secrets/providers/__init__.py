@@ -8,6 +8,7 @@ FiftyOne secrets providers.
 
 from .iprovider import ISecretProvider
 from .local import EnvSecretProvider
+from .database import FiftyoneDatabaseSecretProvider
 
 
 # This enables Sphinx refs to directly use paths imported here

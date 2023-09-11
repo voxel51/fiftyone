@@ -1,5 +1,4 @@
-import unittest
-from unittest.mock import MagicMock, patch
+from unittest import TestCase, mock
 
 import pytest
 
@@ -26,11 +25,11 @@ class TestExecutionContext:
 
     @pytest.fixture
     def mock_secrets_resolver(self, mocker):
-        mock = MagicMock(spec=fop.PluginSecretsResolver)
-        mock.get_secret.side_effect = lambda key, **kwargs: MockSecret(
-            key, self.secrets.get(key)
+        resolver_mock = mock.MagicMock(spec=fop.PluginSecretsResolver)
+        resolver_mock.get_secret.side_effect = (
+            lambda key, **kwargs: MockSecret(key, self.secrets.get(key))
         )
-        return mock
+        return resolver_mock
 
     def test_secret(self):
         context = ExecutionContext()
@@ -73,7 +72,7 @@ class TestExecutionContext:
         }
 
 
-class TestOperatorSecrets(unittest.TestCase):
+class TestOperatorSecrets(TestCase):
     def test_operator_add_secrets(self):
         operator = Operator()
         secrets = [SECRET_KEY, SECRET_KEY2]
@@ -84,29 +83,27 @@ class TestOperatorSecrets(unittest.TestCase):
         self.assertListEqual(operator._plugin_secrets, secrets)
 
 
-class PluginSecretResolverClientTests(unittest.TestCase):
-    @patch(
-        "fiftyone.plugins.secrets._get_secrets_client",
-        return_value=fois.EnvSecretProvider(),
-    )
-    def test_get_secrets_client_env_secret_provider(self, mocker):
+class PluginSecretResolverClientTests(TestCase):
+
+    # Teams always uses SecretsManager
+    def test_get_secrets_client(self):
         resolver = fop.PluginSecretsResolver()
-        assert isinstance(resolver.client, fois.EnvSecretProvider)
+        assert isinstance(resolver.client, fois.SecretsManager)
 
 
-class TestGetSecret(unittest.TestCase):
+class TestGetSecret(TestCase):
     @pytest.fixture(autouse=True)
     def plugin_secrets_resolver(self):
-        mock_client = MagicMock(spec=fois.ISecretProvider)
+        mock_client = mock.MagicMock(spec=fois.ISecretProvider)
         self.plugin_secrets_resolver = fop.PluginSecretsResolver()
         mock_client.get.return_value = "mocked_secret_value"
 
     @pytest.mark.asyncio
     async def test_get_secret(self):
-        mock_client = MagicMock(spec=fois.ISecretProvider)
+        mock_client = mock.MagicMock(spec=fois.ISecretProvider)
         mock_client.get.return_value = "mocked_secret_value"
 
-        resolver = MagicMock(spec=fop.PluginSecretsResolver)
+        resolver = mock.MagicMock(spec=fop.PluginSecretsResolver)
         resolver.client.return_value = mock_client
 
         result = await resolver.get_secret("my_secret_key")
