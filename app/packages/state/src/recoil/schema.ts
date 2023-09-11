@@ -177,7 +177,6 @@ export const fieldPaths = selectorFamily<
         throw new Error("path and space provided");
       }
 
-      // use { flat: true } to get schema's dynamic fields included
       const sampleFields = get(atoms.flatSampleFields);
       const frameFields = get(atoms.flatFrameFields);
 
