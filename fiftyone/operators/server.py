@@ -24,6 +24,7 @@ from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
 from .registry import OperatorRegistry
+from fiftyone.plugins.permissions import get_token_from_request
 
 
 async def _get_operator_registry_for_route(
@@ -127,9 +128,10 @@ class ExecuteOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+        request_token = get_token_from_request(request)
 
         result = await execute_or_delegate_operator(
-            operator_uri, data, user=user.sub
+            operator_uri, data, request_token=request_token, user=user.sub
         )
         return result.to_json()
 
@@ -179,9 +181,10 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
-
+        # request token is teams-only
+        request_token = get_token_from_request(request)
         execution_result = await execute_or_delegate_operator(
-            operator_uri, data, user=user
+            operator_uri, data, request_token=request_token, user=user
         )
         if execution_result.is_generator:
             result = execution_result.result

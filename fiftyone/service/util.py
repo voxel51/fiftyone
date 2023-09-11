@@ -79,7 +79,7 @@ def find_processes_by_args(args):
     Only processes for the current user will be returned.
 
     Args:
-        args (list[str]): a list of arguments, in the order to search for
+        args (List[str]): a list of arguments, in the order to search for
 
     Returns:
         generator of psutil.Process objects

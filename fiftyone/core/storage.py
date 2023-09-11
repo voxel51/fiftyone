@@ -33,7 +33,8 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-import fiftyone.internal.credentials as fic
+from fiftyone.internal.credentials import CloudCredentialsManager
+from fiftyone.internal.util import has_encryption_key
 
 foc = fou.lazy_import("fiftyone.core.cache")
 
@@ -78,8 +79,8 @@ def init_storage():
     global azure_alias_prefix
     global azure_endpoint_prefix
 
-    if fic.has_encryption_key():
-        creds_manager = fic.CloudCredentialsManager()
+    if has_encryption_key():
+        creds_manager = CloudCredentialsManager()
     else:
         creds_manager = None
 

@@ -7,7 +7,7 @@ Plugin secrets resolver.
 """
 
 from typing import Optional
-from ..internal import secrets as fois
+import fiftyone.internal.secrets as fois
 
 
 class PluginSecretsResolver:
@@ -15,18 +15,18 @@ class PluginSecretsResolver:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls) -> "PluginSecretsResolver":
         if cls._instance is None:
             cls._instance = super(PluginSecretsResolver, cls).__new__(cls)
             cls._instance.client = _get_secrets_client()
         return cls._instance
 
-    def client(self) -> fois.ISecretProvider:
+    def client(self) -> "fois.ISecretProvider":
         if not self._instance:
             self._instance = self.__new__(self.__class__)
         return self._instance.client
 
-    async def get_secret(self, key, **kwargs) -> Optional[fois.ISecret]:
+    async def get_secret(self, key, **kwargs) -> Optional["fois.ISecret"]:
         """
         Get the value of a secret.
 
@@ -40,7 +40,7 @@ class PluginSecretsResolver:
         return resolved_secret
 
 
-def _get_secrets_client():
+def _get_secrets_client() -> "fois.ISecretProvider":
     try:
         client = getattr(fois, "SecretsManager")
     except:  # pylint: disable=bare-except

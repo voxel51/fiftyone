@@ -1,5 +1,5 @@
 """
-Internal cloud credential utilities.
+FiftyOne Teams internal cloud credential management.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -16,23 +16,12 @@ from cryptography.fernet import Fernet
 
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
-import fiftyone.internal as foi
-
-
-ENCRYPTION_KEY_ENV_VAR = "FIFTYONE_ENCRYPTION_KEY"
-TTL_CACHE_LIFETIME_SECONDS = 120  # 2 minutes
-
+from fiftyone.internal.constants import (
+    ENCRYPTION_KEY_ENV_VAR,
+    TTL_CACHE_LIFETIME_SECONDS,
+)
 
 logger = logging.getLogger(__name__)
-
-
-def has_encryption_key():
-    """Whether the current environment has an encryption key.
-
-    Returns:
-        True/False
-    """
-    return foi.is_internal_service() and ENCRYPTION_KEY_ENV_VAR in os.environ
 
 
 class CloudCredentialsManager(object):
