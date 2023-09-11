@@ -1105,6 +1105,7 @@ In a FiftyOne plugin this same query can be performed using the
         });
         const availableFields = findAvailableFields(dataset.sampleFields);
         const [selectedField, setField] = React.useState(availableFields[0]);
+
         React.useEffect(() => {
             aggregate([
                 new foa.aggregations.Values({
