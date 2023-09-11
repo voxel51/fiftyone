@@ -257,6 +257,7 @@ export abstract class AbstractLooker<
         ctx.textAlign = "left";
         ctx.textBaseline = "bottom";
         ctx.imageSmoothingEnabled = false;
+        ctx.lineJoin = "bevel";
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         const dpr = getDPR();
         ctx.clearRect(

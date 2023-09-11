@@ -62,10 +62,11 @@ export default function Embeddings({ containerHeight, dimensions }) {
 
   if (canSelect)
     return (
-      <EmbeddingsContainer ref={el}>
+      <EmbeddingsContainer ref={el} data-cy="embeddings-container">
         <Selectors>
           <div>
             <Selector
+              cy="embeddings"
               {...brainResultSelector.handlers}
               placeholder={"Select brain key"}
               overflow={true}
@@ -75,6 +76,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
             />
             {brainResultSelector.hasSelection && !labelSelector.isLoading && (
               <Selector
+                cy="embeddings-colorby"
                 {...labelSelector.handlers}
                 placeholder={"Color by"}
                 overflow={true}
@@ -97,6 +99,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                   <CenterFocusWeak />
                 </PlotOption>
                 <PlotOption
+                  cy="embeddings-plot-option-lasso"
                   style={{ opacity: dragMode !== "lasso" ? 0.5 : 1 }}
                   to={() => setDragMode("lasso")}
                   title={"Select (s)"}
