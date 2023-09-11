@@ -234,13 +234,16 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         outputs = []
         for img, detections in zip(imgs, self._curr_prompts):
             ## If no detections, return empty tensors instead of running SAM
-            if len(detections.detections) == 0:
-                H, W = img.shape[1], img.shape[2]
+            if (
+                detections.detections is None
+                or len(detections.detections) == 0
+            ):
+                h, w = img.shape[1], img.shape[2]
                 outputs.append(
                     {
                         "boxes": torch.tensor([[]]),
                         "labels": torch.empty([0, 4]),
-                        "masks": torch.empty([0, 1, H, W]),
+                        "masks": torch.empty([0, 1, h, w]),
                     }
                 )
                 continue
@@ -263,19 +266,15 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 device=sam_predictor.device,
             )
 
-            try:
-                masks, _, _ = sam_predictor.predict_torch(
-                    point_coords=None,
-                    point_labels=None,
-                    boxes=transformed_boxes,
-                    multimask_output=False,
-                )
-                outputs.append(
-                    {"boxes": input_boxes, "labels": labels, "masks": masks}
-                )
-
-            except ValueError:
-                print("ValueError in sam_predictor.predict_torch")
+            masks, _, _ = sam_predictor.predict_torch(
+                point_coords=None,
+                point_labels=None,
+                boxes=transformed_boxes,
+                multimask_output=False,
+            )
+            outputs.append(
+                {"boxes": input_boxes, "labels": labels, "masks": masks}
+            )
 
         return outputs
 
@@ -294,7 +293,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             boxes, labels, scores, masks = [], [], [], []
 
             ## If no keypoints, return empty tensors instead of running SAM
-            if len(keypoints.keypoints) == 0:
+            if keypoints.keypoints is None or len(keypoints.keypoints) == 0:
                 outputs.append(
                     {
                         "boxes": torch.tensor([[]]),
