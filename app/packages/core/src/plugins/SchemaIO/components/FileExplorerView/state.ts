@@ -62,18 +62,18 @@ export function useCurrentFiles(defaultPath) {
 function getFilesystemsFromList(filesystems) {
   const azure = filesystems.find((fs) => fs.name.toLowerCase() === "azure");
   const s3 = filesystems.find((fs) => fs.name.toLowerCase() === "s3");
-  const gcp = filesystems.find((fs) => fs.name.toLowerCase() === "gcp");
+  const gcs = filesystems.find((fs) => fs.name.toLowerCase() === "gcs");
   const minio = filesystems.find((fs) => fs.name.toLowerCase() === "minio");
   const local = filesystems.find((fs) => fs.name.toLowerCase() === "local");
-  return { azure, s3, gcp, minio, local };
+  return { azure, s3, gcs, minio, local };
 }
 
 export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
   const filesystems = executor.result?.filesystems || [];
   const available = filesystems.length > 0;
-  const { azure, s3, gcp, minio, local } = getFilesystemsFromList(filesystems);
-  const hasCloud = azure || s3 || gcp || minio;
+  const { azure, s3, gcs, minio, local } = getFilesystemsFromList(filesystems);
+  const hasCloud = azure || s3 || gcs || minio;
   const defaultFilesystem = filesystems[0];
   const defaultPath = defaultFilesystem?.default_path;
   const defaultFile = defaultPath ? { absolute_path: defaultPath } : null;
@@ -96,7 +96,7 @@ export function useAvailableFileSystems() {
     hasCloud,
     azure,
     s3,
-    gcp,
+    gcs,
     minio,
     local,
   };

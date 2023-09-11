@@ -314,10 +314,16 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
-    # elif fs == fos.FileSystem.GCS:
-    #     return "gs://"
-    # elif fs == fos.FileSystem.S3:
-    #     return "s3://"
+    elif fs == fos.FileSystem.GCS:
+        return "gs://"
+    elif fs == fos.FileSystem.S3:
+        return "s3://"
+    elif fs == fos.FileSystem.AZURE:
+        return "azure://"
+    elif fs == fos.FileSystem.HTTP:
+        return "http://"
+    elif fs == fos.FileSystem.MINIO:
+        return "minio://"
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -325,18 +331,29 @@ def get_default_path_for_filesystem(fs):
 def list_fileystems():
     filesystems = fos.list_available_file_systems()
     results = []
-    for fs in fos.FileSystem:
-        if fs in filesystems:
-            results.append(
-                {
-                    "name": fs.name,
-                    "default_path": get_default_path_for_filesystem(fs),
-                }
-            )
+    for fs in filesystems:
+        results.append(
+            {
+                "name": fs,
+                "default_path": get_default_path_for_filesystem(fs),
+            }
+        )
     return results
 
 
 def list_files(dirpath):
+    if fos._is_root(dirpath):
+        fs = fos.get_file_system(dirpath)
+        dirs = [
+            {
+                "name": name,
+                "type": "directory",
+                "absolute_path": fos.join(dirpath, name),
+            }
+            for name in fos.list_buckets(fs)
+        ]
+        return dirs
+
     dirs = [
         {
             "name": name,
