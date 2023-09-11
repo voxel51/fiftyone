@@ -256,7 +256,7 @@ class DelegatedOperationService(object):
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
                 if log:
-                    logger.info("Operation %s failed", op.id)
+                    logger.info("Operation %s failed\n%s", op.id, result.error)
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.
