@@ -7,10 +7,12 @@ const Link: React.FC<
     className?: string;
     style?: React.CSSProperties;
     target?: React.HTMLAttributeAnchorTarget;
+    cy?: string;
   }>
-> = ({ children, className, style, target, title, to }) => {
+> = ({ children, className, cy, style, target, title, to }) => {
   return (
     <a
+      data-cy={cy}
       onClick={to}
       style={style}
       className={className}

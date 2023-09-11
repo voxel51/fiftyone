@@ -6,13 +6,15 @@ import {
 } from "@fiftyone/relay";
 import { atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
+import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
   datasetAppConfig,
   isVideoDataset,
 } from "./selectors";
+import { State } from "./types";
 
-export const selectedMediaField = graphQLSyncFragmentAtomFamily<
+export const selectedMediaFieldAtomFamily = graphQLSyncFragmentAtomFamily<
   mediaFieldsFragment$key,
   string,
   boolean
@@ -33,9 +35,25 @@ export const selectedMediaField = graphQLSyncFragmentAtomFamily<
     },
   },
   {
-    key: "selectedMediaField",
+    key: "selectedMediaFieldAtomFamily",
   }
 );
+
+export const selectedMediaField = selectorFamily<string, boolean>({
+  key: "selectedMediaField",
+  get:
+    (modal) =>
+    ({ get }) => {
+      const value = get(selectedMediaFieldAtomFamily(modal));
+      return get(fieldPaths({ space: State.SPACE.SAMPLE })).includes(value)
+        ? value
+        : "filepath";
+    },
+  set:
+    (modal) =>
+    ({ set }, value) =>
+      set(selectedMediaFieldAtomFamily(modal), value),
+});
 
 export const sidebarMode = atomFamily<"all" | "best" | "fast" | null, boolean>({
   key: "sidebarMode",

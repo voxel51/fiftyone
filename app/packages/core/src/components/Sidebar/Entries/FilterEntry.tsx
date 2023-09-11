@@ -9,6 +9,10 @@ import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { FilterInputDiv } from "./utils";
 
+const Text = styled.div`
+  font-size: 1rem;
+`;
+
 const Filter = ({ modal }: { modal: boolean }) => {
   const theme = useTheme();
   const [isFilterMode, setIsFilterMode] = useRecoilState(
@@ -32,10 +36,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
-
-  const Text = styled.div`
-    font-size: 1rem;
-  `;
 
   return (
     <FilterInputDiv modal={modal}>

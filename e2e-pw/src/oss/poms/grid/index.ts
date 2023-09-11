@@ -14,7 +14,7 @@ export class GridPom {
     public readonly page: Page,
     private readonly eventUtils: EventUtils
   ) {
-    this.actionsRow = new GridActionsRowPom(page);
+    this.actionsRow = new GridActionsRowPom(page, eventUtils);
     this.sliceSelector = new GridSliceSelectorPom(page);
 
     this.assert = new GridAsserter(this);
@@ -59,8 +59,7 @@ export class GridPom {
   }
 
   async selectSlice(slice: string) {
-    await this.page.getByTestId("selector-slice").fill(slice);
-    await this.page.getByTestId("selector-slice").press("Enter");
+    await this.sliceSelector.selectSlice(slice);
   }
 
   /**

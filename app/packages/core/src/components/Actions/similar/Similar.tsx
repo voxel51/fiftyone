@@ -39,13 +39,11 @@ interface SortBySimilarityProps {
   isImageSearch: boolean;
   modal: boolean;
   close: () => void;
-  bounds?: any; // fix me
-  anchorRef?: MutableRefObject<unknown>;
+  anchorRef?: MutableRefObject<HTMLElement>;
 }
 
 const SortBySimilarity = ({
   modal,
-  bounds,
   close,
   isImageSearch,
   anchorRef,
@@ -187,13 +185,7 @@ const SortBySimilarity = ({
   );
 
   return (
-    <Popout
-      modal={modal}
-      bounds={bounds}
-      style={{ minWidth: 280 }}
-      fixed
-      anchorRef={anchorRef}
-    >
+    <Popout modal={modal} style={{ minWidth: 280 }} fixed anchorRef={anchorRef}>
       {hasSimilarityKeys && (
         <div
           style={{

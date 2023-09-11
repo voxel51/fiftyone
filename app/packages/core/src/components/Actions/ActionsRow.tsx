@@ -35,7 +35,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import useMeasure from "react-use-measure";
 import {
   selector,
   useRecoilCallback,
@@ -116,7 +115,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
   const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
   const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
-  const [mRef, bounds] = useMeasure();
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
@@ -138,7 +136,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
         open={open}
         onClick={toggleSimilarity}
         highlight={true}
-        ref={mRef}
         title={`Sort by ${
           showImageSimilarityIcon ? "image" : "text"
         } similarity`}
@@ -150,7 +147,6 @@ const Similarity = ({ modal }: { modal: boolean }) => {
           key={`similary-${isImageSearch}`}
           modal={modal}
           close={() => setOpen(false)}
-          bounds={bounds}
           isImageSearch={isImageSearch}
           anchorRef={ref}
         />
@@ -175,10 +171,8 @@ const Tag = ({
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
-  const ref = useRef();
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-
-  const [mRef, bounds] = useMeasure();
 
   const disabled = tagging;
 
@@ -198,18 +192,15 @@ const Tag = ({
         open={open}
         onClick={() => !disabled && available && setOpen(!open)}
         highlight={(selected || open) && available}
-        ref={mRef}
         title={`Tag sample${modal ? "" : "s"} or labels`}
         data-cy="action-tag-sample-labels"
       />
       {open && available && (
         <Tagger
           modal={modal}
-          bounds={bounds}
           close={() => setOpen(false)}
           lookerRef={lookerRef}
           anchorRef={ref}
-          data-cy="selected-pill-button"
         />
       )}
     </ActionDiv>
@@ -227,9 +218,8 @@ const Selected = ({
   const [loading, setLoading] = useState(false);
   const samples = useRecoilValue(fos.selectedSamples);
   const labels = useRecoilValue(fos.selectedLabelIds);
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
 
   lookerRef &&
     useEventHandler(lookerRef.current, "buffering", (e) =>
@@ -260,7 +250,6 @@ const Selected = ({
         }}
         highlight={samples.size > 0 || open || (labels.size > 0 && modal)}
         text={text}
-        ref={mRef}
         title={`Manage selected`}
         style={{
           cursor: loading ? "default" : "pointer",
@@ -272,7 +261,6 @@ const Selected = ({
           modal={modal}
           close={() => setOpen(false)}
           lookerRef={lookerRef}
-          bounds={bounds}
           anchorRef={ref}
         />
       )}
@@ -284,7 +272,6 @@ const Options = ({ modal }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
 
   return (
     <ActionDiv ref={ref}>
@@ -293,11 +280,10 @@ const Options = ({ modal }) => {
         open={open}
         onClick={() => setOpen(!open)}
         highlight={open}
-        ref={mRef}
         title={"Display options"}
         data-cy="action-display-options"
       />
-      {open && <OptionsActions modal={modal} bounds={bounds} anchorRef={ref} />}
+      {open && <OptionsActions modal={modal} anchorRef={ref} />}
     </ActionDiv>
   );
 };
