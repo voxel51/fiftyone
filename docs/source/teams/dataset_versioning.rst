@@ -153,6 +153,7 @@ An incomplete list of such operations:
 | :ref:`annotation <fiftyone-annotation>`,           |
 | :ref:`brain method <fiftyone-brain>`, or           |
 | :ref:`evaluation <evaluating-models>`)             |
++----------------------------------------------------+
 | :ref:`Save a view <saving-views>` on the dataset   |
 +----------------------------------------------------+
 
@@ -169,7 +170,7 @@ operations:
 +-------------------------------------------------------------------+
 | :ref:`Clone <cloning-datasets>` Snapshot to a new dataset         |
 | (this new dataset will have an editable HEAD but lose the         |
-| Snapshot history of the parent dataset                            |
+| Snapshot history of the parent dataset)                           |
 +-------------------------------------------------------------------+
 | Creating a generated dataset view from the Snapshot, such as      |
 | :ref:`to_patches() <object-patches-views>` or                     |
@@ -431,12 +432,10 @@ snapshots can also be deleted.
 
 .. note::
 
-    If the Snapshot is not the most recently created, the sample change summary
+    If the Snapshot is NOT the most recently created, the sample change summary
     for the following Snapshot will be recalculated based on the previous
     Snapshot. This is to retain accuracy given the modification to the linear
     history chain.
-
-.. note::
 
     If the Snapshot IS the most recent , the latest sample changes summary is
     not automatically recalculated. See relevant sections in
@@ -559,8 +558,8 @@ Internal Duplication Backend
 This backend is similar to cloning a dataset; Snapshots are stored in the same
 MongoDB database as the original dataset.
 
-As of Fiftyone Teams version 1.4.0, creating a Snapshot is similar to cloning
-a dataset in terms of performance and storage needs.
+Creating a Snapshot with this backend is similar to cloning a dataset in terms
+of performance and storage needs.
 
 Creating a Snapshot should take roughly the same amount of time as cloning the
 dataset, and so is proportional to the size of the dataset being versioned.
@@ -570,7 +569,8 @@ In the future, support will be implemented for offloading Snapshots to a separat
 data store, such as cloud storage, to reduce the load on the Fiftyone database.
 
 These requirements should be taken into consideration when using Snapshots and
-when determining values for the max number of Snapshots allowed.
+when determining values for the
+:ref:`max number of Snapshots allowed <versioning-configuration>`.
 
 .. _duplication-backend-time-space:
 
@@ -639,6 +639,21 @@ There are no unique configuration options for this backend.
 Usage Considerations
 ____________________
 
+Best Practices
+--------------
+
+As this feature matures, we will have better recommendations for best practices.
+For now given the limited starting options in the intial iteration, we have the
+following advice:
+
+- Use snapshots on smaller datasets if possible.
+- Since space is at a premium, limit creation of snapshots to marking milestone
+  events which you want to revisit or restore later.
+- Delete old snapshots you don't need anymore.
+- Set the :ref:`versionings configurations versioning-configuration` to the
+  highest your deployment can comfortably support, to better enable user
+  workflows with breaking the (MongoDB) bank.
+
 Dataset Versioning + Permissions
 --------------------------------
 
@@ -664,6 +679,8 @@ perform different Snapshot operations; all Snapshot management requires
 +----------------------------+----------+----------+------------+
 | Revert dataset to Snapshot |          |          |     ✅     |
 +----------------------------+----------+----------+------------+
+
+.. _versioning-configuration:
 
 Configuration
 -------------
