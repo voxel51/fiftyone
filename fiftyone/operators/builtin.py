@@ -342,8 +342,8 @@ def list_fileystems():
 
 
 def list_files(dirpath):
-    if fos._is_root(dirpath):
-        fs = fos.get_file_system(dirpath)
+    fs = fos.get_file_system(dirpath)
+    if fos._is_root(dirpath) and fs is not fos.FileSystem.LOCAL:
         dirs = [
             {
                 "name": name,
