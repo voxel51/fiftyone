@@ -23,7 +23,7 @@ const useClearSampleSelection = (close) => {
   return useCallback(() => {
     setSelected(new Set());
     close();
-  }, []);
+  }, [close, setSelected]);
 };
 
 const useGridActions = (close: () => void) => {
@@ -42,7 +42,7 @@ const useGridActions = (close: () => void) => {
       ]);
       close();
     },
-    [selected]
+    [close, selected, setView]
   );
   return [
     {

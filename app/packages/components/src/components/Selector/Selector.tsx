@@ -29,7 +29,7 @@ type Props<T> = {
   toKey?: (value: T) => string;
 };
 
-const SelectorResults = <T extends unknown>({
+function SelectorResults<T>({
   active,
   component,
   cy,
@@ -38,7 +38,7 @@ const SelectorResults = <T extends unknown>({
   search,
   toKey = (value) => String(value),
   useSearch,
-}: Props<T>) => {
+}: Props<T>) {
   const { values, total } = useSearch(search);
 
   useLayoutEffect(() => {
@@ -56,7 +56,7 @@ const SelectorResults = <T extends unknown>({
       cy={cy}
     />
   );
-};
+}
 
 export interface SelectorProps<T> {
   id?: string;
@@ -76,7 +76,7 @@ export interface SelectorProps<T> {
   cy?: string;
 }
 
-const Selector = <T extends unknown>(props: SelectorProps<T>) => {
+function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
     value,
@@ -108,7 +108,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
       local.current = toKey(value);
       setEditing(false);
     };
-  }, [onSelect]);
+  }, [onSelect, toKey]);
 
   useEffect(() => {
     setSearch(value || "");
@@ -250,6 +250,6 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
       )}
     </div>
   );
-};
+}
 
 export default Selector;

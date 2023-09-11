@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps } from "@mui/icons-material";
 import Color from "color";
-import { Suspense, useMemo } from "react";
+import React, { Suspense, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../components/src/components/Loading/LoadingDots";
