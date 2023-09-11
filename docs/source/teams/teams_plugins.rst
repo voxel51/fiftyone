@@ -339,5 +339,163 @@ Managing Delegated Operator Runs
 ________________________________
 
 
-Teams UI
+The FiftyOne Teams runs page allows you to monitor and explore operator runs 
+scheduled by any member of your organization. 
+
+
+.. Scheduling an operator run
+.. --------------------------
+
+.. When invoking an delegated operator, you will see the `Schedule` (instead
+.. of the `Execute`) button to indicate that operator will run in delegated mode
+
+.. .. image:: /images/plugins/operators/runs/prompt.png
+
+
+Runs page
+---------
+
+The "Runs" page is accessible to all users with :ref:`Can view <teams-can-view>`
+access to the dataset.
+
+You can access the "Runs" page by clicking the `Runs` from
+:ref:`Samples tab <teams-using-datasets>`.
+
+Once you are on the "Runs" page, you will see a table with the list of all
+operators scheduled by any member of your organization. You can sort, search
+and filter runs listed to refine the list as you like.
+
+The image below provides a peek of the "Runs" page. The list will display the
+label and name of an operator, status, timestamp of current status, and the name
+of a user that scheduled a run. On the right side of the "Runs" page, you will
+see pinned and recently updated runs in your organization. 
+
+.. note::
+
+    This page is not auto-refreshed. You must manually reload the page to see
+    updates.
+
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+Sorting
+^^^^^^^
+
+By default, the runs table is sorted by newest to oldest. You can use the
+drop-down menu in the upper left of table to sort the list of runs by updated
+time of a run and the name of an operator.
+
+.. image:: /images/plugins/operators/runs/sort.png
+
+Filtering
+^^^^^^^^^
+
+You can filter runs table to see a subset of runs
+
+**Showing only your runs**
+
+You can use the "My runs" radio button to see only the runs that you scheduled.
+
+.. image:: /images/plugins/operators/runs/my_runs.png
+
+**By status**
+
+Additionally, you can further refine the list of runs using the status
+drop-down which allows you to select one or more status you would like to filter
+by.
+
+.. image:: /images/plugins/operators/runs/filter_by_status.png
+
+Searching
+^^^^^^^^^
+
+In addition, you can also use the search functionality to filter the list of
+runs by a keyword. As you type your query in the search box, the list of runs
+will be updated to show only the runs matching your query
+
+.. note::
+
+    The search is case-sensitive and you can only search by the operator name
+    associated with a run. Searching by operator label is not supported (i.e.,
+    **Demo: Export to GCP** in example image below).
+
+.. image:: /images/plugins/operators/runs/search_by_name.png
+
+Retrying
+^^^^^^^^
+
+From the "Runs" page, you can trigger retry any of the listed runs. To retry a
+run, click the three-dots to open actions menu for a run, then click `Re-run`
+
+.. image:: /images/plugins/operators/runs/re_run.png
+
+
+Pinning
+^^^^^^^
+
+Pinned runs are displayed to the right of runs table. By default, five pinned
+runs will be displayed. However, if there are more than five pinned runs, you
+will see a button to see the hidden pinned runs.
+
+To pin a run, hover over a run in runs table and click the pin icon which will
+appear beside the operator label of a run.
+
+.. image:: /images/plugins/operators/runs/pinning.png
+
+.. note::
+
+    Pinned runs are identical for all users in your organization.
+
+Run page
 --------
+
+The "Run" page allows you to see input, output, view, and error of each run.
+
+You can visit the "Run" page for a run by clicking on a run in the runs table
+or in the list of runs under "Pinned runs" and "Recent runs".
+
+Input
+^^^^^
+
+The "Input" tab on the "Run" page lets you see the input parameters that were
+provided when the run was scheduled.
+
+.. image:: /images/plugins/operators/runs/input.png
+
+**Raw input**
+
+By default, a preview (similar to what is displayed when invoking an operator)
+of input parameters is displayed. However, you can switch to raw by clicking the
+`Show raw` toggle button.
+
+.. image:: /images/plugins/operators/runs/raw_input.png
+
+Output
+^^^^^^
+
+The "Output" tab on the "Run" page lets you see the preview of the result of a
+completed run.
+
+.. note::
+    Output tab is only available for completed run
+
+.. image:: /images/plugins/operators/runs/output.png
+
+Errors
+^^^^^^
+
+The "Errors" tab on the "Run" page lets you see the errors occurred of a failed
+run.
+
+.. note::
+    Errors tab is only available for failed run
+
+.. image:: /images/plugins/operators/runs/errors.png
+
+
+View
+^^^^
+The "View" tab on the "Run" page lets you see the view parameters that were
+included in operator context when the run was scheduled.
+
+.. image:: /images/plugins/operators/runs/view.png
