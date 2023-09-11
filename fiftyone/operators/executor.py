@@ -17,9 +17,9 @@ import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
 from fiftyone.plugins.secrets import PluginSecretsResolver
 
-from .decorators import coroutine_timeout
-from .registry import OperatorRegistry
-from .message import GeneratedMessage, MessageType
+from fiftyone.operators.decorators import coroutine_timeout
+from fiftyone.operators.registry import OperatorRegistry
+from fiftyone.operators.message import GeneratedMessage, MessageType
 
 
 class ExecutionRunState(object):
@@ -155,22 +155,24 @@ def _parse_ctx(ctx):
     return dataset_name, view_stages, selected, selected_labels
 
 
+# request token and user are teams-only
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
-    operator_uri, request_params, user=None
+    operator_uri, request_params, request_token=None, user=None
 ):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
+        request_token (None): the authentication token from the request
         user (None): the user executing the operator
 
     Returns:
         an :class:`ExecutionResult`
     """
     prepared = await prepare_operator_executor(
-        operator_uri, request_params, user=user
+        operator_uri, request_params, request_token=request_token, user=user
     )
 
     # teams-only
@@ -222,7 +224,9 @@ async def execute_or_delegate_operator(
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-async def prepare_operator_executor(operator_uri, request_params, user=None):
+async def prepare_operator_executor(
+    operator_uri, request_params, request_token=None, user=None
+):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -230,14 +234,16 @@ async def prepare_operator_executor(operator_uri, request_params, user=None):
     operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor, user=user)
+
+    await ctx.resolve_secret_values(
+        operator._plugin_secrets, request_token=request_token
+    )
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
         return ExecutionResult(
             error="Validation error", validation_ctx=validation_ctx
         )
-
-    await ctx.resolve_secret_values(operator._plugin_secrets)
 
     return operator, executor, ctx
 
