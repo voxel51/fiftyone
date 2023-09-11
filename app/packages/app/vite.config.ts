@@ -17,6 +17,11 @@ export default defineConfig({
     // pluginRewriteAll to address this vite bug: https://github.com/vitejs/vite/issues/2415
     pluginRewriteAll(),
   ],
+  resolve: {
+    alias: {
+      path: "path-browserify",
+    },
+  },
   server: {
     port: parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT || "5173"),
     proxy: {

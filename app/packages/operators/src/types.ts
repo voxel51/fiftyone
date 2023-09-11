@@ -388,6 +388,35 @@ export class Trigger extends BaseType {
 }
 
 /**
+ * Operator type for defining a file and its metadata.
+ */
+
+export class File extends OperatorObject {
+  constructor(public properties: Map<string, Property> = new Map()) {
+    super(properties);
+    this.str("path", { label: "Path", description: "The path to the file" });
+    this.str("name", { label: "Name", description: "The name of the file" });
+    this.bool("is_directory", {
+      label: "Is Directory",
+      description: "Whether the file is a directory",
+    });
+    this.defineProperty("size", Number({ int: true }), {
+      label: "Size",
+      description: "The size of the file in bytes",
+    });
+    this.defineProperty("last_modified", Number({ int: true }), {
+      label: "Last Modified",
+      description:
+        "The last modified time of the file in milliseconds since the epoch",
+    });
+    this.defineProperty("directory_contents", new List(new OperatorString()), {
+      label: "Directory Contents",
+      description: "The contents of the directory",
+    });
+  }
+}
+
+/**
  * Operator type for defining a placement for an operator. Placement is a button
  *  that can be rendered at various places in the app
  */
@@ -943,6 +972,22 @@ export class MarkdownView extends View {
 }
 
 /**
+ * Operator class for interacting with files.
+ */
+
+export class FileExplorerView extends View {
+  public defaultPath: string;
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "FileExplorerView";
+    this.defaultPath = options.defaultPath as string;
+  }
+  static fromJSON(json) {
+    return new FileExplorerView(json);
+  }
+}
+
+/**
  * Operator class for rendering a prompt.
  */
 export class PromptView extends View {
@@ -989,6 +1034,7 @@ const TYPES = {
   OneOf,
   Tuple,
   Map: OperatorMap,
+  File,
 };
 
 // NOTE: this should always match fiftyone/operators/types.py
