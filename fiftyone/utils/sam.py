@@ -234,10 +234,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         outputs = []
         for img, detections in zip(imgs, self._curr_prompts):
             ## If no detections, return empty tensors instead of running SAM
-            if (
-                detections.detections is None
-                or len(detections.detections) == 0
-            ):
+            if detections is None or len(detections.detections) == 0:
                 h, w = img.shape[1], img.shape[2]
                 outputs.append(
                     {
@@ -293,7 +290,7 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             boxes, labels, scores, masks = [], [], [], []
 
             ## If no keypoints, return empty tensors instead of running SAM
-            if keypoints.keypoints is None or len(keypoints.keypoints) == 0:
+            if keypoints is None or len(keypoints.keypoints) == 0:
                 outputs.append(
                     {
                         "boxes": torch.tensor([[]]),
