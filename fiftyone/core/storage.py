@@ -127,7 +127,7 @@ def init_storage():
             azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
 
-class FileSystem(enum.Enum):
+class FileSystem(object):
     """Enumeration of the available file systems."""
 
     S3 = "s3"
