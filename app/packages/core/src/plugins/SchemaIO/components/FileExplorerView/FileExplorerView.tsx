@@ -3,6 +3,7 @@ import FileExplorer from "./FileExplorer";
 import FieldWrapper from "../FieldWrapper";
 import { useAvailableFileSystems } from "./state";
 import { CircularProgress } from "@mui/material";
+import { ErrorView } from "..";
 
 export default function FileExplorerView(props) {
   const { schema, onChange } = props;
@@ -20,6 +21,22 @@ export default function FileExplorerView(props) {
     return (
       <FieldWrapper {...props}>
         <CircularProgress size={16} />
+      </FieldWrapper>
+    );
+  }
+
+  if (fsInfo.error) {
+    return (
+      <FieldWrapper {...props}>
+        <ErrorView
+          schema={{ view: { detailed: true } }}
+          data={[
+            {
+              reason: "Failed to get available file systems",
+              details: fsInfo.error,
+            },
+          ]}
+        />
       </FieldWrapper>
     );
   }

@@ -83,10 +83,6 @@ export function useAvailableFileSystems() {
 
   useEffect(refresh, []);
 
-  if (executor.error) {
-    throw executor.error;
-  }
-
   return {
     ready: executor.hasResultOrError,
     refresh,
@@ -99,6 +95,7 @@ export function useAvailableFileSystems() {
     gcp,
     minio,
     local,
+    error: executor.error,
   };
 }
 
