@@ -15,7 +15,7 @@ export default function useExtendedStageEffect() {
   const getCurrentDataset = useRecoilCallback(({ snapshot }) => async () => {
     return snapshot.getPromise(fos.datasetName);
   });
-  const slices = fos.currentSlices(false);
+  const slices = useRecoilValue(fos.currentSlices(false));
 
   useEffect(() => {
     if (loadedPlot && Array.isArray(selection)) {

@@ -72,7 +72,7 @@ export function EmbeddingsPlot({
   const isCategorical = style === "categorical";
 
   return (
-    <div style={{ height: "100%" }}>
+    <div style={{ height: "100%" }} data-cy="embeddings-plot-container">
       {bounds?.width && (
         <Plot
           data={data}

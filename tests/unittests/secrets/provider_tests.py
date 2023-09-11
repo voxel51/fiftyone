@@ -21,7 +21,6 @@ class MockEncryptedSecret(EncryptedSecret):
     def __init__(self, key, value):
         super().__init__(key, value)
 
-
 class TestEnvSecretProvider:
     @pytest.mark.asyncio
     async def test_get_existing_secret(self, mocker):
@@ -92,7 +91,6 @@ class TestEnvSecretProvider:
         secrets = await provider.get_multiple([])
 
         assert not secrets
-
 
 class TestFiftyoneDatabaseSecretProvider:
     SECRET_KEY = "SECRET_KEY"
