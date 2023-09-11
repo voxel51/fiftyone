@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { useState } from "react";
+import { default as React, useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import { InputDiv } from "./utils";
