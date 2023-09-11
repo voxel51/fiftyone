@@ -1,15 +1,13 @@
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import * as fos from "@fiftyone/state";
 import { usePanelStatePartial } from "@fiftyone/spaces";
 import { useBrainResultInfo } from "./useBrainResultInfo";
 import { SELECTION_SCOPE } from "./constants";
-import { useResetExtendedSelection } from "@fiftyone/state";
+import { useClearSelection } from "./useClearSelection";
 
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
-  const setFilters = useSetRecoilState(fos.filters);
-  const resetExtendedSelection = useResetExtendedSelection();
   const [{ selection, scope }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
   );
@@ -33,12 +31,12 @@ export function usePlotSelection() {
       clearSelection();
     }
   }
+  const { resetExtendedSelection } = useClearSelection();
 
   function clearSelection() {
     resetExtendedSelection();
     setPlotSelection(null);
     setSelectedSamples(new Set());
-    setFilters({});
   }
   let selectionStyle = null;
   const selected = Array.from(selectedSamples);

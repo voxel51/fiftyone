@@ -25,6 +25,8 @@ import { useResetPlotZoom } from "./useResetPlotZoom";
 import { Link } from "@mui/material";
 import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
+import { useClearSelection } from "./useClearSelection";
+import { useResetExtendedSelection } from "@fiftyone/state";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -44,14 +46,22 @@ export default function Embeddings({ containerHeight, dimensions }) {
     "lasso",
     true
   );
+
   const warnings = useWarnings();
   const setPanelCloseEffect = useSetPanelCloseEffect();
+  const embeddingsDocumentationLink = useExternalLink(
+    "https://docs.voxel51.com"
+  );
+  const { setFilters } = useClearSelection();
+  const resetExtendedSelection = useResetExtendedSelection();
 
   useEffect(() => {
     setPanelCloseEffect(() => {
       plotSelection.clearSelection();
+      setFilters({});
+      resetExtendedSelection();
     });
-  }, []);
+  }, [setPanelCloseEffect, plotSelection, setFilters, resetExtendedSelection]);
 
   const selectorStyle = {
     background: theme.neutral.softBg,
@@ -128,7 +138,7 @@ export default function Embeddings({ containerHeight, dimensions }) {
                     "https://docs.voxel51.com/user_guide/app.html#embeddings-panel"
                   }
                   title={"Help"}
-                  to={useExternalLink("https://docs.voxel51.com")}
+                  to={embeddingsDocumentationLink}
                   target={"_blank"}
                 >
                   <Help />
