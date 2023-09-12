@@ -18,7 +18,6 @@ import eta.core.serial as etas
 import eta.core.utils as etau
 
 
-from fiftyone.core.config import AppConfig
 import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
 from fiftyone.core.utils import run_sync_task

@@ -4630,7 +4630,6 @@ __metadata:
     "@fiftyone/relay": "*"
     "@fiftyone/utilities": "*"
     "@microsoft/fetch-event-source": ^2.0.1
-    "@recoiljs/refine": ^0.1.1
     "@testing-library/react-hooks": latest
     "@vitest/ui": ^0.25.2
     babel-plugin-relay: ^14.1.0

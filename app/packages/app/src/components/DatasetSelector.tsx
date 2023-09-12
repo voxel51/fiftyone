@@ -1,8 +1,7 @@
 import { Selector, UseSearch } from "@fiftyone/components";
-import { datasetName } from "@fiftyone/state";
+import { datasetName, useSetDataset } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import useSetDataset from "../useSetDataset";
 
 const DatasetLink: React.FC<{ value: string; className: string }> = ({
   className,

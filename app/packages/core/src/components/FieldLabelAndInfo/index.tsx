@@ -263,7 +263,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor({ field, expandedPath });
+    setIsCustomizingColor({ path: field.path });
   };
 
   useEffect(updatePosition, [field, isCollapsed]);

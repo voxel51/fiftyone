@@ -425,7 +425,12 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
+  dataset(
+    name: String!
+    savedViewSlug: String
+    view: BSONArray = null
+    groupSlice: String!
+  ): Dataset
   datasets(
     search: String
     first: Int = 200

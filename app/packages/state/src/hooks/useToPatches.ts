@@ -31,6 +31,7 @@ export default function useToPatches() {
           sampleIds: Array.from(await snapshot.getPromise(selectedSamples)),
         });
         set(view, (v) => v);
+
         const unsubscribe = subscribe((_, { reset, set }) => {
           reset(viewStateForm_INTERNAL);
           set(patching, false);

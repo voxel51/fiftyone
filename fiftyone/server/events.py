@@ -31,6 +31,7 @@ from fiftyone.core.session.events import (
     SelectLabels,
     SelectSamples,
     SetColorScheme,
+    SetSpaces,
     StateUpdate,
 )
 import fiftyone.core.state as fos
@@ -76,6 +77,9 @@ async def dispatch_event(
         _state.color_scheme = foo.ColorScheme.from_dict(
             asdict(event.color_scheme)
         )
+
+    if isinstance(event, SetSpaces):
+        _state.spaces = event.spaces
 
     if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state

@@ -97,8 +97,8 @@ export const createRouter = <T extends OperationType>(
       loadingResource.load().then((entry) => {
         nextCurrentEntryResource === loadingResource &&
           requestAnimationFrame(() => {
-            subscribers.forEach(([cb]) => cb(entry, action));
             currentEntryResource = loadingResource;
+            subscribers.forEach(([cb]) => cb(entry, action));
             cleanup();
           });
       });

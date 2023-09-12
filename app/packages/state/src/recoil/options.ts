@@ -25,12 +25,14 @@ export const selectedMediaFieldAtomFamily = graphQLSyncFragmentAtomFamily<
     default: "filepath",
     read: (data, prev) => {
       if (!data || data.name !== prev?.name)
+        // reset to configured default on dataset change
         return data.sampleFields
           .map((field) => field.path)
           .includes(data.appConfig.gridMediaField)
           ? data.appConfig.gridMediaField
           : "filepath";
 
+      // return the stored value
       return (cur) => cur;
     },
   },

@@ -28,6 +28,7 @@ const onSetViewName: RegisteredSetter =
     if (search.length) {
       search = `?${search}`;
     }
+
     commitMutation<setViewMutation>(environment, {
       mutation: setView,
       variables: {

@@ -31,6 +31,7 @@ export const datasetName = graphQLSyncFragmentAtom<
       return dataset?.name || null;
     },
     default: null,
+    selectorEffect: true,
   },
   {
     key: "datasetName",

@@ -299,11 +299,13 @@ class Dataset:
         info: Info = None,
         saved_view_slug: t.Optional[str] = gql.UNSET,
         view: t.Optional[BSONArray] = None,
+        group_slice: str = None,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
             dataset_name=name,
             serialized_view=view,
             saved_view_slug=saved_view_slug,
+            group_slice=group_slice,
             dicts=False,
         )
 
@@ -548,6 +550,7 @@ async def serialize_dataset(
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
     dicts=True,
+    group_slice: str = None,
 ) -> Dataset:
     def run():
         if not fod.dataset_exists(dataset_name):
@@ -611,6 +614,9 @@ async def serialize_dataset(
                 saved_views.append(view_dict)
 
             data.saved_views = saved_views
+
+        if slice:
+            data.group_slice = slice
 
         for brain_method in data.brain_methods:
             try:

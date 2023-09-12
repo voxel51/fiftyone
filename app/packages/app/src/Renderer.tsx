@@ -9,7 +9,8 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-import { Queries, useRouterContext } from "./routing";
+import { Queries } from "./makeRoutes";
+import { useRouterContext } from "./routing";
 import { Entry } from "./routing/RouterContext";
 
 export const pendingEntry = atom<boolean>({
@@ -32,7 +33,7 @@ const ColorScheme = () => {
       setTheme(current);
       setMode(current);
     }
-  }, [current]);
+  }, [current, setMode, setTheme]);
 
   return null;
 };
@@ -45,12 +46,11 @@ const Renderer = () => {
   useEffect(() => {
     router.load().then(setRouteEntry);
     subscribe((_, { set }) => {
+      console.log(router.get());
       set(entry, router.get());
       set(pendingEntry, false);
     });
   }, [router, setRouteEntry]);
-
-  useLayoutEffect(() => {}, []);
 
   useEffect(() => {
     return router.subscribe(
@@ -74,6 +74,7 @@ const Renderer = () => {
 
 const Route = ({ route }: { route: Entry<Queries> }) => {
   const Component = route.component;
+
   return <Component prepared={route.preloadedQuery} />;
 };
 

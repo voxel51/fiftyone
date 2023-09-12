@@ -42,7 +42,6 @@ const getUseSearch = (fragment: NavDatasets$key) => {
               cursor
               node {
                 name
-                # can the view selector reuse the savedViews {} fragment?
               }
             }
           }

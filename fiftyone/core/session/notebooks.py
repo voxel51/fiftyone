@@ -32,13 +32,15 @@ class NotebookCell:
     subscription: str
 
 
-def capture(cell: NotebookCell, data: fose.CaptureNotebookCell) -> None:
+def capture(
+    cell: NotebookCell, data: fose.CaptureNotebookCell, proxy_url: str = None
+) -> None:
     cell.handle.update(
         IPython.display.HTML(
             fost.SCREENSHOT_HTML.render(
                 subscription=cell.subscription,
                 image=data.src,
-                url=focx.get_url(cell.address, cell.port),
+                url=focx.get_url(cell.address, cell.port, proxy_url=proxy_url),
                 max_width=data.width,
                 height=cell.height,
             ),
