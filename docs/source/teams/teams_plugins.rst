@@ -373,7 +373,6 @@ To set up Airflow as an Orchestrator to run delegated operations, you will need 
 Managing Delegated Operator Runs
 ________________________________
 
-Teams UI
 The FiftyOne Teams runs page allows you to monitor and explore operator runs
 scheduled by any member of your organization. 
 
