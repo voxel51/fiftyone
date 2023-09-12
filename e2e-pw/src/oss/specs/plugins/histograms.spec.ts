@@ -1,6 +1,6 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { HistogramPom } from "src/oss/poms/histogram-panel";
-import { PanelPom } from "src/oss/poms/panel";
+import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`histograms`);
@@ -45,8 +45,11 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
 
 test("histograms panel", async ({ histogram, panel }) => {
   await panel.open("Histograms");
+  await histogram.assert.isLoaded();
+
   await histogram.assert.verifyField("bool");
 
+  await histogram.selector.openResults();
   await histogram.assert.verifyFields([
     "bool",
     "classification.confidence",
@@ -70,11 +73,10 @@ test("histograms panel", async ({ histogram, panel }) => {
     "str",
     "tags",
   ]);
-
-  await histogram.assert.isLoaded();
   await expect(await histogram.locator).toHaveScreenshot("bool-histogram.png", {
     animations: "allow",
   });
+
   await histogram.selectField("float");
   await expect(await histogram.locator).toHaveScreenshot(
     "float-histogram.png",

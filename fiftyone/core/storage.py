@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from datetime import datetime
 import io
 import itertools
+import enum
 import json
 import logging
 import multiprocessing.dummy
@@ -33,7 +34,8 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-import fiftyone.internal.credentials as fic
+from fiftyone.internal.credentials import CloudCredentialsManager
+from fiftyone.internal.util import has_encryption_key
 
 foc = fou.lazy_import("fiftyone.core.cache")
 
@@ -46,6 +48,7 @@ gcs_client = None
 azure_client = None
 minio_client = None
 http_client = None
+available_file_systems = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
@@ -71,6 +74,7 @@ def init_storage():
     global gcs_client
     global azure_client
     global minio_client
+    global available_file_systems
     global bucket_regions
     global region_clients
     global minio_alias_prefix
@@ -78,8 +82,8 @@ def init_storage():
     global azure_alias_prefix
     global azure_endpoint_prefix
 
-    if fic.has_encryption_key():
-        creds_manager = fic.CloudCredentialsManager()
+    if has_encryption_key():
+        creds_manager = CloudCredentialsManager()
     else:
         creds_manager = None
 
@@ -87,6 +91,7 @@ def init_storage():
     gcs_client = None
     azure_client = None
     minio_client = None
+    available_file_systems = None
     bucket_regions.clear()
     region_clients.clear()
 
@@ -133,12 +138,12 @@ class FileSystem(object):
     LOCAL = "local"
 
 
-_FILE_SYSTEMS_WITH_BUCKETS = {
+_FILE_SYSTEMS_WITH_BUCKETS = [
     FileSystem.S3,
     FileSystem.GCS,
     FileSystem.AZURE,
     FileSystem.MINIO,
-}
+]
 _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
 _UNKNOWN_REGION = "unknown"
 
@@ -226,6 +231,37 @@ def get_file_system(path):
         return FileSystem.HTTP
 
     return FileSystem.LOCAL
+
+
+def list_available_file_systems():
+    """Lists the file systems that are currently available for use with methods
+    like :func:`list_files` and :func:`list_buckets`.
+
+    Returns:
+        a list of :class:`FileSystem` values
+    """
+    global available_file_systems
+
+    if available_file_systems is None:
+        available_file_systems = _get_available_file_systems()
+
+    return available_file_systems
+
+
+def _get_available_file_systems():
+    file_systems = []
+
+    if not fi.is_internal_service():
+        file_systems.append(FileSystem.LOCAL)
+
+    for fs in _FILE_SYSTEMS_WITH_BUCKETS:
+        try:
+            _ = get_client(fs=fs)
+            file_systems.append(fs)
+        except:
+            pass
+
+    return file_systems
 
 
 def split_prefix(path):
@@ -1665,10 +1701,13 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
 
         return dirs
 
-    dirs = {os.path.dirname(p) for p in list_files(dirpath, recursive=True)}
-
-    if not recursive:
-        dirs = {d.split("/", 1)[0] for d in dirs}
+    if recursive:
+        filepaths = list_files(dirpath, recursive=True)
+        dirs = {os.path.dirname(p) for p in filepaths}
+    else:
+        client = get_client(path=dirpath)
+        dirs = client.list_subfolders(dirpath)
+        dirs = [os.path.relpath(d, dirpath) for d in dirs]
 
     dirs = sorted(d for d in dirs if d and not d.startswith("."))
 

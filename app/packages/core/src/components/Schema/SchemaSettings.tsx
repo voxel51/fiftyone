@@ -133,6 +133,7 @@ const SchemaSettings = () => {
             padding: "1.5rem",
             backgroundColor: theme.background.level2,
           }}
+          data-cy="field-visibility-container"
         >
           <Box
             style={{
@@ -221,6 +222,7 @@ const SchemaSettings = () => {
             }}
           >
             <Button
+              data-cy="field-visibility-btn-apply"
               style={{
                 color: theme.text.primary,
                 marginRight: "0.5rem",

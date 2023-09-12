@@ -55,13 +55,10 @@ test.describe("quickstart-groups", () => {
       await modal.waitForSampleLoadDomAttribute();
     });
 
-    test("shows correct pinned slice in modal", async ({ modal }) => {
-      await modal.group.assert.assertGroupPinnedText("left is pinned");
-    });
-
     test('changes slice to "pcd" when 3D viewer is clicked', async ({
       modal,
     }) => {
+      await modal.group.assert.assertGroupPinnedText("left is pinned");
       await modal.clickOnLooker3d();
       await modal.group.assert.assertGroupPinnedText("pcd is pinned");
     });
@@ -82,6 +79,38 @@ test.describe("quickstart-groups", () => {
       expect(await modal.sidebar.getSampleFilepath(false)).toEqual(
         FIRST_SAMPLE_FILENAME
       );
+    });
+
+    test("group media visibility toggle works", async ({ modal }) => {
+      // make sure popout is right aligned to the toggle button
+      await modal.group.toggleMediaButton.click();
+      const popoutBoundingBox =
+        await modal.group.groupMediaVisibilityPopout.boundingBox();
+      const toggleButtonBoundingBox =
+        await modal.group.toggleMediaButton.boundingBox();
+
+      expect(popoutBoundingBox.x + popoutBoundingBox.width).toBeCloseTo(
+        toggleButtonBoundingBox.x + toggleButtonBoundingBox.width,
+        0
+      );
+
+      await expect(modal.looker3d).toBeVisible();
+      await modal.group.toggleMedia("3d");
+      await expect(modal.looker3d).toBeHidden();
+      await modal.group.toggleMedia("3d");
+      await expect(modal.looker3d).toBeVisible();
+
+      await expect(modal.groupLooker).toBeVisible();
+      await modal.group.toggleMedia("viewer");
+      await expect(modal.groupLooker).toBeHidden();
+      await modal.group.toggleMedia("viewer");
+      await expect(modal.groupLooker).toBeVisible();
+
+      await expect(modal.carousel).toBeVisible();
+      await modal.group.toggleMedia("carousel");
+      await expect(modal.carousel).toBeHidden();
+      await modal.group.toggleMedia("carousel");
+      await expect(modal.carousel).toBeVisible();
     });
   });
 });

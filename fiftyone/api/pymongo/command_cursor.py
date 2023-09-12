@@ -4,7 +4,7 @@
 |
 """
 import abc
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Union, Iterable
 
 import pymongo
 
@@ -33,6 +33,31 @@ class AbstractCommandCursor(proxy.PymongoWebsocketProxy, abc.ABC):
 
         super().__init__(*args, **kwargs)
 
+        # This is special case because async cursors don't run
+        # automatically, so if we have a case where a collection gets
+        # created or updated we need to explicitly cast it to a list.
+        self.__docs: Union[Iterable[Any], None] = None
+        if self.__command in ("aggregate", "aggregate_raw_batches"):
+            pipeline = self._proxy_init_kwargs.get(
+                "pipeline",
+                (self._proxy_init_args[0] if self._proxy_init_args else []),
+            )
+
+            try:
+                last_stage = pipeline[-1] or {}
+            except IndexError:
+                last_stage = {}
+
+            if any(key in last_stage for key in ("$merge", "$out")):
+                docs = []
+                while True:
+                    try:
+                        docs.append(super().next())
+                    except StopIteration:
+                        break
+
+                self.__docs = iter(docs)
+
     @property
     def __proxy_api_client__(self) -> proxy.ProxyAPIClient:
         return self.__target.__proxy_api_client__
@@ -44,20 +69,10 @@ class AbstractCommandCursor(proxy.PymongoWebsocketProxy, abc.ABC):
             (self.__command, self._proxy_init_args, self._proxy_init_kwargs),
         ]
 
-    def close(self) -> None:
-        if self.__command == "aggregate":
-            pipeline = self._proxy_init_kwargs.get(
-                "pipeline",
-                (self._proxy_init_args[0] if self._proxy_init_args else []),
-            )
-
-            # This is special case because async cursors don't run
-            # automatically, so if we have a case where a collection gets
-            # created or updated we need to explicitly cast it to a list.
-            if any(
-                stage.get("$out") or stage.get("$merge") for stage in pipeline
-            ):
-                self.__proxy_it__("to_list", kwargs=dict(length=None))
+    def next(self) -> Any:
+        if self.__docs is not None:
+            return next(self.__docs)
+        return super().next()
 
     @property
     # pylint: disable-next=missing-function-docstring

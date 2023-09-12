@@ -218,7 +218,7 @@ def create_snapshot(
 
     .. note::
 
-        Only users with ``EDIT`` access can create a snapshot
+        Only users with ``MANAGE`` access can create a snapshot
 
     Examples::
 
@@ -251,8 +251,7 @@ def delete_snapshot(dataset_name: str, snapshot_name: str):
 
     .. note::
 
-        Only the snapshot's creator or other users with ``MANAGE`` access can
-        delete a snapshot.
+        Only users with ``MANAGE`` access can delete a snapshot.
 
     Examples::
 

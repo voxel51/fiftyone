@@ -425,6 +425,9 @@ class DatasetsListCommand(Command):
 
         # List datasets matching a given pattern
         fiftyone datasets list --glob-patt 'quickstart-*'
+
+        # List datasets with the given tag(s)
+        fiftyone datasets list --tags automotive healthcare
     """
 
     @staticmethod
@@ -435,10 +438,17 @@ class DatasetsListCommand(Command):
             metavar="PATT",
             help="an optional glob pattern of dataset names to include",
         )
+        parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_datasets(glob_patt=args.glob_patt)
+        datasets = fod.list_datasets(glob_patt=args.glob_patt, tags=args.tags)
 
         if datasets:
             for dataset in datasets:
@@ -455,6 +465,7 @@ class DatasetsInfoCommand(Command):
         # Print basic information about multiple datasets
         fiftyone datasets info
         fiftyone datasets info --glob-patt 'quickstart-*'
+        fiftyone datasets info --tags automotive healthcare
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -477,6 +488,13 @@ class DatasetsInfoCommand(Command):
             help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
+        parser.add_argument(
             "-s",
             "--sort-by",
             metavar="FIELD",
@@ -495,7 +513,9 @@ class DatasetsInfoCommand(Command):
         if args.name:
             _print_dataset_info(args.name)
         else:
-            _print_all_dataset_info(args.glob_patt, args.sort_by, args.reverse)
+            _print_all_dataset_info(
+                args.glob_patt, args.tags, args.sort_by, args.reverse
+            )
 
 
 def _print_dataset_info(name):
@@ -503,8 +523,8 @@ def _print_dataset_info(name):
     print(dataset)
 
 
-def _print_all_dataset_info(glob_patt, sort_by, reverse):
-    info = fod.list_datasets(glob_patt=glob_patt, info=True)
+def _print_all_dataset_info(glob_patt, tags, sort_by, reverse):
+    info = fod.list_datasets(glob_patt=glob_patt, tags=tags, info=True)
 
     headers = [
         "name",

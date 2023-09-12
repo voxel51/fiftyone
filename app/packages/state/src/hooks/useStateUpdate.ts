@@ -23,7 +23,7 @@ import {
   savingFilters,
   selectedFieldsStageState,
   selectedLabels,
-  selectedMediaField,
+  selectedMediaFieldAtomFamily,
   selectedSamples,
   sessionColorScheme,
   sessionSpaces,
@@ -180,12 +180,12 @@ const useStateUpdate = (ignoreSpaces = false) => {
               : "filepath";
 
           set(
-            selectedMediaField(false),
+            selectedMediaFieldAtomFamily(false),
             getMediaPathWithOverride(dataset?.appConfig?.gridMediaField) ||
               "filepath"
           );
           set(
-            selectedMediaField(true),
+            selectedMediaFieldAtomFamily(true),
             getMediaPathWithOverride(dataset?.appConfig?.modalMediaField) ||
               "filepath"
           );
