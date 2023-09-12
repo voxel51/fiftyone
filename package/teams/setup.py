@@ -12,9 +12,6 @@ import re
 from setuptools import setup
 
 
-VERSION = "1.5.0"
-
-
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
     "fiftyone>0.14,<0.16",
@@ -45,26 +42,13 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-def get_version():
-    if "RELEASE_VERSION" in os.environ:
-        version = os.environ["RELEASE_VERSION"]
-        if not version.startswith(VERSION):
-            raise ValueError(
-                "Release version does not match version: %s and %s"
-                % (version, VERSION)
-            )
-        return version
-
-    return VERSION
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 
 setup(
     name="fiftyone-teams-app",
-    version=get_version(),
+    version="1.5.0.dev11",
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",
