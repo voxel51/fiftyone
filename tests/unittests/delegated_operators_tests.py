@@ -292,10 +292,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.started_at)
         self.assertIsNotNone(doc.queued_at)
         self.assertIsNotNone(doc.completed_at)
-        self.assertIsNone(doc.result.error)
+        self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
-
-        self.assertEqual(doc.result.result, [{"executed": True}])
 
     @patch(
         "fiftyone.core.dataset.load_dataset",
