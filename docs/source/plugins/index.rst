@@ -22,10 +22,14 @@ Components, on the other hand, are responsible for rendering and event handling.
 
 Together, Operators and Components form the building blocks of a plugin, enabling you to tailor FiftyOne to your specific use case and workflow. Whether you're working with images, videos, or other data types, a plugin can help you streamline your machine learning workflows and achieve better results.
 
-What you can and cannot do with plugins?
+What you can and cannot do with plugins
 ----------------------------------------
 
-Plugins in FiftyOne are a powerful way to extend and customize the functionality of the tool to suit your specific needs. With plugins, you can add new functionality to the FiftyOne App, render custom panels, and add custom buttons to menus. You can even add custom options to built-in options with Operators and execute custom Python code.
+Plugins in FiftyOne are a powerful way to extend and customize the
+functionality of the tool to suit your specific needs. With plugins, you can
+add new functionality to the FiftyOne App, create integrations with
+other tools and APIs, render custom panels, and add
+custom buttons to menus. You can even add custom options to built-in options with Operators and execute custom Python code.
 
 However, there are also certain limitations to keep in mind when working with plugins. For example, plugins cannot add functionality to the SDK or trigger app functionality directly from a Python session or notebook. You also cannot customize built-in menus or options, or override the sidebar, viewbar, or samples grid.
 
@@ -56,9 +60,9 @@ Python and JS plugins can read their settings at the dataset scope or app scope,
 
 .. note::
 
-    Settings are readable by users in the browser. For setting
+    Settings are readable by users in the browser. For settings that contain
 sensitive/secret values, set them as environment variables and access them
-in your plugin code via `PluginContext.secrets` .
+in your plugin code via `ExecutionContext.secrets`.
 
 
 .. _fiftyone-operators:
@@ -73,6 +77,12 @@ The Operator Browser allows users to search through all available operations wit
 Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
 
 Operators can be composed for coordination between Python and the FiftyOne App, such as triggering a reload of samples/view to update the app with the changes made by the operator. Operators can also be executed from code and triggered by other operators.
+
+If your operator requires connecting to an external service, such as a
+database or API, you can list the keys in screaming snake case (eg
+MY_SECRET_KEY) in your `fiftyone.yml`. During runtime, these values will be
+read from the execution environment and accessed by operators via the
+`secrets` property in the execution context.
 
 Operator inputs and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
