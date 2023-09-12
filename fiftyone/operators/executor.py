@@ -6,6 +6,7 @@ FiftyOne operator execution.
 |
 """
 import asyncio
+import inspect
 import traceback
 import types as python_types
 
@@ -199,7 +200,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         try:
             raw_result = await (
                 operator.execute(ctx)
-                if asyncio.iscoroutinefunction(operator.execute)
+                if inspect.isawaitable(operator.execute)
                 else fou.run_sync_task(operator.execute, ctx)
             )
 
