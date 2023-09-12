@@ -8,6 +8,8 @@ FiftyOne delegated operations.
 import asyncio
 import logging
 import traceback
+import types as python_types
+import fiftyone.core.utils as fou
 
 from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
@@ -16,7 +18,6 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -248,8 +249,8 @@ class DelegatedOperationService(object):
                     logger.info(
                         "\nRunning operation %s (%s)", op.id, op.operator
                     )
-                result = asyncio.run(self._execute_operator(op))
-                self.set_completed(doc_id=op.id, result=result)
+                execution_result = asyncio.run(self._execute_operator(op))
+                self.set_completed(doc_id=op.id, result=execution_result)
                 if log:
                     logger.info("Operation %s complete", op.id)
             except:
@@ -287,4 +288,18 @@ class DelegatedOperationService(object):
         else:
             operator, _, ctx = prepared
             self.set_running(doc_id=doc.id)
-            return operator.execute(ctx)
+
+            raw_result = await (
+                operator.execute(ctx)
+                if asyncio.iscoroutinefunction(operator.execute)
+                else fou.run_sync_task(operator.execute, ctx)
+            )
+
+            if isinstance(
+                raw_result, python_types.GeneratorType
+            ) or isinstance(raw_result, python_types.AsyncGeneratorType):
+
+                out = list(raw_result)
+                return out
+
+            return raw_result
