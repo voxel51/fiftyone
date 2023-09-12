@@ -127,13 +127,25 @@ Replace ``X.Y.Z`` with the proper version
 
     poetry add --source fiftyone-teams fiftyone==X.Y.Z
 
-You should then see snippets in the ``pyproject.toml`` file like the following:
+.. note::
+
+    Due to an `unresolved misalignment <https://github.com/python-poetry/poetry/issues/4046>`_
+    with ``poetry`` and a FiftyOne dependency, ``kaleido``, you must add it
+    to your own dependencies as well:
+
+    .. code-block::
+
+        poetry add kaleido==0.2.1
+
+You should then see snippets in the ``pyproject.toml`` file like the following
+(the ``priority`` line will be different for ``poetry<v1.5``):
 
 .. code-block:: toml
 
     [[tool.poetry.source]]
     name = "fiftyone-teams"
     url = "https://pypi.fiftyone.ai"
+    priority = "explicit"
 
 .. code-block:: toml
 
