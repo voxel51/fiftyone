@@ -12,6 +12,7 @@ export { default as EmptyState } from "./EmptyState";
 export { default as ErrorView } from "./ErrorView";
 export { default as FieldView } from "./FieldView";
 export { default as FieldWrapper } from "./FieldWrapper";
+export { default as FileExplorerView } from "./FileExplorerView/FileExplorerView";
 export { default as FileDrop } from "./FileDrop";
 export { default as FileView } from "./FileView";
 export { default as Header } from "./Header";

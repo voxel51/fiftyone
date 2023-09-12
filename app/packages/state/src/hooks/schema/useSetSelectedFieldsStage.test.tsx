@@ -64,7 +64,6 @@ describe("useSetShowNestedFields hook used in schema code", () => {
     });
 
     const resultView = result.current.selectedFieldsStage;
-    console.log("res", resultView);
 
     expect(resultView).toStrictEqual(stage);
   });
