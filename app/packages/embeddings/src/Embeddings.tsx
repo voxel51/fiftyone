@@ -25,7 +25,6 @@ import { useResetPlotZoom } from "./useResetPlotZoom";
 import { Link } from "@mui/material";
 import styled from "styled-components";
 import { OperatorPlacements, types } from "@fiftyone/operators";
-import { useClearSelection } from "./useClearSelection";
 
 const Value: React.FC<{ value: string; className: string }> = ({ value }) => {
   return <>{value}</>;
@@ -51,14 +50,12 @@ export default function Embeddings({ containerHeight, dimensions }) {
   const embeddingsDocumentationLink = useExternalLink(
     "https://docs.voxel51.com"
   );
-  const { setFilters } = useClearSelection();
 
   useEffect(() => {
     setPanelCloseEffect(() => {
       plotSelection.clearSelection();
-      setFilters({});
     });
-  }, [setPanelCloseEffect, plotSelection, setFilters]);
+  }, [setPanelCloseEffect, plotSelection]);
 
   const selectorStyle = {
     background: theme.neutral.softBg,
