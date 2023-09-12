@@ -295,11 +295,9 @@ class DelegatedOperationService(object):
                 else fou.run_sync_task(operator.execute, ctx)
             )
 
-            if isinstance(
+            is_generator = isinstance(
                 raw_result, python_types.GeneratorType
-            ) or isinstance(raw_result, python_types.AsyncGeneratorType):
+            ) or isinstance(raw_result, python_types.AsyncGeneratorType)
 
-                out = list(raw_result)
-                return out
-
-            return raw_result
+            if not is_generator:
+                return raw_result
