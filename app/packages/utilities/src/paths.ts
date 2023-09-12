@@ -28,12 +28,24 @@ export function getSeparator(pathType: PathType): string {
   }
 }
 
+function parseURL(url: string): [string, string] {
+  const parts = url.split("://");
+  const protocol = parts[0];
+  const rest = parts[1];
+  return [protocol, rest];
+}
+
+function joinURL(protocol: string, rest: string): string {
+  if (rest === ".") rest = "";
+  return `${protocol}://${rest}`;
+}
+
 export function joinPaths(...paths: string[]): string {
   const pathType = determinePathType(paths[0]);
   if (pathType === PathType.URL) {
-    const url = new URL(paths[0]);
-    url.pathname = pathUtils.join(url.pathname, ...paths.slice(1));
-    return url.toString();
+    const [protocol, rest] = parseURL(paths[0]);
+    const joined = pathUtils.join(...paths.slice(1));
+    return joinURL(protocol, joined);
   }
   if (pathType === PathType.WINDOWS) {
     return pathUtils.win32.join(...paths);
@@ -44,15 +56,11 @@ export function joinPaths(...paths: string[]): string {
 export function resolveParent(path: string): string {
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
-    const protocol = getProtocol(path);
-    if (path === protocol + "://") return null;
-    const url = new URL(path);
-    if (url.pathname) {
-      url.pathname = pathUtils.dirname(url.pathname);
-    } else {
-      return protocol + "://";
-    }
-    return url.toString();
+    const [protocol, rest] = parseURL(path);
+    const parts = rest.split("/");
+    parts.pop();
+    const joined = pathUtils.join(...parts);
+    return joinURL(protocol, joined);
   }
   const parsed =
     pathType === PathType.WINDOWS
@@ -113,7 +121,6 @@ export function getRootOrProtocol(path: string) {
   }
   if (pathType === PathType.WINDOWS) {
     const parsed = pathUtils.win32.parse(path);
-    console.log(parsed);
     return parsed.root;
   }
   return "/";

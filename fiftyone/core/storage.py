@@ -127,7 +127,7 @@ def init_storage():
             azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
 
-class FileSystem(enum.Enum):
+class FileSystem(object):
     """Enumeration of the available file systems."""
 
     S3 = "s3"
@@ -1792,16 +1792,6 @@ def list_buckets(fs, abs_paths=False):
         return buckets
 
     raise ValueError("Unsupported file system '%s'" % fs)
-
-
-def list_available_file_systems():
-    """Lists the file systems that are currently available for use with methods
-    like :func:`list_files` and :func:`list_buckets`.
-
-    Returns:
-        a list of :class:`FileSystem` values
-    """
-    return [FileSystem.LOCAL]
 
 
 def get_glob_matches(glob_patt):
