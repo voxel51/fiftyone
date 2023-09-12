@@ -42,8 +42,9 @@ ARG PYTHON_VERSION=3.10
 FROM python:${PYTHON_VERSION} as builder
 
 COPY ./*.whl .
+COPY ./yarnrc.yml ~/.yarnrc.yml
 
-RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython \
+RUN pip --no-cache-dir install -q -U pip setuptools wheel ipython \
     && pip wheel --wheel-dir=/tmp/wheels ./*.whl
 
 
@@ -59,9 +60,11 @@ ENV FIFTYONE_DATABASE_ADMIN=false \
     VIRTUAL_ENV=/opt/fiftyone-teams-app
 
 # Update the base image, install ffmpeg, create the voxel51 user
-RUN apt -y update && apt -y upgrade \
-    && apt install -y --no-install-recommends ffmpeg \
+RUN apt-get -qq -y update && apt-get -qq -y upgrade \
+    && apt-get -qq install -y --no-install-recommends ffmpeg \
     && apt clean && rm -rf /var/lib/apt/lists/* \
+    # addresses CVE-2022-40897
+    && /usr/local/bin/pip install -U pip setuptools \
     && useradd -l -U -d /opt voxel51 \
     && python3 -m venv "${VIRTUAL_ENV}"
 
@@ -70,10 +73,10 @@ ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Install fiftyone-teams-app and chown everything to voxel51
 RUN --mount=type=cache,from=builder,target=/builder,ro \
-    pip --no-cache-dir install -U pip setuptools wheel \
-    && pip --no-cache-dir install --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
+    pip --no-cache-dir install -q -U pip setuptools wheel \
+    && pip --no-cache-dir install -q --pre --no-index --find-links=/builder/tmp/wheels fiftyone-teams-app \
     && mkdir -p /opt/plugins \
-    && chown --changes --silent --no-dereference --recursive voxel51:voxel51 /opt
+    && chown --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user
 USER voxel51
