@@ -8,7 +8,6 @@ import { useResetExtendedSelection } from "@fiftyone/state";
 export function usePlotSelection() {
   const brainResultInfo = useBrainResultInfo();
   const patchesField = brainResultInfo?.config?.patchesField;
-  const setFilters = useSetRecoilState(fos.filters);
   const resetExtendedSelection = useResetExtendedSelection();
   const [{ selection, scope }, setExtendedSelection] = useRecoilState(
     fos.extendedSelection
@@ -38,7 +37,6 @@ export function usePlotSelection() {
     resetExtendedSelection();
     setPlotSelection(null);
     setSelectedSamples(new Set());
-    setFilters({});
   }
   let selectionStyle = null;
   const selected = Array.from(selectedSamples);
