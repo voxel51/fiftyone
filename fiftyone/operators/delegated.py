@@ -304,6 +304,5 @@ class DelegatedOperationService(object):
                 return raw_result
 
             # if it is a generator, exhaust it to ensure it is fully executed
-            # but don't store the result
             for _ in raw_result:
                 pass
