@@ -4,8 +4,8 @@ on: workflow_call
 
 jobs:
   test-e2e:
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
