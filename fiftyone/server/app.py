@@ -87,7 +87,7 @@ app = Starlette(
         ),
         Middleware(HeadersMiddleware),
     ],
-    debug=foc.DEV_INSTALL,
+    debug=True,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
         Route(
