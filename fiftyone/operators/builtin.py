@@ -314,16 +314,14 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
-    elif fs == fos.FileSystem.GCS:
-        return "gs://"
     elif fs == fos.FileSystem.S3:
-        return "s3://"
+        return fos.S3_PREFIX
+    elif fs == fos.FileSystem.GCS:
+        return fos.GCS_PREFIX
     elif fs == fos.FileSystem.AZURE:
-        return "azure://"
-    elif fs == fos.FileSystem.HTTP:
-        return "http://"
+        return fos.azure_alias_prefix or fos.azure_endpoint_prefix
     elif fs == fos.FileSystem.MINIO:
-        return "minio://"
+        return fos.minio_alias_prefix or fos.minio_endpoint_prefix
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
