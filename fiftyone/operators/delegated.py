@@ -301,3 +301,5 @@ class DelegatedOperationService(object):
 
             if not is_generator:
                 return raw_result
+            else:
+                all(raw_result)
