@@ -93,18 +93,22 @@ class DownloadContext(object):
     def __init__(
         self, sample_collection, batch_size, clear=False, quiet=None, **kwargs
     ):
-        sample_collection._download_context = self
-
         self.sample_collection = sample_collection
         self.batch_size = batch_size
         self.clear = clear
         self.quiet = quiet
+        self.media_fields = kwargs.pop("media_fields", None)
         self.kwargs = kwargs
 
+        self._filepaths = None
         self._curr_batch_size = None
         self._total = None
 
     def __enter__(self):
+        self.sample_collection._download_context = self
+        self._filepaths = self.sample_collection._get_media_paths(
+            media_fields=self.media_fields
+        )
         self._curr_batch_size = self.batch_size
         self._total = 0
         return self
@@ -127,21 +131,27 @@ class DownloadContext(object):
         self._total += 1
 
     def _download_batch(self):
-        # @todo optimize to avoid appending `skip()`
-        view = self.sample_collection.skip(self._total).limit(self.batch_size)
+        i = self._total
+        j = self._total + self.batch_size
+        filepaths = self._filepaths[i:j]
 
         if self.quiet:
             with (
                 fou.SuppressLogging(level=logging.INFO),
                 fou.SetAttributes(fo.config, show_progress_bars=False),
             ):
-                view.download_media(**self.kwargs)
+                self._download_media(filepaths, **self.kwargs)
         else:
-            view.download_media(**self.kwargs)
+            self._download_media(filepaths, **self.kwargs)
+
+    def _download_media(self, filepaths, update=False, **kwargs):
+        if update:
+            foc.media_cache.update(filepaths=filepaths, **kwargs)
+        else:
+            foc.media_cache.get_local_paths(filepaths, download=True, **kwargs)
 
     def _clear_media(self):
-        media_fields = self.kwargs.get("media_fields", None)
-        self.sample_collection.clear_media(media_fields=media_fields)
+        foc.media_cache.clear(filepaths=self._filepaths)
 
 
 class SaveContext(object):
