@@ -299,8 +299,11 @@ class DelegatedOperationService(object):
                 raw_result, python_types.GeneratorType
             ) or isinstance(raw_result, python_types.AsyncGeneratorType)
 
+            # if this is not a generator, return the result from execution
             if not is_generator:
                 return raw_result
 
+            # if it is a generator, exhaust it to ensure it is fully executed
+            # but don't store the result
             for _ in raw_result:
                 pass
