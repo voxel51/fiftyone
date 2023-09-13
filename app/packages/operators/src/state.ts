@@ -203,6 +203,7 @@ export const useOperatorPrompt = () => {
   );
 
   useEffect(() => {
+    if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
   }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
   const [validationErrors, setValidationErrors] = useState([]);
