@@ -10,6 +10,7 @@ import datetime
 import enum
 from typing import List, Optional
 
+from fiftyone.api import errors
 from fiftyone.management import connection, util
 
 
@@ -171,6 +172,11 @@ query($dataset: String!, $after: String) {
 """
 
 
+MATERIALIZE_SNAPSHOT_TIMEOUT = 60 * 60  # 1 hour should be more than enough
+DELETE_SNAPSHOT_TIMEOUT = 60 * 10  # 10 minutes
+CALCULATE_CHANGES_TIMEOUT = 60
+
+
 def calculate_dataset_latest_changes_summary(
     dataset_name: str,
 ) -> SampleChangeSummary:
@@ -199,12 +205,29 @@ def calculate_dataset_latest_changes_summary(
 
     """
     client = connection.APIClientConnection().client
-    result = client.post_graphql_request(
-        query=_CALCULATE_LATEST_CHANGES_QUERY,
-        variables={
-            "dataset": dataset_name,
-        },
-    )
+    try:
+        result = client.post_graphql_request(
+            query=_CALCULATE_LATEST_CHANGES_QUERY,
+            variables={
+                "dataset": dataset_name,
+            },
+            timeout=CALCULATE_CHANGES_TIMEOUT,
+        )
+    except errors.FiftyOneTeamsAPIError:
+        raise
+    except Exception as og_err:
+        # With any unexpected error, check if we actually succeeded, if so,
+        #   swallow the error
+        try:
+            change_summary = get_dataset_latest_changes_summary(dataset_name)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if not change_summary or (
+                (now - change_summary.updated_at).total_seconds()
+                > CALCULATE_CHANGES_TIMEOUT
+            ):
+                raise og_err
+        except Exception:
+            raise og_err
     change_summary = result["calculateDatasetLatestChanges"]
     return SampleChangeSummary(**util.camel_to_snake_container(change_summary))
 
@@ -234,15 +257,26 @@ def create_snapshot(
         description (None): Optional description to attach to this snapshot
     """
     client = connection.APIClientConnection().client
-    result = client.post_graphql_request(
-        query=_CREATE_SNAPSHOT_QUERY,
-        variables={
-            "dataset": dataset_name,
-            "snapshot": snapshot_name,
-            "description": description,
-        },
-    )
-    snapshot = result["createDatasetSnapshot"]
+    try:
+        result = client.post_graphql_request(
+            query=_CREATE_SNAPSHOT_QUERY,
+            variables={
+                "dataset": dataset_name,
+                "snapshot": snapshot_name,
+                "description": description,
+            },
+            timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
+        )
+        snapshot = result["createDatasetSnapshot"]
+    except errors.FiftyOneTeamsAPIError:
+        raise
+    except Exception as og_err:
+        # With any unexpected error, check if we actually succeeded, if so,
+        #   swallow the error
+        try:
+            snapshot = get_snapshot_info(dataset_name, snapshot_name)
+        except ValueError:
+            raise og_err
     return DatasetSnapshot(**util.camel_to_snake_container(snapshot))
 
 
@@ -276,6 +310,7 @@ def delete_snapshot(dataset_name: str, snapshot_name: str):
             "dataset": dataset_name,
             "snapshot": snapshot_name,
         },
+        timeout=DELETE_SNAPSHOT_TIMEOUT,
     )
 
 
@@ -450,10 +485,42 @@ def revert_dataset_to_snapshot(dataset_name: str, snapshot_name: str):
         snapshot_name: the snapshot name
     """
     client = connection.APIClientConnection().client
-    client.post_graphql_request(
-        query=_REVERT_SNAPSHOT_QUERY,
-        variables={
-            "dataset": dataset_name,
-            "snapshot": snapshot_name,
-        },
-    )
+    try:
+        client.post_graphql_request(
+            query=_REVERT_SNAPSHOT_QUERY,
+            variables={
+                "dataset": dataset_name,
+                "snapshot": snapshot_name,
+            },
+            timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
+        )
+    except errors.FiftyOneTeamsAPIError:
+        raise
+    except Exception as og_err:
+        # With any unexpected error, check if we actually succeeded, if so,
+        #   swallow the error
+        try:
+            # Assume we succeeded if snapshot is now the latest and change
+            # summary updated to be 0's
+            snapshot_list = list_snapshots(dataset_name)
+            if not snapshot_list or snapshot_list[-1] != snapshot_name:
+                raise og_err
+
+            change_summary = get_dataset_latest_changes_summary(dataset_name)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            if (
+                not change_summary
+                or (
+                    (now - change_summary.updated_at).total_seconds()
+                    > CALCULATE_CHANGES_TIMEOUT
+                )
+                or not (
+                    change_summary.num_samples_added
+                    == change_summary.num_samples_changed
+                    == change_summary.num_samples_deleted
+                    == 0
+                )
+            ):
+                raise og_err
+        except ValueError:
+            raise og_err
