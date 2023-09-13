@@ -456,6 +456,10 @@ information on changing a plugin's configuration.
     You can see an example of dataset level plugin configuration on the
     :ref:`Map Panel docs <app-map-panel>`.
 
+.. note::
+
+        For
+
 Developing plugins
 ------------------
 
