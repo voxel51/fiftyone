@@ -1595,8 +1595,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = self._doc.default_group_slice
 
-        self.create_index(field_name + ".id")
-        self.create_index(field_name + ".name")
+        _create_group_indexes(self._sample_collection_name, field_name)
 
         return True
 
@@ -6729,6 +6728,14 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         )
 
 
+def _create_group_indexes(sample_collection_name, group_field):
+    conn = foo.get_db_conn()
+
+    sample_collection = conn[sample_collection_name]
+    sample_collection.create_index(group_field + ".id")
+    sample_collection.create_index(group_field + ".name")
+
+
 def _make_sample_collection_name(
     dataset_id, patches=False, frames=False, clips=False
 ):
@@ -6901,6 +6908,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
+    contains_groups = dataset_or_view.media_type == fom.GROUP
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -6939,9 +6947,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
-
     dataset_doc.media_type = dataset_or_view.media_type
-    if dataset_doc.media_type != fom.GROUP:
+    if not contains_groups:
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
@@ -6974,6 +6981,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
+    if contains_groups and dataset.group_field is not None:
+        _create_group_indexes(sample_collection_name, dataset.group_field)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
@@ -7199,6 +7208,10 @@ def _merge_dataset_doc(
 
         if curr_doc.group_field is None:
             curr_doc.group_field = doc.group_field
+
+            _create_group_indexes(
+                dataset._sample_collection_name, doc.group_field
+            )
         elif src_group_field != curr_doc.group_field:
             raise ValueError(
                 "Cannot merge samples with group field '%s' into a "
