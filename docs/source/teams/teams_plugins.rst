@@ -335,11 +335,46 @@ method from the Management SDK:
 
 .. _teams-plugins-managing-operators-runs:
 
+
+Setting up an Orchestrator to run Delegated Operations
+______________________________________________________
+
+Once an operation has been queued for remote (delegated) execution, it will remain queued until an Orchestrator picks it up and runs the execute method.
+
+We recommend using Apache Airflow as the Orchestrator, but other options are available, such as Flyte.
+
+To set up Airflow as an Orchestrator to run delegated operations, you will need to:
+
+- Provision a VM or instance with enough resources to run the operations you want to delegate
+
+- Ensure Python is installed
+
+- Install `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_ on the VM
+
+- Install the same version of FiftyOne as the instance of FiftyOne which queued the operation
+
+- Ensure the required Environment Variables are set
+
+.. code-block:: bash
+
+    export FIFTYONE_DATABASE_NAME=<database name>
+    export FIFTYONE_DATABASE_URI=<mongo db uri>
+    export FIFTYONE_PLUGINS_DIR=<mounted plugins dir>
+    export FIFTYONE_ENCRYPTION_KEY=<enc key>
+
+    // todo: add the additional secrets related vars
+
+.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+
+.. note:: Ensure that the plugins are available to the Orchestrator, either by installing them on the same machine or by making them available via a shared filesystem
+
+- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator. The airflow dag folder path can be found at `/home/<user>/airflow/dags` on the Orchestrator.
+
 Managing Delegated Operator Runs
 ________________________________
 
 
-The FiftyOne Teams runs page allows you to monitor and explore operator runs 
+The FiftyOne Teams runs page allows you to monitor and explore operator runs
 scheduled by any member of your organization. 
 
 
