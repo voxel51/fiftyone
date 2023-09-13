@@ -34,6 +34,7 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import fiftyone.internal as fi
 from fiftyone.internal.credentials import CloudCredentialsManager
 from fiftyone.internal.util import has_encryption_key
 
