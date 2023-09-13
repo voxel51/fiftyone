@@ -299,7 +299,7 @@ class Dataset:
         info: Info = None,
         saved_view_slug: t.Optional[str] = gql.UNSET,
         view: t.Optional[BSONArray] = None,
-        group_slice: str = None,
+        group_slice: t.Optional[str] = None,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
             dataset_name=name,
