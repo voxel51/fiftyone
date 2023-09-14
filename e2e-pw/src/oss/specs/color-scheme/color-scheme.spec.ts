@@ -105,36 +105,6 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  // TODO: input checkbox is not stable
-
-  // test("should be able to update color by field", async ({
-  //   sidebar,
-  //   grid,
-  //   gridActionsRow,
-  //   colorModal,
-  //   page,
-  // }) => {
-  //   // turn off ground_truth
-  //   await sidebar.clickFieldCheckbox("ground_truth");
-  //   // open color modal and modify color in sample tags field and predictions
-  //   await gridActionsRow.toggleColorSettings();
-
-  //   await colorModal.selectActiveField("predictions");
-  //   // await colorModal.useSpecialFieldColor('predictions');
-  //   await page
-  //     .getByTestId('checkbox-Use custom color for predictions field')
-  //     .locator("input")
-  //     .check({ force: true });
-  //   page.waitForSelector("[data-cy=field-color-div]");
-  //   await colorModal.setSpecialFieldColor("purple"); // purple
-  //   // close the modal and verify the color changed in grid and and in canvas
-  //   await colorModal.closeColorModal();
-  //   await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-  //     "color-field-setting-1.png",
-  //     { animations: "allow" }
-  //   );
-  // });
-
   test("should be able to update color by value - tag", async ({
     gridActionsRow,
     colorModal,
