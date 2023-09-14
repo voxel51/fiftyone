@@ -1,4 +1,11 @@
-import { Grid, Typography, Box, CircularProgress, Stack } from "@mui/material";
+import {
+  Grid,
+  Typography,
+  Box,
+  CircularProgress,
+  Stack,
+  Tooltip,
+} from "@mui/material";
 import React from "react";
 import * as icons from "./icons/index";
 import FolderIcon from "@mui/icons-material/Folder";
@@ -60,7 +67,7 @@ export default function VolumeSelector({ onOpenPath }) {
   );
 }
 
-const VolumeChoice = ({ label, onOpen, path, Icon }) => (
+const VolumeChoice = ({ label = "", onOpen, path, Icon }) => (
   <Grid item>
     <div
       style={{
@@ -72,8 +79,9 @@ const VolumeChoice = ({ label, onOpen, path, Icon }) => (
       onClick={() => onOpen(path)}
     >
       <Stack alignItems="center">
-        <Typography variant="overline">{label}</Typography>
-        <Icon size={36} />
+        <Tooltip title={label}>
+          <Icon size={36} />
+        </Tooltip>
       </Stack>
     </div>
   </Grid>
