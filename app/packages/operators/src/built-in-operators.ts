@@ -625,6 +625,9 @@ class SetProgress extends Operator {
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
     inputs.defineProperty("label", new types.String(), { label: "Label" });
+    inputs.defineProperty("variant", new types.Enum(["linear", "circular"]), {
+      label: "Label",
+    });
     inputs.defineProperty("progress", new types.Number({ float: true }), {
       label: "Progress",
     });
@@ -637,7 +640,10 @@ class SetProgress extends Operator {
   }
   async execute({ params, hooks: { io } }: ExecutionContext) {
     const loading = new types.Object();
-    const progressView = new types.ProgressView({ label: params.label });
+    const progressView = new types.ProgressView({
+      label: params.label,
+      variant: params.variant,
+    });
     loading.defineProperty("progress", new types.Number({ float: true }), {
       view: progressView,
     });
