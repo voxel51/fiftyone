@@ -1,7 +1,7 @@
 .. _fiftyone-plugins-docs:
 
-FiftyOne Plugins
-================
+Developing FiftyOne Plugins
+===========================
 
 .. default-role:: code
 
@@ -25,11 +25,11 @@ Together, Operators and Components form the building blocks of a plugin, enablin
 What you can and cannot do with plugins?
 ----------------------------------------
 
-Plugins in FiftyOne are a powerful way to extend and customize the functionality of the tool to suit your specific needs. With plugins, you can add new functionality to the FiftyOne App, render custom panels, and add custom buttons to menus. You can even add custom options to built-in options with Operators and execute custom Python code.
+Plugins allow you to implement your preferred workflows in the FiftyOne app. This can be as simple as combining several clicks into one or a long running computation.
 
-However, there are also certain limitations to keep in mind when working with plugins. For example, plugins cannot add functionality to the SDK or trigger app functionality directly from a Python session or notebook. You also cannot customize built-in menus or options, or override the sidebar, viewbar, or samples grid.
+A plugin allows you to render custom panels, and add custom buttons to menus. You can even implement entire UI features entirely in Python.
 
-Despite these limitations, plugins still offer a wide range of possibilities for customizing your FiftyOne experience. Whether you're looking to add your own panel, customize how samples are visualized or streamline your workflows.
+There are also certain limitations to keep in mind when developing plugins. For example, plugins cannot add functionality to the SDK or trigger app functionality directly from a Python session or notebook.
 
 Plugin types
 ------------
@@ -69,7 +69,7 @@ The Operator Browser allows users to search through all available operations wit
 
 Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
 
-Operators can be composed for coordination between Python and the FiftyOne App, such as triggering a reload of samples/view to update the app with the changes made by the operator. Operators can also be executed from code and triggered by other operators.
+Operators can be composed for coordination between Python and the FiftyOne App, such as triggering a reload of samples/view to update the app with the changes made by the operator. Operators can also be scheduled to run by an orchestrator or triggered by other operators.
 
 Operator inputs and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
