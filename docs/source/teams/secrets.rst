@@ -10,24 +10,30 @@ credentials in a secure
 manner. You can add, configure, and remove secrets in the FiftyOne Teams App
 by navigating to the Secrets Management page under Settings > Secrets.
 
-.. note::
-
-    Only Admins have access to the secrets management page. However, once
-    added, any App component or feature requiring secret values can
-    access them via the :class:`SecretManager <fiftyone.internal.secrets.manager>`
-
 .. image:: /images/teams/secrets_page.png
    :alt: teams-secrets-page
    :align: center
 
+.. note::
+
+    Only Admins have access to the secrets management page. However, once
+    added, any App component or feature requiring secret values can
+    access them via the `SecretManager` interface.
+
 What is a Secret?
 -----------------
-Secret keys are strings in upper snake case (e.g. `MY_SECRET_KEY`) used to
-identify a secret.
-Secret values are stored encrypted in the database
-and only decrypted at runtime on the client if and only if the
-client configured as
-an internal service.
+When you tap on the `+ Add secret` button,you will see that a secret is
+comprised of a key, value, and description.
+
+.. image:: /images/teams/create_secret_form.png
+   :alt: teams-create-secret-form
+   :align: center
+
+-  Secret keys are strings in upper snake case (e.g. `MY_SECRET_KEY`) used
+   to identify a :doc:`secret <../api/fiftyone.internal.secrets>`.
+-  Secret values are stored encrypted in the database
+   and only decrypted at runtime on the client if and only if the
+   client configured asan internal service.
 
 
 Why use Secrets?
