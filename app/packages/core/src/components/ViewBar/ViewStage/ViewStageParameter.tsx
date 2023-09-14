@@ -331,7 +331,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     const parsedValue = isJsonString(value) ? JSON.parse(value) : value;
     isObject = !Array.isArray(parsedValue) && typeof parsedValue === "object";
   } catch {
-    console.log("ViewStageParameter Invalid JSON. Cannot parse value", value);
+    console.error("ViewStageParameter Invalid JSON. Cannot parse value", value);
   }
   useEffect(() => {
     if (!hasExpansion || expanded) return;
