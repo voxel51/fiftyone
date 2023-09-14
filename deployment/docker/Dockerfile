@@ -65,7 +65,8 @@ RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && apt clean && rm -rf /var/lib/apt/lists/* \
     # addresses CVE-2022-40897
     && /usr/local/bin/pip install -U pip setuptools \
-    && useradd -l -U -d /opt voxel51 \
+    && groupadd -g 1000 voxel51 \
+    && useradd -u 1000 -g 1000 -l -d /opt voxel51 \
     && python3 -m venv "${VIRTUAL_ENV}"
 
 # Activate the virtual env
@@ -79,7 +80,7 @@ RUN --mount=type=cache,from=builder,target=/builder,ro \
     && chown --silent --no-dereference --recursive voxel51:voxel51 /opt
 
 # run as the voxel51 user
-USER voxel51
+USER 1000:1000
 
 #
 # Serve the app

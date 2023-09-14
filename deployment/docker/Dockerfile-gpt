@@ -16,7 +16,7 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     --find-links=/wheelhouse/tmp/wheels langchain==0.0.288 openai pandas scipy tiktoken google-cloud-bigquery
 
 # run as the voxel51 user
-USER voxel51
+USER 1000:1000
 
 #
 # Serve the app
