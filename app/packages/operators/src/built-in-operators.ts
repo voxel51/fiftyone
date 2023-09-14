@@ -613,6 +613,48 @@ class ShowOutput extends Operator {
   }
 }
 
+class SetProgress extends Operator {
+  _builtIn = true;
+  get config(): OperatorConfig {
+    return new OperatorConfig({
+      name: "set_progress",
+      label: "Set Progress",
+      unlisted: true,
+    });
+  }
+  async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
+    const inputs = new types.Object();
+    inputs.defineProperty("label", new types.String(), { label: "Label" });
+    inputs.defineProperty("variant", new types.Enum(["linear", "circular"]), {
+      label: "Label",
+    });
+    inputs.defineProperty("progress", new types.Number({ float: true }), {
+      label: "Progress",
+    });
+    return new types.Property(inputs);
+  }
+  useHooks(ctx: ExecutionContext): {} {
+    return {
+      io: useShowOperatorIO(),
+    };
+  }
+  async execute({ params, hooks: { io } }: ExecutionContext) {
+    const loading = new types.Object();
+    const progressView = new types.ProgressView({
+      label: params.label,
+      variant: params.variant,
+    });
+    loading.defineProperty("progress", new types.Number({ float: true }), {
+      view: progressView,
+    });
+    io.show({
+      schema: new types.Property(loading),
+      data: { progress: params.progress },
+      isOutput: true,
+    });
+  }
+}
+
 class TestOperator extends Operator {
   _builtIn = true;
   get config(): OperatorConfig {
@@ -727,6 +769,7 @@ export function registerBuiltInOperators() {
     // registerOperator(ClearShowSamples);
     registerOperator(ConsoleLog);
     registerOperator(ShowOutput);
+    registerOperator(SetProgress);
     registerOperator(TestOperator);
     registerOperator(SplitPanel);
     registerOperator(SetSelectedLabels);
