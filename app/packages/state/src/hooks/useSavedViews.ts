@@ -40,7 +40,7 @@ export default function useSavedViews() {
             },
             onCompleted: (data, err) => {
               if (err) {
-                console.log("handleDeleteView error:", err);
+                console.error("handleDeleteView error:", err);
               }
               const deletedId = data?.deleteSavedView;
               onDeleteSuccess(deletedId);
@@ -78,7 +78,7 @@ export default function useSavedViews() {
               },
               onCompleted: (data, err) => {
                 if (err) {
-                  console.log("handleCreateSavedView response error:", err);
+                  console.error("handleCreateSavedView response error:", err);
                 }
                 onSuccess(data?.createSavedView);
               },
