@@ -2,7 +2,6 @@ import React from "react";
 import FileExplorer from "./FileExplorer";
 import FieldWrapper from "../FieldWrapper";
 import { useAvailableFileSystems } from "./state";
-import { CircularProgress } from "@mui/material";
 
 export default function FileExplorerView(props) {
   const { schema, onChange } = props;
@@ -15,22 +14,6 @@ export default function FileExplorerView(props) {
   };
 
   const fsInfo = useAvailableFileSystems();
-
-  if (!fsInfo.ready) {
-    return (
-      <FieldWrapper {...props}>
-        <CircularProgress size={16} />
-      </FieldWrapper>
-    );
-  }
-
-  if (fsInfo.available === false) {
-    return (
-      <FieldWrapper {...props}>
-        <p>File system not available</p>
-      </FieldWrapper>
-    );
-  }
 
   return (
     <FieldWrapper {...props}>

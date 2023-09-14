@@ -942,14 +942,19 @@ export class MapView extends View {
   }
 }
 
+type ProgressViewProps = {
+  variant?: "linear" | "circular";
+  label?: string;
+};
+
 /**
  * Operator class for describing a progress {@link View} for an
  * operator type.
  */
 export class ProgressView extends View {
   variant: string;
-  constructor(options: ViewProps) {
-    super(options);
+  constructor(options: ProgressViewProps) {
+    super({ label: options.label });
     this.variant = options.variant as string;
     this.name = "ProgressView";
   }
@@ -1118,7 +1123,7 @@ type ChoicesOptions = ViewProps & {
 };
 
 type PropertyOptions = {
-  label: string;
+  label?: string;
   description?: string;
   view?: View;
 };

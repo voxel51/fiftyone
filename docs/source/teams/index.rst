@@ -103,6 +103,12 @@ pages on this site apply to Teams deployments as well.
     :description: Safely store and access secrets in your Teams deployment.
     :button_text: Learn more about storing secrets in Teams
     :button_link: teams_secrets.html
+    
+.. customcalloutitem::
+    :header: Dataset Versioning
+    :description: Learn how to install and manage shared plugins for your Teams deployment.
+    :button_text: Get plugins for Teams
+    :button_link: teams_plugins.html
 
 .. customcalloutitem::
     :header: Migrations
@@ -138,4 +144,5 @@ pages on this site apply to Teams deployments as well.
     Management SDK <management_sdk>
     Plugins <teams_plugins>
     Secrets <secrets>
+    Dataset Versioning <dataset_versioning>
     Migrations <migrations>
