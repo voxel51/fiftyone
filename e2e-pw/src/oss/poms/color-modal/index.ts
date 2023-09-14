@@ -106,10 +106,22 @@ export class ColorModalPom {
   }
 
   // action buttons
+  async saveAsDefault() {
+    const saveAsDefaultButton = this.page.getByTestId(
+      "button-Save to dataset appConfig"
+    );
+    return saveAsDefaultButton.click();
+  }
 
-  async saveAsDefault() {}
+  async resetColorScheme() {
+    const resetButton = this.page.getByTestId(
+      "button-Clear session settings and revert to default settings"
+    );
+    return resetButton.click();
+  }
 
-  async resetColorScheme() {}
-
-  async clearDefault() {}
+  async clearDefault() {
+    const clearDefaultButton = this.page.getByTestId("button-Clear default");
+    return clearDefaultButton.click();
+  }
 }
