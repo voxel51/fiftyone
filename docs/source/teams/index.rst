@@ -99,6 +99,12 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_plugins.html
 
 .. customcalloutitem::
+    :header: Secrets
+    :description: Safely store and access secrets in your Teams deployment.
+    :button_text: Learn more about storing secrets in Teams
+    :button_link: teams_secrets.html
+
+.. customcalloutitem::
     :header: Migrations
     :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
     :button_text: Migrate to Teams

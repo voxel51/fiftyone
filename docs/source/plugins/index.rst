@@ -61,8 +61,9 @@ Python and JS plugins can read their settings at the dataset scope or app scope,
 .. note::
 
     Settings are readable by users in the browser. For settings that contain
-sensitive/secret values, set them as environment variables and access them
-in your plugin code via `ExecutionContext.secrets`.
+    sensitive/secret values, set them as environment variables and access them
+    in your plugin code via :ref:`ExecutionContext.secrets
+    <fiftyone-operators-executor-ExecutionContext-secrets>`.
 
 
 .. _fiftyone-operators:
