@@ -140,7 +140,7 @@ export class FieldVisibilityPom {
     for (let i = 0; i < paths.length; i++) {
       const cc = this.getFieldCheckbox(paths[i]);
       if (status === "all") {
-        fields.push(cc);
+        fields.push(paths[i]);
         continue;
       }
 
@@ -205,21 +205,18 @@ export class FieldVisibilityPom {
 }
 
 class FieldVisibilityAsserter {
-  constructor(
-    private readonly fv: FieldVisibilityPom,
-    private readonly sb: SidebarPom
-  ) {}
+  constructor(private readonly fv: FieldVisibilityPom) {}
 
   async fieldVisibilityIconHasTooltip() {
     await this.fv.fieldVisibilityBtn.hover();
     await expect(this.fv.fieldVisibilityToggleTooltip).toBeVisible();
   }
 
-  async assertAllFieldsSelected() {
+  async assertAllFieldsSelected(selectionFields: string[] = allParentPaths) {
     await this.fv.openFieldVisibilityModal();
-    const selectionFields = await this.fv.getSelectionFields();
+    const expectedSelectionFields = await this.fv.getSelectionFields();
 
-    expect(selectionFields.length).toEqual(allParentPaths.length);
+    expect(expectedSelectionFields.length).toEqual(selectionFields.length);
   }
 
   async assertEnabledFieldsAreUnselected() {

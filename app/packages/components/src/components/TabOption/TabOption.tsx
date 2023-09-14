@@ -80,7 +80,7 @@ const TabOption = ({
     >
       {options.map(({ text, title, onClick, dataCy }, i) => (
         <Tab
-          data-cy={dataCy}
+          data-cy={dataCy || `tab-option-${title}`}
           onClick={() => {
             !disabled && onClick();
           }}
