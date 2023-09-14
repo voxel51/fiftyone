@@ -44,7 +44,7 @@ export function joinPaths(...paths: string[]): string {
   const pathType = determinePathType(paths[0]);
   if (pathType === PathType.URL) {
     const [protocol, rest] = parseURL(paths[0]);
-    const joined = pathUtils.join(...paths.slice(1));
+    const joined = pathUtils.join(rest, ...paths.slice(1));
     return joinURL(protocol, joined);
   }
   if (pathType === PathType.WINDOWS) {
@@ -54,6 +54,7 @@ export function joinPaths(...paths: string[]): string {
 }
 
 export function resolveParent(path: string): string {
+  if (path && path.endsWith("://")) return null;
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
     const [protocol, rest] = parseURL(path);
