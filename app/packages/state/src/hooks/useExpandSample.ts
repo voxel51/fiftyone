@@ -9,7 +9,6 @@ import * as modalAtoms from "../recoil/modal";
 import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
-import { getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
@@ -112,14 +111,9 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
             groupId = get(sample.sample, groupField)._id as string;
           }
 
-          let groupByFieldValue: string;
+          let groupByFieldValue: unknown;
           if (dynamicGroupParameters?.groupBy) {
-            groupByFieldValue = String(
-              get(
-                sample.sample,
-                getSanitizedGroupByExpression(dynamicGroupParameters.groupBy)
-              )
-            );
+            groupByFieldValue = sample.sample._group_by_key;
           }
 
           return { id, groupId, groupByFieldValue };

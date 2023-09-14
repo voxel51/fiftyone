@@ -3,7 +3,6 @@ import { atom, selector } from "recoil";
 import { Stage } from "@fiftyone/utilities";
 import { groupByFieldValue } from "./groups";
 import { State } from "./types";
-import { getSanitizedGroupByExpression } from "./utils";
 
 export const view = atom<State.Stage[]>({
   key: "view",
@@ -37,7 +36,7 @@ const PATCH_VIEWS = [PATCHES_VIEW, EVALUATION_PATCHES_VIEW];
 
 export const GROUP_BY_VIEW_STAGE = "fiftyone.core.stages.GroupBy";
 export const LIMIT_VIEW_STAGE = "fiftyone.core.stages.Limit";
-export const MATCH_VIEW_STAGE = "fiftyone.core.stages.Match";
+export const MONGO_VIEW_STAGE = "fiftyone.core.stages.Mongo";
 export const SKIP_VIEW_STAGE = "fiftyone.core.stages.Skip";
 export const SORT_VIEW_STAGE = "fiftyone.core.stages.SortBy";
 export const TAKE_VIEW_STAGE = "fiftyone.core.stages.Take";
@@ -181,34 +180,30 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
 
     const { groupBy, orderBy } = params;
 
-    // todo: fix sample_id issue
-    // todo: sanitize expressions
-    const groupBySanitized = getSanitizedGroupByExpression(groupBy);
+    const key = get(groupByFieldValue);
+    const match =
+      typeof groupBy === "string"
+        ? { [groupBy]: key }
+        : {
+            $expr: {
+              $eq: [groupBy, key],
+            },
+          };
 
     const viewStages: State.Stage[] = [
       {
-        _cls: MATCH_VIEW_STAGE,
+        _cls: MONGO_VIEW_STAGE,
         kwargs: [
           [
-            "filter",
-            {
-              $expr: {
-                $let: {
-                  vars: {
-                    expr: `$${groupBySanitized}`,
-                  },
-                  in: {
-                    $in: [
-                      {
-                        $toString: "$$expr",
-                      },
-                      [get(groupByFieldValue)],
-                    ],
-                  },
-                },
+            "pipeline",
+            [
+              {
+                $match: match,
               },
-            },
+            ],
           ],
+          ["_needs_frames", null],
+          ["_group_slices", null],
         ],
       },
     ];

@@ -60,7 +60,7 @@ export const currentModalSample = atom<ModalSelector | null>({
 
 export type ModalNavigation = (
   index: number
-) => Promise<{ id: string; groupId?: string; groupByFieldValue?: string }>;
+) => Promise<{ id: string; groupId?: string; groupByFieldValue?: unknown }>;
 
 export const currentModalNavigation = atom<Nullable<ModalNavigation>>({
   key: "currentModalNavigation",
