@@ -531,7 +531,6 @@ def _print_all_dataset_info(glob_patt, tags, sort_by, reverse):
         "persistent",
         "media_type",
         "tags",
-        "num_samples",
     ]
 
     if sort_by in headers:
