@@ -792,7 +792,7 @@ class DocModule extends DocFragment {
     return this.toFilename();
   }
   label() {
-    return this.toFilename();
+    return this.get("name");
   }
   writeHeader(file) {
     file.section(this.label(), 1);
@@ -814,7 +814,7 @@ class DocModule extends DocFragment {
     }
   }
   toFilename() {
-    return this.get("name").replace("@", "").replace("/", ".");
+    return "plugins." + this.get("name").replace("@", "").replace("/", ".");
   }
 }
 
