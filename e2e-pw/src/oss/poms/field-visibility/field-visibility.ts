@@ -176,7 +176,7 @@ export class FieldVisibilityPom {
       await this.page
         .getByTestId(`schema-selection-${paths[i]}`)
         .getByRole("checkbox", { checked: true })
-        .click();
+        .click({ timeout: 1000 });
     }
 
     await this.submitFieldVisibilityChanges();

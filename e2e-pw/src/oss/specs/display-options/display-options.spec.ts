@@ -46,5 +46,6 @@ test.describe("Display Options", () => {
     await panel.bringPanelToForeground("Histograms");
 
     await histogram.assert.isLoaded();
+    await panel.bringPanelToForeground("Samples");
   });
 });
