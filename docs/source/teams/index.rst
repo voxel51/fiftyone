@@ -100,9 +100,9 @@ pages on this site apply to Teams deployments as well.
 
 .. customcalloutitem::
     :header: Dataset Versioning
-    :description: Learn how to install and manage shared plugins for your Teams deployment.
-    :button_text: Get plugins for Teams
-    :button_link: teams_plugins.html
+    :description: Explore or revert to historical snapshots of your FiftyOne Teams datasets.
+    :button_text: Version your FiftyOne datasets
+    :button_link: dataset_versioning.html
 
 .. customcalloutitem::
     :header: Migrations
