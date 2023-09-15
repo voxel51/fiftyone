@@ -94,7 +94,7 @@ Operator types
 
 :mod:`Python API Reference <fiftyone.operators.types>`
 
-:js:mod:`Typescript API Reference <fiftyone.operators>`
+:js:mod:`Typescript API Reference <@fiftyone/operators>`
 
 The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
 
@@ -1127,4 +1127,4 @@ In a FiftyOne plugin this same query can be performed using the
    :hidden:
 
    Overview <self>
-   Typescript API <ts-api>
+   TypeScript API Reference <ts-api>
