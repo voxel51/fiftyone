@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<792a7572da4cffeefb660e0656d55887>>
+ * @generated SignedSource<<415b2906dc1dd0c5d4059cd4e775f7ed>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -57,7 +57,6 @@ export type datasetFragment$data = {
     readonly mediaType: MediaType;
     readonly name: string;
   }> | null;
-  readonly groupSlice: string | null;
   readonly id: string;
   readonly info: object | null;
   readonly lastLoadedAt: any | null;
@@ -182,13 +181,6 @@ return {
       "args": null,
       "kind": "ScalarField",
       "name": "groupField",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "groupSlice",
       "storageKey": null
     },
     {
@@ -461,6 +453,6 @@ return {
 };
 })();
 
-(node as any).hash = "013bfe228d576ef36f239fd9d32e0de1";
+(node as any).hash = "85d19a2f683ddaa9b25ad3ba09246b41";
 
 export default node;

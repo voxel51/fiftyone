@@ -25,6 +25,7 @@ export const processState = (
     ensureColorScheme(state.color_scheme as ColorSchemeInput)
   );
   if (!env().VITE_NO_STATE) {
+    setter("sessionGroupSlice", state.group_slice);
     setter("selectedSamples", new Set(state.selected));
     setter(
       "selectedLabels",

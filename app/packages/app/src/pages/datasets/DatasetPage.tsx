@@ -32,6 +32,7 @@ const DatasetPageQueryNode = graphql`
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
+      defaultGroupSlice
       appConfig {
         colorScheme {
           id

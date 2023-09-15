@@ -2,7 +2,6 @@ import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
   datasetFragment$key,
-  getPageQuery,
   graphQLSyncFragmentAtom,
   graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
@@ -15,9 +14,10 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { VariablesOf, commitLocalUpdate } from "react-relay";
+import { VariablesOf } from "react-relay";
 import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
+import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import { dataset, mediaType } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
@@ -52,38 +52,18 @@ export const isGroup = selector<boolean>({
   },
 });
 
-export const groupSlice = graphQLSyncFragmentAtom<
-  groupSliceFragment$key,
-  string
->(
-  {
-    fragments: [datasetFragment, groupSliceFragment],
-    keys: ["dataset"],
-    read: (data) => {
-      return data.groupSlice;
-    },
-    default: null,
-    selectorEffect: "write",
+export const sessionGroupSlice = sessionAtom({
+  key: "sessionGroupSlice",
+  default: null,
+});
+
+export const groupSlice = selector<string>({
+  key: "groupSlice",
+  get: ({ get }) => {
+    return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
   },
-  {
-    key: "groupSlice",
-    effects: [
-      ({ getPromise, onSet }) => {
-        onSet((newValue) => {
-          commitLocalUpdate(
-            getPageQuery().pageQuery.preloadedQuery.environment,
-            (store) => {
-              getPromise(dataset).then((dataset) => {
-                dataset?.id &&
-                  store.get(dataset.id).setValue(newValue, "groupSlice");
-              });
-            }
-          );
-        });
-      },
-    ],
-  }
-);
+  set: ({ set }, slice) => set(sessionGroupSlice, slice),
+});
 
 export const defaultGroupSlice = graphQLSyncFragmentAtom<
   groupSliceFragment$key,
@@ -110,7 +90,7 @@ export const modalGroupSlice = atom<string>({
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
   get: ({ get }) => {
-    return get(groupSlice) ? get(dataset).groupMediaTypes : [];
+    return get(isGroup) ? get(dataset).groupMediaTypes : [];
   },
 });
 
@@ -125,7 +105,7 @@ export const groupMediaTypesMap = selector({
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(groupSlice)
+    return get(isGroup)
       ? get(groupMediaTypes)
           .map(({ name }) => name)
           .sort()
@@ -141,8 +121,7 @@ export const groupMediaTypesSet = selector<Set<string>>({
 
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) =>
-    get(isGroup) && get(groupSlice) && Boolean(get(groupSlices).length),
+  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
 });
 
 export const activePcdSlices = atom<string[]>({

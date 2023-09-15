@@ -31,6 +31,7 @@ from fiftyone.core.session.events import (
     SelectLabels,
     SelectSamples,
     SetColorScheme,
+    SetGroupSlice,
     SetSpaces,
     StateUpdate,
 )
@@ -80,6 +81,13 @@ async def dispatch_event(
 
     if isinstance(event, SetSpaces):
         _state.spaces = event.spaces
+
+    if isinstance(event, SetGroupSlice):
+        if _state.view is not None:
+            _state.view.group_slice = event.group_slice
+
+        elif _state.dataset is not None:
+            _state.dataset.group_slice = event.group_slice
 
     if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state

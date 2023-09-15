@@ -10,8 +10,7 @@ import {
   useSetRecoilState,
 } from "recoil";
 import { Queries } from "./makeRoutes";
-import { useRouterContext } from "./routing";
-import { Entry } from "./routing/RouterContext";
+import { Entry, useRouterContext } from "./routing";
 
 export const pendingEntry = atom<boolean>({
   key: "pendingEntry",
@@ -46,7 +45,6 @@ const Renderer = () => {
   useEffect(() => {
     router.load().then(setRouteEntry);
     subscribe((_, { set }) => {
-      console.log(router.get());
       set(entry, router.get());
       set(pendingEntry, false);
     });

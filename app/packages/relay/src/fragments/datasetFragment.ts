@@ -4,7 +4,6 @@ export default graphql`
   fragment datasetFragment on Dataset {
     createdAt
     groupField
-    groupSlice
     id
     info
     lastLoadedAt

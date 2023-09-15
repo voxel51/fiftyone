@@ -165,7 +165,6 @@ type Dataset {
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
-  groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
   parentMediaType: MediaType
@@ -425,12 +424,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(
-    name: String!
-    savedViewSlug: String
-    view: BSONArray = null
-    groupSlice: String = null
-  ): Dataset
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200

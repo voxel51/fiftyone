@@ -21,12 +21,13 @@ export const SPACES_DEFAULT = {
 export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
+  colorScheme: ColorSchemeInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
   selectedFields?: State.Stage;
-  colorScheme: ColorSchemeInput;
+  sessionGroupSlice?: string;
 }
 
 export const SESSION_DEFAULT: Session = {
@@ -77,7 +78,7 @@ export function sessionAtom<K extends keyof Session>(
   const value = atom<Session[K]>({
     ...options,
     effects: [
-      ({ setSelf, trigger, ...r }) => {
+      ({ setSelf, trigger }) => {
         const assertValue = () => {
           if (
             sessionRef[options.key] === undefined &&

@@ -39,6 +39,8 @@ const onSetDataset: RegisteredSetter =
         colorPool: entry.data.config.colorPool,
         fields: [],
       };
+      sessionRef.current.sessionGroupSlice =
+        entry.data.dataset?.defaultGroupSlice || undefined;
     });
 
     router.history.push(`/datasets/${datasetName}${search}`, {

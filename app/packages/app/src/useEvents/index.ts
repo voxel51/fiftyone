@@ -7,11 +7,11 @@ import useSetColorScheme from "./useSetColorScheme";
 import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
 
-registerEvent("setColorScheme", useSetColorScheme);
 registerEvent("deactivateNotebookCell", useDeactivateNotebookCell);
 registerEvent("refresh", useRefresh);
 registerEvent("selectLabels", useSelectLabels);
 registerEvent("selectSamples", useSetSelectedSamples);
+registerEvent("setColorScheme", useSetColorScheme);
 registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
 
