@@ -19,12 +19,15 @@ import eta.core.utils as etau
 import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.fields as fof
+import fiftyone.core.frame as fofr
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
+fod = fou.lazy_import("fiftyone.core.dataset")
 fost = fou.lazy_import("fiftyone.core.stages")
 
 
@@ -202,6 +205,10 @@ class DatasetView(foc.SampleCollection):
     @property
     def _sample_cls(self):
         return fos.SampleView
+
+    @property
+    def _frame_cls(self):
+        return fofr.FrameView
 
     @property
     def _stages(self):
@@ -504,12 +511,11 @@ class DatasetView(foc.SampleCollection):
                     save_context.save(sample)
 
     def _iter_samples(self):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         try:
             for d in self._aggregate(detach_frames=True, detach_groups=True):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 index += 1
                 yield sample
@@ -520,16 +526,39 @@ class DatasetView(foc.SampleCollection):
             for sample in view._iter_samples():
                 yield sample
 
-    def _make_sample_fcn(self):
+    def _make_sample(self, d):
+        if getattr(self, "_make_sample_fcn", None) is None:
+            self._make_sample_fcn = self._init_make_sample()
+
+        return self._make_sample_fcn(d)
+
+    def _make_frame(self, d):
+        if getattr(self, "_make_frame_fcn", None) is None:
+            self._make_frame_fcn = self._init_make_frame()
+
+        return self._make_frame_fcn(d)
+
+    def _init_make_sample(self):
         sample_cls = self._sample_cls
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
             roots_only=True
         )
         filtered_fields = self._get_filtered_fields()
 
+        virtual_fields = self._get_virtual_fields()
+        if virtual_fields:
+            fields = [f.copy() for f in self.get_field_schema().values()]
+            sample_doc_cls = fod._create_sample_document_cls(
+                self._dataset,
+                "virtual." + str(ObjectId()),
+                fields=fields,
+            )
+        else:
+            sample_doc_cls = self._dataset._sample_doc_cls
+
         def make_sample(d):
             try:
-                doc = self._dataset._sample_dict_to_doc(d)
+                doc = sample_doc_cls.from_dict(d)
                 return sample_cls(
                     doc,
                     self,
@@ -544,6 +573,42 @@ class DatasetView(foc.SampleCollection):
                 ) from e
 
         return make_sample
+
+    def _init_make_frame(self):
+        frame_cls = self._frame_cls
+        selected_fields, excluded_fields = self._get_selected_excluded_fields(
+            frames=True, roots_only=True
+        )
+        filtered_fields = self._get_filtered_fields(frames=True)
+
+        virtual_fields = self._get_virtual_fields(frames=True)
+        if virtual_fields:
+            fields = [f.copy() for f in self.get_frame_field_schema().values()]
+            frame_doc_cls = fod._create_frame_document_cls(
+                self._dataset,
+                "virtual." + str(ObjectId()),
+                fields=fields,
+            )
+        else:
+            frame_doc_cls = self._dataset._frame_doc_cls
+
+        def make_frame(d):
+            try:
+                doc = frame_doc_cls.from_dict(d)
+                return frame_cls(
+                    doc,
+                    self,
+                    selected_fields=selected_fields,
+                    excluded_fields=excluded_fields,
+                    filtered_fields=filtered_fields,
+                )
+            except Exception as e:
+                raise ValueError(
+                    "Failed to load frame from the database. This is likely "
+                    "due to an invalid stage in the DatasetView"
+                ) from e
+
+        return make_frame
 
     def iter_groups(
         self,
@@ -630,7 +695,6 @@ class DatasetView(foc.SampleCollection):
                         save_context.save(sample)
 
     def _iter_groups(self, group_slices=None):
-        make_sample = self._make_sample_fcn()
         index = 0
 
         group_field = self.group_field
@@ -641,7 +705,7 @@ class DatasetView(foc.SampleCollection):
             for d in self._aggregate(
                 detach_frames=True, groups_only=True, group_slices=group_slices
             ):
-                sample = make_sample(d)
+                sample = self._make_sample(d)
 
                 group_id = sample[group_field].id
                 if curr_id is None:
@@ -756,7 +820,7 @@ class DatasetView(foc.SampleCollection):
         group_field = self.group_field
         id_field = group_field + "._id"
 
-        view = self.match(foe.ViewField(id_field) == ObjectId(group_id))
+        view = self.match(F(id_field) == ObjectId(group_id))
 
         try:
             groups = view._iter_groups(group_slices=group_slices)
@@ -822,8 +886,10 @@ class DatasetView(foc.SampleCollection):
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the view.
@@ -836,38 +902,45 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         schema = self._dataset.get_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            include_private=include_private,
+            include_private=include_private
         )
 
         schema = self._get_filtered_schema(schema)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def get_frame_field_schema(
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the frames of
         the samples in the view.
@@ -882,35 +955,39 @@ class DatasetView(foc.SampleCollection):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the view does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the view does not contain videos
         """
         if not self._has_frame_fields():
             return None
 
         schema = self._dataset.get_frame_field_schema(
-            ftype=ftype,
-            embedded_doc_type=embedded_doc_type,
-            include_private=include_private,
+            include_private=include_private
         )
 
         schema = self._get_filtered_schema(schema, frames=True)
 
-        if flat:
-            schema = fof.flatten_schema(
-                schema,
-                ftype=ftype,
-                embedded_doc_type=embedded_doc_type,
-                include_private=include_private,
-            )
-
-        return schema
+        return fof.filter_schema(
+            schema,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
+            include_private=include_private,
+            flat=flat,
+            mode=mode,
+        )
 
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
@@ -1180,6 +1257,9 @@ class DatasetView(foc.SampleCollection):
         """Deletes all fields that are excluded from the view from the
         underlying dataset.
 
+        If this view defines any new virtual fields, they are added to the
+        underlying dataset.
+
         .. note::
 
             This method is not a :class:`fiftyone.core.stages.ViewStage`;
@@ -1215,11 +1295,14 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._ensure_frames(view=self)
 
-    def save(self, fields=None):
+    def save(self, fields=None, materialize=False):
         """Saves the contents of the view to the database.
 
         This method **does not** delete samples or frames from the underlying
         dataset that this view excludes.
+
+        If this view defines any new virtual fields, they are added to the
+        underlying dataset.
 
         .. note::
 
@@ -1230,14 +1313,18 @@ class DatasetView(foc.SampleCollection):
         .. warning::
 
             If a view has excluded fields or filtered list values, this method
-            will permanently delete this data from the dataset, unless
-            ``fields`` is used to omit such fields from the save.
+            will permanently delete this data from the dataset (only for the
+            samples in the view), unless ``fields`` is used to omit such fields
+            from the save.
 
         Args:
-            fields (None): an optional field or list of fields to save. If
+            fields (None): an optional field or iterable of fields to save. If
                 specified, only these field's contents are modified
+            materialize (False): whether to materialize virtual fields into
+                regular fields. If True and ``fields`` is None, all virtual
+                fields are materialized by default
         """
-        self._dataset._save(view=self, fields=fields)
+        self._dataset._save(view=self, fields=fields, materialize=materialize)
 
     def clone(self, name=None, persistent=False):
         """Creates a new dataset containing a copy of the contents of the view.
@@ -1272,6 +1359,10 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
         for stage in self._stages:
             _view = _view.add_stage(stage)
+
+        for name in ("_make_sample_fcn", "_make_frame_fcn"):
+            if hasattr(self, name):
+                delattr(self, name)
 
     def to_dict(
         self,
@@ -1407,6 +1498,8 @@ class DatasetView(foc.SampleCollection):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -1422,6 +1515,7 @@ class DatasetView(foc.SampleCollection):
         _view = self._base_view
 
         _contains_videos = self._dataset._contains_videos(any_slice=True)
+        _found_materialize = False
         _found_select_group_slice = False
         _attach_frames_idx = None
         _attach_frames_idx0 = None
@@ -1431,9 +1525,16 @@ class DatasetView(foc.SampleCollection):
         _group_slices = set()
         _attach_groups_idx = None
 
+        if not _contains_videos:
+            attach_frames = False
+            detach_frames = False
+            frames_only = False
+
         idx = 0
         for stage in self._stages:
-            if isinstance(stage, fost.SelectGroupSlices):
+            if isinstance(stage, fost.Materialize):
+                _found_materialize = True
+            elif isinstance(stage, fost.SelectGroupSlices):
                 # We might need to reattach frames after `SelectGroupSlices`,
                 # since it involves a `$lookup` that resets the samples
                 _found_select_group_slice = True
@@ -1550,8 +1651,33 @@ class DatasetView(foc.SampleCollection):
             )
             _pipelines.insert(_attach_groups_idx, _pipeline)
 
+        if detach_virtual == True and not pipeline:
+            attach_virtual = False
+
+        if not attach_virtual and not _found_materialize:
+            detach_virtual = False
+
+        if attach_virtual:
+            (
+                virtual_pipeline,
+                detach_virtual,
+            ) = self._dataset._attach_virtual_fields_pipeline(
+                view=self,
+                detach_virtual=detach_virtual,
+                attach_frames=attach_frames,
+                detach_frames=detach_frames,
+            )
+            _pipelines.append(virtual_pipeline)
+            attach_virtual = False
+
         if pipeline is not None:
             _pipelines.append(pipeline)
+
+        if detach_virtual:
+            _pipelines.append(
+                [{"$project": {f: False for f in detach_virtual}}]
+            )
+            detach_virtual = False
 
         _pipeline = list(itertools.chain.from_iterable(_pipelines))
 
@@ -1563,11 +1689,13 @@ class DatasetView(foc.SampleCollection):
 
         return self._dataset._pipeline(
             pipeline=_pipeline,
+            media_type=media_type,
+            attach_virtual=attach_virtual,
+            detach_virtual=detach_virtual,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
             support=support,
-            media_type=media_type,
             group_slice=group_slice,
             group_slices=group_slices,
             detach_groups=detach_groups,
@@ -1580,6 +1708,8 @@ class DatasetView(foc.SampleCollection):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -1594,6 +1724,8 @@ class DatasetView(foc.SampleCollection):
         _pipeline = self._pipeline(
             pipeline=pipeline,
             media_type=media_type,
+            attach_virtual=attach_virtual,
+            detach_virtual=detach_virtual,
             attach_frames=attach_frames,
             detach_frames=detach_frames,
             frames_only=frames_only,
@@ -1690,8 +1822,16 @@ class DatasetView(foc.SampleCollection):
             frames=frames
         )
 
-        if selected_fields is not None or excluded_fields is not None:
-            _filter_schema(schema, selected_fields, excluded_fields)
+        virtual_fields = self._get_virtual_fields(frames=frames)
+
+        if (
+            selected_fields is not None
+            or excluded_fields is not None
+            or virtual_fields is not None
+        ):
+            _filter_schema(
+                schema, selected_fields, excluded_fields, virtual_fields
+            )
 
         return schema
 
@@ -1733,6 +1873,20 @@ class DatasetView(foc.SampleCollection):
 
         return selected_fields, excluded_fields
 
+    def _get_virtual_fields(self, frames=False):
+        virtual_fields = None
+
+        dataset = self._dataset
+        for stage in self._stages:
+            vf = stage.get_virtual_fields(dataset, frames=frames)
+            if vf:
+                if virtual_fields is None:
+                    virtual_fields = vf
+                else:
+                    virtual_fields.update(vf)
+
+        return virtual_fields
+
     def _get_filtered_fields(self, frames=False):
         filtered_fields = None
 
@@ -1749,18 +1903,41 @@ class DatasetView(foc.SampleCollection):
 
         return filtered_fields
 
+    def _get_new_fields(self, frames=False):
+        if frames:
+            if not self._has_frame_fields():
+                return None
+
+            dataset_schema = self._dataset.get_frame_field_schema(flat=True)
+            view_schema = self.get_frame_field_schema(flat=True)
+        else:
+            dataset_schema = self._dataset.get_field_schema(flat=True)
+            view_schema = self.get_field_schema(flat=True)
+
+        new_fields = set(view_schema.keys()) - set(dataset_schema.keys())
+        _discard_nested_leafs(new_fields)
+
+        return {
+            path: field
+            for path, field in view_schema.items()
+            if path in new_fields
+        }
+
     def _get_missing_fields(self, frames=False):
         if frames:
             if not self._has_frame_fields():
-                return set()
+                return None
 
-            dataset_schema = self._dataset.get_frame_field_schema()
-            view_schema = self.get_frame_field_schema()
+            dataset_schema = self._dataset.get_frame_field_schema(flat=True)
+            view_schema = self.get_frame_field_schema(flat=True)
         else:
-            dataset_schema = self._dataset.get_field_schema()
-            view_schema = self.get_field_schema()
+            dataset_schema = self._dataset.get_field_schema(flat=True)
+            view_schema = self.get_field_schema(flat=True)
 
-        return set(dataset_schema.keys()) - set(view_schema.keys())
+        missing_fields = set(dataset_schema.keys()) - set(view_schema.keys())
+        _discard_nested_leafs(missing_fields)
+
+        return missing_fields
 
     def _contains_all_fields(self, frames=False):
         selected_fields, excluded_fields = self._get_selected_excluded_fields(
@@ -1866,10 +2043,11 @@ def _merge_selected_fields(selected_fields, sf):
     selected_fields.intersection_update(sf)
 
 
-def _filter_schema(schema, selected_fields, excluded_fields):
+def _filter_schema(schema, selected_fields, excluded_fields, virtual_fields):
     selected_fields, roots1 = _parse_selected_fields(selected_fields)
     excluded_fields, roots2 = _parse_excluded_fields(excluded_fields)
-    filtered_roots = roots1 | roots2
+    virtual_fields, roots3 = _parse_virtual_fields(virtual_fields)
+    filtered_roots = roots1 | roots2 | roots3
 
     # Explicitly include roots of any embedded fields that have been selected
     if roots1:
@@ -1883,6 +2061,10 @@ def _filter_schema(schema, selected_fields, excluded_fields):
 
     sf = selected_fields.get("", None)
     ef = excluded_fields.get("", None)
+    vf = virtual_fields.get("", None)
+
+    if vf is not None:
+        schema.update(vf)
 
     if sf is not None:
         for name in tuple(schema.keys()):
@@ -1897,7 +2079,7 @@ def _filter_schema(schema, selected_fields, excluded_fields):
     if filtered_roots:
         for name, field in schema.items():
             _filter_embedded_field_schema(
-                field, name, selected_fields, excluded_fields
+                field, name, selected_fields, excluded_fields, virtual_fields
             )
 
 
@@ -1940,8 +2122,26 @@ def _parse_excluded_fields(paths):
     return d, r
 
 
+def _parse_virtual_fields(schema):
+    d = defaultdict(dict)
+    r = set()
+
+    if schema is not None:
+        for path, field in schema.items():
+            if "." in path:
+                root = path.split(".", 1)[0]
+                r.add(root)
+
+                base, leaf = path.rsplit(".", 1)
+                d[base][leaf] = field
+            else:
+                d[""][path] = field
+
+    return d, r
+
+
 def _filter_embedded_field_schema(
-    field, path, selected_fields, excluded_fields
+    field, path, selected_fields, excluded_fields, virtual_fields
 ):
     while isinstance(field, fof.ListField):
         field = field.field
@@ -1951,12 +2151,29 @@ def _filter_embedded_field_schema(
 
     sf = selected_fields.get(path, None)
     ef = excluded_fields.get(path, None)
+    vf = virtual_fields.get(path, None)
 
-    if sf is not None or ef is not None:
-        field._use_view(selected_fields=sf, excluded_fields=ef)
+    if sf is not None or ef is not None or vf is not None:
+        field._use_view(
+            selected_fields=sf, excluded_fields=ef, virtual_fields=vf
+        )
 
     for name, _field in field._fields.items():
         _path = path + "." + name
         _filter_embedded_field_schema(
-            _field, _path, selected_fields, excluded_fields
+            _field, _path, selected_fields, excluded_fields, virtual_fields
         )
+
+
+def _discard_nested_leafs(paths):
+    discard = set()
+
+    for path in paths:
+        chunks = path.split(".")
+        for i in range(1, len(chunks)):
+            root = ".".join(chunks[:i])
+            if root in paths:
+                discard.add(path)
+
+    for path in discard:
+        paths.discard(path)

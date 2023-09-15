@@ -62,6 +62,7 @@ class SampleFieldDocument(EmbeddedDocument):
     db_field = StringField(null=True)
     description = StringField(null=True)
     info = DictField(null=True)
+    expr = DictField(null=True)
 
     def to_field(self):
         """Creates the :class:`fiftyone.core.fields.Field` specified by this
@@ -93,6 +94,7 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=self.db_field,
             description=self.description,
             info=self.info,
+            expr=self.expr,
         )
 
     @classmethod
@@ -120,6 +122,7 @@ class SampleFieldDocument(EmbeddedDocument):
             db_field=field.db_field,
             description=field.description,
             info=field.info,
+            expr=field.expr,
         )
 
     @staticmethod

@@ -262,12 +262,11 @@ def _project_pagination_paths(view: foc.SampleCollection):
     )
 
 
-def _make_filter_stages(
-    view,
-    filters,
-):
+def _make_filter_stages(view, filters):
     stages = []
     queries = []
+    virtual_fields = set()
+
     for path, label_path, field, args in _iter_paths(view, filters):
         is_matching = args.get("isMatching", True)
         path_field = view.get_field(path)
@@ -292,6 +291,9 @@ def _make_filter_stages(
     ):
         is_matching = args.get("isMatching", True)
         field = view.get_field(path)
+        if field is not None and field.is_virtual:
+            virtual_fields.add(path)
+
         if issubclass(
             label_field.document_type, (fol.Keypoint, fol.Keypoints)
         ) and isinstance(field, fof.ListField):
@@ -316,6 +318,9 @@ def _make_filter_stages(
                         only_matches=not args.get("exclude", False),
                     )
                 )
+
+    if virtual_fields:
+        stages.insert(0, fosg.Materialize(fields=virtual_fields))
 
     return stages
 

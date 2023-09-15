@@ -372,7 +372,9 @@ class FramesView(fov.DatasetView):
                 }
             )
 
-            self._frames_dataset._aggregate(pipeline=pipeline)
+            self._frames_dataset._aggregate(
+                detach_virtual=True, pipeline=pipeline
+            )
 
         if delete:
             frame_ids = self._frames_dataset.exclude(self).values("id")
@@ -683,7 +685,9 @@ def make_frames_dataset(
         ]
     )
 
-    sample_collection._aggregate(frames_only=True, post_pipeline=pipeline)
+    sample_collection._aggregate(
+        detach_virtual=True, frames_only=True, post_pipeline=pipeline
+    )
 
     if sample_frames == False and not dataset:
         logger.warning(

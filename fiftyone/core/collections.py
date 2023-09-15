@@ -1019,6 +1019,7 @@ class SampleCollection(object):
         path,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         leaf=False,
     ):
@@ -1032,6 +1033,7 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 enforce. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): an optional virtual type (True or False) to enforce
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             leaf (False): whether to return the subfield of list fields
@@ -1043,7 +1045,7 @@ class SampleCollection(object):
             ValueError: if the field does not match provided type constraints
         """
         fof.validate_type_constraints(
-            ftype=ftype, embedded_doc_type=embedded_doc_type
+            ftype=ftype, embedded_doc_type=embedded_doc_type, virtual=virtual
         )
 
         _, field = self._parse_field(
@@ -1051,7 +1053,11 @@ class SampleCollection(object):
         )
 
         fof.validate_field(
-            field, path=path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            field,
+            path=path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
         )
 
         return field
@@ -1115,8 +1121,10 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
         """Returns a schema dictionary describing the fields of the samples in
         the collection.
@@ -1129,13 +1137,20 @@ class SampleCollection(object):
                 iterable of types to which to restrict the returned schema.
                 Must be subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-             a dictionary mapping field names to field types
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances
         """
         raise NotImplementedError("Subclass must implement get_field_schema()")
 
@@ -1143,11 +1158,13 @@ class SampleCollection(object):
         self,
         ftype=None,
         embedded_doc_type=None,
+        virtual=None,
         include_private=False,
         flat=False,
+        mode=None,
     ):
-        """Returns a schema dictionary describing the fields of the frames of
-        the samples in the collection.
+        """Returns a schema dictionary describing the fields of the frames in
+        the collection.
 
         Only applicable for collections that contain videos.
 
@@ -1158,18 +1175,88 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type to
                 which to restrict the returned schema. Must be a subclass of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): whether to only include virtual (True) or
+                non-virtual (False) fields
             include_private (False): whether to include fields that start with
                 ``_`` in the returned schema
             flat (False): whether to return a flattened schema where all
                 embedded document fields are included as top-level keys
+            mode (None): whether to apply the ``ftype``, ``embedded_doc_type``
+                and ``virtual`` constraints before and/or after flattening the
+                schema. Only applicable when ``flat`` is True. Supported values
+                are ``("before", "after", "both")``. The default is ``"after"``
 
         Returns:
-            a dictionary mapping field names to field types, or ``None`` if
-            the collection does not contain videos
+            a dict mapping field names to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the collection does not contain videos
         """
         raise NotImplementedError(
             "Subclass must implement get_frame_field_schema()"
         )
+
+    def get_virtual_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the virtual fields of the
+        samples in the collection.
+
+        Virtual fields are fields that are implicitly populated by expressions
+        rather than being directly stored in the database.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return virtual fields. By default, all fields are considered
+
+        Returns:
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances
+        """
+        return self._get_virtual_field_schema(fields=fields)
+
+    def get_virtual_frame_field_schema(self, fields=None):
+        """Returns a schema dictionary describing the virtual fields of the
+        frames in the collection.
+
+        Virtual fields are fields that are implicitly populated by expressions
+        rather than being directly stored in the database.
+
+        Args:
+            fields (None): an optional field or iterable of fields for which to
+                return virtual fields. By default, all fields are considered
+
+        Returns:
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances, or ``None`` if the collection does not contain videos
+        """
+        return self._get_virtual_field_schema(fields=fields, frames=True)
+
+    def _get_virtual_field_schema(self, fields=None, frames=False):
+        if frames:
+            schema = self.get_frame_field_schema(virtual=True, flat=True)
+        else:
+            schema = self.get_field_schema(virtual=True, flat=True)
+
+        if fields is None:
+            return schema
+
+        if etau.is_str(fields):
+            fields = [fields]
+        else:
+            fields = list(fields)
+
+        return {
+            k: v
+            for k, v in schema.items()
+            if any(k == f or k.startswith(f + ".") for f in fields)
+        }
+
+    @property
+    def has_virtual_sample_fields(self):
+        """Whether this collection has any virtual sample fields."""
+        return bool(self.get_virtual_field_schema())
+
+    @property
+    def has_virtual_frame_fields(self):
+        """Whether this collection has any virtual frame fields."""
+        return bool(self.get_virtual_frame_field_schema())
 
     def get_dynamic_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
@@ -1185,8 +1272,8 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them
         """
         return self._get_dynamic_field_schema(
             fields=fields, recursive=recursive
@@ -1194,7 +1281,7 @@ class SampleCollection(object):
 
     def get_dynamic_frame_field_schema(self, fields=None, recursive=True):
         """Returns a schema dictionary describing the dynamic fields of the
-        frames of the samples in the collection.
+        frames in the collection.
 
         Dynamic fields are embedded document fields with at least one non-None
         value that have not been declared on the dataset's schema.
@@ -1206,8 +1293,9 @@ class SampleCollection(object):
                 embedded documents
 
         Returns:
-            a dictionary mapping field paths to field types or lists of field
-            types, or ``None`` if the collection does not contain videos
+            a dict mapping field paths to :class:`fiftyone.core.fields.Field`
+            instances or lists of them, or ``None`` if the collection does not
+            contain videos
         """
         if not self._has_frame_fields():
             return None
@@ -1444,7 +1532,9 @@ class SampleCollection(object):
                         "Frame field '%s' does not exist" % field_name
                     )
 
-    def validate_field_type(self, path, ftype=None, embedded_doc_type=None):
+    def validate_field_type(
+        self, path, ftype=None, embedded_doc_type=None, virtual=None
+    ):
         """Validates that the collection has a field of the given type.
 
         Args:
@@ -1454,13 +1544,17 @@ class SampleCollection(object):
             embedded_doc_type (None): an optional embedded document type or
                 iterable of types to enforce. Must be a subclass(es) of
                 :class:`fiftyone.core.odm.BaseEmbeddedDocument`
+            virtual (None): an optional virtual type (True or False) to enforce
 
         Raises:
             ValueError: if the field does not exist or does not have the
                 expected type
         """
         field = self.get_field(
-            path, ftype=ftype, embedded_doc_type=embedded_doc_type
+            path,
+            ftype=ftype,
+            embedded_doc_type=embedded_doc_type,
+            virtual=virtual,
         )
 
         if field is None:
@@ -1994,6 +2088,10 @@ class SampleCollection(object):
             _frame_ids, values = _parse_frame_values_dicts(
                 self, _sample_ids, values
             )
+
+        _field = self.get_field(field_name)
+        if _field is not None and _field.is_virtual:
+            raise ValueError("Virtual fields cannot be edited")
 
         if expand_schema:
             field, new_group_field = self._expand_schema_from_values(
@@ -4905,7 +5003,9 @@ class SampleCollection(object):
         return self._add_view_stage(fos.MapLabels(field, map))
 
     @view_stage
-    def set_field(self, field, expr, _allow_missing=False):
+    def set_field(
+        self, field, expr, virtual=None, _allow_missing=False, **kwargs
+    ):
         """Sets a field or embedded field on each sample in a collection by
         evaluating the given expression.
 
@@ -5008,12 +5108,22 @@ class SampleCollection(object):
             expr: a :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the field value to set
+            virtual (None): a dict of keyword arguments for
+                :func:`fiftyone.core.odm.create_field`
+            **kwargs: keyword arguments for
+                :func:`fiftyone.core.odm.create_field`
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(
-            fos.SetField(field, expr, _allow_missing=_allow_missing)
+            fos.SetField(
+                field,
+                expr,
+                virtual=virtual,
+                _allow_missing=_allow_missing,
+                **kwargs,
+            )
         )
 
     @view_stage
@@ -5370,6 +5480,39 @@ class SampleCollection(object):
             a :class:`fiftyone.core.view.DatasetView`
         """
         return self._add_view_stage(fos.MatchTags(tags, bool=bool, all=all))
+
+    @view_stage
+    def materialize(self, fields=None):
+        """Immediately materializes the virtual field(s) on the collection.
+
+        Examples::
+
+            import fiftyone as fo
+            import fiftyone.zoo as foz
+            from fiftyone import ViewField as F
+
+            dataset = foz.load_zoo_dataset("quickstart")
+
+            dataset.add_sample_field(
+                "num_objects",
+                fo.IntField,
+                expr=F("ground_truth.detections").length(),
+            )
+
+            #
+            # Match based on a virtual field
+            #
+
+            view = dataset.materialize().match(F("num_objects") >= 30)
+
+        Args:
+            fields (None): a name or iterable of names of virtual fields to
+                materialize. By default, all virtual fields are materialized
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return self._add_view_stage(fos.Materialize(fields=fields))
 
     @view_stage
     def mongo(self, pipeline, _needs_frames=None, _group_slices=None):
@@ -9169,6 +9312,8 @@ class SampleCollection(object):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -9187,6 +9332,9 @@ class SampleCollection(object):
                 append to the current pipeline
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
+            attach_virtual (True): whether to add virtual fields to the pipeline
+            detach_virtual (False): whether to detach virtual fields at the end
+                of the pipeline
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
                 datasets that contain videos
@@ -9222,6 +9370,8 @@ class SampleCollection(object):
         self,
         pipeline=None,
         media_type=None,
+        attach_virtual=True,
+        detach_virtual=False,
         attach_frames=False,
         detach_frames=False,
         frames_only=False,
@@ -9241,6 +9391,9 @@ class SampleCollection(object):
                 append to the current pipeline
             media_type (None): the media type of the collection, if different
                 than the source dataset's media type
+            attach_virtual (True): whether to add virtual fields to the pipeline
+            detach_virtual (False): whether to detach virtual fields at the end
+                of the pipeline
             attach_frames (False): whether to attach the frame documents
                 immediately prior to executing ``pipeline``. Only applicable to
                 datasets that contain videos
@@ -9362,12 +9515,20 @@ class SampleCollection(object):
             "default_skeleton", default_skeleton
         )
 
-    def _to_fields_str(self, field_schema):
-        max_len = max([len(field_name) for field_name in field_schema]) + 1
-        return "\n".join(
-            "    %s %s" % ((field_name + ":").ljust(max_len), str(field))
-            for field_name, field in field_schema.items()
-        )
+    def _to_fields_str(self, schema):
+        ljust = 0
+        data = []
+        for field_name, field in schema.items():
+            k = field_name + ":"
+
+            v = str(field)
+            if field.is_virtual:
+                v += " (*)"
+
+            ljust = max(ljust, len(k))
+            data.append((k, v))
+
+        return "\n".join("    %s %s" % (k.ljust(ljust), v) for k, v in data)
 
     def _split_frame_fields(self, fields):
         if etau.is_str(fields):

@@ -11,6 +11,7 @@ from bson import ObjectId
 from pymongo import ReplaceOne, UpdateOne, DeleteOne, DeleteMany
 
 from fiftyone.core.document import Document, DocumentView
+from fiftyone.core.expressions import ViewField as F
 import fiftyone.core.frame_utils as fofu
 import fiftyone.core.odm as foo
 from fiftyone.core.singletons import FrameSingleton
@@ -510,9 +511,7 @@ class Frames(object):
         return frame_numbers
 
     def _get_frame_db(self, frame_number):
-        return self._frame_collection.find_one(
-            {"_sample_id": self._sample_id, "frame_number": frame_number}
-        )
+        return _get_frame_db(self._dataset, self._sample_id, frame_number)
 
     def _get_frames_match_stage(self):
         if self._dataset._is_clips:
@@ -623,6 +622,10 @@ class Frames(object):
                         break
 
     def _iter_frames_db(self):
+        if self._dataset.has_virtual_frame_fields:
+            view = self._dataset.match(F("_id") == self._sample_id)
+            return view._aggregate(frames_only=True)
+
         pipeline = [
             self._get_frames_match_stage(),
             {"$sort": {"frame_number": 1}},
@@ -630,8 +633,7 @@ class Frames(object):
         return foo.aggregate(self._frame_collection, pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return Frame.from_doc(doc, dataset=self._dataset)
+        return self._dataset._make_frame(d)
 
     def _make_dict(self, frame, include_id=False):
         d = frame.to_mongo_dict(include_id=include_id)
@@ -809,11 +811,7 @@ class FramesView(Frames):
 
         view = sample_view._view
 
-        sf, ef = view._get_selected_excluded_fields(
-            frames=True, roots_only=True
-        )
-        ff = view._get_filtered_fields(frames=True)
-
+        filtered_fields = view._get_filtered_fields(frames=True)
         needs_frames = view._needs_frames()
         contains_all_fields = view._contains_all_fields(frames=True)
 
@@ -821,9 +819,7 @@ class FramesView(Frames):
         frames_pipeline = optimized_view._pipeline(frames_only=True)
 
         self._view = view
-        self._selected_fields = sf
-        self._excluded_fields = ef
-        self._filtered_fields = ff
+        self._filtered_fields = filtered_fields
         self._needs_frames = needs_frames
         self._contains_all_fields = contains_all_fields
         self._frames_pipeline = frames_pipeline
@@ -955,14 +951,7 @@ class FramesView(Frames):
         return foo.aggregate(self._sample_collection, self._frames_pipeline)
 
     def _make_frame(self, d):
-        doc = self._dataset._frame_dict_to_doc(d)
-        return FrameView(
-            doc,
-            self._view,
-            selected_fields=self._selected_fields,
-            excluded_fields=self._excluded_fields,
-            filtered_fields=self._filtered_fields,
-        )
+        return self._view._make_frame(d)
 
     def _save_replacements(self, validate=True, deferred=False):
         if not self._replacements:
@@ -1080,9 +1069,7 @@ class Frame(Document, metaclass=FrameSingleton):
         if not self._in_db:
             return
 
-        d = self._dataset._frame_collection.find_one(
-            {"_sample_id": self._sample_id, "frame_number": self.frame_number}
-        )
+        d = _get_frame_db(self._dataset, self._sample_id, self.frame_number)
         self._doc = self._dataset._frame_dict_to_doc(d)
 
 
@@ -1142,3 +1129,30 @@ class FrameView(DocumentView):
     def _sample_id(self):
         _id = self._doc._sample_id
         return ObjectId(_id) if _id is not None else None
+
+
+def _get_frame_db(dataset, sample_id, frame_number):
+    if dataset.has_virtual_frame_fields:
+        view = dataset.match(F("_id") == sample_id)
+        try:
+            return next(
+                iter(
+                    view._aggregate(
+                        frames_only=True,
+                        post_pipeline=[
+                            {
+                                "$match": {
+                                    "_sample_id": sample_id,
+                                    "frame_number": frame_number,
+                                }
+                            }
+                        ],
+                    )
+                )
+            )
+        except StopIteration:
+            return None
+
+    return dataset._frame_collection.find_one(
+        {"_sample_id": sample_id, "frame_number": frame_number}
+    )

@@ -1138,8 +1138,8 @@ New fields can be added to a |Sample| using item assignment:
     sample["integer_field"] = 51
     sample.save()
 
-If the |Sample| belongs to a |Dataset|, the dataset's field schema will be
-updated to reflect the new field:
+If the |Sample| belongs to a |Dataset|, the dataset's schema will automatically
+be updated to reflect the new field:
 
 .. code-block:: python
     :linenos:
@@ -1167,7 +1167,7 @@ A |Field| can be any primitive type, such as `bool`, `int`, `float`, `str`,
 .. code-block:: python
     :linenos:
 
-    sample["ground_truth"] = fo.Classification(label="alligator")
+    sample["animals"] = fo.Classification(label="alligator")
     sample.save()
 
 Whenever a new field is added to a sample in a dataset, the field is available
@@ -1449,6 +1449,83 @@ removed from every |Sample| in the dataset:
     sample.integer_field
     # AttributeError: Sample has no field 'integer_field'
 
+.. _adding-dataset-fields:
+
+Adding fields to a dataset
+--------------------------
+
+You can use
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>` to
+declare new fields on a dataset before populating any samples with values for
+the fields:
+
+.. code-block:: python
+    :linenos:
+
+    # Declare a new primitive field
+    dataset.add_sample_field("float_field", fo.FloatField)
+
+    # Delcare a new Label field
+    dataset.add_sample_field(
+        "ground_truth",
+        fo.EmbeddedDocumentField,
+        embedded_doc_type=fo.Detections,
+    )
+
+    print(dataset)
+
+.. code-block:: text
+
+    Name:           a_dataset
+    Media type:     image
+    Num samples:    1
+    Persistent:     False
+    Tags:           []
+    Sample fields:
+        id:            fiftyone.core.fields.ObjectIdField
+        filepath:      fiftyone.core.fields.StringField
+        tags:          fiftyone.core.fields.ListField(fiftyone.core.fields.StringField)
+        metadata:      fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.metadata.ImageMetadata)
+        float_field:   fiftyone.core.fields.FloatField
+        ground_truth:  fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
+
+Any fields you declare will automatically be available on all samples in the
+dataset with default value `None`:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.first())
+
+.. code-block:: text
+
+    <Sample: {
+        'id': '63b30625ccf3be2b3cd51569',
+        'media_type': 'image',
+        'filepath': '/path/to/image.png',
+        'tags': [],
+        'metadata': None,
+        'float_field': None,
+        'ground_truth': None,
+    }>
+
+.. note::
+
+    Did you know? You can also declare :ref:`virtual fields <virtual-fields>`
+    on datasets whose values are dynamically computed from other fields rather
+    than being explicitly stored in the database.
+
+You can use
+:meth:`delete_sample_field() <fiftyone.core.dataset.Dataset.delete_sample_field>`
+and
+:meth:`delete_sample_fields() <fiftyone.core.dataset.Dataset.delete_sample_fields>`
+to delete fields from a dataset (and thus all samples in it):
+
+.. code-block:: python
+    :linenos:
+
+    dataset.delete_sample_fields(["float_field", "ground_truth"])
+
 .. _using-media-type:
 
 Media type
@@ -1459,23 +1536,21 @@ the source media and available via the `media_type` attribute of the sample,
 which is read-only.
 
 Media type is inferred from the
-`MIME type <https://en.wikipedia.org/wiki/Media_type>`__ of the file on disk,
-as per the table below:
+`MIME type <https://en.wikipedia.org/wiki/Media_type>`__ or file extension the
+file on disk, as per the table below:
 
 .. table::
-    :widths: 35 30 35
+    :widths: 25 25 25 25
 
-    +---------------------+----------------+----------------------------------+
-    | MIME type/extension | `media_type`   | Description                      |
-    +=====================+================+==================================+
-    | `image/*`           | `image`        | Image sample                     |
-    +---------------------+----------------+----------------------------------+
-    | `video/*`           | `video`        | Video sample                     |
-    +---------------------+----------------+----------------------------------+
-    | `*.pcd`             | `point-cloud`  | Point cloud sample               |
-    +---------------------+----------------+----------------------------------+
-    | other               | `-`            | Generic sample                   |
-    +---------------------+----------------+----------------------------------+
+    +------------+----------------+----------------+---------------------+
+    | MIME type  | File extension | `media_type`   | Description         |
+    +============+================+================+=====================+
+    | `image/*`  |                | `image`        | Image sample        |
+    +------------+----------------+----------------+---------------------+
+    | `video/*`  |                | `video`        | Video sample        |
+    +------------+----------------+----------------+---------------------+
+    |            | `*.pcd`        | `point-cloud`  | Point cloud sample  |
+    +------------+----------------+----------------+---------------------+
 
 .. note::
 
@@ -3868,6 +3943,194 @@ attributes from your dataset and its schema:
 
     assert "ground_truth.age" not in view.get_field_schema(flat=True)
     assert not sample.ground_truth.has_field("age")
+
+.. _virtual-fields:
+
+Virtual fields
+______________
+
+In some circumstances, you may want to work with fields whose values can be
+dervied from other fields of your dataset. For example, you may want to see
+statistics for and filter by the number of objects in a |Detections| field.
+You can achieve this by declaring **virtual fields** on your dataset.
+
+Unlike ordinary fields, virtual field values are not stored in the database;
+they are dynamically computed and attached to your samples when the dataset
+is iterated/aggregated/etc.
+
+Virtual fields are defined by including an `expr` when declaring them via
+:meth:`add_sample_field() <fiftyone.core.dataset.Dataset.add_sample_field>`
+on a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.compute_metadata()
+
+    # Declare a top-level virtual field that counts the number of objects in
+    # the `ground_truth` field
+    dataset.add_sample_field(
+        "num_objects",
+        fo.IntField,
+        expr=F("ground_truth.detections").length(),
+    )
+
+    bbox_area = (
+        F("$metadata.width") * F("bounding_box")[2] *
+        F("$metadata.height") * F("bounding_box")[3]
+    )
+
+    # Declare a nested virtual field that contains the area of each ground
+    # truth bounding box, in pixels
+    dataset.add_sample_field(
+        "ground_truth.detections.area_pixels",
+        fo.FloatField,
+        expr=bbox_area,
+    )
+
+The `expr` defining a virtual field may be any valid |ViewExpression|. Refer to
+:ref:`this section <view-filtering>` for more information about view
+expressions.
+
+When declaring top-level virtual fields, `expr` is interpreted relative to the
+root of the |Sample|; when declaring nested virtual fields, `expr` is
+interpreted relative to the root of the nested object on which the field is
+being declared.
+
+.. note::
+
+    Did you know? You can also declare virtual fields
+    :ref:`on views <virtual-view-fields>` rather than permanently adding them
+    to the underlying dataset.
+
+Virtual fields are included in the dataset's schema, just like regular fields:
+
+.. code-block:: python
+    :linenos:
+
+    assert "num_objects" in dataset.get_field_schema()
+    assert "ground_truth.detections.area_pixels" in dataset.get_field_schema(flat=True)
+
+You can also use
+:meth:`get_virtual_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_field_schema>`
+to retrieve only the virtual fields of a dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(list(dataset.get_virtual_field_schema()))
+    # ['num_objects', 'ground_truth.detections.area_pixels']
+
+Since virtual fields are dynamically computed, they are read-only on samples:
+
+.. code-block:: python
+    :linenos:
+
+    sample = dataset.first()
+    print(sample.num_objects)  # 3
+
+    sample.num_objects = 4
+    # ValueError: Virtual fields cannot be edited
+
+Virtual fields are computed *after* views. So, for example, if you write a view
+that filters a dataset, its virtual fields will reflect the contents of the
+view rather than the entire dataset:
+
+.. code-block:: python
+    :linenos:
+
+    print(dataset.bounds("num_objects"))
+    # (0, 39)
+
+    print(dataset.bounds("ground_truth.detections.area_pixels"))
+    # (6.37, 353569.23)
+
+    view = dataset.filter_labels("ground_truth", F("label") == "carrot")
+
+    print(view.bounds("num_objects"))
+    # (1, 13)
+
+    print(view.bounds("ground_truth.detections.area_pixels"))
+    # (155.34, 118266.53)
+
+However, if you want to write a view that explicitly filters on a virtual
+field, you can use
+:meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`
+to inject the virtual field's values so they can be filtered on:
+
+.. code-block:: python
+    :linenos:
+
+    view = (
+        dataset
+        .filter_labels("ground_truth", F("label") == "person")
+        .materialize("num_objects")
+        .match(F("num_objects") > 10)
+        .sort_by(F("num_objects"), reverse=True)
+    )
+
+    print(view.values("num_objects"))
+    # [14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 13, 13, 13, 11]
+
+.. note::
+
+    The values of materialized virtual fields are always recomputed after the
+    final view stage is applied, as their contents may be affected by view
+    stages after
+    :meth:`materialize() <fiftyone.core.collections.SampleCollection.materialize>`.
+
+Virtual fields can be selected/excluded from schemas as usual:
+
+.. code-block:: python
+    :linenos:
+
+    view = dataset.exclude_fields("num_objects")
+    assert "num_objects" not in view.get_field_schema()
+
+    view = dataset.exclude_fields("ground_truth")
+    assert "ground_truth" not in view.get_field_schema()
+
+    view = dataset.exclude_fields("ground_truth.detections.area_pixels")
+    assert "ground_truth.detections.area_pixels" not in view.get_field_schema(flat=True)
+
+Virtual fields can be converted into regular fields whose values are stored in
+the database by passing the `materialize=True` flag to
+:meth:`save() <fiftyone.core.dataset.Dataset.save>`:
+
+.. code-block:: python
+    :linenos:
+
+    # Virtual fields are not affected by `save()` unless materialization is
+    # explicitly requested
+    dataset.save(fields="num_objects")
+    # Skipping virtual field 'num_objects' when materialize=False
+
+    # Convert a virtual field into a regular field
+    dataset.save(fields="num_objects", materialize=True)
+
+    assert "num_objects" not in dataset.get_virtual_field_schema()
+    assert dataset.get_field("num_objects").is_virtual == False
+
+    # Convert all remaining virtual fields into regular fields
+    dataset.save(materialize=True)
+
+    assert len(dataset.get_virtual_field_schema()) == 0
+    assert dataset.get_field("ground_truth.detections.area_pixels").is_virtual == False
+
+    # Fields are no longer virtual; the values are now stored in the database
+    print(dataset.bounds("num_objects"))  # (0, 39)
+    print(dataset.bounds("ground_truth.detections.area_pixels"))  # (6.37, 353569.23)
+
+When working with :ref:`video datasets <video-frame-labels>`, you can also use
+:meth:`add_frame_field() <fiftyone.core.dataset.Dataset.add_frame_field>` to
+declare virtual frame fields and
+:meth:`get_virtual_frame_field_schema() <fiftyone.core.collections.SampleCollection.get_virtual_frame_field_schema>`
+to view the virtual frame schema.
 
 .. _custom-embedded-documents:
 
