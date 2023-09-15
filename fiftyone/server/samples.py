@@ -9,7 +9,6 @@ import asyncio
 import strawberry as gql
 import typing as t
 
-
 from fiftyone.core.collections import SampleCollection
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
@@ -101,6 +100,19 @@ async def paginate_samples(
 
     if int(after) > -1:
         view = view.skip(int(after) + 1)
+
+    if view._is_dynamic_groups:
+        expr, is_id_field, _, __ = view._parse_dynamic_groups()
+        view = view.set_field(
+            "_group_by_key",
+            expr,
+            _allow_missing=True,
+        )
+        view = view.set_field(
+            "_group_by_key_is_id",
+            is_id_field,
+            _allow_missing=True,
+        )
 
     pipeline = view._pipeline(
         attach_frames=has_frames,

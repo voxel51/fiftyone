@@ -63,6 +63,8 @@ export type Sample = {
   tags: string[];
   _label_tags: string[];
   _media_type: "image" | "video" | "point-cloud";
+  _group_by_key?: unknown;
+  _group_by_key_is_id?: boolean;
 } & GenericLabel;
 
 export interface LabelData {

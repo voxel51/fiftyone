@@ -95,7 +95,6 @@ const GroupElementsLinkBarImpl = React.memo(
     const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
     const data = usePreloadedQuery(foq.paginateSamples, queryRef);
-    console.log(data);
 
     const [
       dynamicGroupCurrentElementIndex,
@@ -112,9 +111,7 @@ const GroupElementsLinkBarImpl = React.memo(
         (sample: fos.ModalSample) => {
           const current = get(fos.currentModalSample);
           const currentGroup = get(fos.groupByFieldValue);
-          const nextGroup = String(
-            getValue(sample.sample, dynamicGroupParameters.groupBy)
-          );
+          const nextGroup = sample.sample._group_by_key;
 
           if (
             current &&

@@ -113,7 +113,10 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
           let groupByFieldValue: unknown;
           if (dynamicGroupParameters?.groupBy) {
-            groupByFieldValue = sample.sample._group_by_key;
+            const key = sample.sample._group_by_key;
+            groupByFieldValue = sample.sample._group_by_key_is_id
+              ? { $oid: key }
+              : key;
           }
 
           return { id, groupId, groupByFieldValue };

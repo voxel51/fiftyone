@@ -16,7 +16,6 @@ from pymongo.errors import CursorNotFound
 
 import eta.core.utils as etau
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
@@ -168,13 +167,6 @@ class DatasetView(foc.SampleCollection):
             if isinstance(stage, fost.GroupBy):
                 break
 
-        parent = self.__class__(
-            self.__dataset,
-            _stages=deepcopy(self.__stages),
-            _media_type=self.__media_type,
-            _group_slice=self.__group_slice,
-            _name=self.__name,
-        )
         return DatasetView._build(
             self._dataset, self._serialize()[:idx]
         ).media_type

@@ -7,12 +7,14 @@ import {
   currentModalNavigation,
   currentModalSample,
   dynamicGroupCurrentElementIndex,
+  isDynamicGroup,
 } from "../recoil";
 import * as groupAtoms from "../recoil/groups";
 
 export default () => {
   const types = useRecoilValue(groupAtoms.groupMediaTypes);
   const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
+  const isDynamic = useRecoilValue(isDynamicGroup);
 
   const setter = useRecoilTransaction_UNSTABLE(
     ({ get, reset, set }) =>
@@ -20,14 +22,13 @@ export default () => {
         id: string,
         index: number,
         groupId?: string,
-        groupByFieldValue?: string
+        groupByFieldValue?: unknown
       ) => {
         set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
         reset(groupAtoms.nestedGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
-        groupByFieldValue &&
-          set(groupAtoms.groupByFieldValue, groupByFieldValue);
+        isDynamic && set(groupAtoms.groupByFieldValue, groupByFieldValue);
 
         let fallback = get(groupAtoms.groupSlice(false));
         if (map[fallback] === "point_cloud") {
@@ -38,7 +39,7 @@ export default () => {
         }
         set(groupAtoms.groupSlice(true), fallback);
       },
-    [map, types]
+    [isDynamic, map, types]
   );
 
   return useRecoilCallback(
