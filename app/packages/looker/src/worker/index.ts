@@ -221,13 +221,14 @@ const processLabels = async (
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(label._cls)) {
-        processLabels(
+        const moreBuffers = await processLabels(
           label,
           coloring,
-          `${prefix}${field}.`,
+          `${prefix ? prefix : ""}${field}.`,
           sources,
           customizeColorSetting
         );
+        buffers.push(...moreBuffers);
       }
 
       if (ALL_VALID_LABELS.has(label._cls)) {
