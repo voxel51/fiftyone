@@ -32,6 +32,21 @@ export class SidebarPom {
     return this.sidebar.getByTestId(`sidebar-entry-draggable-${fieldName}`);
   }
 
+  getNumericSliderContainer(field: string) {
+    return this.sidebar.getByTestId(`numeric-slider-container-${field}`);
+  }
+
+  getSlider(field: string) {
+    return this.getNumericSliderContainer(field).getByTestId("slider");
+  }
+
+  getSliderIndicator(field: string, text: string) {
+    return this.getSlider(field)
+      .locator("span")
+      .filter({ hasText: text })
+      .nth(1);
+  }
+
   async clickFieldCheckbox(field: string) {
     const selector = this.sidebar.getByTestId(`checkbox-${field}`);
     return selector.click();
@@ -55,22 +70,10 @@ export class SidebarPom {
     return item.getByTestId(`entry-count-all`);
   }
 
-  async changeSliderStartValue(field: string) {
-    const container = this.sidebar.getByTestId(
-      `numeric-slider-container-${field}`
-    );
-    const slider = container.getByTestId("slider");
-    const bound = await slider.boundingBox();
-    await this.page.mouse.move(
-      bound.x + bound.width / 3,
-      bound.y + bound.height / 2
-    );
-    await this.page.mouse.down();
-    await this.page.mouse.move(
-      bound.x + bound.width / 3,
-      bound.y + bound.height / 2
-    );
-    await this.page.mouse.up();
+  async changeSliderStartValue(field: string, textA: string, textB: string) {
+    const sliderPointA = this.getSliderIndicator(field, textA);
+    const sliderPointB = this.getSliderIndicator(field, textB);
+    await sliderPointA.dragTo(sliderPointB);
   }
 
   async getActiveMode() {
