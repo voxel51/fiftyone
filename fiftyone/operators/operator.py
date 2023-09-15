@@ -27,6 +27,11 @@ class OperatorConfig(object):
         on_startup (False): whether the operator should be executed on startup
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
+        icon (None): icon to show for the operator in the Operator Browser
+        light_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the light mode
+        dark_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the dark mode
     """
 
     def __init__(
