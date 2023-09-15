@@ -2,6 +2,7 @@ import { atom, selector } from "recoil";
 
 import { Stage } from "@fiftyone/utilities";
 import { groupByFieldValue } from "./groups";
+import { field } from "./schema";
 import { State } from "./types";
 
 export const view = atom<State.Stage[]>({
@@ -178,17 +179,22 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
     const params = get(dynamicGroupParameters);
     if (!dynamicGroupParameters) return [];
 
-    const { groupBy, orderBy } = params;
-
     const key = get(groupByFieldValue);
-    const match =
-      typeof groupBy === "string"
-        ? { [groupBy]: key }
-        : {
-            $expr: {
-              $eq: [groupBy, key],
-            },
-          };
+    const dbField = get(field(params.groupBy)).dbField;
+    let match;
+    let groupBy = params.groupBy;
+    if (typeof groupBy === "string") {
+      if (dbField) {
+        groupBy = [...groupBy.split(".").slice(0, -1), dbField].join(".");
+      }
+      match = { [groupBy]: key };
+    } else {
+      match = {
+        $expr: {
+          $eq: [groupBy, key],
+        },
+      };
+    }
 
     const viewStages: State.Stage[] = [
       {
@@ -208,11 +214,11 @@ export const dynamicGroupViewQuery = selector<Stage[]>({
       },
     ];
 
-    if (orderBy?.length) {
+    if (params.orderBy) {
       viewStages.push({
         _cls: SORT_VIEW_STAGE,
         kwargs: [
-          ["field_or_expr", orderBy],
+          ["field_or_expr", params.orderBy],
           ["reverse", false],
         ],
       });

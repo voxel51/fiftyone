@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import { currentModalSample } from "@fiftyone/state";
 import { PaginationItem } from "@mui/material";
 import Pagination, { PaginationProps } from "@mui/material/Pagination";
+import * as _ from "lodash";
 import { get as getValue } from "lodash";
 import React, {
   Suspense,
@@ -111,12 +112,16 @@ const GroupElementsLinkBarImpl = React.memo(
         (sample: fos.ModalSample) => {
           const current = get(fos.currentModalSample);
           const currentGroup = get(fos.groupByFieldValue);
-          const nextGroup = sample.sample._group_by_key;
+          let nextGroup: unknown;
+          if (dynamicGroupParameters?.groupBy) {
+            const key = sample.sample._group_by_key;
+            nextGroup = sample.sample._group_by_key_is_id ? { $oid: key } : key;
+          }
 
           if (
             current &&
             current.id !== sample.id &&
-            currentGroup === nextGroup
+            _.isEqual(currentGroup, nextGroup)
           ) {
             set(currentModalSample, { index: current.index, id: sample.id });
             set(fos.groupId, getValue(sample.sample, groupField)._id as string);
