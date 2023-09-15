@@ -67,7 +67,7 @@ def list_datasets(glob_patt=None, tags=None, info=False):
         a list of dataset names or info dicts
     """
     if info:
-        return _list_dataset_info(glob_patt=glob_patt, tags=tags)
+        return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
     return _list_datasets(glob_patt=glob_patt, tags=tags)
 
@@ -6597,7 +6597,37 @@ def _get_random_characters(n):
 
 def _list_datasets(include_private=False, glob_patt=None, tags=None):
     conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
 
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
+
+
+def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
+    conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
+
+    return [
+        {
+            "name": doc.get("name", None),
+            "created_at": doc.get("created_at", None),
+            "last_loaded_at": doc.get("last_loaded_at", None),
+            "version": doc.get("version", None),
+            "persistent": doc.get("persistent", None),
+            "media_type": doc.get("media_type", None),
+            "tags": doc.get("tags", []),
+        }
+        for doc in conn.datasets.find(query)
+    ]
+
+
+def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
     if include_private:
         query = {}
     else:
@@ -6613,47 +6643,7 @@ def _list_datasets(include_private=False, glob_patt=None, tags=None):
     elif tags is not None:
         query["tags"] = {"$in": list(tags)}
 
-    # We don't want an error here if `name == None`
-    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
-
-    return _sort(conn.datasets.find(query).distinct("name"))
-
-
-def _list_dataset_info(include_private=False, glob_patt=None, tags=None):
-    info = []
-    for name in _list_datasets(
-        include_private=include_private, glob_patt=glob_patt, tags=tags
-    ):
-        try:
-            dataset = Dataset(name, _create=False, _virtual=True)
-            num_samples = dataset._sample_collection.estimated_document_count()
-            i = {
-                "name": dataset.name,
-                "created_at": dataset.created_at,
-                "last_loaded_at": dataset.last_loaded_at,
-                "version": dataset.version,
-                "persistent": dataset.persistent,
-                "media_type": dataset.media_type,
-                "tags": dataset.tags,
-                "num_samples": num_samples,
-            }
-        except:
-            # If the dataset can't be loaded, it likely requires migration, so
-            # we can't show any information about it
-            i = {
-                "name": name,
-                "created_at": None,
-                "last_loaded_at": None,
-                "version": None,
-                "persistent": None,
-                "media_type": None,
-                "tags": None,
-                "num_samples": None,
-            }
-
-        info.append(i)
-
-    return info
+    return query
 
 
 def _create_dataset(
