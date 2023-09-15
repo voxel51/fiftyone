@@ -230,7 +230,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
+      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch modal />}
       {open && hasSimilarityKeys && (
         <div>
           <div>

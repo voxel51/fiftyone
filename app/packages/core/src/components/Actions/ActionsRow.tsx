@@ -144,7 +144,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
       />
       {open && (
         <SortBySimilarity
-          key={`similary-${isImageSearch}`}
+          key={`similary-${showImageSimilarityIcon ? "image" : "text"}`}
           modal={modal}
           close={() => setOpen(false)}
           isImageSearch={isImageSearch}
