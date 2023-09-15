@@ -100,7 +100,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "operators", OperatorsCommand)
-        _register_command(subparsers, "delegated", DelegatedCommand)
+        # _register_command(subparsers, "delegated", DelegatedCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
