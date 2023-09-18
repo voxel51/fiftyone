@@ -304,13 +304,14 @@ When running the fiftyone app server locally, the plugin server is executed as a
 As part of running the fiftyone app server (either locally or in the teams environment) a sub process is executed called the plugin server. This server is only accessible via ipc. Its interface (similar to JSON rpc) allows for functions to be called over inter process communication. This allows for user python code to be isolated from core code. It also allows for the operating system to manage the separate process as it exists in the same process tree as the root fiftyone, ipython, or even Jupyter process.
 
 Executing Brain methods via Long running task orchestration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Python operators typically use local execution for simple operations such as queries, tagging, mutating samples, annotation runs, short imports or exports. However for most interesting operations (computing similarity or mistakenness, computing visualizations), long running task orchestration is required. For this we recommend delegating the long running operations out to an orchestrator, like Apache Airflow. Similar tools can be used instead.
 
 To delegate execution of an operator to an external orchestrator, the operator must implement the `resolve_delegation` method.
 
 .. code-block:: python
+
   def resolve_delegation(self, ctx):
       # the ctx can be used to decide if this operation should be delegated - the number of samples in the view, the number of samples selected, etc.
       return True
@@ -324,6 +325,7 @@ When an operation is delegated, the following happens:
 3. When the operation is complete, the status will be updated to `complete` and result stored.
 
 4. If the execution fails, the status will be set to `failed` and the error will be stored.
+
 
 To execute the queued operations, you can run the following command:
 

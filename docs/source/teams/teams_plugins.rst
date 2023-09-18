@@ -347,35 +347,177 @@ To set up Airflow as an Orchestrator to run delegated operations, you will need 
 
 - Provision a VM or instance with enough resources to run the operations you want to delegate
 
-- Ensure Python is installed
-
 - Install `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_ on the VM
 
 - Install the same version of FiftyOne as the instance of FiftyOne which queued the operation
 
 - Ensure the required Environment Variables are set
 
-.. code-block:: bash
+- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator.
 
-    export FIFTYONE_DATABASE_NAME=<database name>
-    export FIFTYONE_DATABASE_URI=<mongo db uri>
-    export FIFTYONE_PLUGINS_DIR=<mounted plugins dir>
-    export FIFTYONE_ENCRYPTION_KEY=<enc key>
-
-    // todo: add the additional secrets related vars
+- Schedule a Operation!
 
 .. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
 
 .. note:: Ensure that the plugins are available to the Orchestrator, either by installing them on the same machine or by making them available via a shared filesystem
 
-- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator. The airflow dag folder path can be found at `/home/<user>/airflow/dags` on the Orchestrator.
+
+
+Setting up a FiftyOne Orchestrator on Google Compute Engine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Provision a VM with the resources required to run the operations you want to delegate. Take note of the IP of the VM, you'll need it in a later step.
+
+See the :ref:`Media Cache Config<teams-media-cache-config>` section for more information on the resources required.
+
+SSH into the instance, ensure the packages are up to date, and install python
+
+.. code-block:: bash
+
+    sudo apt-get update
+    sudo apt upgrade
+    sudo apt install python3-pip
+
+**Install Airflow**
+
+.. code-block:: bash
+
+    pip install apache-airflow[gcp]
+
+ensure a successful install by checking the version
+
+.. code-block:: bash
+
+    airflow version
+
+Initialize the airflow db and create a user
+
+.. code-block:: bash
+
+    airflow db init
+    airflow users create -r Admin -u <username> -p <password> -e <email> -f <first name> -l <last name>
+
+.. note:: This username and password will be the account you use to log into the airflow interface in a later step.
+
+Start Aiflow
+
+Open 2 more ssh sessions, and start the webserver and scheduler in each.
+
+.. note:: You could run these commands with the `-D` flag to run them in the background, but we recommend running them in the foreground for debugging purposes.
+
+.. code-block:: bash
+
+    airflow webserver -p 8080
+    airflow scheduler
+
+.. note:: you could start airflow on the port of your choice, but ensure that the firewall rules allow traffic on that port.
+
+**Add the Firewall Rule**
+
+Navigate to the networking / firewall rules section of the google cloud console and allow traffic on that port for the VM.
+
+Once this is done, you should be able to navigate to the airflow interface at `http://<vm ip>:8080` (or the port you chose) and log in with the credentials you created earlier.
+
+**Mount the Plugins Directory**
+
+The orchestrator must have the same plugins available to it as the instance which queued the operation. This could be accomplished by either installing the plugins on the orchestrator, or by mounting the plugins directory from the instance which queued the operation.
+
+To mount the plugins directory, locate the ip of the nfs server then run the following commands on the orchestrator:
+
+.. code-block:: bash
+
+    sudo mkdir -p /mnt/nfs/shared
+    sudo mount -t nfs -o vers=4,rw,intr <ip of the nfs server>:/path/to/plugins /mnt/nfs/shared
+
+You might also want to add the same command to your startup tasks, located in `etc/fstab`
+
+.. code-block:: bash
+
+    sudo pico /etc/fstab
+
+paste the following and save
+
+.. code-block:: bash
+
+        <ip of the nfs server>:/path/to/fiftyone-plugins /mnt/nfs/shared/ nfs vers=4,rw,intr 0 0
+
+the path to the plugins should now be available at `/mnt/nfs/shared/plugins`. to test this, run the following command:
+
+.. code-block:: bash
+
+    ls /mnt/nfs/shared/plugins
+
+
+This path will be added to the environment variables as `FIFTYONE_PLUGINS_DIR` in a following step.
+
+
+**Install FiftyOne**
+
+Ensure the keyring is installed
+
+.. code-block:: bash
+
+    pip install keyrings.google-artifactregistry-auth
+
+
+Install FiftyOne
+
+.. code-block:: bash
+
+    INDEX_URL="https://us-central1-python.pkg.dev/computer-vision-team/dev-python/simple/"
+    pip --no-cache-dir install --extra-index-url "${INDEX_URL}" fiftyone
+
+
+Add the FiftyOne Env Vars
+
+.. code-block:: bash
+
+    pico ~/.profile
+
+Add the following lines to the bottom of the file, replacing the values with the appropriate values for your deployment.
+
+.. code-block:: bash
+
+    export FIFTYONE_DATABASE_NAME=<database name>
+    export FIFTYONE_DATABASE_URI=<mongo db uri>
+    export FIFTYONE_PLUGINS_DIR=<mounted plugins dir> # /mnt/nfs/shared/plugins
+    export FIFTYONE_ENCRYPTION_KEY=<encryption key>
+    export FIFTYONE_INTERNAL_SERVICE=1
+    export FIFTYONE_API_KEY=<api key>
+    export API_URL=<api url>
+
+.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+
+.. note:: These values will mostly be the same as the as the instance of FiftyOne which queued the operation
+
+
+**Add the Airflow DAG**
+
+check the default dags path by running the following command:
+
+.. code-block:: bash
+
+    airflow config list | grep dags_folder
+
+.. note:: The default dag folder path is `/home/<user>/airflow/dags`
+
+navigate to the dag folder and add the default airflow dag from the fiftyone-plugins repo, located at: `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_
+
+Open the airflow interface and ensure that the "Check Delegated Operations" DAG is visible. Any issues should be immediately visible as errors. Locate the dag and toggle it on, then refresh to make sure it's running. If no operations have been queued, it will still run a check and all runs should be green.
+
+.. image:: /images/teams/airflow.png
+   :alt: airflow-dag
+   :align: center
+
+..note:: The Orchestrator will need to have all of the required dependencies installed for running the plugins. For example, if running the compute visualizations plugin, the orchestrator will need the `torch` and `torchvision` packages installed.
+
 
 Managing Delegated Operator Runs
 ________________________________
 
 
 The FiftyOne Teams runs page allows you to monitor and explore operator runs
-scheduled by any member of your organization. 
+scheduled by any member of your organization.
 
 
 .. Scheduling an operator run
