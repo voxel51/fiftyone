@@ -78,7 +78,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
             onClick={() => setOpen((o) => !o)}
             ref={mRef}
             theme={theme}
-            data-cy="select-attribute"
+            data-cy="custom-colors-select-attribute"
           >
             <div>{selected}</div>
             {open ? (

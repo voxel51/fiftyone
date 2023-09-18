@@ -9,9 +9,12 @@ export class ColorModalPom {
     this.colorModal = page.locator("#colorModal");
   }
 
+  getFieldSelector(fieldName: string) {
+    return this.page.getByTestId(fieldName);
+  }
+
   async closeColorModal() {
-    const closeButton = this.colorModal.getByTestId("close-color-modal");
-    return closeButton.click();
+    await this.getFieldSelector("close-color-modal").click();
   }
 
   async selectActiveField(fieldName: string) {

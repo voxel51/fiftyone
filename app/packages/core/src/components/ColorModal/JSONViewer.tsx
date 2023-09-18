@@ -36,14 +36,6 @@ const JSONViewer: React.FC = () => {
   const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
-    // dispatch a custom event for e2e test to capture
-    if (ref?.current) {
-      ref.current.dispatchEvent(
-        new CustomEvent("json-viewer-update", {
-          bubbles: true,
-        })
-      );
-    }
   };
 
   const onApply = () => {
