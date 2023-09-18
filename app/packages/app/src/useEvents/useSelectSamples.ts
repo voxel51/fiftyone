@@ -6,7 +6,7 @@ const useSelectSamples: EventHandlerHook = () => {
   const setter = useSessionSetter();
   return useCallback(
     (payload) => {
-      setter("selectedSamples", payload.sample_ids);
+      setter("selectedSamples", new Set(payload.sample_ids));
     },
     [setter]
   );
