@@ -52,5 +52,7 @@ export { default as useSchemaSettings } from "./useSchemaSettings";
 export { default as useSetShowNestedFields } from "./schema/useSetShowNestedFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
+export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";
+
 export { default as withSuspense } from "./withSuspense";
 export { default as useNotification } from "./useNotification";
