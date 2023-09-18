@@ -4,7 +4,7 @@ import { HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
 
 export default function SwitchView(props) {
-  const { schema, data } = props;
+  const { schema, data, onChange, path } = props;
 
   return (
     <FormControlLabel
@@ -13,6 +13,7 @@ export default function SwitchView(props) {
           disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
           defaultChecked={data === true || schema.default === true}
+          onChange={(e, checked) => onChange(path, checked)}
           {...getComponentProps(props, "switch")}
         />
       }
