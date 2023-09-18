@@ -39,6 +39,7 @@ export default function FilterAndSelectionIndicator({
       )}
       {showSelection && (
         <PillButton
+          data-cy="selection-count-container"
           icon={<Check sx={iconStyles} />}
           title={selectionTitle || "Clear selection"}
           text={selectionCount}

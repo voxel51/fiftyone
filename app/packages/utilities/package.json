@@ -26,6 +26,7 @@
         "@microsoft/fetch-event-source": "^2.0.1",
         "fetch-retry": "^5.0.3",
         "lodash": "^4.17.21",
-        "mime": "^2.5.2"
+        "mime": "^2.5.2",
+        "path-browserify": "^1.0.1"
     }
 }

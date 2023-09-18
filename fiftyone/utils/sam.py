@@ -233,6 +233,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         outputs = []
         for img, detections in zip(imgs, self._curr_prompts):
+            ## If no detections, return empty tensors instead of running SAM
+            if detections is None or len(detections.detections) == 0:
+                h, w = img.shape[1], img.shape[2]
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, h, w]),
+                    }
+                )
+                continue
             inp = _to_sam_input(img)
             sam_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
@@ -258,7 +269,6 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 boxes=transformed_boxes,
                 multimask_output=False,
             )
-
             outputs.append(
                 {"boxes": input_boxes, "labels": labels, "masks": masks}
             )
@@ -278,6 +288,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             h, w = img.size(1), img.size(2)
 
             boxes, labels, scores, masks = [], [], [], []
+
+            ## If no keypoints, return empty tensors instead of running SAM
+            if keypoints is None or len(keypoints.keypoints) == 0:
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, h, w]),
+                    }
+                )
+                continue
 
             for kp in keypoints.keypoints:
                 sam_points, sam_labels = _to_sam_points(kp.points, w, h)

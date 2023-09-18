@@ -99,6 +99,18 @@ pages on this site apply to Teams deployments as well.
     :button_link: teams_plugins.html
 
 .. customcalloutitem::
+    :header: Secrets
+    :description: Safely store and access secrets in your Teams deployment.
+    :button_text: Learn more about storing secrets in Teams
+    :button_link: teams_secrets.html
+    
+.. customcalloutitem::
+    :header: Dataset Versioning
+    :description: Explore or revert to historical snapshots of your FiftyOne Teams datasets.
+    :button_text: Version your FiftyOne datasets
+    :button_link: dataset_versioning.html
+
+.. customcalloutitem::
     :header: Migrations
     :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
     :button_text: Migrate to Teams
@@ -131,4 +143,6 @@ pages on this site apply to Teams deployments as well.
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
     Plugins <teams_plugins>
+    Secrets <secrets>
+    Dataset Versioning <dataset_versioning>
     Migrations <migrations>

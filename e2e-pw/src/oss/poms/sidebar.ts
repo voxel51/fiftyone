@@ -3,11 +3,33 @@ import { Locator, Page, expect } from "src/oss/fixtures";
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
+  readonly asserter: SidebarAsserter;
 
   constructor(page: Page) {
     this.page = page;
+    this.asserter = new SidebarAsserter(this);
 
     this.sidebar = page.getByTestId("sidebar");
+  }
+
+  groupField(groupName: string) {
+    return this.sidebar.getByTestId(`sidebar-group-${groupName}-field`);
+  }
+
+  get addGroupField() {
+    return this.sidebar.getByTestId("sidebar-field-add-group-input");
+  }
+
+  field(fieldName: string) {
+    return this.sidebar
+      .getByTestId(`${fieldName}-field`)
+      .locator("div")
+      .filter({ hasText: fieldName })
+      .nth(1);
+  }
+
+  sidebarEntryDraggableArea(fieldName: string) {
+    return this.sidebar.getByTestId(`sidebar-entry-draggable-${fieldName}`);
   }
 
   async clickFieldCheckbox(field: string) {
@@ -96,5 +118,75 @@ export class SidebarPom {
 
   async toggleSidebarGroup(name: string) {
     await this.sidebar.getByTestId(`sidebar-group-${name}`).click();
+  }
+}
+
+class SidebarAsserter {
+  constructor(private readonly sb: SidebarPom) {}
+
+  async assertFieldInSidebar(fieldName: string) {
+    await expect(this.sb.field(fieldName)).toBeVisible();
+  }
+
+  async assertFieldsInSidebar(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.sb.asserter.assertFieldInSidebar(fieldNames[i]);
+    }
+  }
+
+  async assertFieldsNotInSidebar(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertFieldNotInSidebar(fieldNames[i]);
+    }
+  }
+
+  async assertFieldNotInSidebar(fieldName: string) {
+    await expect(this.sb.field(fieldName)).toBeHidden();
+  }
+
+  async assertSidebarGroupIsVisibile(groupName: string) {
+    await expect(this.sb.groupField(groupName)).toBeVisible();
+  }
+
+  async assertSidebarGroupIsHidden(groupName: string) {
+    await expect(this.sb.groupField(groupName)).toBeHidden({ timeout: 1000 });
+  }
+
+  async assertAddGroupVisible() {
+    await expect(this.sb.addGroupField).toBeVisible({ timeout: 1000 });
+  }
+
+  async assertAddGroupHidden() {
+    await expect(this.sb.addGroupField).toBeHidden({ timeout: 1000 });
+  }
+
+  async assertCanDragFieldToGroup(fieldName: string, groupName: string) {
+    const targetGroup = this.sb.groupField(groupName);
+
+    const draggableSidebarFieldArea =
+      this.sb.sidebarEntryDraggableArea(fieldName);
+
+    const draggableAreaBB = await draggableSidebarFieldArea.boundingBox();
+    await draggableSidebarFieldArea.dragTo(targetGroup);
+
+    const newDraggableAreaBB = await draggableSidebarFieldArea.boundingBox();
+    expect(draggableAreaBB.x).not.toEqual(newDraggableAreaBB.x);
+    expect(draggableAreaBB.y).not.toEqual(newDraggableAreaBB.y);
+
+    expect(draggableSidebarFieldArea.getAttribute("draggable")).toBeTruthy();
+    await expect(draggableSidebarFieldArea).toHaveAttribute(
+      "data-draggable",
+      "true"
+    );
+  }
+
+  async assertCannotDragField(fieldName: string) {
+    const draggableSidebarFieldArea =
+      this.sb.sidebarEntryDraggableArea(fieldName);
+
+    await expect(draggableSidebarFieldArea).toHaveAttribute(
+      "data-draggable",
+      "false"
+    );
   }
 }

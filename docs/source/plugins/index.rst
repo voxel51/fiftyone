@@ -10,7 +10,7 @@ FiftyOne provides a powerful plugin framework that allows for extending and cust
 .. note::
 
     Check out the
-    `fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_
+    `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can easily
     :ref:`download <plugins-download>` and use locally!
 
@@ -22,10 +22,16 @@ Components, on the other hand, are responsible for rendering and event handling.
 
 Together, Operators and Components form the building blocks of a plugin, enabling you to tailor FiftyOne to your specific use case and workflow. Whether you're working with images, videos, or other data types, a plugin can help you streamline your machine learning workflows and achieve better results.
 
-What you can and cannot do with plugins?
+What you can and cannot do with plugins
 ----------------------------------------
 
-Plugins allow you to implement your preferred workflows in the FiftyOne app. This can be as simple as combining several clicks into one or a long running computation.
+Plugins in FiftyOne are a powerful way to extend and customize the
+functionality of the tool to suit your specific needs. With plugins, you can
+add new functionality to the FiftyOne App, create integrations with
+other tools and APIs, render custom panels, and add
+custom buttons to menus. You can even schedule long running tasks from within
+the App that execute on a connected workflow orchestration tool like Apache
+Airflow.
 
 A plugin allows you to render custom panels, and add custom buttons to menus. You can even implement entire UI features entirely in Python.
 
@@ -56,7 +62,11 @@ Python and JS plugins can read their settings at the dataset scope or app scope,
 
 .. note::
 
-    Settings are readable by users in the browser. Use environment variables and Python Operators for sensitive/secret values.
+    Settings are readable by users in the browser. For settings that contain
+    sensitive/secret values, set them as environment variables and access them
+    in your plugin code via :ref:`ExecutionContext.secrets
+    <fiftyone-operators-executor-ExecutionContext-secrets>`.
+
 
 .. _fiftyone-operators:
 
@@ -70,6 +80,12 @@ The Operator Browser allows users to search through all available operations wit
 Instead of building a user interface from scratch, Operators are built using Operator Types, which define the input and output properties of the operator. At runtime, these types are used to facilitate the execution of the operation by collecting information from the user, validating the user input, and executing the operation. The execution step is the only required step; all other steps are optional and can be customized as needed.
 
 Operators can be composed for coordination between Python and the FiftyOne App, such as triggering a reload of samples/view to update the app with the changes made by the operator. Operators can also be scheduled to run by an orchestrator or triggered by other operators.
+
+If your operator requires connecting to an external service, such as a
+database or API, you can list the keys in screaming snake case (eg
+MY_SECRET_KEY) in your `fiftyone.yml`. During runtime, these values will be
+read from the execution environment and accessed by operators via the
+`secrets` property in the execution context.
 
 Operator inputs and outputs
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -94,7 +110,7 @@ Operator types
 
 :mod:`Python API Reference <fiftyone.operators.types>`
 
-:js:mod:`Typescript API Reference <fiftyone.operators>`
+:js:mod:`Typescript API Reference <@fiftyone/operators>`
 
 The operator definition is constructed using the types defined below. A typical example would be as follows, which defines the input for an operator that accepts a choice rendered as a radio button group:
 
@@ -162,37 +178,37 @@ to invoke your operator from outside of Operator Browser. Below is a list of
 places you can add your operator placement to in the FiftyOne app:
 
    - SAMPLES_GRID_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/samples_grid_actions.png
         :alt: SAMPLES_GRID_ACTIONS placement preview
         :align: center
 
    - SAMPLES_GRID_SECONDARY_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/samples_grid_secondary_actions.png
         :alt: SAMPLES_GRID_SECONDARY_ACTIONS placement preview
         :align: center
 
    - SAMPLES_VIEWER_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/samples_viewer_actions.png
         :alt: SAMPLES_VIEWER_ACTIONS placement preview
         :align: center
 
    - EMBEDDINGS_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/embeddings_actions.png
         :alt: EMBEDDINGS_ACTIONS placement preview
         :align: center
 
    - HISTOGRAM_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/histograms_actions.png
         :alt: HISTOGRAM_ACTIONS placement preview
         :align: center
 
    - MAP_ACTIONS
-  
+
      .. image:: /images/plugins/operators/placements/map_actions.png
         :alt: MAP_ACTIONS placement preview
         :align: center
@@ -238,7 +254,7 @@ below:
                     "open_panel",
                     params=dict(name="Histograms", isActive=True, layout="horizontal"),
                 )
-                
+
         def register(p):
             p.register(OpenHistogramsPanel)
 
@@ -466,6 +482,10 @@ information on changing a plugin's configuration.
     You can see an example of dataset level plugin configuration on the
     :ref:`Map Panel docs <app-map-panel>`.
 
+.. note::
+
+        For
+
 Developing plugins
 ------------------
 
@@ -477,7 +497,7 @@ In order to develop and test your plugin you will need the following:
 
 .. note::
 
-   For JS plugin vite configs we recommend forking the `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_ 
+   For JS plugin vite configs we recommend forking the `voxel51/fiftyone-plugins <https://github.com/voxel51/fiftyone-plugins>`_
    repository and following the conventions there to build your plugin.
 
 Anatomy of a plugin
@@ -530,6 +550,8 @@ are available for defining the plugin:
 - `fiftyone`: A dictionary containing information about the compatibility of the plugin with FiftyOne.
 - `fiftyone.version`: A semver version range specifying the required FiftyOne version for the plugin to work properly.
 - `operators`: A list of operator names provided by the plugin.
+- `secrets`: A list of secret keys that are required by the plugin. These
+secrets are stored in the plugin context and can be accessed via `ctx.secrets`.
 
 Optional files
 ~~~~~~~~~~~~~~
@@ -608,7 +630,7 @@ For Python plugins, you must include a `__init__.py` file. Below is a simple exa
 
         def execute(self, ctx):
             return {"count": len(ctx.view)}
-        
+
         def resolve_output(self, ctx):
             outputs = types.Object()
             outputs.int("count")
@@ -643,7 +665,7 @@ With this `OperatorConfig` we cannot dynamically specify the input. We'll cover 
                 name="example_simple_input",
                 label="Examples: Simple Input",
             )
-        
+
         def resolve_input(self, ctx):
             inputs = types.Object()
             inputs.str("message", label="Message", required=True)
@@ -652,7 +674,7 @@ With this `OperatorConfig` we cannot dynamically specify the input. We'll cover 
 
         def execute(self, ctx):
             return {"message": ctx.params["message"]}
-        
+
         def resolve_output(self, ctx):
             outputs = types.Object()
             outputs.str("message", label="Message")
@@ -670,9 +692,9 @@ Hello world Operator - JS
 Similarly to the example above, this JS example shows how to define a simple operator that accepts a string input.
 
 .. note::
-    
+
     The JS and Python API for implementing operators is very similar.
-    
+
 Unlike Python operators, JS operators can use React hooks and the `@fiftyone/*` packages by defining a `useHook()` method.
 Any values return in this method will be available to the operator's `execute()` method via `ctx.hooks`.
 
@@ -708,7 +730,7 @@ Using the execution context
 
 The execution context is passed to the operator's `execute()` method. It contains the following properties:
 
-- `params` - the operator's input values 
+- `params` - the operator's input values
 - `dataset` - the current :class:`fiftyone.core.dataset.Dataset` instance
 - `view` - the current :class:`fiftyone.core.view.DatasetView` instance
 - `dataset_name` - the name of the current dataset
@@ -767,7 +789,7 @@ Adding a custom FiftyOne Visualizer
         return dataset.mediaType ??
             dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
             undefined
-    }   
+    }
 
     fop.registerComponent({
         // component to delegate to
@@ -978,7 +1000,7 @@ Here's an example the combines both approaches in a hook that you could call fro
         key: 'myPluginFields',
         default: []
     })
-    
+
     function useMyHook() {
         const dataset = useRecoilValue(fos.dataset);
         const [fields, setFields] = useRecoilState(myPluginFieldsState);
@@ -1150,4 +1172,4 @@ In a FiftyOne plugin this same query can be performed using the
    :hidden:
 
    Overview <self>
-   Typescript API <ts-api>
+   TypeScript API Reference <ts-api>
