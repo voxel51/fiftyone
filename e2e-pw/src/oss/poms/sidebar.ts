@@ -29,7 +29,9 @@ export class SidebarPom {
   }
 
   sidebarEntryDraggableArea(fieldName: string) {
-    return this.sidebar.getByTestId(`sidebar-entry-draggable-${fieldName}`);
+    return this.sidebar
+      .getByTestId(`sidebar-entry-draggable-${fieldName}`)
+      .first();
   }
 
   getNumericSliderContainer(field: string) {
