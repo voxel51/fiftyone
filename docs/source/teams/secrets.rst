@@ -33,7 +33,7 @@ comprised of a key, value, and description.
    to identify a :doc:`secret <../api/fiftyone.internal.secrets>`.
 -  Secret values are stored encrypted in the database
    and only decrypted at runtime on the client if and only if the
-   client configured asan internal service.
+   client is configured as an internal service.
 
 
 Why use Secrets?
@@ -42,8 +42,7 @@ Not only does it provide an extra layer of security for storing and sharing
 private information, managing secrets through the App is a straightforward
 way to configure connections to and integrations with
 external services and APIs such as GCP, OpenAI, CVAT, etc. Instead of
-changing the configuration or environment variables of the container in
-which your teams FiftyOne App is running, you can simply add or remove
-them from the UI while the app is running. This can be especially useful for
-running :ref:`plugin operators<fiftyone-operators>` that
-require secrets.
+changing the configuration or environment variables of your FiftyOne Teams 
+containers and restarting them, you can simply add or remove
+secrets using the UI with the FiftyOne Teams App running. This can be especially useful for
+running :ref:`plugin operators<fiftyone-operators>` that require secrets.
