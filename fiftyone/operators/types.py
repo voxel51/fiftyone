@@ -900,7 +900,7 @@ class CodeView(View):
         import fiftyone.operators.types as types
 
         inputs = types.Object()
-        inputs.string("src", types.CodeView(language="python"))
+        inputs.str("src", types.CodeView(language="python"))
 
     Args:
         language (None): the language to use for syntax highlighting
