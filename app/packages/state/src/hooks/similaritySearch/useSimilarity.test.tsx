@@ -10,71 +10,39 @@ const TEST_DS = {
   mediaType: "image",
 };
 
-const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  return (
-    <RecoilRoot
-      initializeState={({ set }) => {
-        set(fos.dataset, TEST_DS);
-      }}
-    >
-      {children}
-    </RecoilRoot>
-  );
-};
-
-const RootWithSelectedSamples: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  return (
-    <RecoilRoot
-      initializeState={({ set }) => {
-        set(fos.dataset, TEST_DS);
-        set(fos.selectedSamples, new Set(["1", "2"]));
-      }}
-    >
-      {children}
-    </RecoilRoot>
-  );
-};
-
-const RootWithActiveImageSort: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  return (
-    <RecoilRoot
-      initializeState={({ set }) => {
-        set(fos.dataset, TEST_DS);
-        set(fos.similarityParameters, {
-          brainKey: "test-brain-key",
-          k: 10,
-          queryIds: ["1"],
-        });
-      }}
-    >
-      {children}
-    </RecoilRoot>
-  );
-};
-
-const RootWithSelectedLabelModalView: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  return (
-    <RecoilRoot
-      initializeState={({ set }) => {
-        set(fos.dataset, TEST_DS);
-        set(fos.selectedLabels, {
-          "1": {
-            sampleId: "1",
-            field: "test-field",
-          },
-        });
-        set(fos.currentModalSample, { id: "1", index: 1234 });
-      }}
-    >
-      {children}
-    </RecoilRoot>
-  );
+const getRecoilRoot = (
+  type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default"
+) => {
+  const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
+    return (
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(fos.dataset, TEST_DS);
+          if (type === "selectedSample") {
+            set(fos.selectedSamples, new Set(["1", "2"]));
+          }
+          if (type === "selectedLabel") {
+            set(fos.selectedLabels, {
+              "1": {
+                sampleId: "1",
+                field: "test-field",
+              },
+            });
+          }
+          if (type === "activeImageSort") {
+            set(fos.similarityParameters, {
+              brainKey: "test-brain-key",
+              k: 10,
+              queryIds: ["1"],
+            });
+          }
+        }}
+      >
+        {children}
+      </RecoilRoot>
+    );
+  };
+  return Root;
 };
 
 describe("similarity search helper text and icon are correct", () => {
@@ -85,17 +53,17 @@ describe("similarity search helper text and icon are correct", () => {
   test("Default state show text similarity search", async () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: Root }
+      { wrapper: getRecoilRoot("default") }
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
   });
 
-  test("when samples are selected, image similiarty search", async () => {
+  test("when samples are selected, image similarity search", async () => {
     const { result } = renderHook(
       // isImageSearch is false/true does not impact this test scenario
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: RootWithSelectedSamples }
+      { wrapper: getRecoilRoot("selectedSample") }
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -104,7 +72,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an image similarity is done and extended stage has sorting setting, should show image icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: true }),
-      { wrapper: RootWithActiveImageSort }
+      { wrapper: getRecoilRoot("activeImageSort") }
     );
     expect(result.current.text).toBe("Search by image similarity");
     expect(result.current.showImageSimilarityIcon).toBe(true);
@@ -113,7 +81,7 @@ describe("similarity search helper text and icon are correct", () => {
   test("when an text similarity is done and extended stage has sorting setting, should show text icon", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
-      { wrapper: RootWithActiveImageSort }
+      { wrapper: getRecoilRoot("activeImageSort") }
     );
     expect(result.current.text).toBe("Sort by text similarity");
     expect(result.current.showImageSimilarityIcon).toBe(false);
@@ -124,7 +92,7 @@ describe("similarity search helper text and icon are correct", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
       {
-        wrapper: RootWithSelectedLabelModalView,
+        wrapper: getRecoilRoot("selectedLabel"),
       }
     );
     expect(result.current.text).toBe("Search by image similarity");
