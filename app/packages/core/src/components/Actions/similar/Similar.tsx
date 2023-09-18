@@ -18,7 +18,7 @@ import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
 import MaxKWarning from "./MaxKWarning";
-import Warning from "./Warning";
+import Helper from "./Helper";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -230,7 +230,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch modal />}
+      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch modal />}
       {open && hasSimilarityKeys && (
         <div>
           <div>

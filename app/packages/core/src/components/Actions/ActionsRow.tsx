@@ -52,6 +52,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { useSimilarityType } from "./similar/utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -112,39 +113,31 @@ const Patches = () => {
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const [isImageSearch, setIsImageSearch] = useState(false);
-  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
-  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
-  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
-  const showImageSimilarityIcon =
-    hasSelectedSamples ||
-    (isImageSearch && hasSorting) ||
-    (modal && hasSelectedLabels);
+  const { showImageSearchIcon } = useSimilarityType({ modal, isImageSearch });
 
   const toggleSimilarity = useCallback(() => {
     setOpen((open) => !open);
-    setIsImageSearch(showImageSimilarityIcon);
-  }, [showImageSimilarityIcon]);
+    setIsImageSearch(showImageSearchIcon);
+  }, [showImageSearchIcon]);
 
   return (
     <ActionDiv ref={ref}>
       <PillButton
         key={"button"}
-        icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
+        icon={showImageSearchIcon ? <Wallpaper /> : <Search />}
         open={open}
         onClick={toggleSimilarity}
         highlight={true}
-        title={`Sort by ${
-          showImageSimilarityIcon ? "image" : "text"
-        } similarity`}
+        title={`Sort by ${showImageSearchIcon ? "image" : "text"} similarity`}
         style={{ cursor: "pointer" }}
         data-cy="action-sort-by-similarity"
       />
       {open && (
         <SortBySimilarity
-          key={`similary-${showImageSimilarityIcon ? "image" : "text"}`}
+          key={`similary-${showImageSearchIcon ? "image" : "text"}`}
           modal={modal}
           close={() => setOpen(false)}
           isImageSearch={isImageSearch}
