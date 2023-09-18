@@ -10,7 +10,7 @@ log into your central Teams UI.
 
 .. note::
 
-    See :ref:`fiftyone-plugins-docs` for more information about creating
+    See :ref:`fiftyone-plugins` for more information about creating
     and downloading existing plugins.
 
 Plugin Page

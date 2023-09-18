@@ -1,4 +1,4 @@
-.. _fiftyone-plugins-docs:
+.. _fiftyone-plugins:
 
 Developing FiftyOne Plugins
 ===========================

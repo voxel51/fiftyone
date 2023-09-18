@@ -88,10 +88,10 @@ FiftyOne supports the configuration options described below:
 | `module_path`                 | `FIFTYONE_MODULE_PATH`              | `None`                        | A list of modules that should be automatically imported whenever FiftyOne is imported. |
 |                               |                                     |                               | See :ref:`this page <custom-embedded-documents>` for an example usage.                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <fiftyone-plugins-docs>` for  |
+| `operator_timeout`            | `FIFTYONE_OPERATOR_TIMEOUT`         | `600`                         | The timeout for execution of an operator. See :ref:`this page <fiftyone-plugins>` for  |
 |                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <fiftyone-plugins-docs>` for |
+| `plugins_dir`                 | `FIFTYONE_PLUGINS_DIR`              | `None`                        | A directory containing custom App plugins. See :ref:`this page <fiftyone-plugins>` for |
 |                               |                                     |                               | more information.                                                                      |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `plugins_cache_enabled`       | `FIFTYONE_PLUGINS_CACHE_ENABLED`    | `False`                       | When set to ``True`` plugins will be cached until their directory's ``mtime`` changes. |
@@ -919,7 +919,7 @@ Plugins that you can configure include:
 
 -   The builtin :ref:`Map panel <app-map-panel>`
 -   The builtin :ref:`3D visualizer <app-3d-visualizer-config>`
--   Any :ref:`custom plugins <fiftyone-plugins-docs>` that you've registered
+-   Any :ref:`custom plugins <fiftyone-plugins>` that you've registered
 
 For example, you may add the following to your JSON App config
 (`~/.fiftyone/app_config.json`) to register a Mapbox token globally on your

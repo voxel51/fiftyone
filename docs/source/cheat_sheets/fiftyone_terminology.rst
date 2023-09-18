@@ -41,7 +41,7 @@ ________________
      - :ref:`Collection of pre-trained models <model-zoo>` available for
        download and inference.
    * - Plugin
-     - A module you can use to :ref:`customize and extend <fiftyone-plugins-docs>`
+     - A module you can use to :ref:`customize and extend <fiftyone-plugins>`
        the behavior of FiftyOne.
    * - Operator
      - A :ref:`plugin subcomponent <fiftyone-operators>` that defines an
