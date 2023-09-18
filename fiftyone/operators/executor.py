@@ -299,14 +299,21 @@ class ExecutionContext(object):
 
     @property
     def results(self):
-        """A ``dict`` of results for the current operation. This is only availble
-        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        """A ``dict`` of results for the current operation.
+
+        This property is only availble for methods that are invoked after an
+        operator is executed, e.g. :meth:`resolve_output`.
+        """
         return self.request_params.get("results", {})
 
     @property
     def delegated(self):
-        """``True`` if the operator's execution was delegated to an orchestrator. This is only availble
-        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
+        """``True`` if the operator's execution was delegated to an
+        orchestrator.
+
+        This property is only availble for methods that are invoked after an
+        operator is executed, e.g. :meth:`resolve_output`.
+        """
         return self.request_params.get("delegated", False)
 
     @property
@@ -335,7 +342,9 @@ class ExecutionContext(object):
     @property
     def selected_labels(self):
         """A list of labels currently selected in the App.
+
         Items are dictionaries with the following keys:
+
         -   ``label_id``: the ID of the label
         -   ``sample_id``: the ID of the sample containing the label
         -   ``field``: the field name containing the label
@@ -368,10 +377,8 @@ class ExecutionContext(object):
     def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
 
-        . note::
-
-            This method is only available when the operator is invoked via the
-            FiftyOne App. You can check this via ``ctx.executor``.
+        This method is only available when the operator is invoked via the
+        FiftyOne App. You can check this via ``ctx.executor``.
 
         Args:
             operator_name: the name of the operator
@@ -398,19 +405,18 @@ class ExecutionContext(object):
         return self._secrets
 
     async def resolve_secret_values(self, keys, **kwargs):
-        """
-        Resolves the values of the given secrets keys.
+        """Resolves the values of the given secrets keys.
 
         Args:
             keys: a list of secret keys
-            kwargs: additional keyword arguments to pass to the secrets
-            client for authentication if required
+            **kwargs: additional keyword arguments to pass to the secrets
+                client for authentication if required
         """
         if None in (self._secrets_client, keys):
             return None
+
         for key in keys:
             secret = await self._secrets_client.get_secret(key, **kwargs)
-
             if secret:
                 self._secrets[secret.key] = secret.value
 
