@@ -270,3 +270,11 @@ if you love it 😊):
   year={2020}
 }
 ```
+
+## Community
+
+<a href="https://github.com/voxel51/fiftyone/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=voxel51/fiftyone" />
+</a>
+
+Made with [contrib.rocks](https://contrib.rocks).
