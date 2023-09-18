@@ -52,7 +52,6 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
-import { useSimilarityType } from "./similar/utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -116,8 +115,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
-  const { showImageSimilarityIcon } = useSimilarityType({
-    modal,
+  const { showImageSimilarityIcon } = fos.useSimilarityType({
     isImageSearch,
   });
 

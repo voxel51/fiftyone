@@ -3,18 +3,17 @@ import React from "react";
 
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { ActionOption } from "../Common";
-import { useSimilarityType } from "./utils";
+import useSimilarityType from "@fiftyone/state/src/hooks/similaritySearch/useSimilarityType";
 
 interface Props {
   hasSimilarityKeys: boolean;
   isImageSearch: boolean;
-  modal: boolean;
 }
 
 const Helper: React.FunctionComponent<Props> = (props) => {
   const theme = useTheme();
-  const { isImageSearch, modal } = props;
-  const { text } = useSimilarityType({ isImageSearch, modal });
+  const { isImageSearch } = props;
+  const { text } = useSimilarityType({ isImageSearch });
 
   return (
     <>

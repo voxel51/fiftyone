@@ -254,25 +254,3 @@ export const currentBrainConfig = selectorFamily<Method | undefined, string>({
       return methods.find((method) => method.key === key);
     },
 });
-
-type SimilarityTypeProp = {
-  modal: boolean;
-  isImageSearch: boolean;
-};
-// returns the helpertext and icon type based on the similarity sort type (text or image)
-export const useSimilarityType = (props: SimilarityTypeProp) => {
-  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
-  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
-  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
-
-  const isImageSearch =
-    hasSelectedSamples ||
-    (props.isImageSearch && hasSorting) ||
-    (props.modal && hasSelectedLabels);
-
-  const text = isImageSearch
-    ? "Search by image similarity"
-    : "Sort by text similarity";
-
-  return { text, showImageSimilarityIcon: isImageSearch };
-};

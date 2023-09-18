@@ -120,7 +120,7 @@ const SortBySimilarity = ({
   }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
-    (brainConfig?.maxK && state.k > brainConfig.maxK) ||
+    (brainConfig?.maxK && (state?.k ?? 0 > brainConfig.maxK)) ||
     state.k == undefined
   );
 
@@ -230,7 +230,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch modal />}
+      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch />}
       {open && hasSimilarityKeys && (
         <div>
           <div>
