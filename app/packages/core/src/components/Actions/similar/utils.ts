@@ -259,7 +259,7 @@ type SimilarityTypeProp = {
   modal: boolean;
   isImageSearch: boolean;
 };
-
+// returns the helpertext and icon type based on the similarity sort type (text or image)
 export const useSimilarityType = (props: SimilarityTypeProp) => {
   const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
   const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
@@ -274,5 +274,5 @@ export const useSimilarityType = (props: SimilarityTypeProp) => {
     ? "Search by image similarity"
     : "Sort by text similarity";
 
-  return { text, showImageSearchIcon: isImageSearch };
+  return { text, showImageSimilarityIcon: isImageSearch };
 };

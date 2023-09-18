@@ -116,28 +116,33 @@ const Similarity = ({ modal }: { modal: boolean }) => {
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
-  const { showImageSearchIcon } = useSimilarityType({ modal, isImageSearch });
+  const { showImageSimilarityIcon } = useSimilarityType({
+    modal,
+    isImageSearch,
+  });
 
   const toggleSimilarity = useCallback(() => {
     setOpen((open) => !open);
-    setIsImageSearch(showImageSearchIcon);
-  }, [showImageSearchIcon]);
+    setIsImageSearch(showImageSimilarityIcon);
+  }, [showImageSimilarityIcon]);
 
   return (
     <ActionDiv ref={ref}>
       <PillButton
         key={"button"}
-        icon={showImageSearchIcon ? <Wallpaper /> : <Search />}
+        icon={showImageSimilarityIcon ? <Wallpaper /> : <Search />}
         open={open}
         onClick={toggleSimilarity}
         highlight={true}
-        title={`Sort by ${showImageSearchIcon ? "image" : "text"} similarity`}
+        title={`Sort by ${
+          showImageSimilarityIcon ? "image" : "text"
+        } similarity`}
         style={{ cursor: "pointer" }}
         data-cy="action-sort-by-similarity"
       />
       {open && (
         <SortBySimilarity
-          key={`similary-${showImageSearchIcon ? "image" : "text"}`}
+          key={`similary-${showImageSimilarityIcon ? "image" : "text"}`}
           modal={modal}
           close={() => setOpen(false)}
           isImageSearch={isImageSearch}
