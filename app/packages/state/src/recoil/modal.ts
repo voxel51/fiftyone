@@ -5,7 +5,6 @@ import { graphQLSelector } from "recoil-relay";
 import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
-import { filters } from "./filters";
 import {
   groupId,
   groupSlice,
@@ -134,7 +133,6 @@ export const modalSample = graphQLSelector<
     return {
       dataset: get(datasetName),
       view: get(view),
-      filters: get(filters),
       filter: {
         id: current.id,
         group: slice
