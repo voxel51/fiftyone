@@ -28,6 +28,7 @@ const getRecoilRoot = (
                 field: "test-field",
               },
             });
+            set(fos.currentModalSample, { id: "1", index: 1234 });
           }
           if (type === "activeImageSort") {
             set(fos.similarityParameters, {
