@@ -20,6 +20,7 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
@@ -426,9 +427,14 @@ def _get_additional_media_fields(
     additional = []
     opm_field = None
     for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
-        for field_name in collection.get_field_schema(
-            embedded_doc_type=cls, flat=True
-        ):
+        for field_name, field in collection.get_field_schema(
+            flat=True
+        ).items():
+            if not isinstance(field, fof.EmbeddedDocumentField) or (
+                cls != field.document_type
+            ):
+                continue
+
             if cls == OrthographicProjectionMetadata:
                 opm_field = field_name
 

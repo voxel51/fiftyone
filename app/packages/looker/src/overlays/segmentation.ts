@@ -4,20 +4,14 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import {
-  BaseState,
-  Coordinates,
-  MaskTargets,
-  Optional,
-  RgbMaskTargets,
-} from "../state";
+import { BaseState, Coordinates, MaskTargets, Optional } from "../state";
 import {
   BaseLabel,
   CONTAINS,
-  isShown,
   Overlay,
   PointInfo,
   SelectData,
+  isShown,
 } from "./base";
 import { isRgbMaskTargets, sizeBytes, strokeCanvasRect, t } from "./util";
 
@@ -55,6 +49,7 @@ export default class SegmentationOverlay<State extends BaseState>
   constructor(field: string, label: SegmentationLabel) {
     this.field = field;
     this.label = label;
+
     if (!this.label.mask) {
       return;
     }
