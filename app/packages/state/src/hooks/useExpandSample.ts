@@ -20,8 +20,9 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   );
   const filters = await snapshot.getPromise(filterAtoms.filters);
   const modalFilters = Object.fromEntries(
-    Object.entries(filters).filter(([path]) =>
-      paths.some((p) => path.startsWith(p))
+    Object.entries(filters).filter(
+      ([path]) =>
+        paths.some((p) => path.startsWith(p)) || path === "_label_tags"
     )
   );
 
