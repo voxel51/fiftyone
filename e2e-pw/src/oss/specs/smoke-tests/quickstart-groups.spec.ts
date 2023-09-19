@@ -1,6 +1,7 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
 import { ModalPom } from "src/oss/poms/modal";
+import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
@@ -8,12 +9,19 @@ const datasetName = getUniqueDatasetNameWithPrefix("quickstart-groups");
 const FIRST_SAMPLE_FILENAME = "003037.png";
 const SECOND_SAMPLE_FILENAME = "007195.png";
 
-const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
+const test = base.extend<{
+  grid: GridPom;
+  modal: ModalPom;
+  sidebar: SidebarPom;
+}>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
+  },
+  sidebar: async ({ page, eventUtils }, use) => {
+    await use(new SidebarPom(page, eventUtils));
   },
 });
 
@@ -112,5 +120,36 @@ test.describe("quickstart-groups", () => {
       await modal.group.toggleMedia("carousel");
       await expect(modal.carousel).toBeVisible();
     });
+  });
+
+  test("modal with grid filter", async ({
+    modal,
+    grid,
+    sidebar,
+    eventUtils,
+  }) => {
+    let entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+    await sidebar.toggleSidebarGroup("GROUP");
+    await entryExpandPromise;
+
+    entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
+    await sidebar.clickFieldDropdown("group.name");
+    await entryExpandPromise;
+
+    const promise = grid.getWaitForGridRefreshPromise();
+    await sidebar.applyFilter("left");
+    await promise;
+
+    await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
+
+    await modal.navigateSlice("group.name", "right");
+    await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   });
 });
