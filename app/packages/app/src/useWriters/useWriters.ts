@@ -1,4 +1,5 @@
 import { Session, useSession } from "@fiftyone/state";
+import { env } from "@fiftyone/utilities";
 import { MutableRefObject } from "react";
 import { Environment } from "react-relay";
 import { Queries } from "../makeRoutes";
@@ -12,11 +13,16 @@ const useWriters = (
   sessionRef: MutableRefObject<Session>
 ) => {
   useSession((key, value) => {
+    if (env().VITE_NO_STATE) {
+      return;
+    }
+
     const writer = REGISTERED_WRITERS[key];
 
     if (!writer) {
       throw new Error(`writer "${key}" is not registered`);
     }
+
     writer({ environment, router, sessionRef, subscription })(value);
   }, sessionRef.current);
 };

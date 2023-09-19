@@ -9,6 +9,7 @@ import {
 } from "@fiftyone/components";
 import { ViewBar } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
+import { useRefresh } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
@@ -21,7 +22,6 @@ import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import ga from "../ga";
-import useRefresh from "../useRefresh";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";

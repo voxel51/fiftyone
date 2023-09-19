@@ -1,19 +1,8 @@
-import { useSessionSetter } from "@fiftyone/state";
-import { useCallback } from "react";
-import { default as useRefreshState } from "../useRefresh";
+import { useRefresh as useRefreshState } from "@fiftyone/state";
 import { EventHandlerHook } from "./registerEvent";
-import { processState } from "./utils";
 
 const useRefresh: EventHandlerHook = () => {
-  const refresh = useRefreshState();
-  const setter = useSessionSetter();
-  return useCallback(
-    (payload) => {
-      processState(setter, payload.state);
-      refresh();
-    },
-    [refresh, setter]
-  );
+  return useRefreshState();
 };
 
 export default useRefresh;

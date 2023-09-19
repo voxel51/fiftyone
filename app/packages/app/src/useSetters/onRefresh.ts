@@ -1,9 +1,9 @@
 import { RegisteredSetter } from "./registerSetter";
 
-const onSetRefreshPage: RegisteredSetter =
+const onRefresh: RegisteredSetter =
   ({ router }) =>
   () => {
     router.load(true);
   };
 
-export default onSetRefreshPage;
+export default onRefresh;

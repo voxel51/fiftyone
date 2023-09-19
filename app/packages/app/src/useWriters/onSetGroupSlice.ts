@@ -8,6 +8,7 @@ const onSetGroupSlice: RegisteredWriter<"sessionGroupSlice"> =
     if (!slice) {
       throw new Error("slice not defined");
     }
+
     commitMutation<setGroupSliceMutation>(environment, {
       mutation: setGroupSlice,
       variables: {
