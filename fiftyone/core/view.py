@@ -820,7 +820,12 @@ class DatasetView(foc.SampleCollection):
 
         group_expr, is_id_field, root_view, sort = self._parse_dynamic_groups()
 
-        if is_id_field and not isinstance(group_value, ObjectId):
+        if isinstance(is_id_field, (list, tuple)):
+            group_value = [
+                ObjectId(v) if i else v
+                for v, i in zip(group_value, is_id_field)
+            ]
+        elif is_id_field:
             group_value = ObjectId(group_value)
 
         pipeline = []

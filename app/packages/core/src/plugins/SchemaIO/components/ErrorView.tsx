@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import PopoutButton from "./PopoutButton";
 import { Error } from "@mui/icons-material";
 import { getComponentProps } from "../utils";
+import { scrollable } from "@fiftyone/components";
 
 export default function ErrorView(props) {
   const { schema, data } = props;
@@ -74,12 +75,16 @@ function DetailedError(props) {
         "&:last-child": {
           borderBottom: "1px solid hsla(0,100%,50%,0.25)",
         },
+        overflow: "auto",
       }}
+      className={scrollable}
     >
-      <Typography sx={{ cursor: "default" }} onClick={() => setShow(!show)}>
+      <Typography
+        sx={{ cursor: "default", lineHeight: "normal" }}
+        onClick={() => setShow(!show)}
+      >
         {canExpand && (
           <Typography
-            fontSize={8}
             component="span"
             sx={{ pl: 0.5, pr: 0.25, verticalAlign: "middle", fontSize: 8 }}
           >
@@ -89,7 +94,7 @@ function DetailedError(props) {
         {reason}
       </Typography>
       {show && (
-        <Typography component="pre" sx={{ pl: 1.75 }}>
+        <Typography component="pre" sx={{ pl: 1.75, lineHeight: "normal" }}>
           {details}
         </Typography>
       )}

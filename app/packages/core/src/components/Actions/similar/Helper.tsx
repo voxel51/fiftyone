@@ -1,29 +1,34 @@
-import React from "react";
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
+import React from "react";
+
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { ActionOption } from "../Common";
+import useSimilarityType from "@fiftyone/state/src/hooks/similaritySearch/useSimilarityType";
 
 interface Props {
   hasSimilarityKeys: boolean;
   isImageSearch: boolean;
 }
 
-const Warning: React.FunctionComponent<Props> = (props) => {
+const Helper: React.FunctionComponent<Props> = (props) => {
   const theme = useTheme();
+  const { isImageSearch } = props;
+  const { text } = useSimilarityType({ isImageSearch });
 
   return (
     <>
       {!props.hasSimilarityKeys && (
         <PopoutSectionTitle style={{ fontSize: 12 }}>
-          {props.isImageSearch
+          {isImageSearch
             ? "No available brain keys"
             : "No brain keys support text prompts"}
         </PopoutSectionTitle>
       )}
       <PopoutSectionTitle>
         <ActionOption
+          id="sort-by-similarity"
           href={SORT_BY_SIMILARITY}
-          text={"Search by text similarity"}
+          text={text}
           title={"About sorting by similarity"}
           style={{
             background: "unset",
@@ -38,4 +43,4 @@ const Warning: React.FunctionComponent<Props> = (props) => {
   );
 };
 
-export default Warning;
+export default Helper;

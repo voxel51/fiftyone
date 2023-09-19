@@ -18,7 +18,7 @@ import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
 import MaxKWarning from "./MaxKWarning";
-import Warning from "./Warning";
+import Helper from "./Helper";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -120,7 +120,7 @@ const SortBySimilarity = ({
   }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
-    (brainConfig?.maxK && state.k > brainConfig.maxK) ||
+    (brainConfig?.maxK && (state?.k ?? 0 > brainConfig.maxK)) ||
     state.k == undefined
   );
 
@@ -230,7 +230,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
+      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch />}
       {open && hasSimilarityKeys && (
         <div>
           <div>

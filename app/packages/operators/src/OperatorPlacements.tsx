@@ -77,7 +77,6 @@ function ButtonPlacement(props: OperatorPlacementProps) {
       <PillButton
         onClick={handleClick}
         icon={IconComponent}
-        text={!icon && label}
         title={label}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
       />
