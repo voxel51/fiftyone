@@ -7,7 +7,7 @@ import onSetSessionSpaces from "./onSetSessionSpaces";
 import { REGISTERED_WRITERS } from "./registerWriter";
 
 REGISTERED_WRITERS["colorScheme"] = onSetColorScheme;
-REGISTERED_WRITERS["groupSlice"] = onSetGroupSlice;
+REGISTERED_WRITERS["sessionGroupSlice"] = onSetGroupSlice;
 REGISTERED_WRITERS["selectedLabels"] = onSelectLabels;
 REGISTERED_WRITERS["selectedSamples"] = onSelectSamples;
 REGISTERED_WRITERS["selectedFields"] = onSetSelectedFields;
