@@ -24,7 +24,7 @@ test.describe("dynamic embedded documents (DED) visibility / filter", () => {
       dataset = fo.Dataset("${datasetName}")
       dataset.persistent = True
   
-      sample1 = fo.Sample(filepath="src/shared/assets/test.png")
+      sample1 = fo.Sample(filepath="src/shared/assets/images/test.png")
       dataset.add_samples([sample1])
       dataset.save()
 
@@ -32,7 +32,7 @@ test.describe("dynamic embedded documents (DED) visibility / filter", () => {
 
       seg = fo.Segmentation(
         label='cat',
-        mask_path='src/shared/assets/mask.png'
+        mask_path='src/shared/assets/masks/mask.png'
       )
 
       sample['emb_doc_fld'] = fo.DynamicEmbeddedDocument(seg=seg)
