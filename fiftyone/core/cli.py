@@ -2934,7 +2934,7 @@ def _launch_delegated_local():
     try:
         dos = food.DelegatedOperationService()
 
-        print(_WELCOME_MESSAGE.format(foc.VERSION))
+        print(_WELCOME_MESSAGE.format(foc.TEAMS_VERSION))
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
