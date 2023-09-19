@@ -131,8 +131,10 @@ class ExecuteOperator(HTTPEndpoint):
         request_token = get_token_from_request(request)
 
         result = await execute_or_delegate_operator(
-            operator_uri, data, request_token=request_token, user=(
-                user.sub if user else None)
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
         )
         return result.to_json()
 
@@ -185,7 +187,10 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         # request token is teams-only
         request_token = get_token_from_request(request)
         execution_result = await execute_or_delegate_operator(
-            operator_uri, data, request_token=request_token, user=user
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
         )
         if execution_result.is_generator:
             result = execution_result.result
