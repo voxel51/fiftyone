@@ -6,8 +6,8 @@
 import os
 import queue
 import threading
-import time
-from typing import Any, Mapping, Optional, Union
+from typing import Optional, Union
+
 
 import websocket
 
@@ -16,6 +16,9 @@ from fiftyone.api import constants
 
 class SocketDisconnectException(Exception):
     """Wrapper for abnormal socket disconnects"""
+
+
+_SOCKET_QUEUE_TIMEOUT = 0.01
 
 
 class Socket:
@@ -64,16 +67,20 @@ class Socket:
 
     def __next__(self) -> str:
         """Get a message from the server"""
-        while not self.closed:
+        while True:
+            # Attempt to read any messages from queue.
             try:
-                msg = self._queue.get(block=False)
-                if msg:
+                if msg := self._queue.get(timeout=_SOCKET_QUEUE_TIMEOUT):
                     return msg
 
                 break
             except queue.Empty:
-                time.sleep(0.01)
+                # The queue is empty and the socket is closed, stop attempting
+                # to read messages from queue.
+                if self._closed:
+                    break
 
+        # If a socket occured raise it here.
         if self._err:
             raise self._err
 

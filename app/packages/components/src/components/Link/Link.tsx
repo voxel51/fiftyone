@@ -14,13 +14,15 @@ const Link: React.FC<
     style?: React.CSSProperties;
     href?: string;
     target?: React.HTMLAttributeAnchorTarget;
+    cy?: string;
   }>
-> = ({ children, className, href, style, target, title, to }) => {
+> = ({ children, className, cy, href, style, target, title, to }) => {
   const router = useContext(RouterContext);
   const [pending, startTransition] = useTransition();
 
   return (
     <a
+      data-cy={cy}
       href={typeof to === "string" ? to : href}
       onClick={
         typeof to === "string"

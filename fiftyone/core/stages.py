@@ -3299,6 +3299,7 @@ class GroupBy(ViewStage):
 
     Args:
         field_or_expr: the field or ``embedded.field.name`` to group by, or a
+            list of field names defining a compound group key, or a
             :class:`fiftyone.core.expressions.ViewExpression` or
             `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
             that defines the value to group by
@@ -3320,6 +3321,9 @@ class GroupBy(ViewStage):
             that defines how to sort the groups in the output view. If
             provided, this expression will be evaluated on the list of samples
             in each group. Only applicable when ``flat=True``
+        create_index (True): whether to create an index, if necessary, to
+            optimize the grouping. Only applicable when grouping by field(s),
+            not expressions
     """
 
     def __init__(
@@ -3330,6 +3334,7 @@ class GroupBy(ViewStage):
         flat=False,
         match_expr=None,
         sort_expr=None,
+        create_index=True,
     ):
         self._field_or_expr = field_or_expr
         self._order_by = order_by
@@ -3337,6 +3342,7 @@ class GroupBy(ViewStage):
         self._flat = flat
         self._match_expr = match_expr
         self._sort_expr = sort_expr
+        self._create_index = create_index
         self._sort_stage = None
 
     @property
@@ -3357,6 +3363,11 @@ class GroupBy(ViewStage):
         return self._order_by
 
     @property
+    def reverse(self):
+        """Whether to sort the groups in descending order."""
+        return self._reverse
+
+    @property
     def flat(self):
         """Whether to generate a flattened collection."""
         return self._flat
@@ -3372,9 +3383,9 @@ class GroupBy(ViewStage):
         return self._sort_expr
 
     @property
-    def reverse(self):
-        """Whether to sort the groups in descending order."""
-        return self._reverse
+    def create_index(self):
+        """Whether to create an index, if necessary, to optimize the grouping."""
+        return self._create_index
 
     def to_mongo(self, sample_collection):
         if self._order_by is not None and self._sort_stage is None:
@@ -3446,7 +3457,6 @@ class GroupBy(ViewStage):
 
     def _get_group_expr(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
-        is_id_field = False
 
         if etau.is_str(field_or_expr):
             (
@@ -3454,9 +3464,32 @@ class GroupBy(ViewStage):
                 is_id_field,
                 _,
             ) = sample_collection._handle_id_fields(field_or_expr)
-            group_expr = "$" + field_or_expr
+
+            group_expr = field_or_expr
+            if not group_expr.startswith("$"):
+                group_expr = "$" + group_expr
+        elif isinstance(field_or_expr, (list, tuple)):
+            group_expr = []
+            is_id_field = []
+            for _field_or_expr in field_or_expr:
+                if etau.is_str(_field_or_expr):
+                    (
+                        _field_or_expr,
+                        _is_id_field,
+                        _,
+                    ) = sample_collection._handle_id_fields(_field_or_expr)
+                else:
+                    _is_id_field = False
+
+                _group_expr = _field_or_expr
+                if not _group_expr.startswith("$"):
+                    _group_expr = "$" + _group_expr
+
+                group_expr.append(_group_expr)
+                is_id_field.append(_is_id_field)
         else:
             group_expr = field_or_expr
+            is_id_field = False
 
         return group_expr, is_id_field
 
@@ -3513,10 +3546,11 @@ class GroupBy(ViewStage):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
             ["order_by", self._order_by],
+            ["reverse", self._reverse],
             ["flat", self._flat],
             ["match_expr", self._get_mongo_match_expr()],
             ["sort_expr", self._get_mongo_sort_expr()],
-            ["reverse", self._reverse],
+            ["create_index", self._create_index],
         ]
 
     @classmethod
@@ -3532,6 +3566,12 @@ class GroupBy(ViewStage):
                 "type": "NoneType|field|str",
                 "placeholder": "order by",
                 "default": "None",
+            },
+            {
+                "name": "reverse",
+                "type": "bool",
+                "default": "False",
+                "placeholder": "reverse (default=False)",
             },
             {
                 "name": "flat",
@@ -3552,10 +3592,10 @@ class GroupBy(ViewStage):
                 "default": "None",
             },
             {
-                "name": "reverse",
+                "name": "create_index",
                 "type": "bool",
-                "default": "False",
-                "placeholder": "reverse (default=False)",
+                "default": "True",
+                "placeholder": "create_index (default=True)",
             },
         ]
 
@@ -3565,17 +3605,28 @@ class GroupBy(ViewStage):
                 "Cannot group a collection that is already dynamically grouped"
             )
 
-        order_by = self._order_by
         field_or_expr = self._get_mongo_field_or_expr()
+        order_by = self._order_by
 
         if order_by is not None:
             order = -1 if self._reverse else 1
-            stage = SortBy([(self._field_or_expr, 1), (order_by, order)])
+            stage = SortBy(
+                [(field_or_expr, 1), (order_by, order)],
+                create_index=self._create_index,
+            )
             stage.validate(sample_collection)
 
             self._sort_stage = stage
+        elif not self._create_index:
+            return
         elif etau.is_str(field_or_expr):
-            sample_collection.create_index(field_or_expr)
+            index_spec = field_or_expr.lstrip("$")
+            sample_collection.create_index(index_spec)
+        elif isinstance(field_or_expr, (list, tuple)) and all(
+            etau.is_str(f) for f in field_or_expr
+        ):
+            index_spec = [(f.lstrip("$"), 1) for f in field_or_expr]
+            sample_collection.create_index(index_spec)
 
 
 class Flatten(ViewStage):
@@ -6777,13 +6828,16 @@ class SortBy(ViewStage):
                 as defined above, and ``order`` can be 1 or any string starting
                 with "a" for ascending order, or -1 or any string starting with
                 "d" for descending order
-
         reverse (False): whether to return the results in descending order
+        create_index (True): whether to create an index, if necessary, to
+            optimize the sort. Only applicable when sorting by field(s), not
+            expressions
     """
 
-    def __init__(self, field_or_expr, reverse=False):
+    def __init__(self, field_or_expr, reverse=False, create_index=True):
         self._field_or_expr = field_or_expr
         self._reverse = reverse
+        self._create_index = create_index
 
     @property
     def field_or_expr(self):
@@ -6794,6 +6848,11 @@ class SortBy(ViewStage):
     def reverse(self):
         """Whether to return the results in descending order."""
         return self._reverse
+
+    @property
+    def create_index(self):
+        """Whether to create an index, if necessary, to optimize the sort."""
+        return self._create_index
 
     def to_mongo(self, sample_collection):
         field_or_expr = self._get_mongo_field_or_expr()
@@ -6871,6 +6930,7 @@ class SortBy(ViewStage):
         return [
             ["field_or_expr", self._get_mongo_field_or_expr()],
             ["reverse", self._reverse],
+            ["create_index", self._create_index],
         ]
 
     @classmethod
@@ -6887,16 +6947,28 @@ class SortBy(ViewStage):
                 "default": "False",
                 "placeholder": "reverse (default=False)",
             },
+            {
+                "name": "create_index",
+                "type": "bool",
+                "default": "True",
+                "placeholder": "create_index (default=True)",
+            },
         ]
 
     def validate(self, sample_collection):
+        if not self._create_index:
+            return
+
         field_or_expr = self._get_mongo_field_or_expr()
 
-        if etau.is_str(field_or_expr) or (
-            isinstance(field_or_expr, (list, tuple))
-            and all(etau.is_str(i[0]) for i in field_or_expr)
+        if etau.is_str(field_or_expr):
+            index_spec = field_or_expr.lstrip("$")
+            sample_collection.create_index(index_spec)
+        elif isinstance(field_or_expr, (list, tuple)) and all(
+            etau.is_str(i[0]) for i in field_or_expr
         ):
-            sample_collection.create_index(field_or_expr)
+            index_spec = [(f.lstrip("$"), d) for f, d in field_or_expr]
+            sample_collection.create_index(index_spec)
 
 
 def _serialize_sort_expr(field_or_expr):

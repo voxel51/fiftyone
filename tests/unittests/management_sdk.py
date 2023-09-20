@@ -684,6 +684,29 @@ class ManagementSdkTests(unittest.TestCase):
         ),
     ]
 
+    def test_calculate_dataset_latest_changes_summary(self):
+        change_summary = self.SNAPSHOT_DATA[0]["linearChangeSummary"]
+        now = datetime.datetime.now(datetime.timezone.utc)
+        format = "%Y-%m-%dT%H:%M:%S.%f%z"
+        change_summary["updatedAt"] = now.strftime(format)
+        expected = self.SNAPSHOT_OBJS[0].linear_change_summary
+        expected.updated_at = now
+        self.client.post_graphql_request.return_value = {
+            "calculateDatasetLatestChanges": change_summary
+        }
+
+        return_value = fom.calculate_dataset_latest_changes_summary(
+            self.DATASET_NAME
+        )
+        self.assertEqual(return_value, expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._CALCULATE_LATEST_CHANGES_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+            },
+        )
+
     def test_create_snapshot(self):
         snap_data, expected_snap = self.SNAPSHOT_DATA[0], self.SNAPSHOT_OBJS[0]
 
@@ -712,6 +735,38 @@ class ManagementSdkTests(unittest.TestCase):
                 "dataset": self.DATASET_NAME,
                 "snapshot": self.SNAPSHOT_NAME,
             },
+        )
+
+    def test_get_dataset_latest_changes_summary(self):
+        change_summary = self.SNAPSHOT_DATA[0]["linearChangeSummary"]
+        now = datetime.datetime.now(datetime.timezone.utc)
+        format = "%Y-%m-%dT%H:%M:%S.%f%z"
+        change_summary["updatedAt"] = now.strftime(format)
+        expected = self.SNAPSHOT_OBJS[0].linear_change_summary
+        expected.updated_at = now
+        self.client.post_graphql_request.return_value = {
+            "dataset": {"latestChanges": change_summary}
+        }
+
+        return_value = fom.get_dataset_latest_changes_summary(
+            self.DATASET_NAME
+        )
+        self.assertEqual(return_value, expected)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._GET_LATEST_CHANGES_SUMMARY_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+            },
+        )
+
+        # Unknown dataset
+        self.client.post_graphql_request.return_value = {"dataset": None}
+        self.assertRaises(
+            ValueError,
+            fom.get_snapshot_info,
+            self.DATASET_NAME,
+            self.SNAPSHOT_NAME,
         )
 
     def test_get_snapshot_info(self):
@@ -751,25 +806,38 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     def test_list_snapshots(self):
-
-        self.client.post_graphql_request.return_value = {
-            "dataset": {"snapshots": self.SNAPSHOT_DATA}
-        }
+        snapshot_list = [snap["name"] for snap in self.SNAPSHOT_DATA]
+        self.client.post_graphql_connectioned_request.return_value = [
+            {"name": name} for name in snapshot_list
+        ]
 
         return_value = fom.list_snapshots(self.DATASET_NAME)
-        self.assertEqual(return_value, self.SNAPSHOT_OBJS)
+        self.assertEqual(return_value, snapshot_list)
 
-        self.client.post_graphql_request.assert_called_with(
+        self.client.post_graphql_connectioned_request.assert_called_with(
             query=fom.snapshot._LIST_SNAPSHOTS_QUERY,
+            connection_property="dataset.snapshotsConnection",
             variables={
                 "dataset": self.DATASET_NAME,
             },
         )
 
         # Unknown dataset
-        self.client.post_graphql_request.return_value = {"dataset": None}
+        self.client.post_graphql_connectioned_request.side_effect = ValueError(
+            "No property dataset found"
+        )
         self.assertRaises(
             ValueError,
+            fom.list_snapshots,
+            self.DATASET_NAME,
+        )
+
+        # Different type of error
+        self.client.post_graphql_connectioned_request.side_effect = IndexError(
+            "blah"
+        )
+        self.assertRaises(
+            IndexError,
             fom.list_snapshots,
             self.DATASET_NAME,
         )

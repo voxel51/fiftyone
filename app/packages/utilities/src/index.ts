@@ -9,6 +9,7 @@ export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./styles";
+export * from "./paths";
 
 interface O {
   [key: string]: O | any;

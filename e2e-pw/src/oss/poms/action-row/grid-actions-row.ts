@@ -1,16 +1,21 @@
 import { Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { DisplayOptionsPom } from "./display-options";
-import { SelectorPom } from "../selector";
+import { DynamicGroupPom } from "./dynamic-group";
 
 export class GridActionsRowPom {
   readonly page: Page;
   readonly gridActionsRow: Locator;
-  readonly displayActions: DisplayOptionsPom;
 
-  constructor(page: Page) {
+  readonly displayActions: DisplayOptionsPom;
+  readonly dynamicGroup: DynamicGroupPom;
+
+  constructor(page: Page, eventUtils: EventUtils) {
     this.page = page;
-    this.displayActions = new DisplayOptionsPom(page);
     this.gridActionsRow = page.getByTestId("fo-grid-actions");
+
+    this.displayActions = new DisplayOptionsPom(page);
+    this.dynamicGroup = new DynamicGroupPom(page, eventUtils);
   }
 
   private async openAction(actionTestId: string) {
@@ -50,10 +55,16 @@ export class GridActionsRowPom {
     await this.toPatchesByLabelField(fieldName).click();
   }
 
-  async groupBy(path: string, selector: SelectorPom) {
-    await selector.openResults();
-    await selector.selectResult(path);
-    await this.gridActionsRow.getByTestId("dynamic-group-btn-submit").click();
+  async groupBy(groupBy: string, orderBy?: string) {
+    await this.dynamicGroup.groupBy.openResults();
+    await this.dynamicGroup.groupBy.selectResult(groupBy);
+    if (orderBy) {
+      await this.dynamicGroup.selectTabOption("Ordered");
+      await this.dynamicGroup.orderBy.openResults();
+      await this.dynamicGroup.orderBy.selectResult(orderBy);
+    }
+
+    await this.dynamicGroup.submit();
   }
 
   toPatchesByLabelField(fieldName: string) {

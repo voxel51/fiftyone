@@ -108,7 +108,7 @@ class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
 
-        user = request.user
+        user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -131,7 +131,10 @@ class ExecuteOperator(HTTPEndpoint):
         request_token = get_token_from_request(request)
 
         result = await execute_or_delegate_operator(
-            operator_uri, data, request_token=request_token, user=user.sub
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
         )
         return result.to_json()
 
@@ -161,7 +164,7 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        user = request.user
+        user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
@@ -184,7 +187,10 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
         # request token is teams-only
         request_token = get_token_from_request(request)
         execution_result = await execute_or_delegate_operator(
-            operator_uri, data, request_token=request_token, user=user
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
         )
         if execution_result.is_generator:
             result = execution_result.result

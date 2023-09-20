@@ -21,6 +21,7 @@ export const Selectors = styled.div`
     column-gap: 1rem;
   }
 `;
+
 export const PlotOption = styled(Link)`
   display: flex;
   color: var(--fo-palette-primary-plainColor);
@@ -32,6 +33,7 @@ export const PlotOption = styled(Link)`
   border-top-right-radius: 3px;
   padding: 0.25rem;
 `;
+
 export const WarningsContainer = styled.ul`
   position: absolute;
   top: 3rem;

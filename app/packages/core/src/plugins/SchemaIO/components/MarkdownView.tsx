@@ -23,6 +23,7 @@ import styled from "styled-components";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 import remarkGfm from "remark-gfm";
+import React from "react";
 
 SyntaxHighlighter.registerLanguage("javascript", js);
 SyntaxHighlighter.registerLanguage("typescript", ts);
@@ -55,7 +56,7 @@ const CodeHeader = styled.div`
   background: ${({ theme }) => theme.background.level2};
 `;
 
-const componenntMap = {
+const componentsMap = {
   a({ children, ...props }) {
     if (
       props.href &&
@@ -122,18 +123,16 @@ const componenntMap = {
 
 export default function MarkdownView(props) {
   const { schema, data } = props;
-  const { view = {} } = schema;
-  const { label, description } = view;
 
   return (
     <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} nested />
       <ReactMarkdown
-        components={componenntMap}
+        components={componentsMap}
         remarkPlugins={[remarkGfm]}
         {...getComponentProps(props, "markdown")}
       >
-        {data}
+        {data || schema?.default}
       </ReactMarkdown>
     </Box>
   );

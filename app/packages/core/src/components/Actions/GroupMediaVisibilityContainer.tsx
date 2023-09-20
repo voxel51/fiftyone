@@ -2,8 +2,7 @@ import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { useRef, useState } from "react";
-import useMeasure from "react-use-measure";
+import React, { RefObject } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
@@ -20,7 +19,13 @@ const Container = styled.div`
   position: relative;
 `;
 
-const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
+const GroupMediaVisibilityPopout = ({
+  modal,
+  anchorRef,
+}: {
+  modal: boolean;
+  anchorRef: RefObject<HTMLDivElement>;
+}) => {
   const [isSlotVisible, setIsSlotVisible] = useRecoilState(
     fos.groupMedia3dVisibleSetting
   );
@@ -35,7 +40,12 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
   );
 
   return (
-    <Popout modal={modal}>
+    <Popout
+      fixed
+      anchorRef={anchorRef}
+      modal={modal}
+      testId="group-media-visibility-popout"
+    >
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
       {pointCloudSliceExists && (
         <Checkbox
@@ -65,13 +75,12 @@ const GroupMediaVisibilityPopout = ({ modal }: { modal: boolean }) => {
 export const GroupMediaVisibilityContainer = ({
   modal,
 }: GroupMediaVisibilityProps) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef] = useMeasure();
 
   return (
-    <Container ref={ref}>
+    <Container ref={ref} data-cy="action-toggle-group-media-visibility">
       <PillButton
         icon={
           <ViewComfyIcon classes={{ root: style.groupMediaVisibilityIcon }} />
@@ -82,9 +91,8 @@ export const GroupMediaVisibilityContainer = ({
         }}
         title={TITLE}
         highlight={open}
-        ref={mRef}
       />
-      {open && <GroupMediaVisibilityPopout modal={modal} />}
+      {open && <GroupMediaVisibilityPopout anchorRef={ref} modal={modal} />}
     </Container>
   );
 };

@@ -176,7 +176,7 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
             <Tooltip
               text={
                 `You are viewing the snapshot "${datasetSnapshot}" of the` +
-                ` dataset "${datasetHead}" (Readonly mode)`
+                ` dataset "${datasetHead}" (Read-only mode)`
               }
               placement="bottom-center"
             >
