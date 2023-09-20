@@ -4623,6 +4623,7 @@ class SampleCollection(object):
         flat=False,
         match_expr=None,
         sort_expr=None,
+        create_index=True,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -4665,7 +4666,8 @@ class SampleCollection(object):
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or
+                a list of field names defining a compound group key, or a
+                :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
@@ -4686,6 +4688,9 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
+            create_index (True): whether to create an index, if necessary, to
+                optimize the grouping. Only applicable when grouping by
+                field(s), not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4698,6 +4703,7 @@ class SampleCollection(object):
                 flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
+                create_index=create_index,
             )
         )
 
@@ -6060,7 +6066,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Skip(skip))
 
     @view_stage
-    def sort_by(self, field_or_expr, reverse=False):
+    def sort_by(self, field_or_expr, reverse=False, create_index=True):
         """Sorts the samples in the collection by the given field(s) or
         expression(s).
 
@@ -6123,13 +6129,21 @@ class SampleCollection(object):
                     or expression as defined above, and ``order`` can be 1 or
                     any string starting with "a" for ascending order, or -1 or
                     any string starting with "d" for descending order
-
             reverse (False): whether to return the results in descending order
+            create_index (True): whether to create an index, if necessary, to
+                optimize the sort. Only applicable when sorting by field(s),
+                not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
+        return self._add_view_stage(
+            fos.SortBy(
+                field_or_expr,
+                reverse=reverse,
+                create_index=create_index,
+            )
+        )
 
     @view_stage
     def sort_by_similarity(

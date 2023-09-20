@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
-import { HistogramPom } from "src/oss/poms/histogram-panel";
-import { PanelPom } from "src/oss/poms/panel";
+import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{

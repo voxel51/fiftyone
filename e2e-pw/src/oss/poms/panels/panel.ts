@@ -5,20 +5,26 @@ export class PanelPom {
   readonly page: Page;
   readonly locator: Locator;
   readonly assert: PanelAsserter;
+  readonly selectionCount: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.assert = new PanelAsserter(this);
 
     this.locator = this.page.getByTestId("panel-container");
+    this.selectionCount = this.page.getByTestId("selection-count-container");
+  }
+
+  get errorBoundary() {
+    return this.page.getByTestId("error-boundary");
   }
 
   get newPanelBtn() {
     return this.locator.getByTitle("New panel");
   }
 
-  get errorBoundary() {
-    return this.page.getByTestId("error-boundary");
+  get closePanelBtn() {
+    return this.locator.getByTitle("Close");
   }
 
   getPanelOption(panelName: PanelName) {
@@ -32,6 +38,10 @@ export class PanelPom {
   async open(panelName: PanelName) {
     await this.newPanelBtn.click();
     await this.getPanelOption(panelName).click();
+  }
+
+  async close() {
+    await this.closePanelBtn.click();
   }
 
   async bringPanelToForeground(panelName: PanelName) {
