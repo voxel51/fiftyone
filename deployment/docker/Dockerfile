@@ -63,6 +63,8 @@ ENV FIFTYONE_DATABASE_ADMIN=false \
 RUN apt-get -qq -y update && apt-get -qq -y upgrade \
     && apt-get -qq install -y --no-install-recommends ffmpeg \
     && apt clean && rm -rf /var/lib/apt/lists/* \
+    # addresses CVE-2022-40897
+    && /usr/local/bin/pip install -U pip setuptools \
     && useradd -l -U -d /opt voxel51 \
     && python3 -m venv "${VIRTUAL_ENV}"
 

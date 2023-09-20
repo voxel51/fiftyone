@@ -5,7 +5,10 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
@@ -284,6 +287,92 @@ class PrintStdout(foo.Operator):
         return {"msg": ctx.params.get("msg", None)}
 
 
+class ListFiles(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_files",
+            label="List Files",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        path = ctx.params.get("path", None)
+        list_filesystems = ctx.params.get("list_filesystems", False)
+        if list_filesystems:
+            # this should
+            return {"filesystems": list_fileystems()}
+
+        if path:
+            try:
+                return {"files": list_files(path)}
+            except Exception as e:
+                return {"files": [], "error": str(e)}
+
+
+def get_default_path_for_filesystem(fs):
+    if fs == fos.FileSystem.LOCAL:
+        HOME = os.environ.get("HOME", None)
+        return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
+    elif fs == fos.FileSystem.S3:
+        return fos.S3_PREFIX
+    elif fs == fos.FileSystem.GCS:
+        return fos.GCS_PREFIX
+    elif fs == fos.FileSystem.AZURE:
+        return fos.azure_alias_prefix or fos.azure_endpoint_prefix
+    elif fs == fos.FileSystem.MINIO:
+        return fos.minio_alias_prefix or fos.minio_endpoint_prefix
+    else:
+        raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def list_fileystems():
+    filesystems = fos.list_available_file_systems()
+    results = []
+    for fs in filesystems:
+        results.append(
+            {
+                "name": fs,
+                "default_path": get_default_path_for_filesystem(fs),
+            }
+        )
+    return results
+
+
+def list_files(dirpath):
+    fs = fos.get_file_system(dirpath)
+    if fos._is_root(dirpath) and fs is not fos.FileSystem.LOCAL:
+        dirs = [
+            {
+                "name": name,
+                "type": "directory",
+                "absolute_path": fos.join(dirpath, name),
+            }
+            for name in fos.list_buckets(fs)
+        ]
+        return dirs
+
+    dirs = [
+        {
+            "name": name,
+            "type": "directory",
+            "absolute_path": fos.join(dirpath, name),
+        }
+        for name in fos.list_subdirs(dirpath)
+    ]
+    files = [
+        {
+            "name": d["name"],
+            "date_modified": d["last_modified"].isoformat(),
+            "type": "file",
+            "size": d["size"],
+            "absolute_path": fos.join(dirpath, d["name"]),
+        }
+        for d in fos.list_files(dirpath, return_metadata=True)
+    ]
+    return dirs + files
+
+
 BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
@@ -291,4 +380,5 @@ BUILTIN_OPERATORS = [
     DeleteSelectedSamples(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
+    ListFiles(_builtin=True),
 ]

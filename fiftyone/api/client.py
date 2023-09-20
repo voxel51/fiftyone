@@ -71,7 +71,13 @@ class Client:
     def get(self, url_path: str) -> requests.Response:
         return self.__request("GET", url_path)
 
-    def post(self, url_path: str, payload: str, stream: bool = False) -> Any:
+    def post(
+        self,
+        url_path: str,
+        payload: str,
+        stream: bool = False,
+        timeout: Optional[int] = None,
+    ) -> Any:
         """Make post request"""
 
         data = payload
@@ -82,7 +88,12 @@ class Client:
             headers["Transfer-Encoding"] = "chunked"
 
         response = self.__request(
-            "POST", url_path, data=data, headers=headers, stream=stream
+            "POST",
+            url_path,
+            timeout,
+            data=data,
+            headers=headers,
+            stream=stream,
         )
 
         if stream:
@@ -92,17 +103,28 @@ class Client:
 
         return response.content
 
-    def post_file(self, url_path: str, file: BinaryIO):
+    def post_file(
+        self,
+        url_path: str,
+        file: BinaryIO,
+        timeout: Optional[int] = None,
+    ):
         response = self.__request(
             "POST",
             url_path,
+            timeout,
             files={"file": (file.name, file, "application/octet-stream")},
         )
         return response.content
 
-    def post_json(self, url_path: str, payload: Dict[str, Any]) -> Any:
+    def post_json(
+        self,
+        url_path: str,
+        payload: Dict[str, Any],
+        timeout: Optional[int] = None,
+    ) -> Any:
         """Make post request with json payload"""
-        response = self.__request("POST", url_path, json=payload)
+        response = self.__request("POST", url_path, timeout, json=payload)
 
         return response.json()
 
@@ -120,15 +142,25 @@ class Client:
         self._session.close()
 
     def post_graphql_request(
-        self, query: str, variables: Optional[Mapping[str, Any]] = None
+        self,
+        query: str,
+        variables: Optional[Mapping[str, Any]] = None,
+        timeout: Optional[int] = None,
     ) -> Mapping[str, Any]:
+        """Post a GraphQL request
+
+        Args:
+            query:  The GraphQL query string
+            variables: Optional variables to pass to query
+            timeout: Optional timeout to override the default
+        """
         url_path = "graphql/v1"
         payload = {"query": query, "variables": variables}
 
-        response_json = self.post_json(url_path, payload)
+        response_json = self.post_json(url_path, payload, timeout)
 
         if "errors" in response_json:
-            raise Exception(
+            raise errors.FiftyOneTeamsAPIError(
                 *[err["message"] for err in response_json["errors"]]
             )
 
@@ -139,8 +171,24 @@ class Client:
         query: str,
         connection_property: str,
         variables: Optional[Mapping[str, Any]] = None,
+        timeout: Optional[int] = None,
     ):
+        """Post a GraphQL request that uses the connection paging method
+
+        Args:
+            query:  The GraphQL query string
+            connection_property: The property name that contains the
+                paged data. Pass a '.'-separated string to indicate nested
+                fields; fieldA.fieldB -> data['fieldA']['fieldB']
+            variables: Optional variables to pass to query
+            timeout: Optional timeout to override the default
+
+        Raises:
+            ValueError: If one of the subproperties is not found for the
+                return data.
+        """
         variables = variables or {}
+        sub_properties = connection_property.split(".")
 
         after = None
         return_value = []
@@ -148,13 +196,21 @@ class Client:
             variables["after"] = after
             data = self.post_graphql_request(query=query, variables=variables)
 
-            for edge in data[connection_property]["edges"]:
+            for sub_property in sub_properties:
+                if (
+                    sub_property != sub_properties[-1]
+                    and data[sub_property] is None
+                ):
+                    raise ValueError(f"No property {sub_property} found")
+                data = data[sub_property]
+
+            for edge in data["edges"]:
                 return_value.append(edge["node"])
 
-            if not data[connection_property]["pageInfo"]["hasNextPage"]:
+            if not data["pageInfo"]["hasNextPage"]:
                 break
 
-            after = data[connection_property]["pageInfo"]["endCursor"]
+            after = data["pageInfo"]["endCursor"]
 
         return return_value
 
@@ -165,12 +221,17 @@ class Client:
         backoff.expo, requests.exceptions.ReadTimeout, max_time=60
     )
     def __request(
-        self, method: Literal["POST", "GET"], url_path: str, **request_kwargs
+        self,
+        method: Literal["POST", "GET"],
+        url_path: str,
+        timeout: Optional[int] = None,
+        **request_kwargs,
     ):
+        timeout = timeout or self._timeout
         url = os.path.join(self.__base_url, url_path)
 
         response = self._session.request(
-            method, url=url, timeout=self._timeout, **request_kwargs
+            method, url=url, timeout=timeout, **request_kwargs
         )
 
         if response.status_code == 401:

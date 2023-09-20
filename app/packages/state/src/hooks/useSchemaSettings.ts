@@ -23,6 +23,7 @@ export default function useSchemaSettings() {
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
+  const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
 
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
@@ -515,5 +516,6 @@ export default function useSchemaSettings() {
     toggleSelection,
     mergedSchema,
     resetAttributeFilters,
+    isFieldVisibilityActive,
   };
 }

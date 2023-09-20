@@ -93,18 +93,22 @@ class DownloadContext(object):
     def __init__(
         self, sample_collection, batch_size, clear=False, quiet=None, **kwargs
     ):
-        sample_collection._download_context = self
-
         self.sample_collection = sample_collection
         self.batch_size = batch_size
         self.clear = clear
         self.quiet = quiet
+        self.media_fields = kwargs.pop("media_fields", None)
         self.kwargs = kwargs
 
+        self._filepaths = None
         self._curr_batch_size = None
         self._total = None
 
     def __enter__(self):
+        self.sample_collection._download_context = self
+        self._filepaths = self.sample_collection._get_media_paths(
+            media_fields=self.media_fields
+        )
         self._curr_batch_size = self.batch_size
         self._total = 0
         return self
@@ -127,21 +131,27 @@ class DownloadContext(object):
         self._total += 1
 
     def _download_batch(self):
-        # @todo optimize to avoid appending `skip()`
-        view = self.sample_collection.skip(self._total).limit(self.batch_size)
+        i = self._total
+        j = self._total + self.batch_size
+        filepaths = self._filepaths[i:j]
 
         if self.quiet:
             with (
                 fou.SuppressLogging(level=logging.INFO),
                 fou.SetAttributes(fo.config, show_progress_bars=False),
             ):
-                view.download_media(**self.kwargs)
+                self._download_media(filepaths, **self.kwargs)
         else:
-            view.download_media(**self.kwargs)
+            self._download_media(filepaths, **self.kwargs)
+
+    def _download_media(self, filepaths, update=False, **kwargs):
+        if update:
+            foc.media_cache.update(filepaths=filepaths, **kwargs)
+        else:
+            foc.media_cache.get_local_paths(filepaths, download=True, **kwargs)
 
     def _clear_media(self):
-        media_fields = self.kwargs.get("media_fields", None)
-        self.sample_collection.clear_media(media_fields=media_fields)
+        foc.media_cache.clear(filepaths=self._filepaths)
 
 
 class SaveContext(object):
@@ -4859,6 +4869,7 @@ class SampleCollection(object):
         flat=False,
         match_expr=None,
         sort_expr=None,
+        create_index=True,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -4901,7 +4912,8 @@ class SampleCollection(object):
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or
+                a list of field names defining a compound group key, or a
+                :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
@@ -4922,6 +4934,9 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
+            create_index (True): whether to create an index, if necessary, to
+                optimize the grouping. Only applicable when grouping by
+                field(s), not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4934,6 +4949,7 @@ class SampleCollection(object):
                 flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
+                create_index=create_index,
             )
         )
 
@@ -6296,7 +6312,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Skip(skip))
 
     @view_stage
-    def sort_by(self, field_or_expr, reverse=False):
+    def sort_by(self, field_or_expr, reverse=False, create_index=True):
         """Sorts the samples in the collection by the given field(s) or
         expression(s).
 
@@ -6359,13 +6375,21 @@ class SampleCollection(object):
                     or expression as defined above, and ``order`` can be 1 or
                     any string starting with "a" for ascending order, or -1 or
                     any string starting with "d" for descending order
-
             reverse (False): whether to return the results in descending order
+            create_index (True): whether to create an index, if necessary, to
+                optimize the sort. Only applicable when sorting by field(s),
+                not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
+        return self._add_view_stage(
+            fos.SortBy(
+                field_or_expr,
+                reverse=reverse,
+                create_index=create_index,
+            )
+        )
 
     @view_stage
     def sort_by_similarity(

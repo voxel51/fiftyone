@@ -12,7 +12,6 @@ import time
 import unittest
 
 import psutil
-import pytest
 import requests
 import retrying
 

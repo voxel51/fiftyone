@@ -11,7 +11,6 @@ from pkg_resources import DistributionNotFound, get_distribution
 import re
 from setuptools import setup
 
-
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
     "fiftyone>0.14,<0.16",

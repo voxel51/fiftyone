@@ -28,6 +28,7 @@ input AggregationForm {
   mixed: Boolean!
   paths: [String!]!
   sampleIds: [ID!]!
+  slice: String
   slices: [String!]
   view: BSONArray!
   viewName: String = null
