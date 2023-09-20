@@ -449,7 +449,6 @@ class Mutation:
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)
-            print("\nmeta_filter\n", meta_filter)
         except Exception as e:
             try:
                 view = dataset.select_fields(meta_filter)

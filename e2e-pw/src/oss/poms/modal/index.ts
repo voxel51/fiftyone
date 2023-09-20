@@ -194,6 +194,11 @@ export class ModalPom {
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
+  async verifyModalOpenedSuccessfully() {
+    await this.modalPom.waitForSampleLoadDomAttribute();
+    await expect(this.modalPom.locator).toBeVisible();
+  }
+
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 

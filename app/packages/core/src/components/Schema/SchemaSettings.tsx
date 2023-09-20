@@ -269,6 +269,7 @@ const SchemaSettings = () => {
               Apply
             </Button>
             <Button
+              data-cy="field-visibility-btn-reset"
               style={{
                 color: theme.text.primary,
                 boxShadow: "none",

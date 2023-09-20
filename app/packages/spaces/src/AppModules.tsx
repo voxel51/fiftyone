@@ -40,7 +40,7 @@ function BasicPluginComponent(props: BasicPluginComponentProps) {
   const { name } = props;
   const [state, setState] = usePanelState(false);
 
-  console.log(name, state);
+  console.debug(name, state);
 
   return (
     <Typography variant="h3" component="span">

@@ -358,7 +358,7 @@ class Session(object):
             )
 
         if address is None:
-            if fou.is_docker() or focx.is_databricks_context():
+            if fou.is_container() or focx.is_databricks_context():
                 address = "0.0.0.0"
             else:
                 address = fo.config.default_app_address
