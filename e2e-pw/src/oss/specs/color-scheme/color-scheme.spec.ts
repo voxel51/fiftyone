@@ -61,7 +61,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("should be able to update color scheme", async ({
+  test("update color scheme's color pool", async ({
     grid,
     gridActionsRow,
     colorModal,
@@ -105,7 +105,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  test("should be able to update color by value - tag", async ({
+  test("update color by value mode, use tag as colorByAttribute", async ({
     gridActionsRow,
     colorModal,
     page,
@@ -144,7 +144,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  test("should be able to update color by value - detection - no colorbyattribute", async ({
+  test("update color by value - detection - no colorbyattribute", async ({
     grid,
     gridActionsRow,
     colorModal,
@@ -164,18 +164,20 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .first()
       .click({ force: true });
     // I can set value colors directly bypass choosing attribute by value
-    await colorModal.addANewPair("bird", "yellow");
-    await colorModal.addANewPair("person", "red");
-    await colorModal.addANewPair("horse", "green");
-    await colorModal.addANewPair("cat", "blue");
-    await colorModal.addANewPair("bottle", "white");
-    await colorModal.addANewPair("surfboard", "white");
-    await colorModal.addANewPair("knife", "white");
-    await colorModal.addANewPair("fork", "white");
-    await colorModal.addANewPair("cup", "white");
-    await colorModal.addANewPair("dining table", "white");
-    await colorModal.addANewPair("chair", "white");
-    await colorModal.addANewPair("cake", "white");
+    await colorModal.addNewPairs([
+      { value: "bird", color: "yellow" },
+      { value: "person", color: "red" },
+      { value: "horse", color: "green" },
+      { value: "cat", color: "blue" },
+      { value: "bottle", color: "white" },
+      { value: "surfboard", color: "white" },
+      { value: "knife", color: "white" },
+      { value: "fork", color: "white" },
+      { value: "cup", color: "white" },
+      { value: "dining table", color: "white" },
+      { value: "chair", color: "white" },
+      { value: "cake", color: "white" },
+    ]);
 
     await colorModal.closeColorModal();
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -184,7 +186,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  test("should be able to update color by value - ground_truth - with custom string field", async ({
+  test("update color by value - ground_truth - with custom string field", async ({
     grid,
     sidebar,
     gridActionsRow,
@@ -206,10 +208,12 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .click({ force: true });
     // I can set value colors directly bypass choosing attribute by value 'str_field'
     // "foo", "bar", "spam", "eggs"
-    await colorModal.addANewPair("foo", "green");
-    await colorModal.addANewPair("bar", "purple");
-    await colorModal.addANewPair("spam", "yellow");
-    await colorModal.addANewPair("eggs", "blue");
+    await colorModal.addNewPairs([
+      { value: "foo", color: "green" },
+      { value: "bar", color: "purple" },
+      { value: "spam", color: "yellow" },
+      { value: "eggs", color: "blue" },
+    ]);
     await colorModal.selectColorByAttribute("str_field");
 
     await colorModal.closeColorModal();

@@ -1,4 +1,4 @@
-import { Locator, Page, expect } from "src/oss/fixtures";
+import { Locator, Page } from "src/oss/fixtures";
 
 export class ColorModalPom {
   readonly page: Page;
@@ -18,60 +18,44 @@ export class ColorModalPom {
   }
 
   async selectActiveField(fieldName: string) {
-    const fieldSelector = this.page.getByTestId(
-      `color-modal-list-item-${fieldName}`
-    );
-    return fieldSelector.click();
+    await this.getFieldSelector(`color-modal-list-item-${fieldName}`).click();
   }
 
   async setColorBy(mode: "value" | "field") {
-    const globalTab = this.page.getByTestId(
+    await this.getFieldSelector(
       "color-modal-list-item-Global settings"
-    );
-    await globalTab.click();
-    const modeButton = this.page.getByTestId(`radio-button-${mode}`);
-    return modeButton.click();
+    ).click();
+    await this.getFieldSelector(`radio-button-${mode}`).click();
   }
 
   async shuffleColors() {
-    const globalTab = this.page.getByTestId(
+    await this.getFieldSelector(
       "color-modal-list-item-Global settings"
-    );
-    await globalTab.click();
-    const shuffleButton = this.page.getByTestId("shuffle-colors");
-    return shuffleButton.click();
+    ).click();
+    await this.getFieldSelector("shuffle-colors").click();
   }
 
   async useColorBlindColors() {
-    const globalTab = this.page.getByTestId(
+    await this.getFieldSelector(
       "color-modal-list-item-Global settings"
-    );
-    await globalTab.click();
-    const colorSettingCheckbox = this.page.getByTestId(
+    ).click();
+    await this.getFieldSelector(
       "checkbox-Use color blind friendly option"
-    );
-    return colorSettingCheckbox.click();
+    ).click();
   }
 
-  async setOpacity(value: number) {}
-
   async useMultiColorKeypoints() {
-    const globalTab = this.page.getByTestId(
+    await this.getFieldSelector(
       "color-modal-list-item-Global settings"
-    );
-    await globalTab.click();
-    const useMultiColorKeypointsCheckbox = this.page.getByTestId(
-      "checkbox-Multicolor keypoints"
-    );
-    return useMultiColorKeypointsCheckbox.click();
+    ).click();
+    await this.getFieldSelector("checkbox-Multicolor keypoints").click();
   }
 
   // field level setting
   async toggleColorMode() {
-    const toggleButton = this.page.getByTestId(
+    return this.getFieldSelector(
       "button-toggle between color by value or color by field mode"
-    );
-    return toggleButton.click();
+    ).click();
   }
 
   async useSpecialFieldColor(fieldName: string) {
@@ -82,26 +66,32 @@ export class ColorModalPom {
   }
 
   async setSpecialFieldColor(color: string) {
-    const container = this.page.getByTestId("field-color-div");
-    await container.isVisible();
-    await container.getByRole("textbox").fill(color);
+    await this.getFieldSelector("field-color-div").isVisible();
+    await this.getFieldSelector("field-color-div")
+      .getByRole("textbox")
+      .fill(color);
   }
 
   // value level setting
   async selectColorByAttribute(field: string) {
     await this.colorModal
-      .getByTestId("select-attribute")
+      .getByTestId("custom-colors-select-attribute")
       .click({ force: true });
     await this.colorModal
       .getByTestId(`filter-option-${field}`)
       .click({ force: true });
   }
 
+  async addNewPairs(pairs: { value: string; color: string }[]) {
+    for (const pair of pairs) {
+      await this.addANewPair(pair.value, pair.color);
+    }
+  }
+
   async addANewPair(value: string, color: string) {
-    const addButton = this.page.getByTestId("button-add a new pair");
-    await addButton.click();
+    await this.getFieldSelector("button-add a new pair").click();
     await this.page.getByPlaceholder("Value (e.g. 'car')").last().fill(value);
-    await this.page.getByPlaceholder("#dd00dd").last().fill(color);
+    await this.page.getByPlaceholder("#009900").last().fill(color);
   }
 
   async getJSONEditor() {
