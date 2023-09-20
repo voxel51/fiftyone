@@ -18,6 +18,7 @@ import eta.core.video as etav
 
 import fiftyone as fo
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
@@ -390,11 +391,11 @@ def sample_videos(
             the same basename of each video
         rel_dir (None): a relative directory to remove from the filepath of
             each video, if possible. The path is converted to an absolute path
-            (if necessary) via :func:`fiftyone.core.utils.normalize_path`. This
-            argument can be used in conjunction with ``output_dir`` to cause
-            the sampled frames to be written in a nested directory structure
-            within ``output_dir`` matching the shape of the input video's
-            folder structure
+            (if necessary) via :func:`fiftyone.core.storage.normalize_path`.
+            This argument can be used in conjunction with ``output_dir`` to
+            cause the sampled frames to be written in a nested directory
+            structure within ``output_dir`` matching the shape of the input
+            video's folder structure
         save_filepaths (False): whether to save the sampled frame paths in the
             ``output_field`` field of each frame of the input collection
         delete_originals (False): whether to delete the original videos after
@@ -840,8 +841,8 @@ def _transform_video(
     verbose=False,
     **kwargs,
 ):
-    inpath = fou.normalize_path(inpath)
-    outpath = fou.normalize_path(outpath)
+    inpath = fos.normalize_path(inpath)
+    outpath = fos.normalize_path(outpath)
     in_ext = os.path.splitext(inpath)[1]
     out_ext = os.path.splitext(outpath)[1]
 
@@ -1016,9 +1017,9 @@ def _get_outpath(inpath, output_dir=None, rel_dir=None):
         return inpath
 
     if rel_dir is not None:
-        rel_dir = fou.normalize_path(rel_dir)
+        rel_dir = fos.normalize_path(rel_dir)
         filename = os.path.relpath(inpath, rel_dir)
     else:
         filename = os.path.basename(inpath)
 
-    return os.path.join(fou.normalize_path(output_dir), filename)
+    return os.path.join(fos.normalize_path(output_dir), filename)

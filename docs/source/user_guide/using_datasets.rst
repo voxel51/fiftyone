@@ -2416,6 +2416,7 @@ cuboid in the format depicted below:
     0--------1
 
 .. note::
+
     FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
     dimensions of the image.
 
@@ -2426,21 +2427,30 @@ cuboid in the format depicted below:
     import numpy as np
     import fiftyone as fo
 
-    def random_cuboid():
-        x0, y0 = [0, 0.2] + 0.8 * np.random.rand(2)
-        dx, dy = (min(0.8 - x0, y0 - 0.2)) * np.random.rand(2)
+    def random_cuboid(frame_size):
+        width, height = frame_size
+        x0, y0 = np.array([width, height]) * ([0, 0.2] + 0.8 * np.random.rand(2))
+        dx, dy = (min(0.8 * width - x0, y0 - 0.2 * height)) * np.random.rand(2)
         x1, y1 = x0 + dx, y0 - dy
-        w, h = (min(1 - x1, y1)) * np.random.rand(2)
+        w, h = (min(width - x1, y1)) * np.random.rand(2)
         front = [(x0, y0), (x0 + w, y0), (x0 + w, y0 - h), (x0, y0 - h)]
         back = [(x1, y1), (x1 + w, y1), (x1 + w, y1 - h), (x1, y1 - h)]
-        return fo.Polyline.from_cuboid(front + back, label="cuboid")
+        vertices = front + back
+        return fo.Polyline.from_cuboid(
+            vertices, frame_size=frame_size, label="cuboid"
+        )
+
+    frame_size = (256, 128)
 
     filepath = "/tmp/image.png"
-    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+    size = (frame_size[1], frame_size[0], 3)
+    cv2.imwrite(filepath, np.full(size, 255, dtype=np.uint8))
 
     dataset = fo.Dataset("cuboids")
     dataset.add_samples(
-        [fo.Sample(filepath=filepath, cuboid=random_cuboid()) for _ in range(51)]
+        [
+            fo.Sample(filepath=filepath, cuboid=random_cuboid(frame_size))
+            for _ in range(51)]
     )
 
     session = fo.launch_app(dataset)
@@ -2456,7 +2466,7 @@ dynamically adding new fields to each |Polyline| instance:
     :linenos:
 
     polyline = fo.Polyline.from_cuboid(
-        vertics,
+        vertics, frame_size=frame_size,
         label="vehicle",
         filled=True,
         type="sedan",  # custom attribute
@@ -2479,8 +2489,8 @@ width/height, and counter-clockwise rotation, in radians.
 
 .. note::
 
-    FiftyOne stores all coordinates and dimensions as floats in `[0, 1]`
-    relative to the dimensions of the image.
+    FiftyOne stores vertex coordinates as floats in `[0, 1]` relative to the
+    dimensions of the image.
 
 .. code-block:: python
     :linenos:
@@ -2489,18 +2499,27 @@ width/height, and counter-clockwise rotation, in radians.
     import numpy as np
     import fiftyone as fo
 
-    def random_rotated_box():
-        xc, yc = 0.2 + 0.6 * np.random.rand(2)
-        w, h = 1.5 * (min(xc, yc, 1 - xc, 1 - yc)) * np.random.rand(2)
+    def random_rotated_box(frame_size):
+        width, height = frame_size
+        xc, yc = np.array([width, height]) * (0.2 + 0.6 * np.random.rand(2))
+        w, h = 1.5 * (min(xc, yc, width - xc, height - yc)) * np.random.rand(2)
         theta = 2 * np.pi * np.random.rand()
-        return fo.Polyline.from_rotated_box(xc, yc, w, h, theta, label="box")
+        return fo.Polyline.from_rotated_box(
+            xc, yc, w, h, theta, frame_size=frame_size, label="box"
+        )
+
+    frame_size = (256, 128)
 
     filepath = "/tmp/image.png"
-    cv2.imwrite(filepath, np.full((16, 16, 3), 255, dtype=np.uint8))
+    size = (frame_size[1], frame_size[0], 3)
+    cv2.imwrite(filepath, np.full(size, 255, dtype=np.uint8))
 
     dataset = fo.Dataset("rotated-boxes")
     dataset.add_samples(
-        [fo.Sample(filepath=filepath, box=random_rotated_box()) for _ in range(51)]
+        [
+            fo.Sample(filepath=filepath, box=random_rotated_box(frame_size))
+            for _ in range(51)
+        ]
     )
 
     session = fo.launch_app(dataset)
@@ -2516,7 +2535,7 @@ bounding boxes by dynamically adding new fields to each |Polyline| instance:
     :linenos:
 
     polyline = fo.Polyline.from_rotated_box(
-        xc, yc, width, height, theta,
+        xc, yc, width, height, theta, frame_size=frame_size,
         label="cat",
         mood="surly",  # custom attribute
     )

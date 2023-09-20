@@ -16,6 +16,7 @@ import {
 } from "./styled-components";
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
 import { stringifyError } from "./utils";
+import { types } from ".";
 
 export default function OperatorPrompt() {
   const show = useRecoilValue(showOperatorPromptSelector);
@@ -41,6 +42,13 @@ function ActualOperatorPrompt() {
     submitButtonText: "Execute",
     cancelButtonText: "Cancel",
   };
+
+  const customPromptView = operatorPrompt?.inputFields?.view;
+  if (customPromptView && customPromptView.name == "PromptView") {
+    const prompt = types.PromptView.fromJSON(customPromptView);
+    if (prompt.submitButtonLabel)
+      paletteProps.submitButtonText = prompt.submitButtonLabel;
+  }
 
   if (operatorPrompt.showPrompt) {
     paletteProps.onSubmit = operatorPrompt.execute;

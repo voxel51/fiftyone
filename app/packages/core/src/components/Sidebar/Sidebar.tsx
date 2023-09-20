@@ -6,7 +6,7 @@ import { move } from "@fiftyone/utilities";
 
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEventHandler, replace } from "@fiftyone/state";
+import { replace, useEventHandler } from "@fiftyone/state";
 import { scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
 import { Resizable } from "re-resizable";
@@ -245,22 +245,18 @@ const isDisabledEntry = (
 ) => {
   if (entry.kind === fos.EntryKind.PATH) {
     return (
-      entry.path.startsWith("tags.") ||
-      entry.path.startsWith("_label_tags.") ||
+      entry.path === "tags" ||
+      entry.path === "_label_tags" ||
       disabled.has(entry.path)
     );
   }
 
   if (entry.kind === fos.EntryKind.EMPTY) {
-    return entry.group === "tags" || entry.group === "label tags";
+    return entry.group === "tags";
   }
 
   if (excludeGroups && entry.kind === fos.EntryKind.GROUP) {
-    return (
-      entry.name === "tags" ||
-      entry.name === "label tags" ||
-      entry.name === "other"
-    );
+    return entry.name === "tags" || entry.name === "other";
   }
 
   if (entry.kind === fos.EntryKind.INPUT) {
@@ -483,6 +479,16 @@ const InteractiveSidebar = ({
           config: {
             ...config.stiff,
             bounce: 0,
+          },
+          onRest: () => {
+            // fires event for e2e testing to avoid using onWait
+            if (container?.current) {
+              container?.current.dispatchEvent(
+                new CustomEvent("animation-onRest", {
+                  bubbles: true,
+                })
+              );
+            }
           },
           overflow: "visible",
         }),
@@ -742,7 +748,7 @@ const InteractiveSidebar = ({
               borderTopRightRadius: 8,
             }}
           >
-            <ViewSelection />
+            <ViewSelection id="saved-views" />
           </Box>
         </Suspense>
       )}
@@ -750,6 +756,7 @@ const InteractiveSidebar = ({
         <Filter modal={modal} />
         <SidebarColumn
           ref={container}
+          data-cy="sidebar-column"
           onScroll={({ target }) => {
             if (start.current !== null) {
               start.current += scroll.current - target.scrollTop;
@@ -783,8 +790,18 @@ const InteractiveSidebar = ({
                 style.zIndex = 0;
               }
 
+              let dataCy = `-field`;
+              if (entry.kind === fos.EntryKind.GROUP) {
+                dataCy = `sidebar-group-${entry.name}` + dataCy;
+              } else if (entry.kind === fos.EntryKind.PATH) {
+                dataCy = entry.path + dataCy;
+              } else {
+                dataCy = "sidebar" + dataCy;
+              }
+
               return (
                 <animated.div
+                  data-cy={dataCy}
                   onMouseDownCapture={() => {
                     lastTouched.current = undefined;
                     placeItems();

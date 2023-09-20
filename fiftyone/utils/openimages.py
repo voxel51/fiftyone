@@ -27,6 +27,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.utils.aws as foua
 import fiftyone.utils.data as foud
+import fiftyone.utils.image as foui
 
 
 logger = logging.getLogger(__name__)
@@ -1842,7 +1843,7 @@ def _create_segmentations(seg_data, image_id, classes_map, dataset_dir):
             warnings.warn(msg)
             return None
 
-        rgb_mask = etai.read(mask_path)
+        rgb_mask = foui.read(mask_path)
         mask = etai.rgb_to_gray(rgb_mask) > 122
         h, w = mask.shape
         cropped_mask = mask[

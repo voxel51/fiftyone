@@ -6,6 +6,7 @@ Definition of the `fiftyone` command-line interface (CLI).
 |
 """
 import argparse
+import warnings
 from collections import defaultdict
 from datetime import datetime
 import json
@@ -16,6 +17,7 @@ import time
 import textwrap
 
 import argcomplete
+from bson import ObjectId
 from tabulate import tabulate
 import webbrowser
 
@@ -30,6 +32,8 @@ import fiftyone.core.session as fos
 import fiftyone.core.utils as fou
 import fiftyone.migrations as fom
 import fiftyone.operators as foo
+import fiftyone.operators.delegated as food
+import fiftyone.operators.executor as fooe
 import fiftyone.plugins as fop
 import fiftyone.utils.data as foud
 import fiftyone.utils.image as foui
@@ -37,6 +41,7 @@ import fiftyone.utils.quickstart as fouq
 import fiftyone.utils.video as fouv
 import fiftyone.zoo.datasets as fozd
 import fiftyone.zoo.models as fozm
+from fiftyone import ViewField as F
 
 # pylint: disable=import-error,no-name-in-module
 import fiftyone.brain as fob
@@ -92,6 +97,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "datasets", DatasetsCommand)
         _register_command(subparsers, "migrate", MigrateCommand)
         _register_command(subparsers, "operators", OperatorsCommand)
+        _register_command(subparsers, "delegated", DelegatedCommand)
         _register_command(subparsers, "plugins", PluginsCommand)
         _register_command(subparsers, "utils", UtilsCommand)
         _register_command(subparsers, "zoo", ZooCommand)
@@ -416,6 +422,9 @@ class DatasetsListCommand(Command):
 
         # List datasets matching a given pattern
         fiftyone datasets list --glob-patt 'quickstart-*'
+
+        # List datasets with the given tag(s)
+        fiftyone datasets list --tags automotive healthcare
     """
 
     @staticmethod
@@ -426,10 +435,17 @@ class DatasetsListCommand(Command):
             metavar="PATT",
             help="an optional glob pattern of dataset names to include",
         )
+        parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_datasets(glob_patt=args.glob_patt)
+        datasets = fod.list_datasets(glob_patt=args.glob_patt, tags=args.tags)
 
         if datasets:
             for dataset in datasets:
@@ -446,6 +462,7 @@ class DatasetsInfoCommand(Command):
         # Print basic information about multiple datasets
         fiftyone datasets info
         fiftyone datasets info --glob-patt 'quickstart-*'
+        fiftyone datasets info --tags automotive healthcare
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -468,6 +485,13 @@ class DatasetsInfoCommand(Command):
             help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
+        parser.add_argument(
             "-s",
             "--sort-by",
             metavar="FIELD",
@@ -486,7 +510,9 @@ class DatasetsInfoCommand(Command):
         if args.name:
             _print_dataset_info(args.name)
         else:
-            _print_all_dataset_info(args.glob_patt, args.sort_by, args.reverse)
+            _print_all_dataset_info(
+                args.glob_patt, args.tags, args.sort_by, args.reverse
+            )
 
 
 def _print_dataset_info(name):
@@ -494,8 +520,8 @@ def _print_dataset_info(name):
     print(dataset)
 
 
-def _print_all_dataset_info(glob_patt, sort_by, reverse):
-    info = fod.list_datasets(glob_patt=glob_patt, info=True)
+def _print_all_dataset_info(glob_patt, tags, sort_by, reverse):
+    info = fod.list_datasets(glob_patt=glob_patt, tags=tags, info=True)
 
     headers = [
         "name",
@@ -505,7 +531,6 @@ def _print_all_dataset_info(glob_patt, sort_by, reverse):
         "persistent",
         "media_type",
         "tags",
-        "num_samples",
     ]
 
     if sort_by in headers:
@@ -767,6 +792,11 @@ class DatasetsExportCommand(Command):
         # Export the dataset to disk in JSON format
         fiftyone datasets export <name> --json-path <json-path>
 
+        # Only export cats and dogs from the validation split
+        fiftyone datasets export <name> \\
+            --filters tags=validation ground_truth=cat,dog \\
+            --export-dir <export-dir> --type <type> --label-field ground_truth
+
         # Perform a customized export of a dataset
         fiftyone datasets export <name> \\
             --type <type> \\
@@ -805,6 +835,18 @@ class DatasetsExportCommand(Command):
             help="the fiftyone.types.Dataset type in which to export",
         )
         parser.add_argument(
+            "--filters",
+            nargs="+",
+            metavar="KEY=VAL",
+            action=_ParseKwargsAction,
+            help=(
+                "specific sample tags or class labels to export. To use "
+                "sample tags, pass tags as `tags=train,val` and to use label "
+                "filters, pass label field and values as in "
+                "ground_truth=car,person,dog"
+            ),
+        )
+        parser.add_argument(
             "-k",
             "--kwargs",
             nargs="+",
@@ -823,9 +865,19 @@ class DatasetsExportCommand(Command):
         json_path = args.json_path
         dataset_type = etau.get_class(args.type) if args.type else None
         label_field = args.label_field
+        label_filters = args.filters or {}
+        tags = label_filters.pop("tags", [])
         kwargs = args.kwargs or {}
 
         dataset = fod.load_dataset(name)
+
+        if tags:
+            dataset = dataset.match_tags(tags)
+
+        for field_name, labels in label_filters.items():
+            dataset = dataset.filter_labels(
+                field_name, F("label").is_in(labels)
+            )
 
         if json_path:
             dataset.write_json(json_path)
@@ -2690,6 +2742,360 @@ def _print_operator_info(operator_uri):
 
     d = operator.config.to_json()
     _print_dict_as_table(d)
+
+
+class DelegatedCommand(Command):
+    """Tools for working with FiftyOne delegated operations."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "launch", DelegatedLaunchCommand)
+        _register_command(subparsers, "list", DelegatedListCommand)
+        _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class DelegatedLaunchCommand(Command):
+    """Launches a service for running delegated operations.
+
+    Examples::
+
+        # Launch a local service
+        fiftyone delegated launch
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-t",
+            "--type",
+            default="local",
+            metavar="TYPE",
+            help="the type of service to launch. The default is 'local'",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        supported_types = ("local",)
+        if args.type not in supported_types:
+            raise ValueError(
+                "Unsupported service type '%s'. Supported values are %s"
+                % (args.type, supported_types)
+            )
+
+        if args.type == "local":
+            _launch_delegated_local()
+
+
+def _launch_delegated_local():
+    from fiftyone.core.session.session import _WELCOME_MESSAGE
+
+    try:
+        dos = food.DelegatedOperationService()
+
+        print(_WELCOME_MESSAGE.format(foc.VERSION))
+        print("Delegated operation service running")
+        print("\nTo exit, press ctrl + c")
+        while True:
+            dos.execute_queued_operations(log=True)
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+
+
+class DelegatedListCommand(Command):
+    """List delegated operations.
+
+    Examples::
+
+        # List all delegated operations
+        fiftyone delegated list
+
+        # List some specific delegated operations
+        fiftyone delegated list \\
+            --dataset quickstart \\
+            --operator @voxel51/io/export_samples \\
+            --state COMPLETED \\
+            --sort-by COMPLETED_AT \\
+            --limit 10
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-o",
+            "--operator",
+            default=None,
+            metavar="OPERATOR",
+            help="only list operations for this operator",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset",
+            default=None,
+            metavar="DATASET",
+            help="only list operations for this dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--state",
+            default=None,
+            help=(
+                "only list operations with this state. Supported values are "
+                "('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')"
+            ),
+        )
+        parser.add_argument(
+            "--sort-by",
+            default="queued_at",
+            help=(
+                "how to sort the operations. Supported values are "
+                "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
+            ),
+        )
+        parser.add_argument(
+            "--reverse",
+            action="store_true",
+            default=None,
+            help="whether to sort in reverse order",
+        )
+        parser.add_argument(
+            "-l",
+            "--limit",
+            type=int,
+            default=None,
+            help="a maximum number of operations to show",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+
+        state = _parse_state(args.state)
+        paging = _parse_paging(
+            sort_by=args.sort_by, reverse=args.reverse, limit=args.limit
+        )
+
+        ops = dos.list_operations(
+            operator=args.operator,
+            dataset_name=args.dataset,
+            run_state=state,
+            paging=paging,
+        )
+
+        _print_delegated_list(ops)
+
+
+def _parse_state(state):
+    if state is None:
+        return None
+
+    return state.lower()
+
+
+def _parse_paging(sort_by=None, reverse=None, limit=None):
+    from fiftyone.factory import DelegatedOperationPagingParams
+
+    sort_by = _parse_sort_by(sort_by)
+    sort_direction = _parse_reverse(reverse)
+    return DelegatedOperationPagingParams(
+        sort_by=sort_by, sort_direction=sort_direction, limit=limit
+    )
+
+
+def _parse_sort_by(sort_by):
+    if sort_by is None:
+        return None
+
+    return sort_by.lower()
+
+
+def _parse_reverse(reverse):
+    from fiftyone.factory import SortDirection
+
+    if reverse is None:
+        return None
+
+    return SortDirection.ASCENDING if reverse else SortDirection.DESCENDING
+
+
+def _print_delegated_list(ops):
+    headers = [
+        "id",
+        "operator",
+        "dataset",
+        "queued_at",
+        "state",
+        "completed",
+    ]
+
+    rows = []
+    for op in ops:
+        rows.append(
+            {
+                "id": op.id,
+                "operator": op.operator,
+                "dataset": op.context.request_params.get("dataset_name", None),
+                "queued_at": op.queued_at,
+                "state": op.run_state,
+                "completed": op.run_state == fooe.ExecutionRunState.COMPLETED,
+            }
+        )
+
+    records = [tuple(_format_cell(r[key]) for key in headers) for r in rows]
+
+    table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
+    print(table_str)
+
+
+class DelegatedInfoCommand(Command):
+    """Prints information about a delegated operation.
+
+    Examples::
+
+        # Print information about a delegated operation
+        fiftyone delegated info <id>
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument("id", metavar="ID", help="the operation ID")
+
+    @staticmethod
+    def execute(parser, args):
+        dos = food.DelegatedOperationService()
+        op = dos.get(ObjectId(args.id))
+        fo.pprint(op._doc)
+
+
+class DelegatedCleanupCommand(Command):
+    """Cleanup delegated operations.
+
+    Examples::
+
+        # Delete all failed operations associated with a given dataset
+        fiftyone delegated cleanup --dataset quickstart --state FAILED
+
+        # Delete all delegated operations associated with non-existent datasets
+        fiftyone delegated cleanup --orphan
+
+        # Print information about operations rather than actually deleting them
+        fiftyone delegated cleanup --orphan --dry-run
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "-o",
+            "--operator",
+            default=None,
+            metavar="OPERATOR",
+            help="cleanup operations for this operator",
+        )
+        parser.add_argument(
+            "-d",
+            "--dataset",
+            default=None,
+            metavar="DATASET",
+            help="cleanup operations for this dataset",
+        )
+        parser.add_argument(
+            "-s",
+            "--state",
+            default=None,
+            help=(
+                "delete operations in this state. Supported values are "
+                "('QUEUED', 'COMPLETED', 'FAILED')"
+            ),
+        )
+        parser.add_argument(
+            "--orphan",
+            action="store_true",
+            default=None,
+            help="delete all operations associated with non-existent datasets",
+        )
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            default=None,
+            help=(
+                "whether to print information rather than actually deleting "
+                "operations"
+            ),
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.orphan:
+            _cleanup_orphan_delegated(dry_run=args.dry_run)
+        elif args.operator or args.dataset or args.state:
+            state = _parse_state(args.state)
+            _cleanup_delegated(
+                operator=args.operator,
+                dataset=args.dataset,
+                state=state,
+                dry_run=args.dry_run,
+            )
+        else:
+            print("No cleanup options specified")
+
+
+def _cleanup_orphan_delegated(dry_run=False):
+    from fiftyone.core.odm import get_db_conn
+
+    db = get_db_conn()
+    dataset_ids = set(d["_id"] for d in db.datasets.find({}, {"_id": 1}))
+
+    dos = food.DelegatedOperationService()
+    ops = dos.list_operations()
+
+    del_ids = set(op.id for op in ops if op.dataset_id not in dataset_ids)
+
+    num_del = len(del_ids)
+    if num_del == 0:
+        return
+
+    if dry_run:
+        print("Found %d orphan operation(s)" % num_del)
+    else:
+        print("Deleting %d orphan operation(s)" % num_del)
+        for del_id in del_ids:
+            dos.delete_operation(del_id)
+
+
+def _cleanup_delegated(operator=None, dataset=None, state=None, dry_run=False):
+    if state == fooe.ExecutionRunState.RUNNING:
+        raise ValueError(
+            "Deleting operations that are currently running is not allowed"
+        )
+
+    dos = food.DelegatedOperationService()
+    ops = dos.list_operations(
+        operator=operator,
+        dataset_name=dataset,
+        run_state=state,
+    )
+
+    del_ids = set()
+    for op in ops:
+        if op.run_state != fooe.ExecutionRunState.RUNNING:
+            del_ids.add(op.id)
+
+    num_del = len(del_ids)
+    if num_del == 0:
+        return
+
+    if dry_run:
+        print("Found %d operation(s) to delete" % num_del)
+    else:
+        print("Deleting %d operation(s)" % num_del)
+        for del_id in del_ids:
+            dos.delete_operation(del_id)
 
 
 class PluginsCommand(Command):

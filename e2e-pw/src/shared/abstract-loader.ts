@@ -1,27 +1,24 @@
 import { Page } from "@playwright/test";
 import { PythonRunner } from "./python-runner/python-runner";
 
-type WebServerProcessConfig = {
-  port: number;
-  processId: number;
-};
+export type WaitUntilGridVisibleOptions = {
+  /**
+   * Whether the dataset is empty.
+   */
+  isEmptyDataset?: boolean;
 
+  /**
+   * Name of the saved view to be loaded.
+   */
+  savedView?: string;
+
+  /**
+   * Whether to wait for the grid to be visible.
+   */
+  withGrid?: boolean;
+};
 export abstract class AbstractFiftyoneLoader {
   protected pythonRunner: PythonRunner;
-  protected webserverProcessConfig: WebServerProcessConfig;
-
-  /**
-   * This method is used to start the FiftyOne webserver.
-   *
-   * @param port port on which the webserver should be started
-   */
-  abstract startWebServer(port: number): Promise<void>;
-
-  /**
-   * This method is used to stop the FiftyOne webserver.
-   *
-   */
-  abstract stopWebServer(): Promise<void>;
 
   /**
    * This method is used to load a dataset from the FiftyOne Zoo.
@@ -55,13 +52,11 @@ export abstract class AbstractFiftyoneLoader {
    *
    * @param page Playwright page object.
    * @param datasetName Name of the dataset to be loaded into the view.
-   * @param savedView Optional saved view name
-   * @param savedView Optional flag to wait until grid load. Default is true
+   * @param options Options to be used when waiting for the grid to be visible.
    */
-  abstract waitUntilLoad(
+  abstract waitUntilGridVisible(
     page: Page,
     datasetName: string,
-    savedView?: string,
-    withGrid?: boolean
+    options?: WaitUntilGridVisibleOptions
   ): Promise<void>;
 }

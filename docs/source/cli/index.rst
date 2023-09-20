@@ -64,7 +64,7 @@ The FiftyOne command-line interface.
 .. code-block:: text
 
     fiftyone [-h] [-v] [--all-help]
-             {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
+             {quickstart,annotation,brain,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
              ...
 
 **Arguments**
@@ -77,17 +77,18 @@ The FiftyOne command-line interface.
       --all-help            show help recursively and exit
 
     available commands:
-      {quickstart,annotation,app,config,constants,convert,datasets,migrate,utils,zoo}
+      {quickstart,annotation,brain,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
-        app                 Tools for working with the FiftyOne App.
         brain               Tools for working with the FiftyOne Brain.
+        app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
         convert             Convert datasets on disk between supported formats.
         datasets            Tools for working with FiftyOne datasets.
         migrate             Tools for migrating the FiftyOne database.
         operators           Tools for working with FiftyOne operators.
+        delegated           Tools for working with FiftyOne delegated operations.
         plugins             Tools for working with FiftyOne plugins.
         utils               FiftyOne utilities.
         zoo                 Tools for working with the FiftyOne Zoo.
@@ -323,7 +324,7 @@ List FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets list [-h] [-p PATT]
+    fiftyone datasets list [-h] [-p PATT] [-t TAG [TAG ...]]
 
 **Arguments**
 
@@ -333,6 +334,8 @@ List FiftyOne datasets.
       -h, --help        show this help message and exit
       -p PATT, --glob-patt PATT
                         an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                        only show datasets with the given tag(s)
 
 **Examples**
 
@@ -341,8 +344,15 @@ List FiftyOne datasets.
     # List available datasets
     fiftyone datasets list
 
+.. code-block:: shell
+
     # List datasets matching a given pattern
     fiftyone datasets list --glob-patt 'quickstart-*'
+
+.. code-block:: shell
+
+    # List datasets with the given tag(s)
+    fiftyone datasets list --tags automotive healthcare
 
 .. _cli-fiftyone-datasets-info:
 
@@ -353,7 +363,7 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] [-p PATT] [-s FIELD] [-r] [NAME]
+    fiftyone datasets info [-h] [-p PATT] [-t TAG [TAG ...]] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
@@ -366,6 +376,8 @@ Print information about FiftyOne datasets.
       -h, --help            show this help message and exit
       -p PATT, --glob-patt PATT
                             an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                            only show datasets with the given tag(s)
       -s FIELD, --sort-by FIELD
                             a field to sort the dataset rows by
       -r, --reverse         whether to print the results in reverse order
@@ -377,6 +389,7 @@ Print information about FiftyOne datasets.
     # Print basic information about multiple datasets
     fiftyone datasets info
     fiftyone datasets info --glob-patt 'quickstart-*'
+    fiftyone datasets info --tags automotive healthcare
     fiftyone datasets info --sort-by created_at
     fiftyone datasets info --sort-by name --reverse
 
@@ -574,6 +587,7 @@ Export FiftyOne datasets to disk in supported formats.
 
     fiftyone datasets export [-h] [-d EXPORT_DIR] [-j JSON_PATH]
                              [-f LABEL_FIELD] [-t TYPE]
+                             [--filters KEY=VAL [KEY=VAL ...]]
                              [-k KEY=VAL [KEY=VAL ...]]
                              NAME
 
@@ -593,6 +607,11 @@ Export FiftyOne datasets to disk in supported formats.
       -f LABEL_FIELD, --label-field LABEL_FIELD
                             the name of the label field to export
       -t TYPE, --type TYPE  the fiftyone.types.Dataset type in which to export
+      --filters KEY=VAL [KEY=VAL ...]
+                            specific sample tags or class labels to export. To
+                            use sample tags, pass tags as `tags=train,val` and
+                            to use label filters, pass label field and values
+                            as in ground_truth=car,person,dog
       -k KEY=VAL [KEY=VAL ...], --kwargs KEY=VAL [KEY=VAL ...]
                             additional type-specific keyword arguments for
                             `fiftyone.core.collections.SampleCollection.export()`
@@ -609,6 +628,13 @@ Export FiftyOne datasets to disk in supported formats.
 
     # Export the dataset to disk in JSON format
     fiftyone datasets export <name> --json-path <json-path>
+
+.. code-block:: shell
+
+    # Only export cats and dogs from the validation split
+    fiftyone datasets export <name> \\
+        --filters tags=validation ground_truth=cat,dog \\
+        --export-dir <export-dir> --type <type> --label-field ground_truth
 
 .. code-block:: shell
 
@@ -835,8 +861,12 @@ List operators that you've downloaded or created locally.
     # List all locally available operators
     fiftyone operators list
 
+.. code-block:: shell
+
     # List enabled operators
     fiftyone operators list --enabled
+
+.. code-block:: shell
 
     # List disabled operators
     fiftyone operators list --disabled
@@ -868,6 +898,190 @@ Prints information about operators that you've downloaded or created locally.
 
     # Prints information about an operator
     fiftyone operators info <uri>
+
+.. _cli-fiftyone-delegated:
+
+FiftyOne delegated operations
+-----------------------------
+
+Tools for working with FiftyOne delegated operations.
+
+.. code-block:: text
+
+    fiftyone delegated [-h] [--all-help] {launch,list,info,cleanup} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help   show this help message and exit
+      --all-help   show help recursively and exit
+
+    available commands:
+      {launch,list,info,cleanup}
+        launch              Launches a service for running delegated operations.
+        list                List delegated operations.
+        info                Prints information about a delegated operation.
+        cleanup             Cleanup delegated operations.
+
+.. _cli-fiftyone-delegated-launch:
+
+Launch delegated service
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Launches a service for running delegated operations.
+
+.. code-block:: text
+
+    fiftyone delegated launch [-h] [-t TYPE]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -t TYPE, --type TYPE  the type of service to launch. The default is 'local'
+
+**Examples**
+
+.. code-block:: shell
+
+    # Launch a local service
+    fiftyone delegated launch
+
+.. _cli-fiftyone-delegated-list:
+
+List delegated operations
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+List delegated operations.
+
+.. code-block:: text
+
+    fiftyone delegated list [-h]
+                            [-o OPERATOR]
+                            [-d DATASET]
+                            [-s STATE]
+                            [--sort-by SORT_BY]
+                            [--reverse]
+                            [-l LIMIT]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -o OPERATOR, --operator OPERATOR
+                            only list operations for this operator
+      -d DATASET, --dataset DATASET
+                            only list operations for this dataset
+      -s STATE, --state STATE
+                            only list operations with this state. Supported
+                            values are ('QUEUED', 'RUNNING', 'COMPLETED', 'FAILED')
+      --sort-by SORT_BY     how to sort the operations. Supported values are
+                            ('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')
+      --reverse             whether to sort in reverse order
+      -l LIMIT, --limit LIMIT
+                            a maximum number of operations to show
+
+**Examples**
+
+.. code-block:: shell
+
+    # List all delegated operations
+    fiftyone delegated list
+
+.. code-block:: shell
+
+    # List some specific delegated operations
+    fiftyone delegated list \
+        --dataset quickstart \
+        --operator @voxel51/io/export_samples \
+        --state COMPLETED \
+        --sort-by COMPLETED_AT \
+        --limit 10
+
+.. _cli-fiftyone-delegated-info:
+
+Delegated operation info
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prints information about a delegated operation.
+
+.. code-block:: text
+
+    fiftyone delegated info [-h] ID
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      ID          the operation ID
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print information about a delegated operation
+    fiftyone delegated info <id>
+
+.. _cli-fiftyone-delegated-cleanup:
+
+Cleanup delegated operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Cleanup delegated operations.
+
+.. code-block:: text
+
+    fiftyone delegated cleanup [-h]
+                               [-o OPERATOR]
+                               [-d DATASET]
+                               [-s STATE]
+                               [--orphan]
+                               [--dry-run]
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      -o OPERATOR, --operator OPERATOR
+                            cleanup operations for this operator
+      -d DATASET, --dataset DATASET
+                            cleanup operations for this dataset
+      -s STATE, --state STATE
+                            delete operations in this state. Supported values
+                            are ('QUEUED', 'COMPLETED', 'FAILED')
+      --orphan              delete all operations associated with non-existent
+                            datasets
+      --dry-run             whether to print information rather than actually
+                            deleting operations
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete all failed operations associated with a given dataset
+    fiftyone delegated cleanup --dataset quickstart --state FAILED
+
+.. code-block:: shell
+
+    # Delete all delegated operations associated with non-existent datasets
+    fiftyone delegated cleanup --orphan
+
+.. code-block:: shell
+
+    # Print information about operations rather than actually deleting them
+    fiftyone delegated cleanup --orphan --dry-run
 
 .. _cli-fiftyone-plugins:
 
@@ -927,8 +1141,12 @@ List plugins that you've downloaded or created locally.
     # List all locally available plugins
     fiftyone plugins list
 
+.. code-block:: shell
+
     # List enabled plugins
     fiftyone plugins list --enabled
+
+.. code-block:: shell
 
     # List disabled plugins
     fiftyone plugins list --disabled
@@ -1012,8 +1230,12 @@ formats:
     # Download plugins from a GitHub repository URL
     fiftyone plugins download <github-repo-url>
 
+.. code-block:: shell
+
     # Download plugins by specifying the GitHub repository details
     fiftyone plugins download <user>/<repo>[/<ref>]
+
+.. code-block:: shell
 
     # Download specific plugins from a URL with a custom search depth
     fiftyone plugins download \
@@ -1053,8 +1275,12 @@ Handles package requirements for plugins.
     # Print requirements for a plugin
     fiftyone plugins requirements <name> --print
 
+.. code-block:: shell
+
     # Install any requirements for the plugin
     fiftyone plugins requirements <name> --install
+
+.. code-block:: shell
 
     # Ensures that the requirements for the plugin are satisfied
     fiftyone plugins requirements <name> --ensure
@@ -1106,6 +1332,8 @@ Creates or initializes a plugin.
     # Initialize a new plugin
     fiftyone plugins create <name>
 
+.. code-block:: shell
+
     # Create a plugin from existing files
     fiftyone plugins create \
         <name> \
@@ -1142,8 +1370,12 @@ Enables the given plugin(s).
     # Enable a plugin
     fiftyone plugins enable <name>
 
+.. code-block:: shell
+
     # Enable multiple plugins
     fiftyone plugins enable <name1> <name2> ...
+
+.. code-block:: shell
 
     # Enable all plugins
     fiftyone plugins enable --all
@@ -1177,8 +1409,12 @@ Disables the given plugin(s).
     # Disable a plugin
     fiftyone plugins disable <name>
 
+.. code-block:: shell
+
     # Disable multiple plugins
     fiftyone plugins disable <name1> <name2> ...
+
+.. code-block:: shell
 
     # Disable all plugins
     fiftyone plugins disable --all
@@ -1212,8 +1448,12 @@ Delete plugins from your local machine.
     # Delete a plugin from local disk
     fiftyone plugins delete <name>
 
+.. code-block:: shell
+
     # Delete multiple plugins from local disk
     fiftyone plugins delete <name1> <name2> ...
+
+.. code-block:: shell
 
     # Delete all plugins from local disk
     fiftyone plugins delete --all

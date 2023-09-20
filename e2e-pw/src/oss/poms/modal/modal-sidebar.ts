@@ -44,4 +44,12 @@ class SidebarAsserter {
       .textContent();
     expect(text).toBe(value);
   }
+
+  async verifySidebarEntryTexts(entries: { [key: string]: string }) {
+    await Promise.all(
+      Object.entries(entries).map(([key, value]) =>
+        this.verifySidebarEntryText(key, value)
+      )
+    );
+  }
 }

@@ -386,6 +386,7 @@ predictions to take advantage of FiftyOne's
             dataset_dir="/tmp/coco",
             dataset_type=fo.types.COCODetectionDataset,
             label_field="ground_truth",
+            label_types="detections",
         )
 
         # And add model predictions

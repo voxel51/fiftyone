@@ -29,6 +29,7 @@ import eta.core.web as etaw
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 import fiftyone.utils.eta as foue
@@ -571,12 +572,12 @@ class COCODetectionDatasetImporter(
             )
 
             filenames = [
-                fou.normpath(images[_id]["file_name"]) for _id in image_ids
+                fos.normpath(images[_id]["file_name"]) for _id in image_ids
             ]
 
             _image_ids = set(image_ids)
             image_dicts_map = {
-                fou.normpath(i["file_name"]): i
+                fos.normpath(i["file_name"]): i
                 for _id, i in images.items()
                 if _id in _image_ids
             }
@@ -672,7 +673,7 @@ class COCODetectionDatasetExporter(
             generate an output path for each exported image. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         image_format (None): the image format to use when writing in-memory

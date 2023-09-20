@@ -331,8 +331,11 @@ const FilterableEntry = ({
               color={color}
               expandedPath={expandedPath}
               template={({ hoverHandlers, hoverTarget, container }) => (
-                <NameAndCountContainer ref={container}>
-                  <span key="path">
+                <NameAndCountContainer
+                  ref={container}
+                  data-cy={`sidebar-field-container-${path}`}
+                >
+                  <span key="path" data-cy={`sidebar-field-${path}`}>
                     <span ref={hoverTarget} {...hoverHandlers}>
                       {PATH_OVERRIDES[path] || path}
                     </span>
@@ -353,6 +356,7 @@ const FilterableEntry = ({
                   {!disabled && (
                     <Arrow
                       key="arrow"
+                      data-cy={`sidebar-field-arrow-${path}`}
                       style={{ cursor: "pointer", margin: 0 }}
                       onClick={(event) => {
                         event.preventDefault();

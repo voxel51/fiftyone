@@ -6,10 +6,11 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { atom, useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import { useExternalLink } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import { useBrowserStorage } from "@fiftyone/state";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
@@ -17,6 +18,7 @@ import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
 import MaxKWarning from "./MaxKWarning";
+import Helper from "./Helper";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -24,8 +26,6 @@ import {
   sortType,
   useSortBySimilarity,
 } from "./utils";
-import Warning from "./Warning";
-import { useBrowserStorage } from "@fiftyone/state";
 
 const DEFAULT_K = 25;
 
@@ -40,21 +40,18 @@ interface SortBySimilarityProps {
   isImageSearch: boolean;
   modal: boolean;
   close: () => void;
-  bounds?: any; // fix me
-  anchorRef?: MutableRefObject<unknown>;
+  anchorRef?: MutableRefObject<HTMLElement>;
 }
 
 const SortBySimilarity = ({
   modal,
-  bounds,
   close,
   isImageSearch,
   anchorRef,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
   const datasetId = useRecoilValue(fos.dataset).id;
-  const [lastUsedBrainKeys, setLastUsedBrainKeys] =
-    useBrowserStorage("lastUsedBrainKeys");
+  const [lastUsedBrainKeys] = useBrowserStorage("lastUsedBrainKeys");
 
   const lastUsedBrainkey = useMemo(() => {
     return lastUsedBrainKeys ? JSON.parse(lastUsedBrainKeys)[datasetId] : null;
@@ -97,6 +94,7 @@ const SortBySimilarity = ({
     []
   );
   const isLoading = useRecoilValue(fos.similaritySorting);
+  const isReadOnly = useRecoilValue(fos.readOnly);
 
   useLayoutEffect(() => {
     if (!choices.choices.includes(state.brainKey)) {
@@ -122,7 +120,7 @@ const SortBySimilarity = ({
   }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
-    (brainConfig?.maxK && state.k > brainConfig.maxK) ||
+    (brainConfig?.maxK && (state?.k ?? 0 > brainConfig.maxK)) ||
     state.k == undefined
   );
 
@@ -188,13 +186,7 @@ const SortBySimilarity = ({
   );
 
   return (
-    <Popout
-      modal={modal}
-      bounds={bounds}
-      style={{ minWidth: 280 }}
-      fixed
-      anchorRef={anchorRef}
-    >
+    <Popout modal={modal} style={{ minWidth: 280 }} fixed anchorRef={anchorRef}>
       {hasSimilarityKeys && (
         <div
           style={{
@@ -238,7 +230,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
+      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch />}
       {open && hasSimilarityKeys && (
         <div>
           <div>
@@ -286,16 +278,20 @@ const SortBySimilarity = ({
               setValue={(brainKey) => onChangeBrainKey(brainKey)}
             />
           </div>
-          Optional: store the distance between each sample and the query in this
-          field
-          <Input
-            placeholder={"dist_field (default = None)"}
-            validator={(value) => !value.startsWith("_")}
-            value={state.distField ?? ""}
-            setter={(value) =>
-              updateState({ distField: !value.length ? undefined : value })
-            }
-          />
+          {!isReadOnly && (
+            <>
+              Optional: store the distance between each sample and the query in
+              this field
+              <Input
+                placeholder={"dist_field (default = None)"}
+                validator={(value) => !value.startsWith("_")}
+                value={state.distField ?? ""}
+                setter={(value) =>
+                  updateState({ distField: !value.length ? undefined : value })
+                }
+              />
+            </>
+          )}
         </div>
       )}
     </Popout>

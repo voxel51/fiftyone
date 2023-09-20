@@ -1,8 +1,7 @@
 import { HelpIcon } from "@fiftyone/components";
 import { useHelpPanel } from "@fiftyone/state";
-import * as recoil from "recoil";
 import { ActionItem } from "../containers";
-import { ACTION_VIEW_HELP, currentActionAtom } from "../state";
+import { ACTION_VIEW_HELP } from "../state";
 
 const LOOKER3D_HELP_ITEMS = [
   { shortcut: "Wheel", title: "Zoom", detail: "Zoom in and out" },
@@ -24,8 +23,6 @@ export const ViewHelp = (props: {
 }) => {
   const { helpPanel } = props;
 
-  const [currentAction, setAction] = recoil.useRecoilState(currentActionAtom);
-
   return (
     <>
       <ActionItem>
@@ -33,10 +30,6 @@ export const ViewHelp = (props: {
           sx={{ fontSize: 24 }}
           color="inherit"
           onClick={(e) => {
-            const targetAction = ACTION_VIEW_HELP;
-            const nextAction =
-              currentAction === targetAction ? null : targetAction;
-            setAction(nextAction);
             helpPanel.toggle(LOOKER3D_HELP_ITEMS);
             e.stopPropagation();
             e.preventDefault();

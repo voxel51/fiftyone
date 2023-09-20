@@ -123,7 +123,7 @@ _MODEL_TEMPLATE = """
 
     session = fo.launch_app(dataset)
 {% elif 'dinov2' in name %}
-    model = foz.load_zoo_model("{{ name }}", ensure_requirements=False)
+    model = foz.load_zoo_model("{{ name }}")
 
     embeddings = dataset.compute_embeddings(model)
 {% else %}

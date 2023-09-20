@@ -3,7 +3,7 @@ import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots
 import * as fos from "@fiftyone/state";
 import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
-import { MutableRefObject, useEffect, useRef } from "react";
+import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
   RecoilState,
   RecoilValue,
@@ -228,6 +228,7 @@ const CategoricalFilter = <T extends V = V>({
 
   return (
     <NamedCategoricalFilterContainer
+      data-cy={`categorical-filter-${path}`}
       onClick={(e) => {
         e.stopPropagation();
       }}
@@ -265,6 +266,7 @@ const CategoricalFilter = <T extends V = V>({
               }}
               containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
               toKey={({ value }) => String(value)}
+              id={path}
             />
           )}
         <Wrapper

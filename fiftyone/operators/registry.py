@@ -6,8 +6,7 @@ FiftyOne operator registry.
 |
 """
 from .builtin import BUILTIN_OPERATORS
-from .loader import build_plugin_contexts
-from .operator import Operator
+import fiftyone.plugins.context as fopc
 
 
 def get_operator(operator_uri):
@@ -49,7 +48,7 @@ class OperatorRegistry(object):
     """
 
     def __init__(self, enabled=True):
-        self.plugin_contexts = build_plugin_contexts(enabled=enabled)
+        self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
     def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.

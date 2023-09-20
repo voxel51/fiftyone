@@ -10,7 +10,7 @@ log into your central Teams UI.
 
 .. note::
 
-    See :ref:`this page <fiftyone-plugins>` for more information about creating
+    See :ref:`fiftyone-plugins` for more information about creating
     and downloading existing plugins.
 
 Plugin Page
@@ -305,13 +305,19 @@ By default, the initial permissions are:
     | Minimum Dataset Permission    | Edit          |
     +-------------------------------+---------------+
 
-but these defaults can be configured by navigating to the page at
+Teams UI
+^^^^^^^^
+
+Default operator permissions can be configured by navigating to the page at
 Settings > Security and looking under the Plugins header. Click the dropdown
 for the permission you want to change and select the new value.
 
 .. image:: /images/teams/plugins_org_settings.png
    :alt: teams-plugins-page-org-settings
    :align: center
+
+SDK
+^^^
 
 Alternatively, you can use the
 :meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`
@@ -326,3 +332,347 @@ method from the Management SDK:
         default_operator_minimum_role=fom.MEMBER,
         default_operator_minimum_dataset_permission=fom.EDIT,
     )
+
+.. _teams-plugins-managing-operators-runs:
+
+
+Setting up an Orchestrator to run Delegated Operations
+______________________________________________________
+
+Once an operation has been queued for remote (delegated) execution, it will remain queued until an Orchestrator picks it up and runs the execute method.
+
+We recommend using Apache Airflow as the Orchestrator, but other options are available, such as Flyte.
+
+To set up Airflow as an Orchestrator to run delegated operations, you will need to:
+
+- Provision a VM or instance with enough resources to run the operations you want to delegate
+
+- Install `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_ on the VM
+
+- Install the same version of FiftyOne as the instance of FiftyOne which queued the operation
+
+- Ensure the required Environment Variables are set
+
+- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator.
+
+- Schedule a Operation!
+
+.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+
+.. note:: Ensure that the plugins are available to the Orchestrator, either by installing them on the same machine or by making them available via a shared filesystem
+
+
+
+Setting up a FiftyOne Orchestrator on Google Compute Engine
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Provision a VM with the resources required to run the operations you want to delegate. Take note of the IP of the VM, you'll need it in a later step.
+
+See the :ref:`Media Cache Config<teams-media-cache-config>` section for more information on the resources required.
+
+SSH into the instance, ensure the packages are up to date, and install python
+
+.. code-block:: bash
+
+    sudo apt-get update
+    sudo apt upgrade
+    sudo apt install python3-pip
+
+**Install Airflow**
+
+.. code-block:: bash
+
+    pip install apache-airflow[gcp]
+
+ensure a successful install by checking the version
+
+.. code-block:: bash
+
+    airflow version
+
+Initialize the airflow db and create a user
+
+.. code-block:: bash
+
+    airflow db init
+    airflow users create -r Admin -u <username> -p <password> -e <email> -f <first name> -l <last name>
+
+.. note:: This username and password will be the account you use to log into the airflow interface in a later step.
+
+Start Aiflow
+
+Open 2 more ssh sessions, and start the webserver and scheduler in each.
+
+.. note:: You could run these commands with the `-D` flag to run them in the background, but we recommend running them in the foreground for debugging purposes.
+
+.. code-block:: bash
+
+    airflow webserver -p 8080
+    airflow scheduler
+
+.. note:: you could start airflow on the port of your choice, but ensure that the firewall rules allow traffic on that port.
+
+**Add the Firewall Rule**
+
+Navigate to the networking / firewall rules section of the google cloud console and allow traffic on that port for the VM.
+
+Once this is done, you should be able to navigate to the airflow interface at `http://<vm ip>:8080` (or the port you chose) and log in with the credentials you created earlier.
+
+**Mount the Plugins Directory**
+
+The orchestrator must have the same plugins available to it as the instance which queued the operation. This could be accomplished by either installing the plugins on the orchestrator, or by mounting the plugins directory from the instance which queued the operation.
+
+To mount the plugins directory, locate the ip of the nfs server then run the following commands on the orchestrator:
+
+.. code-block:: bash
+
+    sudo mkdir -p /mnt/nfs/shared
+    sudo mount -t nfs -o vers=4,rw,intr <ip of the nfs server>:/path/to/plugins /mnt/nfs/shared
+
+You might also want to add the same command to your startup tasks, located in `etc/fstab`
+
+.. code-block:: bash
+
+    sudo pico /etc/fstab
+
+paste the following and save
+
+.. code-block:: bash
+
+        <ip of the nfs server>:/path/to/fiftyone-plugins /mnt/nfs/shared/ nfs vers=4,rw,intr 0 0
+
+the path to the plugins should now be available at `/mnt/nfs/shared/plugins`. to test this, run the following command:
+
+.. code-block:: bash
+
+    ls /mnt/nfs/shared/plugins
+
+
+This path will be added to the environment variables as `FIFTYONE_PLUGINS_DIR` in a following step.
+
+
+**Install FiftyOne**
+
+Ensure the keyring is installed
+
+.. code-block:: bash
+
+    pip install keyrings.google-artifactregistry-auth
+
+
+Install FiftyOne
+
+.. code-block:: bash
+
+    INDEX_URL="https://us-central1-python.pkg.dev/computer-vision-team/dev-python/simple/"
+    pip --no-cache-dir install --extra-index-url "${INDEX_URL}" fiftyone
+
+
+Add the FiftyOne Env Vars
+
+.. code-block:: bash
+
+    pico ~/.profile
+
+Add the following lines to the bottom of the file, replacing the values with the appropriate values for your deployment.
+
+.. code-block:: bash
+
+    export FIFTYONE_DATABASE_NAME=<database name>
+    export FIFTYONE_DATABASE_URI=<mongo db uri>
+    export FIFTYONE_PLUGINS_DIR=<mounted plugins dir> # /mnt/nfs/shared/plugins
+    export FIFTYONE_ENCRYPTION_KEY=<encryption key>
+    export FIFTYONE_INTERNAL_SERVICE=1
+    export FIFTYONE_API_KEY=<api key>
+    export API_URL=<api url>
+
+.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+
+.. note:: These values will mostly be the same as the as the instance of FiftyOne which queued the operation
+
+
+**Add the Airflow DAG**
+
+check the default dags path by running the following command:
+
+.. code-block:: bash
+
+    airflow config list | grep dags_folder
+
+.. note:: The default dag folder path is `/home/<user>/airflow/dags`
+
+navigate to the dag folder and add the default airflow dag from the fiftyone-plugins repo, located at: `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_
+
+Open the airflow interface and ensure that the "Check Delegated Operations" DAG is visible. Any issues should be immediately visible as errors. Locate the dag and toggle it on, then refresh to make sure it's running. If no operations have been queued, it will still run a check and all runs should be green.
+
+.. image:: /images/teams/airflow.png
+   :alt: airflow-dag
+   :align: center
+
+..note:: The Orchestrator will need to have all of the required dependencies installed for running the plugins. For example, if running the compute visualizations plugin, the orchestrator will need the `torch` and `torchvision` packages installed.
+
+
+Managing Delegated Operator Runs
+________________________________
+
+
+The FiftyOne Teams runs page allows you to monitor and explore operator runs
+scheduled by any member of your organization.
+
+
+.. Scheduling an operator run
+.. --------------------------
+
+.. When invoking an delegated operator, you will see the `Schedule` (instead
+.. of the `Execute`) button to indicate that operator will run in delegated mode
+
+.. .. image:: /images/plugins/operators/runs/prompt.png
+
+
+Runs page
+---------
+
+The "Runs" page is accessible to all users with :ref:`Can view <teams-can-view>`
+access to the dataset.
+
+You can access the "Runs" page by clicking the `Runs` from
+:ref:`Samples tab <teams-using-datasets>`.
+
+Once you are on the "Runs" page, you will see a table with the list of all
+operators scheduled by any member of your organization. You can sort, search
+and filter runs listed to refine the list as you like.
+
+The image below provides a peek of the "Runs" page. The list will display the
+label and name of an operator, status, timestamp of current status, and the name
+of a user that scheduled a run. On the right side of the "Runs" page, you will
+see pinned and recently updated runs in your organization. 
+
+.. note::
+
+    This page is not auto-refreshed. You must manually reload the page to see
+    updates.
+
+
+.. image:: /images/plugins/operators/runs/runs_page.png
+
+Sorting
+^^^^^^^
+
+By default, the runs table is sorted by newest to oldest. You can use the
+drop-down menu in the upper left of table to sort the list of runs by updated
+time of a run and the name of an operator.
+
+.. image:: /images/plugins/operators/runs/sort.png
+
+Filtering
+^^^^^^^^^
+
+You can filter runs table to see a subset of runs
+
+**Showing only your runs**
+
+You can use the "My runs" radio button to see only the runs that you scheduled.
+
+.. image:: /images/plugins/operators/runs/my_runs.png
+
+**By status**
+
+Additionally, you can further refine the list of runs using the status
+drop-down which allows you to select one or more status you would like to filter
+by.
+
+.. image:: /images/plugins/operators/runs/filter_by_status.png
+
+Searching
+^^^^^^^^^
+
+In addition, you can also use the search functionality to filter the list of
+runs by a keyword. As you type your query in the search box, the list of runs
+will be updated to show only the runs matching your query
+
+.. note::
+
+    The search is case-sensitive and you can only search by the operator name
+    associated with a run. Searching by operator label is not supported (i.e.,
+    **Demo: Export to GCP** in example image below).
+
+.. image:: /images/plugins/operators/runs/search_by_name.png
+
+Retrying
+^^^^^^^^
+
+From the "Runs" page, you can trigger retry any of the listed runs. To retry a
+run, click the three-dots to open actions menu for a run, then click `Re-run`
+
+.. image:: /images/plugins/operators/runs/re_run.png
+
+
+Pinning
+^^^^^^^
+
+Pinned runs are displayed to the right of runs table. By default, five pinned
+runs will be displayed. However, if there are more than five pinned runs, you
+will see a button to see the hidden pinned runs.
+
+To pin a run, hover over a run in runs table and click the pin icon which will
+appear beside the operator label of a run.
+
+.. image:: /images/plugins/operators/runs/pinning.png
+
+.. note::
+
+    Pinned runs are identical for all users in your organization.
+
+Run page
+--------
+
+The "Run" page allows you to see input, output, view, and error of each run.
+
+You can visit the "Run" page for a run by clicking on a run in the runs table
+or in the list of runs under "Pinned runs" and "Recent runs".
+
+Input
+^^^^^
+
+The "Input" tab on the "Run" page lets you see the input parameters that were
+provided when the run was scheduled.
+
+.. image:: /images/plugins/operators/runs/input.png
+
+**Raw input**
+
+By default, a preview (similar to what is displayed when invoking an operator)
+of input parameters is displayed. However, you can switch to raw by clicking the
+`Show raw` toggle button.
+
+.. image:: /images/plugins/operators/runs/raw_input.png
+
+Output
+^^^^^^
+
+The "Output" tab on the "Run" page lets you see the preview of the result of a
+completed run.
+
+.. note::
+    Output tab is only available for completed run
+
+.. image:: /images/plugins/operators/runs/output.png
+
+Errors
+^^^^^^
+
+The "Errors" tab on the "Run" page lets you see the errors occurred of a failed
+run.
+
+.. note::
+    Errors tab is only available for failed run
+
+.. image:: /images/plugins/operators/runs/errors.png
+
+
+View
+^^^^
+The "View" tab on the "Run" page lets you see the view parameters that were
+included in operator context when the run was scheduled.
+
+.. image:: /images/plugins/operators/runs/view.png

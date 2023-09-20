@@ -45,6 +45,7 @@ const ColoredDot = styled(Box)<{ color: string }>`
 `;
 
 type SelectionProps = {
+  id: string;
   items: Array<DatasetViewOption>;
   headerComponent?: React.ReactNode;
   search?: {
@@ -69,6 +70,7 @@ const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
 function Selection(props: SelectionProps) {
   const {
+    id,
     items = [],
     headerComponent = null,
     lastFixedOption = null,
@@ -80,9 +82,6 @@ function Selection(props: SelectionProps) {
     onEdit,
     onClear,
   } = props;
-  if (!selected) {
-    return null;
-  }
 
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -116,9 +115,20 @@ function Selection(props: SelectionProps) {
     [onSearch]
   );
 
+  if (!selected) {
+    return null;
+  }
+
+  const selectionId = id;
+
   return (
-    <div ref={ref} style={{ width: "100%" }}>
+    <div
+      ref={ref}
+      style={{ width: "100%" }}
+      data-cy={`${id}-selection-container`}
+    >
       <Select
+        data-cy={`${id}-selection`}
         value={selectedId}
         defaultValue={selectedId}
         listboxOpen={isOpen}
@@ -172,12 +182,16 @@ function Selection(props: SelectionProps) {
           },
         }}
         startDecorator={
-          <ColoredDot color={selectedColor || DEFAULT_COLOR_OPTION.color} />
+          <ColoredDot
+            color={selectedColor || DEFAULT_COLOR_OPTION.color}
+            data-cy="selection-color-dot"
+          />
         }
         {...(selectedId !== DEFAULT_SELECTED.id &&
           onClear && {
             endDecorator: (
               <IconButton
+                data-cy={`${id}-btn-selection-clear`}
                 size="small"
                 onMouseDown={(e) => {
                   e.stopPropagation();
@@ -198,12 +212,12 @@ function Selection(props: SelectionProps) {
       >
         {onSearch && (
           <SearchBox
+            id="saved-views"
             debouncedSearch={debouncedSearch}
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             searchPlaceholder={searchPlaceholder}
             searchValue={searchValue}
-            disabled={items?.length <= 1}
           />
         )}
         {!onSearch && headerComponent}
@@ -214,9 +228,10 @@ function Selection(props: SelectionProps) {
           }}
         >
           {items.map((itemProps) => {
-            const { id, color, label } = itemProps;
+            const { id, color, label, slug } = itemProps;
             return (
               <Option
+                data-cy={`${selectionId}-${slug}-selection-option`}
                 key={id + label}
                 value={id}
                 label={label}
@@ -247,7 +262,10 @@ function Selection(props: SelectionProps) {
                         display: "inline-block",
                       }}
                     >
-                      <ColoredDot color={color || DEFAULT_COLOR_OPTION.color} />
+                      <ColoredDot
+                        color={color || DEFAULT_COLOR_OPTION.color}
+                        data-cy="testme"
+                      />
                     </Box>
                   }
                   compact={compact}

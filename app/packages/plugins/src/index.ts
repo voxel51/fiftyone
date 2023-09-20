@@ -318,7 +318,7 @@ class PluginComponentRegistry {
       `${name} is already a registered Plugin Component`
     );
     warn(
-      registration.type === PluginComponentType.Plot,
+      registration.type !== PluginComponentType.Plot,
       `${name} is a Plot Plugin Component. This is deprecated. Please use "Panel" instead.`
     );
 

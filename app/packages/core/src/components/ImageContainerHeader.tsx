@@ -11,7 +11,7 @@ import { GridActionsRow } from "./Actions";
 import { Slider } from "./Common/RangeSlider";
 import { gridZoom, gridZoomRange } from "./Grid";
 import GroupSliceSelector from "./GroupSliceSelector";
-import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
+import ResourceCount from "./ResourceCount";
 
 export const SamplesHeader = styled.div`
   position: absolute;
@@ -56,58 +56,6 @@ const SliderContainer = styled.div`
   padding-right: 1rem;
 `;
 
-const Count = () => {
-  let element = useRecoilValue(fos.elementNames);
-  const total = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
-  );
-  const isGroup = useRecoilValue(isGroupAtom);
-  const slice = useRecoilValue(fos.groupSlice(false));
-  if (isGroup) {
-    element = {
-      plural: "groups",
-      singular: "group",
-    };
-  }
-
-  return (
-    <RightDiv data-cy="entry-counts">
-      <div style={{ whiteSpace: "nowrap" }}>
-        <PathEntryCounts modal={false} path={""} />
-        {` `}
-        {total === 1 ? element.singular : element.plural}
-        {slice && ` with slice`}
-      </div>
-    </RightDiv>
-  );
-};
-
-const GroupsCount = () => {
-  const element = useRecoilValue(fos.elementNames);
-  const total = useRecoilValue(
-    fos.count({ path: "_", extended: false, modal: false })
-  );
-
-  const elementTotal = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
-  );
-  const groupSlice = useRecoilValue(fos.groupSlice(false));
-
-  return (
-    <RightDiv data-cy="entry-counts">
-      <div>
-        (<PathEntryCounts modal={false} path={""} />
-        {` `}
-        {elementTotal === 1 ? element.singular : element.plural}){` `}
-        <PathEntryCounts modal={false} path={"_"} ignoreSidebarMode />
-        {` `}
-        {total === 1 ? "group" : "groups"}
-        {groupSlice && ` with slice`}
-      </div>
-    </RightDiv>
-  );
-};
-
 const ImageContainerHeader = () => {
   const setGridZoom = useSetRecoilState(gridZoom);
   const gridZoomRangeValue = useRecoilValue(gridZoomRange);
@@ -132,7 +80,7 @@ const ImageContainerHeader = () => {
             </RightDiv>
           }
         >
-          {groupStats === "group" ? <GroupsCount /> : <Count />}
+          <ResourceCount isGroup={groupStats === "group"} />
         </Suspense>
         {shouldShowSliceSelector && (
           <RightDiv>

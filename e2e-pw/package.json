@@ -4,7 +4,7 @@
     "main": "index.js",
     "license": "MIT",
     "devDependencies": {
-        "@playwright/test": "^1.36.2",
+        "@playwright/test": "^1.37.1",
         "@types/fluent-ffmpeg": "^2.1.21",
         "@types/jimp": "^0.2.28",
         "@types/wait-on": "^5.3.1",
@@ -18,16 +18,17 @@
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.1.6",
-        "vitest": "^0.33.0",
+        "vitest": "^0.34.1",
         "wait-on": "^7.0.1"
     },
     "scripts": {
+        "lint": "bash -c 'set +e; eslint --quiet .; set -e; tsc --skipLibCheck --sourceMap false'",
         "unittests": "vitest",
         "check-flaky": "./scripts/check-flaky.sh",
         "kill-port": "./scripts/kill-port.sh",
         "build-linux-screenshot-docker-image": "./scripts/generate-screenshots-docker-image/build-docker-image.sh",
         "e2e:ui": "npx playwright test --ui -c playwright.config.ts",
         "e2e": "playwright test -c playwright.config.ts",
-        "devserver": "export VITE_API=http://localhost:8787 VITE_NO_STATE=true && export FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)"
+        "devserver": "export VITE_API=http://localhost:8787 && export FIFTYONE_DEFAULT_APP_PORT=5193 && (cd ../app && yarn dev --host 0.0.0.0)"
     }
 }

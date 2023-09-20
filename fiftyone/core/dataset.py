@@ -41,22 +41,25 @@ from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
+import fiftyone.core.storage as fost
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
-fost = fou.lazy_import("fiftyone.core.stages")
+fot = fou.lazy_import("fiftyone.core.stages")
 foud = fou.lazy_import("fiftyone.utils.data")
 
 
 logger = logging.getLogger(__name__)
 
 
-def list_datasets(glob_patt=None, info=False):
+def list_datasets(glob_patt=None, tags=None, info=False):
     """Lists the available FiftyOne datasets.
 
     Args:
         glob_patt (None): an optional glob pattern of names to return
+        tags (None): only include datasets that have the specified tag or list
+            of tags
         info (False): whether to return info dicts describing each dataset
             rather than just their names
 
@@ -64,9 +67,9 @@ def list_datasets(glob_patt=None, info=False):
         a list of dataset names or info dicts
     """
     if info:
-        return _list_dataset_info(glob_patt=glob_patt)
+        return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
-    return _list_datasets(glob_patt=glob_patt)
+    return _list_datasets(glob_patt=glob_patt, tags=tags)
 
 
 def dataset_exists(name):
@@ -1592,8 +1595,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = self._doc.default_group_slice
 
-        self.create_index(field_name + ".id")
-        self.create_index(field_name + ".name")
+        _create_group_indexes(self._sample_collection_name, field_name)
 
         return True
 
@@ -2805,6 +2807,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the given samples into this dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_collection` if you want to add samples from one
+            collection to another dataset without a uniqueness constraint.
+
         By default, samples with the same absolute ``filepath`` are merged, but
         you can customize this behavior via the ``key_field`` and ``key_fcn``
         parameters. For example, you could set
@@ -3059,7 +3069,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`
+            :attr:`fiftyone.core.session.Session.selected_labels`
 
         -   Provide the ``ids`` or ``tags`` arguments to specify the labels to
             delete via their IDs and/or tags
@@ -3077,7 +3087,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Args:
             labels (None): a list of dicts specifying the labels to delete in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to delete
             tags (None): a tag or iterable of tags of the labels to delete
             view (None): a :class:`fiftyone.core.view.DatasetView` into this
@@ -4083,6 +4093,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given directory into the dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_dir` if you want to add samples without a uniqueness
+            constraint.
+
         You can perform imports with this method via the following basic
         patterns:
 
@@ -4399,6 +4417,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     ):
         """Merges the contents of the given archive into the dataset.
 
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_archive` if you want to add samples without a
+            uniqueness constraint.
+
         If a directory with the same root name as ``archive_path`` exists, it
         is assumed that this directory contains the extracted contents of the
         archive, and thus the archive is not re-extracted.
@@ -4641,6 +4667,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """Merges the samples from the given
         :class:`fiftyone.utils.data.importers.DatasetImporter` into the
         dataset.
+
+        .. note::
+
+            This method requires the ability to create *unique* indexes on the
+            ``key_field`` of each collection.
+
+            See :meth:`add_importer` if you want to add samples without a
+            uniqueness constraint.
 
         See :ref:`this guide <custom-dataset-importer>` for more details about
         importing datasets in custom formats by defining your own
@@ -5875,7 +5909,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
             frame_labels_dir (None): a directory of per-sample JSON files
                 containing the frame labels for video samples. If omitted, it
                 is assumed that the frame labels are included directly in the
@@ -5891,7 +5925,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 raise ValueError("Attempting to load a Dataset with no name.")
 
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir)
+            rel_dir = fost.normalize_path(rel_dir)
 
         name = make_unique_dataset_name(name)
         dataset = cls(name, persistent=persistent, overwrite=overwrite)
@@ -5993,7 +6027,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             rel_dir (None): a relative directory to prepend to the ``filepath``
                 of each sample, if the filepath is not absolute (begins with a
                 path separator). The path is converted to an absolute path
-                (if necessary) via :func:`fiftyone.core.utils.normalize_path`
+                (if necessary) via :func:`fiftyone.core.storage.normalize_path`
 
         Returns:
             a :class:`Dataset`
@@ -6560,9 +6594,39 @@ def _get_random_characters(n):
     )
 
 
-def _list_datasets(include_private=False, glob_patt=None):
+def _list_datasets(include_private=False, glob_patt=None, tags=None):
     conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
 
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
+
+
+def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
+    conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
+
+    return [
+        {
+            "name": doc.get("name", None),
+            "created_at": doc.get("created_at", None),
+            "last_loaded_at": doc.get("last_loaded_at", None),
+            "version": doc.get("version", None),
+            "persistent": doc.get("persistent", None),
+            "media_type": doc.get("media_type", None),
+            "tags": doc.get("tags", []),
+        }
+        for doc in conn.datasets.find(query)
+    ]
+
+
+def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
     if include_private:
         query = {}
     else:
@@ -6573,47 +6637,12 @@ def _list_datasets(include_private=False, glob_patt=None):
     if glob_patt is not None:
         query["name"] = {"$regex": fnmatch.translate(glob_patt)}
 
-    # We don't want an error here if `name == None`
-    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+    if etau.is_str(tags):
+        query["tags"] = tags
+    elif tags is not None:
+        query["tags"] = {"$in": list(tags)}
 
-    return _sort(conn.datasets.find(query).distinct("name"))
-
-
-def _list_dataset_info(include_private=False, glob_patt=None):
-    info = []
-    for name in _list_datasets(
-        include_private=include_private, glob_patt=glob_patt
-    ):
-        try:
-            dataset = Dataset(name, _create=False, _virtual=True)
-            num_samples = dataset._sample_collection.estimated_document_count()
-            i = {
-                "name": dataset.name,
-                "created_at": dataset.created_at,
-                "last_loaded_at": dataset.last_loaded_at,
-                "version": dataset.version,
-                "persistent": dataset.persistent,
-                "media_type": dataset.media_type,
-                "tags": dataset.tags,
-                "num_samples": num_samples,
-            }
-        except:
-            # If the dataset can't be loaded, it likely requires migration, so
-            # we can't show any information about it
-            i = {
-                "name": name,
-                "created_at": None,
-                "last_loaded_at": None,
-                "version": None,
-                "persistent": None,
-                "media_type": None,
-                "tags": None,
-                "num_samples": None,
-            }
-
-        info.append(i)
-
-    return info
+    return query
 
 
 def _create_dataset(
@@ -6687,6 +6716,14 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         frame_collection.create_index(
             [("_sample_id", 1), ("frame_number", 1)], unique=True
         )
+
+
+def _create_group_indexes(sample_collection_name, group_field):
+    conn = foo.get_db_conn()
+
+    sample_collection = conn[sample_collection_name]
+    sample_collection.create_index(group_field + ".id")
+    sample_collection.create_index(group_field + ".name")
 
 
 def _make_sample_collection_name(
@@ -6850,6 +6887,10 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
+    from fiftyone.operators.delegated import DelegatedOperationService
+
+    DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
+
     dataset_doc.delete()
 
 
@@ -6857,6 +6898,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
+    contains_groups = dataset_or_view.media_type == fom.GROUP
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -6895,9 +6937,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
-
     dataset_doc.media_type = dataset_or_view.media_type
-    if dataset_doc.media_type != fom.GROUP:
+    if not contains_groups:
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
@@ -6930,6 +6971,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
+    if contains_groups and dataset.group_field is not None:
+        _create_group_indexes(sample_collection_name, dataset.group_field)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
@@ -7155,6 +7198,10 @@ def _merge_dataset_doc(
 
         if curr_doc.group_field is None:
             curr_doc.group_field = doc.group_field
+
+            _create_group_indexes(
+                dataset._sample_collection_name, doc.group_field
+            )
         elif src_group_field != curr_doc.group_field:
             raise ValueError(
                 "Cannot merge samples with group field '%s' into a "
@@ -8236,14 +8283,14 @@ def _always_select_field(sample_collection, field):
 
     view = sample_collection
 
-    if not any(isinstance(stage, fost.SelectFields) for stage in view._stages):
+    if not any(isinstance(stage, fot.SelectFields) for stage in view._stages):
         return view
 
     # Manually insert `field` into all `SelectFields` stages
     _view = view._base_view
     for stage in view._stages:
-        if isinstance(stage, fost.SelectFields):
-            stage = fost.SelectFields(
+        if isinstance(stage, fot.SelectFields):
+            stage = fot.SelectFields(
                 stage.field_names + [field], _allow_missing=True
             )
 

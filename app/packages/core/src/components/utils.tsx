@@ -213,6 +213,7 @@ export const Button: React.FC<
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       title={title ?? text}
+      data-cy={`button-${title ?? text}`}
     >
       <OptionText key={"button"} style={{ fontWeight: "bold", width: "100%" }}>
         {text}

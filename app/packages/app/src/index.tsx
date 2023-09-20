@@ -22,6 +22,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import Network from "./Network";
+import { SnackbarProvider } from "notistack";
 
 import "./index.css";
 
@@ -187,7 +188,9 @@ createRoot(document.getElementById("root") as HTMLDivElement).render(
           <EventsContext.Provider
             value={{ session: env().VITE_NO_STATE ? undefined : null }}
           >
-            <App />
+            <SnackbarProvider>
+              <App />
+            </SnackbarProvider>
           </EventsContext.Provider>
         </BeforeScreenshotContext.Provider>
       </ErrorBoundary>

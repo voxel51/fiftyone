@@ -5,26 +5,45 @@ import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
 
 export class ModalPom {
-  readonly page: Page;
   readonly groupCarousel: Locator;
+  readonly looker: Locator;
+  readonly modalContainer: Locator;
+
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
 
-  constructor(page: Page) {
-    this.page = page;
+  constructor(private readonly page: Page) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
+
     this.groupCarousel = this.locator.getByTestId("group-carousel");
+    this.looker = this.locator.getByTestId("looker").last();
+    this.modalContainer = this.locator.getByTestId("modal-looker-container");
+
     this.sidebar = new ModalSidebarPom(page);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
   }
 
+  get groupLooker() {
+    return this.locator
+      .getByTestId("group-sample-wrapper")
+      .getByTestId("looker");
+  }
+
+  get looker3d() {
+    return this.locator.getByTestId("looker3d");
+  }
+
+  get carousel() {
+    return this.locator.getByTestId("group-carousel");
+  }
+
   async toggleSelection() {
-    await this.getLooker().hover();
+    await this.looker.hover();
     await this.locator.getByTestId("selectable-bar").click();
   }
 
@@ -61,6 +80,39 @@ export class ModalPom {
     return this.waitForSampleLoadDomAttribute(allowErrorInfo);
   }
 
+  async panSample(
+    direction: "left" | "right" | "up" | "down",
+    offsetPixels = 100
+  ) {
+    const modalBoundingBox = await this.modalContainer.boundingBox();
+    await this.page.mouse.move(
+      modalBoundingBox.width / 2,
+      modalBoundingBox.height / 2
+    );
+    await this.page.mouse.down();
+
+    let newPositionX = modalBoundingBox.width / 2;
+    let newPositionY = modalBoundingBox.height / 2;
+
+    switch (direction) {
+      case "left":
+        newPositionX -= offsetPixels;
+        break;
+      case "right":
+        newPositionX += offsetPixels;
+        break;
+      case "up":
+        newPositionY -= offsetPixels;
+        break;
+      case "down":
+        newPositionY += offsetPixels;
+        break;
+    }
+
+    await this.page.mouse.move(newPositionX, newPositionY);
+    await this.page.mouse.up();
+  }
+
   async waitForCarouselToLoad() {
     await this.groupCarousel
       .getByTestId("looker")
@@ -74,7 +126,7 @@ export class ModalPom {
     allowErrorInfo = false
   ) {
     const currentSlice = await this.sidebar.getSidebarEntryText(
-      `sidebar-entry-${groupField}.name`
+      `sidebar-entry-${groupField}`
     );
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
@@ -84,7 +136,7 @@ export class ModalPom {
     await this.page.waitForFunction(
       ({ currentSlice, groupField }) => {
         const slice = document.querySelector(
-          `[data-cy="sidebar-entry-${groupField}.name"]`
+          `[data-cy="sidebar-entry-${groupField}"]`
         )?.textContent;
         return slice !== currentSlice;
       },
@@ -107,24 +159,12 @@ export class ModalPom {
     return this.navigateSample("backward", allowErrorInfo);
   }
 
-  getLooker3d() {
-    return this.locator.getByTestId("looker3d");
-  }
-
   async clickOnLooker3d() {
-    return this.getLooker3d().click();
-  }
-
-  getLooker() {
-    return this.locator.getByTestId("looker").last();
+    return this.looker3d.click();
   }
 
   async clickOnLooker() {
-    return this.getLooker().click();
-  }
-
-  getGroupContainer() {
-    return this.locator.getByTestId("group-container");
+    return this.looker.click();
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
@@ -149,26 +189,12 @@ export class ModalPom {
       { timeout: Duration.Seconds(10) }
     );
   }
-
-  async getSampleLoadEventPromiseForFilepath(sampleFilepath: string) {
-    return this.page.evaluate(
-      (sampleFilepath_) =>
-        new Promise<void>((resolve, _reject) => {
-          document.addEventListener("sample-loaded", (e: CustomEvent) => {
-            if ((e.detail.sampleFilepath as string) === sampleFilepath_) {
-              resolve();
-            }
-          });
-        }),
-      sampleFilepath
-    );
-  }
 }
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
 
-  async verifySelection(n: number) {
+  async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
 
     const count = await action.first().textContent();

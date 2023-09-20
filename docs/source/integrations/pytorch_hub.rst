@@ -1,4 +1,4 @@
-.. _pytorch-hub:
+.. _pytorch-hub-integration:
 
 PyTorch Hub Integration
 =======================
@@ -127,7 +127,7 @@ and use it to generate object detections:
                         label=row.name,
                         bounding_box=[
                             row.xcenter - 0.5 * row.width,
-                            row.ycenter - row.height,
+                            row.ycenter - 0.5 * row.height,
                             row.width,
                             row.height,
                         ],
@@ -155,6 +155,12 @@ and use it to generate object detections:
     # Generate predictions for all images in a collection
     dataset.limit(10).apply_model(model, label_field="yolov5")
     dataset.count("yolov5.detections")  # 26
+
+.. note::
+
+    Did you know? Ultralytics YOLOv5 is natively available in the
+    :ref:`FiftyOne Model Zoo <model-zoo-yolov5m-coco-torch>`. You should also
+    check out the :ref:`Ultralytics integration <ultralytics-integration>`!
 
 Example: DINOv2
 ---------------
@@ -190,6 +196,11 @@ use it to compute embeddings:
     # Embed all images in a collection
     embeddings = dataset.limit(10).compute_embeddings(model)
     print(embeddings.shape)  # (10, 384)
+
+.. note::
+
+    Did you know? DINOv2 is natively available in the
+    :ref:`FiftyOne Model Zoo <model-zoo-dinov2-vitb14-torch>`!
 
 .. _pytorch-hub-load-model:
 

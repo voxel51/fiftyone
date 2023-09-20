@@ -129,7 +129,9 @@ async def paginate_samples(
     url_cache = {}
     nodes = await asyncio.gather(
         *[
-            _create_sample_item(view, sample, metadata_cache, url_cache)
+            _create_sample_item(
+                view, sample, metadata_cache, url_cache, pagination_data
+            )
             for sample in samples
         ]
     )
@@ -159,6 +161,7 @@ async def _create_sample_item(
     sample: t.Dict,
     metadata_cache: t.Dict[str, t.Dict],
     url_cache: t.Dict[str, str],
+    pagination_data: bool,
 ) -> SampleItem:
     media_type = fom.get_media_type(sample["filepath"])
 
@@ -178,4 +181,9 @@ async def _create_sample_item(
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
 
-    return from_dict(cls, {"id": sample["_id"], "sample": sample, **metadata})
+    _id = sample["_id"]
+
+    if not pagination_data:
+        _id = f"{_id}-modal"
+
+    return from_dict(cls, {"id": _id, "sample": sample, **metadata})

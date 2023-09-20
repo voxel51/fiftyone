@@ -37,6 +37,7 @@ import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fosa
+import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
 
 fod = fou.lazy_import("fiftyone.core.dataset")
@@ -2735,7 +2736,7 @@ class SampleCollection(object):
                 segmentation image. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -3814,7 +3815,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to exclude
+            :attr:`fiftyone.core.session.Session.selected_labels`, to exclude
             specific labels
 
         -   Provide the ``ids`` argument to exclude labels with specific IDs
@@ -3893,7 +3894,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to exclude in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to exclude
             tags (None): a tag or iterable of tags of labels to exclude
             fields (None): a field or iterable of fields from which to exclude
@@ -4622,6 +4623,7 @@ class SampleCollection(object):
         flat=False,
         match_expr=None,
         sort_expr=None,
+        create_index=True,
     ):
         """Creates a view that groups the samples in the collection by a
         specified field or expression.
@@ -4664,7 +4666,8 @@ class SampleCollection(object):
 
         Args:
             field_or_expr: the field or ``embedded.field.name`` to group by, or
-                a :class:`fiftyone.core.expressions.ViewExpression` or
+                a list of field names defining a compound group key, or a
+                :class:`fiftyone.core.expressions.ViewExpression` or
                 `MongoDB aggregation expression <https://docs.mongodb.com/manual/meta/aggregation-quick-reference/#aggregation-expressions>`_
                 that defines the value to group by
             order_by (None): an optional field by which to order the samples in
@@ -4685,6 +4688,9 @@ class SampleCollection(object):
                 that defines how to sort the groups in the output view. If
                 provided, this expression will be evaluated on the list of
                 samples in each group. Only applicable when ``flat=True``
+            create_index (True): whether to create an index, if necessary, to
+                optimize the grouping. Only applicable when grouping by
+                field(s), not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
@@ -4697,6 +4703,7 @@ class SampleCollection(object):
                 flat=flat,
                 match_expr=match_expr,
                 sort_expr=sort_expr,
+                create_index=create_index,
             )
         )
 
@@ -5180,7 +5187,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to match
+            :attr:`fiftyone.core.session.Session.selected_labels`, to match
             specific labels
 
         -   Provide the ``ids`` argument to match labels with specific IDs
@@ -5275,7 +5282,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to select in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
             tags (None): a tag or iterable of tags of labels to select
             filter (None): a :class:`fiftyone.core.expressions.ViewExpression`
@@ -5873,7 +5880,7 @@ class SampleCollection(object):
 
         -   Provide the ``labels`` argument, which should contain a list of
             dicts in the format returned by
-            :meth:`fiftyone.core.session.Session.selected_labels`, to select
+            :attr:`fiftyone.core.session.Session.selected_labels`, to select
             specific labels
 
         -   Provide the ``ids`` argument to select labels with specific IDs
@@ -5945,7 +5952,7 @@ class SampleCollection(object):
         Args:
             labels (None): a list of dicts specifying the labels to select in
                 the format returned by
-                :meth:`fiftyone.core.session.Session.selected_labels`
+                :attr:`fiftyone.core.session.Session.selected_labels`
             ids (None): an ID or iterable of IDs of the labels to select
             tags (None): a tag or iterable of tags of labels to select
             fields (None): a field or iterable of fields from which to select
@@ -6059,7 +6066,7 @@ class SampleCollection(object):
         return self._add_view_stage(fos.Skip(skip))
 
     @view_stage
-    def sort_by(self, field_or_expr, reverse=False):
+    def sort_by(self, field_or_expr, reverse=False, create_index=True):
         """Sorts the samples in the collection by the given field(s) or
         expression(s).
 
@@ -6122,13 +6129,21 @@ class SampleCollection(object):
                     or expression as defined above, and ``order`` can be 1 or
                     any string starting with "a" for ascending order, or -1 or
                     any string starting with "d" for descending order
-
             reverse (False): whether to return the results in descending order
+            create_index (True): whether to create an index, if necessary, to
+                optimize the sort. Only applicable when sorting by field(s),
+                not expressions
 
         Returns:
             a :class:`fiftyone.core.view.DatasetView`
         """
-        return self._add_view_stage(fos.SortBy(field_or_expr, reverse=reverse))
+        return self._add_view_stage(
+            fos.SortBy(
+                field_or_expr,
+                reverse=reverse,
+                create_index=create_index,
+            )
+        )
 
     @view_stage
     def sort_by_similarity(
@@ -6669,7 +6684,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the filepath of
                 each video, if possible. The path is converted to an absolute
                 path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. This argument can
+                :func:`fiftyone.core.storage.normalize_path`. This argument can
                 be used in conjunction with ``output_dir`` to cause the sampled
                 frames to be written in a nested directory structure within
                 ``output_dir`` matching the shape of the input video's folder
@@ -7862,7 +7877,7 @@ class SampleCollection(object):
                 annotated media. This argument allows for populating nested
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
-                necessary) via :func:`fiftyone.core.utils.normalize_path`
+                necessary) via :func:`fiftyone.core.storage.normalize_path`
             label_fields (None): a label field or list of label fields to
                 render. By default, all :class:`fiftyone.core.labels.Label`
                 fields are drawn
@@ -8065,7 +8080,7 @@ class SampleCollection(object):
                 media. This argument allows for populating nested
                 subdirectories that match the shape of the input paths. The
                 path is converted to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`
+                :func:`fiftyone.core.storage.normalize_path`
             dataset_exporter (None): a
                 :class:`fiftyone.utils.data.exporters.DatasetExporter` to use
                 to export the samples. When provided, parameters such as
@@ -8717,7 +8732,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -8739,7 +8754,7 @@ class SampleCollection(object):
             a JSON dict
         """
         if rel_dir is not None:
-            rel_dir = fou.normalize_path(rel_dir) + os.path.sep
+            rel_dir = fost.normalize_path(rel_dir) + os.path.sep
 
         contains_videos = self._contains_videos(any_slice=True)
         write_frame_labels = (
@@ -8828,7 +8843,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory
@@ -8872,7 +8887,7 @@ class SampleCollection(object):
             rel_dir (None): a relative directory to remove from the
                 ``filepath`` of each sample, if possible. The path is converted
                 to an absolute path (if necessary) via
-                :func:`fiftyone.core.utils.normalize_path`. The typical use
+                :func:`fiftyone.core.storage.normalize_path`. The typical use
                 case for this argument is that your source data lives in a
                 single directory and you wish to serialize relative, rather
                 than absolute, paths to the data within that directory

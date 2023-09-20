@@ -41,6 +41,7 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
+import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -434,9 +435,18 @@ export const sidebarEntries = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
+      const isFieldVisibilityActive = get(isFieldVisibilityActiveState);
       const entries = [
         ...get(sidebarGroups(params))
           .map(({ name, paths }) => {
+            // if field visibility is active, return a hidden group
+            if (isFieldVisibilityActive && paths?.length === 0) {
+              return {
+                kind: EntryKind.EMPTY,
+                shown: false,
+              };
+            }
+
             const group: GroupEntry = {
               name: name,
               kind: EntryKind.GROUP,

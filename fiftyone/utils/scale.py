@@ -25,6 +25,7 @@ import fiftyone.core.media as fomm
 import fiftyone.core.metadata as fom
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.image as foui
 
 
 logger = logging.getLogger(__name__)
@@ -1170,4 +1171,4 @@ def _download_or_load_image(url_or_filepath):
         img_bytes = etaw.download_file(url_or_filepath, quiet=True)
         return etai.decode(img_bytes)
 
-    return etai.read(url_or_filepath)
+    return foui.read(url_or_filepath)

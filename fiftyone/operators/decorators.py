@@ -6,6 +6,8 @@ FiftyOne operator decorators.
 |
 """
 import asyncio
+import glob
+
 from cachetools.keys import hashkey
 from contextlib import contextmanager
 from functools import wraps
@@ -85,6 +87,8 @@ def plugins_cache(func):
 def dir_state(dirpath):
     if not os.path.isdir(dirpath):
         return None
+    # use glob instead of os.listdir to ignore hidden files (eg .DS_STORE)
     return max(
-        os.path.getmtime(os.path.join(dirpath, f)) for f in os.listdir(dirpath)
+        (os.path.getmtime(f) for f in glob.glob(os.path.join(dirpath, "*"))),
+        default=None,
     )

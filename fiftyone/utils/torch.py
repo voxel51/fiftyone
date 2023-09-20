@@ -16,7 +16,6 @@ import numpy as np
 from PIL import Image
 
 import eta.core.geometry as etag
-import eta.core.image as etai
 import eta.core.learning as etal
 import eta.core.utils as etau
 
@@ -25,6 +24,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.models as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+import fiftyone.utils.image as foui
 
 fou.ensure_torch()
 import torch
@@ -1983,7 +1983,7 @@ def _load_image(image_path, use_numpy, force_rgb):
     if use_numpy:
         # pylint: disable=no-member
         flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
-        return etai.read(image_path, flag=flag)
+        return foui.read(image_path, flag=flag)
 
     img = Image.open(image_path)
     if force_rgb:

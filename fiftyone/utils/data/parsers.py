@@ -9,7 +9,6 @@ import os
 
 import numpy as np
 
-import eta.core.image as etai
 import eta.core.serial as etas
 import eta.core.utils as etau
 
@@ -21,8 +20,8 @@ from fiftyone.core.sample import Sample
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
-
-fouv = fou.lazy_import("fiftyone.utils.video")
+import fiftyone.utils.image as foui
+import fiftyone.utils.video as fouv
 
 
 def add_images(dataset, samples, sample_parser, tags=None):
@@ -626,7 +625,7 @@ class ImageSampleParser(UnlabeledImageSampleParser):
     def get_image(self):
         image_or_path = self.current_sample
         if etau.is_str(image_or_path):
-            return etai.read(image_or_path)
+            return foui.read(image_or_path)
 
         return np.asarray(image_or_path)
 
@@ -963,7 +962,7 @@ class LabeledImageTupleSampleParser(LabeledImageSampleParser):
 
     def _parse_image(self, image_or_path):
         if etau.is_str(image_or_path):
-            return etai.read(image_or_path)
+            return foui.read(image_or_path)
 
         return np.asarray(image_or_path)
 
@@ -1577,7 +1576,7 @@ class FiftyOneUnlabeledImageSampleParser(UnlabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.filepath)
+        return foui.read(self.current_sample.filepath)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)
@@ -1630,7 +1629,7 @@ class FiftyOneLabeledImageSampleParser(LabeledImageSampleParser):
 
     def get_image(self):
         fov.validate_image_sample(self.current_sample)
-        return etai.read(self.current_sample.filepath)
+        return foui.read(self.current_sample.filepath)
 
     def get_image_path(self):
         fov.validate_image_sample(self.current_sample)

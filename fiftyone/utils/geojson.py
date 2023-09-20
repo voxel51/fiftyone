@@ -14,6 +14,7 @@ import eta.core.utils as etau
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.sample import Sample
+import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.data as foud
@@ -455,7 +456,7 @@ class GeoJSONDatasetImporter(
             for feature in geojson.get("features", []):
                 properties = feature["properties"]
                 if "filename" in properties:
-                    filename = fou.normpath(properties.pop("filename"))
+                    filename = fos.normpath(properties.pop("filename"))
                     if os.path.isabs(filename):
                         filepath = filename
                     else:
@@ -553,7 +554,7 @@ class GeoJSONDatasetExporter(
             generate an output path for each exported media. This argument
             allows for populating nested subdirectories that match the shape of
             the input paths. The path is converted to an absolute path (if
-            necessary) via :func:`fiftyone.core.utils.normalize_path`
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
         abs_paths (False): whether to store absolute paths to the images in the
             exported labels
         image_format (None): the image format to use when writing in-memory
