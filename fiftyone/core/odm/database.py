@@ -33,7 +33,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.service as fos
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
-import fiftyone.internal as foi
+from fiftyone.internal.util import is_internal_service
 
 from fiftyone.api import pymongo as fomongo, motor as fomotor
 
@@ -258,7 +258,7 @@ def establish_db_conn(config):
 
     _validate_db_version(config, _client)
 
-    if foi.is_internal_service():
+    if is_internal_service():
         atexit.register(_at_exit_internal)
     elif config.api_uri is None and (
         config.database_uri is None or "localhost" in config.database_uri
@@ -317,7 +317,10 @@ def _delete_non_persistent_datasets_if_allowed(**kwargs):
                         {
                             "$match": {
                                 "appName": foc.DATABASE_APPNAME,
-                                "command.ismaster": 1,
+                                "$or": [
+                                    {"command.ismaster": 1},
+                                    {"command.hello": 1},
+                                ],
                             }
                         },
                     ]

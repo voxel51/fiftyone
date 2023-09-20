@@ -271,6 +271,10 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    # Teams only
+    head_name: t.Optional[str]
+    snapshot_name: t.Optional[str]
+
     @gql.field
     def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
         if not slug:
@@ -587,6 +591,12 @@ async def serialize_dataset(
         data.view_cls = None
         data.view_name = view_name
         data.saved_view_slug = saved_view_slug
+
+        # Teams only for versioning
+        if hasattr(dataset, "head_name"):
+            data.head_name = dataset.head_name
+        if hasattr(dataset, "snapshot_name"):
+            data.snapshot_name = dataset.snapshot_name
 
         collection = dataset.view()
         if view is not None:

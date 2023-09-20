@@ -6,8 +6,12 @@ Migrations
 .. default-role:: code
 
 This page describes how to migrate between FiftyOne Teams versions, both for
-admins migrating the core Teams App infrastructure and individual users who
-need to install a new version of the Teams Python SDK.
+:ref:`admins <teams-upgrading>` migrating the core Teams App infrastructure and
+:ref:`individual users <teams-upgrade-python-sdk>` who need to install a new
+version of the Teams Python SDK.
+
+Refer to :ref:`this section <teams-migrating-datasets>` to see how to migrate
+existing datasets from open source to Teams.
 
 .. _teams-upgrade-python-sdk:
 
@@ -126,3 +130,93 @@ For example, you can downgrade to Teams v0.10 like so:
     Contact your Voxel51 CS engineer if you need to know the open source
     compatibility version for a particular Teams version that you wish to
     downgrade to.
+
+.. _teams-migrating-datasets:
+
+Migrating datasets to Teams
+___________________________
+
+Any datasets that you have created via open source FiftyOne can be migrated to
+your Teams deployment by exporting them in
+:ref:`FiftyOneDataset <FiftyOneDataset-export>` format:
+
+.. code-block:: python
+    :linenos:
+
+    # Open source SDK
+    import fiftyone as fo
+
+    dataset = fo.load_dataset(...)
+
+    dataset.export(
+        export_dir="/tmp/dataset",
+        dataset_type=fo.types.FiftyOneDataset,
+        export_media=False,
+    )
+
+and then re-importing them with the Teams SDK connected to your Teams
+deployment:
+
+.. code-block:: python
+    :linenos:
+
+    # Teams SDK
+    import fiftyone as fo
+
+    dataset = fo.Dataset.from_dir(
+        dataset_dir="/tmp/dataset",
+        dataset_type=fo.types.FiftyOneDataset,
+        persistent=True,
+    )
+
+Note that you'll need to update any local filepaths to cloud paths in order to
+use the dataset in Teams.
+
+If you need to upload the local media to the cloud, the Teams SDK provides a
+builtin utility for this:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.core.storage as fos
+
+    fos.upload_media(
+        dataset,
+        "s3://path/for/media",
+        update_filepaths=True,
+        progress=True,
+    )
+
+.. note::
+
+    By default, the above method only uploads the media in the ``filepath``
+    field of your samples. If your dataset contains other media fields (e.g.
+    :ref:`thumbnails <dataset-app-config-media-fields>`,
+    :ref:`segmentations <semantic-segmentation>`, or
+    :ref:`heatmaps <heatmaps>`) simply run the above command multiple times,
+    using the ``media_field`` argument to specify the appropriate fields to
+    upload.
+
+    If any media fields use the same filenames as other fields, be sure to
+    provide different ``remote_dir`` paths each time you call the above method
+    to avoid overwriting existing media.
+
+If the files already exist in cloud buckets, you can manually update the
+filepaths on the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    cloud_paths = []
+    for filepath in dataset.values("filepath"):
+        cloud_path = get_cloud_path(filepath)  # your function
+        cloud_paths.append(cloud_path)
+
+    dataset.set_values("filepath", cloud_paths)
+
+When you're finished, delete the local export of the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    shutil.rmtree("/tmp/dataset")

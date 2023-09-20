@@ -3,6 +3,143 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.0:
+
+FiftyOne Teams 1.4.0
+--------------------
+*Released September 20, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.22.0 <release-notes-v0.22.0>`, plus:
+
+News
+
+- Added support for :ref:`dataset versioning <dataset_versioning>`!
+- Added support for scheduling
+  :ref:`delegated operations <teams-plugins-managing-operators-runs>` via the
+  App using a connected orchestrator like Apache Airflow!
+
+App
+
+- Admins can now :ref:`upload secrets <teams-secrets>` via the UI which are
+  made available to all plugins and delegated operations at runtime
+- Optimized page load times when accessing the Team Settings page
+- Optimized page load times when opening a dataset for the first time in a new
+  web session
+
+.. _release-notes-v0.22.0:
+
+FiftyOne 0.22.0
+---------------
+*Released September 20, 2023*
+
+News
+
+- Added a native
+  :ref:`Ultralytics integration <ultralytics-integration>`!
+  `#3451 <https://github.com/voxel51/fiftyone/pull/3451>`_
+- Added support for scheduling :ref:`delegated operations <fiftyone-plugins>`
+  from within the App!
+  `#3312 <https://github.com/voxel51/fiftyone/pull/3312>`_
+
+App
+
+- Updated the :ref:`Histograms panel <app-histograms-panel>` to only render one
+  field at a time to improve performance
+  `#3419 <https://github.com/voxel51/fiftyone/pull/3419>`_
+- Gracefully fallback to `filepath` if a dataset's
+  :attr:`app_config <fiftyone.core.dataset.Dataset.app_config>` has a custom
+  grid media field that has been excluded from the current view
+  `#3498 <https://github.com/voxel51/fiftyone/pull/3498>`_
+- Improved rendering of 2D polylines
+  `#3476 <https://github.com/voxel51/fiftyone/pull/3476>`_
+- Prevented unnecessary page reloads when clearing selections in the
+  :ref:`Embeddings panel <app-embeddings-panel>`
+  `#3507 <https://github.com/voxel51/fiftyone/pull/3507>`_
+- Removed unnecessary page reloads when resetting field visibility filters
+  `#3441 <https://github.com/voxel51/fiftyone/pull/3441>`_
+- Fixed an off-by-one bug when paging in the sample grid
+  `#3416 <https://github.com/voxel51/fiftyone/pull/3416>`_
+- Fixed a bug when applying field visibility filters to fields of type
+  |DateField| and |DateTimeField|
+  `#3418 <https://github.com/voxel51/fiftyone/pull/3418>`_
+- Fixed a bug when changing slices for grouped datasets in the sample modal
+  when sidebar filters have been applied
+  `#3545 <https://github.com/voxel51/fiftyone/pull/3545>`_
+- Fixed a bug when visualizing dynamic groupings of grouped datasets with
+  sparse (missing) slices
+  `#3470 <https://github.com/voxel51/fiftyone/pull/3470>`_
+- Fixed a bug that prevented the group media visibility dropdown from opening
+  `#3480 <https://github.com/voxel51/fiftyone/pull/3480>`_
+- Fixed a bug where attributes of grouped samples were missing in the modal
+  `#3436 <https://github.com/voxel51/fiftyone/pull/3436>`_
+
+Core
+
+- Added support for grouping by compound keys using
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`
+  `#3515 <https://github.com/voxel51/fiftyone/pull/3515>`_
+- Added `create_index=False` options to
+  :meth:`sort_by() <fiftyone.core.collections.SampleCollection.sort_by>` and
+  :meth:`group_by() <fiftyone.core.collections.SampleCollection.group_by>`
+  `#3515 <https://github.com/voxel51/fiftyone/pull/3515>`_
+- Added a new `tags` filter option to
+  :func:`list_datasets() <fiftyone.core.dataset.list_datasets>`
+  `#3492 <https://github.com/voxel51/fiftyone/pull/3492>`_
+- Added a :mod:`fiftyone.core.storage` module that provides a common interface
+  for filesystem I/O
+  `#3406 <https://github.com/voxel51/fiftyone/pull/3406>`_
+- Added dataset tag and label filters when exporting datasets
+  :ref:`via the CLI <cli-fiftyone-datasets-export>`
+  `#3412 <https://github.com/voxel51/fiftyone/pull/3412>`_
+- Added support for running FiftyOne in podman containers
+  `#3483 <https://github.com/voxel51/fiftyone/pull/3483>`_
+- Optimized the
+  :func:`list_datasets(info=True) <fiftyone.core.dataset.list_datasets>`
+  implementation
+  `#3528 <https://github.com/voxel51/fiftyone/pull/3528>`_
+- Added support for providing frame sizes when constructing
+  :ref:`rotated boxes <rotated-bounding-boxes>` and :ref:`cuboids <cuboids>`
+  `#3409 <https://github.com/voxel51/fiftyone/pull/3409>`_
+- Fixed a bug with automatic non-persistent dataset cleanup when running
+  MongoDB v4.4 and later
+  `#3486 <https://github.com/voxel51/fiftyone/pull/3486>`_
+- Fixed a bug where default indexes for grouped datasets were not created via
+  :meth:`clone() <fiftyone.core.dataset.Dataset.clone>` and
+  :meth:`merge_samples() <fiftyone.core.dataset.Dataset.merge_samples>`
+  `#3515 <https://github.com/voxel51/fiftyone/pull/3515>`_
+- Fixed a bug where NaNs were causing orthographic projection computations to
+  crash
+  `#3427 <https://github.com/voxel51/fiftyone/pull/3427>`_
+- Fixed a bug with the :ref:`OpenLABEL importer <OpenLABELImageDataset-import>`
+  when given incomplete keypoint skeletons
+  `#3429 <https://github.com/voxel51/fiftyone/pull/3429>`_
+
+Plugins
+
+- Added a new
+  :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>` type
+  that allows for browsing file systems and selecting files or directories
+  `#3459 <https://github.com/voxel51/fiftyone/pull/3459>`_
+- Added `ctx.secrets` to plugins
+  `#3453 <https://github.com/voxel51/fiftyone/pull/3453>`_
+- Added a builtin `set_progress` operator
+  `#3516 <https://github.com/voxel51/fiftyone/pull/3516>`_
+- Fixed broken wiring of the
+  :class:`MarkdownView <fiftyone.operators.types.MarkdownView>`,
+  :class:`SwitchView <fiftyone.operators.types.SwitchView>`, and
+  :class:`Placement <fiftyone.operators.types.Placement>` components
+  `#3537 <https://github.com/voxel51/fiftyone/pull/3537>`_
+
+Zoo
+
+- Graceful handling of empty prompts when using
+  :ref:`Segment Anything <model-zoo-segment-anything-vitb-torch>` models
+  `#3505 <https://github.com/voxel51/fiftyone/pull/3505>`_
+- Fixed bugs where
+  :ref:`Segment Anything <model-zoo-segment-anything-vitb-torch>` model weights
+  were not loaded and auto-inference would only return one set of masks
+  `#3465 <https://github.com/voxel51/fiftyone/pull/3465>`_
+
 .. _release-notes-teams-v1.3.6:
 
 FiftyOne Teams 1.3.6
@@ -58,7 +195,8 @@ News
 - Added `DINOv2 <https://github.com/facebookresearch/dinov2>`_ to the
   :ref:`Model Zoo <model-zoo>`!
   `#2951 <https://github.com/voxel51/fiftyone/pull/2951>`_
-- Added support for loading models from the :ref:`PyTorch Hub <pytorch-hub>`!
+- Added support for loading models from
+  :ref:`PyTorch Hub <pytorch-hub-integration>`!
   `#2949 <https://github.com/voxel51/fiftyone/pull/2949>`_
 
 App

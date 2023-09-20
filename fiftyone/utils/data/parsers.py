@@ -20,9 +20,8 @@ import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
-
-foui = fou.lazy_import("fiftyone.utils.image")
-fouv = fou.lazy_import("fiftyone.utils.video")
+import fiftyone.utils.image as foui
+import fiftyone.utils.video as fouv
 
 
 def add_images(dataset, samples, sample_parser, tags=None):

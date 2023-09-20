@@ -147,6 +147,9 @@ class VOCDetectionDatasetImporter(
             else:
                 _uuid = None
 
+            if _uuid is not None:
+                _uuid = fos.normpath(_uuid)
+
             if _uuid not in self._image_paths_map:
                 _uuid = uuid
 
@@ -185,9 +188,10 @@ class VOCDetectionDatasetImporter(
         )
 
         if self.labels_path is not None and fos.isdir(self.labels_path):
+            labels_path = fos.normpath(self.labels_path)
             labels_paths_map = {
-                os.path.splitext(p)[0]: fos.join(self.labels_path, p)
-                for p in fos.list_files(self.labels_path, recursive=True)
+                os.path.splitext(p)[0]: fos.join(labels_path, p)
+                for p in fos.list_files(labels_path, recursive=True)
                 if etau.has_extension(p, ".xml")
             }
         else:

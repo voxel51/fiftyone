@@ -58,7 +58,7 @@ export type Sample = {
     height: number;
     mime_type?: string;
   };
-  id: string;
+  _id: string;
   filepath: string;
   tags: string[];
   _label_tags: string[];

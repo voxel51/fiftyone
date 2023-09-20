@@ -406,6 +406,12 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
 
+    this.element.dispatchEvent(
+      new CustomEvent("re-render-tag", {
+        bubbles: true,
+      })
+    );
+
     elements
       .filter((e) => Boolean(e))
       .forEach(({ path, value, color, title }) => {
@@ -416,7 +422,11 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           : (div.innerHTML = child);
         div.title = title;
         div.style.backgroundColor = color;
-        div.setAttribute("data-cy", `tag-${path}`);
+        const tagValue = value.replace(/[\s.,/]/g, "-").toLowerCase();
+        const attribute = ["tags", "_label_tags"].includes(path)
+          ? `tag-${path}-${tagValue}`
+          : `tag-${path}`;
+        div.setAttribute("data-cy", attribute);
         this.element.appendChild(div);
       });
 

@@ -1,8 +1,9 @@
 import { useTheme } from "@fiftyone/components";
-import { disabledPaths } from "@fiftyone/state";
+import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 
 const Draggable: React.FC<
   React.PropsWithChildren<{
@@ -18,11 +19,15 @@ const Draggable: React.FC<
   const theme = useTheme();
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const isReadOnly = useRecoilValue(readOnly);
+  const isFieldVisibilityApplied = useRecoilValue(isFieldVisibilityActive);
 
   const disableDrag =
     !entryKey ||
     entryKey.split(",")[1]?.includes("tags") ||
-    entryKey.split(",")[1]?.includes("_label_tags");
+    entryKey.split(",")[1]?.includes("_label_tags") ||
+    isReadOnly ||
+    isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
 
   const style = useSpring({
@@ -36,27 +41,39 @@ const Draggable: React.FC<
         : "grab"
       : "pointer",
   });
+  const dataCyKey = entryKey
+    ?.split(",")?.[1]
+    ?.replace(/["]/g, "")
+    ?.replace("]", "");
+
+  const isDraggable = useMemo(
+    () => !disableDrag && trigger && !isReadOnly,
+    [disableDrag, trigger, isReadOnly]
+  );
 
   return (
     <>
       <animated.div
+        data-draggable={isDraggable}
+        data-cy={`sidebar-entry-draggable-${dataCyKey}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
         onMouseDown={
-          trigger
+          isDraggable
             ? (event) => {
                 setDragging(true);
                 trigger(event, entryKey, () => setDragging(false));
               }
-            : null
+            : undefined
         }
-        onMouseEnter={() => trigger && setHovering(true)}
-        onMouseLeave={() => setHovering(false)}
+        onMouseEnter={
+          isReadOnly ? undefined : () => trigger && setHovering(true)
+        }
+        onMouseLeave={isReadOnly ? undefined : () => setHovering(false)}
         style={{
           backgroundColor: color,
           position: "absolute",
-          left: 0,
           top: 0,
           zIndex: active ? 100 : 0,
           borderRadius: 2,

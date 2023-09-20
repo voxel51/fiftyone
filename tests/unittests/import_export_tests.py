@@ -3377,6 +3377,7 @@ class OpenLABELImageDatasetTests(ImageDatasetTests):
             label_types="keypoints",
             skeleton_key=skeleton_key,
             skeleton=skeleton,
+            dynamic=True,
         )
         dataset.default_skeleton = skeleton
 

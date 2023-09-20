@@ -128,6 +128,7 @@ export const SchemaSelectionRow = (props: Props) => {
         <Box display="flex" flexDirection="row" width="100%">
           <Box>
             <Checkbox
+              data-cy={`schema-selection-${path}`}
               name={"Carousel"}
               value={path}
               checked={isSelected}

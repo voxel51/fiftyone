@@ -5,10 +5,12 @@ FiftyOne operator permissions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from enum import Enum
 import os
+
 import aiohttp
-import json
+from aiohttp.http_exceptions import InvalidHeader
+
+from fiftyone.internal.util import is_internal_service
 
 
 class ManagedPlugins:
@@ -129,13 +131,25 @@ def get_token_from_request(request):
         return cookie
 
 
-# an example using the requests module to make an request to a graphql
+# an example using the requests module to make a request to a graphql
 # server returning the results in a dictionary
 async def make_request(url, access_token, query, variables=None):
     headers = {
         "Content-Type": "application/json",
-        "Authorization": access_token,
     }
+    if access_token:
+        headers["Authorization"] = access_token
+    else:
+        # if no access token is provided, but running as an internal service,
+        # use an API key (TODO: replace with a service account token for
+        #  internal authentication?)
+        if is_internal_service() and os.getenv("FIFTYONE_API_KEY"):
+            headers["X-API-Key"] = os.getenv("FIFTYONE_API_KEY")
+        else:
+            raise InvalidHeader(
+                f"No access token provided and not running as an internal "
+                f"service. Cannot complete request.\nquery={query}"
+            )
     async with aiohttp.ClientSession() as session:
         async with session.post(
             url, headers=headers, json={"query": query, "variables": variables}
@@ -149,7 +163,8 @@ async def make_request(url, access_token, query, variables=None):
                 return result
             else:
                 raise Exception(
-                    f"Query failed to run by returning code of {resp.status}. {query}"
+                    f"Query failed to run by returning code of "
+                    f"{resp.status}. {query}"
                 )
 
 

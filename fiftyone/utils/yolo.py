@@ -305,7 +305,7 @@ class YOLOv4DatasetImporter(
                 if not fos.isabs(path):
                     path = fos.join(root_dir, path)
 
-                image_paths.append(path)
+                image_paths.append(fos.normpath(path))
         else:
             if self.images_path is not None:
                 logger.warning(
@@ -316,7 +316,7 @@ class YOLOv4DatasetImporter(
                 )
 
             image_paths = [
-                p
+                fos.normpath(p)
                 for p in fos.list_files(
                     self.data_path, abs_paths=True, recursive=True
                 )
@@ -333,7 +333,7 @@ class YOLOv4DatasetImporter(
                 # Labels are in same directory as images
                 labels_path = os.path.splitext(image_path)[0] + ".txt"
 
-            labels_paths.append(labels_path)
+            labels_paths.append(fos.normpath(labels_path))
 
         exists = fos.run(fos.isfile, labels_paths)
 
@@ -989,7 +989,9 @@ class YOLOv5DatasetExporter(
             d["path"] = os.path.dirname(self.yaml_path)
 
         d[self.split] = _make_yolo_v5_path(self.data_path, self.yaml_path)
-        d["names"] = dict(enumerate(classes))
+
+        # New data.yaml format https://docs.ultralytics.com/datasets/detect/
+        d["names"] = dict(enumerate(classes))  # class names dictionary
 
         fos.write_yaml(d, self.yaml_path, default_flow_style=False)
 

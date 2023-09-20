@@ -19,7 +19,6 @@ import eta.core.video as etav
 import fiftyone.core.labels as fol
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
-import fiftyone.core.utils as fou
 import fiftyone.utils.data as foud
 
 
@@ -220,15 +219,17 @@ class OpenLABELImageDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -435,15 +436,17 @@ class OpenLABELVideoDatasetImporter(
         annotations = OpenLABELAnnotations()
 
         if self.labels_path is not None:
+            labels_path = fos.normpath(self.labels_path)
+
             base_dir = None
-            if fos.isfile(self.labels_path):
-                label_paths = [self.labels_path]
-            elif fos.isdir(self.labels_path):
-                base_dir = self.labels_path
-            elif os.path.basename(
-                self.labels_path
-            ) == "labels.json" and fos.isdir(_remove_ext(self.labels_path)):
-                base_dir = _remove_ext(self.labels_path)
+            if fos.isfile(labels_path):
+                label_paths = [labels_path]
+            elif fos.isdir(labels_path):
+                base_dir = labels_path
+            elif os.path.basename(labels_path) == "labels.json" and fos.isdir(
+                _remove_ext(labels_path)
+            ):
+                base_dir = _remove_ext(labels_path)
             else:
                 label_paths = []
 
@@ -1168,6 +1171,10 @@ class OpenLABELPoint(OpenLABELShape):
     """An OpenLABEL keypoint."""
 
     @classmethod
+    def _get_empty_value_for_type(cls, example_type):
+        return example_type()
+
+    @classmethod
     def _sort_by_skeleton(cls, points, attrs, label_order, skeleton_order):
         if len(points) != len(label_order):
             return points, attrs
@@ -1182,6 +1189,8 @@ class OpenLABELPoint(OpenLABELShape):
             if isinstance(v, list) and len(v) == len(points):
                 attrs_to_sort[k] = v
                 sorted_attrs[k] = []
+            elif isinstance(v, list) and len(v) == 0:
+                continue
             else:
                 sorted_attrs[k] = v
 
@@ -1189,7 +1198,9 @@ class OpenLABELPoint(OpenLABELShape):
             if label not in label_order:
                 sorted_points.append([float("nan"), float("nan")])
                 for k in attrs_to_sort:
-                    sorted_attrs[k].append(None)
+                    example_type = type(attrs_to_sort[k][0])
+                    empty_value = cls._get_empty_value_for_type(example_type)
+                    sorted_attrs[k].append(empty_value)
             else:
                 ind = label_order.index(label)
                 sorted_points.append(points[ind])

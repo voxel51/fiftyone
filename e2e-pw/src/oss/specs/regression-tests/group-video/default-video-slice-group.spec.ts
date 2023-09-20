@@ -16,8 +16,8 @@ const testImgPath = `/tmp/test-img-${datasetName}.jpg`;
 const testImgPath2 = `/tmp/test-img-2-${datasetName}.jpg`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
@@ -71,31 +71,39 @@ test.describe("default video slice group", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    fiftyoneLoader.waitUntilLoad(page, datasetName);
+    fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("video as default slice renders", async ({ grid, modal, page }) => {
+  test("video as default slice renders", async ({
+    grid,
+    modal,
+    eventUtils,
+  }) => {
     await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
     await grid.sliceSelector.assert.verifyActiveSlice("video");
-    await grid.assert.assertNLookers(1);
+    await grid.assert.isLookerCountEqualTo(1);
 
-    await grid.openFirstLooker();
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const imgLoadedPromise =
-      grid.getSampleLoadEventPromiseForFilepath(testImgPath);
+    const imgLoadedPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "sample-loaded",
+      (e) => e.detail.sampleFilepath === testImgPath
+    );
     await grid.selectSlice("image");
     await imgLoadedPromise;
 
-    await grid.assert.assertNLookers(2);
-    await grid.openFirstLooker();
+    await grid.assert.isLookerCountEqualTo(2);
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
     await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(2);
     await modal.navigateNextSample();
+    await modal.waitForSampleLoadDomAttribute();
+    await modal.waitForCarouselToLoad();
     await modal.assert.verifyCarouselLength(1);
   });
 });

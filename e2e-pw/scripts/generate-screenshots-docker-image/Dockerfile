@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.36.0-jammy
+FROM mcr.microsoft.com/playwright:v1.37.1-jammy
 
 # Install python 3.10
 RUN apt-get update \

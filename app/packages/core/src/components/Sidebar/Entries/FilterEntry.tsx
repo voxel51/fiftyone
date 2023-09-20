@@ -5,14 +5,13 @@ import FilterAltIcon from "@mui/icons-material/FilterAlt";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Typography } from "@mui/material";
 import React from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import { FilterInputDiv } from "./utils";
+
+const Text = styled.div`
+  font-size: 1rem;
+`;
 
 const Filter = ({ modal }: { modal: boolean }) => {
   const theme = useTheme();
@@ -21,7 +20,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
   );
 
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
-  const selectedFieldsStage = useRecoilValue(fos.selectedFieldsStageState);
   const resetSelectedFieldStages = useResetRecoilState(
     fos.selectedFieldsStageState
   );
@@ -31,16 +29,13 @@ const Filter = ({ modal }: { modal: boolean }) => {
     resetExcludedPaths,
     affectedPathCount,
     mergedSchema,
+    isFieldVisibilityActive,
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
-
-  const Text = styled.div`
-    font-size: 1rem;
-  `;
 
   return (
     <FilterInputDiv modal={modal}>
@@ -66,7 +61,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
               text="Use the controls below to create filtered views into your data"
               placement="bottom-start"
             >
-              <Text>FILTER</Text>
+              <Text data-cy="sidebar-mode-status">FILTER</Text>
             </Tooltip>
           </Box>
         )}
@@ -85,16 +80,17 @@ const Filter = ({ modal }: { modal: boolean }) => {
               text="Use the controls below to toggle the visibility of field values in the grid"
               placement="bottom-start"
             >
-              <Text>VISIBILITY</Text>
+              <Text data-cy="sidebar-mode-status">VISIBILITY</Text>
             </Tooltip>
           </Box>
         )}
       </Box>
       {!modal && (
         <Box display="flex" alignItems="center">
-          {selectedFieldsStage && affectedPathCount > 0 && (
+          {isFieldVisibilityActive && (
             <Tooltip text="Clear field selection" placement="bottom-center">
               <Box
+                data-cy="field-visibility-btn-clear"
                 sx={{
                   minWidth: "50px",
                   maxWidth: "100px",
@@ -134,6 +130,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
           )}
           <Tooltip text="Change field visibility" placement="bottom-center">
             <Settings
+              data-cy="field-visibility-icon"
               onClick={() => {
                 setSchemaModal({
                   open: true,

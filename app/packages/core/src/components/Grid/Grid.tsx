@@ -1,12 +1,7 @@
 import Flashlight from "@fiftyone/flashlight";
 import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import {
-  stringifyObj,
-  useDeferrer,
-  useEventHandler,
-  useExpandSample,
-} from "@fiftyone/state";
+import { stringifyObj, useDeferrer, useExpandSample } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -31,6 +26,8 @@ const Grid: React.FC<{}> = () => {
   const selected = useRecoilValue(fos.selectedSamples);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
+
+  const setSelectedSamples = fos.useSetSelected();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
   const { page, reset } = useFlashlightPager(
@@ -156,23 +153,35 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  useEventHandler(
-    document,
-    "keydown",
-    useRecoilCallback(
-      ({ snapshot, reset }) =>
-        async (event: KeyboardEvent) => {
-          if (event.key !== "Escape") {
-            return;
-          }
+  const escEventHandler = useRecoilCallback(
+    ({ reset }) =>
+      async (event: KeyboardEvent) => {
+        if (event.key !== "Escape") {
+          return;
+        }
 
-          if ((await snapshot.getPromise(fos.modalSampleIndex)) === null) {
-            reset(fos.selectedSamples);
-          }
-        },
-      []
-    )
+        if (!isModalOpen) {
+          reset(fos.selectedSamples);
+          setSelectedSamples([]);
+        }
+      },
+    [setSelectedSamples, isModalOpen]
   );
+
+  useEffect(() => {
+    // this deferred execution is a hack to address problem caused by a race condition in `isModalOpen`
+    setTimeout(() => {
+      if (!isModalOpen) {
+        document.addEventListener("keydown", escEventHandler);
+      } else {
+        document.removeEventListener("keydown", escEventHandler);
+      }
+    }, 0);
+
+    return () => {
+      document.removeEventListener("keydown", escEventHandler);
+    };
+  }, [isModalOpen]);
 
   useEffect(() => {
     init();

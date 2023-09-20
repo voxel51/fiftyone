@@ -29,6 +29,7 @@ const SearchInput = styled.input`
 `;
 
 export const SearchBox = ({
+  id,
   searchTerm,
   searchPlaceholder,
   setSearchTerm,
@@ -36,6 +37,7 @@ export const SearchBox = ({
   searchValue,
   disabled = false,
 }: {
+  id: string;
   searchTerm: string;
   searchPlaceholder?: string;
   setSearchTerm: (term: string) => void;
@@ -51,6 +53,7 @@ export const SearchBox = ({
   } = theme;
   return (
     <Box
+      data-cy={`${id}-selection-search-container`}
       style={{
         position: "sticky",
         top: 0,
@@ -60,6 +63,7 @@ export const SearchBox = ({
       }}
     >
       <SearchInput
+        data-cy={`${id}-selection-search-input`}
         disabled={disabled}
         value={searchTerm}
         placeholder={searchPlaceholder}

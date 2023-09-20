@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React, { useContext, useState } from "react";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 import { getDatasetName, RouterContext } from "@fiftyone/state";
 import { InputDiv } from "./utils";
@@ -8,6 +8,8 @@ import { InputDiv } from "./utils";
 const AddGroup = () => {
   const [value, setValue] = useState("");
   const context = useContext(RouterContext);
+  const isFieldVisibilityApplied = useRecoilValue(fos.isFieldVisibilityActive);
+
   const addGroup = useRecoilCallback(
     ({ set, snapshot }) =>
       async (newGroup: string) => {
@@ -30,6 +32,7 @@ const AddGroup = () => {
         const view = await snapshot.getPromise(fos.view);
         set(fos.sidebarGroupsDefinition(false), newGroups);
         fos.persistSidebarGroups({
+          subscription: await snapshot.getPromise(fos.stateSubscription),
           dataset: getDatasetName(context),
           stages: view,
           sidebarGroups: newGroups,
@@ -38,9 +41,14 @@ const AddGroup = () => {
     []
   );
 
+  if (isFieldVisibilityApplied) {
+    return null;
+  }
+
   return (
-    <InputDiv>
+    <InputDiv style={{ margin: 0 }}>
       <input
+        data-cy="sidebar-field-add-group-input"
         type={"text"}
         placeholder={"+ add group"}
         value={value}

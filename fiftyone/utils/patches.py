@@ -7,12 +7,11 @@ Image patch utilities.
 """
 import cv2
 
-import eta.core.image as etai
-
 import fiftyone.core.frame as fof
 import fiftyone.core.labels as fol
 import fiftyone.core.validation as fov
 import fiftyone.utils.eta as foue
+import fiftyone.utils.image as foui
 
 
 class ImagePatchesExtractor(object):
@@ -166,7 +165,7 @@ def extract_patch(img, detection, force_square=False, alpha=None):
 def _load_image(image_path, force_rgb=False):
     # pylint: disable=no-member
     flag = cv2.IMREAD_COLOR if force_rgb else cv2.IMREAD_UNCHANGED
-    return etai.read(image_path, flag=flag)
+    return foui.read(image_path, flag=flag)
 
 
 def _to_classification(label):

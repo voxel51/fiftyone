@@ -22,13 +22,13 @@ A random 5% of the samples are duplicates, instead of the original samples.
 import os
 import random
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone.core.utils as fou
+import fiftyone.utils.image as foui
 
 fou.ensure_tf()
-from tensorflow.keras.datasets import cifar100
+from tensorflow.keras.datasets import cifar100  # pylint: disable=import-error
 
 
 DATASET_SIZE = 1000
@@ -174,7 +174,7 @@ def download_dataset():
         rel_img_path = os.path.join(fine_label, "%d.jpg" % i)
         abs_img_path = os.path.join(DATASET_DIR, rel_img_path)
 
-        etai.write(img, abs_img_path)
+        foui.write(img, abs_img_path)
 
     print("Download successful")
 

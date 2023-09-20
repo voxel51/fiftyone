@@ -8,12 +8,12 @@ Dataset ingestors.
 import logging
 import os
 
-import eta.core.image as etai
 import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
+import fiftyone.utils.image as foui
 
 from .importers import (
     UnlabeledImageDatasetImporter,
@@ -79,7 +79,7 @@ class ImageIngestor(object):
         img = sample_parser.get_image()
         image_path = self._filename_maker.get_output_path()
         if fos.is_local(image_path):
-            etai.write(img, image_path)
+            foui.write(img, image_path)
         else:
             if self._tmpdir is None:
                 self._tmpdir = fos.make_temp_dir()
@@ -91,7 +91,7 @@ class ImageIngestor(object):
             self._inpaths.append(local_path)
             self._outpaths.append(image_path)
 
-            etai.write(img, local_path)
+            foui.write(img, local_path)
 
         return image_path
 

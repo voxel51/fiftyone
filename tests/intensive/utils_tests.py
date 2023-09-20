@@ -10,7 +10,6 @@ import os
 import numpy as np
 import pytest
 
-import eta.core.image as etai
 import eta.core.utils as etau
 import eta.core.video as etav
 
@@ -27,7 +26,7 @@ def tmpdir():
 
 def _write_image(image_path, size):
     img = np.random.randint(255, size=size + (3,), dtype=np.uint8)
-    etai.write(img, image_path)
+    foui.write(img, image_path)
 
 
 def _write_video(video_path, fps, size, num_frames):

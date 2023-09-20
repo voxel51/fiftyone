@@ -3,7 +3,14 @@ import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import { get } from "lodash";
-import { useCallback, useId, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   selector,
   useRecoilCallback,
@@ -29,8 +36,8 @@ const pageParams = selector({
       return {
         ...params,
         filter: {},
-        cursor: page ? String(page * pageSize) : null,
-        first: pageSize,
+        after: page ? String(page * pageSize - 1) : null,
+        count: pageSize,
       };
     };
   },
@@ -44,7 +51,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const modalSampleId = useRecoilValue(fos.modalSampleId);
   const field = useRecoilValue(fos.dynamicGroupParameters);
   const highlight = useCallback(
-    (sample) => sample.id === modalSampleId,
+    (sample) => sample._id === modalSampleId,
     [modalSampleId]
   );
 
@@ -208,6 +215,10 @@ export const DynamicGroupsFlashlightWrapper = () => {
       flashlight.updateItems(updateItem);
     });
   }, [deferred, flashlight, updateItem, options, selected]);
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   return (
     <div

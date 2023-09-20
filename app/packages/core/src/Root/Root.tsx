@@ -15,11 +15,11 @@ import { graphql } from "relay-runtime";
 import { OperatorCore } from "@fiftyone/operators";
 
 import {
-  Button,
   DocsLink,
   GitHubLink,
   Header,
   SlackLink,
+  Tooltip,
   iconContainer,
 } from "@fiftyone/components";
 
@@ -41,9 +41,10 @@ import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
-import { DarkMode, LightMode } from "@mui/icons-material";
+import { DarkMode, LightMode, Lock } from "@mui/icons-material";
 import { IconButton, useColorScheme } from "@mui/material";
 import DatasetSelector from "../components/DatasetSelector";
+import { datasetHeadName, datasetSnapshotName } from "../versionSelectors";
 
 const rootQuery = graphql`
   query RootQuery($search: String = "", $count: Int, $cursor: String) {
@@ -160,6 +161,8 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
   const dataset = getDatasetName(context);
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
+  const datasetHead = useRecoilValue(datasetHeadName);
+  const datasetSnapshot = useRecoilValue(datasetSnapshotName);
 
   return (
     <>
@@ -168,6 +171,21 @@ const Nav: React.FC<{ prepared: PreloadedQuery<RootQuery> }> = ({
         onRefresh={refresh}
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
+        {datasetHead && datasetSnapshot && (
+          <div className={style.lock}>
+            <Tooltip
+              text={
+                `You are viewing the snapshot "${datasetSnapshot}" of the` +
+                ` dataset "${datasetHead}" (Read-only mode)`
+              }
+              placement="bottom-center"
+            >
+              <Lock
+                sx={{ color: (theme) => theme.palette.primary.main, mt: 1 }}
+              />
+            </Tooltip>
+          </div>
+        )}
         {dataset && <ViewBar />}
         {!dataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>

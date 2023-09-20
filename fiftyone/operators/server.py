@@ -14,15 +14,17 @@ from starlette.responses import JSONResponse, StreamingResponse
 from fiftyone.server.decorators import route
 
 from .executor import (
-    execute_operator,
+    execute_or_delegate_operator,
     resolve_type,
     resolve_placement,
     ExecutionContext,
+    is_snapshot,  # teams-only
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 from fiftyone.utils.decorators import route_requires_auth
 from .registry import OperatorRegistry
+from fiftyone.plugins.permissions import get_token_from_request
 
 
 async def _get_operator_registry_for_route(
@@ -41,6 +43,14 @@ async def _get_operator_registry_for_route(
     else:
         registry = OperatorRegistry()
     return registry
+
+
+def resolve_dataset_name(request_params: dict):
+    try:
+        ctx = ExecutionContext(request_params)
+        return ctx.dataset.head_name
+    except:
+        return request_params.get("dataset_name", None)
 
 
 class ListOperators(HTTPEndpoint):
@@ -66,7 +76,7 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         if dataset_name is None:
             raise ValueError("Dataset name must be provided")
 
@@ -75,6 +85,12 @@ class ResolvePlacements(HTTPEndpoint):
             ResolvePlacements, request, dataset_ids=dataset_ids
         )
         placements = []
+
+        # teams-only
+        dataset_raw_name = data.get("dataset_name", None)
+        if is_snapshot(dataset_raw_name):
+            return {"placements": placements}
+
         for operator in registry.list_operators():
             placement = resolve_placement(operator, data)
             if placement is not None:
@@ -91,7 +107,9 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+
+        user = request.get("user", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
@@ -110,8 +128,14 @@ class ExecuteOperator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
+        request_token = get_token_from_request(request)
 
-        result = await execute_operator(operator_uri, data)
+        result = await execute_or_delegate_operator(
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
+        )
         return result.to_json()
 
 
@@ -140,7 +164,8 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        user = request.get("user", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:
@@ -159,8 +184,14 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
                 "loading_errors": registry.list_errors(),
             }
             raise HTTPException(status_code=404, detail=error_detail)
-
-        execution_result = await execute_operator(operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+        execution_result = await execute_or_delegate_operator(
+            operator_uri,
+            data,
+            request_token=request_token,
+            user=(user.sub if user else None),
+        )
         if execution_result.is_generator:
             result = execution_result.result
             generator = (
@@ -183,7 +214,7 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         operator_uri = data.get("operator_uri", None)
         if operator_uri is None:

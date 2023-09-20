@@ -129,11 +129,12 @@ const Section = ({
 
   return (
     <>
-      <TaggingContainerInput>
+      <TaggingContainerInput data-cy="tagger-container">
         {isLoading ? (
           <LoadingDots text="" style={{ color: theme.text.secondary }} />
         ) : (
           <TaggingInput
+            data-cy={`${labels ? "label" : "sample"}-tag-input`}
             placeholder={
               count == 0
                 ? `No ${labels ? "labels" : elementNames.plural}`
@@ -170,7 +171,7 @@ const Section = ({
                   }`
                 : null
             }
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter" && hasCreate) {
                 setValue("");
                 setChanges({ ...changes, [value]: CheckState.ADD });
@@ -234,7 +235,7 @@ const Section = ({
           )}
           {hasChanges && !value.length && (
             <Button
-              text={"Apply"}
+              text="Apply"
               onClick={() => submitWrapper(changes)}
               style={{
                 margin: "0.25rem -0.5rem",
@@ -363,7 +364,9 @@ const useTagCallback = (
               ids.add(sample.sample._id);
             });
           });
-          updateSamples(Array.from(ids).map((id) => [id, undefined]));
+          updateSamples(
+            Array.from(ids).map((id) => [id.split("-")[0], undefined])
+          );
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
@@ -439,7 +442,6 @@ const SuspenseLoading = () => {
 
 type TaggerProps = {
   modal: boolean;
-  bounds: any;
   close: () => void;
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
@@ -447,13 +449,7 @@ type TaggerProps = {
   anchorRef?: MutableRefObject<HTMLDivElement>;
 };
 
-const Tagger = ({
-  modal,
-  bounds,
-  close,
-  lookerRef,
-  anchorRef,
-}: TaggerProps) => {
+const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
@@ -478,18 +474,19 @@ const Tagger = ({
     <Popout
       style={{ width: "12rem" }}
       modal={modal}
-      bounds={bounds}
       fixed
       anchorRef={anchorRef}
     >
       <SwitcherDiv>
         <SwitchDiv
+          data-cy="tagger-switch-sample"
           style={sampleProps}
           onClick={() => labels && setLabels(false)}
         >
           {modal ? elementNames.singular : elementNames.plural}
         </SwitchDiv>
         <SwitchDiv
+          data-cy="tagger-switch-label"
           style={labelProps}
           onClick={() => !labels && setLabels(true)}
         >

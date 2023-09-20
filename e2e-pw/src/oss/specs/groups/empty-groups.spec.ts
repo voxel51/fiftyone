@@ -1,5 +1,5 @@
 import { test as base } from "src/oss/fixtures";
-import { PanelPom } from "src/oss/poms/panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{ panel: PanelPom }>({
@@ -20,7 +20,9 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName, undefined, false);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+    isEmptyDataset: true,
+  });
 });
 
 test("empty dataset without default slice", async ({ panel }) => {

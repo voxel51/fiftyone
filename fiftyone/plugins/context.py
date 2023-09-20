@@ -1,5 +1,5 @@
 """
-FiftyOne operator loader.
+FiftyOne plugin context.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -14,10 +14,12 @@ import traceback
 import fiftyone as fo
 import fiftyone.plugins as fop
 
-from .decorators import plugins_cache
-from .operator import Operator
+from fiftyone.operators.decorators import plugins_cache
+from fiftyone.operators.operator import Operator
 
 logger = logging.getLogger(__name__)
+
+INIT_FILENAME = "__init__.py"
 
 
 @plugins_cache
@@ -58,6 +60,11 @@ class PluginContext(object):
         """The plugin name."""
         return self.plugin_definition.name
 
+    @property
+    def secrets(self):
+        """List of keys for required secrets as specified in the plugin definition."""
+        return self.plugin_definition.secrets
+
     def has_errors(self):
         """Determines whether the plugin has errors.
 
@@ -94,6 +101,8 @@ class PluginContext(object):
             instance = cls()
             if self.can_register(instance):
                 instance.plugin_name = self.name
+                if self.secrets:
+                    instance.add_secrets(self.secrets)
                 self.instances.append(instance)
         except:
             logger.warning(
@@ -112,13 +121,15 @@ class PluginContext(object):
 
         try:
             module_dir = self.plugin_definition.directory
-            module_path = os.path.join(module_dir, "__init__.py")
+            module_path = os.path.join(module_dir, INIT_FILENAME)
             if not os.path.isfile(module_path):
                 return
 
-            parent_dir = os.path.dirname(module_dir)
+            module_name = os.path.relpath(
+                module_dir, fo.config.plugins_dir
+            ).replace("/", ".")
             spec = importlib.util.spec_from_file_location(
-                parent_dir, module_path
+                module_name, module_path
             )
             module = importlib.util.module_from_spec(spec)
             sys.modules[module.__name__] = module

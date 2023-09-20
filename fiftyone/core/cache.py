@@ -555,6 +555,7 @@ def _read_cache_result(cache_path):
 
 def _write_cache_result(filepath, local_path, success, checksum):
     cache_path = _get_cache_path(local_path)
+    etau.ensure_dir(os.path.dirname(cache_path))
     with open(cache_path, "w") as f:
         f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 

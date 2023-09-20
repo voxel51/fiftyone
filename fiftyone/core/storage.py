@@ -6,7 +6,10 @@ File storage utilities.
 |
 """
 from contextlib import contextmanager
+from datetime import datetime
 import io
+import itertools
+import enum
 import json
 import logging
 import multiprocessing.dummy
@@ -31,7 +34,9 @@ import eta.core.utils as etau
 import fiftyone as fo
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
-import fiftyone.internal.credentials as fic
+import fiftyone.internal as fi
+from fiftyone.internal.credentials import CloudCredentialsManager
+from fiftyone.internal.util import has_encryption_key
 
 foc = fou.lazy_import("fiftyone.core.cache")
 
@@ -44,6 +49,7 @@ gcs_client = None
 azure_client = None
 minio_client = None
 http_client = None
+available_file_systems = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
@@ -69,6 +75,7 @@ def init_storage():
     global gcs_client
     global azure_client
     global minio_client
+    global available_file_systems
     global bucket_regions
     global region_clients
     global minio_alias_prefix
@@ -76,8 +83,8 @@ def init_storage():
     global azure_alias_prefix
     global azure_endpoint_prefix
 
-    if fic.has_encryption_key():
-        creds_manager = fic.CloudCredentialsManager()
+    if has_encryption_key():
+        creds_manager = CloudCredentialsManager()
     else:
         creds_manager = None
 
@@ -85,6 +92,7 @@ def init_storage():
     gcs_client = None
     azure_client = None
     minio_client = None
+    available_file_systems = None
     bucket_regions.clear()
     region_clients.clear()
 
@@ -131,12 +139,12 @@ class FileSystem(object):
     LOCAL = "local"
 
 
-_FILE_SYSTEMS_WITH_BUCKETS = {
+_FILE_SYSTEMS_WITH_BUCKETS = [
     FileSystem.S3,
     FileSystem.GCS,
     FileSystem.AZURE,
     FileSystem.MINIO,
-}
+]
 _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
 _UNKNOWN_REGION = "unknown"
 
@@ -190,7 +198,7 @@ def get_file_system(path):
         path: a path
 
     Returns:
-        a :class:`FileSystem` enum
+        a :class:`FileSystem` value
     """
     if not path:
         return FileSystem.LOCAL
@@ -224,6 +232,37 @@ def get_file_system(path):
         return FileSystem.HTTP
 
     return FileSystem.LOCAL
+
+
+def list_available_file_systems():
+    """Lists the file systems that are currently available for use with methods
+    like :func:`list_files` and :func:`list_buckets`.
+
+    Returns:
+        a list of :class:`FileSystem` values
+    """
+    global available_file_systems
+
+    if available_file_systems is None:
+        available_file_systems = _get_available_file_systems()
+
+    return available_file_systems
+
+
+def _get_available_file_systems():
+    file_systems = []
+
+    if not fi.is_internal_service():
+        file_systems.append(FileSystem.LOCAL)
+
+    for fs in _FILE_SYSTEMS_WITH_BUCKETS:
+        try:
+            _ = get_client(fs=fs)
+            file_systems.append(fs)
+        except:
+            pass
+
+    return file_systems
 
 
 def split_prefix(path):
@@ -1525,6 +1564,7 @@ def list_files(
     abs_paths=False,
     recursive=False,
     include_hidden_files=False,
+    return_metadata=False,
     sort=True,
 ):
     """Lists the files in the given directory.
@@ -1536,16 +1576,18 @@ def list_files(
         abs_paths (False): whether to return the absolute paths to the files
         recursive (False): whether to recursively traverse subdirectories
         include_hidden_files (False): whether to include dot files
+        return_metadata (False): whether to return metadata dicts for each file
+            instead of filepaths
         sort (True): whether to sort the list of files
 
     Returns:
-        a list of filepaths
+        a list of filepaths or metadata dicts
     """
     if is_local(dirpath):
         if not os.path.isdir(dirpath):
             return []
 
-        return etau.list_files(
+        filepaths = etau.list_files(
             dirpath,
             abs_paths=abs_paths,
             recursive=recursive,
@@ -1553,22 +1595,73 @@ def list_files(
             sort=sort,
         )
 
+        if not return_metadata:
+            return filepaths
+
+        metadata = []
+        for filepath in filepaths:
+            if abs_paths:
+                fp = filepath
+            else:
+                fp = os.path.join(dirpath, filepath)
+
+            m = _get_local_metadata(fp)
+            m["filepath"] = filepath
+            metadata.append(m)
+
+        return metadata
+
     client = get_client(path=dirpath)
 
-    filepaths = client.list_files_in_folder(dirpath, recursive=recursive)
+    filepaths = client.list_files_in_folder(
+        dirpath,
+        recursive=recursive,
+        return_metadata=return_metadata,
+    )
 
-    if not abs_paths:
-        filepaths = [os.path.relpath(f, dirpath) for f in filepaths]
+    if not return_metadata:
+        if not abs_paths:
+            filepaths = [os.path.relpath(f, dirpath) for f in filepaths]
+
+        if not include_hidden_files:
+            filepaths = [
+                f for f in filepaths if not os.path.basename(f).startswith(".")
+            ]
+
+        if sort:
+            filepaths = sorted(filepaths)
+
+        return filepaths
+
+    prefix = split_prefix(dirpath)[0]
+    metadata = filepaths
+    for m in metadata:
+        filepath = prefix + m["bucket"] + "/" + m["object_name"]
+        if not abs_paths:
+            filepath = os.path.relpath(filepath, dirpath)
+
+        m["filepath"] = filepath
 
     if not include_hidden_files:
-        filepaths = [
-            f for f in filepaths if not os.path.basename(f).startswith(".")
+        metadata = [
+            m
+            for m in metadata
+            if not os.path.basename(m["filepath"]).startswith(".")
         ]
 
     if sort:
-        filepaths = sorted(filepaths)
+        metadata = sorted(metadata, key=lambda m: m["filepath"])
 
-    return filepaths
+    return metadata
+
+
+def _get_local_metadata(filepath):
+    s = os.stat(filepath)
+    return {
+        "name": os.path.basename(filepath),
+        "size": s.st_size,
+        "last_modified": datetime.fromtimestamp(s.st_mtime),
+    }
 
 
 def list_subdirs(dirpath, abs_paths=False, recursive=False):
@@ -1588,10 +1681,34 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
             dirpath, abs_paths=abs_paths, recursive=recursive
         )
 
-    dirs = {os.path.dirname(p) for p in list_files(dirpath, recursive=True)}
+    if _is_root(dirpath):
+        fs = get_file_system(dirpath)
+        buckets = list_buckets(fs, abs_paths=True)
+        buckets = sorted(buckets)
 
-    if not recursive:
-        dirs = {d.split("/", 1)[0] for d in dirs}
+        if recursive:
+            dirs = list(
+                itertools.chain.from_iterable(
+                    list_subdirs(b, abs_paths=True, recursive=True)
+                    for b in buckets
+                )
+            )
+        else:
+            dirs = buckets
+
+        if not abs_paths:
+            n = len(dirpath)
+            dirs = [d[n:] for d in dirs]
+
+        return dirs
+
+    if recursive:
+        filepaths = list_files(dirpath, recursive=True)
+        dirs = {os.path.dirname(p) for p in filepaths}
+    else:
+        client = get_client(path=dirpath)
+        dirs = client.list_subfolders(dirpath)
+        dirs = [os.path.relpath(d, dirpath) for d in dirs]
 
     dirs = sorted(d for d in dirs if d and not d.startswith("."))
 
@@ -1599,6 +1716,83 @@ def list_subdirs(dirpath, abs_paths=False, recursive=False):
         dirs = [join(dirpath, d) for d in dirs]
 
     return dirs
+
+
+def _is_root(path):
+    fs = get_file_system(path)
+
+    if fs == FileSystem.LOCAL:
+        return path == os.path.abspath(os.sep)
+
+    if fs == FileSystem.S3:
+        return path == S3_PREFIX
+
+    if fs == FileSystem.GCS:
+        return path == GCS_PREFIX
+
+    if fs == FileSystem.AZURE:
+        return path in (azure_alias_prefix, azure_endpoint_prefix)
+
+    if fs == FileSystem.MINIO:
+        return path in (minio_alias_prefix, minio_endpoint_prefix)
+
+    return False
+
+
+def list_buckets(fs, abs_paths=False):
+    """Lists the available buckets in the given file system.
+
+    For local file systems, this method returns subdirectories of ``/``(or the
+    current drive on Windows).
+
+    Args:
+        fs: a :class:`FileSystem` value
+        abs_paths (False): whether to return absolute paths
+
+    Returns:
+        a list of buckets
+    """
+    if fs == FileSystem.LOCAL:
+        root = os.path.abspath(os.sep)
+        return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
+
+    client = get_client(fs=fs)
+
+    if fs == FileSystem.S3:
+        resp = client._client.list_buckets()
+        buckets = [r["Name"] for r in resp.get("Buckets", [])]
+        if abs_paths:
+            prefix = S3_PREFIX
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.GCS:
+        buckets = [b.name for b in client._client.list_buckets()]
+        if abs_paths:
+            prefix = GCS_PREFIX
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.AZURE:
+        buckets = [c["name"] for c in client._client.list_containers()]
+        if abs_paths:
+            prefix = azure_alias_prefix or azure_endpoint_prefix
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    if fs == FileSystem.MINIO:
+        resp = client._client.list_buckets()
+        buckets = [r["Name"] for r in resp.get("Buckets", [])]
+        if abs_paths:
+            prefix = minio_alias_prefix or minio_endpoint_prefix
+            buckets = [prefix + b for b in buckets]
+
+        return buckets
+
+    raise ValueError("Unsupported file system '%s'" % fs)
 
 
 def get_glob_matches(glob_patt):

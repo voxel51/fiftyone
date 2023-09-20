@@ -3,22 +3,40 @@
 The official FiftyOne documentation, available at
 [fiftyone.ai](https://fiftyone.ai).
 
-## Building
-
-This project uses [Sphinx](https://www.sphinx-doc.org/en/master) and
+FiftyOne uses [Sphinx](https://www.sphinx-doc.org/en/master) and
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) to
 generate its documentation and API reference from source.
+
+## Setup
+
+In order to build the docs locally, you must:
+
+1.  Be running Python 3.8 or 3.9 in a
+    [virtual environment](https://docs.voxel51.com/getting_started/virtualenv.html)
+
+2.  Perform a developer install of `fiftyone`:
+
+```shell
+git clone https://github.com/voxel51/fiftyone
+cd fiftyone
+
+bash install.bash -d
+```
+
+3.  Add the path to your cloned `fiftyone` repository to your `PYTHONPATH`:
+
+```shell
+export PYTHONPATH=$PYTHONPATH:/path/to/fiftyone
+```
+
+## Building
 
 You can build the docs from source by running the `generate_docs.bash` script
 in this folder:
 
 ```shell
-bash generate_docs.bash
+bash docs/generate_docs.bash
 ```
-
-The script expects that you have performed a developer install of `fiftyone`
-(see [main README](../CONTRIBUTING.md#developer-guide)) and that the
-`fiftyone-brain` package is installed in your environment.
 
 A couple noteable flags are supported:
 
@@ -42,6 +60,20 @@ whose docstrings are written in
 [Sphinx-Napoleon](https://pypi.python.org/pypi/sphinxcontrib-napoleon) format.
 
 Check out the existing patterns in the source files and you'll catch on.
+
+### FiftyOne Brain
+
+For Voxel51 developers who are working with a source install of the FiftyOne
+Brain: the build script will automatically use your source install!
+
+### Teams SDK
+
+Voxel51 developers can include Teams SDK-related components in their local docs
+build by including the `-t` flag:
+
+```shell
+bash docs/generate_docs.bash -t /path/to/fiftyone-teams
+```
 
 ### Style Guide
 

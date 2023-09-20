@@ -1,10 +1,16 @@
-import React, { PureComponent, Suspense, useRef } from "react";
+import { Loading, useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { distribution } from "@fiftyone/state";
+import {
+  DATE_FIELD,
+  DATE_TIME_FIELD,
+  scrollbarStyles,
+} from "@fiftyone/utilities";
+import React, { PureComponent, Suspense, useLayoutEffect } from "react";
 import useMeasure from "react-use-measure";
 import { Bar, BarChart, Tooltip, XAxis, YAxis } from "recharts";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { scrollbarStyles } from "@fiftyone/utilities";
-
 import {
   formatDateTime,
   getDateTimeRangeFormattersWithPrecision,
@@ -13,21 +19,12 @@ import {
 } from "../utils/generic";
 import { ContentDiv, ContentHeader } from "./utils";
 
-import { Loading, useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import {
-  distribution,
-  distributionPaths,
-  noDistributionPathsData,
-} from "@fiftyone/state";
-import { DATE_FIELD, DATE_TIME_FIELD } from "@fiftyone/utilities";
-
 const Container = styled.div`
   ${scrollbarStyles}
   overflow-y: hidden;
   overflow-x: auto;
   width: 100%;
-  height: 100%;
+  flex: 1;
 `;
 
 const LIMIT = 200;
@@ -75,6 +72,7 @@ const Title = styled.div`
   font-weight: bold;
   font-size: 1rem;
   line-height: 2rem;
+  margin-left: 1rem;
 `;
 
 const getTicks = (data: { key: number; edges: [number, number] }[]) => {
@@ -103,35 +101,11 @@ const useData = (path: string) => {
         ticks: null,
       };
     case "DatetimeHistogramValuesResponse":
-      const datetimes = data.counts.map((count, i) => ({
-        count,
-        key:
-          (data.datetimes[i + 1] - data.datetimes[i]) / 2 + data.datetimes[i],
-        edges: [data.datetimes[i], data.datetimes[i + 1]],
-      }));
-
-      return data.counts.length > 1
-        ? { data: datetimes, ticks: getTicks(datetimes) }
-        : { data: [], ticks: null };
+      return makeData(data.counts, data.datetimes);
     case "FloatHistogramValuesResponse":
-      const floats = data.counts.map((count, i) => ({
-        count: count,
-        key: (data.floats[i + 1] - data.floats[i]) / 2 + data.floats[i],
-        edges: [data.floats[i], data.floats[i + 1]],
-      }));
-
-      return data.counts.length > 1
-        ? { data: floats, ticks: getTicks(floats) }
-        : { data: [], ticks: null };
+      return makeData(data.counts, data.floats);
     case "IntHistogramValuesResponse":
-      const ints = data.counts.map((count, i) => ({
-        count,
-        key: (data.ints[i + 1] - data.ints[i]) / 2 + data.ints[i],
-        edges: [data.ints[i], data.ints[i + 1]],
-      }));
-      return data.counts.length > 1
-        ? { data: ints, ticks: getTicks(ints) }
-        : { data: [], ticks: null };
+      return makeData(data.counts, data.ints);
     case "StrCountValuesResponse":
       return {
         data: data.values.map(({ value, str }) => ({
@@ -146,7 +120,21 @@ const useData = (path: string) => {
   }
 };
 
-const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
+const makeData = (counts: readonly number[], values: readonly number[]) => {
+  if (counts.length < 2) {
+    return { data: [], ticks: null };
+  }
+
+  const data = counts.map((count, i) => ({
+    count,
+    key: (values[i + 1] - values[i]) / 2 + values[i],
+    edges: [values[i], values[i + 1]] as [number, number],
+  }));
+
+  return { data: data, ticks: getTicks(data) };
+};
+
+const HistogramRenderer: React.FC<{ path: string }> = ({ path }) => {
   const [ref, { height }] = useMeasure();
   const theme = useTheme();
 
@@ -154,7 +142,6 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
   const hasMore = data.length >= LIMIT;
 
   const barWidth = 24;
-  const container = useRef(null);
   const stroke = theme.text.secondary;
   const fill = stroke;
   const isDateTime = useRecoilValue(
@@ -187,11 +174,16 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
           ticks,
         };
 
+  useLayoutEffect(() => {
+    document
+      .getElementById(`histogram-${path}`)
+      ?.dispatchEvent(new CustomEvent(`histogram-${path}`, { bubbles: true }));
+  }, [path, ref]);
+
   return data.length ? (
-    <Container ref={ref}>
-      <Title>{`${path}${hasMore ? ` (first ${data?.length})` : ""}`}</Title>
+    <Container id={`histogram-${path}`} ref={ref}>
+      {hasMore && <Title>{`First ${data?.length} results`}</Title>}
       <BarChart
-        ref={container}
         height={height - 37}
         width={data.length * (barWidth + 4) + 50}
         barCategoryGap={"4px"}
@@ -256,46 +248,21 @@ const DistributionRenderer: React.FC<{ path: string }> = ({ path }) => {
           fill="rgb(255, 109, 4)"
           barCategoryGap={0}
           barSize={barWidth}
+          isAnimationActive={false}
         />
       </BarChart>
     </Container>
-  ) : null;
-};
-
-const DistributionsContainer = styled.div`
-  overflow-y: scroll;
-  overflow-x: hidden;
-  width: 100%;
-  height: calc(100% - 4.5rem);
-  ${scrollbarStyles}
-`;
-
-const Distributions = ({
-  group,
-  style,
-}: {
-  group: string;
-  style?: React.CSSProperties;
-}) => {
-  const paths = useRecoilValue(distributionPaths(group));
-  const noData = useRecoilValueLoadable(noDistributionPathsData(group));
-
-  if (noData.state === "hasError") throw noData.contents;
-  return noData.state === "hasValue" ? (
-    !noData.contents ? (
-      <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
-        <DistributionsContainer style={style}>
-          {paths.map((path) => {
-            return <DistributionRenderer key={path} path={path} />;
-          })}
-        </DistributionsContainer>
-      </Suspense>
-    ) : (
-      <Loading>No data</Loading>
-    )
   ) : (
-    <Loading ellipsisAnimation>Loading</Loading>
+    <Loading>No Data</Loading>
   );
 };
 
-export default Distributions;
+const Distribution = ({ path }: { path: string }) => {
+  return (
+    <Suspense fallback={<Loading ellipsisAnimation>Loading</Loading>}>
+      <HistogramRenderer key={path} path={path} />
+    </Suspense>
+  );
+};
+
+export default Distribution;

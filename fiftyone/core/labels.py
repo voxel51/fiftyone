@@ -22,10 +22,10 @@ import fiftyone.core.fields as fof
 import fiftyone.core.metadata as fom
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
-import fiftyone.utils.image as foui
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 foug = fou.lazy_import("fiftyone.utils.geojson")
+foui = fou.lazy_import("fiftyone.utils.image")
 sg = fou.lazy_import(
     "shapely.geometry", callback=lambda: fou.ensure_package("shapely")
 )
@@ -784,7 +784,7 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         )
 
     @classmethod
-    def from_cuboid(cls, vertices, label=None, **attributes):
+    def from_cuboid(cls, vertices, frame_size=None, label=None, **attributes):
         """Constructs a cuboid from its 8 vertices in the format below::
 
                7--------6
@@ -796,8 +796,13 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             |/       |/
             0--------1
 
+        If a ``frame_size`` is provided, ``vertices`` must be absolute pixel
+        coordinates; otherwise ``vertices`` should be normalized coordinates in
+        ``[0, 1] x [0, 1]``.
+
         Args:
             vertices: a list of 8 ``(x, y)`` vertices in the above format
+            frame_size (None): the ``(width, height)`` of the frame
             label (None): the label string
             **attributes: additional arguments for the :class:`Polyline`
 
@@ -805,6 +810,9 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             a :class:`Polyline`
         """
         vertices = np.asarray(vertices)
+        if frame_size is not None:
+            vertices /= np.asarray(frame_size)[np.newaxis, :]
+
         front = vertices[:4]
         back = vertices[4:]
         top = vertices[[3, 2, 6, 7], :]
@@ -813,16 +821,24 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         return cls(label=label, points=faces, closed=True, **attributes)
 
     @classmethod
-    def from_rotated_box(cls, xc, yc, w, h, theta, label=None, **attributes):
+    def from_rotated_box(
+        cls, xc, yc, w, h, theta, frame_size=None, label=None, **attributes
+    ):
         """Constructs a rotated bounding box from its center, dimensions, and
         rotation.
 
+        If a ``frame_size`` is provided, the provided box coordinates must be
+        absolute pixel coordinates; otherwise they should be normalized
+        coordinates in ``[0, 1]``. Note that rotations in normalized
+        coordinates only make sense when the source aspect ratio is square.
+
         Args:
-            xc: the x-center coordinate in ``[0, 1]``
-            yc: the y-center coorindate in ``[0, 1]``
-            w: the box width in ``[0, 1]``
-            y: the box height in ``[0, 1]``
+            xc: the x-center coordinate
+            yc: the y-center coorindate
+            w: the box width
+            y: the box height
             theta: the counter-clockwise rotation of the box in radians
+            frame_size (None): the ``(width, height)`` of the frame
             label (None): the label string
             **attributes: additional arguments for the :class:`Polyline`
 
@@ -832,7 +848,11 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         R = _rotation_matrix(theta)
         x = 0.5 * w * np.array([1, -1, -1, 1])
         y = 0.5 * h * np.array([1, 1, -1, -1])
-        points = (R.dot(np.stack((x, y))).T + np.array((xc, yc))).tolist()
+        points = R.dot(np.stack((x, y))).T + np.array((xc, yc))
+        if frame_size is not None:
+            points /= np.asarray(frame_size)[np.newaxis, :]
+
+        points = points.tolist()
         return cls(label=label, points=[points], closed=True, **attributes)
 
 

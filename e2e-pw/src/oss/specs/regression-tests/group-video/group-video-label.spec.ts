@@ -8,8 +8,8 @@ const testVideoPath1 = `/tmp/test-video1-${datasetName}.webm`;
 const testVideoPath2 = `/tmp/test-video2-${datasetName}.webm`;
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
@@ -57,7 +57,7 @@ test.describe("groups video labels", () => {
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
-    await fiftyoneLoader.waitUntilLoad(page, datasetName);
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
   test("correct thumbnails for both slices", async ({ grid, page }) => {
@@ -65,10 +65,10 @@ test.describe("groups video labels", () => {
     await grid.sliceSelector.assert.verifyHasSlices(["v1", "v2"]);
 
     // compare screenshot for default slice (v1)
-    await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
+    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v1.png");
 
     const v2SampleLoadedPromise = page.evaluate((testVideoPath2_) => {
-      return new Promise<void>((resolve, _reject) => {
+      return new Promise<void>((resolve) => {
         document.addEventListener("sample-loaded", (e: CustomEvent) => {
           if ((e.detail.sampleFilepath as string) === testVideoPath2_) {
             resolve();
@@ -81,14 +81,15 @@ test.describe("groups video labels", () => {
     await grid.sliceSelector.selectSlice("v2");
     await v2SampleLoadedPromise;
 
-    await expect(await grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
+    await expect(grid.getNthLooker(0)).toHaveScreenshot("slice-v2.png");
   });
 
   test("video plays with correct label for each slice", async ({
     grid,
     modal,
+    eventUtils,
   }) => {
-    await grid.openFirstLooker();
+    await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
 
     await modal.video.clickUseFrameNumber();
@@ -96,33 +97,32 @@ test.describe("groups video labels", () => {
     const checkVideo = async (slice: "v1" | "v2") => {
       await modal.group.assert.assertGroupPinnedText(`${slice} is pinned`);
 
-      await modal.getLooker().hover();
+      await modal.looker.hover();
 
       // check screenshot before video is played
-      await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-before-play.png`,
-        { animations: "allow" }
-      );
+      await expect(modal.looker).toHaveScreenshot(`${slice}-before-play.png`, {
+        animations: "allow",
+      });
 
       await modal.video.playUntilFrames("5");
-      await modal.getLooker().hover();
+      await modal.looker.hover();
 
       // check screenshot after video is played
-      await expect(modal.getLooker()).toHaveScreenshot(
-        `${slice}-after-play.png`,
-        {
-          // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
-          // the real test is that the correct label is shown
-          mask: [modal.video.time],
-          animations: "allow",
-        }
-      );
+      await expect(modal.looker).toHaveScreenshot(`${slice}-after-play.png`, {
+        // masking time / frame because it might be off by a couple of seconds and we want to avoid flakiness
+        // the real test is that the correct label is shown
+        mask: [modal.video.time],
+        animations: "allow",
+      });
     };
 
     await checkVideo("v1");
 
     const sampleLoadEventPromiseForv2 =
-      modal.getSampleLoadEventPromiseForFilepath(testVideoPath2);
+      eventUtils.getEventReceivedPromiseForPredicate(
+        "sample-loaded",
+        (e) => e.detail.sampleFilepath === testVideoPath2
+      );
 
     // change slice and repeat
     await modal.group.selectNthItemFromCarousel(1);

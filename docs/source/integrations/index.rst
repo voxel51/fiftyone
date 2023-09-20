@@ -105,6 +105,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Ultralytics
+    :description: Load, fine-tune, and run inference with Ultralytics models on your FiftyOne datasets with just a few lines of code.
+    :link: ultralytics.html
+    :image: ../_static/images/integrations/ultralytics.jpg
+    :tags: Model-Training,Model-Evaluation
+
+.. customcarditem::
     :header: PyTorch Hub
     :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
     :link: pytorch_hub.html
@@ -146,5 +153,6 @@ on the cards below to see how!
     Pinecone <pinecone.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
+    Ultralytics <ultralytics.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>

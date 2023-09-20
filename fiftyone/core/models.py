@@ -11,7 +11,6 @@ import logging
 
 import numpy as np
 
-import eta.core.image as etai
 import eta.core.frameutils as etaf
 import eta.core.learning as etal
 import eta.core.models as etam
@@ -31,6 +30,7 @@ tud = fou.lazy_import("torch.utils.data")
 
 foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
+foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
 
@@ -303,7 +303,7 @@ def _apply_image_model_single(
     with fou.ProgressBar() as pb:
         for sample in pb(samples):
             try:
-                img = etai.read(sample.filepath)
+                img = foui.read(sample.local_path)
 
                 if needs_samples:
                     labels = model.predict(img, sample=sample)
@@ -341,7 +341,9 @@ def _apply_image_model_batch(
     with fou.ProgressBar(samples) as pb:
         for sample_batch in samples_loader:
             try:
-                imgs = [etai.read(sample.filepath) for sample in sample_batch]
+                imgs = [
+                    foui.read(sample.local_path) for sample in sample_batch
+                ]
 
                 if needs_samples:
                     labels_batch = model.predict_all(
@@ -916,7 +918,7 @@ def _compute_image_embeddings_single(
             embedding = None
 
             try:
-                img = etai.read(sample.local_path)
+                img = foui.read(sample.local_path)
                 embedding = model.embed(img)[0]
             except Exception as e:
                 if not skip_failures:
@@ -955,7 +957,7 @@ def _compute_image_embeddings_batch(
 
             try:
                 imgs = [
-                    etai.read(sample.local_path) for sample in sample_batch
+                    foui.read(sample.local_path) for sample in sample_batch
                 ]
                 embeddings_batch = list(model.embed_all(imgs))  # list of 1D
             except Exception as e:
@@ -1439,7 +1441,7 @@ def _embed_patches(
                 )
 
                 if patches is not None:
-                    img = etai.read(sample.local_path)
+                    img = foui.read(sample.local_path)
 
                     if batch_size is None:
                         embeddings = _embed_patches_single(

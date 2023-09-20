@@ -13,6 +13,7 @@ from fiftyone.management.connection import (
 from fiftyone.management.dataset import *
 from fiftyone.management.organization import *
 from fiftyone.management.plugin import *
+from fiftyone.management.snapshot import *
 from fiftyone.management.users import *
 
 globals().update(DatasetPermission.__members__)

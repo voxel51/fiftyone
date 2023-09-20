@@ -15,23 +15,6 @@ import os
 import re
 from setuptools import setup, find_packages
 
-
-VERSION = "0.13.6"
-
-
-def get_version():
-    if "RELEASE_VERSION" in os.environ:
-        version = os.environ["RELEASE_VERSION"]
-        if not version.startswith(VERSION):
-            raise ValueError(
-                "Release version does not match version: %s and %s"
-                % (version, VERSION)
-            )
-        return version
-
-    return VERSION
-
-
 INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
@@ -90,7 +73,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.13.1,<0.14",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.11,<0.12",
+    "voxel51-eta>=0.12,<0.13",
 ]
 
 
@@ -127,7 +110,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.19,<0.20"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.20,<0.21"]}
 
 
 with open("README.md", "r") as fh:
@@ -136,7 +119,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version=get_version(),
+    version="0.14.0",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

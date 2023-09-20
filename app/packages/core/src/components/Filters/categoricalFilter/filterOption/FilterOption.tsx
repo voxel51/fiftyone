@@ -235,7 +235,7 @@ const FilterOption: React.FC<Props> = ({
       case "visibilityofficon":
         return <VisibilityOffIcon fontSize="small" />;
       default:
-        return <>{selectedValue}</>;
+        return <div data-cy="selected-filter-mode">{selectedValue}</div>;
     }
   };
 
@@ -331,7 +331,7 @@ const FilterOption: React.FC<Props> = ({
         }}
       >
         {options.length > 1 && (
-          <FilterMode onClick={() => setOpen(!open)}>
+          <FilterMode data-cy="filter-mode-div" onClick={() => setOpen(!open)}>
             <IconButton sx={{ color: color, size: "small" }}>
               <Selected />
             </IconButton>

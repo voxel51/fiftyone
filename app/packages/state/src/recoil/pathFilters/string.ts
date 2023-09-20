@@ -218,6 +218,10 @@ const helperStringFunction = (settings: {
   const { values, exclude } = settings;
   const none = values.includes(null);
 
+  if (settings.isMatching) {
+    return () => true;
+  }
+
   return (value: string | null) => {
     const r = values.includes(value) || (none && NONE.has(value));
     return exclude ? !r : r;

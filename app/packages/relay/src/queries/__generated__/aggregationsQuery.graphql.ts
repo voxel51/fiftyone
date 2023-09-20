@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2163a053e1776a9b76a989bf7a7f626b>>
+ * @generated SignedSource<<e37d762f250a359c1af7c71a7a793116>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -19,6 +19,7 @@ export type AggregationForm = {
   mixed: boolean;
   paths: ReadonlyArray<string>;
   sampleIds: ReadonlyArray<string>;
+  slice?: string | null;
   slices?: ReadonlyArray<string> | null;
   view: Array;
   viewName?: string | null;

@@ -4,8 +4,8 @@ import { ModalPom } from "src/oss/poms/modal";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
   modal: async ({ page }, use) => {
     await use(new ModalPom(page));
@@ -25,16 +25,16 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 test.beforeEach(async ({ page, fiftyoneLoader }) => {
-  await fiftyoneLoader.waitUntilLoad(page, datasetName);
+  await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
 test.skip("valid candidates for group-by keys", async ({ grid }) => {
-  await grid.actionsRow.openCreateDynamicGroups();
+  await grid.actionsRow.toggleCreateDynamicGroups();
   await verifyCandidateFields(grid, ["ground_truth.id", "ground_truth.label"]);
 });
 
 const verifyCandidateFields = async (grid: GridPom, fields: string[]) => {
-  await grid.actionsRow.gridActionsRow.getByTestId("group-by-selector").click();
+  await grid.actionsRow.gridActionsRow.getByTestId("group by").click();
   const results = grid.actionsRow.gridActionsRow.getByTestId(
     "selector-results-container"
   );

@@ -21,7 +21,7 @@ import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
 import fiftyone.core.media as fom
-from fiftyone import ViewField as F
+from fiftyone import ViewExpression as E, ViewField as F
 
 from decorators import drop_datasets
 from utils.groups import make_disjoint_groups_dataset
@@ -1047,6 +1047,53 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(set(samples.values("frames.id", unwind=True))), 4)
 
     @drop_datasets
+    def test_indexes(self):
+        dataset = _make_group_dataset()
+
+        dataset2 = dataset.clone()
+        indexes2 = dataset2.list_indexes()
+
+        self.assertEqual(dataset2.media_type, "group")
+        self.assertIn("group_field.id", indexes2)
+        self.assertIn("group_field.name", indexes2)
+        self.assertIn("frames.id", indexes2)
+
+        dataset3 = dataset.select_fields().clone()
+        indexes3 = dataset3.list_indexes()
+
+        self.assertEqual(dataset3.media_type, "group")
+        self.assertIn("group_field.id", indexes3)
+        self.assertIn("group_field.name", indexes3)
+        self.assertIn("frames.id", indexes3)
+
+        dataset4 = fo.Dataset()
+        dataset4.merge_samples(dataset)
+        indexes4 = dataset4.list_indexes()
+
+        self.assertEqual(dataset4.media_type, "group")
+        self.assertIn("group_field.id", indexes4)
+        self.assertIn("group_field.name", indexes4)
+        self.assertIn("frames.id", indexes4)
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples([dataset.first()])
+        indexes5 = dataset5.list_indexes()
+
+        self.assertEqual(dataset5.media_type, "group")
+        self.assertIn("group_field.id", indexes5)
+        self.assertIn("group_field.name", indexes5)
+        self.assertIn("frames.id", indexes5)
+
+        dataset6 = fo.Dataset()
+        dataset6.merge_sample(dataset.first())
+        indexes6 = dataset6.list_indexes()
+
+        self.assertEqual(dataset6.media_type, "group")
+        self.assertIn("group_field.id", indexes6)
+        self.assertIn("group_field.name", indexes6)
+        self.assertIn("frames.id", indexes6)
+
+    @drop_datasets
     def test_set_values_group(self):
         dataset = fo.Dataset()
         dataset.add_samples(
@@ -1584,6 +1631,78 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertListEqual(sample_ids, [sample_id2])
         self.assertListEqual(frame_numbers, [2, 1])
         self.assertListEqual(also_frame_numbers, [2, 1])
+
+    @drop_datasets
+    def test_group_by_compound(self):
+        sample_id1 = ObjectId()
+        sample_id2 = ObjectId()
+
+        samples = [
+            fo.Sample(
+                filepath="frame1.jpg",
+                sample_id=sample_id1,
+                device_id=1,
+            ),
+            fo.Sample(
+                filepath="frame2.jpg",
+                sample_id=sample_id1,
+                device_id=1,
+            ),
+            fo.Sample(
+                filepath="frame3.jpg",
+                sample_id=sample_id1,
+                device_id=2,
+            ),
+            fo.Sample(
+                filepath="frame4.jpg",
+                sample_id=sample_id2,
+                device_id=3,
+            ),
+            fo.Sample(
+                filepath="frame5.jpg",
+                sample_id=sample_id2,
+                device_id=4,
+            ),
+            fo.Sample(
+                filepath="frame6.jpg",
+                sample_id=sample_id2,
+                device_id=4,
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_sample_field("sample_id", fo.ObjectIdField)
+        dataset.add_samples(samples)
+
+        view = dataset.group_by(("sample_id", "device_id"))
+
+        self.assertEqual(len(view), 4)
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            {"id", "filepath", "_sample_id_1_device_id_1"},
+        )
+
+        also_view = fo.DatasetView._build(dataset, view._serialize())
+
+        self.assertEqual(len(also_view), 4)
+        self.assertEqual(also_view.media_type, "group")
+
+        dataset2 = dataset.clone()
+        view2 = dataset2.group_by(E([F("sample_id"), F("device_id")]))
+
+        self.assertEqual(len(view2), 4)
+        self.assertSetEqual(
+            set(dataset2.list_indexes()),
+            {"id", "filepath", "_sample_id_1_device_id_1"},
+        )
+
+        also_view2 = fo.DatasetView._build(dataset2, view2._serialize())
+
+        self.assertEqual(len(also_view2), 4)
+        self.assertSetEqual(
+            set(dataset2.list_indexes()),
+            {"id", "filepath", "_sample_id_1_device_id_1"},
+        )
 
     @drop_datasets
     def test_group_by_complex(self):

@@ -50,6 +50,7 @@ Dataset permissions
 
 .. _teams-sdk-organization-settings:
 
+
 Organization settings
 ---------------------
 
@@ -63,6 +64,15 @@ Plugin management
 -----------------
 
 .. automodule:: fiftyone.management.plugin
+   :members:
+   :undoc-members:
+
+.. _teams-sdk-snapshots:
+
+Snapshots
+---------------------
+
+.. automodule:: fiftyone.management.snapshot
    :members:
    :undoc-members:
 

@@ -8,6 +8,7 @@ FiftyOne Server /media route
 import os
 import typing as t
 
+import anyio
 import aiofiles
 from aiofiles.threadpool.binary import AsyncBufferedReader
 from aiofiles.os import stat as aio_stat
@@ -66,6 +67,12 @@ class Media(HTTPEndpoint):
             path = media_cache.get_local_path(path)
 
         response: t.Union[FileResponse, StreamingResponse]
+
+        try:
+            await anyio.to_thread.run_sync(os.stat, path)
+        except FileNotFoundError:
+            return Response(content="Not found", status_code=404)
+
         if request.headers.get("range"):
             response = await self.ranged_file_response(path, request)
         else:
