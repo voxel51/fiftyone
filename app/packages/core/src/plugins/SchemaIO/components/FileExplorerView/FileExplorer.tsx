@@ -12,9 +12,11 @@ import {
   Stack,
   TextField,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import { useFileExplorer } from "./state";
 import Close from "@mui/icons-material/Close";
+import { Folder, FolderOff } from "@mui/icons-material";
 
 const ModalContent = styled.div`
   max-width: 90vw;
@@ -57,39 +59,60 @@ export default function FileExplorer({
     handleUpDir,
     nextPage,
     hasNextPage,
+    customPath,
+    handleCustomPathChange,
   } = useFileExplorer(fsInfo, chooseMode, onChoose);
+
+  const hasValue = customPath || chosenFile?.absolute_path;
+  const fsReady = fsInfo?.ready;
+  const fsAvailable = fsInfo?.available;
+  const fsError = fsInfo?.error;
 
   return (
     <div>
       <Box>
-        {chosenFile && (
-          <TextField
-            size="small"
-            fullWidth
-            value={chosenFile?.absolute_path || ""}
-            InputProps={{
-              endAdornment: (
-                <IconButton
-                  onClick={(e) => {
-                    clear();
-                    e.stopPropagation();
-                  }}
-                  title="Clear"
-                >
-                  <Close />
-                </IconButton>
-              ),
-              readOnly: true,
-            }}
-            sx={{ input: { cursor: "pointer" } }}
-            onClick={handleClickOpen}
-          />
-        )}
-        {!chosenFile && (
-          <Button variant="outlined" onClick={handleClickOpen}>
-            {buttonLabel || "Choose"}
-          </Button>
-        )}
+        <TextField
+          size="small"
+          fullWidth
+          value={(customPath ?? chosenFile?.absolute_path) || ""}
+          onChange={handleCustomPathChange}
+          InputProps={{
+            sx: { pr: 0.5 },
+            endAdornment: (
+              <Stack direction="row">
+                {hasValue && (
+                  <IconButton
+                    onClick={(e) => {
+                      clear();
+                      e.stopPropagation();
+                    }}
+                    title="Clear"
+                  >
+                    <Close />
+                  </IconButton>
+                )}
+                {!fsReady && <CircularProgress size={16} sx={{ mr: 1 }} />}
+                {fsReady && (
+                  <Box
+                    title={
+                      fsAvailable
+                        ? `Choose a ${chooseMode}`
+                        : "File system is not available" +
+                          (fsError ? `\n\n${fsError}` : "")
+                    }
+                  >
+                    <IconButton
+                      onClick={handleClickOpen}
+                      disabled={!fsAvailable}
+                    >
+                      {fsAvailable ? <Folder /> : <FolderOff />}
+                    </IconButton>
+                  </Box>
+                )}
+              </Stack>
+            ),
+          }}
+        />
       </Box>
       <Dialog
         open={open}

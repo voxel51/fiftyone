@@ -112,16 +112,12 @@ const Patches = () => {
 const Similarity = ({ modal }: { modal: boolean }) => {
   const [open, setOpen] = useState(false);
   const [isImageSearch, setIsImageSearch] = useState(false);
-  const hasSelectedSamples = useRecoilValue(fos.hasSelectedSamples);
-  const hasSelectedLabels = useRecoilValue(fos.hasSelectedLabels);
-  const hasSorting = Boolean(useRecoilValue(fos.similarityParameters));
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
 
-  const showImageSimilarityIcon =
-    hasSelectedSamples ||
-    (isImageSearch && hasSorting) ||
-    (modal && hasSelectedLabels);
+  const { showImageSimilarityIcon } = fos.useSimilarityType({
+    isImageSearch,
+  });
 
   const toggleSimilarity = useCallback(() => {
     setOpen((open) => !open);
@@ -144,7 +140,7 @@ const Similarity = ({ modal }: { modal: boolean }) => {
       />
       {open && (
         <SortBySimilarity
-          key={`similary-${isImageSearch}`}
+          key={`similary-${showImageSimilarityIcon ? "image" : "text"}`}
           modal={modal}
           close={() => setOpen(false)}
           isImageSearch={isImageSearch}

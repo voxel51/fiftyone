@@ -16,8 +16,8 @@ import RadioGroup from "../../Common/RadioGroup";
 import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
+import Helper from "./Helper";
 import MaxKWarning from "./MaxKWarning";
-import Warning from "./Warning";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -119,7 +119,7 @@ const SortBySimilarity = ({
   }, [state.k, state.brainKey]);
 
   const meetKRequirement = !(
-    (brainConfig?.maxK && (state?.k || 0) > brainConfig.maxK) ||
+    (brainConfig?.maxK && (state?.k ?? 0 > brainConfig.maxK)) ||
     state.k == undefined
   );
 
@@ -229,7 +229,7 @@ const SortBySimilarity = ({
           <GroupButton buttons={groupButtons} />
         </div>
       )}
-      {!hasSimilarityKeys && <Warning hasSimilarityKeys isImageSearch />}
+      {!hasSimilarityKeys && <Helper hasSimilarityKeys isImageSearch />}
       {open && hasSimilarityKeys && (
         <div>
           <div>

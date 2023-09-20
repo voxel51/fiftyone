@@ -1,19 +1,15 @@
 import { useEffect, useState } from "react";
-import { useOperatorExecutor, abortOperationsByURI } from "@fiftyone/operators";
-import * as utils from "@fiftyone/utilities";
-import { set } from "lodash";
+import { useOperatorExecutor } from "@fiftyone/operators";
+import { resolveParent, joinPaths } from "@fiftyone/utilities";
+import {
+  getNameFromPath,
+  computeFileObject,
+  limitFiles,
+  getFileSystemsFromList,
+} from "./utils";
 
 const LIST_FILES = "list_files";
 const DEFAULT_LIMIT = 1000;
-
-function limitFiles(currentFiles, limit) {
-  const files = currentFiles.filter((f) => f.type === "file");
-  const dirs = currentFiles.filter((f) => f.type === "directory");
-  return {
-    limitedFiles: [...dirs, ...files.slice(0, limit)],
-    fileCount: files.length,
-  };
-}
 
 export function useCurrentFiles(defaultPath) {
   const [limit, setLimit] = useState(DEFAULT_LIMIT);
@@ -34,7 +30,7 @@ export function useCurrentFiles(defaultPath) {
     if (path) _setCurrentPath(path);
   };
   const onUpDir = () => {
-    const parentPath = utils.resolveParent(currentPath);
+    const parentPath = resolveParent(currentPath);
     if (parentPath) _setCurrentPath(parentPath);
   };
   const nextPage = () => {
@@ -59,20 +55,11 @@ export function useCurrentFiles(defaultPath) {
   };
 }
 
-function getFilesystemsFromList(filesystems) {
-  const azure = filesystems.find((fs) => fs.name.toLowerCase() === "azure");
-  const s3 = filesystems.find((fs) => fs.name.toLowerCase() === "s3");
-  const gcp = filesystems.find((fs) => fs.name.toLowerCase() === "gcp");
-  const minio = filesystems.find((fs) => fs.name.toLowerCase() === "minio");
-  const local = filesystems.find((fs) => fs.name.toLowerCase() === "local");
-  return { azure, s3, gcp, minio, local };
-}
-
 export function useAvailableFileSystems() {
   const executor = useOperatorExecutor("list_files");
   const filesystems = executor.result?.filesystems || [];
   const available = filesystems.length > 0;
-  const { azure, s3, gcp, minio, local } = getFilesystemsFromList(filesystems);
+  const { azure, s3, gcp, minio, local } = getFileSystemsFromList(filesystems);
   const hasCloud = azure || s3 || gcp || minio;
   const defaultFilesystem = filesystems[0];
   const defaultPath = defaultFilesystem?.default_path;
@@ -99,10 +86,6 @@ export function useAvailableFileSystems() {
   };
 }
 
-function getNameFromPath(path) {
-  return utils.getBasename(path);
-}
-
 export function useSelectedFile(currentPath, chooseMode) {
   const [selectedFile, setSelectedFile] = useState(null);
   const fileIsSelected = selectedFile?.type === "file";
@@ -116,7 +99,9 @@ export function useSelectedFile(currentPath, chooseMode) {
   const canChooseDir = chooseMode === "directory" && dirIsSelected;
   const canChooseFile = chooseMode === "file" && fileIsSelected;
   const enableChooseButton =
-    canChooseDir || canChooseFile || unknownSelectedFile;
+    canChooseDir ||
+    canChooseFile ||
+    (unknownSelectedFile && chooseMode === "directory");
 
   const handleSelectFile = (file) => {
     if (!file) return setSelectedFile(null);
@@ -127,12 +112,11 @@ export function useSelectedFile(currentPath, chooseMode) {
 }
 
 export function useFileExplorer(fsInfo, chooseMode, onChoose) {
-  const [currentDirectory, setCurrentDirectory] = useState(fsInfo.defaultFile);
   const [open, setOpen] = useState(false);
   const {
     abort,
     currentFiles,
-    setCurrentPath: _setCurrentPath,
+    setCurrentPath,
     currentPath,
     refresh,
     errorMessage,
@@ -145,8 +129,26 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     useSelectedFile(currentPath, chooseMode);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chosenFile, setChosenFile] = useState(null);
+  const [customPath, setCustomPath] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
+  const [customPathChanged, setCustomPathChanged] = useState(false);
+
+  useEffect(() => {
+    if (!initialized && fsInfo.defaultFile) {
+      setCurrentPath(fsInfo.defaultFile?.absolute_path);
+      setInitialized(true);
+    }
+  }, [initialized, fsInfo, setCurrentPath]);
 
   const handleClickOpen = (e) => {
+    if (customPathChanged && typeof customPath === "string") {
+      const file = computeFileObject(customPath, chooseMode);
+      const { parent_path, absolute_path } = file;
+      handleSelectFile(file);
+      setCurrentPath(parent_path || absolute_path);
+      if (onChoose) onChoose(file);
+    }
+    setCustomPathChanged(false);
     setOpen(true);
     e.preventDefault();
   };
@@ -157,8 +159,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
 
   const handleOpen = (overrideSelectedFile?) => {
     const targetFile = overrideSelectedFile || selectedFile;
-    setCurrentDirectory(targetFile);
-    _setCurrentPath(targetFile.absolute_path);
+    setCurrentPath(targetFile.absolute_path);
     handleSelectFile(null);
   };
 
@@ -167,10 +168,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     if (!provideFilepath) {
       return handleSelectFile(null);
     }
-    const resolvedProvidedFilepath = utils.joinPaths(
-      currentPath,
-      provideFilepath
-    );
+    const resolvedProvidedFilepath = joinPaths(currentPath, provideFilepath);
     const matchingExistingFile = currentFiles.find(
       (f) => f.absolute_path === resolvedProvidedFilepath
     );
@@ -190,22 +188,30 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
 
   const handleChoose = () => {
     setOpen(false);
-    const file = selectedFile ||
-      currentDirectory || { absolute_path: currentPath };
+    const file = selectedFile || { absolute_path: currentPath };
     setChosenFile(file);
+    setCustomPath(null);
     onChoose && onChoose(file);
   };
 
   const clear = () => {
     setChosenFile(null);
     setOpen(false);
+    setCustomPath(null);
     onChoose && onChoose(null);
   };
 
   const handleUpDir = () => {
     onUpDir();
     handleSelectFile(null);
-    setCurrentDirectory(null);
+  };
+
+  const handleCustomPathChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const updatedCustomPath = e.target.value;
+    setCustomPath(e.target.value);
+    setCustomPathChanged(true);
+    if (typeof updatedCustomPath === "string" && onChoose)
+      onChoose(computeFileObject(updatedCustomPath, chooseMode));
   };
 
   return {
@@ -219,8 +225,9 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     currentFiles,
     setChosenFile,
     setCurrentPath(path) {
-      _setCurrentPath(path);
+      setCurrentPath(path);
       setSidebarOpen(false);
+      handleSelectFile(null);
     },
     currentPath,
     refresh,
@@ -238,5 +245,7 @@ export function useFileExplorer(fsInfo, chooseMode, onChoose) {
     handleUpDir,
     nextPage,
     hasNextPage,
+    customPath,
+    handleCustomPathChange,
   };
 }

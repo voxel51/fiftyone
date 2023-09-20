@@ -41,7 +41,7 @@ of the Teams App by clicking on your user icon in the upper right corner:
    :align: center
    :width: 300
 
-There you'll see instructions for installing a `fiftyone` package from the
+There you'll see instructions for installing a ``fiftyone`` package from the
 private PyPI server as shown below:
 
 .. code-block:: shell
@@ -50,11 +50,17 @@ private PyPI server as shown below:
 
 .. note::
 
-   The Teams Python package is named `fiftyone` and has the same module
+    See :ref:`Installation with Poetry<teams-installation-poetry>` if you use
+    ``poetry`` instead of ``pip``.
+
+.. note::
+
+   The Teams Python package is named ``fiftyone`` and has the same module
    structure as :doc:`fiftyone <../api/fiftyone>`, so any existing scripts you
    built using open source will continue to run after you upgrade!
 
-**Next Steps**
+Next Steps
+__________
 
 After installing the Teams Python SDK in your virtual environment, you'll need
 to configure two things:
@@ -69,6 +75,82 @@ That's it! Any operations you perform will be stored in a centralized location
 and will be available to all users with access to the same datasets in the
 Teams App or their Python workflows.
 
+.. _teams-installation-poetry:
+
+Installation with Poetry
+________________________
+If you  are using `poetry <https://python-poetry.org/>`_ to install your
+dependencies rather than ``pip``, you will need to follow instructions in
+`the docs for installing from a private repository. <https://python-poetry.org/docs/repositories/#installing-from-private-package-sources>`_
+The two key points are specifying the additional private source and declaring
+that the ``fiftyone`` module should be found there and not the default PyPI
+location.
+
+Add source
+~~~~~~~~~~
+
+In poetry v1.5, it is recommended to use an
+`explicit package source. <https://python-poetry.org/docs/repositories/#explicit-package-sources>`_
+
+.. code-block:: shell
+
+    poetry source add --priority=explicit fiftyone-teams https://pypi.fiftyone.ai/simple/
+
+Prior to v1.5, you should use the deprecated
+`secondary package source. <https://python-poetry.org/docs/1.4/repositories/#secondary-package-sources>`_
+
+.. code-block:: shell
+
+    poetry source add --secondary fiftyone-teams https://pypi.fiftyone.ai/simple/
+
+Configure credentials
+~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: shell
+
+    poetry config http-basic.fiftyone-teams ${TOKEN} ""
+
+Alternatively, you can specify the credentials in environment variables.
+
+.. code-block:: shell
+
+    export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_USERNAME="${TOKEN}"
+    export POETRY_HTTP_BASIC_FIFTYONE_TEAMS_PASSWORD=""
+
+If you have trouble configuring the credentials, see
+`more in the poetry docs here. <https://python-poetry.org/docs/repositories/#configuring-credentials>`_
+
+Add fiftyone dependency
+~~~~~~~~~~~~~~~~~~~~~~~
+Replace ``X.Y.Z`` with the proper version
+
+.. code-block::
+
+    poetry add --source fiftyone-teams fiftyone==X.Y.Z
+
+.. note::
+
+    Due to an `unresolved misalignment <https://github.com/python-poetry/poetry/issues/4046>`_
+    with ``poetry`` and a FiftyOne dependency, ``kaleido``, you must add it
+    to your own dependencies as well:
+
+    .. code-block::
+
+        poetry add kaleido==0.2.1
+
+You should then see snippets in the ``pyproject.toml`` file like the following
+(the ``priority`` line will be different for ``poetry<v1.5``):
+
+.. code-block:: toml
+
+    [[tool.poetry.source]]
+    name = "fiftyone-teams"
+    url = "https://pypi.fiftyone.ai"
+    priority = "explicit"
+
+.. code-block:: toml
+
+    [tool.poetry.dependencies]
+    fiftyone = {version = "X.Y.Z", source = "fiftyone-teams}
 
 .. _teams-cloud-credentials:
 

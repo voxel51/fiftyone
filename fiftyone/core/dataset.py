@@ -67,7 +67,7 @@ def list_datasets(glob_patt=None, tags=None, info=False):
         a list of dataset names or info dicts
     """
     if info:
-        return _list_dataset_info(glob_patt=glob_patt, tags=tags)
+        return _list_datasets_info(glob_patt=glob_patt, tags=tags)
 
     return _list_datasets(glob_patt=glob_patt, tags=tags)
 
@@ -1595,8 +1595,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._group_slice = self._doc.default_group_slice
 
-        self.create_index(field_name + ".id")
-        self.create_index(field_name + ".name")
+        _create_group_indexes(self._sample_collection_name, field_name)
 
         return True
 
@@ -6597,7 +6596,37 @@ def _get_random_characters(n):
 
 def _list_datasets(include_private=False, glob_patt=None, tags=None):
     conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
 
+    # We don't want an error here if `name == None`
+    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
+
+    return _sort(conn.datasets.find(query).distinct("name"))
+
+
+def _list_datasets_info(include_private=False, glob_patt=None, tags=None):
+    conn = foo.get_db_conn()
+    query = _list_datasets_query(
+        include_private=include_private, glob_patt=glob_patt, tags=tags
+    )
+
+    return [
+        {
+            "name": doc.get("name", None),
+            "created_at": doc.get("created_at", None),
+            "last_loaded_at": doc.get("last_loaded_at", None),
+            "version": doc.get("version", None),
+            "persistent": doc.get("persistent", None),
+            "media_type": doc.get("media_type", None),
+            "tags": doc.get("tags", []),
+        }
+        for doc in conn.datasets.find(query)
+    ]
+
+
+def _list_datasets_query(include_private=False, glob_patt=None, tags=None):
     if include_private:
         query = {}
     else:
@@ -6613,47 +6642,7 @@ def _list_datasets(include_private=False, glob_patt=None, tags=None):
     elif tags is not None:
         query["tags"] = {"$in": list(tags)}
 
-    # We don't want an error here if `name == None`
-    _sort = lambda l: sorted(l, key=lambda x: (x is None, x))
-
-    return _sort(conn.datasets.find(query).distinct("name"))
-
-
-def _list_dataset_info(include_private=False, glob_patt=None, tags=None):
-    info = []
-    for name in _list_datasets(
-        include_private=include_private, glob_patt=glob_patt, tags=tags
-    ):
-        try:
-            dataset = Dataset(name, _create=False, _virtual=True)
-            num_samples = dataset._sample_collection.estimated_document_count()
-            i = {
-                "name": dataset.name,
-                "created_at": dataset.created_at,
-                "last_loaded_at": dataset.last_loaded_at,
-                "version": dataset.version,
-                "persistent": dataset.persistent,
-                "media_type": dataset.media_type,
-                "tags": dataset.tags,
-                "num_samples": num_samples,
-            }
-        except:
-            # If the dataset can't be loaded, it likely requires migration, so
-            # we can't show any information about it
-            i = {
-                "name": name,
-                "created_at": None,
-                "last_loaded_at": None,
-                "version": None,
-                "persistent": None,
-                "media_type": None,
-                "tags": None,
-                "num_samples": None,
-            }
-
-        info.append(i)
-
-    return info
+    return query
 
 
 def _create_dataset(
@@ -6727,6 +6716,14 @@ def _create_indexes(sample_collection_name, frame_collection_name):
         frame_collection.create_index(
             [("_sample_id", 1), ("frame_number", 1)], unique=True
         )
+
+
+def _create_group_indexes(sample_collection_name, group_field):
+    conn = foo.get_db_conn()
+
+    sample_collection = conn[sample_collection_name]
+    sample_collection.create_index(group_field + ".id")
+    sample_collection.create_index(group_field + ".name")
 
 
 def _make_sample_collection_name(
@@ -6901,6 +6898,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     slug = _validate_dataset_name(name)
 
     contains_videos = dataset_or_view._contains_videos(any_slice=True)
+    contains_groups = dataset_or_view.media_type == fom.GROUP
 
     if isinstance(dataset_or_view, fov.DatasetView):
         dataset = dataset_or_view._dataset
@@ -6939,9 +6937,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
     dataset_doc.frame_collection_name = frame_collection_name
-
     dataset_doc.media_type = dataset_or_view.media_type
-    if dataset_doc.media_type != fom.GROUP:
+    if not contains_groups:
         dataset_doc.group_field = None
         dataset_doc.group_media_types = {}
         dataset_doc.default_group_slice = None
@@ -6974,6 +6971,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Create indexes
     _create_indexes(sample_collection_name, frame_collection_name)
+    if contains_groups and dataset.group_field is not None:
+        _create_group_indexes(sample_collection_name, dataset.group_field)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
@@ -7199,6 +7198,10 @@ def _merge_dataset_doc(
 
         if curr_doc.group_field is None:
             curr_doc.group_field = doc.group_field
+
+            _create_group_indexes(
+                dataset._sample_collection_name, doc.group_field
+            )
         elif src_group_field != curr_doc.group_field:
             raise ValueError(
                 "Cannot merge samples with group field '%s' into a "

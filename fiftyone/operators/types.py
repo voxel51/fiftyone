@@ -26,10 +26,15 @@ class Void(BaseType):
 
 
 class Object(BaseType):
-    """Represents a JSON object."""
+    """Represents a JSON object.
 
-    def __init__(self):
+    Args:
+        root_view (None): the :class:`View` used to display the object
+    """
+
+    def __init__(self, root_view=None):
         self.properties = {}
+        self.root_view = root_view
 
     def add_property(self, name, property):
         """Adds a property to the object.
@@ -895,7 +900,7 @@ class CodeView(View):
         import fiftyone.operators.types as types
 
         inputs = types.Object()
-        inputs.string("src", types.CodeView(language="python"))
+        inputs.str("src", types.CodeView(language="python"))
 
     Args:
         language (None): the language to use for syntax highlighting
