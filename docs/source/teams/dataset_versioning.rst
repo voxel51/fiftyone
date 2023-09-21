@@ -1,98 +1,114 @@
 .. _dataset_versioning:
 
-.. versionadded:: Teams 1.4.0
-
 Dataset Versioning
 ==================
 
 .. default-role:: code
 
-A key feature of the FiftyOne Teams offering is the ability to version your Fiftyone
-Datasets directly from within the Fiftyone ecosystem. This functionality
-provides the ability to capture the state of your dataset in time so that
-it can be referenced in the future. This can enable workflows revolving around
-recalling particular important events in the dataset's lifecycle (model trained,
-annotation added, etc.), as well as helping to prevent accidental data loss.
+FiftyOne Teams provides native support for versioning your datasets!
 
-Introduction
-____________
+Dataset Versioning allows you to capture the state of your dataset in time so
+that it can be referenced in the future. This enables workflows like recalling
+particular important events in the dataset's lifecycle (model trained,
+annotation added, etc) as well as helping to prevent accidental data loss.
 
-Versioning in Fiftyone Teams has been built with an extensible architecture so
-that different versioning backends can be swapped in. Different backends may
-have different trade-offs in terms of performance, storage, and deployment
-needs, so users should be able to choose the best fit for their needs.
+.. raw:: html
 
-In addition, many users may already have a versioning solution external to
-Fiftyone Teams, and the goal is to support integration around those use cases
-as well.
+  <div style="margin-top: 20px; margin-bottom: 20px">
+    <iframe id="youtube" src="https://www.youtube.com/embed/DKUkiDQVDqA?rel=0" frameborder="0" allowfullscreen>
+    </iframe>
+  </div>
 
-.. note::
+.. _dataset-versioning-overview:
 
-    As of FiftyOne Teams version 1.4.0, dataset versioning only supports an
-    :ref:`internal duplication backend <internal-duplication-backend>`.
-    Further improvements and implementing additional backend choices are
-    :ref:`on the long-term roadmap <future-roadmap>`.
+Overview
+________
+
+Dataset Versioning in FiftyOne Teams is implemented as a linear sequence of
+read-only :ref:`Snapshots <dataset-versioning-snapshots>`. In other words,
+creating a new Snapshot creates a permanent record of the dataset’s contents
+that can be loaded and viewed at any time in the future, but not directly
+edited. Conversely, the current version of a dataset is called its HEAD
+(think git). If you have not explicitly loaded a Snapshot, you are viewing its
+HEAD, and you can make additions, updates, and deletions to the dataset’s
+contents as you normally would (provided you have sufficient permissions).
+
+Snapshots record all aspects of your data stored within FiftyOne, including
+dataset-level information, schema, samples, frames, brain runs, and
+evaluations. However, Snapshots exclude any information stored in external
+services, such as media stored in cloud buckets or embeddings stored in an
+external vector database, which are assumed to be immutable. If you need to
+update the image for a sample in a dataset, for example, update the sample’s
+filepath—-which is tracked by snapshots—-rather than updating the media in
+cloud storage in-place—-which would not be tracked by snapshots. This design
+allows dataset snapshots to be as lightweight and versatile as possible.
+
+.. tabs::
+
+  .. group-tab:: Tracked by versioning
+
+    +------------------------+-----------------------------------------+
+    | Dataset-level metadata | Schema, tags, and other metadata        |
+    |                        +-----------------------------------------+
+    |                        | Saved views                             |
+    |                        +-----------------------------------------+
+    |                        | Runs and run results                    |
+    +------------------------+-----------------------------------------+
+    | Sample-level metadata  | All sample metadata (including tags,    |
+    |                        | labels, detections, segmentations,      |
+    |                        | custom fields, etc.)                    |
+    |                        +-----------------------------------------+
+    |                        | All video frame metadata                |
+    +------------------------+-----------------------------------------+
+
+  .. group-tab:: Not tracked by versioning
+
+    +------------------------+---------------------------------------------+
+    | Media                  | Images, videos, point clouds                |
+    |                        +---------------------------------------------+
+    |                        | Segmentations or heatmaps stored on         |
+    |                        | disk or in the cloud                        |
+    +------------------------+---------------------------------------------+
+    | External information   | Run results stored in external systems      |
+    |                        | e.g., embeddings stored in a                |
+    |                        | :ref:`vector database <qdrant-integration>` |
+    +------------------------+---------------------------------------------+
+
+Dataset Versioning has been built with an extensible architecture so that
+different versioning backends can be swapped in. Each backend may have
+different tradeoffs in terms of performance, storage, and deployment needs, so
+users should be able to choose the best fit for their needs. In addition, many
+users may already have a versioning solution external to FiftyOne Teams, and
+the goal is to support integration around those use cases as well.
+
+Currently, only the
+:ref:`internal duplication backend <internal-duplication-backend>` is
+available, but further improvements and implementing additional backend choices
+are :ref:`on the roadmap <dataset-versioning-roadmap>`.
 
 .. warning::
 
-    1. Versioning is not yet a replacement for backups. We strongly encourage
-    the use of regular data backups and good storage maintenance processes.
-    
-    2. Versioning within FiftyOne does not version your actual media
-    (images, videos, etc.). 
+    Dataset Versioning is not a replacement for database backups. We strongly
+    encourage the use of regular data backups and good storage maintenance
+    processes.
 
-What's Included?
-----------------
-
-The FiftyOne Dataset, including the following, are all stored and versioned:
-
-+------------------------+-----------------------------------------+
-| Dataset-level metadata | Schema, tags, other metadata            |
-|                        +-----------------------------------------+
-|                        | Saved views                             |
-|                        +-----------------------------------------+
-|                        | Runs and run results                    |
-+------------------------+-----------------------------------------+
-| Sample-level metadata  | All sample metadata (including tags,    |
-|                        | labels, detections, segmentations,      |
-|                        | custom fields, etc.)                    |
-|                        +-----------------------------------------+
-|                        | All video frame metadata                |
-|                        +-----------------------------------------+
-|                        | Run results stored as a dataset field,  |
-|                        | e.g., uniqueness or embeddings.         |
-+------------------------+-----------------------------------------+
-
-Dataset Versioning does not track:
-
-+-----------------------------------------------------+
-| The media itself (images, videos, point clouds)     |
-+-----------------------------------------------------+
-| Run results stored in external systems (e.g.,       |
-| a :ref:`vector database integration <integrations>` |
-| for embeddings)                                     |
-+-----------------------------------------------------+
-| Segmentations or embeddings on disk                 |
-+-----------------------------------------------------+
-| Ephemeral views (to_clips, to_frames, to_patches)   |
-+-----------------------------------------------------+
+.. _dataset-versioning-snapshots:
 
 Snapshots
 _________
 
-With FiftyOne Teams Dataset Versioning, we introduce a concept called a
-**Snapshot**. A Snapshot captures the state of a dataset at a particular point
-in time as an immutable object. Currently, Snapshots exist in a linear
-(non-branching) history model of the dataset. Compare this concept to creating
-commits and tags in a single branch of a version control system such as git or
-svn; a Snapshot is a commit and tag (including readable name, description,
-creator) all in one.
+Dataset Versioning in FiftyOne Teams is implemented as a linear history of
+**Snapshots**. A Snapshot captures the state of a dataset at a particular point
+in time as an immutable object. Compare this concept to creating commits and
+tags in a single branch of a version control system such as git or svn; a
+Snapshot is a commit and tag (including readable name, description, creator)
+all in one.
 
 The current working version of the dataset (called the **HEAD**) can be edited
 by anyone with appropriate permissions, as normal. Since Snapshots include a
 commit-like operation, they can only be created on the dataset HEAD.
 
-Snapshot States
+Snapshot states
 ---------------
 
 Snapshots can be in a few different states of existence depending on deployment
@@ -121,73 +137,63 @@ choices and user actions.
         of the overarching versioning infrastructure and the specific
         versioning backend.
 
-
 For a given Snapshot, the virtual form always exists. It may also be
 materialized, offloaded, or both (in the case that an offloaded Snapshot has
-been re-materialized but kept in cold storage also)!
+been re-materialized but kept in cold storage also).
 
 .. note::
 
-    With the :ref:`Internal Duplication Backend <internal-duplication-backend>`,
+    With the :ref:`internal duplication backend <internal-duplication-backend>`
     there is no distinction between materialized and virtual Snapshots since by
     definition the implementation uses materialized Snapshots as its method of
     storage.
 
-Using Snapshots
+.. _dataset-versioning-snapshot-permissions:
+
+Snapshot permissions
+____________________
+
+The table below shows the :ref:`dataset permissions <teams-permissions>`
+required to perform different Snapshot-related operations:
+
++----------------------------+----------------------------------+
+| Snapshot Operation         |    User Permissions on Dataset   |
++============================+==========+==========+============+
+|                            | Can View | Can Edit | Can Manage |
++----------------------------+----------+----------+------------+
+| Browse Snapshot in App     |    ✅    |    ✅    |     ✅     |
++----------------------------+----------+----------+------------+
+| Load Snapshot in SDK       |    ✅    |    ✅    |     ✅     |
++----------------------------+----------+----------+------------+
+| Create Snapshot            |          |          |     ✅     |
++----------------------------+----------+----------+------------+
+| Delete Snapshot            |          |          |     ✅     |
++----------------------------+----------+----------+------------+
+| Revert dataset to Snapshot |          |          |     ✅     |
++----------------------------+----------+----------+------------+
+| Edit Snapshot's contents   |    ❌    |    ❌    |     ❌     |
++----------------------------+----------+----------+------------+
+
+.. _dataset-versioning-using-snapshots:
+
+Using snapshots
 _______________
 
-In contrast to dataset HEAD, Snapshots are read-only. When viewing in the App,
-the UI is similar to interacting with a HEAD dataset, but users will not be
-able to make any edits to the objects. Similarly, when using the Fiftyone SDK,
-users will not be able to perform any operation that would trigger a
-modification to the stored dataset.
+In contrast to a dataset's HEAD, Snapshots are **read-only**. When viewing in
+the App, the UI is similar to interacting with a HEAD dataset, but users will
+not be able to make any edits to the objects. Similarly, when using the
+FiftyOne SDK, users will not be able to perform any operation that would
+trigger a modification to the stored dataset.
 
-An incomplete list of such operations:
+.. _dataset-versioning-list-snapshots:
 
-+----------------------------------------------------+
-| Add/delete/modify samples                          |
-+----------------------------------------------------+
-| Change dataset metadata (tags, info, etc.)         |
-+----------------------------------------------------+
-| Compute a run (                                    |
-| :ref:`annotation <fiftyone-annotation>`,           |
-| :ref:`brain method <fiftyone-brain>`, or           |
-| :ref:`evaluation <evaluating-models>`)             |
-+----------------------------------------------------+
-| :ref:`Save a view <saving-views>` on the dataset   |
-+----------------------------------------------------+
-
-All other strictly read-only operations are allowed. An incomplete list of such
-operations:
-
-+-------------------------------------------------------------------+
-| Get samples/frames                                                |
-+-------------------------------------------------------------------+
-| Creating :ref:`views <using-views>` into the Snapshot data        |
-| (views do not edit the underlying dataset)                        |
-+-------------------------------------------------------------------+
-| :ref:`Export <exporting-datasets>` the whole Snapshot or a view   |
-+-------------------------------------------------------------------+
-| :ref:`Clone <cloning-datasets>` Snapshot to a new dataset         |
-| (this new dataset will have an editable HEAD but lose the         |
-| Snapshot history of the parent dataset)                           |
-+-------------------------------------------------------------------+
-| Creating a generated dataset view from the Snapshot, such as      |
-| :ref:`to_patches() <object-patches-views>` or                     |
-| :ref:`group_by() <view-groups>`                                   |
-+-------------------------------------------------------------------+
-
-.. _listing-dataset-snapshots:
-
-Listing Snapshots for a Dataset
--------------------------------
-
-.. _listing-snapshots-ui:
+List snapshots
+--------------
 
 Teams UI
 ~~~~~~~~
 
-To access the Snapshot history and management page, click the 'History' tab on
+To access the Snapshot history and management page, click the "History tab" on
 a dataset's main page.
 
 .. image:: /images/teams/versioning/history-tab-button.png
@@ -195,33 +201,18 @@ a dataset's main page.
     :align: center
 
 On this page you can see a listing of the Snapshot history for the dataset.
-Each row contains information about a single Snapshot, namely:
-
-+----------------------------------------------+
-| Name                                         |
-+----------------------------------------------+
-| Description                                  |
-+----------------------------------------------+
-| Creation date                                |
-+----------------------------------------------+
-| Creator                                      |
-+----------------------------------------------+
-| Summary of sample changes in this Snapshot   |
-| (number added, deleted, updated)             |
-+----------------------------------------------+
+Each row contains information about a single Snapshot.
 
 .. image:: /images/teams/versioning/snapshot-list.png
     :alt: snapshot-list
     :align: center
-
-.. _listing-snapshots-sdk:
 
 SDK
 ~~~
 
 You can also list Snapshot names for a dataset using the
 :meth:`list_snapshots() <fiftyone.management.snapshot.list_snapshots>` method
-from the Management SDK:
+from the Management SDK.
 
 .. code-block:: python
     :linenos:
@@ -233,7 +224,7 @@ from the Management SDK:
 
 Then you can get more detailed information on a single Snapshot using the
 :meth:`get_snapshot_info() <fiftyone.management.snapshot.get_snapshot_info>`
-method:
+method.
 
 .. code-block:: python
     :linenos:
@@ -245,17 +236,20 @@ method:
 
     fom.get_snapshot_info(dataset, snapshot_name)
 
-Loading Snapshots
+.. _dataset-versioning-loading-snapshots:
+
+Loading snapshots
 -----------------
 
-.. _loading-snapshots-ui:
+Any user with Can View permissions to a dataset can view and load its snapshots
+via the Teams UI or the SDK.
 
 Teams UI
 ~~~~~~~~
 
-Clicking the "Browse" button in a Snapshot row in the
-:ref:`snapshot list <listing-dataset-snapshots>` will allow the user to view
-the dataset Snapshot in the UI.
+From the dataset's History tab, click the "Browse" button next to a Snapshot in
+the :ref:`snapshot list <dataset-versioning-list-snapshots>` to load the
+Snapshot in the UI.
 
 .. image:: /images/teams/versioning/browse-button.png
     :alt: history-browse-button
@@ -269,7 +263,9 @@ We can also link directly to this Snapshot page by copying the URL from the
 address bar or from the "Share Dataset" page which opens from the "Share"
 button. For the above Snapshot, it would look like this:
 
-``https://<fiftyone-teams-deployment-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot``
+.. code-block:: text
+
+    https://<your-teams-url>/datasets/roadscene-vehicle-detection/samples?snapshot=new+snapshot
 
 One other difference from the normal page is the Snapshot banner which gives
 information about the Snapshot being viewed, and other quick-click operations.
@@ -282,23 +278,23 @@ browse page for that Snapshot.
     :align: center
 
 On the right side of the banner, clicking the "Back to the latest version"
-button will take you back to the samples page for the dataset HEAD (you can
-also do this by clicking the "Samples" tab). There is also a convenient
-dropdown from the 3-dot (kebab) menu which gives various
-:ref:`management functions <snapshot-management>` for the current Snapshot.
+button will take you back to the samples page for the dataset HEAD. You can
+also do this by clicking the "Samples" tab. There is also a convenient dropdown
+from the 3-dot (kebab) menu which gives various
+:ref:`management functions <dataset-versioning-snapshot-management>` for the
+current Snapshot.
 
 .. image:: /images/teams/versioning/browse-banner-right.png
     :alt: browse-banner-rightside
     :align: center
 
-.. _loading-snapshots-sdk:
-
 SDK
 ~~~
 
-Snapshots can also be loaded via the FiftyOne SDK ``load_dataset()`` method.
-The following snippet will load an existing Snapshot of a dataset. It can then
-be interacted with as if it is a normal dataset, except for any operations that
+Snapshots can also be loaded via the FiftyOne SDK
+:func:`load_dataset() <fiftyone.core.dataset.load_dataset>` method. The
+following snippet will load an existing Snapshot of a dataset. It can then be
+interacted with as if it is a normal dataset, except for any operations that
 would cause modifications.
 
 .. code-block:: python
@@ -312,49 +308,49 @@ would cause modifications.
     snapshot = fo.load_dataset(dataset_name, snapshot=existing_snapshot_name)
     print(snapshot)
 
-.. _Snapshot-management:
+.. _dataset-versioning-snapshot-management:
 
-Snapshot Management
+Snapshot management
 ___________________
 
-Of course we must be able to create and manage these wonderful snapshots!
+The following sections describe how to create and use snapshots.
 
-.. _creating-snapshot:
+.. _dataset-versioning-creating-snapshot:
 
-Creating a Snapshot
+Creating a snapshot
 -------------------
 
-Dataset Managers can create Snapshots through the Teams UI or Management SDK.
+Users with Can Manage permissions to a dataset can create Snapshots through the
+Teams UI or the Management SDK.
 
 .. note::
 
     Snapshots can only be created from the HEAD of the dataset.
 
-.. _creating-snapshot-ui:
-
 Teams UI
 ~~~~~~~~
 
-At the top of the "History" tab for a dataset is the "Create snapshot" panel.
-This panel will inform the user of the number of changes that have happened
-between the last Snapshot and the current state of the dataset. Currently this
-is a summary of number of samples added, deleted, and updated. These values are
-not continuously calculated, so there is a provided "Refresh" button to ensure
-that you have the latest values. You can also see how long ago it was last
-refreshed in order to decide if the information is current.
+At the top of the History tab for a dataset is the Create snapshot panel.
+This panel shows the number of changes that have happened between the last
+Snapshot and the current state of the dataset.
+
+.. note::
+
+    The latest changes summary is not continuously updated; click the "Refresh"
+    button to recompute these values.
 
 .. image:: /images/teams/versioning/create-refresh-button.png
     :alt: create-refresh-button
     :align: center
 
-To create a Snapshot, give it a unique name and an optional description if you
-like, then click the "Save new snapshot" button.
+To create a Snapshot, provide a unique name and an optional description, then
+click the "Save new snapshot" button.
 
 .. note::
 
-    Depending on the :ref:`versioning backend <versioning-backends>` used,
-    deployment options chosen, and the size of the dataset, this may take some
-    time.
+    Depending on the :ref:`versioning backend <dataset-versioning-backends>`
+    used, deployment options chosen, and the size of the dataset, this may take
+    some time.
 
 .. image:: /images/teams/versioning/create-save-button.png
     :alt: create-save-button
@@ -366,15 +362,13 @@ After creation, the new Snapshot will show up in the list!
     :alt: history-new-snapshot
     :align: center
 
-.. _creating-snapshot-sdk:
-
 SDK
 ~~~
 
-Alternatively, you can use the Management SDK.
+You can also create Snapshots via the Management SDK.
 
-To get the latest changes summary as in the "Create snapshot" panel, use
-:meth:`get_dataset_latest_changes_summary() <fiftyone.management.snapshot.get_dataset_latest_changes_summary>`
+To get the latest changes summary as in the Create snapshot panel, use
+:meth:`get_dataset_latest_changes_summary() <fiftyone.management.snapshot.get_dataset_latest_changes_summary>`.
 
 .. code-block:: python
     :linenos:
@@ -383,9 +377,9 @@ To get the latest changes summary as in the "Create snapshot" panel, use
 
     fom.get_dataset_latest_changes_summary(dataset.name)
 
-To recalculate the latest changes summary as in the "Refresh" button in that
+To recalculate the latest changes summary as in the Refresh button in that
 panel, use
-:meth:`calculate_dataset_latest_changes_summary() <fiftyone.management.snapshot.calculate_dataset_latest_changes_summary>`
+:meth:`calculate_dataset_latest_changes_summary() <fiftyone.management.snapshot.calculate_dataset_latest_changes_summary>`.
 
 .. code-block:: python
     :linenos:
@@ -403,9 +397,9 @@ panel, use
     new = fom.calculate_dataset_latest_changes_summary(dataset.name)
     assert new.updated_at > changes.updated_at
 
-To then create a Snapshot, use the
+To create a new Snapshot, use the
 :meth:`create_snapshot() <fiftyone.management.snapshot.create_snapshot>`
-method:
+method.
 
 .. code-block:: python
     :linenos:
@@ -416,54 +410,45 @@ method:
     snapshot_name = "v0.1"
     description = "Version 0.1 in which I have made many awesome changes!"
     snapshot = fom.create_snapshot(dataset_name, snapshot_name, description)
-    print(snapshot)
 
-Deleting a Snapshot
+.. _dataset-versioning-delete-snapshot:
+
+Deleting a snapshot
 -------------------
 
-Dataset Managers can delete Snapshots through the Teams UI or Management SDK.
+Users with Can Manage permissions to a dataset can delete snapshots through the
+Teams UI or the Management SDK.
 
-Deleting a dataset deletes all associated Snapshots. However, individual
-snapshots can also be deleted.
+If the Snapshot is the most recent, the latest (HEAD) sample changes summary is
+not automatically recalculated. See
+:ref:`this section <dataset-versioning-creating-snapshot>` to see how to
+recalculate these now-stale values.
+
+If the Snapshot is *not* the most recent, the sample change summary for the
+following Snapshot will be automatically recalculated based on the previous
+Snapshot.
 
 .. warning::
 
     Deleting a Snapshot cannot be undone!
 
-.. note::
-
-    If the Snapshot is NOT the most recently created, the sample change summary
-    for the following Snapshot will be recalculated based on the previous
-    Snapshot. This is to retain accuracy given the modification to the linear
-    history chain.
-
-    If the Snapshot IS the most recent , the latest sample changes summary is
-    not automatically recalculated. See relevant sections in
-    :ref:`Creating a Snapshot <creating-snapshot>` for how to recalculate these
-    now-stale values.
-
-.. _deleting-snapshot-ui:
-
 Teams UI
 ~~~~~~~~
 
-To delete a Snapshot via the app, navigate to the 3-dot (kebab) menu for
-the Snapshot. In the menu, click the red "Delete snapshot" button. This will
-bring up a confirmation dialog to prevent accidental deletions.
+To delete a Snapshot via the App, open the 3-dot (kebab) menu for the Snapshot.
+In the menu, click "Delete snapshot". This will bring up a confirmation dialog
+to prevent accidental deletions.
 
 .. image:: /images/teams/versioning/delete-snapshot.png
     :alt: delete-snapshot
     :align: center
 
-.. _deleting-snapshot-sdk:
-
 SDK
 ~~~
 
-Alternatively, you can use the
-:meth:`delete_snapshot() <fiftyone.management.snapshot.delete_snapshot>`
-method in the Management SDK:
-
+You can also use the
+:meth:`delete_snapshot() <fiftyone.management.snapshot.delete_snapshot>` method
+in the Management SDK.
 
 .. code-block:: python
     :linenos:
@@ -472,11 +457,11 @@ method in the Management SDK:
 
     dataset = "quickstart"
     snapshot_name = "v0.1"
-
     fom.delete_snapshot(dataset, snapshot_name)
 
+.. _dataset-versioning-rollback-to-snapshot:
 
-Rollback Dataset to Snapshot
+Rollback dataset to snapshot
 ----------------------------
 
 In case unwanted edits have been added to the dataset HEAD, FiftyOne provides
@@ -485,35 +470,28 @@ of a given Snapshot.
 
 .. warning::
 
-    This is a very destructive operation! Doing this will discard **ALL**
-    changes between the selected Snapshot and the current working version of the
-    dataset.
-
-    It will also delete any newer Snapshots as well. Any Snapshots
-    that existed prior to the Snapshot selected will remain.
-
-.. _reverting-to-snapshot-ui:
+    This is a destructive operation! Rolling back to a Snapshot discards
+    **all** changes between the selected Snapshot and the current working
+    version of the dataset, including all newer Snapshots.
 
 Teams UI
 ~~~~~~~~
 
 To revert a dataset to a Snapshot's state, click the 3-dot (kebab) menu in
-the "History" tab for the Snapshot you want to return to. Then, select
-"Rollback to this snapshot". This will bring up a confirmation dialog to prevent
-accidental deletions.
+the History tab for the Snapshot you want to rollback to and select
+"Rollback to this snapshot". This will bring up a confirmation dialog to
+prevent accidental deletions.
 
 .. image:: /images/teams/versioning/rollback-snapshot.png
     :alt: rollback-snapshot
     :align: center
 
-.. _reverting-to-snapshot-sdk:
-
 SDK
 ~~~
 
-Alternatively, you can use the
+You can also use the
 :meth:`revert_dataset_to_snapshot() <fiftyone.management.snapshot.revert_dataset_to_snapshot>`
-method in the Management SDK:
+method in the Management SDK.
 
 .. code-block:: python
     :linenos:
@@ -531,12 +509,13 @@ method in the Management SDK:
     # Phew!
     fom.revert_dataset_to_snapshot(dataset.name, snapshot_name)
     dataset.reload()
+
     assert len(dataset) > 0
 
-.. _versioning-backends:
+.. _dataset-versioning-backends:
 
-Pluggable Versioning Backends
-_____________________________
+Pluggable backends
+__________________
 
 Dataset versioning was built with an extensible architecture to support
 different versioning backend implementations being built and swapped in to
@@ -552,7 +531,7 @@ feedback as soon as possible.
 
 .. _internal-duplication-backend:
 
-Internal Duplication Backend
+Internal duplication backend
 ----------------------------
 
 This backend is similar to cloning a dataset; Snapshots are stored in the same
@@ -566,16 +545,14 @@ dataset, and so is proportional to the size of the dataset being versioned.
 
 At this time, Snapshots are stored in the same database as the original dataset.
 In the future, support will be implemented for offloading Snapshots to a separate
-data store, such as cloud storage, to reduce the load on the Fiftyone database.
+data store, such as cloud storage, to reduce the load on the FiftyOne database.
 
 These requirements should be taken into consideration when using Snapshots and
 when determining values for the
-:ref:`max number of Snapshots allowed <versioning-configuration>`.
+:ref:`max number of Snapshots allowed <dataset-versioning-configuration>`.
 
-.. _duplication-backend-time-space:
-
-Time & Space
-~~~~~~~~~~~~
+Time and space
+~~~~~~~~~~~~~~
 
 **Time**
 
@@ -600,92 +577,62 @@ the volume of changes. Since it is stored in the same database as normal
 datasets, creating too many Snapshots without the ability to offload them
 could fill up the database.
 
-.. _duplication-backend-strengths:
-
 Strengths
 ~~~~~~~~~
 
-+---------------------------------------------------------------------------+
-| ✅ Simple                                                                 |
-+---------------------------------------------------------------------------+
-| ✅ Uses existing MongoDB; no extra deployment components                  |
-+---------------------------------------------------------------------------+
-| ✅ Browsing/loading is fast because the Snapshots are always materialized |
-+---------------------------------------------------------------------------+
-| ✅ For a create-then-load workflow, it has the lowest overhead cost of    |
-| any backend since materialized and virtual forms are one and the same     |
-+---------------------------------------------------------------------------+
-
-.. _duplication-backend-limitations:
++----+------------------------------------------------------------------------+
+| ✅ | Simple                                                                 |
++----+------------------------------------------------------------------------+
+| ✅ | Uses existing MongoDB; no extra deployment components                  |
++----+------------------------------------------------------------------------+
+| ✅ | Browsing/loading is fast because the Snapshots are always materialized |
++----+------------------------------------------------------------------------+
+| ✅ | For a create-then-load workflow, it has the lowest overhead cost of    |
+|    | any backend since materialized and virtual forms are one and the same  |
++----+------------------------------------------------------------------------+
 
 Limitations
 ~~~~~~~~~~~
 
-+---------------------------------------------------------------------------+
-| ❌ Creating a Snapshot takes time proportional to clone dataset           |
-+---------------------------------------------------------------------------+
-| ❌ Calculating sample change summaries is less efficient                  |
-+---------------------------------------------------------------------------+
-| ❌ Storage is highly duplicative                                          |
-+---------------------------------------------------------------------------+
-
-.. _duplication-backend-configuration:
++----+------------------------------------------------------------------------+
+| ❌ | Creating a Snapshot takes time proportional to clone dataset           |
++----+------------------------------------------------------------------------+
+| ❌ | Calculating sample change summaries is less efficient                  |
++----+------------------------------------------------------------------------+
+| ❌ | Storage is highly duplicative                                          |
++----+------------------------------------------------------------------------+
 
 Configuration
 ~~~~~~~~~~~~~
 
 There are no unique configuration options for this backend.
 
-Usage Considerations
+.. _dataset-versioning-usage-considerations:
+
+Usage considerations
 ____________________
 
-Best Practices
+Best practices
 --------------
 
 As this feature matures, we will have better recommendations for best practices.
 For now given the limited starting options in the intial iteration, we have the
 following advice:
 
-- Use snapshots on smaller datasets if possible.
-- Since space is at a premium, limit creation of snapshots to marking milestone
-  events which you want to revisit or restore later.
-- Delete old snapshots you don't need anymore.
-- Set the :ref:`versionings configurations versioning-configuration` to the
-  highest your deployment can comfortably support, to better enable user
-  workflows with breaking the (MongoDB) bank.
+-   Use snapshots on smaller datasets if possible.
+-   Since space is at a premium, limit creation of snapshots to marking milestone
+    events which you want to revisit or restore later.
+-   Delete old snapshots you don't need anymore.
+-   Set the :ref:`versioning configuration <dataset-versioning-configuration>`
+    to the highest your deployment can comfortably support, to better enable
+    user workflows with breaking the (MongoDB) bank.
 
-Dataset Versioning + Permissions
---------------------------------
-
-Snapshots inherit the permissions set for their parent dataset, they do not
-have the ability to have individual permissions applied to them.
-
-This table shows :ref:`dataset permissions <teams-permissions>` required to
-perform different Snapshot operations; all Snapshot management requires
-**Can Manage** permissions.
-
-+----------------------------+----------------------------------+
-| Snapshot Operation         |    User Permissions on Dataset   |
-+============================+==========+==========+============+
-|                            | Can View | Can Edit | Can Manage |
-+----------------------------+----------+----------+------------+
-| Browse Snapshot in app     |    ✅    |    ✅    |     ✅     |
-+----------------------------+----------+----------+------------+
-| Load Snapshot in SDK       |    ✅    |    ✅    |     ✅     |
-+----------------------------+----------+----------+------------+
-| Create Snapshot            |          |          |     ✅     |
-+----------------------------+----------+----------+------------+
-| Delete Snapshot            |          |          |     ✅     |
-+----------------------------+----------+----------+------------+
-| Revert dataset to Snapshot |          |          |     ✅     |
-+----------------------------+----------+----------+------------+
-
-.. _versioning-configuration:
+.. _dataset-versioning-configuration:
 
 Configuration
 -------------
 
-Since Snapshots impact the storage needs of Fiftyone Teams, some guard rails
+Since Snapshots impact the storage needs of FiftyOne Teams, some guard rails
 have been put in place to control the maximum amount of Snapshots that can be
 created. If a threshold has been exceeded while a user attempts to create a
 new Snapshot, they will receive an error informing them that it may be time to
@@ -703,41 +650,32 @@ storage requirements necessary.
 | Maximum Snapshots per-dataset | ``FIFTYONE_SNAPSHOTS_MAX_PER_DATASET`` | 20      | The max number of Snapshots allowed per dataset. -1 for no limit.         |
 +-------------------------------+----------------------------------------+---------+---------------------------------------------------------------------------+
 
-Temporary Limitations
----------------------
+.. _dataset-versioning-roadmap:
 
-- At this time, Snapshots cannot be used with
-  :ref:`Plugin Operators <fiftyone-operators>`.
-- Snapshots of datasets larger than 200 thousand samples have number of samples
-  added/deleted computed, but number modified is not.
-
-.. _future-roadmap:
-
-The future!
-___________
+Roadmap
+_______
 
 The following are some items that are on the roadmap for future iterations
 of the dataset versioning system. Keep an eye out for future FiftyOne Teams
 versions for these additional features!
 
-**Near-Term**
+**Near term**
 
-- Offloading least-used Snapshots to external data stores to reduce load on the
-  FiftyOne database
-- Optimize diff computation for larger (over 200k) datasets and remove the
-  limit
-- Enable Operators to interact with Snapshots
+-   Add support for applying :ref:`Operators <fiftyone-operators>` to Snapshots
+-   Offload least-used Snapshots to external cold storage
+-   Optimize diff computation for larger datasets (over 200k samples) and add
+    support for modification summaries for these datasets
 
-**Longer Term**
+**Longer term**
 
-- Further optimize existing versioning system
-- Support external versioning backends
-- Searching Snapshots
-- Content-aware Snapshot change summaries
+-   Further optimize existing versioning system
+-   Support external versioning backends
+-   Searching Snapshots
+-   Content-aware Snapshot change summaries
 
 **Exploratory**
 
-- Visualization of Snapshot diffs
-- Implement a branch-and-merge model
-- Deep integrations with versioning backend tools to version FiftyOne datasets
-  alongside your models and media
+-   Visualization of Snapshot diffs
+-   Implement a branch-and-merge model
+-   Deep integrations with versioning backend tools to version FiftyOne
+    datasets alongside your models and media
