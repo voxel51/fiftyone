@@ -2,18 +2,25 @@ import { FormControlLabel, Switch } from "@mui/material";
 import React from "react";
 import { HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
+import { useKey } from "../hooks";
 
 export default function SwitchView(props) {
-  const { schema, data, onChange, path } = props;
+  const { onChange, path, schema, data } = props;
+
+  const [key, setUserChanged] = useKey(path, schema);
 
   return (
     <FormControlLabel
       control={
         <Switch
+          key={key}
           disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
           defaultChecked={data === true || schema.default === true}
-          onChange={(e, checked) => onChange(path, checked)}
+          onChange={(e, checked) => {
+            onChange(path, checked);
+            setUserChanged();
+          }}
           {...getComponentProps(props, "switch")}
         />
       }
