@@ -31,7 +31,7 @@ const ColorFooter: React.FC = () => {
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
-  const defaultColorPool = useRecoilValue(fos.config).colorPool;
+  const configDeafult = useRecoilValue(fos.config);
   const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
@@ -50,7 +50,14 @@ const ColorFooter: React.FC = () => {
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
-              datasetDefault || { fields: [], colorPool: defaultColorPool }
+              datasetDefault || {
+                fields: [],
+                colorPool: configDeafult.colorPool,
+                colorBy: configDeafult.colorBy,
+                opacity: fos.DEFAULT_ALPHA,
+                useMultiColorKeypoints: false,
+                showKeypointSkeleton: true,
+              }
             );
           }}
           style={BUTTON_STYLE}
@@ -61,6 +68,7 @@ const ColorFooter: React.FC = () => {
             title={`Save to dataset appConfig`}
             onClick={() => {
               updateDatasetColorScheme({
+                ...colorScheme,
                 fields: colorScheme.fields || [],
                 colorPool: colorScheme.colorPool || [],
               });
@@ -70,6 +78,7 @@ const ColorFooter: React.FC = () => {
                   subscription,
                   datasetName,
                   colorScheme: {
+                    ...colorScheme,
                     fields: colorScheme.fields || [],
                     colorPool: colorScheme.colorPool || [],
                   },
@@ -89,7 +98,7 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({ fields: [], colorPool: defaultColorPool });
+              setColorScheme({ fields: [], colorPool: [] });
             }}
             style={LONG_BUTTON_STYLE}
           />

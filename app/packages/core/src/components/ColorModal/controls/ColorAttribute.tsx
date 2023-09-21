@@ -58,24 +58,27 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const activeField = useRecoilValue(activeColorField);
-  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
-  const index = fields.findIndex((s) => s.path == activeField.path);
+  const currentColorScheme = useRecoilValue(fos.colorScheme);
+  const index = currentColorScheme.fields.findIndex(
+    (s) => s.path == activeField.path
+  );
 
   const options = subfields.map((field) => ({
     value: field.path?.split(".").slice(-1)[0],
     onClick: (e: React.MouseEvent) => {
       e.preventDefault();
-      const copy = cloneDeep(fields);
+      const copy = cloneDeep(currentColorScheme.fields);
       if (index > -1) {
         copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
-        setColorScheme({ colorPool, fields: copy });
+        setColorScheme({ ...currentColorScheme, fields: copy });
         setOpen(false);
       }
     },
   }));
 
   const selected =
-    fields[index]?.colorByAttribute ?? "Please select an attribute";
+    currentColorScheme.fields[index]?.colorByAttribute ??
+    "Please select an attribute";
 
   return (
     <div style={style}>

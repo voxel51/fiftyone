@@ -174,7 +174,7 @@ class ColorScheme(EmbeddedDocument):
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             color_by = "field",
             color_seed = 0,
-            opacity = 0.7,
+            opacity = 0.5,
             use_multi_color_keypoints = False,
             show_keypoint_skeleton = True,
             fields=[
