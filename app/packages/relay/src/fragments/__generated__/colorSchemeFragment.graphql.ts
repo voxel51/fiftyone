@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<09da3e28b3e7aebd7ea7bd8463d0cae5>>
+ * @generated SignedSource<<75bbd99c8925c1349d474a80d5711fe7>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -11,7 +11,9 @@
 import { Fragment, ReaderFragment } from 'relay-runtime';
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
+  readonly colorBy: string | null;
   readonly colorPool: ReadonlyArray<string>;
+  readonly colorSeed: number | null;
   readonly fields: ReadonlyArray<{
     readonly colorByAttribute: string | null;
     readonly fieldColor: string | null;
@@ -21,6 +23,9 @@ export type colorSchemeFragment$data = {
       readonly value: string;
     }> | null;
   }> | null;
+  readonly opacity: number | null;
+  readonly showKeypointSkeleton: boolean | null;
+  readonly useMultiColorKeypoints: boolean | null;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -39,6 +44,41 @@ const node: ReaderFragment = {
       "args": null,
       "kind": "ScalarField",
       "name": "colorPool",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "colorBy",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "colorSeed",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "opacity",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "useMultiColorKeypoints",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showKeypointSkeleton",
       "storageKey": null
     },
     {
@@ -103,6 +143,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "d97bb99cef1d4ef65508882017ae8831";
+(node as any).hash = "65e6e019dd958bff6f1e37a1b9dfd629";
 
 export default node;

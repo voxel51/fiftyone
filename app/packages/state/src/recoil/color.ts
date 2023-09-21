@@ -16,24 +16,20 @@ import { PathEntry, sidebarEntries } from "./sidebar";
 export const coloring = selector<Coloring>({
   key: "coloring",
   get: ({ get }) => {
-    const pool = get(atoms.colorScheme).colorPool;
-    const seed = get(atoms.colorSeed);
+    const colorScheme = get(atoms.colorScheme);
     return {
-      seed,
-      pool,
+      seed: colorScheme.colorSeed,
+      pool: colorScheme.colorPool,
       scale: [],
-      by: get(selectors.appConfigOption({ key: "colorBy", modal: false })),
-      points: get(
-        selectors.appConfigOption({
-          key: "multicolorKeypoints",
-          modal: false,
-        })
-      ) as boolean,
+      by: colorScheme.colorBy,
+      points: colorScheme.useMultiColorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
-      targets: new Array(pool.length)
+      targets: new Array(colorScheme.colorPool.length)
         .fill(0)
-        .map((_, i) => getColor(pool, seed, i)),
+        .map((_, i) =>
+          getColor(colorScheme.colorPool, colorScheme.colorSeed, i)
+        ),
     };
   },
   cachePolicy_UNSTABLE: {
@@ -45,7 +41,7 @@ export const colorMap = selector<(val) => string>({
   key: "colorMap",
   get: ({ get }) => {
     const pool = get(atoms.colorScheme).colorPool;
-    const seed = get(atoms.colorSeed);
+    const seed = get(atoms.colorScheme).colorSeed;
     return createColorGenerator(pool, seed);
   },
   cachePolicy_UNSTABLE: {

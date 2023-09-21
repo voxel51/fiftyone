@@ -12,6 +12,14 @@ export const appReadyState = atom<AppReadyState>({
 export const ensureColorScheme = (colorScheme: any): ColorSchemeInput => {
   return {
     colorPool: colorScheme.color_pool || colorScheme.colorPool,
+    colorBy: colorScheme.color_by || colorScheme.colorBy,
+    colorSeed: colorScheme.color_seed || colorScheme.colorSeed,
+    opacity: colorScheme.opacity,
+    useMultiColorKeypoints:
+      colorScheme.use_multi_color_keypoints ||
+      colorScheme.useMultiColorKeypoints,
+    showKeypointSkeleton:
+      colorScheme.show_keypoint_skeleton || colorScheme.showKeypointSkeleton,
     fields: toCamelCase(colorScheme.fields || []) as ColorSchemeInput["fields"],
   };
 };

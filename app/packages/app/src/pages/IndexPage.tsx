@@ -11,6 +11,7 @@ const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
     config {
       colorPool
+      colorBy
     }
 
     ...NavFragment

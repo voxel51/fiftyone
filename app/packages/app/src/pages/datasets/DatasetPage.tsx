@@ -28,6 +28,7 @@ const DatasetPageQueryNode = graphql`
   ) {
     config {
       colorPool
+      colorBy
     }
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
@@ -37,6 +38,11 @@ const DatasetPageQueryNode = graphql`
         colorScheme {
           id
           colorPool
+          colorBy
+          colorSeed
+          opacity
+          useMultiColorKeypoints
+          showKeypointSkeleton
           fields {
             colorByAttribute
             fieldColor

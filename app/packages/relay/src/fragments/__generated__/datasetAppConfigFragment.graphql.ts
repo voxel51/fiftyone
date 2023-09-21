@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b0572b9908b4f2b4a6e40a11c5caec2a>>
+ * @generated SignedSource<<070c556469c0ce12450767773d065b8e>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,9 @@ export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
+    readonly colorBy: string | null;
     readonly colorPool: ReadonlyArray<string>;
+    readonly colorSeed: number | null;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: string | null;
       readonly fieldColor: string | null;
@@ -24,6 +26,9 @@ export type datasetAppConfigFragment$data = {
       }> | null;
     }> | null;
     readonly id: string;
+    readonly opacity: number | null;
+    readonly showKeypointSkeleton: boolean | null;
+    readonly useMultiColorKeypoints: boolean | null;
   } | null;
   readonly gridMediaField: string;
   readonly mediaFields: ReadonlyArray<string> | null;
@@ -103,6 +108,41 @@ const node: ReaderFragment = {
         {
           "alias": null,
           "args": null,
+          "kind": "ScalarField",
+          "name": "colorBy",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "colorSeed",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "opacity",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "useMultiColorKeypoints",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showKeypointSkeleton",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
           "concreteType": "CustomizeColor",
           "kind": "LinkedField",
           "name": "fields",
@@ -165,6 +205,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "01a72352cac6b13ecdb1635977b0e9d0";
+(node as any).hash = "58bf3d2a5773e7b957a3522082f54ed2";
 
 export default node;

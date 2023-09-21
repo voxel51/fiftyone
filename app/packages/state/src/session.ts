@@ -37,7 +37,15 @@ export const SESSION_DEFAULT: Session = {
   selectedSamples: new Set(),
   selectedLabels: [],
   sessionSpaces: SPACES_DEFAULT,
-  colorScheme: { colorPool: [], fields: [] },
+  colorScheme: {
+    colorPool: [],
+    fields: [],
+    colorBy: "field",
+    colorSeed: 0,
+    opacity: 0.7,
+    showKeypointSkeleton: true,
+    useMultiColorKeypoints: false,
+  },
 };
 
 type SetterKeys = keyof Omit<

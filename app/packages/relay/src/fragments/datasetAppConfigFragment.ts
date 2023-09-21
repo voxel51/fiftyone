@@ -10,6 +10,11 @@ export default graphql`
     colorScheme {
       id
       colorPool
+      colorBy
+      colorSeed
+      opacity
+      useMultiColorKeypoints
+      showKeypointSkeleton
       fields {
         colorByAttribute
         fieldColor

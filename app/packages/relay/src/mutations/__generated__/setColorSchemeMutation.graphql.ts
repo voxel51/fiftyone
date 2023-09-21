@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6ed63c5bc43999f3b120e8ee5c2160cd>>
+ * @generated SignedSource<<ee7adc037268143fbe39d05f9f74ecfb>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,8 +10,13 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
+  colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
+  colorSeed?: number | null;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
+  opacity?: number | null;
+  showKeypointSkeleton?: boolean | null;
+  useMultiColorKeypoints?: boolean | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;

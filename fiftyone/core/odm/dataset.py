@@ -172,6 +172,11 @@ class ColorScheme(EmbeddedDocument):
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
+            color_by = "field",
+            color_seed = 0,
+            opacity = 0.7,
+            use_multi_color_keypoints = False,
+            show_keypoint_skeleton = True,
             fields=[
                 {
                     "path": "ground_truth",
@@ -186,6 +191,12 @@ class ColorScheme(EmbeddedDocument):
     Args:
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
+        # TODO: add notes
+        color_by (None):
+        color_seed (None):
+        opacity (None):
+        use_multi_color_keypoints (None):
+        show_keypoint_skeleton (None):
         fields (None): an optional list of per-field custom colors. Each
             element should be a dict with the following keys:
 
@@ -204,6 +215,11 @@ class ColorScheme(EmbeddedDocument):
     meta = {"strict": False}
 
     color_pool = ListField(ColorField(), null=True)
+    color_by = StringField(null=True)
+    color_seed = IntField(null=True)
+    opacity = FloatField(null=True)
+    use_multi_color_keypoints = BooleanField(null=True)
+    show_keypoint_skeleton = BooleanField(null=True)
     fields = ListField(DictField(), null=True)
 
 

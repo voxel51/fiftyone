@@ -278,4 +278,7 @@ def build_color_scheme(
     if not color_scheme.color_pool:
         color_scheme.color_pool = app_config.color_pool
 
+    if not color_scheme.color_by:
+        color_scheme.color_by = app_config.color_by
+
     return color_scheme
