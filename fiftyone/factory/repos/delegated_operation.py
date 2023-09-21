@@ -76,6 +76,12 @@ class DelegatedOperationRepo(object):
         """Sets the pinned flag on / off."""
         raise NotImplementedError("subclass must implement toggle_pinned()")
 
+    def set_label(
+        self, _id: ObjectId, label: str
+    ) -> DelegatedOperationDocument:
+        """Sets the label for the delegated operation."""
+        raise NotImplementedError("subclass must implement toggle_pinned()")
+
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
         raise NotImplementedError("subclass must implement get()")
@@ -88,7 +94,7 @@ class DelegatedOperationRepo(object):
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
 
-    required_props = ["operator", "delegation_target", "context"]
+    required_props = ["operator", "delegation_target", "context", "label"]
 
     def __init__(self, collection: Collection = None):
         self._collection = (
@@ -160,6 +166,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
             update={"$set": {"pinned": pinned}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
+
+    def set_label(
+        self, _id: ObjectId, label: str
+    ) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"label": label}},
             return_document=pymongo.ReturnDocument.AFTER,
         )
         return DelegatedOperationDocument().from_pymongo(doc)
