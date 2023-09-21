@@ -90,7 +90,6 @@ test.describe("field visibility", () => {
   });
 
   test("reset works", async ({ fieldVisibility, sidebar }) => {
-    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["predictions", "ground_truth"]);
     await sidebar.asserter.assertFieldsNotInSidebar([
       "predictions",
@@ -167,7 +166,6 @@ test.describe("field visibility", () => {
       "ground_truth",
     ]);
 
-    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["predictions", "ground_truth"]);
     await sidebar.asserter.assertFieldsNotInSidebar([
       "predictions",
@@ -191,7 +189,6 @@ test.describe("field visibility", () => {
     // drag predictions to metadata group succeeds
     await sidebar.asserter.assertCanDragFieldToGroup("predictions", "metadata");
 
-    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["ground_truth"]);
     await sidebar.asserter.assertFieldsNotInSidebar(["ground_truth"]);
 
@@ -206,7 +203,6 @@ test.describe("field visibility", () => {
     fieldVisibility,
   }) => {
     await sidebar.asserter.assertAddGroupVisible();
-    await fieldVisibility.openFieldVisibilityModal();
     await fieldVisibility.hideFields(["ground_truth"]);
     await sidebar.asserter.assertAddGroupHidden();
   });
