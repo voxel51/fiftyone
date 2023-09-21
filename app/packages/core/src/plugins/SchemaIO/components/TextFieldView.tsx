@@ -1,8 +1,9 @@
-import React from "react";
 import { TextField } from "@mui/material";
-import FieldWrapper from "./FieldWrapper";
-import autoFocus from "../utils/auto-focus";
+import React from "react";
+import { useKey } from "../hooks";
 import { getComponentProps } from "../utils";
+import autoFocus from "../utils/auto-focus";
+import FieldWrapper from "./FieldWrapper";
 
 export default function TextFieldView(props) {
   const { schema, onChange, path, data } = props;
@@ -10,9 +11,12 @@ export default function TextFieldView(props) {
 
   const { inputProps = {}, ...fieldProps } = getComponentProps(props, "field");
 
+  const [key, setUserChanged] = useKey(path, schema);
+
   return (
     <FieldWrapper {...props}>
       <TextField
+        key={key}
         disabled={view.readOnly}
         autoFocus={autoFocus(props)}
         defaultValue={data ?? schema.default}
@@ -23,6 +27,7 @@ export default function TextFieldView(props) {
         onChange={(e) => {
           const value = e.target.value;
           onChange(path, type === "number" ? parseFloat(value) : value);
+          setUserChanged();
         }}
         inputProps={{ min, max, step: multipleOf, ...inputProps }}
         {...fieldProps}
