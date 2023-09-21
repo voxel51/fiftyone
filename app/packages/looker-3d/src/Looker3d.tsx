@@ -259,8 +259,14 @@ export const Looker3d = () => {
           return;
         }
       }
+
+      // don't proceed if sample being hovered on is from looker2d
       const hovered = get(fos.hoveredSample);
-      if (hovered && hovered._id !== sample.id) {
+      const isHoveredSampleNotInLooker3d =
+        hovered &&
+        !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
+
+      if (isHoveredSampleNotInLooker3d) {
         return;
       }
 
@@ -270,12 +276,10 @@ export const Looker3d = () => {
         return;
       }
 
-      const changed = onChangeView("top");
-      if (changed) return;
-
+      set(fos.hiddenLabels, {});
       set(fos.currentModalSample, null);
     },
-    [jsonPanel, helpPanel, selectedLabels, hovering]
+    [sampleMap, jsonPanel, helpPanel, selectedLabels, hovering]
   );
 
   useEffect(() => {

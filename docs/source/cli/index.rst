@@ -324,7 +324,7 @@ List FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets list [-h] [-p PATT]
+    fiftyone datasets list [-h] [-p PATT] [-t TAG [TAG ...]]
 
 **Arguments**
 
@@ -334,6 +334,8 @@ List FiftyOne datasets.
       -h, --help        show this help message and exit
       -p PATT, --glob-patt PATT
                         an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                        only show datasets with the given tag(s)
 
 **Examples**
 
@@ -342,8 +344,15 @@ List FiftyOne datasets.
     # List available datasets
     fiftyone datasets list
 
+.. code-block:: shell
+
     # List datasets matching a given pattern
     fiftyone datasets list --glob-patt 'quickstart-*'
+
+.. code-block:: shell
+
+    # List datasets with the given tag(s)
+    fiftyone datasets list --tags automotive healthcare
 
 .. _cli-fiftyone-datasets-info:
 
@@ -354,7 +363,7 @@ Print information about FiftyOne datasets.
 
 .. code-block:: text
 
-    fiftyone datasets info [-h] [-p PATT] [-s FIELD] [-r] [NAME]
+    fiftyone datasets info [-h] [-p PATT] [-t TAG [TAG ...]] [-s FIELD] [-r] [NAME]
 
 **Arguments**
 
@@ -367,6 +376,8 @@ Print information about FiftyOne datasets.
       -h, --help            show this help message and exit
       -p PATT, --glob-patt PATT
                             an optional glob pattern of dataset names to include
+      -t TAG [TAG ...], --tags TAG [TAG ...]
+                            only show datasets with the given tag(s)
       -s FIELD, --sort-by FIELD
                             a field to sort the dataset rows by
       -r, --reverse         whether to print the results in reverse order
@@ -378,6 +389,7 @@ Print information about FiftyOne datasets.
     # Print basic information about multiple datasets
     fiftyone datasets info
     fiftyone datasets info --glob-patt 'quickstart-*'
+    fiftyone datasets info --tags automotive healthcare
     fiftyone datasets info --sort-by created_at
     fiftyone datasets info --sort-by name --reverse
 
@@ -849,8 +861,12 @@ List operators that you've downloaded or created locally.
     # List all locally available operators
     fiftyone operators list
 
+.. code-block:: shell
+
     # List enabled operators
     fiftyone operators list --enabled
+
+.. code-block:: shell
 
     # List disabled operators
     fiftyone operators list --disabled
@@ -978,6 +994,8 @@ List delegated operations.
     # List all delegated operations
     fiftyone delegated list
 
+.. code-block:: shell
+
     # List some specific delegated operations
     fiftyone delegated list \
         --dataset quickstart \
@@ -1055,8 +1073,12 @@ Cleanup delegated operations.
     # Delete all failed operations associated with a given dataset
     fiftyone delegated cleanup --dataset quickstart --state FAILED
 
+.. code-block:: shell
+
     # Delete all delegated operations associated with non-existent datasets
     fiftyone delegated cleanup --orphan
+
+.. code-block:: shell
 
     # Print information about operations rather than actually deleting them
     fiftyone delegated cleanup --orphan --dry-run
@@ -1119,8 +1141,12 @@ List plugins that you've downloaded or created locally.
     # List all locally available plugins
     fiftyone plugins list
 
+.. code-block:: shell
+
     # List enabled plugins
     fiftyone plugins list --enabled
+
+.. code-block:: shell
 
     # List disabled plugins
     fiftyone plugins list --disabled
@@ -1204,8 +1230,12 @@ formats:
     # Download plugins from a GitHub repository URL
     fiftyone plugins download <github-repo-url>
 
+.. code-block:: shell
+
     # Download plugins by specifying the GitHub repository details
     fiftyone plugins download <user>/<repo>[/<ref>]
+
+.. code-block:: shell
 
     # Download specific plugins from a URL with a custom search depth
     fiftyone plugins download \
@@ -1245,8 +1275,12 @@ Handles package requirements for plugins.
     # Print requirements for a plugin
     fiftyone plugins requirements <name> --print
 
+.. code-block:: shell
+
     # Install any requirements for the plugin
     fiftyone plugins requirements <name> --install
+
+.. code-block:: shell
 
     # Ensures that the requirements for the plugin are satisfied
     fiftyone plugins requirements <name> --ensure
@@ -1298,6 +1332,8 @@ Creates or initializes a plugin.
     # Initialize a new plugin
     fiftyone plugins create <name>
 
+.. code-block:: shell
+
     # Create a plugin from existing files
     fiftyone plugins create \
         <name> \
@@ -1334,8 +1370,12 @@ Enables the given plugin(s).
     # Enable a plugin
     fiftyone plugins enable <name>
 
+.. code-block:: shell
+
     # Enable multiple plugins
     fiftyone plugins enable <name1> <name2> ...
+
+.. code-block:: shell
 
     # Enable all plugins
     fiftyone plugins enable --all
@@ -1369,8 +1409,12 @@ Disables the given plugin(s).
     # Disable a plugin
     fiftyone plugins disable <name>
 
+.. code-block:: shell
+
     # Disable multiple plugins
     fiftyone plugins disable <name1> <name2> ...
+
+.. code-block:: shell
 
     # Disable all plugins
     fiftyone plugins disable --all
@@ -1404,8 +1448,12 @@ Delete plugins from your local machine.
     # Delete a plugin from local disk
     fiftyone plugins delete <name>
 
+.. code-block:: shell
+
     # Delete multiple plugins from local disk
     fiftyone plugins delete <name1> <name2> ...
+
+.. code-block:: shell
 
     # Delete all plugins from local disk
     fiftyone plugins delete --all

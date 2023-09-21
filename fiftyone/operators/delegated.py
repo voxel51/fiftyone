@@ -8,6 +8,8 @@ FiftyOne delegated operations.
 import asyncio
 import logging
 import traceback
+import types as python_types
+import fiftyone.core.utils as fou
 
 from fiftyone.factory.repo_factory import RepositoryFactory
 from fiftyone.factory import DelegatedOperationPagingParams
@@ -16,7 +18,6 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -248,15 +249,15 @@ class DelegatedOperationService(object):
                     logger.info(
                         "\nRunning operation %s (%s)", op.id, op.operator
                     )
-                result = asyncio.run(self._execute_operator(op))
-                self.set_completed(doc_id=op.id, result=result)
+                execution_result = asyncio.run(self._execute_operator(op))
+                self.set_completed(doc_id=op.id, result=execution_result)
                 if log:
                     logger.info("Operation %s complete", op.id)
             except:
                 result = ExecutionResult(error=traceback.format_exc())
                 self.set_failed(doc_id=op.id, result=result)
                 if log:
-                    logger.info("Operation %s failed", op.id)
+                    logger.info("Operation %s failed\n%s", op.id, result.error)
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.
@@ -287,4 +288,21 @@ class DelegatedOperationService(object):
         else:
             operator, _, ctx = prepared
             self.set_running(doc_id=doc.id)
-            return operator.execute(ctx)
+
+            raw_result = await (
+                operator.execute(ctx)
+                if asyncio.iscoroutinefunction(operator.execute)
+                else fou.run_sync_task(operator.execute, ctx)
+            )
+
+            is_generator = isinstance(
+                raw_result, python_types.GeneratorType
+            ) or isinstance(raw_result, python_types.AsyncGeneratorType)
+
+            # if this is not a generator, return the result from execution
+            if not is_generator:
+                return raw_result
+
+            # if it is a generator, exhaust it to ensure it is fully executed
+            for _ in raw_result:
+                pass

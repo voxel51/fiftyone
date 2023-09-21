@@ -5,7 +5,7 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 60
-    runs-on: ubuntu-latest-m
+    runs-on: ubuntu-latest
     env:
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install requirements.txt
         run: |
-          pip install -r requirements/github.txt
+          pip install -r requirements/e2e.txt
 
       - name: Cache Node Modules
         id: app-node-cache

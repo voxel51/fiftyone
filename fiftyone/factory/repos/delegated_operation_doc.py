@@ -47,7 +47,7 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
 
-    def from_pymongo(self, doc: dict):
+    def from_pymongo(self, doc: dict, registry: OperatorRegistry = None):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
@@ -76,7 +76,6 @@ class DelegatedOperationDocument(object):
             )
 
         if "result" in doc and doc["result"] is not None:
-
             res = ExecutionResult()
             if "result" in doc["result"]:
                 res.result = doc["result"]["result"]
@@ -92,7 +91,9 @@ class DelegatedOperationDocument(object):
 
         # generated fields:
         try:
-            registry = OperatorRegistry()
+            if registry is None:
+                registry = OperatorRegistry(enabled="all")
+
             if registry.operator_exists(self.operator) is False:
                 raise ValueError(
                     "Operator '%s' does not exist" % self.operator
@@ -102,7 +103,7 @@ class DelegatedOperationDocument(object):
                 self.operator
             ).config.label
         except Exception as e:
-            logger.error("Error getting operator label: %s" % e)
+            logger.debug("Error getting operator label: %s" % e)
 
         return self
 
