@@ -186,8 +186,16 @@ const Looker = ({
     }));
   }, [hoveredSample, sample, looker]);
 
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.dispatchEvent(
+      new CustomEvent(`looker-attached`, { bubbles: true })
+    );
+  }, [ref]);
+
   return (
     <div
+      ref={ref}
       id={id}
       data-cy="modal-looker-container"
       style={{

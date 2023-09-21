@@ -73,6 +73,10 @@ const Renderer = () => {
 const Route = ({ route }: { route: Entry<Queries> }) => {
   const Component = route.component;
 
+  useEffect(() => {
+    document.dispatchEvent(new CustomEvent("page-change", { bubbles: true }));
+  }, [route]);
+
   return <Component prepared={route.preloadedQuery} />;
 };
 

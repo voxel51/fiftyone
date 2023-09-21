@@ -73,21 +73,22 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     modal,
     grid,
   }) => {
+    const pcd = extension === "pcd";
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.toggleSelectFirstSample();
     await grid.assert.isNthSampleSelected(0);
     await grid.openNthSample(1);
     await modal.assert.verifySelectionCount(1);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(2);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(1);
     await modal.navigatePreviousSample(true);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(0);
 
     // verify pressing escape clears modal but not selection
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(1);
     await modal.close();
     await grid.assert.isSelectionCountEqualTo(1);
