@@ -1,7 +1,8 @@
 import * as fos from "@fiftyone/state";
-import { Button } from "../../utils";
 import React from "react";
+import { useRecoilState } from "recoil";
 import styled from "styled-components";
+import { Button } from "../../utils";
 
 export const ModeControlContainer = styled.div`
   display: flex;
@@ -16,18 +17,21 @@ const Text = styled.div`
 `;
 
 const ModeControl: React.FC = () => {
-  const { props } = fos.useGlobalColorSetting();
+  const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
 
   return (
     <ModeControlContainer>
       <>
         <Text>Color by </Text>
         <Button
-          text={props.colorBy}
+          text={colorScheme.colorBy ?? "field"}
           data-cy="color-by-toggle"
           title={`toggle between color by value or color by field mode`}
           onClick={() =>
-            props.setColorBy(props.colorBy === "value" ? "field" : "value")
+            setColorScheme({
+              ...colorScheme,
+              colorBy: colorScheme.colorBy === "value" ? "field" : "value",
+            })
           }
           style={{
             textAlign: "center",

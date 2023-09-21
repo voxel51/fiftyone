@@ -21,6 +21,11 @@ const JSONViewer: React.FC = () => {
   const setting = useMemo(() => {
     return {
       colorPool: colorScheme?.colorPool ?? [],
+      colorBy: colorScheme?.colorBy ?? "field",
+      colorSeed: colorScheme?.colorSeed ?? 0,
+      opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
+      useMultiColorKeypoints: colorScheme?.useMultiColorKeypoints ?? false,
+      showKeypointSkeleton: colorScheme?.showKeypointSkeleton ?? true,
       fields: validateJSONSetting(colorScheme.fields || []),
     };
   }, [colorScheme]);
@@ -56,13 +61,45 @@ const JSONViewer: React.FC = () => {
     const validatedSetting = validateJSONSetting(
       fields as ColorSchemeInput["fields"]
     );
+    const validatedColorBy = ["field", "label"].includes(data?.colorBy)
+      ? data?.colorBy
+      : colorScheme.colorBy ?? "field";
+    const validatedColorSeed =
+      typeof data?.colorSeed === "number"
+        ? data?.colorSeed
+        : colorScheme.colorSeed ?? 0;
+    const validatedOpacity =
+      typeof data?.opacity === "number" &&
+      data.opacity <= 1 &&
+      data.opacity >= 0
+        ? data?.opacity
+        : colorScheme.opacity ?? fos.DEFAULT_ALPHA;
+    const validatedUseMultiColorKeypoints =
+      typeof data?.useMultiColorKeypoints === "boolean"
+        ? data?.useMultiColorKeypoints
+        : colorScheme?.useMultiColorKeypoints ?? false;
+    const validatedShowKeypointSkeleton =
+      typeof data?.showKeypointSkeleton === "boolean"
+        ? data?.showKeypointSkeleton
+        : colorScheme?.showKeypointSkeleton ?? true;
+
     setData({
       colorPool: validColors,
       fields: validatedSetting,
+      colorBy: validatedColorBy,
+      colorSeed: validatedColorSeed,
+      opacity: validatedOpacity,
+      useMultiColorKeypoints: validatedUseMultiColorKeypoints,
+      showKeypointSkeleton: validatedShowKeypointSkeleton,
     });
     setColorScheme({
       colorPool: validColors,
       fields: validatedSetting,
+      colorBy: validatedColorBy,
+      colorSeed: validatedColorSeed,
+      opacity: validatedOpacity,
+      useMultiColorKeypoints: validatedUseMultiColorKeypoints,
+      showKeypointSkeleton: validatedShowKeypointSkeleton,
     });
   };
 

@@ -387,8 +387,11 @@ class RefreshColors extends Operator {
     });
   }
   async execute({ state }: ExecutionContext) {
-    const colorsSeed = await state.snapshot.getPromise(fos.colorSeed);
-    state.set(fos.colorSeed, colorsSeed + 1);
+    const colorScheme = await state.snapshot.getPromise(fos.colorScheme);
+    state.set(fos.colorScheme, {
+      ...colorScheme,
+      colorSeed: colorScheme.colorSeed + 1,
+    });
   }
 }
 

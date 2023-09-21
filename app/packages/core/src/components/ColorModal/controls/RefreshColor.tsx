@@ -5,7 +5,7 @@ import { useRecoilState } from "recoil";
 import { Button } from "../../utils";
 
 const ShuffleColor: React.FC = () => {
-  const [colorSeed, setColorSeed] = useRecoilState(fos.colorSeed);
+  const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
   return (
     <>
       <Button
@@ -21,7 +21,12 @@ const ShuffleColor: React.FC = () => {
           </span>
         }
         title={"Shuffle field colors"}
-        onClick={() => setColorSeed(colorSeed + 1)}
+        onClick={() =>
+          setColorScheme({
+            ...colorScheme,
+            colorSeed: (colorScheme.colorSeed ?? 0) + 1,
+          })
+        }
         data-cy="shuffle-colors"
         style={{
           margin: "0.25rem -0.5rem",
