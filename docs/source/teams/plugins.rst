@@ -12,8 +12,10 @@ needs.
 
 .. note::
 
-    Check out the
-    `Fiftyone plugins <https://github.com/voxel51/fiftyone-plugins>`_
+    What can you do with plugins? Check out
+    :ref:`delegated operations <teams-delegated-operations>` to see some quick
+    examples, then check out the
+    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
     repository for a growing collection of prebuilt plugins that you can add to
     your Teams deployment!
 
@@ -436,9 +438,8 @@ executes them.
 
     This section describes how to configure an
     `Apache Airflow <https://airflow.apache.org>`_ orchestrator, but other
-    options are availabe, such as `Flyte <https://flyte.org>`_.
-
-    Delegated operations in FiftyOne Teams are workflow tool-agnostic.
+    options are availabe, such as `Flyte <https://flyte.org>`_. Delegated
+    operations in FiftyOne Teams are designed to be workflow tool-agnostic.
 
 To set up Airflow as an orchestrator to run delegated operations, you will need
 to:
@@ -493,7 +494,7 @@ The required environment variables are:
     Refer to :ref:`this section <teams-media-cache-config>` for more
     information on media caching in FiftyOne Teams.
 
-..note::
+.. note::
 
     The Orchestrator will need to have all of the required dependencies
     installed for running your Team's operations. For example, if running the
@@ -689,7 +690,7 @@ still run a check and all runs should be green.
    :alt: airflow-dag
    :align: center
 
-..note::
+.. note::
 
     The Orchestrator will need to have all of the required dependencies
     installed for running your Team's operations. For example, if running the
