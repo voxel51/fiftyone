@@ -24,8 +24,9 @@ const JSONViewer: React.FC = () => {
       colorBy: colorScheme?.colorBy ?? "field",
       colorSeed: colorScheme?.colorSeed ?? 0,
       opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
-      useMultiColorKeypoints: colorScheme?.useMultiColorKeypoints ?? false,
-      showKeypointSkeleton: colorScheme?.showKeypointSkeleton ?? true,
+      useMultiColorKeypoints: Boolean(colorScheme?.useMultiColorKeypoints), // default to false
+      showKeypointSkeleton:
+        colorScheme?.showKeypointSkeleton == false ? false : true, // default to true
       fields: validateJSONSetting(colorScheme.fields || []),
     };
   }, [colorScheme]);
@@ -78,10 +79,11 @@ const JSONViewer: React.FC = () => {
       typeof data?.useMultiColorKeypoints === "boolean"
         ? data?.useMultiColorKeypoints
         : colorScheme?.useMultiColorKeypoints ?? false;
-    const validatedShowKeypointSkeleton =
+    const validatedShowKeypointSkeleton = Boolean(
       typeof data?.showKeypointSkeleton === "boolean"
         ? data?.showKeypointSkeleton
-        : colorScheme?.showKeypointSkeleton ?? true;
+        : colorScheme?.showKeypointSkeleton
+    );
 
     setData({
       colorPool: validColors,
