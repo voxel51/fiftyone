@@ -132,6 +132,7 @@ const dispatchSideEffect = ({
         colorPool: data.config.colorPool,
       }
     );
+    session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
   }
 
   commitMutation<setViewMutation>(environment, {
