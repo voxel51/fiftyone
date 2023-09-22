@@ -1121,7 +1121,7 @@ class Session(object):
 
 
 def _attach_listeners(session: "Session"):
-    on_close_session: t.Callable[[CloseSession], None] = lambda event: setattr(
+    on_close_session: t.Callable[[CloseSession], None] = lambda _: setattr(
         session, "_wait_closed", True
     )
     session._client.add_event_listener("close_session", on_close_session)
@@ -1167,7 +1167,7 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("set_group_slice", on_set_group_slice)
 
-    on_set_spaces: t.Callable[[SetGroupSlice], None] = lambda event: setattr(
+    on_set_spaces: t.Callable[[SetSpaces], None] = lambda event: setattr(
         session._state,
         "spaces",
         Space.from_dict(event.spaces),
