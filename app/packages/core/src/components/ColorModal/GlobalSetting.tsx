@@ -82,7 +82,6 @@ const GlobalSetting = () => {
           }
         />
       </ControlGroupWrapper>
-      Note that in this panel the color pool is the only savable option for now.
     </div>
   );
 };

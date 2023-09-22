@@ -24,9 +24,8 @@ const JSONViewer: React.FC = () => {
       colorBy: colorScheme?.colorBy ?? "field",
       colorSeed: colorScheme?.colorSeed ?? 0,
       opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
-      useMultiColorKeypoints: Boolean(colorScheme?.useMultiColorKeypoints), // default to false
-      showKeypointSkeleton:
-        colorScheme?.showKeypointSkeleton == false ? false : true, // default to true
+      useMultiColorKeypoints: Boolean(colorScheme?.useMultiColorKeypoints),
+      showKeypointSkeleton: colorScheme?.showKeypointSkeleton,
       fields: validateJSONSetting(colorScheme.fields || []),
     };
   }, [colorScheme]);

@@ -22,6 +22,7 @@ import {
 import SidebarList from "./SidebarList";
 import { activeColorEntry } from "./state";
 import { ACTIVE_FIELD } from "./utils";
+import styles from "../../../../../packages/components/src/scrollable.module.css";
 
 const CUSTOM_COLOR_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
@@ -133,7 +134,7 @@ const ColorModal = () => {
                 </DraggableModalTitle>
                 <DraggableContent height={height} width={width}>
                   <SidebarList />
-                  <Display>
+                  <Display className={styles.scrollable}>
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
                     {typeof activeEntry === "object" && (

@@ -98,7 +98,10 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({ fields: [], colorPool: [] });
+              setColorScheme({
+                fields: [],
+                colorPool: useRecoilValue(fos.config).colorPool,
+              });
             }}
             style={LONG_BUTTON_STYLE}
           />
