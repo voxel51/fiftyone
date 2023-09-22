@@ -164,6 +164,7 @@ const FieldSetting = ({ path }: { path: string }) => {
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);
   });
+
   useEffect(() => {
     setInput(setting?.fieldColor);
   }, [setting?.fieldColor]);

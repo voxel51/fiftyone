@@ -63,6 +63,8 @@ type Input = {
   color: string;
 };
 
+// this is the component that renders adding the {value: "car",
+//  color: "#dd00dd"} pair component in color by value mode
 const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   style,
   useLabelColors,
@@ -70,21 +72,25 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(activeColorField);
-  const { colorPool = [], fields } = useRecoilValue(fos.colorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  // const { colorPool = [], fields } = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => fields.find((s) => s.path == activeField.path),
-    [activeField, fields]
+    () => colorScheme.fields.find((s) => s.path == activeField.path),
+    [activeField, colorScheme.fields]
   );
 
   const index = useMemo(
-    () => fields.findIndex((s) => s.path == activeField.path),
-    [activeField, fields]
+    () => colorScheme.fields.findIndex((s) => s.path == activeField.path),
+    [activeField, colorScheme.fields]
   );
 
   const defaultValue = {
     value: "",
-    color: colorPool[Math.floor(Math.random() * colorPool.length)],
+    color:
+      colorScheme.colorPool[
+        Math.floor(Math.random() * colorScheme.colorPool.length)
+      ],
   };
 
   const values = setting?.valueColors;
@@ -97,15 +103,25 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   const handleAdd = useCallback(() => {
     const newValue = {
       value: "",
-      color: colorPool[Math.floor(Math.random() * colorPool.length)],
+      color:
+        colorScheme.colorPool[
+          Math.floor(Math.random() * colorScheme.colorPool.length)
+        ],
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
-    const newSetting = cloneDeep(fields);
+    const newSetting = cloneDeep(colorScheme.fields);
     newSetting[index].valueColors = newInput;
     setInput(newInput);
-    setColorScheme({ colorPool, fields: newSetting });
+    setColorScheme({ ...colorScheme, fields: newSetting });
     setShowPicker([...showPicker, false]);
-  }, [colorPool, input, index, fields, setColorScheme, showPicker]);
+  }, [
+    colorScheme.colorPool,
+    input,
+    index,
+    colorScheme.fields,
+    setColorScheme,
+    showPicker,
+  ]);
 
   const handleDelete = useCallback(
     (colorIdx: number) => {
@@ -114,21 +130,21 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
         ...input.slice(colorIdx + 1),
       ];
       setInput(valueColors);
-      const newSetting = cloneDeep(fields);
+      const newSetting = cloneDeep(colorScheme.fields);
       newSetting[index].valueColors = valueColors;
-      setColorScheme({ colorPool, fields: newSetting });
+      setColorScheme({ ...colorScheme, fields: newSetting });
     },
-    [colorPool, index, fields, setColorScheme, input]
+    [index, colorScheme.fields, setColorScheme, input]
   );
 
   const onSyncUpdate = useCallback(
     (copy: Input[]) => {
-      const newSetting = cloneDeep(fields);
+      const newSetting = cloneDeep(colorScheme.fields);
       newSetting[index].valueColors = copy;
       setInput(copy);
-      setColorScheme({ colorPool, fields: newSetting });
+      setColorScheme({ ...colorScheme, fields: newSetting });
     },
-    [colorPool, fields, index, setColorScheme]
+    [colorScheme.fields, index, setColorScheme]
   );
 
   // color picker selection and sync with session
@@ -173,11 +189,13 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 
   useEffect(() => {
     if (!values) {
-      const copy = cloneDeep(fields);
-      const idx = fields.findIndex((s) => s.path == activeField.path);
+      const copy = cloneDeep(colorScheme.fields);
+      const idx = colorScheme.fields.findIndex(
+        (s) => s.path == activeField.path
+      );
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
-        setColorScheme({ colorPool, fields: copy });
+        setColorScheme({ ...colorScheme, fields: copy });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

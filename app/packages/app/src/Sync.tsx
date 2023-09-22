@@ -128,7 +128,8 @@ const dispatchSideEffect = ({
   if (currentDataset !== nextDataset) {
     session.sessionSpaces = fos.SPACES_DEFAULT;
     session.colorScheme = ensureColorScheme(
-      data.dataset?.appConfig?.colorScheme || {
+      data.dataset?.appConfig?.colorScheme,
+      {
         colorPool: data.config.colorPool,
         colorBy: data.config.colorBy,
         colorSeed: 0,
