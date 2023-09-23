@@ -330,7 +330,7 @@ defines both a JS Panel and a Python operator:
             def resolve_input(self, ctx):
                 inputs = types.Object()
 
-                if ctx.dataset.view() != ctx.view():
+                if ctx.view != ctx.dataset.view():
                     choices = types.RadioGroup()
                     choices.add_choice(
                         "DATASET",
@@ -340,41 +340,116 @@ defines both a JS Panel and a Python operator:
 
                     choices.add_choice(
                         "VIEW",
-                        label="View",
-                        description="Count the number of samples in the view",
+                        label="Current view",
+                        description="Count the number of samples in the current view",
                     )
 
                     inputs.enum(
                         "target",
                         choices.values(),
+                        required=True,
                         default="VIEW",
-                        label="Target",
                         view=choices,
                     )
 
-                return types.Property(inputs)
+                return types.Property(inputs, view=types.View(label="Count samples"))
 
             def execute(self, ctx):
-                target = ctx.params.get("target", "VIEW")
+                target = ctx.params.get("target", "DATASET")
                 sample_collection = ctx.view if target == "VIEW" else ctx.dataset
                 return {"count": sample_collection.count()}
 
             def resolve_output(self, ctx):
-                target = ctx.params.get("target", "VIEW")
+                target = ctx.params.get("target", "DATASET")
                 outputs = types.Object()
                 outputs.int(
                     "count",
-                    label="Count",
-                    description=f"Number of samples in the current {target.lower()}",
+                    label=f"Number of samples in the current {target.lower()}",
                 )
                 return types.Property(outputs)
 
         def register(p):
             p.register(CountSamples)
 
-  .. group-tab:: dist/index.umd.js
+  .. group-tab:: HelloWorld.tsx
 
-    Refer to the `source code <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/hello-world/src>`_.
+    .. code-block:: jsx
+        :linenos:
+
+        import * as fos from "@fiftyone/state";
+        import { useRecoilValue } from "recoil";
+        import { useCallback } from "react";
+        import { Button } from "@fiftyone/components";
+        import {
+          types,
+          useOperatorExecutor,
+          Operator,
+          OperatorConfig,
+          registerOperator,
+          executeOperator,
+        } from "@fiftyone/operators";
+
+        export function HelloWorld() {
+          const executor = useOperatorExecutor("@voxel51/hello-world/count_samples");
+          const onClickAlert = useCallback(() =>
+            executeOperator("@voxel51/hello-world/show_alert")
+          );
+          const dataset = useRecoilValue(fos.dataset);
+
+          if (executor.isLoading) return <h3>Loading...</h3>;
+          if (executor.result) return <h3>Dataset size: {executor.result.count}</h3>;
+
+          return (
+            <>
+              <h1>Hello, world!</h1>
+              <h2>
+                You are viewing the <strong>{dataset.name}</strong> dataset
+              </h2>
+              <Button onClick={() => executor.execute()}>Count samples</Button>
+              <Button onClick={onClickAlert}>Show alert</Button>
+            </>
+          );
+        }
+
+        class AlertOperator extends Operator {
+          get config() {
+            return new OperatorConfig({
+              name: "show_alert",
+              label: "Show alert",
+              unlisted: true,
+            });
+          }
+          async execute() {
+            alert(`Hello from plugin ${this.pluginName}`);
+          }
+        }
+
+        registerOperator(AlertOperator, "@voxel51/hello-world");
+
+  .. group-tab:: HelloWorldPlugin.tsx
+
+    .. code-block:: jsx
+        :linenos:
+
+        import { registerComponent, PluginComponentType } from "@fiftyone/plugins";
+        import { HelloWorld } from "./HelloWorld";
+
+        registerComponent({
+          name: "HelloWorld",
+          label: "Hello world",
+          component: HelloWorld,
+          type: PluginComponentType.Panel,
+          activator: myActivator,
+        });
+
+        function myActivator({ dataset }) {
+          // Example of activating the plugin in a particular context
+          // return dataset.name === 'quickstart'
+
+          return true;
+        }
+
+.. image:: /images/plugins/hello-world.gif
 
 .. _example-python-operator:
 
