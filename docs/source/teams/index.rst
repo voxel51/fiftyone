@@ -102,14 +102,14 @@ pages on this site apply to Teams deployments as well.
     :header: Plugins
     :description: Learn how to install and manage shared plugins for your Teams deployment.
     :button_text: Get plugins for Teams
-    :button_link: plugins.html
+    :button_link: teams_plugins.html
 
 .. customcalloutitem::
     :header: Secrets
     :description: Safely store and access secrets in your Teams deployment.
     :button_text: Learn more about storing secrets in Teams
-    :button_link: teams_secrets.html
-    
+    :button_link: secrets.html
+
 .. customcalloutitem::
     :header: Migrations
     :description: Learn how to migrate to FiftyOne Teams and manage your Teams deployment.
@@ -143,6 +143,6 @@ pages on this site apply to Teams deployments as well.
     Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
-    Plugins <plugins>
+    Plugins <teams_plugins>
     Secrets <secrets>
     Migrations <migrations>
