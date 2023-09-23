@@ -539,7 +539,7 @@ throughout the App. However, the Operator Browser allows users to search
 through all available (enabled) operators.
 
 You can open the Operator Browser by clicking on the Operator Browser icon
-above the sample grid or via the backtick (`````) shortcut keypress:
+above the sample grid or by typing backtick (`````):
 
 .. image:: /images/plugins/operator-browser.gif
     :align: center

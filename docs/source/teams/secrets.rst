@@ -26,15 +26,15 @@ Admins can add, configure, and remove secrets in the FiftyOne Teams App by
 navigating to the Secrets Management page under Settings > Secrets:
 
 .. image:: /images/teams/secrets_page.png
-   :alt: teams-secrets-page
-   :align: center
+    :alt: teams-secrets-page
+    :align: center
 
 When you tap on the "Add secret" button, you will see that a secret is
 comprised of a key, value, and optional description:
 
 .. image:: /images/teams/create_secret_form.png
-   :alt: teams-create-secret-form
-   :align: center
+    :alt: teams-create-secret-form
+    :align: center
 
 Secret keys must be upper snake case strings like `MY_SECRET_KEY`.
 
@@ -61,36 +61,36 @@ For example, the
 plugin declares the following secrets:
 
 .. code-block:: yaml
-   :linenos:
+    :linenos:
 
-   secrets:
-     - FIFTYONE_CVAT_URL
-     - FIFTYONE_CVAT_USERNAME
-     - FIFTYONE_CVAT_PASSWORD
-     - FIFTYONE_LABELBOX_URL
-     - FIFTYONE_LABELBOX_API_KEY
-     - FIFTYONE_LABELSTUDIO_URL
-     - FIFTYONE_LABELSTUDIO_API_KEY
+    secrets:
+      - FIFTYONE_CVAT_URL
+      - FIFTYONE_CVAT_USERNAME
+      - FIFTYONE_CVAT_PASSWORD
+      - FIFTYONE_LABELBOX_URL
+      - FIFTYONE_LABELBOX_API_KEY
+      - FIFTYONE_LABELSTUDIO_URL
+      - FIFTYONE_LABELSTUDIO_API_KEY
 
 At runtime, the plugin's execution context will automatically be hydrated with
 any available secrets that are declared by the plugin. Operators access these
 secrets via the ``ctx.secrets`` dict:
 
 .. code-block:: python
-   :linenos:
+    :linenos:
 
-   def execute(self, ctx):
-      url = ctx.secrets["FIFTYONE_CVAT_URL"]
-      username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
-      password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
+    def execute(self, ctx):
+        url = ctx.secrets["FIFTYONE_CVAT_URL"]
+        username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
+        password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
 The ``ctx.secrets`` dict will also be automatically populated with the
 values of any environment variables whose name matches a secret key declared
 by a plugin. Therefore, a plugin written using the above pattern can run in
 all of the following environments with no code changes:
 
--  A FiftyOne Teams deployment that uses the Secrets interface
--  A FiftyOne Teams deployment that injects secrets directly as environment
-   variables
--  A locally launched App via the Teams SDK
--  Open source FiftyOne
+-   A FiftyOne Teams deployment that uses the Secrets interface
+-   A FiftyOne Teams deployment that injects secrets directly as environment
+    variables
+-   A locally launched App via the Teams SDK
+-   Open source FiftyOne
