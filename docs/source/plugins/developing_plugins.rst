@@ -20,10 +20,12 @@ Design overview
 _______________
 
 Plugins are composed of one or more Panels, Operators, and/or Components.
-Together these building blocks form plugins that enable you to tailor FiftyOne
-to your specific use case and workflow. Whether you're working with images,
-videos, or other data types, a plugin can help you streamline your machine
-learning workflows and co-develop your data and models.
+
+Together these building blocks enable you to build full-featured interactive
+data applications that tailor FiftyOne to your specific use case and workflow.
+Whether you're working with images, videos, or other data types, a plugin can
+help you streamline your machine learning workflows and co-develop your data
+and models.
 
 .. image:: /images/plugins/plugin-design.png
     :align: center
