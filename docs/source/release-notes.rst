@@ -25,8 +25,8 @@ News
 
 - Added support for :ref:`dataset versioning <dataset_versioning>`!
 - Added support for scheduling
-  :ref:`delegated operations <teams-plugins-managing-operators-runs>` via the
-  App using a connected orchestrator like Apache Airflow!
+  :ref:`delegated operations <teams-delegated-operations>` via the App using a
+  connected orchestrator like Apache Airflow!
 
 App
 
@@ -251,7 +251,7 @@ Plugins
   plugin execution contexts
   `#3295 <https://github.com/voxel51/fiftyone/pull/3295>`_
 - Added support for configuring custom
-  :ref:`Operator icons <fiftyone-operators>`
+  :ref:`Operator icons <using-operators>`
   `#3299 <https://github.com/voxel51/fiftyone/pull/3299>`_
 - Improved Operator form validation debounce behavior
   `#3291 <https://github.com/voxel51/fiftyone/pull/3291>`_
@@ -625,7 +625,7 @@ Core
 
 Plugins
 
-- Added :ref:`Operators <fiftyone-operators>` to the plugin framework
+- Added :ref:`Operators <using-operators>` to the plugin framework
   `#2679 <https://github.com/voxel51/fiftyone/pull/2679>`_
 - Added CLI methods for :ref:`plugins <cli-fiftyone-plugins>` and
   :ref:`operators <cli-fiftyone-operators>`

@@ -661,7 +661,7 @@ versions for these additional features!
 
 **Near term**
 
--   Add support for applying :ref:`Operators <fiftyone-operators>` to Snapshots
+-   Add support for applying :ref:`Operators <using-operators>` to Snapshots
 -   Offload least-used Snapshots to external cold storage
 -   Optimize diff computation for larger datasets (over 200k samples) and add
     support for modification summaries for these datasets
