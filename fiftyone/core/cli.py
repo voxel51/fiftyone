@@ -2692,9 +2692,8 @@ def _print_operators_list(enabled, names_only):
         "uri",
         "enabled",
         "builtin",
-        "on_startup",
         "unlisted",
-        "dynamic",
+        "on_startup",
     ]
 
     enabled_plugins = set(fop.list_enabled_plugins())
@@ -2706,9 +2705,8 @@ def _print_operators_list(enabled, names_only):
                 "uri": op.uri,
                 "enabled": op.builtin or op.plugin_name in enabled_plugins,
                 "builtin": op.builtin,
-                "on_startup": op.config.on_startup,
                 "unlisted": op.config.unlisted,
-                "dynamic": op.config.dynamic,
+                "on_startup": op.config.on_startup,
             }
         )
 
@@ -4119,7 +4117,15 @@ def _print_dict_as_table(d, headers=None):
     if headers is None:
         headers = ["key", "value"]
 
-    records = [(k, v) for k, v in d.items()]
+    records = []
+    for k, v in d.items():
+        if isinstance(v, list) and v:
+            records.append((k, v[0]))
+            for e in v[1:]:
+                records.append(("", e))
+        else:
+            records.append((k, v))
+
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 
