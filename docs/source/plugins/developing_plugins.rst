@@ -821,13 +821,6 @@ values and any other aspects of the
 
         return types.Property(inputs, view=types.View(label="Dynamic example"))
 
-.. note::
-
-    Avoid expensive computations in
-    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
-    or else the form may take too long to render, especially for dynamic inputs
-    where the method is called after every user input.
-
 Remember that properties automatically handle validation for you. So if you
 configure a property as `required=True` but the user has not provided a value,
 the property will automatically be marked as `invalid=True`. The operator's
@@ -838,6 +831,13 @@ the property will automatically be marked as `invalid=True`. The operator's
 
     As the example above shows, you can manually set a property to invalid by
     setting its `invalid` property.
+
+.. note::
+
+    Avoid expensive computations in
+    :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+    or else the form may take too long to render, especially for dynamic inputs
+    where the method is called after every user input.
 
 .. _operator-delegated-execution:
 
