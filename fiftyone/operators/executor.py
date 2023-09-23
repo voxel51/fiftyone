@@ -90,7 +90,7 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx):
+def execute_operator(operator_uri, ctx, params=None):
     """Executes the operator with the given name.
 
     Args:
@@ -109,12 +109,14 @@ def execute_operator(operator_uri, ctx):
                 :attr:`fiftyone.core.session.Session.selected_labels`
             -   ``params``: a dictionary of parameters for the operator.
                 Consult the operator's documentation for details
+        params (None): you can optionally provide the ``ctx.params`` dict as
+            a separate argument
 
     Returns:
         an :class:`ExecutionResult`
     """
     dataset_name, view_stages, selected, selected_labels, params = _parse_ctx(
-        ctx
+        ctx, params=params
     )
 
     request_params = dict(
@@ -131,12 +133,14 @@ def execute_operator(operator_uri, ctx):
     )
 
 
-def _parse_ctx(ctx):
+def _parse_ctx(ctx, params=None):
     dataset = ctx.get("dataset", None)
     view = ctx.get("view", None)
     selected = ctx.get("selected", None)
     selected_labels = ctx.get("selected_labels", None)
-    params = ctx.get("params", {})
+
+    if params is None:
+        params = ctx.get("params", {})
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
