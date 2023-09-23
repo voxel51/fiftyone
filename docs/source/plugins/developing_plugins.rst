@@ -1441,8 +1441,8 @@ Adding a custom FiftyOne Visualizer
         activator: myActivator,
     });
 
-Adding a custom Plot
-~~~~~~~~~~~~~~~~~~~~
+Adding a custom Panel
+~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: jsx
     :linenos:
@@ -1452,7 +1452,7 @@ Adding a custom Plot
     import * as foa from "@fiftyone/aggregations";
     import AwesomeMap from "react-mapping-library";
 
-    function CustomPlot() {
+    function CustomPanel() {
         const dataset = useRecoilValue(fos.dataset);
         const view = useRecoilValue(fos.view);
         const filters = useRecoilValue(fos.filters);
@@ -1483,22 +1483,17 @@ Adding a custom Plot
 
     fop.registerComponent({
         // component to delegate to
-        component: CustomPlot,
+        component: CustomPanel,
 
         // tell FiftyOne you want to provide a custom Panel
         type: PluginComponentTypes.Panel,
 
-        // used for the plot selector button
+        // used for the panel selector button
         label: "Map",
 
-        // only show the Map plot when the dataset has Geo data
+        // only show the Map panel when the dataset has Geo data
         activator: ({ dataset }) => dataset.sampleFields.location,
     });
-
-.. warning::
-
-    The `PluginComponentType.Plot` type is deprecated. Use
-    `PluginComponentType.Panel` instead.
 
 Custom operator view using Component plugin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1762,7 +1757,7 @@ A typical use case for a JS plugin is to provide a unique way of visualizing
 FiftyOne data. However some plugins may need to also fetch data in a unique way
 to efficiently visualize it.
 
-For example, a `PluginComponentType.Plot` plugin rendering a map of geo points
+For example, a `PluginComponentType.Panel` plugin rendering a map of geo points
 may need to fetch data relative to where the user is currently viewing. In
 MongoDB, such a query would look like this:
 
