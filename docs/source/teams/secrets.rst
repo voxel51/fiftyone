@@ -63,20 +63,6 @@ plugin declares the following secrets:
 .. code-block:: yaml
    :linenos:
 
-   name: "@voxel51/annotation"
-   description: Utilities for integrating FiftyOne with annotation tools
-   version: 1.0.0
-   fiftyone:
-     version: "*"
-   url: https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md
-   license: Apache 2.0
-   operators:
-     - request_annotations
-     - load_annotations
-     - get_annotation_info
-     - load_annotation_view
-     - rename_annotation_run
-     - delete_annotation_run
    secrets:
      - FIFTYONE_CVAT_URL
      - FIFTYONE_CVAT_USERNAME
@@ -87,13 +73,14 @@ plugin declares the following secrets:
      - FIFTYONE_LABELSTUDIO_API_KEY
 
 At runtime, the plugin's execution context will automatically be hydrated with
-any available secrets that are declared by the plugin. Operators can access
-these secrets via the ``ctx.secrets`` dict:
+any available secrets that are declared by the plugin. Operators access these
+secrets via the ``ctx.secrets`` dict:
 
 .. code-block:: python
    :linenos:
 
    def execute(self, ctx):
+      url = ctx.secrets["FIFTYONE_CVAT_URL"]
       username = ctx.secrets["FIFTYONE_CVAT_USERNAME"]
       password = ctx.secrets["FIFTYONE_CVAT_PASSWORD"]
 
