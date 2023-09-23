@@ -3,6 +3,16 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.1:
+
+FiftyOne Teams 1.4.1
+--------------------
+*Released September 21, 2023*
+
+Bugs
+
+- Patched a regression that prevented the Teams App from working behind proxies
+
 .. _release-notes-teams-v1.4.0:
 
 FiftyOne Teams 1.4.0
