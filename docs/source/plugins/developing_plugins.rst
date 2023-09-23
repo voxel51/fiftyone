@@ -449,11 +449,15 @@ defines both a JS Panel and a Python operator:
           return true;
         }
 
+Here's the plugin in action! The `Hello world` panel is available under the `+`
+icon next to the Samples tab and the `count_samples` operator is available in
+the operator browser:
+
 .. image:: /images/plugins/hello-world.gif
 
 .. _example-python-operator:
 
-Example Python Operator
+Example Python operator
 -----------------------
 
 Here's a simple :ref:`Python operator <developing-operators>` that accepts a
@@ -498,7 +502,7 @@ current dataset.
 
 .. _example-js-operator:
 
-Example JS Operator
+Example JS operator
 -------------------
 
 Here's how to define a :ref:`JS operator <developing-js-plugins>` that sets the
@@ -1351,7 +1355,7 @@ method as demonstrated below:
 
 .. _developing-js-plugins:
 
-Developing JS Plugins
+Developing JS plugins
 _____________________
 
 This section describes how to develop JS-specific plugin components.
@@ -1380,8 +1384,7 @@ own custom user interface and components to the FiftyOne App.
 Hello world Panel
 ~~~~~~~~~~~~~~~~~
 
-A simple hello world plugin that renders "hello world" in a panel would look
-like this:
+A simple plugin that renders "Hello world" in a panel would look like this:
 
 .. code-block:: jsx
     :linenos:
@@ -1389,12 +1392,12 @@ like this:
     import { registerComponent, PluginComponentTypes } from "@fiftyone/plugins";
 
     function HelloWorld() {
-        return <h1>Hello World</h1>;
+        return <h1>Hello world</h1>;
     }
 
     registerComponent({
         name: "HelloWorld",
-        label: "HelloWorld",
+        label: "Hello world",
         component: HelloWorld,
         type: PluginComponentTypes.Panel,
         activator: () => true
