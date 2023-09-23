@@ -38,9 +38,9 @@ Plugin types
 FiftyOne plugins can be written in JS or Python, or a combination of both.
 
 JS Plugins are built using the `@fiftyone` TypeScript packages, npm packages,
-and your own TypeScript. They consist of Panels, Operators, and Components.
+and your own TypeScript. They can consist of Panels, Operators, and Components.
 
-Python Plugins are built using the FiftyOne Python SDK, pip packages, and your
+Python Plugins are built using the `fiftyone` package, pip packages, and your
 own Python. They can currently only define Operators.
 
 .. _plugins-design-panels:
