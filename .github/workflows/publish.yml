@@ -42,7 +42,7 @@ jobs:
           python3 -m twine upload dist/*
 
   build-image:
-    needs: [build, test]
+    needs: [build, e2e, test]
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone
