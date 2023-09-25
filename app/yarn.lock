@@ -4231,7 +4231,7 @@ __metadata:
     lodash: ^4.17.21
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: 2.4.2
+    vite: ^3.0.0
   languageName: unknown
   linkType: soft
 
@@ -4589,7 +4589,7 @@ __metadata:
     jest: ^28.1.1
     prettier: 2.2.1
     typescript: 4.2.4
-    vite: 2.4.2
+    vite: ^3.0.0
   languageName: unknown
   linkType: soft
 
@@ -14420,15 +14420,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild@npm:^0.12.8":
-  version: 0.12.29
-  resolution: "esbuild@npm:0.12.29"
-  bin:
-    esbuild: bin/esbuild
-  checksum: 06a6e84eff02899b45c7d4441199f7bbc824a9f5a2d0332bfe9873963751213c71bcb03b8db96babbc45ef31c140580ff64317ee7600983fc88b84c2d9788bbf
-  languageName: node
-  linkType: hard
-
 "esbuild@npm:^0.14.47":
   version: 0.14.49
   resolution: "esbuild@npm:0.14.49"
@@ -22897,7 +22888,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.3.5, postcss@npm:^8.4.14":
+"postcss@npm:^8.4.14":
   version: 8.4.14
   resolution: "postcss@npm:8.4.14"
   dependencies:
@@ -25036,7 +25027,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup@npm:^2.38.5, rollup@npm:^2.75.6":
+"rollup@npm:^2.75.6":
   version: 2.77.0
   resolution: "rollup@npm:2.77.0"
   dependencies:
@@ -28573,24 +28564,6 @@ __metadata:
   peerDependencies:
     vite: ^2.0.0 || ^3.0.0 || ^4.0.0
   checksum: 9a22e51e80fc14d58d32556208c26740baf3f02eae2d0a5f356ddc1ea478bd2f56803cc17e77261ffad33d27301017ba03736143446685c03bb0f076eef2fdd0
-  languageName: node
-  linkType: hard
-
-"vite@npm:2.4.2":
-  version: 2.4.2
-  resolution: "vite@npm:2.4.2"
-  dependencies:
-    esbuild: ^0.12.8
-    fsevents: ~2.3.2
-    postcss: ^8.3.5
-    resolve: ^1.20.0
-    rollup: ^2.38.5
-  dependenciesMeta:
-    fsevents:
-      optional: true
-  bin:
-    vite: bin/vite.js
-  checksum: c6a3644bcda6f5e1e6a524f5f2e2c631607f4e9eec9b9794485d4f689ce2f62e7e7571741f0064376fbf6125e0ed0736ef435277b0b9ea81d7bb0b4d54789249
   languageName: node
   linkType: hard
 
