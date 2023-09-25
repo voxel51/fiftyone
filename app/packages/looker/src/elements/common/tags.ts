@@ -22,6 +22,7 @@ import {
   REGRESSION,
   Schema,
   STRING_FIELD,
+  VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 import _ from "lodash";
@@ -504,20 +505,31 @@ const getFieldAndValue = (
     path = path.split(".").slice(1).join(".");
   }
 
-  for (const key of path.split(".").slice(0, 2)) {
-    if (!schema?.[key]) {
+  const topLevelPaths = path.split(".").slice(0, 2);
+  for (const key of topLevelPaths) {
+    field = schema?.[key];
+    if (!field) {
       return [null, null];
     }
-
-    field = schema[key];
 
     if (
       field &&
       field.ftype === LIST_FIELD &&
       field.subfield === EMBEDDED_DOCUMENT_FIELD
     ) {
-      return [null, null];
+      // single-level nested primitives in a list of dynamic documents can be visualized
+      if (Object.keys(field.fields).length) {
+        for (const [innerField, value] of Object.entries(field.fields)) {
+          if (
+            innerField === path &&
+            !VALID_PRIMITIVE_TYPES.includes(value.ftype)
+          ) {
+            return [null, null];
+          }
+        }
+      }
     }
+
     if (values?.length && field) {
       values = unwind(field.dbField, values as RegularLabel[]).filter(
         (v) => v !== undefined && v !== null
