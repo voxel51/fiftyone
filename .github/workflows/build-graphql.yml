@@ -4,10 +4,10 @@ on:
   push:
     tags:
       - graphql-v*
-  pull_request:
-    paths:
-      - package/graphql/**
-      - .github/workflows/build-graphql.yml
+  # pull_request:
+  #   paths:
+  #     - package/graphql/**
+  #     - .github/workflows/build-graphql.yml
 
 jobs:
   build:
