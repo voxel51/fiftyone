@@ -1,1 +1,3 @@
+coverage:
+  patch: off
 github_checks: false
