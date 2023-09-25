@@ -246,7 +246,7 @@ service.
     repository to add it to the
     `Community Plugins list <https://github.com/voxel51/fiftyone-plugins#community-plugins>`_!
 
-Any users with access to the plugin's hosted locationvv can easily
+Any users with access to the plugin's hosted location can easily
 :ref:`download it <plugins-download>` via the
 :ref:`fiftyone plugins download <cli-fiftyone-plugins-download>` CLI command:
 
