@@ -134,7 +134,16 @@ const useExecutionContext = (operatorName, hooks = {}) => {
       },
       hooks
     );
-  }, [params, datasetName, view, extended, filters, selectedSamples, hooks]);
+  }, [
+    params,
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    selectedLabels,
+    hooks,
+  ]);
 
   return ctx;
 };
