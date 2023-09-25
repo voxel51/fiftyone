@@ -224,6 +224,11 @@ export const viewCounter = atom({
 
 export const DEFAULT_ALPHA = 0.7;
 
+export const colorSeed = atom<number>({
+  key: "colorSeed",
+  default: 0,
+});
+
 export const appTeamsIsOpen = atom({
   key: "appTeamsIsOpen",
   default: false,

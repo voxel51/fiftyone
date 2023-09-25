@@ -18,8 +18,6 @@ export const ensureColorScheme = (
       colorScheme.color_pool || colorScheme.colorPool || defaultValue.colorPool,
     colorBy:
       colorScheme.color_by || colorScheme.colorBy || defaultValue.colorBy,
-    colorSeed:
-      colorScheme.color_seed || colorScheme.colorSeed || defaultValue.colorSeed,
     opacity: colorScheme.opacity || defaultValue.opacity,
     useMultiColorKeypoints:
       colorScheme.use_multi_color_keypoints ||
@@ -40,7 +38,6 @@ export const processState = (
     ensureColorScheme(state.color_scheme as ColorSchemeInput, {
       colorPool: [],
       colorBy: "field",
-      colorSeed: 0,
       opacity: 0.7,
       useMultiColorKeypoints: false,
     })

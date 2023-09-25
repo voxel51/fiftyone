@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<75bbd99c8925c1349d474a80d5711fe7>>
+ * @generated SignedSource<<9148a7e906b703f61641925e8e0f40a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,7 +13,6 @@ import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
   readonly colorBy: string | null;
   readonly colorPool: ReadonlyArray<string>;
-  readonly colorSeed: number | null;
   readonly fields: ReadonlyArray<{
     readonly colorByAttribute: string | null;
     readonly fieldColor: string | null;
@@ -51,13 +50,6 @@ const node: ReaderFragment = {
       "args": null,
       "kind": "ScalarField",
       "name": "colorBy",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "colorSeed",
       "storageKey": null
     },
     {
@@ -143,6 +135,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "65e6e019dd958bff6f1e37a1b9dfd629";
+(node as any).hash = "8d543dfe22c119526e99339ec285cd7a";
 
 export default node;

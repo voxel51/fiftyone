@@ -41,7 +41,6 @@ export const SESSION_DEFAULT: Session = {
     colorPool: [],
     fields: [],
     colorBy: "field",
-    colorSeed: 0,
     opacity: 0.7,
     showKeypointSkeleton: true,
     useMultiColorKeypoints: false,

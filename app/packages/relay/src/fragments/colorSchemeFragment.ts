@@ -6,7 +6,6 @@ export default r(graphql`
   fragment colorSchemeFragment on ColorScheme {
     colorPool
     colorBy
-    colorSeed
     opacity
     useMultiColorKeypoints
     showKeypointSkeleton

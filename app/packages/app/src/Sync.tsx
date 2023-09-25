@@ -132,7 +132,6 @@ const dispatchSideEffect = ({
       {
         colorPool: data.config.colorPool,
         colorBy: data.config.colorBy,
-        colorSeed: 0,
         opacity: 0.7,
         useMultiColorKeypoints: false,
         showKeypointSkeleton: true,

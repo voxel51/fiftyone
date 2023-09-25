@@ -39,7 +39,6 @@ const DatasetPageQueryNode = graphql`
           id
           colorPool
           colorBy
-          colorSeed
           opacity
           useMultiColorKeypoints
           showKeypointSkeleton

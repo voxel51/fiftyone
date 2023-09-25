@@ -8,7 +8,7 @@ import { useColorByField } from "./useLabelSelector";
 import { useWarnings } from "./useWarnings";
 
 export function useViewChangeEffect() {
-  const colorSeed = useRecoilValue(fos.colorScheme).colorSeed;
+  const colorSeed = useRecoilValue(fos.colorSeed);
   const datasetName = useRecoilValue(fos.datasetName);
   const [brainKey, setBrainKey] = useBrainResult();
   const [labelField] = useColorByField();

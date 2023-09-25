@@ -17,8 +17,9 @@ export const coloring = selector<Coloring>({
   key: "coloring",
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
+    const seed = get(atoms.colorSeed);
     return {
-      seed: colorScheme.colorSeed,
+      seed,
       pool: colorScheme.colorPool,
       scale: [],
       by: colorScheme.colorBy,
@@ -27,9 +28,7 @@ export const coloring = selector<Coloring>({
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
-        .map((_, i) =>
-          getColor(colorScheme.colorPool, colorScheme.colorSeed, i)
-        ),
+        .map((_, i) => getColor(colorScheme.colorPool, seed, i)),
     };
   },
   cachePolicy_UNSTABLE: {
@@ -41,7 +40,7 @@ export const colorMap = selector<(val) => string>({
   key: "colorMap",
   get: ({ get }) => {
     const pool = get(atoms.colorScheme).colorPool;
-    const seed = get(atoms.colorScheme).colorSeed;
+    const seed = get(atoms.colorSeed);
     return createColorGenerator(pool, seed);
   },
   cachePolicy_UNSTABLE: {

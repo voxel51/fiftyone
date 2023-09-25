@@ -38,7 +38,6 @@ const onSetDataset: RegisteredSetter =
         ?.colorScheme || {
         colorPool: entry.data.config.colorPool,
         colorBy: entry.data.config.colorBy,
-        colorSeed: 0,
         opacity: 0.7,
         useMultiColorKeypoints: false,
         showKeypointSkeleton: true,

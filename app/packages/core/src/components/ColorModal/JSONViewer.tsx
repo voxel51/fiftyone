@@ -22,7 +22,6 @@ const JSONViewer: React.FC = () => {
     return {
       colorPool: colorScheme?.colorPool ?? [],
       colorBy: colorScheme?.colorBy ?? "field",
-      colorSeed: colorScheme?.colorSeed ?? 0,
       opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
       useMultiColorKeypoints: Boolean(colorScheme?.useMultiColorKeypoints),
       showKeypointSkeleton: colorScheme?.showKeypointSkeleton,
@@ -64,10 +63,6 @@ const JSONViewer: React.FC = () => {
     const validatedColorBy = ["field", "label"].includes(data?.colorBy)
       ? data?.colorBy
       : colorScheme.colorBy ?? "field";
-    const validatedColorSeed =
-      typeof data?.colorSeed === "number"
-        ? data?.colorSeed
-        : colorScheme.colorSeed ?? 0;
     const validatedOpacity =
       typeof data?.opacity === "number" &&
       data.opacity <= 1 &&
@@ -88,7 +83,6 @@ const JSONViewer: React.FC = () => {
       colorPool: validColors,
       fields: validatedSetting,
       colorBy: validatedColorBy,
-      colorSeed: validatedColorSeed,
       opacity: validatedOpacity,
       useMultiColorKeypoints: validatedUseMultiColorKeypoints,
       showKeypointSkeleton: validatedShowKeypointSkeleton,
@@ -97,7 +91,6 @@ const JSONViewer: React.FC = () => {
       colorPool: validColors,
       fields: validatedSetting,
       colorBy: validatedColorBy,
-      colorSeed: validatedColorSeed,
       opacity: validatedOpacity,
       useMultiColorKeypoints: validatedUseMultiColorKeypoints,
       showKeypointSkeleton: validatedShowKeypointSkeleton,
