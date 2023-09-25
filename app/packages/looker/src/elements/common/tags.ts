@@ -486,7 +486,7 @@ const unwind = (
   }
 };
 
-const getFieldAndValue = (
+export const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
@@ -517,16 +517,22 @@ const getFieldAndValue = (
       field.ftype === LIST_FIELD &&
       field.subfield === EMBEDDED_DOCUMENT_FIELD
     ) {
+      if (path === field.name) {
+        return [null, null];
+      }
+
       // single-level nested primitives in a list of dynamic documents can be visualized
       if (Object.keys(field.fields).length) {
-        for (const [innerField, value] of Object.entries(field.fields)) {
+        for (const value of Object.values(field.fields)) {
           if (
-            innerField === path &&
+            value["path"] === path &&
             !VALID_PRIMITIVE_TYPES.includes(value.ftype)
           ) {
             return [null, null];
           }
         }
+      } else {
+        return [null, null];
       }
     }
 
