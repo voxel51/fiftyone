@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ee7adc037268143fbe39d05f9f74ecfb>>
+ * @generated SignedSource<<ad01948a25e1ff8bd64106b16933a729>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,6 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
-  colorSeed?: number | null;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
   opacity?: number | null;
   showKeypointSkeleton?: boolean | null;

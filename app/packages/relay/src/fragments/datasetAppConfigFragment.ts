@@ -11,7 +11,6 @@ export default graphql`
       id
       colorPool
       colorBy
-      colorSeed
       opacity
       useMultiColorKeypoints
       showKeypointSkeleton

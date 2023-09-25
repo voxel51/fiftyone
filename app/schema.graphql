@@ -105,7 +105,6 @@ type ColorScheme {
   id: ID!
   colorPool: [String!]!
   colorBy: String
-  colorSeed: Int
   opacity: Float
   useMultiColorKeypoints: Boolean
   showKeypointSkeleton: Boolean
@@ -115,7 +114,6 @@ type ColorScheme {
 input ColorSchemeInput {
   colorPool: [String!]!
   colorBy: String = null
-  colorSeed: Int = null
   opacity: Float = null
   useMultiColorKeypoints: Boolean = null
   showKeypointSkeleton: Boolean = null

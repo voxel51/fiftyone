@@ -173,7 +173,6 @@ class ColorScheme(EmbeddedDocument):
         dataset.app_config.color_scheme = fo.ColorScheme(
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             color_by = "field",
-            color_seed = 0,
             opacity = 0.5,
             use_multi_color_keypoints = False,
             show_keypoint_skeleton = True,
@@ -193,7 +192,6 @@ class ColorScheme(EmbeddedDocument):
             for this dataset
         # TODO: add notes
         color_by (None):
-        color_seed (None):
         opacity (None):
         use_multi_color_keypoints (None):
         show_keypoint_skeleton (None):
@@ -216,7 +214,6 @@ class ColorScheme(EmbeddedDocument):
 
     color_pool = ListField(ColorField(), null=True)
     color_by = StringField(null=True)
-    color_seed = IntField(null=True)
     opacity = FloatField(null=True)
     use_multi_color_keypoints = BooleanField(null=True)
     show_keypoint_skeleton = BooleanField(null=True)
