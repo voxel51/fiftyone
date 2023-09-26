@@ -1,7 +1,11 @@
 import { graphql } from "relay-runtime";
 
 export default graphql`
-  query datasetQuery($savedViewSlug: String, $name: String!, $view: BSONArray) {
+  query datasetQuery(
+    $savedViewSlug: String
+    $name: String!
+    $view: BSONArray!
+  ) {
     config {
       colorPool
     }
