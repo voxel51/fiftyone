@@ -69,7 +69,8 @@ const Count = () => {
   const isGroup = useRecoilValue(isGroupAtom);
   if (
     (isGroup && !isDynamicGroupViewStageActive) ||
-    (isDynamicGroupViewStageActive && parent === "group")
+    (isDynamicGroupViewStageActive && parent === "group") ||
+    (isDynamicGroupViewStageActive && element.singular === "sample")
   ) {
     element = {
       plural: "groups",
@@ -82,7 +83,9 @@ const Count = () => {
       <div style={{ whiteSpace: "nowrap" }}>
         <PathEntryCounts modal={false} path={""} />
         {` `}
-        {isDynamicGroupViewStageActive && `group${total === 1 ? "" : "s"} of `}
+        {isDynamicGroupViewStageActive &&
+          !["sample", "group"].includes(element.singular) &&
+          `group${total === 1 ? "" : "s"} of `}
         {total === 1 ? element.singular : element.plural}
         {slice && ` with slice`}
       </div>
