@@ -52,23 +52,32 @@ const TEST_SCHEMA = {
         subfield: null,
         path: "test.str_field",
       },
+      str_list_field: {
+        dbField: "str_list_field",
+        description: null,
+        embeddedDocType: null,
+        fields: {},
+        ftype: "fiftyone.core.fields.ListField",
+        info: null,
+        name: "str_list_field",
+        path: "test.str_list_field",
+        subfield: "fiftyone.core.fields.StringField",
+      },
       predictions_field: {
         dbField: "predictions_field",
         description: null,
         embeddedDocType: "fiftyone.core.labels.Detection",
-        fields: [
-          {
-            dbField: "detections",
-            description: null,
-            embeddedDocType: null,
-            fields: [],
-            ftype: "fiftyone.core.fields.ListField",
-            info: null,
-            name: "detections",
-            subfield: "fiftyone.core.fields.EmbeddedDocumentField",
-            path: "ground_truth.detections",
-          },
-        ],
+        fields: {
+          dbField: "detections",
+          description: null,
+          embeddedDocType: null,
+          fields: [],
+          ftype: "fiftyone.core.fields.ListField",
+          info: null,
+          name: "detections",
+          subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+          path: "ground_truth.detections",
+        },
         ftype: "fiftyone.core.fields.EmbeddedDocumentField",
         info: null,
         name: "predictions_field",
@@ -86,19 +95,17 @@ const TEST_SCHEMA = {
     dbField: "predictions",
     description: null,
     embeddedDocType: "fiftyone.core.labels.Detection",
-    fields: [
-      {
-        dbField: "detections",
-        description: null,
-        embeddedDocType: null,
-        fields: [],
-        ftype: "fiftyone.core.fields.ListField",
-        info: null,
-        name: "detections",
-        subfield: "fiftyone.core.fields.EmbeddedDocumentField",
-        path: "ground_truth.detections",
-      },
-    ],
+    fields: {
+      dbField: "detections",
+      description: null,
+      embeddedDocType: null,
+      fields: [],
+      ftype: "fiftyone.core.fields.ListField",
+      info: null,
+      name: "detections",
+      subfield: "fiftyone.core.fields.EmbeddedDocumentField",
+      path: "ground_truth.detections",
+    },
     ftype: "fiftyone.core.fields.EmbeddedDocumentField",
     info: null,
     name: "predictions",
@@ -145,5 +152,14 @@ describe(`
       "test.predictions"
     );
     expect(resultField).toBeNull();
+  });
+
+  it("nested primitive list in a list of embedded document return correct field:values", () => {
+    const [resultField, _] = getFieldAndValue(
+      TEST_SAMPLE,
+      TEST_SCHEMA,
+      "test.str_list_field"
+    );
+    expect(resultField.name).toEqual("str_list_field");
   });
 });

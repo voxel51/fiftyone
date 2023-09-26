@@ -524,7 +524,11 @@ export const getFieldAndValue = (
       // single-level nested primitives in a list of dynamic documents can be visualized
       if (Object.keys(field.fields).length) {
         for (const value of Object.values(field.fields)) {
-          if (
+          if (value["path"] === path && value.ftype === LIST_FIELD) {
+            if (!VALID_PRIMITIVE_TYPES.includes(value.subfield)) {
+              return [null, null];
+            }
+          } else if (
             value["path"] === path &&
             !VALID_PRIMITIVE_TYPES.includes(value.ftype)
           ) {
