@@ -252,6 +252,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
             )}
           </ColorSquare>
           <Input
+            placeholder="#009900"
             value={input[index].color ?? ""}
             setter={(v) =>
               setInput((prev) => {
