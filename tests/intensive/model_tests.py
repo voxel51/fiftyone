@@ -58,7 +58,7 @@ def test_torch_hub_feature_extractor():
     model = fout.load_torch_hub_image_model(
         "facebookresearch/dino:main",
         "dino_vits16",
-        feature_extractor=True,
+        as_feature_extractor=True,
         image_size=[224, 224],
     )
 
