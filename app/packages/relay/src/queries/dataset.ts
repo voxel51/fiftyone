@@ -5,12 +5,13 @@ export default graphql`
     $savedViewSlug: String
     $name: String!
     $view: BSONArray!
+    $extendedView: BSONArray!
   ) {
     config {
       colorPool
     }
 
-    dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
+    dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
       appConfig {
