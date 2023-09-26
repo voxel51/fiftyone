@@ -1,15 +1,15 @@
 import { Bar } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import React, { useRef } from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ModalActionsRow } from "../../../Actions";
-import Sample from "../../Sample";
-import { Sample3d } from "../../Sample3d";
-import { useGroupContext } from "../GroupContextProvider";
-import { GroupSuspense } from "../GroupSuspense";
-import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
+import { ModalActionsRow } from "../../../../Actions";
+import Sample from "../../../Sample";
+import { Sample3d } from "../../../Sample3d";
+import { useGroupContext } from "../../GroupContextProvider";
+import { GroupSuspense } from "../../GroupSuspense";
+import { DynamicGroupCarousel } from ".././carousel/DynamicGroupCarousel";
+import { GroupElementsLinkBar } from "../pagination";
 
 const RootContainer = styled.div`
   height: 100%;
@@ -24,9 +24,9 @@ const ElementsContainer = styled.div`
   justify-content: center;
 `;
 
-export const UnorderedDynamicGroup = () => {
+export const NonNestedDynamicGroup = () => {
   const { lookerRefCallback } = useGroupContext();
-  const lookerRef = useRef<AbstractLooker>();
+  const lookerRef = useRef<fos.Lookers>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
   const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
@@ -62,6 +62,7 @@ export const UnorderedDynamicGroup = () => {
             </GroupSuspense>
           )}
         </>
+        <GroupElementsLinkBar />
       </ElementsContainer>
     </RootContainer>
   );
@@ -70,7 +71,7 @@ export const UnorderedDynamicGroup = () => {
 const UnorderedDynamicGroupBar = ({
   lookerRef,
 }: {
-  lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
+  lookerRef: React.MutableRefObject<fos.Lookers | undefined>;
 }) => {
   return (
     <Bar

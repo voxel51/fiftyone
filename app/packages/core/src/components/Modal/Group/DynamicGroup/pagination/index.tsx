@@ -28,8 +28,8 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import style from "./GroupElementsLinkBar.module.css";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
+import style from "./index.module.css";
 
 const BarContainer = styled.div`
   width: 100%;
@@ -49,6 +49,7 @@ export const GroupElementsLinkBar = () => {
   const cursor = useRecoilValue(fos.nestedGroupIndex);
   const slice = useRecoilValue(fos.groupSlice);
   const environment = useRelayEnvironment();
+
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
       return loadQuery<foq.paginateSamplesQuery>(
@@ -121,7 +122,13 @@ const GroupElementsLinkBarImpl = React.memo(
             currentGroup === nextGroup
           ) {
             set(currentModalSample, { index: current.index, id: sample.id });
-            set(fos.groupId, getValue(sample.sample, groupField)._id as string);
+
+            if (groupField) {
+              set(
+                fos.groupId,
+                getValue(sample.sample, groupField)._id as string
+              );
+            }
           }
         },
       [dynamicGroupParameters, groupField]

@@ -1,7 +1,7 @@
 import React, { Suspense } from "react";
 import { GroupSuspense } from "../../GroupSuspense";
 import { GroupView } from "../../GroupView";
-import { GroupElementsLinkBar } from "./GroupElementsLinkBar";
+import { GroupElementsLinkBar } from "../pagination";
 
 export const NestedGroup = () => {
   return (
