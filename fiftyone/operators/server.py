@@ -5,22 +5,29 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import json
 import types
+import typing
+
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse, StreamingResponse
 
 from fiftyone.server.decorators import route
-
+from . import OperatorRegistry
 from .executor import (
-    execute_or_delegate_operator,
-    resolve_type,
-    resolve_placement,
     ExecutionContext,
+    execute_or_delegate_operator,
+    resolve_placement,
+    resolve_type,
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
+
+__REGISTRY: typing.Union[
+    OperatorRegistry, PermissionedOperatorRegistry, None
+] = None
 
 
 class ListOperators(HTTPEndpoint):
@@ -46,13 +53,17 @@ class ListOperators(HTTPEndpoint):
 class ResolvePlacements(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
-        )
+        dataset_name, operator_uri = _parse_dataset_and_operator(data)
+
+        # Since resolve_placements is called first in any operator's execution
+        # pipeline, we get the registry here so that we know when
+        # resolve_type and execute are called, the executed operators are
+        # the same as the ones that were resolved and triggered on the client
+        global __REGISTRY
+        __REGISTRY = await _get_registry(request, dataset_name=dataset_name)
+
         placements = []
-        for operator in registry.list_operators():
+        for operator in __REGISTRY.list_operators():
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append(
@@ -68,25 +79,8 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
-        operator_uri = data.get("operator_uri", None)
-        if operator_uri is None:
-            raise ValueError("Operator URI must be provided")
-
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
-        )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
-
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri
-                or "None",
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+        dataset_name, operator_uri = _parse_dataset_and_operator(data)
+        _check_registry_permissions(operator_uri)
 
         result = await execute_or_delegate_operator(operator_uri, data)
         return result.to_json()
@@ -117,25 +111,8 @@ def create_permission_error(uri):
 class ExecuteOperatorAsGenerator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
-        operator_uri = data.get("operator_uri", None)
-        if operator_uri is None:
-            raise ValueError("Operator URI must be provided")
-
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
-        )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
-
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri
-                or "None",
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
+        dataset_name, operator_uri = _parse_dataset_and_operator(data)
+        _check_registry_permissions(operator_uri)
 
         execution_result = await execute_or_delegate_operator(
             operator_uri, data
@@ -162,27 +139,61 @@ class ExecuteOperatorAsGenerator(HTTPEndpoint):
 class ResolveType(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-        dataset_name = data.get("dataset_name", None)
-        dataset_ids = [dataset_name]
-        operator_uri = data.get("operator_uri", None)
-        if operator_uri is None:
-            raise ValueError("Operator URI must be provided")
+        dataset_name, operator_uri = _parse_dataset_and_operator(data)
 
-        registry = await PermissionedOperatorRegistry.from_exec_request(
-            request, dataset_ids=dataset_ids
-        )
-        if registry.can_execute(operator_uri) is False:
-            return create_permission_error(operator_uri)
+        global __REGISTRY
+        _check_registry_permissions(operator_uri)
 
-        if registry.operator_exists(operator_uri) is False:
-            error_detail = {
-                "message": "Operator '%s' does not exist" % operator_uri,
-                "loading_errors": registry.list_errors(),
-            }
-            raise HTTPException(status_code=404, detail=error_detail)
-
-        result = resolve_type(registry, operator_uri, data)
+        result = resolve_type(__REGISTRY, operator_uri, data)
         return result.to_json() if result else {}
+
+
+def _parse_dataset_and_operator(
+    data: typing.Dict[str, str], error_if_none=True
+):
+    dataset_name = data.get("dataset_name", None)
+    operator_uri = data.get("operator_uri", None)
+    if error_if_none and (None in [dataset_name, operator_uri]):
+        #  Since operators can only be executed within the context of a
+        #  dataset,
+        #  for most cases, both the dataset name and operator URI are required
+        raise ValueError("Dataset name and operator URI must be provided")
+    return dataset_name, operator_uri
+
+
+async def _get_registry(
+    request,
+    dataset_name: typing.Optional[str] = None,
+    operator_uri: typing.Optional[str] = None,
+) -> (PermissionedOperatorRegistry):
+    # For listing all operators known to the filesystem, dataset_name
+    # and operator_uri may be None
+    if not any([dataset_name, operator_uri]):
+        return await PermissionedOperatorRegistry.from_exec_request(request)
+    else:
+        registry = await PermissionedOperatorRegistry.from_exec_request(
+            request, dataset_ids=[dataset_name]
+        )
+
+    if operator_uri:
+        _check_registry_permissions(operator_uri)
+    return registry
+
+
+def _check_registry_permissions(operator_uri):
+    global __REGISTRY
+    if __REGISTRY is None:
+        # This should never happen, but just in case, raise an error rather
+        # than fail silently so that we can debug
+        raise ValueError(
+            "check registry called before registry was " "initialised"
+        )
+    if __REGISTRY.operator_exists(operator_uri) is False:
+        error_detail = {
+            "message": "Operator '%s' does not exist" % operator_uri,
+            "loading_errors": __REGISTRY.list_errors(),
+        }
+        raise HTTPException(status_code=404, detail=json.dumps(error_detail))
 
 
 OperatorRoutes = [
