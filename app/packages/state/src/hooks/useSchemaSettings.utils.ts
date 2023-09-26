@@ -7,6 +7,8 @@ import {
   DETECTION_FIELD,
   DISABLED_LABEL_FIELDS_VISIBILITY,
   DISABLED_PATHS,
+  EMBEDDED_DOCUMENT,
+  EMBEDDED_DOCUMENT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
   Field,
@@ -29,7 +31,11 @@ import {
   SKIP_FIELD_TYPES,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
+  VALID_LABEL_LIST_TYPES,
   VALID_LABEL_TYPES,
+  VALID_LIST_LABEL_FIELDS,
+  VALID_NON_LIST_LABEL_TYPES,
+  VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 
 const isMetadataField = (path: string) => {
@@ -116,15 +122,30 @@ export const skipField = (rawPath: string, schema: {}) => {
   const parentPath = path.substring(0, path.lastIndexOf("."));
   const pathSplit = path.split(".");
   const pathLabel = `.${pathSplit[pathSplit.length - 1]}`;
+  const parentField = schema?.[parentPath];
 
-  return (
-    SKIP_FIELD_TYPES.includes(ftype) ||
-    (parentPath &&
-      [DETECTION_FIELD, DETECTIONS_FIELD].includes(
-        schema[parentPath]?.embeddedDocType
-      ) &&
-      [".bounding_box", ".index"].includes(pathLabel))
-  );
+  if (SKIP_FIELD_TYPES.includes(ftype)) {
+    return true;
+  }
+
+  if (
+    parentPath &&
+    [DETECTION_FIELD, DETECTIONS_FIELD].includes(parentField.embeddedDocType) &&
+    [".bounding_box", ".index"].includes(pathLabel)
+  ) {
+    return true;
+  }
+
+  if (
+    parentField &&
+    parentField.ftype === EMBEDDED_DOCUMENT_FIELD &&
+    VALID_LIST_LABEL_FIELDS.includes(parentField.embeddedDocType) &&
+    VALID_PRIMITIVE_TYPES.includes(ftype)
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 export const disabledField = (
