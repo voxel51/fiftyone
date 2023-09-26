@@ -25,8 +25,8 @@ const test = base.extend<{
   colorModal: async ({ page }, use) => {
     await use(new ColorModalPom(page));
   },
-  gridActionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
+  gridActionsRow: async ({ page, eventUtils }, use) => {
+    await use(new GridActionsRowPom(page, eventUtils));
   },
 });
 
