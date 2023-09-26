@@ -2,13 +2,33 @@ import { graphql } from "relay-runtime";
 
 export default graphql`
   query datasetQuery($savedViewSlug: String, $name: String!, $view: BSONArray) {
+    config {
+      colorPool
+    }
+
     dataset(name: $name, view: $view, savedViewSlug: $savedViewSlug) {
       name
-      viewName
+      defaultGroupSlice
+      appConfig {
+        colorScheme {
+          id
+          colorPool
+          fields {
+            colorByAttribute
+            fieldColor
+            path
+            valueColors {
+              color
+              value
+            }
+          }
+        }
+      }
       ...datasetFragment
     }
     ...savedViewsFragment
     ...configFragment
     ...stageDefinitionsFragment
+    ...viewSchemaFragment
   }
 `;

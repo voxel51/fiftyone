@@ -431,8 +431,6 @@ const InteractiveSidebar = ({
     () => new Controller({ minHeight: 0 })
   );
 
-  const modalContainer = document.getElementById("modal");
-
   if (entries instanceof Error) {
     throw entries;
   }
@@ -733,7 +731,7 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
-      {modalContainer && <SchemaSettings />}
+      <SchemaSettings />
       {!modal && (
         <Box
           style={{
