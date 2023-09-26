@@ -12,7 +12,7 @@ import { selectorWithEffect } from "./selectorWithEffect";
 import { loadContext } from "./utils";
 import { getPageQuery, PageQuery } from "./Writer";
 
-export type GraphQLSyncFragmentAtomOptions<K> = AtomOptions<K>;
+export type GraphQLSyncFragmentAtomOptions<K> = Omit<AtomOptions<K>, "default">;
 
 export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
@@ -39,6 +39,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
 ) {
   const value = atom({
     ...options,
+    default: fragmentOptions.default,
     effects: [
       ...(options.effects || []),
       ({ setSelf, trigger }) => {

@@ -14,7 +14,7 @@ import { loadContext } from "./utils";
 export type GraphQLSyncFragmentAtomFamilyOptions<
   K,
   P extends SerializableParam
-> = AtomFamilyOptions<K, P>;
+> = Omit<AtomFamilyOptions<K, P>, "default">;
 
 export type GraphQLSyncFragmentSyncAtomFamilyOptions<
   T extends KeyType,
@@ -48,6 +48,7 @@ export function graphQLSyncFragmentAtomFamily<
 ) {
   const family = atomFamily({
     ...options,
+    default: fragmentOptions.default,
     effects: (params) => {
       const effects =
         !fragmentOptions.sync || fragmentOptions.sync(params)
