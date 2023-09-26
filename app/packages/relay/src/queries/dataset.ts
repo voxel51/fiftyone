@@ -14,6 +14,7 @@ export default graphql`
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
+      viewName
       appConfig {
         colorScheme {
           id
