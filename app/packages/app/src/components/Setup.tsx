@@ -76,7 +76,7 @@ session = fo.launch_app(dataset, port=${port})
   return (
     <>
       <SectionTitle>Local sessions</SectionTitle>
-      <Text>Here's how to connect to a local session from Python:</Text>
+      <Text>Here&apos;s how to connect to a local session from Python:</Text>
       <Code>{localSnippet}</Code>
     </>
   );

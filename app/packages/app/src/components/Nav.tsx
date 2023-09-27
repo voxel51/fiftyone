@@ -104,7 +104,7 @@ export const useGA = (fragment: NavGA$key) => {
       [ga.dimensions.context]: info.context + (isElectron() ? "-DESKTOP" : ""),
     });
     ReactGA.pageview("/");
-  }, []);
+  }, [info]);
 };
 
 const Nav: React.FC<{
