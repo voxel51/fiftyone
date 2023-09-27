@@ -96,18 +96,10 @@ class SetColorScheme:
             dataset.app_config.color_scheme = (
                 foo.ColorScheme(
                     color_pool=color_scheme.color_pool,
-                    color_by=color_scheme.color_by
-                    if color_scheme.color_by
-                    else None,
-                    opacity=color_scheme.opacity
-                    if color_scheme.opacity
-                    else None,
-                    use_multi_color_keypoints=color_scheme.use_multi_color_keypoints
-                    if color_scheme.use_multi_color_keypoints
-                    else None,
-                    show_keypoint_skeleton=color_scheme.show_keypoint_skeleton
-                    if color_scheme.show_keypoint_skeleton
-                    else None,
+                    color_by=color_scheme.color_by,
+                    opacity=color_scheme.opacity,
+                    use_multi_color_keypoints=color_scheme.use_multi_color_keypoints,
+                    show_keypoint_skeleton=color_scheme.show_keypoint_skeleton,
                     fields=[asdict(f) for f in color_scheme.fields]
                     if color_scheme.fields
                     else None,
