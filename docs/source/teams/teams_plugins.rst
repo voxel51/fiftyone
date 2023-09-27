@@ -339,7 +339,8 @@ method from the Management SDK:
 Setting up an Orchestrator to run Delegated Operations
 ______________________________________________________
 
-Once an operation has been queued for remote (delegated) execution, it will remain queued until an Orchestrator picks it up and runs the execute method.
+Once an operation has been queued for remote (delegated) execution, it will remain queued until an Orchestrator picks
+it up and runs the execute method.
 
 We recommend using Apache Airflow as the Orchestrator, but other options are available, such as Flyte.
 
@@ -366,7 +367,8 @@ To set up Airflow as an Orchestrator to run delegated operations, you will need 
 Setting up a FiftyOne Orchestrator on Google Compute Engine
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Provision a VM with the resources required to run the operations you want to delegate. Take note of the IP of the VM, you'll need it in a later step.
+Provision a VM with the resources required to run the operations you want to delegate. Take note of the IP of the VM,
+you'll need it in a later step.
 
 See the :ref:`Media Cache Config<teams-media-cache-config>` section for more information on the resources required.
 
@@ -414,13 +416,17 @@ Open 2 more ssh sessions, and start the webserver and scheduler in each.
 
 **Add the Firewall Rule**
 
-Navigate to the networking / firewall rules section of the google cloud console and allow traffic on that port for the VM.
+Navigate to the networking / firewall rules section of the google cloud console and allow traffic on that port for the
+VM.
 
-Once this is done, you should be able to navigate to the airflow interface at `http://<vm ip>:8080` (or the port you chose) and log in with the credentials you created earlier.
+Once this is done, you should be able to navigate to the airflow interface at `http://<vm ip>:8080` (or the port you
+chose) and log in with the credentials you created earlier.
 
 **Mount the Plugins Directory**
 
-The orchestrator must have the same plugins available to it as the instance which queued the operation. This could be accomplished by either installing the plugins on the orchestrator, or by mounting the plugins directory from the instance which queued the operation.
+The orchestrator must have the same plugins available to it as the instance which queued the operation. This could be
+accomplished by either installing the plugins on the orchestrator, or by mounting the plugins directory from the
+instance which queued the operation.
 
 To mount the plugins directory, locate the ip of the nfs server then run the following commands on the orchestrator:
 
@@ -501,15 +507,38 @@ check the default dags path by running the following command:
 
 .. note:: The default dag folder path is `/home/<user>/airflow/dags`
 
-navigate to the dag folder and add the default airflow dag from the fiftyone-plugins repo, located at: `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_
+navigate to the dag folder and add the default airflow dag from the fiftyone-plugins repo, located at:
+`FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/orchestrators/airflow/run_delegated_operations.py>`_
 
-Open the airflow interface and ensure that the "Check Delegated Operations" DAG is visible. Any issues should be immediately visible as errors. Locate the dag and toggle it on, then refresh to make sure it's running. If no operations have been queued, it will still run a check and all runs should be green.
+Open the airflow interface and ensure that the "Check Delegated Operations" DAG is visible. Any issues should be
+immediately visible as errors. Locate the dag and toggle it on, then refresh to make sure it's running. If no operations
+have been queued, it will still run a check and all runs should be green.
 
 .. image:: /images/teams/airflow.png
    :alt: airflow-dag
    :align: center
 
-..note:: The Orchestrator will need to have all of the required dependencies installed for running the plugins. For example, if running the compute visualizations plugin, the orchestrator will need the `torch` and `torchvision` packages installed.
+..note:: The Orchestrator will need to have all of the required dependencies installed for running the plugins.
+For example, if running the compute visualizations plugin, the orchestrator will need the `torch` and `torchvision`
+packages installed.
+
+**Running Delegated Parallel Operations**
+
+Considerations should be taken when running parallel delegated operations, as concurrency issues may arise. For example,
+if two operations are running on the same dataset, the results may be unpredictable.
+
+Or, if the same operator is running in multiple operations, and that operator needs to download a model or other
+artifacts to a specific location, collisions could arise.
+
+With this said, it is possible to run operations in parallel on your orchestrator, but you should ensure that,
+at the very least, the operations are not writing to the same dataset.
+
+An example Airflow DAG which runs operations in parallel, and ensures only a single dataset is written to at a time,
+exists here:
+`FiftyOne Airflow Parallel Operations DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/orchestrators/airflow/run_parallel_delegated_operations.py>`_
+
+
+
 
 
 Managing Delegated Operator Runs
