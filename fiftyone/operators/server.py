@@ -180,14 +180,15 @@ async def _get_registry(
     if not any([dataset_name, operator_uri]):
         return await PermissionedOperatorRegistry.from_list_request(request)
     else:
-        registry = await PermissionedOperatorRegistry.from_exec_request(
+        global __REGISTRY
+        __REGISTRY = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=[dataset_name]
         )
 
     if operator_uri:
         _check_registry_permissions(operator_uri)
 
-    return registry
+    return __REGISTRY
 
 
 def _check_registry_permissions(operator_uri) -> None:
