@@ -252,19 +252,20 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         layer_name (None): the name of the embeddings layer whose output to
             save, or ``None`` if this model instance should not expose
             embeddings. Prepend ``"<"`` to save the input tensor instead
-        as_feature_extractor (False): whether this model instance should
-            operate as a feature extractor, in which case ``layer_name`` if provided
-            is used to create a feature extractor. If ``layer_name`` is not provided,
-            the model is used as-is for feature extraction.
+        as_feature_extractor (False): whether to operate the model as a feature
+            extractor. If ``layer_name`` is provided, this layer is passed to
+            torchvision's ``create_feature_extractor()`` function. If no
+            ``layer_name`` is provided, the model's output is used as-is for
+            feature extraction
     """
 
     def __init__(self, model, layer_name=None, as_feature_extractor=False):
         if as_feature_extractor:
-            if layer_name:
-                # create a torchvision feature extractor
+            if layer_name is not None:
                 self._model = create_feature_extractor(
                     model, return_nodes=[layer_name]
                 )
+
             embeddings_layer = None
         elif layer_name is not None:
             embeddings_layer = SaveLayerTensor(model, layer_name)
@@ -284,18 +285,18 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         else:
             args = [arg]
 
-        features = self._predict_all(args)
         if self._as_feature_extractor:
-            return features
-        else:
-            return self.get_embeddings()[0]
+            return self._predict_all(args)[0]
+
+        self._predict_all(args)
+        return self.get_embeddings()[0]
 
     def embed_all(self, args):
-        features = self._predict_all(args)
         if self._as_feature_extractor:
-            return features
-        else:
-            return self.get_embeddings()
+            return self._predict_all(args)
+
+        self._predict_all(args)
+        return self.get_embeddings()
 
     def get_embeddings(self):
         if not self.has_embeddings:
@@ -418,10 +419,11 @@ class TorchImageModelConfig(foc.Config):
             inputs that are lists of Tensors
         embeddings_layer (None): the name of a layer whose output to expose as
             embeddings. Prepend ``"<"`` to save the input tensor instead
-        as_feature_extractor (False): whether this model instance should be
-            treated as a feature extractor. If embedding_layer is provided,
-            then a feature extractor is created using torchvision, otherwise
-            the model itself is treated as a feature extractor.
+        as_feature_extractor (False): whether to operate the model as a feature
+            extractor. If ``embeddings_layer`` is provided, this layer is
+            passed to torchvision's ``create_feature_extractor()`` function. If
+            no ``embeddings_layer`` is provided, the model's output is used
+            as-is for feature extraction
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
         cudnn_benchmark (None): a value to use for
