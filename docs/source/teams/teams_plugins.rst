@@ -440,7 +440,7 @@ executes them.
 
     This section describes how to configure an
     `Apache Airflow <https://airflow.apache.org>`_ orchestrator, but other
-    options are availabe, such as `Flyte <https://flyte.org>`_. Delegated
+    options are available, such as `Flyte <https://flyte.org>`_. Delegated
     operations in FiftyOne Teams are designed to be workflow tool-agnostic.
 
 To set up Airflow as an orchestrator to run delegated operations, you will need
