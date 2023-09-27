@@ -25,6 +25,7 @@ from .executor import (
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
 
+
 __REGISTRY: typing.Union[
     OperatorRegistry, PermissionedOperatorRegistry, None
 ] = None
@@ -83,6 +84,9 @@ class ExecuteOperator(HTTPEndpoint):
         _check_registry_permissions(operator_uri)
 
         result = await execute_or_delegate_operator(operator_uri, data)
+        # Reset the registry after execution
+        global __REGISTRY
+        __REGISTRY = None
         return result.to_json()
 
 
@@ -150,7 +154,7 @@ class ResolveType(HTTPEndpoint):
 
 def _parse_dataset_and_operator(
     data: typing.Dict[str, str], error_if_none=True
-):
+) -> typing.Tuple[typing.Union[str, None], typing.Union[str, None]]:
     dataset_name = data.get("dataset_name", None)
     operator_uri = data.get("operator_uri", None)
     if error_if_none and (None in [dataset_name, operator_uri]):
@@ -165,11 +169,16 @@ async def _get_registry(
     request,
     dataset_name: typing.Optional[str] = None,
     operator_uri: typing.Optional[str] = None,
-) -> (PermissionedOperatorRegistry):
+) -> typing.Union[OperatorRegistry, PermissionedOperatorRegistry]:
+    """
+    Get the operator registry for the given request. Should be called only
+    once in the operator execution pipeline when the client resolves the
+    available operators in the UI.
+    """
     # For listing all operators known to the filesystem, dataset_name
     # and operator_uri may be None
     if not any([dataset_name, operator_uri]):
-        return await PermissionedOperatorRegistry.from_exec_request(request)
+        return await PermissionedOperatorRegistry.from_list_request(request)
     else:
         registry = await PermissionedOperatorRegistry.from_exec_request(
             request, dataset_ids=[dataset_name]
@@ -177,10 +186,11 @@ async def _get_registry(
 
     if operator_uri:
         _check_registry_permissions(operator_uri)
+
     return registry
 
 
-def _check_registry_permissions(operator_uri):
+def _check_registry_permissions(operator_uri) -> None:
     global __REGISTRY
     if __REGISTRY is None:
         # This should never happen, but just in case, raise an error rather
