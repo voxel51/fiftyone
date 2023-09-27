@@ -66,12 +66,13 @@ export const Looker3d = () => {
   const selectedLabels = useRecoilValue(fos.selectedLabels);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = useRecoilValue(fos.alpha);
   const onSelectLabel = fos.useOnSelectLabel();
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const colorScheme = useRecoilValue(fos.colorScheme).fields;
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorSchemeFields = colorScheme?.fields;
+  const labelAlpha = colorScheme.opacity;
   const getColor = useRecoilValue(fos.colorMap);
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
@@ -398,7 +399,7 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           let color: string;
-          const setting = colorScheme?.find((s) => s.path === path);
+          const setting = colorSchemeFields?.find((s) => s.path === path);
           if (coloring.by === "field") {
             if (isValidColor(setting?.fieldColor ?? "")) {
               color = setting.fieldColor;
@@ -444,7 +445,14 @@ export const Looker3d = () => {
           return { ...l, color, id: l._id };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sampleMap, selectedLabels, colorScheme]
+    [
+      coloring,
+      getColor,
+      pathFilter,
+      sampleMap,
+      selectedLabels,
+      colorSchemeFields,
+    ]
   );
 
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {
