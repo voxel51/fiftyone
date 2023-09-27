@@ -19,9 +19,9 @@ export const getSampleSrc = (url: string) => {
     }
   } catch {}
 
-  return `${getFetchOrigin()}${getFetchPathPrefix()}/media?filepath=${encodeURIComponent(
-    url
-  )}`;
+  const path = `${getFetchPathPrefix()}/media`.replaceAll("//", "/");
+
+  return `${getFetchOrigin()}${path}?filepath=${encodeURIComponent(url)}`;
 };
 
 export const getSanitizedGroupByExpression = (expression: string) => {
