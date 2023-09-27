@@ -24,6 +24,11 @@ scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
   border-radius: 16px;
   transition: box-shadow linear 0.5s;
 }
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 &:hover::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px ${theme.text.tertiary};
 }
