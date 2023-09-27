@@ -81,7 +81,7 @@ export const setFetchFunction = (
     const controller = new AbortController();
 
     if (fetchPathPrefix) {
-      path = `${fetchPathPrefix}${path}`;
+      path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
     }
 
     try {
@@ -254,7 +254,7 @@ export const getEventSource = (
     pollingEventSource(path, events, signal, body);
   } else {
     if (fetchPathPrefix) {
-      path = `${fetchPathPrefix}${path}`;
+      path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
     }
 
     fetchEventSource(`${getFetchOrigin()}${path}`, {
