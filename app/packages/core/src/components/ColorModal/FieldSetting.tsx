@@ -307,6 +307,9 @@ const FieldSetting = ({ path }: { path: string }) => {
       {coloring.by == "value" && !isTypeValueSupported && (
         <div>Color by value is not supported for this field type</div>
       )}
+      {coloring.by == "instance" && (
+        <div>Cannot customize settings under color by instance mode</div>
+      )}
     </div>
   );
 };
