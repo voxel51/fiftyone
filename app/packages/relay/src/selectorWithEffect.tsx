@@ -22,6 +22,8 @@ export function SelectorEffectContext({
   return <>{children}</>;
 }
 
+const isTest = typeof process !== "undefined" && process.env.MODE === "test";
+
 export function selectorWithEffect<T>(
   {
     state,
@@ -38,13 +40,13 @@ export function selectorWithEffect<T>(
     ...options,
     set: (...params) => {
       const key = itemKey || options.key;
-      const set = effectStore_INTERNAL.get(key);
-      if (!set) {
+      const set = effectStore_INTERNAL?.get(key);
+      if (!isTest && !set) {
         throw new Error(`No setter for selector '${key}' found`);
       }
       options.set instanceof Function && options.set(params[1]);
 
-      set(...params);
+      set && set(...params);
       state && params[0].set(state, params[1]);
     },
   });

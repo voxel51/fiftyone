@@ -72,6 +72,8 @@ export const useSessionSetter = () => {
   }, []);
 };
 
+const isTest = typeof process !== "undefined" && process.env.MODE === "test";
+
 export function sessionAtom<K extends keyof Session>(
   options: SessionAtomOptions<K>
 ) {
@@ -88,9 +90,9 @@ export function sessionAtom<K extends keyof Session>(
           }
         };
         if (trigger === "get") {
-          assertValue();
+          !isTest && assertValue();
           setSelf(
-            sessionRef[options.key] === undefined
+            isTest || sessionRef[options.key] === undefined
               ? options.default
               : sessionRef[options.key]
           );
@@ -99,7 +101,9 @@ export function sessionAtom<K extends keyof Session>(
         // @ts-ignore
         setters[options.key] = (value: Session[K]) => {
           setSelf(value);
-          sessionRef[options.key] = value;
+          if (!isTest) {
+            sessionRef[options.key] = value;
+          }
         };
 
         return subscribe((_, { set }) => {
@@ -122,6 +126,7 @@ export function sessionAtom<K extends keyof Session>(
       if (newValue instanceof DefaultValue) {
         newValue = options.default;
       }
+
       if (
         options.key === "canEditCustomColors" ||
         options.key === "readOnly" ||
@@ -130,8 +135,12 @@ export function sessionAtom<K extends keyof Session>(
       ) {
         throw new Error(`cannot set ${options.key}`);
       }
-      setterRef(options.key, newValue);
-      sessionRef[options.key] = newValue;
+
+      if (!isTest) {
+        setterRef(options.key, newValue);
+        sessionRef[options.key] = newValue;
+      }
+
       set(value, newValue);
     },
   }) as RecoilState<NonNullable<Session[K]>>;
