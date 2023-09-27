@@ -28,6 +28,8 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
     | ((newValue: Parameters<ReadWriteSelectorOptions<K>["set"]>[1]) => void);
 };
 
+const isTest = typeof process !== "undefined" && process.env.MODE === "test";
+
 /**
  * Creates a recoil atom synced with a relay fragment via its path in a query.
  * If the fragment path cannot be read from given the parent fragment keys and
@@ -45,8 +47,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
       ({ setSelf, trigger }) => {
         // recoil state should be initialized via RecoilRoot's initializeState
         // during tests
-        if (typeof process !== "undefined" && process.env.MODE === "test")
-          return;
+        if (isTest) return;
 
         if (trigger === "set") {
           return;
@@ -121,7 +122,10 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
       {
         key: `_${options.key}__setter`,
         get: ({ get }) => get(value),
-        state: fragmentOptions.selectorEffect === "write" ? value : undefined,
+        state:
+          fragmentOptions.selectorEffect === "write" || isTest
+            ? value
+            : undefined,
       },
       options.key
     );

@@ -89,8 +89,8 @@ export function sessionAtom<K extends keyof Session>(
             throw new Error(`A value is required session atom ${options.key}`);
           }
         };
-        if (trigger === "get") {
-          !isTest && assertValue();
+        if (trigger === "get" && !isTest) {
+          assertValue();
           setSelf(
             isTest || sessionRef[options.key] === undefined
               ? options.default
