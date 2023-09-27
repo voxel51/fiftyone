@@ -14,7 +14,7 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { VariablesOf } from "react-relay";
+import { PreloadedQuery, VariablesOf } from "react-relay";
 import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
@@ -311,8 +311,15 @@ export const groupByFieldValue = atom<string | null>({
   default: null,
 });
 
-export const nestedGroupIndex = atom<number>({
-  key: "nestedGroupIndex",
+export const dynamicGroupIndex = atom<number>({
+  key: "dynamicGroupIndex",
+  default: null,
+});
+
+export const dynamicGroupSamplesQueryRef = atom<
+  PreloadedQuery<foq.paginateSamplesQuery, {}>
+>({
+  key: "dynamicGroupSamplesQueryRef",
   default: null,
 });
 

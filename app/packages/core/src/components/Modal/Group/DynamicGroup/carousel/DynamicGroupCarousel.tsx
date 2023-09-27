@@ -1,14 +1,20 @@
 import { useTheme } from "@fiftyone/components";
+import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
 import React from "react";
+import { PreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import { DynamicGroupsFlashlightWrapper } from "./DynamicGroupsFlashlightWrapper";
 
 const MAX_CAROUSEL_HEIGHT = 600;
 
-export const DynamicGroupCarousel = () => {
+export const DynamicGroupCarousel = ({
+  queryRef,
+}: {
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery, {}>;
+}) => {
   const [height, setHeight] = useBrowserStorage(
     "dynamic-group-carousel-height",
     150
@@ -41,7 +47,7 @@ export const DynamicGroupCarousel = () => {
       }}
       data-cy={"group-carousel"}
     >
-      <DynamicGroupsFlashlightWrapper />
+      <DynamicGroupsFlashlightWrapper queryRef={queryRef} />
     </Resizable>
   );
 };

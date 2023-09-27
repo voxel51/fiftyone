@@ -1,6 +1,8 @@
 import { Bar } from "@fiftyone/components";
+import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useRef } from "react";
+import { PreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../../Actions";
@@ -24,7 +26,11 @@ const ElementsContainer = styled.div`
   justify-content: center;
 `;
 
-export const NonNestedDynamicGroup = () => {
+export const NonNestedDynamicGroup = ({
+  queryRef,
+}: {
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery, {}>;
+}) => {
   const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
@@ -47,7 +53,7 @@ export const NonNestedDynamicGroup = () => {
         <>
           {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
           {isCarouselVisible && (
-            <DynamicGroupCarousel key={groupByFieldValue} />
+            <DynamicGroupCarousel key={groupByFieldValue} queryRef={queryRef} />
           )}
           {isMainVisible && (
             <GroupSuspense>
@@ -62,7 +68,7 @@ export const NonNestedDynamicGroup = () => {
             </GroupSuspense>
           )}
         </>
-        <GroupElementsLinkBar />
+        <GroupElementsLinkBar queryRef={queryRef} />
       </ElementsContainer>
     </RootContainer>
   );
