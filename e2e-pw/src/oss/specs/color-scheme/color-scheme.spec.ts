@@ -16,17 +16,17 @@ const test = base.extend<{
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
   },
-  grid: async ({ page }, use) => {
-    await use(new GridPom(page));
+  grid: async ({ page, eventUtils }, use) => {
+    await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
   colorModal: async ({ page }, use) => {
     await use(new ColorModalPom(page));
   },
-  gridActionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
+  gridActionsRow: async ({ page, eventUtils }, use) => {
+    await use(new GridActionsRowPom(page, eventUtils));
   },
 });
 
@@ -61,7 +61,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("should be able to update color scheme", async ({
+  test("update color scheme's color pool", async ({
     grid,
     gridActionsRow,
     colorModal,
@@ -72,18 +72,17 @@ test.describe("color scheme basic functionality with quickstart", () => {
     await gridActionsRow.toggleColorSettings();
     await colorModal.selectActiveField("JSON editor");
     // mount eventListener
-    // const editorUpdatePromise =
-    // eventUtils.getEventReceivedPromiseForPredicate(
-    //   "json-viewer-update",
-    //   () => true
-    // );
+    const editorUpdatePromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "json-viewer-update",
+      () => true
+    );
     await colorModal.selectActiveField("Global settings");
     await colorModal.useColorBlindColors();
     // verify the color palette is updated in JSON editor
     await colorModal.selectActiveField("JSON editor");
     // mount eventListener
-    // await editorUpdatePromise
-    page.waitForTimeout(2000);
+    await editorUpdatePromise;
+
     // wait for json editor to load
     await expect(await colorModal.getJSONEditor()).toHaveScreenshot(
       "change-color-palette-json-editor.png",
@@ -106,37 +105,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  // TODO: input checkbox is not stable
-
-  // test("should be able to update color by field", async ({
-  //   sidebar,
-  //   grid,
-  //   gridActionsRow,
-  //   colorModal,
-  //   page,
-  // }) => {
-  //   // turn off ground_truth
-  //   await sidebar.clickFieldCheckbox("ground_truth");
-  //   // open color modal and modify color in sample tags field and predictions
-  //   await gridActionsRow.toggleColorSettings();
-
-  //   await colorModal.selectActiveField("predictions");
-  //   // await colorModal.useSpecialFieldColor('predictions');
-  //   await page
-  //     .getByTestId('checkbox-Use custom color for predictions field')
-  //     .locator("input")
-  //     .check({ force: true });
-  //   page.waitForSelector("[data-cy=field-color-div]");
-  //   await colorModal.setSpecialFieldColor("purple"); // purple
-  //   // close the modal and verify the color changed in grid and and in canvas
-  //   await colorModal.closeColorModal();
-  //   await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-  //     "color-field-setting-1.png",
-  //     { animations: "allow" }
-  //   );
-  // });
-
-  test("should be able to update color by value - tag", async ({
+  test("update color by value mode, use tag as colorByAttribute", async ({
     gridActionsRow,
     colorModal,
     page,
@@ -175,7 +144,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  test("should be able to update color by value - detection - no colorbyattribute", async ({
+  test("update color by value - detection - no colorbyattribute", async ({
     grid,
     gridActionsRow,
     colorModal,
@@ -195,18 +164,20 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .first()
       .click({ force: true });
     // I can set value colors directly bypass choosing attribute by value
-    await colorModal.addANewPair("bird", "yellow");
-    await colorModal.addANewPair("person", "red");
-    await colorModal.addANewPair("horse", "green");
-    await colorModal.addANewPair("cat", "blue");
-    await colorModal.addANewPair("bottle", "white");
-    await colorModal.addANewPair("surfboard", "white");
-    await colorModal.addANewPair("knife", "white");
-    await colorModal.addANewPair("fork", "white");
-    await colorModal.addANewPair("cup", "white");
-    await colorModal.addANewPair("dining table", "white");
-    await colorModal.addANewPair("chair", "white");
-    await colorModal.addANewPair("cake", "white");
+    await colorModal.addNewPairs([
+      { value: "bird", color: "yellow" },
+      { value: "person", color: "red" },
+      { value: "horse", color: "green" },
+      { value: "cat", color: "blue" },
+      { value: "bottle", color: "white" },
+      { value: "surfboard", color: "white" },
+      { value: "knife", color: "white" },
+      { value: "fork", color: "white" },
+      { value: "cup", color: "white" },
+      { value: "dining table", color: "white" },
+      { value: "chair", color: "white" },
+      { value: "cake", color: "white" },
+    ]);
 
     await colorModal.closeColorModal();
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -215,7 +186,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
     );
   });
 
-  test("should be able to update color by value - ground_truth - with custom string field", async ({
+  test("update color by value - ground_truth - with custom string field", async ({
     grid,
     sidebar,
     gridActionsRow,
@@ -237,10 +208,12 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .click({ force: true });
     // I can set value colors directly bypass choosing attribute by value 'str_field'
     // "foo", "bar", "spam", "eggs"
-    await colorModal.addANewPair("foo", "green");
-    await colorModal.addANewPair("bar", "purple");
-    await colorModal.addANewPair("spam", "yellow");
-    await colorModal.addANewPair("eggs", "blue");
+    await colorModal.addNewPairs([
+      { value: "foo", color: "green" },
+      { value: "bar", color: "purple" },
+      { value: "spam", color: "yellow" },
+      { value: "eggs", color: "blue" },
+    ]);
     await colorModal.selectColorByAttribute("str_field");
 
     await colorModal.closeColorModal();

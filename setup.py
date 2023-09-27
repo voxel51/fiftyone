@@ -46,7 +46,7 @@ INSTALL_REQUIRES = [
     "Jinja2>=3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
-    "kaleido",
+    "kaleido!=0.2.1.post1",
     "matplotlib",
     "mongoengine==0.24.2",
     "motor>=2.5",

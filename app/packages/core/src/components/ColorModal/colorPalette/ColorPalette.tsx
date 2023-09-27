@@ -133,7 +133,7 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
           </ColorSquare>
         ))}
         {colors.length < maxColors && (
-          <AddSquare onClick={handleColorAdd} data-cy="add-color">
+          <AddSquare onClick={handleColorAdd} data-cy="custom-colors-add-color">
             <AddIcon>+</AddIcon>
           </AddSquare>
         )}

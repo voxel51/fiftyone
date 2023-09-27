@@ -90,7 +90,7 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
           <SelectButton
             onClick={() => setOpen((o) => !o)}
             theme={theme}
-            data-cy="select-attribute"
+            data-cy="custom-colors-select-attribute"
           >
             <div>{selected}</div>
             {open ? (

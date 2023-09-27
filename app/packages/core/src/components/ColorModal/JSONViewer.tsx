@@ -5,13 +5,7 @@ import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
 import { Link } from "@mui/material";
 import colorString from "color-string";
-import {
-  default as React,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
@@ -75,14 +69,13 @@ const JSONViewer: React.FC = () => {
   useLayoutEffect(() => {
     setData(setting);
     if (ref?.current) {
-      console.log(ref?.current);
       ref?.current.dispatchEvent(
         new CustomEvent("json-viewer-update", {
           bubbles: true,
         })
       );
     }
-  }, [setting]);
+  }, [setting, ref]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 
