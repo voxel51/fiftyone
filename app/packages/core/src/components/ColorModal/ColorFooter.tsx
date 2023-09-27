@@ -100,7 +100,7 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme({
                 fields: [],
-                colorPool: useRecoilValue(fos.config).colorPool,
+                colorPool: configDefault.colorPool,
               });
             }}
             style={LONG_BUTTON_STYLE}

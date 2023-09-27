@@ -73,7 +73,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activeField = useRecoilValue(activeColorField);
   const colorScheme = useRecoilValue(fos.colorScheme);
-  // const { colorPool = [], fields } = useRecoilValue(fos.colorScheme);
+
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
     () => colorScheme.fields.find((s) => s.path == activeField.path),

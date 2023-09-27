@@ -63,18 +63,21 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
     (s) => s.path == activeField.path
   );
 
-  const options = subfields.map((field) => ({
-    value: field.path?.split(".").slice(-1)[0],
-    onClick: (e: React.MouseEvent) => {
-      e.preventDefault();
-      const copy = cloneDeep(currentColorScheme.fields);
-      if (index > -1) {
-        copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
-        setColorScheme({ ...currentColorScheme, fields: copy });
-        setOpen(false);
-      }
-    },
-  }));
+  const options = subfields.map((field) => {
+    const value = field.path?.split(".").slice(-1)[0];
+    return {
+      value,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        const copy = cloneDeep(currentColorScheme.fields);
+        if (index > -1) {
+          copy[index].colorByAttribute = value;
+          setColorScheme({ ...currentColorScheme, fields: copy });
+          setOpen(false);
+        }
+      },
+    };
+  });
 
   const selected =
     currentColorScheme.fields[index]?.colorByAttribute ??
