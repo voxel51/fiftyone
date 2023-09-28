@@ -1,9 +1,9 @@
 import { Bar } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { PreloadedQuery } from "react-relay";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { ModalActionsRow } from "../../../../Actions";
 import Sample from "../../../Sample";
@@ -35,11 +35,22 @@ export const NonNestedDynamicGroup = ({
   const lookerRef = useRef<fos.Lookers>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
+  const [isMainVisible, setIsMainVisible] = useRecoilState(
+    fos.groupMediaIsMainVisibleSetting
+  );
+  const viewMode = useRecoilValue(fos.nonNestedDynamicGroupsViewMode);
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
+
+  const isViewModePagination = viewMode === "pagination";
+
+  useEffect(() => {
+    if (!isMainVisible && isViewModePagination) {
+      setIsMainVisible(true);
+    }
+  }, [isMainVisible, isViewModePagination]);
 
   if (!groupByFieldValue) {
     return null;
@@ -52,10 +63,10 @@ export const NonNestedDynamicGroup = ({
       <ElementsContainer>
         <>
           {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
-          {isCarouselVisible && (
+          {isCarouselVisible && !isViewModePagination && (
             <DynamicGroupCarousel key={groupByFieldValue} />
           )}
-          {isMainVisible && (
+          {(isViewModePagination || isMainVisible) && (
             <GroupSuspense>
               {parent !== "point_cloud" ? (
                 <Sample
@@ -68,7 +79,7 @@ export const NonNestedDynamicGroup = ({
             </GroupSuspense>
           )}
         </>
-        <GroupElementsLinkBar queryRef={queryRef} />
+        {isViewModePagination && <GroupElementsLinkBar queryRef={queryRef} />}
       </ElementsContainer>
     </RootContainer>
   );

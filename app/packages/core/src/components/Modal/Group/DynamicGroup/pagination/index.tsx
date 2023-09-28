@@ -63,10 +63,10 @@ export const GroupElementsLinkBar = React.memo(
           getValue(sample.sample, dynamicGroupParameters.groupBy)
         );
 
-        if (current && current.id !== sample.id && currentGroup === nextGroup) {
+        if (current && current.id !== sample.id) {
           set(currentModalSample, { index: current.index, id: sample.id });
 
-          if (groupField) {
+          if (groupField && currentGroup === nextGroup) {
             set(fos.groupId, getValue(sample.sample, groupField)._id as string);
           }
         }
