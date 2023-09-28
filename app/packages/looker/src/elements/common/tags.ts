@@ -44,7 +44,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
   private colorPool: string[];
-  private colorByValue: boolean;
+  private colorBy: "field" | "value" | "instance";
   private colorSeed: number;
   private playing = false;
   private attributeVisibility: object;
@@ -82,7 +82,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
-        this.colorByValue === (coloring.by === "value") &&
+        this.colorBy === coloring.by &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         _.isEqual(this.attributeVisibility, attributeVisibility) &&
@@ -249,6 +249,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (!param.label) {
         return null;
       }
+
       return {
         path,
         value: param.label,
@@ -398,7 +399,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
-    this.colorByValue = coloring.by === "value";
+    this.colorBy = coloring.by;
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
