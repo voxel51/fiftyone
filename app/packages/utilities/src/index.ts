@@ -8,8 +8,8 @@ export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./styles";
 export * from "./paths";
+export * from "./styles";
 
 interface O {
   [key: string]: O | any;
@@ -256,6 +256,13 @@ export const LABEL_LIST = {
   Polylines: "polylines",
   TemporalDetections: "detections",
 };
+
+export const LABEL_LIST_PATH = Object.fromEntries(
+  Object.entries(LABEL_LIST).map(([docType, field]) => [
+    withPath(`fiftyone.core.labels`, docType),
+    field,
+  ])
+);
 
 export const NOT_VISIBLE_LIST = [
   "DictField",

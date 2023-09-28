@@ -7,7 +7,6 @@ import {
   DETECTION_FIELD,
   DISABLED_LABEL_FIELDS_VISIBILITY,
   DISABLED_PATHS,
-  EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT_FIELD,
   FRAME_NUMBER_FIELD,
   FRAME_SUPPORT_FIELD,
@@ -20,6 +19,7 @@ import {
   HEATMAP_FIELD,
   KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
+  LABEL_LIST_PATH,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   POLYLINE_DISABLED_SUB_PATHS,
@@ -31,11 +31,8 @@ import {
   SKIP_FIELD_TYPES,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
-  VALID_LABEL_LIST_TYPES,
   VALID_LABEL_TYPES,
   VALID_LIST_LABEL_FIELDS,
-  VALID_NON_LIST_LABEL_TYPES,
-  VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 
 const isMetadataField = (path: string) => {
@@ -140,7 +137,8 @@ export const skipField = (rawPath: string, schema: {}) => {
     parentField &&
     parentField.ftype === EMBEDDED_DOCUMENT_FIELD &&
     VALID_LIST_LABEL_FIELDS.includes(parentField.embeddedDocType) &&
-    VALID_PRIMITIVE_TYPES.includes(ftype)
+    `${parentField.path}.${LABEL_LIST_PATH[parentField.embeddedDocType]}` !==
+      path
   ) {
     return true;
   }
