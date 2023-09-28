@@ -53,7 +53,7 @@ export const NonNestedDynamicGroup = ({
         <>
           {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
           {isCarouselVisible && (
-            <DynamicGroupCarousel key={groupByFieldValue} queryRef={queryRef} />
+            <DynamicGroupCarousel key={groupByFieldValue} />
           )}
           {isMainVisible && (
             <GroupSuspense>

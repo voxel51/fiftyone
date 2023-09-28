@@ -12,7 +12,7 @@ export const DynamicGroup = () => {
   const environment = useRelayEnvironment();
   const dataset = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.dynamicGroupViewQuery);
-  const cursor = useRecoilValue(fos.dynamicGroupIndex);
+  const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
   const slice = useRecoilValue(fos.groupSlice(false));
 
   const loadDynamicGroupSamples = useCallback(
@@ -36,8 +36,8 @@ export const DynamicGroup = () => {
   );
 
   const queryRef = useMemo(
-    () => loadDynamicGroupSamples(cursor),
-    [loadDynamicGroupSamples, cursor]
+    () => loadDynamicGroupSamples(dynamicGroupIndex),
+    [loadDynamicGroupSamples, dynamicGroupIndex]
   );
 
   return (

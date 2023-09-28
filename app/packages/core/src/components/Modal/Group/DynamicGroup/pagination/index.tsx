@@ -110,7 +110,7 @@ export const GroupElementsLinkBar = React.memo(
     const onPageChange = useCallback(
       async (
         e: React.ChangeEvent<HTMLInputElement>,
-        newElementIndex: number
+        newElementIndex?: number
       ) => {
         if (newElementIndex === deferred) {
           return;

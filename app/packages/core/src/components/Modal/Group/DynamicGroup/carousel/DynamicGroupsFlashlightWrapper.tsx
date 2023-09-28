@@ -1,6 +1,5 @@
 import Flashlight from "@fiftyone/flashlight";
 import { Sample, freeVideos } from "@fiftyone/looker";
-import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import { get } from "lodash";
@@ -12,7 +11,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { PreloadedQuery } from "react-relay";
 import {
   selector,
   useRecoilCallback,
@@ -45,11 +43,7 @@ const pageParams = selector({
   },
 });
 
-export const DynamicGroupsFlashlightWrapper = ({
-  queryRef,
-}: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery, {}>;
-}) => {
+export const DynamicGroupsFlashlightWrapper = () => {
   const id = useId();
 
   const store = fos.useLookerStore();
