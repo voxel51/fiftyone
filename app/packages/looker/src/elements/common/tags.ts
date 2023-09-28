@@ -290,7 +290,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
             if (filter(path, [tag])) {
-              const v = coloring.by === "value" ? tag : "tags";
+              const v = coloring.by !== "field" ? tag : "tags";
               elements.push({
                 color: getAssignedColor({
                   coloring,
@@ -310,7 +310,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       } else if (path === "_label_tags") {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
-          const v = coloring.by === "value" ? tag : path;
+          const v = coloring.by !== "field" ? tag : path;
           if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
             elements.push({
               color: getColor(coloring.pool, coloring.seed, v),
