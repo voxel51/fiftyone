@@ -260,7 +260,7 @@ export function getAssignedColor({
     value,
     by === "value"
   );
-  debugger;
+
   if (by === "instance") {
     return getColor(
       coloring.pool,
