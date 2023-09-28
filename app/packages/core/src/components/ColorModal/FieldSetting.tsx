@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import {
   FLOAT_FIELD,
   NOT_VISIBLE_LIST,
+  SEGMENTATION,
   VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
