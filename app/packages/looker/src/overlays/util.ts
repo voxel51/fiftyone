@@ -5,7 +5,7 @@
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
-import { BaseLabel } from "./base";
+import { BaseLabel, RegularLabel } from "./base";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
   const [ctlx, ctly, cw, ch] = state.canvasBBox;
@@ -123,4 +123,12 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
       return [key, value];
     })
   );
+};
+
+export const getHashLabel = (label: RegularLabel): string => {
+  if ([null, undefined].includes(label["index"])) {
+    return `${label.label}.${label.index}`;
+  } else {
+    return `${label.label}.${label.id}`;
+  }
 };

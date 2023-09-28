@@ -1,6 +1,6 @@
 import { get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import { isRgbMaskTargets } from "../overlays/util";
+import { getHashLabel, isRgbMaskTargets } from "../overlays/util";
 import {
   Coloring,
   CustomizeColor,
@@ -21,6 +21,13 @@ export const PainterFactory = (requestColor) => ({
 
     const setting = customizeColorSetting?.find((s) => s.path === field);
     let color;
+    if (coloring.by === "instance") {
+      color = await requestColor(
+        coloring.pool,
+        coloring.seed,
+        getHashLabel(label)
+      );
+    }
     if (coloring.by === "field") {
       if (setting?.fieldColor) {
         color = setting.fieldColor;
@@ -32,9 +39,12 @@ export const PainterFactory = (requestColor) => ({
       if (setting) {
         const key = setting.colorByAttribute
           ? setting.colorByAttribute === "index"
-            ? "id"
+            ? label["index"] !== undefined
+              ? "index"
+              : "id"
             : setting.colorByAttribute
           : "label";
+
         const valueColor = setting?.valueColors?.find((l) => {
           if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
             return typeof label[key] === "string"
