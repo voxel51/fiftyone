@@ -7,8 +7,8 @@ export const activeColorEntry = atom<{ path: string } | ACTIVE_FIELD | null>({
   default: null,
 });
 
-export const activeColorField = selector({
-  key: "activeColorField",
+export const activeColorPath = selector<string>({
+  key: "activeColorPath",
   get: ({ get }) => {
     const entry = get(activeColorEntry);
 
@@ -16,11 +16,18 @@ export const activeColorField = selector({
       throw new Error(`active color entry is ${entry}`);
     }
 
-    const result = get(field(entry.path));
-    if (!result) {
-      throw new Error(`path ${entry.path} is not a field`);
+    return entry.path;
+  },
+});
+
+export const activeColorField = selector({
+  key: "activeColorField",
+  get: ({ get }) => {
+    const path = get(field(get(activeColorPath)));
+    if (!path) {
+      throw new Error(`path ${path} is not a field`);
     }
 
-    return result;
+    return path;
   },
 });

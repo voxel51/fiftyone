@@ -15,7 +15,7 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
-import { activeColorField } from "../state";
+import { activeColorPath } from "../state";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -38,15 +38,13 @@ type Prop = {
 const ColorAttribute: React.FC<Prop> = ({ style }) => {
   const theme = useTheme();
   const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
-  const path = useRecoilValue(activeColorField).path;
+  const path = useRecoilValue(activeColorPath);
+
   const expandedPath = useRecoilValue(fos.expandPath(path));
 
-  const commonExpandedPath = useRecoilValue(
-    fos.expandPath(expandedPath.startsWith("frames.") ? expandedPath : path)
-  );
   const subfields = useRecoilValue(
     fos.fields({
-      path: commonExpandedPath,
+      path: expandedPath,
       ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
     })
   ).filter((field) =>
@@ -57,9 +55,11 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activeField = useRecoilValue(activeColorField);
   const { colorPool, fields } = useRecoilValue(fos.colorScheme);
-  const index = fields.findIndex((s) => s.path == activeField.path);
+  if (!fields) {
+    throw new Error("no color scheme fields defined");
+  }
+  const index = fields.findIndex((s) => s.path == path);
 
   const options = subfields.map((field) => ({
     value: field.path?.split(".").slice(-1)[0],
