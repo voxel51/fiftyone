@@ -158,12 +158,12 @@ export const GroupElementsLinkBar = React.memo(
 
     const keyNavigationHandler = useRecoilCallback(
       () => (e: KeyboardEvent) => {
-        if (e.key === "<") {
+        if (e.key === ",") {
           e.preventDefault();
           setDynamicGroupCurrentElementIndex((prev) =>
             prev <= 1 ? prev : prev - 1
           );
-        } else if (e.key === ">") {
+        } else if (e.key === ".") {
           e.preventDefault();
           setDynamicGroupCurrentElementIndex((prev) =>
             prev >= elementsCount ? prev : prev + 1
