@@ -155,10 +155,11 @@ type OptionsProps = {
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
-      {modal && <DynamicGroupsViewMode />}
+      {modal && isNonNestedDynamicGroup && <DynamicGroupsViewMode />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
