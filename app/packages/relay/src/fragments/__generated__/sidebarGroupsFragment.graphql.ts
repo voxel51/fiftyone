@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4c717083ade5ef0874f432a6761646d2>>
+ * @generated SignedSource<<224f120cbee602f090fa7e189aa8a02f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,6 +18,7 @@ export type sidebarGroupsFragment$data = {
       readonly paths: ReadonlyArray<string> | null;
     }> | null;
   } | null;
+  readonly name: string;
   readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "sampleFieldsFragment">;
   readonly " $fragmentType": "sidebarGroupsFragment";
 };
@@ -26,12 +27,21 @@ export type sidebarGroupsFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"sidebarGroupsFragment">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
   "name": "sidebarGroupsFragment",
   "selections": [
+    (v0/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -62,13 +72,7 @@ const node: ReaderFragment = {
               "name": "paths",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "name",
-              "storageKey": null
-            }
+            (v0/*: any*/)
           ],
           "storageKey": null
         }
@@ -89,7 +93,8 @@ const node: ReaderFragment = {
   "type": "Dataset",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "9773f95e0982d690b47488b11a35c215";
+(node as any).hash = "3613f2a33c910c4e85495621b1c6ae34";
 
 export default node;

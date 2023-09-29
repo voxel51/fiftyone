@@ -15,7 +15,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
-import { activeColorField } from "../state";
+import { activeColorPath } from "../state";
 import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`
@@ -71,18 +71,18 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 }) => {
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activeField = useRecoilValue(activeColorField);
   const colorScheme = useRecoilValue(fos.colorScheme);
+  const activePath = useRecoilValue(activeColorPath);
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => colorScheme.fields.find((s) => s.path == activeField.path),
-    [activeField, colorScheme.fields]
+    () => colorScheme.fields?.find((s) => s.path == activePath),
+    [activePath, colorScheme.fields]
   );
 
   const index = useMemo(
-    () => colorScheme.fields.findIndex((s) => s.path == activeField.path),
-    [activeField, colorScheme.fields]
+    () => colorScheme.fields?.findIndex((s) => s.path == activePath),
+    [activePath, colorScheme.fields]
   );
 
   const defaultValue = {
@@ -190,7 +190,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(colorScheme.fields);
-      const idx = colorScheme.fields.findIndex(
+      const idx = colorScheme.fields?.findIndex(
         (s) => s.path == activeField.path
       );
       if (idx > -1) {
@@ -205,7 +205,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeField.path]);
+  }, [activePath]);
 
   useEffect(() => {
     setInput(!useLabelColors ? [] : values);

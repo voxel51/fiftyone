@@ -97,10 +97,7 @@ export abstract class CoordinateOverlay<
     options: { coloring, customizeColorSetting },
   }: Readonly<State>): string {
     let key;
-    // video fields path needs to be converted
-    const path = this.field.startsWith("frames.")
-      ? this.field.slice("frames.".length)
-      : this.field;
+    const path = this.field;
     const field = customizeColorSetting.find((s) => s.path === path);
     if (coloring.by === "field") {
       if (isValidColor(field?.fieldColor)) {

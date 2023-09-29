@@ -45,6 +45,7 @@ import {
   filterPaths,
   pathIsShown,
 } from "./schema";
+import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import {
@@ -55,7 +56,6 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
-import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -186,16 +186,16 @@ export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   sidebarGroups?: State.SidebarGroup[],
-  current: NonNullable<
+  config: NonNullable<
     sidebarGroupsFragment$data["appConfig"]
   >["sidebarGroups"] = []
 ): State.SidebarGroup[] => {
   let groups = sidebarGroups?.length
-    ? cloneDeep(sidebarGroups)
+    ? sidebarGroups
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
-  const expanded = current.reduce((map, { name, expanded }) => {
+  const expanded = config.reduce((map, { name, expanded }) => {
     map[name] = expanded;
     return map;
   }, {});
@@ -203,7 +203,7 @@ export const resolveGroups = (
   groups = groups.map((group) => {
     return expanded[group.name] !== undefined
       ? { ...group, expanded: expanded[group.name] }
-      : group;
+      : { ...group };
   });
 
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
@@ -297,7 +297,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
         fragments: [datasetFragment, sidebarGroupsFragment],
         keys: ["dataset"],
         sync: (modal) => !modal,
-        read: (data) => {
+        read: (data, prev) => {
           config = data.appConfig?.sidebarGroups || [];
           current = resolveGroups(
             collapseFields(
@@ -310,7 +310,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
               readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
                 .frameFields
             ),
-            current,
+            data.name === prev?.name ? current : [],
             config
           );
 

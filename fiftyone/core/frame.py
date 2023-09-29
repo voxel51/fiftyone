@@ -105,12 +105,7 @@ class Frames(object):
         self.add_frame(frame_number, frame)
 
     def __delitem__(self, frame_number):
-        self._replacements.pop(frame_number, None)
-
-        if not self._in_db:
-            return
-
-        self._delete_frames.add(frame_number)
+        self.delete_frame(frame_number)
 
     def __iter__(self):
         self._iter = self.keys()
@@ -317,6 +312,19 @@ class Frames(object):
             frame.set_field("frame_number", frame_number)
 
         self._set_replacement(frame)
+
+    def delete_frame(self, frame_number):
+        """Deletes the given frame number from this instance.
+
+        Args:
+            frame_number: the frame number
+        """
+        self._replacements.pop(frame_number, None)
+
+        if not self._in_db:
+            return
+
+        self._delete_frames.add(frame_number)
 
     def update(
         self,

@@ -4,9 +4,9 @@ import { useRecoilState, useSetRecoilState } from "recoil";
 
 import { Button } from "@fiftyone/components";
 
-import { form, header, text } from "./Teams.module.css";
-import { graphql, useMutation } from "react-relay";
 import * as fos from "@fiftyone/state";
+import { graphql, useMutation } from "react-relay";
+import { form, header, text } from "./Teams.module.css";
 
 const Teams = () => {
   const [formState, setFormState] = useState({
@@ -81,7 +81,7 @@ const Teams = () => {
         commit({ variables: {} });
         setTimeout(() => setOpen(false), 2000);
       })
-      .catch((e) => {
+      .catch((_) => {
         setSubmitText("Something went wrong");
       });
   };

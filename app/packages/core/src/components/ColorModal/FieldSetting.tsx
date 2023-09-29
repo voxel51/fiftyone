@@ -111,7 +111,6 @@ const FieldSetting = ({ path }: { path: string }) => {
   const isTypeValueSupported =
     !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
-  // non video frames. field expanded path
 
   const onChangeFieldColor = useCallback(
     (color: string) => {
@@ -176,17 +175,17 @@ const FieldSetting = ({ path }: { path: string }) => {
       {coloring.by == "field" && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
-            name={`Use custom color for ${field.path} field`}
+            name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
               setSetting(
                 v
                   ? {
-                      fieldColor: colorMap(field.path),
+                      fieldColor: colorMap(path),
                     }
                   : undefined
               );
-              setInput(colorMap(field.path));
+              setInput(colorMap(path));
             }}
           />
           {state?.useFieldColor && input && (
@@ -200,7 +199,7 @@ const FieldSetting = ({ path }: { path: string }) => {
               }}
             >
               <FieldColorSquare
-                color={setting?.fieldColor || colorMap(field.path)}
+                color={setting?.fieldColor || colorMap(path)}
                 onClick={toggleColorPicker}
                 id="color-square"
               >

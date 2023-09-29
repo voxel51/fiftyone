@@ -328,6 +328,7 @@ const FilterableEntry = ({
           {
             <FieldLabelAndInfo
               field={field ?? pseudoField}
+              path={path}
               color={color}
               expandedPath={expandedPath}
               template={({ hoverHandlers, hoverTarget, container }) => (

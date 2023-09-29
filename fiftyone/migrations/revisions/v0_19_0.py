@@ -67,11 +67,15 @@ def _up_runs(db, dataset_dict, runs_field):
 
     _runs = {}
     for key, run_doc in runs.items():
-        _id = ObjectId()
-        run_doc["_id"] = _id
-        run_doc["_dataset_id"] = dataset_dict["_id"]
-        _runs[key] = _id
-        db.runs.insert_one(run_doc)
+        if isinstance(run_doc, dict):
+            _id = ObjectId()
+            run_doc["_id"] = _id
+            run_doc["_dataset_id"] = dataset_dict["_id"]
+            _runs[key] = _id
+            db.runs.insert_one(run_doc)
+        else:
+            # Assume already migrated
+            _runs[key] = run_doc
 
     dataset_dict[runs_field] = _runs
 
@@ -84,15 +88,19 @@ def _down_runs(db, dataset_dict, runs_field):
 
     _runs = {}
     for key, _id in runs.items():
-        try:
-            run_doc = db.runs.find_one({"_id": _id})
-        except:
-            continue
+        if isinstance(_id, ObjectId):
+            try:
+                run_doc = db.runs.find_one({"_id": _id})
+            except:
+                continue
 
-        db.runs.delete_one({"_id": _id})
-        run_doc.pop("_id", None)
-        run_doc.pop("_dataset_id", None)
-        _runs[key] = run_doc
+            db.runs.delete_one({"_id": _id})
+            run_doc.pop("_id", None)
+            run_doc.pop("_dataset_id", None)
+            _runs[key] = run_doc
+        else:
+            # Assume already migrated
+            _runs[key] = _id
 
     dataset_dict[runs_field] = _runs
 
