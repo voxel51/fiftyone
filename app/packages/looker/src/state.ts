@@ -25,7 +25,6 @@ export interface CustomizeColor {
   path: string;
   fieldColor?: string;
   colorByAttribute?: string;
-  // attributeForOpacity?: string;
   valueColors?: {
     value: string;
     color: string;

@@ -4611,7 +4611,6 @@ class SelectGroupSlices(ViewStage):
         if self._force_mixed:
             return fom.MIXED
 
-        group_field = sample_collection.group_field
         group_media_types = sample_collection.group_media_types
 
         slices = self._get_slices(sample_collection)

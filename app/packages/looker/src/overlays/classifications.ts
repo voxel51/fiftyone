@@ -56,10 +56,7 @@ export class ClassificationsOverlay<
         ? label.label
         : field;
     const { coloring, customizeColorSetting } = state.options;
-    const f = field.startsWith("frames.")
-      ? field.slice("frames.".length)
-      : field;
-    const setting = customizeColorSetting.find((s) => s.path === f);
+    const setting = customizeColorSetting.find((s) => s.path === field);
 
     // check if the field has a customized color, use it if it is a valid color
     if (

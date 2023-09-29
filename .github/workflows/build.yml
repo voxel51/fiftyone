@@ -8,7 +8,7 @@ jobs:
     outputs:
       changes: ${{ steps.filter.outputs.changes }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v2
         id: filter
         with:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: true
       - name: Set up Python 3.8
@@ -56,7 +56,7 @@ jobs:
       - name: Build python
         run: make python -o app
       - name: Upload dist
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist/

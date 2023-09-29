@@ -5,7 +5,7 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DATABASE_ADMIN: true
       FIFTYONE_DO_NOT_TRACK: true
@@ -16,7 +16,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -96,6 +96,10 @@ jobs:
 
       - name: Run Playwright tests
         run: yarn e2e
+        working-directory: e2e-pw
+
+      - name: Lint Playwright tests
+        run: yarn lint
         working-directory: e2e-pw
 
       - name: Upload test report

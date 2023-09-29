@@ -4,6 +4,7 @@ import {
   groupField,
   groupMediaTypesMap,
   groupSlice,
+  modalGroupSlice,
   modalSample,
   nonPcdSamples,
   pinned3d,
@@ -18,11 +19,11 @@ import {
 
 export default ({ children }: React.PropsWithChildren<{}>) => {
   const modal = useRecoilValueLoadable(modalSample);
-  const slice = useRecoilValue(groupSlice(true));
+  const slice = useRecoilValue(modalGroupSlice);
   const resetGroupSlice = useRecoilCallback(
     ({ set, snapshot }) =>
       async () => {
-        let slice = await snapshot.getPromise(groupSlice(false));
+        let slice = await snapshot.getPromise(groupSlice);
 
         const mediaTypes = await snapshot.getPromise(groupMediaTypesMap);
         if (!slice || mediaTypes[slice] === "point_cloud") {
@@ -38,7 +39,7 @@ export default ({ children }: React.PropsWithChildren<{}>) => {
         }
 
         slice === null && set(pinned3d, true);
-        set(groupSlice(true), slice);
+        set(modalGroupSlice, slice);
       },
     []
   );

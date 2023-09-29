@@ -1,4 +1,4 @@
-import * as fos from "@fiftyone/state";
+import { ColorSchemeInput } from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
@@ -16,30 +16,14 @@ export const colorBlindFriendlyPalette = [
   "#cc79a7", // reddish purple
 ];
 
-export const fiftyoneDefaultColorPalette = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
-
-export const ACTIVE_FIELD = {
-  ["json"]: "JSON editor",
-  ["global"]: "Global settings",
-  ["_label_tags"]: "label tags",
-};
+export enum ACTIVE_FIELD {
+  JSON = "JSON editor",
+  GLOBAL = "Global settings",
+  LABEL_TAGS = "label tags",
+}
 
 // disregard the order
-export const isSameArray = (a: any[], b: any[]) => {
+export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {
   return isEmpty(xor(a, b));
 };
 
@@ -60,12 +44,13 @@ const getValidLabelColors = (labelColors: unknown[]) => {
 };
 
 // should return a valid customize color object that can be used to setCustomizeColor
-export const validateJSONSetting = (json: unknown[]) => {
-  const filtered = json?.filter(
-    (s) => s && isObject(s) && isString(s["path"])
-  ) as {}[];
+export const validateJSONSetting = (
+  json: ColorSchemeInput["fields"]
+): ColorSchemeInput["fields"] => {
+  const filtered =
+    json?.filter((s) => s && isObject(s) && isString(s["path"])) || [];
 
-  const f = filtered?.map((input) => ({
+  const f = filtered.map((input) => ({
     path: input["path"],
     fieldColor: input["fieldColor"] ?? null,
     colorByAttribute: isString(input["colorByAttribute"])
@@ -73,31 +58,24 @@ export const validateJSONSetting = (json: unknown[]) => {
       : null,
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
-      : null,
-  })) as fos.CustomizeColor[];
+      : [],
+  }));
 
-  // remove default settings
   return f.filter((x) => {
     const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.colorByAttribute;
     const hasLabelColors = x.valueColors && x.valueColors.length > 0;
     return hasFieldSetting || hasAttributeColor || hasLabelColors;
-  }) as fos.CustomizeColor[];
+  });
 };
 
-export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
-  return (
-    isSameArray(
-      savedSetting.colorPool,
-      fos.DEFAULT_APP_COLOR_SCHEME.colorPool
-    ) &&
-    (savedSetting.fields?.length == 0 || !savedSetting.fields)
-  );
-};
-
-export const getDisplayName = (path: string) => {
-  if (path === "tags") {
-    return "sample tags";
+export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
+  if (typeof path === "object") {
+    if (path.path === "tags") {
+      return "sample tags";
+    }
+    return path.path;
   }
+
   return path;
 };

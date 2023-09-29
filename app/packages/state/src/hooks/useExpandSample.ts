@@ -59,22 +59,20 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
         [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-        [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
       ];
 
-      const groupSlice = await snapshot.getPromise(
-        groupAtoms.groupSlice(false)
-      );
+      const slice = await snapshot.getPromise(groupAtoms.groupSlice);
 
       let pinned3d = false;
       let activeSlices = [];
-      if (groupSlice) {
+      if (slice) {
         const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-        if (map[groupSlice] === "point_cloud") {
+        if (map[slice] === "point_cloud") {
           pinned3d = true;
-          activeSlices = [groupSlice];
+          activeSlices = [slice];
         }
       }
+
       set(groupAtoms.pinned3d, pinned3d);
       set(groupAtoms.activePcdSlices, activeSlices);
 
