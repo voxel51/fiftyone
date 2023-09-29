@@ -4,6 +4,7 @@ import {
   Selector,
   TabOption,
 } from "@fiftyone/components";
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import { Alert } from "@mui/material";
@@ -40,7 +41,7 @@ export default ({
   close: (e?: React.MouseEvent<Element>) => void;
   isProcessing: boolean;
   setIsProcessing: (value: boolean) => void;
-  anchorRef: MutableRefObject<unknown>;
+  anchorRef: MutableRefObject<HTMLElement>;
 }) => {
   const [groupBy, setGroupBy] = useState<string>("");
   const [orderBy, setOrderBy] = useState<string>("");
@@ -60,11 +61,7 @@ export default ({
       [close]
     )
   );
-  const setView = useSetView(
-    true,
-    false,
-    useCallback(() => setIsProcessing(false), [setIsProcessing])
-  );
+  const setView = useSetView();
 
   const [validationError, setValidationError] = useState<string>("");
 
@@ -97,6 +94,10 @@ export default ({
     setIsProcessing(true);
     close();
 
+    const unsubscribe = subscribe(() => {
+      setIsProcessing(false);
+      unsubscribe();
+    });
     setView((v) => [
       ...v,
       {
@@ -149,7 +150,10 @@ export default ({
 
   return (
     <Popout modal={false} fixed anchorRef={anchorRef}>
-      <DynamicGroupContainer ref={ref}>
+      <DynamicGroupContainer
+        ref={ref}
+        data-cy={"dynamic-group-action-container"}
+      >
         {isDynamicGroupViewStageActive ? (
           <Button
             style={{
@@ -157,6 +161,7 @@ export default ({
               cursor: "pointer",
             }}
             onClick={onClear}
+            data-cy={"dynamic-group-action-reset"}
           >
             Reset Dynamic Groups
           </Button>
@@ -165,7 +170,7 @@ export default ({
             <PopoutSectionTitle>Group By</PopoutSectionTitle>
             <Selector
               id={SELECTOR_RESULTS_ID}
-              cy="group by"
+              cy="dynamic-group-action-group-by"
               inputStyle={{
                 fontSize: "1rem",
                 minWidth: "100%",
@@ -173,6 +178,7 @@ export default ({
               component={SelectorValueComponent}
               onSelect={setGroupBy}
               overflow={true}
+              overflowContainer={true}
               placeholder={"group by"}
               useSearch={groupByOptionsSearchSelector}
               value={groupBy ?? ""}
@@ -196,11 +202,12 @@ export default ({
             {useOrdered && (
               <Selector
                 id={SELECTOR_RESULTS_ID}
-                data-cy="order-by-selector"
+                cy="dynamic-group-action-order-by"
                 inputStyle={{ fontSize: "1rem", minWidth: "100%" }}
                 component={SelectorValueComponent}
                 onSelect={setOrderBy}
                 overflow={true}
+                overflowContainer={true}
                 placeholder={"order by"}
                 useSearch={groupByOptionsSearchSelector}
                 value={orderBy ?? ""}
@@ -219,7 +226,7 @@ export default ({
               </Alert>
             )}
             <Button
-              data-cy="dynamic-group-btn-submit"
+              data-cy="dynamic-group-action-submit"
               style={{
                 width: "100%",
                 marginTop: "0.5rem",

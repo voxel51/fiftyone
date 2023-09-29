@@ -915,7 +915,7 @@ Configuring plugins
 You can store system-wide plugin configurations under the `plugins` key of your
 App config.
 
-Plugins that you can configure include:
+Builtin plugins that you can configure include:
 
 -   The builtin :ref:`Map panel <app-map-panel>`
 -   The builtin :ref:`3D visualizer <app-3d-visualizer-config>`

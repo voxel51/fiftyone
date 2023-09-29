@@ -52,6 +52,33 @@ class MockOperator(Operator):
         return ExecutionResult(result={"executed": True})
 
 
+class MockGeneratorOperator(Operator):
+    def __init__(self, success=True, **kwargs):
+        self.success = success
+        super().__init__(**kwargs)
+
+    @property
+    def config(self):
+        return OperatorConfig(
+            name="mock_operator",
+            label="Mock Operator",
+            disable_schema_validation=True,
+            execute_as_generator=True,
+        )
+
+    def resolve_input(self, *args, **kwargs):
+        return
+
+    def resolve_delegation(self, ctx) -> bool:
+        return True
+
+    def execute(self, ctx):
+        if not self.success:
+            raise Exception("MockOperator failed")
+
+        yield {"executed": True}
+
+
 @patch(
     "fiftyone.operators.registry.OperatorRegistry.operator_exists",
     return_value=True,
@@ -240,6 +267,33 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(doc.failed_at)
 
         self.assertEqual(doc.result.result, {"executed": True})
+
+    def test_generator_run_success(
+        self, mock_get_operator, mock_operator_exists
+    ):
+
+        mock_get_operator.return_value = MockGeneratorOperator()
+
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/generator_op",
+            delegation_target=f"test_target_generator",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        self.svc.execute_queued_operations(
+            delegation_target="test_target_generator"
+        )
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertIsNotNone(doc.started_at)
+        self.assertIsNotNone(doc.queued_at)
+        self.assertIsNotNone(doc.completed_at)
+        self.assertIsNone(doc.result)
+        self.assertIsNone(doc.failed_at)
 
     @patch(
         "fiftyone.core.dataset.load_dataset",

@@ -264,7 +264,10 @@ def _delete_non_persistent_datasets_if_allowed():
                         {
                             "$match": {
                                 "appName": foc.DATABASE_APPNAME,
-                                "command.ismaster": 1,
+                                "$or": [
+                                    {"command.ismaster": 1},
+                                    {"command.hello": 1},
+                                ],
                             }
                         },
                     ]

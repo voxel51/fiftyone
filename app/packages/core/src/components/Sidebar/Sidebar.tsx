@@ -1,18 +1,15 @@
-import { Controller, animated, config } from "@react-spring/web";
-import React, { Suspense, useCallback, useRef, useState } from "react";
-import styled from "styled-components";
-
-import { move } from "@fiftyone/utilities";
-
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEventHandler, replace } from "@fiftyone/state";
-import { scrollbarStyles } from "@fiftyone/utilities";
+import { replace, useEventHandler } from "@fiftyone/state";
+import { move, scrollbarStyles } from "@fiftyone/utilities";
 import { Box } from "@mui/material";
+import { Controller, animated, config } from "@react-spring/web";
 import { Resizable } from "re-resizable";
+import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
+import styled from "styled-components";
 import SchemaSettings from "../Schema/SchemaSettings";
-import Filter from "./Entries/FilterEntry";
+import { Filter } from "./Entries";
 import { resizeHandle } from "./Sidebar.module.css";
 import ViewSelection from "./ViewSelection";
 
@@ -245,22 +242,18 @@ const isDisabledEntry = (
 ) => {
   if (entry.kind === fos.EntryKind.PATH) {
     return (
-      entry.path.startsWith("tags.") ||
-      entry.path.startsWith("_label_tags.") ||
+      entry.path === "tags" ||
+      entry.path === "_label_tags" ||
       disabled.has(entry.path)
     );
   }
 
   if (entry.kind === fos.EntryKind.EMPTY) {
-    return entry.group === "tags" || entry.group === "label tags";
+    return entry.group === "tags";
   }
 
   if (excludeGroups && entry.kind === fos.EntryKind.GROUP) {
-    return (
-      entry.name === "tags" ||
-      entry.name === "label tags" ||
-      entry.name === "other"
-    );
+    return entry.name === "tags" || entry.name === "other";
   }
 
   if (entry.kind === fos.EntryKind.INPUT) {
@@ -437,8 +430,6 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
-
-  const modalContainer = document.getElementById("modal");
 
   if (entries instanceof Error) {
     throw entries;
@@ -740,95 +731,101 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
-      {modalContainer && <SchemaSettings />}
+      <SchemaSettings />
       {!modal && (
-        <Suspense>
-          <Box
-            style={{
-              padding: 8,
-              paddingLeft: 16,
-              paddingRight: 16,
-              background: theme.background.mediaSpace,
-              borderTopRightRadius: 8,
-            }}
-          >
-            <ViewSelection id="saved-views" />
-          </Box>
-        </Suspense>
-      )}
-      <Suspense>
-        <Filter modal={modal} />
-        <SidebarColumn
-          ref={container}
-          data-cy="sidebar-column"
-          onScroll={({ target }) => {
-            if (start.current !== null) {
-              start.current += scroll.current - target.scrollTop;
-            }
-
-            scroll.current = target.scrollTop;
-            down.current && animate(last.current);
+        <Box
+          style={{
+            padding: 8,
+            paddingLeft: 16,
+            paddingRight: 16,
+            background: theme.background.mediaSpace,
+            borderTopRightRadius: 8,
           }}
         >
-          <Container style={containerController.springs}>
-            {order.current.map((key) => {
-              const entry = items.current[key].entry;
-              if (entry.kind === fos.EntryKind.GROUP) {
-                group = entry.name;
-              }
+          <ViewSelection id="saved-views" />
+        </Box>
+      )}
+      <Filter modal={modal} />
+      <SidebarColumn
+        ref={container}
+        data-cy="sidebar-column"
+        onScroll={({ target }) => {
+          if (start.current !== null) {
+            start.current += scroll.current - target.scrollTop;
+          }
 
-              const { shadow, cursor, ...springs } =
-                items.current[key].controller.springs;
-              const keyTrigger = ["tags", "_label_tags"].includes(key[1])
-                ? null
-                : trigger;
-              const { children } = render(
-                key,
-                group,
-                entry,
-                items.current[key].controller,
-                keyTrigger
-              );
-              const style = {};
-              if (entry.kind === fos.EntryKind.INPUT) {
-                style.zIndex = 0;
-              }
+          scroll.current = target.scrollTop;
+          down.current && animate(last.current);
+        }}
+      >
+        <Container style={containerController.springs}>
+          {order.current.map((key) => {
+            const entry = items.current[key].entry;
+            if (entry.kind === fos.EntryKind.GROUP) {
+              group = entry.name;
+            }
 
-              return (
-                <animated.div
-                  onMouseDownCapture={() => {
-                    lastTouched.current = undefined;
-                    placeItems();
-                  }}
-                  key={key}
-                  style={{
-                    ...springs,
-                    boxShadow: shadow.to(
-                      (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
-                    ),
-                    ...style,
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
+            const keyTrigger = ["tags", "_label_tags"].includes(key[1])
+              ? null
+              : trigger;
+            const { children } = render(
+              key,
+              group,
+              entry,
+              items.current[key].controller,
+              keyTrigger
+            );
+            const style = {};
+            if (entry.kind === fos.EntryKind.INPUT) {
+              style.zIndex = 0;
+            }
+
+            let dataCy = `-field`;
+            if (entry.kind === fos.EntryKind.GROUP) {
+              dataCy = `sidebar-group-${entry.name}` + dataCy;
+            } else if (entry.kind === fos.EntryKind.PATH) {
+              dataCy = entry.path + dataCy;
+            } else {
+              dataCy = "sidebar" + dataCy;
+            }
+
+            return (
+              <animated.div
+                data-cy={dataCy}
+                onMouseDownCapture={() => {
+                  lastTouched.current = undefined;
+                  placeItems();
+                }}
+                key={key}
+                style={{
+                  ...springs,
+                  boxShadow: shadow.to(
+                    (s) => `rgba(0, 0, 0, 0.15) 0px ${s}px ${2 * s}px 0px`
+                  ),
+                  ...style,
+                }}
+              >
+                <div
+                  ref={(node) => {
+                    if (!items.current[key]) {
+                      return;
+                    }
+
+                    items.current[key].el &&
+                      observer.unobserve(items.current[key].el);
+                    node && observer.observe(node);
+                    items.current[key].el = node;
                   }}
                 >
-                  <div
-                    ref={(node) => {
-                      if (!items.current[key]) {
-                        return;
-                      }
-
-                      items.current[key].el &&
-                        observer.unobserve(items.current[key].el);
-                      node && observer.observe(node);
-                      items.current[key].el = node;
-                    }}
-                  >
-                    {children}
-                  </div>
-                </animated.div>
-              );
-            })}
-          </Container>
-        </SidebarColumn>
-      </Suspense>
+                  {children}
+                </div>
+              </animated.div>
+            );
+          })}
+        </Container>
+      </SidebarColumn>
     </Resizable>
   ) : null;
 };

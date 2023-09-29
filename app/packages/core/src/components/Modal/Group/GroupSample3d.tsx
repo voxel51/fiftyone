@@ -14,7 +14,7 @@ import { GroupSampleWrapper } from "./GroupSampleWrapper";
 const Sample3dWrapper = () => {
   const sample = useRecoilValue(fos.pinned3DSample);
   const [pinned, setPinned] = useRecoilState(fos.pinned3d);
-  const hover = fos.useHoveredSample(sample);
+  const hover = fos.useHoveredSample(sample.sample);
   const hasGroupView = !useRecoilValue(fos.onlyPcd);
 
   return hasGroupView ? (
@@ -37,7 +37,7 @@ export default () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
-  const groupSlice = useRecoilValue(fos.groupSlice(true));
+  const groupSlice = useRecoilValue(fos.groupSlice);
   const modalId = useRecoilValue(fos.modalSampleId);
 
   if (pcdSlices.state === "hasError") {

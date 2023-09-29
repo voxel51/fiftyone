@@ -5,7 +5,10 @@ Builtin operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
+
 import fiftyone as fo
+import fiftyone.core.storage as fos
 import fiftyone.operators as foo
 import fiftyone.operators.types as types
 
@@ -284,6 +287,77 @@ class PrintStdout(foo.Operator):
         return {"msg": ctx.params.get("msg", None)}
 
 
+class ListFiles(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="list_files",
+            label="List Files",
+            unlisted=True,
+        )
+
+    def execute(self, ctx):
+        path = ctx.params.get("path", None)
+        list_filesystems = ctx.params.get("list_filesystems", False)
+        if list_filesystems:
+            # this should
+            return {"filesystems": list_fileystems()}
+
+        if path:
+            try:
+                return {"files": list_files(path)}
+            except Exception as e:
+                return {"files": [], "error": str(e)}
+
+
+def get_default_path_for_filesystem(fs):
+    if fs == fos.FileSystem.LOCAL:
+        HOME = os.environ.get("HOME", None)
+        return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
+    # elif fs == fos.FileSystem.GCS:
+    #     return "gs://"
+    # elif fs == fos.FileSystem.S3:
+    #     return "s3://"
+    else:
+        raise ValueError("Unsupported file system '%s'" % fs)
+
+
+def list_fileystems():
+    filesystems = fos.list_available_file_systems()
+    results = []
+    for fs in fos.FileSystem:
+        if fs in filesystems:
+            results.append(
+                {
+                    "name": fs.name,
+                    "default_path": get_default_path_for_filesystem(fs),
+                }
+            )
+    return results
+
+
+def list_files(dirpath):
+    dirs = [
+        {
+            "name": name,
+            "type": "directory",
+            "absolute_path": fos.join(dirpath, name),
+        }
+        for name in fos.list_subdirs(dirpath)
+    ]
+    files = [
+        {
+            "name": d["name"],
+            "date_modified": d["last_modified"].isoformat(),
+            "type": "file",
+            "size": d["size"],
+            "absolute_path": fos.join(dirpath, d["name"]),
+        }
+        for d in fos.list_files(dirpath, return_metadata=True)
+    ]
+    return dirs + files
+
+
 BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
@@ -291,4 +365,5 @@ BUILTIN_OPERATORS = [
     DeleteSelectedSamples(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
+    ListFiles(_builtin=True),
 ]

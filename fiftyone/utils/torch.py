@@ -18,6 +18,7 @@ from PIL import Image
 import eta.core.geometry as etag
 import eta.core.learning as etal
 import eta.core.utils as etau
+from torchvision.models.feature_extraction import create_feature_extractor
 
 import fiftyone.core.config as foc
 import fiftyone.core.labels as fol
@@ -251,19 +252,32 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         layer_name (None): the name of the embeddings layer whose output to
             save, or ``None`` if this model instance should not expose
             embeddings. Prepend ``"<"`` to save the input tensor instead
+        as_feature_extractor (False): whether to operate the model as a feature
+            extractor. If ``layer_name`` is provided, this layer is passed to
+            torchvision's ``create_feature_extractor()`` function. If no
+            ``layer_name`` is provided, the model's output is used as-is for
+            feature extraction
     """
 
-    def __init__(self, model, layer_name=None):
-        if layer_name is not None:
+    def __init__(self, model, layer_name=None, as_feature_extractor=False):
+        if as_feature_extractor:
+            if layer_name is not None:
+                self._model = create_feature_extractor(
+                    model, return_nodes=[layer_name]
+                )
+
+            embeddings_layer = None
+        elif layer_name is not None:
             embeddings_layer = SaveLayerTensor(model, layer_name)
         else:
             embeddings_layer = None
 
         self._embeddings_layer = embeddings_layer
+        self._as_feature_extractor = as_feature_extractor
 
     @property
     def has_embeddings(self):
-        return self._embeddings_layer is not None
+        return self._embeddings_layer is not None or self._as_feature_extractor
 
     def embed(self, arg):
         if isinstance(arg, torch.Tensor):
@@ -271,10 +285,16 @@ class TorchEmbeddingsMixin(fom.EmbeddingsMixin):
         else:
             args = [arg]
 
+        if self._as_feature_extractor:
+            return self._predict_all(args)[0]
+
         self._predict_all(args)
         return self.get_embeddings()[0]
 
     def embed_all(self, args):
+        if self._as_feature_extractor:
+            return self._predict_all(args)
+
         self._predict_all(args)
         return self.get_embeddings()
 
@@ -399,6 +419,11 @@ class TorchImageModelConfig(foc.Config):
             inputs that are lists of Tensors
         embeddings_layer (None): the name of a layer whose output to expose as
             embeddings. Prepend ``"<"`` to save the input tensor instead
+        as_feature_extractor (False): whether to operate the model as a feature
+            extractor. If ``embeddings_layer`` is provided, this layer is
+            passed to torchvision's ``create_feature_extractor()`` function. If
+            no ``embeddings_layer`` is provided, the model's output is used
+            as-is for feature extraction
         use_half_precision (None): whether to use half precision (only
             supported when using GPU)
         cudnn_benchmark (None): a value to use for
@@ -465,6 +490,9 @@ class TorchImageModelConfig(foc.Config):
         self.embeddings_layer = self.parse_string(
             d, "embeddings_layer", default=None
         )
+        self.as_feature_extractor = self.parse_bool(
+            d, "as_feature_extractor", default=False
+        )
         self.use_half_precision = self.parse_bool(
             d, "use_half_precision", default=None
         )
@@ -519,7 +547,10 @@ class TorchImageModel(
 
         fom.LogitsMixin.__init__(self)
         TorchEmbeddingsMixin.__init__(
-            self, self._model, layer_name=self.config.embeddings_layer
+            self,
+            self._model,
+            layer_name=self.config.embeddings_layer,
+            as_feature_extractor=self.config.as_feature_extractor,
         )
 
     def __enter__(self):
@@ -1000,6 +1031,11 @@ class SaveLayerTensor(object):
 
         if _layer is None:
             raise ValueError("No layer found with name %s" % layer_name)
+        elif isinstance(_layer, torch.nn.Identity):
+            raise ValueError(
+                "Layer '%s' is an Identity layer. Use previous layer."
+                % layer_name
+            )
 
         _layer.register_forward_hook(self)
 

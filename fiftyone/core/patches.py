@@ -93,6 +93,7 @@ class _PatchesView(fov.DatasetView):
         patches_stage,
         patches_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         if _stages is None:
@@ -102,6 +103,7 @@ class _PatchesView(fov.DatasetView):
         self._patches_stage = patches_stage
         self._patches_dataset = patches_dataset
         self.__stages = _stages
+        self.__media_type = _media_type
         self.__name = _name
 
     def __copy__(self):
@@ -110,6 +112,7 @@ class _PatchesView(fov.DatasetView):
             deepcopy(self._patches_stage),
             self._patches_dataset,
             _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
             _name=self.__name,
         )
 
@@ -153,8 +156,25 @@ class _PatchesView(fov.DatasetView):
         raise NotImplementedError("subclass must implement _label_fields")
 
     @property
+    def name(self):
+        return self.__name
+
+    @property
+    def is_saved(self):
+        return self.__name is not None
+
+    @property
     def media_type(self):
-        return fom.IMAGE
+        if self.__media_type is not None:
+            return self.__media_type
+
+        return self._dataset.media_type
+
+    def _set_name(self, name):
+        self.__name = name
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if label_field in self._label_fields:
@@ -440,6 +460,7 @@ class PatchesView(_PatchesView):
         patches_stage,
         patches_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         super().__init__(
@@ -447,6 +468,7 @@ class PatchesView(_PatchesView):
             patches_stage,
             patches_dataset,
             _stages=_stages,
+            _media_type=_media_type,
             _name=_name,
         )
 
@@ -494,6 +516,7 @@ class EvaluationPatchesView(_PatchesView):
         patches_stage,
         patches_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         super().__init__(
@@ -501,6 +524,7 @@ class EvaluationPatchesView(_PatchesView):
             patches_stage,
             patches_dataset,
             _stages=_stages,
+            _media_type=_media_type,
             _name=_name,
         )
 

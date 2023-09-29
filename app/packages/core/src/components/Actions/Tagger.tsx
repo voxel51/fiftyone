@@ -312,7 +312,7 @@ const useTagCallback = (
 
   const finalize = [
     () => setLabels([]),
-    () => setSamples([]),
+    () => setSamples(new Set()),
     () => setAggs((cur) => cur + 1),
     ...[
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
@@ -339,7 +339,7 @@ const useTagCallback = (
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
                   slices,
-                  slice: await snapshot.getPromise(fos.groupSlice(false)),
+                  slice: await snapshot.getPromise(fos.groupSlice),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,
@@ -347,7 +347,7 @@ const useTagCallback = (
             sampleId: modal
               ? await snapshot.getPromise(fos.sidebarSampleId)
               : null,
-            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedLabels: await snapshot.getPromise(fos.selectedLabels),
             selectedSamples: await snapshot.getPromise(fos.selectedSamples),
             targetLabels,
             view: await snapshot.getPromise(fos.view),
@@ -442,7 +442,6 @@ const SuspenseLoading = () => {
 
 type TaggerProps = {
   modal: boolean;
-  bounds: any;
   close: () => void;
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
@@ -450,13 +449,7 @@ type TaggerProps = {
   anchorRef?: MutableRefObject<HTMLDivElement>;
 };
 
-const Tagger = ({
-  modal,
-  bounds,
-  close,
-  lookerRef,
-  anchorRef,
-}: TaggerProps) => {
+const Tagger = ({ modal, close, lookerRef, anchorRef }: TaggerProps) => {
   const [labels, setLabels] = useState(modal);
   const elementNames = useRecoilValue(fos.elementNames);
   const theme = useTheme();
@@ -481,7 +474,6 @@ const Tagger = ({
     <Popout
       style={{ width: "12rem" }}
       modal={modal}
-      bounds={bounds}
       fixed
       anchorRef={anchorRef}
     >

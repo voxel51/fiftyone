@@ -16,7 +16,6 @@ from .plugins import Plugins
 from .select import Select
 from .sort import Sort
 from .screenshot import Screenshot
-from .stages import Stages
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
@@ -36,7 +35,6 @@ routes = (
         ("/plugins", Plugins),
         ("/select", Select),
         ("/sort", Sort),
-        ("/stages", Stages),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),
         ("/tagging", Tagging),

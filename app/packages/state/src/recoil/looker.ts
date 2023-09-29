@@ -66,7 +66,7 @@ export const lookerOptions = selectorFamily<
         ...video,
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring),
-        customizeColorSetting: get(atoms.sessionColorScheme).fields ?? [],
+        customizeColorSetting: get(atoms.colorScheme).fields ?? [],
         attributeVisibility: get(attributeVisibility),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
@@ -80,7 +80,7 @@ export const lookerOptions = selectorFamily<
         showSkeletons: get(
           selectors.appConfigOption({ key: "showSkeletons", modal: false })
         ),
-        defaultSkeleton: get(atoms.dataset).defaultSkeleton,
+        defaultSkeleton: get(atoms.dataset)?.defaultSkeleton,
         skeletons: Object.fromEntries(
           get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
         ),

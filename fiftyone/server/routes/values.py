@@ -46,9 +46,6 @@ class Values(HTTPEndpoint):
             ),
         )
 
-        if view.media_type == fom.GROUP:
-            view = view.select_group_slices(_allow_mixed=True)
-
         if sample_id is not None:
             view = view.select(sample_id)
 

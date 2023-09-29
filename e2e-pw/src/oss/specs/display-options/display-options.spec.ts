@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
-import { HistogramPom } from "src/oss/poms/histogram-panel";
-import { PanelPom } from "src/oss/poms/panel";
+import { HistogramPom } from "src/oss/poms/panels/histogram-panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const test = base.extend<{
@@ -9,8 +9,8 @@ const test = base.extend<{
   histogram: HistogramPom;
   panel: PanelPom;
 }>({
-  actionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
+  actionsRow: async ({ page, eventUtils }, use) => {
+    await use(new GridActionsRowPom(page, eventUtils));
   },
   histogram: async ({ page, eventUtils }, use) => {
     await use(new HistogramPom(page, eventUtils));
@@ -46,5 +46,6 @@ test.describe("Display Options", () => {
     await panel.bringPanelToForeground("Histograms");
 
     await histogram.assert.isLoaded();
+    await panel.bringPanelToForeground("Samples");
   });
 });

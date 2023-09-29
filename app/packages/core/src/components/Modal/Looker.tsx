@@ -1,9 +1,9 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
   MutableRefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -12,8 +12,6 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-
-type EventCallback = (event: CustomEvent) => void;
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -52,7 +50,7 @@ const useClearSelectedLabels = () => {
   return useRecoilCallback(
     ({ set }) =>
       async () =>
-        set(fos.selectedLabels, {}),
+        set(fos.selectedLabels, []),
     []
   );
 };
@@ -72,7 +70,7 @@ const Looker = ({
   const [id] = useState(() => uuid());
 
   const modalSampleData = useRecoilValue(fos.modalSample);
-  const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
 
   const sampleData = useMemo(() => {
     if (propsSampleData) {
@@ -88,6 +86,7 @@ const Looker = ({
   const { sample } = sampleData;
 
   const theme = useTheme();
+  const clearModal = fos.useClearModal();
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
@@ -111,7 +110,7 @@ const Looker = ({
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sample, sessionColorScheme]);
+  }, [sample, colorScheme]);
 
   useEffect(() => {
     return () => looker && looker.destroy();
@@ -128,15 +127,21 @@ const Looker = ({
     setReset((c) => !c);
   });
 
-  useEventHandler(looker, "close", (e: Event) => {
-    jsonPanel.close();
-    helpPanel.close();
-  });
+  const jsonPanel = fos.useJSONPanel();
+  const helpPanel = fos.useHelpPanel();
+
+  useEventHandler(
+    looker,
+    "close",
+    useCallback(() => {
+      jsonPanel.close();
+      helpPanel.close();
+      clearModal();
+    }, [clearModal, jsonPanel, helpPanel])
+  );
 
   useEventHandler(looker, "select", useOnSelectLabel());
   useEventHandler(looker, "error", (event) => handleError(event.detail));
-  const jsonPanel = fos.useJSONPanel();
-  const helpPanel = fos.useHelpPanel();
   useEventHandler(
     looker,
     "panels",
@@ -181,8 +186,16 @@ const Looker = ({
     }));
   }, [hoveredSample, sample, looker]);
 
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.dispatchEvent(
+      new CustomEvent(`looker-attached`, { bubbles: true })
+    );
+  }, [ref]);
+
   return (
     <div
+      ref={ref}
       id={id}
       data-cy="modal-looker-container"
       style={{

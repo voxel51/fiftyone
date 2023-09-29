@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
@@ -15,7 +16,10 @@ export class ModalPom {
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils
+  ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
 
@@ -28,8 +32,29 @@ export class ModalPom {
     this.video = new ModalVideoControlsPom(page, this);
   }
 
-  async toggleSelection() {
-    await this.looker.hover();
+  get groupLooker() {
+    return this.locator
+      .getByTestId("group-sample-wrapper")
+      .getByTestId("looker");
+  }
+
+  get looker3d() {
+    return this.locator.getByTestId("looker3d");
+  }
+
+  get carousel() {
+    return this.locator.getByTestId("group-carousel");
+  }
+
+  getLookerAttachedEvent() {
+    return this.eventUtils.getEventReceivedPromiseForPredicate(
+      "looker-attached",
+      () => true
+    );
+  }
+
+  async toggleSelection(pcd = false) {
+    pcd ? await this.looker3d.hover() : await this.looker.hover();
     await this.locator.getByTestId("selectable-bar").click();
   }
 
@@ -145,20 +170,12 @@ export class ModalPom {
     return this.navigateSample("backward", allowErrorInfo);
   }
 
-  getLooker3d() {
-    return this.locator.getByTestId("looker3d");
-  }
-
   async clickOnLooker3d() {
-    return this.getLooker3d().click();
+    return this.looker3d.click();
   }
 
   async clickOnLooker() {
     return this.looker.click();
-  }
-
-  getGroupContainer() {
-    return this.locator.getByTestId("group-container");
   }
 
   async waitForSampleLoadDomAttribute(allowErrorInfo = false) {
@@ -187,6 +204,11 @@ export class ModalPom {
 
 class ModalAsserter {
   constructor(private readonly modalPom: ModalPom) {}
+
+  async verifyModalOpenedSuccessfully() {
+    await this.modalPom.waitForSampleLoadDomAttribute();
+    await expect(this.modalPom.locator).toBeVisible();
+  }
 
   async verifySelectionCount(n: number) {
     const action = this.modalPom.locator.getByTestId("action-manage-selected");
