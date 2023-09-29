@@ -210,16 +210,12 @@ export function getAbsolutePluginPath(name: string, path: string): string {
  * @returns A list of active plugins
  */
 export function useActivePlugins(type: PluginComponentType, ctx: any) {
-  return useMemo(
-    () =>
-      usePlugin(type).filter((p) => {
-        if (typeof p.activator === "function") {
-          return p.activator(ctx);
-        }
-        return false;
-      }),
-    [ctx]
-  );
+  return usePlugin(type).filter((p) => {
+    if (typeof p.activator === "function") {
+      return p.activator(ctx);
+    }
+    return false;
+  });
 }
 
 /**
