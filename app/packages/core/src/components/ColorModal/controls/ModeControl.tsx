@@ -1,5 +1,4 @@
-import { useTheme } from "@fiftyone/components/src/components";
-import PopoutDiv from "@fiftyone/components/src/components/Popout/PopoutDiv";
+import { PopoutDiv, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
