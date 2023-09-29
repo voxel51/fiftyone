@@ -13,10 +13,14 @@ export const DynamicGroup = () => {
   const dataset = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.dynamicGroupViewQuery);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
-  const slice = useRecoilValue(fos.groupSlice(false));
+  const slice = useRecoilValue(fos.groupSlice);
 
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
+      if (!dataset) {
+        throw new Error("No dataset");
+      }
+
       return loadQuery<foq.paginateSamplesQuery>(
         environment,
         foq.paginateSamples,

@@ -137,11 +137,6 @@ export const DynamicGroupsFlashlightWrapper = () => {
       horizontal: true,
       containerId: DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID,
       elementId: DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID,
-      enableHorizontalKeyNavigation: {
-        navigationCallback,
-        previousKey: ",",
-        nextKey: ".",
-      },
       initialRequestKey: 0,
       onItemClick: (_, id) => setSample(id),
       options: {
