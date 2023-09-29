@@ -111,7 +111,6 @@ const FieldSetting = ({ path }: { path: string }) => {
   const isTypeValueSupported =
     !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
-  // non video frames. field expanded path
 
   const onChangeFieldColor = useCallback(
     (color: string) => {
