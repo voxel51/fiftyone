@@ -22,7 +22,6 @@ from fiftyone.server.data import Info
 import fiftyone.core.dataset as fod
 
 import fiftyone.server.mutation as fosm
-from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import BSONArray
 
 from fiftyone.teams.query import User
@@ -72,8 +71,7 @@ class Mutation(fosm.Mutation):
         saved_view_slug: t.Optional[str],
         form: t.Optional[fosm.StateForm],
         info: Info,
-    ) -> fosm.ViewResponse:
-
+    ) -> BSONArray:
         result_view = None
         if saved_view_slug is not None:
             try:
@@ -82,7 +80,7 @@ class Mutation(fosm.Mutation):
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
                 loaded_at = datetime.datetime.utcnow()
-                res = await _update_view_activity(
+                await _update_view_activity(
                     result_view.name, ds, loaded_at, info
                 )
             except:
@@ -98,15 +96,7 @@ class Mutation(fosm.Mutation):
             )
 
         result_view = fosm._build_result_view(result_view, form)
-        serialized_view = result_view._serialize()
-
-        dataset = await Dataset.resolver(
-            name=dataset_name,
-            view=serialized_view,
-            saved_view_slug=saved_view_slug,
-            info=info,
-        )
-        return fosm.ViewResponse(dataset=dataset, view=serialized_view)
+        return result_view._serialize()
 
 
 async def _update_view_activity(
