@@ -7,12 +7,12 @@ import {
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   affectedPathCountState,
   useEventHandler,
   useOutsideClick,
-  useSetView,
 } from "@fiftyone/state";
 import {
   Bookmark,
@@ -40,10 +40,10 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { activeColorEntry } from "../ColorModal/state";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
@@ -287,11 +287,11 @@ const Options = ({ modal }) => {
 const Colors = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+  const [activeField, setActiveField] = useRecoilState(activeColorEntry);
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField(ACTIVE_FIELD.global);
+    setActiveField(ACTIVE_FIELD.GLOBAL);
   };
 
   useEffect(() => {
@@ -339,12 +339,6 @@ const Hidden = () => {
 
 const SaveFilters = () => {
   const loading = useRecoilValue(fos.savingFilters);
-  const onComplete = useRecoilCallback(({ set, reset }) => () => {
-    set(fos.savingFilters, false);
-    reset(fos.similarityParameters);
-    reset(fos.extendedSelection);
-  });
-  const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -356,22 +350,28 @@ const SaveFilters = () => {
           return;
         }
 
+        const unsubscribe = subscribe((_, { set, reset }) => {
+          set(fos.savingFilters, false);
+          reset(fos.similarityParameters);
+          reset(fos.extendedSelection);
+          unsubscribe();
+        });
+
         set(fos.savingFilters, true);
+        set(fos.viewStateForm_INTERNAL, {
+          filters: await snapshot.getPromise(fos.filters),
+          extended: await snapshot.getPromise(fos.extendedStages),
+        });
         if (selected.size > 0) {
-          setView(
-            (v) => [
-              ...v,
-              {
-                _cls: "fiftyone.core.stages.Select",
-                kwargs: [["sample_ids", [...selected]]],
-              },
-            ],
-            undefined,
-            undefined,
-            true
-          );
+          set(fos.view, (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [["sample_ids", [...selected]]],
+            } as fos.State.Stage,
+          ]);
         } else {
-          setView((v) => v);
+          set(fos.view, (v) => v);
         }
       },
     []
@@ -459,29 +459,7 @@ export const BrowseOperations = () => {
 
 export const GridActionsRow = () => {
   const hideTagging = useRecoilValue(fos.readOnly);
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
   const actionsRowDivRef = useRef<HTMLDivElement>();
-
-  // In teams environment if the session color scheme is not applied to the dataset,
-  // check to see if dataset.appConfig has applicable settings
-  useEffect(() => {
-    if (!isUsingSessionColorScheme && datasetColorScheme) {
-      const colorPool =
-        datasetColorScheme.colorPool?.length > 0
-          ? datasetColorScheme.colorPool
-          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const fields =
-        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
-      setSessionColor({
-        colorPool,
-        fields,
-      });
-    }
-  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   useEffect(() => {
     const actionsRowDivElem = actionsRowDivRef.current;

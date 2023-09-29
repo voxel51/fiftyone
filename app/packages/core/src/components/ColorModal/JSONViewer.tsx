@@ -1,16 +1,11 @@
 import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ColorSchemeInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
 import { Link } from "@mui/material";
 import colorString from "color-string";
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
@@ -20,22 +15,28 @@ import { validateJSONSetting } from "./utils";
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
-  const editorRef = useRef(null);
+  const colorScheme = useRecoilValue(fos.colorScheme);
   const ref = useRef<HTMLDivElement>(null);
-  const sessionColor = useRecoilValue(fos.sessionColorScheme);
 
   const setting = useMemo(() => {
     return {
-      colorPool: sessionColor?.colorPool ?? [],
-      fields: validateJSONSetting(sessionColor?.fields ?? []),
+      colorPool: colorScheme?.colorPool ?? [],
+      fields: validateJSONSetting(colorScheme.fields || []),
     };
-  }, [sessionColor]);
+  }, [colorScheme]);
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
-  const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
+    // dispatch a custom event for e2e test to capture
+    if (ref?.current) {
+      ref.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   };
 
   const onApply = () => {
@@ -51,13 +52,15 @@ const JSONViewer: React.FC = () => {
     const { colorPool, fields } = data;
     const validColors = colorPool
       ?.filter((c) => isValidColor(c))
-      .map((c) => colorString.to.hex(colorString.get(c).value));
-    const validatedSetting = validateJSONSetting(fields);
+      .map((c) => colorString.to.hex(colorString.get(c)!.value));
+    const validatedSetting = validateJSONSetting(
+      fields as ColorSchemeInput["fields"]
+    );
     setData({
       colorPool: validColors,
       fields: validatedSetting,
     });
-    setColorScheme(false, {
+    setColorScheme({
       colorPool: validColors,
       fields: validatedSetting,
     });
@@ -99,7 +102,6 @@ const JSONViewer: React.FC = () => {
         width={"100%"}
         height={"calc(100% - 90px)"}
         wrapperProps={{ padding: 0 }}
-        onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
       {haveChanges && (

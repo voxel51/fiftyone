@@ -1,5 +1,9 @@
 /**
+<<<<<<< HEAD
+ * @generated SignedSource<<a88725179e39a8fa5bffd92af4b7696f>>
+=======
  * @generated SignedSource<<c91e5d79145aa4baf8fddaed22355529>>
+>>>>>>> develop
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,7 +26,7 @@ export type configQuery$data = {
     readonly gridZoom: number;
     readonly loopVideos: boolean;
     readonly notebookHeight: number;
-    readonly plugins: object | null;
+    readonly plugins: any | null;
     readonly showConfidence: boolean;
     readonly showIndex: boolean;
     readonly showLabel: boolean;

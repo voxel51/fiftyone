@@ -11,49 +11,48 @@ import React, { useState } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import styles from "../../../../../packages/components/src/scrollable.module.css";
 import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
+import { activeColorEntry } from "./state";
 import { ACTIVE_FIELD, getDisplayName } from "./utils";
 
 const WIDTH = 230;
 
 const SidebarList: React.FC = () => {
   const theme = useTheme();
-  const activeField = useRecoilValue(fos.activeColorField);
+  const activeEntry = useRecoilValue(activeColorEntry);
+  if (!activeEntry) {
+    throw new Error("entry not defined in color modal");
+  }
 
   const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
-    { paths: [ACTIVE_FIELD.global, ACTIVE_FIELD.json], name: "general" },
-    { paths: ["tags"], name: "tags" },
+    { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
+    { paths: [{ path: "tags" }], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
-  ).filter((g) => g.name !== "tags");
+  )
+    .filter((g) => g.name !== "tags")
+    .map((group) => ({
+      ...group,
+      paths: group.paths.map((path) => ({ path })),
+    }));
+
   const groups = [...stableGroup, ...fieldGroups];
   const [groupOpen, setGroupOpen] = React.useState(
     new Array(groups.length).fill(true)
   );
-  const handleGroupClick = (ev, idx) => {
+  const handleGroupClick = (_, idx) => {
     setGroupOpen((prev) => ({ ...prev, [idx]: !prev[idx] }));
   };
 
   const onSelectField = useRecoilCallback(
-    ({ set, snapshot }) =>
-      async (path: string) => {
-        if ([ACTIVE_FIELD.global, ACTIVE_FIELD.json].includes(path)) {
-          set(fos.activeColorField, path);
-        } else {
-          const field = await snapshot.getPromise(fos.field(path));
-          set(fos.activeColorField, { field, expandedPath: path });
-        }
+    ({ set }) =>
+      async (value: ACTIVE_FIELD | { path: string }) => {
+        set(activeColorEntry, value);
       },
     []
   );
 
-  const getCurrentField = (activeField) => {
-    if (activeField === ACTIVE_FIELD.global) return [ACTIVE_FIELD.global];
-    if (activeField === ACTIVE_FIELD.json) return [ACTIVE_FIELD.json];
-
-    return [activeField?.expandedPath, activeField.field.path];
-  };
   return (
     <Resizable
       size={{ height: "100%", width }}
@@ -108,7 +107,7 @@ const SidebarList: React.FC = () => {
               </ListItemButton>
               <Collapse in={groupOpen[index]} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                  {group.paths.map((path, pathIdx) => (
+                  {group.paths.map((entry, pathIdx) => (
                     <ListItemButton
                       sx={{
                         pl: 4,
@@ -121,13 +120,21 @@ const SidebarList: React.FC = () => {
                         },
                       }}
                       key={`menu-${pathIdx}`}
-                      data-cy={`color-modal-list-item-${getDisplayName(path)}`}
-                      selected={getCurrentField(activeField).includes(path)}
+                      data-cy={`color-modal-list-item-${getDisplayName(entry)}`}
+                      selected={
+                        typeof activeEntry === typeof entry
+                          ? typeof entry === "string"
+                            ? activeEntry === entry
+                            : typeof activeEntry === "object"
+                            ? activeEntry.path === entry.path
+                            : false
+                          : false
+                      }
                       disableRipple
                     >
                       <ListItemText
-                        primary={getDisplayName(path)}
-                        onClick={() => onSelectField(path)}
+                        primary={getDisplayName(entry)}
+                        onClick={() => onSelectField(entry)}
                         sx={{ fontFamily: "palanquin, sans-serif" }}
                       />
                     </ListItemButton>

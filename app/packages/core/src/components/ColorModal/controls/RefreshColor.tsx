@@ -1,8 +1,8 @@
+import * as fos from "@fiftyone/state";
+import { Autorenew } from "@mui/icons-material";
 import React from "react";
 import { useRecoilState } from "recoil";
-import * as fos from "@fiftyone/state";
 import { Button } from "../../utils";
-import { Autorenew } from "@mui/icons-material";
 
 const ShuffleColor: React.FC = () => {
   const [colorSeed, setColorSeed] = useRecoilState(fos.colorSeed);

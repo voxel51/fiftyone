@@ -10,7 +10,6 @@
     },
     "main": "./src/index.ts",
     "scripts": {
-        "compile": "relay-compiler",
         "dev": "vite"
     },
     "private": true,
@@ -27,6 +26,8 @@
         "vite": "^3.0.0"
     },
     "dependencies": {
-        "react-relay": "^14.0.0"
+        "@recoiljs/refine": "^0.1.1",
+        "react-relay": "^14.1.0",
+        "recoil-sync": "^0.2.0"
     }
 }
