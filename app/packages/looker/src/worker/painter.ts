@@ -243,13 +243,11 @@ export const PainterFactory = (requestColor) => ({
           colorKey = label.id;
         }
 
-        color = get32BitColor(
         const requestedColor =
           coloring.by === "field" && setting?.fieldColor
             ? setting?.fieldColor
             : await requestColor(coloring.pool, coloring.seed, colorKey);
         color = get32BitColor(requestedColor);
-        );
       }
 
       const getColor = (i) => {
