@@ -59,10 +59,8 @@ export class ClassificationsOverlay<
     const setting = customizeColorSetting.find((s) => s.path === field);
 
     if (coloring.by === "instance") {
-      if (label._cls === REGRESSION) {
-        return getColor(coloring.pool, coloring.seed, field);
-      }
-      return getColor(coloring.pool, coloring.seed, getHashLabel(label));
+      const key = label._cls === REGRESSION ? field : getHashLabel(label);
+      return getColor(coloring.pool, coloring.seed, key);
     }
 
     // check if the field has a customized color, use it if it is a valid color

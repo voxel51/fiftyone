@@ -244,10 +244,11 @@ export const PainterFactory = (requestColor) => ({
         }
 
         color = get32BitColor(
-          coloring.by === "field"
-            ? setting?.fieldColor ??
-                (await requestColor(coloring.pool, coloring.seed, colorKey))
-            : await requestColor(coloring.pool, coloring.seed, colorKey)
+        const requestedColor =
+          coloring.by === "field" && setting?.fieldColor
+            ? setting?.fieldColor
+            : await requestColor(coloring.pool, coloring.seed, colorKey);
+        color = get32BitColor(requestedColor);
         );
       }
 
@@ -275,8 +276,6 @@ export const PainterFactory = (requestColor) => ({
           }
         }
       }
-
-      // console.info(color, overlay)
     }
   },
 });
