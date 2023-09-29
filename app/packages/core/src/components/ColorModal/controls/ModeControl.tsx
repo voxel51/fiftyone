@@ -22,31 +22,31 @@ const Controls = styled.div`
   flex-direction: row;
 `;
 
+const SelectButton = styled.div`
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.25rem;
+  margin: 0.25rem;
+  background-color: ${({ theme }) => theme.background.level3};
+`;
+
+const Option = styled.div`
+  cursor: pointer;
+  padding-left: 0.25rem;
+  background-color: ${({ theme }) => theme.background.secondary};
+  &:hover {
+    background-color: ${({ theme }) => theme.primary.main};
+  }
+`;
+
 const ModeControl: React.FC = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const theme = useTheme();
-
-  const SelectButton = styled.div`
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.25rem;
-    margin: 0.25rem;
-    background-color: ${({ theme }) => theme.background.level3};
-  `;
-
-  const Option = styled.div`
-    cursor: pointer;
-    padding-left: 0.25rem;
-    background-color: ${({ theme }) => theme.background.secondary};
-    &:hover {
-      background-color: ${({ theme }) => theme.primary.main};
-    }
-  `;
 
   const options = ["field", "value", "instance"].map((option) => ({
     value: option,
@@ -60,8 +60,6 @@ const ModeControl: React.FC = () => {
     },
   }));
 
-  const selected = colorScheme.colorBy;
-
   return (
     <ModeControlContainer>
       <Controls ref={ref}>
@@ -71,7 +69,7 @@ const ModeControl: React.FC = () => {
           theme={theme}
           data-cy="custom-colors-select-attribute"
         >
-          <div>{selected}</div>
+          <div>{colorScheme.colorBy}</div>
           {open ? (
             <KeyboardArrowUpOutlinedIcon />
           ) : (
@@ -88,7 +86,9 @@ const ModeControl: React.FC = () => {
             }}
           >
             {options.map((option) => (
-              <Option onClick={option.onClick}>{option.value}</Option>
+              <Option onClick={option.onClick} key={option.value}>
+                {option.value}
+              </Option>
             ))}
           </PopoutDiv>
         )}
