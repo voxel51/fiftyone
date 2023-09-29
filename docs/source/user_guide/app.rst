@@ -1114,7 +1114,7 @@ ______
 Spaces provide a customizable framework for organizing interactive Panels of
 information within the App.
 
-FiftyOne natively includes the following Panel types:
+FiftyOne natively includes the following Panels:
 
 -   :ref:`Samples panel <app-samples-panel>`: the media grid that loads by
     default when you launch the App

@@ -5,20 +5,31 @@ FiftyOne Teams Plugins
 
 .. default-role:: code
 
-Admins can upload, manage, and configure permissions for plugins when users
-log into your central Teams UI.
+FiftyOne Teams provides native support for installing and running
+:ref:`FiftyOne plugins <fiftyone-plugins>`, which offers powerful opportunities
+to extend and customize the functionality of your Teams deployment to suit your
+needs.
 
 .. note::
 
-    See :ref:`fiftyone-plugins` for more information about creating
-    and downloading existing plugins.
+    What can you do with plugins? Check out
+    :ref:`delegated operations <teams-delegated-operations>` to see some quick
+    examples, then check out the
+    `FiftyOne plugins <https://github.com/voxel51/fiftyone-plugins>`_
+    repository for a growing collection of prebuilt plugins that you can add to
+    your Teams deployment!
 
-Plugin Page
-___________
+.. _teams-plugins-page:
 
-Admins can access the plugin page can be found under Settings > Plugins.
-It displays a listing of all installed plugins and their operators, as well as
-status and permissions of each.
+Plugins page
+____________
+
+Admins can use the plugins page to upload, manage, and configure permissions
+for plugins that are made available to users of your Teams deployment.
+
+Admins can access the plugins page under Settings > Plugins. It displays a
+list of all installed plugins and their operators, as well as the enablement
+and permissions of each.
 
 .. image:: /images/teams/plugins_page.png
    :alt: teams-plugins-page
@@ -26,16 +37,20 @@ status and permissions of each.
 
 .. _teams-plugins-install:
 
-Installing a Plugin
+Installing a plugin
 ___________________
 
-Admins can install plugins via the Teams UI or Python SDK.
+Admins can install plugins via the Teams UI or Management SDK.
+
+.. note::
+
+    A plugin is a directory (or ZIP of it) that contains a top-level
+    ``fiftyone.yml`` file.
 
 Teams UI
 --------
 
-To install a plugin, first click the "Install plugin" button on the plugins
-page.
+To install a plugin, click the "Install plugin" button on the plugins page.
 
 .. image:: /images/teams/plugins_install_btn.png
    :alt: teams-plugins-page-install-button
@@ -58,7 +73,7 @@ the plugins page.
 SDK
 ---
 
-Alternatively, you can use the
+Admins can also use the
 :meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>` method from
 the Management SDK:
 
@@ -67,14 +82,15 @@ the Management SDK:
 
     import fiftyone.management as fom
 
+    # You can pass the directory or an already zipped version of it
     fom.upload_plugin("/path/to/plugin_dir")
 
 .. _teams-plugins-upgrade:
 
-Upgrading a Plugin
+Upgrading a plugin
 __________________
 
-Admins can upgrade plugins through the Teams UI or Python SDK.
+Admins can upgrade plugins at any time through the Teams UI or Management SDK.
 
 Teams UI
 --------
@@ -85,7 +101,7 @@ To upgrade a plugin, click the plugin's dropdown and select "Upgrade plugin".
    :alt: teams-plugins-page-upgrade-btn
    :align: center
 
-Then upload or drag and drop the plugin contents as a ZIP file and click
+Then upload or drag and drop the upgraded plugin as a ZIP file and click
 upgrade.
 
 .. image:: /images/teams/plugins_upgrade_page.png
@@ -94,7 +110,7 @@ upgrade.
 
 .. note::
 
-    If the `name` attribute within the uploaded plugin's `fiftyone.yaml` config
+    If the `name` attribute within the uploaded plugin's `fiftyone.yml` file
     doesn't match the existing plugin, a new plugin will be created. Simply
     delete the old one.
 
@@ -108,7 +124,7 @@ plugin on the plugins page.
 SDK
 ---
 
-Alternatively, you can use the
+Admins can also use the
 :meth:`upload_plugin() <fiftyone.management.plugin.upload_plugin>` method from
 the Management SDK with the `overwrite=True` option:
 
@@ -117,25 +133,22 @@ the Management SDK with the `overwrite=True` option:
 
     import fiftyone.management as fom
 
+    # You can pass the directory or an already zipped version of it
     fom.upload_plugin("/path/to/plugin_dir", overwrite=True)
 
 .. _teams-plugins-uninstall:
 
-Uninstalling a Plugin
+Uninstalling a plugin
 _____________________
 
-Admins can uninstall plugins through the Teams UI or Management SDK.
+Admins can uninstall plugins at any time through the Teams UI or Management
+SDK.
 
 .. note::
 
     Did you know? You can
     :ref:`enable/disable plugins <teams-plugins-enable-disable>` rather than
     permanently uninstalling them.
-
-.. warning::
-
-    Uninstalling a plugin is permanent! However, you can always
-    :ref:`install <teams-plugins-install-ui>` the plugin again later.
 
 Teams UI
 --------
@@ -150,7 +163,7 @@ To uninstall a plugin, click the plugin's dropdown and select
 SDK
 ---
 
-Alternatively, you can use the
+Admins can also use the
 :meth:`delete_plugin() <fiftyone.management.plugin.delete_plugin>` method from
 the Management SDK:
 
@@ -163,29 +176,30 @@ the Management SDK:
 
 .. _teams-plugins-enable-disable:
 
-Enabling/Disabling
-__________________
+Enabling/disabling plugins
+__________________________
 
 Teams UI
 ---------
 
 When plugins are first installed into Teams, they are enabled by default, along
-with any contained operators. To disable a plugin and all of its operators,
-toggle the enabled / disabled switch.
+with any operators they contain.
+
+Admins can enable/disable a plugin and all of its operators by toggling the
+enabled/disabled switch.
 
 .. image:: /images/teams/plugins_disable.png
    :alt: teams-plugins-page-disable
    :align: center
 
-To disable or re-enable a particular operator within a plugin, first click on
-the plugin's operators section to open the operator settings window. All
-operators will be listed.
+Admins can also disable/enable specific operators within an (enabled) plugin
+by clicking on the plugin's operators link.
 
 .. image:: /images/teams/plugins_operators_btn.png
    :alt: teams-plugins-page-operators-btn
    :align: center
 
-Then toggle the enabled / disabled switch for the operator you wish to change.
+and then toggling the enabled/disabled switch for each operator as necessary.
 
 .. image:: /images/teams/plugins_operators_disable.png
    :alt: teams-plugins-page-operators-disable
@@ -194,7 +208,7 @@ Then toggle the enabled / disabled switch for the operator you wish to change.
 SDK
 ---
 
-Alternatively, you can use the
+Admins can also use the
 :meth:`set_plugin_enabled() <fiftyone.management.plugin.set_plugin_enabled>`
 and
 :meth:`set_plugin_operator_enabled() <fiftyone.management.plugin.set_plugin_operator_enabled>`
@@ -213,8 +227,8 @@ methods from the management SDK:
 
 .. _teams-plugins-permissions:
 
-Permissions
-___________
+Plugin permissions
+__________________
 
 Admins can optionally configure access to plugins and individual operators
 within them via any combination of the permissions described below:
@@ -224,17 +238,17 @@ within them via any combination of the permissions described below:
     +-------------------------------+----------------------------------------------------------------------------+
     | Permission                    | Description                                                                |
     +===============================+============================================================================+
-    | Minimum Role                  | The minimum role a user must have to perform the operation.                |
+    | Minimum Role                  | The minimum role a user must have to execute the operation.                |
     +-------------------------------+----------------------------------------------------------------------------+
     | Minimum Dataset Permission    | The minimum dataset permission a user must have to perform the operation   |
-    |                               | in the context of a particular dataset.                                    |
+    |                               | on a particular dataset.                                                   |
     +-------------------------------+----------------------------------------------------------------------------+
 
 Teams UI
 --------
 
 To configure the permissions for an operator, first click on the plugin's
-operators section.
+operators link.
 
 .. image:: /images/teams/plugins_operators_btn.png
    :alt: teams-plugins-page-operators-btn
@@ -256,7 +270,7 @@ level.
 SDK
 ---
 
-You can also use the
+Admins can also use the
 :meth:`set_plugin_operator_permissions() <fiftyone.management.plugin.set_plugin_operator_permissions>`
 method from the Management SDK:
 
@@ -269,14 +283,14 @@ method from the Management SDK:
     fom.set_plugin_operator_enabled(
         plugin_name,
         operator_name,
-        minimum_role=fom.MEMBER
+        minimum_role=fom.MEMBER,
     )
 
     # Set minimum dataset permission only
     fom.set_plugin_operator_enabled(
         plugin_name,
         operator_name,
-        minimum_dataset_permission=fom.EDIT
+        minimum_dataset_permission=fom.EDIT,
     )
 
     # Set both minimum role and minimum dataset permissions
@@ -284,11 +298,11 @@ method from the Management SDK:
         plugin_name,
         operator_name,
         minimum_role=fom.EDIT,
-        minimum_dataset_permission=fom.EDIT
+        minimum_dataset_permission=fom.EDIT,
     )
 
-Default Operator Permissions
-----------------------------
+Default permissions
+-------------------
 
 When new plugins are installed, any operators they contain are initialized with
 the default permissions for your deployment.
@@ -319,7 +333,7 @@ for the permission you want to change and select the new value.
 SDK
 ^^^
 
-Alternatively, you can use the
+Admins can also use the
 :meth:`set_organization_settings() <fiftyone.management.organization.set_organization_settings>`
 method from the Management SDK:
 
@@ -333,44 +347,175 @@ method from the Management SDK:
         default_operator_minimum_dataset_permission=fom.EDIT,
     )
 
-.. _teams-plugins-managing-operators-runs:
+.. _teams-delegated-operations:
 
+Delegated operations
+____________________
 
-Setting up an Orchestrator to run Delegated Operations
-______________________________________________________
+:ref:`Delegated Operations <delegated-operations>` are a powerful feature of
+FiftyOne's plugin framework that allows users to schedule tasks from within the
+App that are executed on a connected workflow orchestrator like Apache Airflow.
 
-Once an operation has been queued for remote (delegated) execution, it will remain queued until an Orchestrator picks it up and runs the execute method.
+With FiftyOne Teams, your team can
+:ref:`upload and permission <teams-plugins-page>` custom operations that your
+users can execute from the Teams App, all of which run against a central
+orchestrator :ref:`configured by <teams-delegated-orchestrator>` your admins.
 
-We recommend using Apache Airflow as the Orchestrator, but other options are available, such as Flyte.
+Why is this awesome? Your AI stack needs a flexible data-centric component that
+enables you to organize and compute on your data. With Delegated Operations,
+FiftyOne Teams becomes both a dataset management/visualization tool and a
+workflow automation tool that defines how your data-centric workflows like
+ingestion, curation, and evaluation are performed. In short, think of FiftyOne
+Teams as the single source of truth on which you co-develop your data and
+models together.
 
-To set up Airflow as an Orchestrator to run delegated operations, you will need to:
+What can Delegated Operations do for you? Get started by installing any of
+these plugins available in the
+`FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository:
 
-- Provision a VM or instance with enough resources to run the operations you want to delegate
+.. table::
+    :widths: 35 65
 
-- Install `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_ on the VM
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_ | ✏️ Utilities for integrating FiftyOne with annotation tools                                                               |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_           |  🧠 Utilities for working with the FiftyOne Brain                                                                         |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_ |  ✅ Utilities for evaluating models with FiftyOne                                                                         |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_                 | 📁 A collection of import/export utilities                                                                                |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/indexes/README.md>`_       | 📈 Utilities working with FiftyOne database indexes                                                                       |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/utils <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/utils/README.md>`_           | ⚒️ Call your favorite SDK utilities from the App                                                                          |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/voxelgpt <https://github.com/voxel51/voxelgpt>`_                                                  | 🤖 An AI assistant that can query visual datasets, search the FiftyOne docs, and answer general computer vision questions |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
+    | `@voxel51/zoo <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/zoo/README.md>`_               | 🌎 Download datasets and run inference with models from the FiftyOne Zoo, all without leaving the App                     |
+    +-------------------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------------------------------------+
 
-- Install the same version of FiftyOne as the instance of FiftyOne which queued the operation
+For example, wish you could import data from within the App? With the
+`@voxel51/io <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/io/README.md>`_,
+plugin you can!
 
-- Ensure the required Environment Variables are set
+.. image:: /images/plugins/operators/examples/import.gif
 
-- Install the `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_ on the Orchestrator.
+Want to send data for annotation from within the App? Sure thing, just install the
+`@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/README.md>`_
+plugin:
 
-- Schedule a Operation!
+.. image:: /images/plugins/operators/examples/annotation.gif
 
-.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+Have model predictions on your dataset that you want to evaluate? The
+`@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/evaluation/README.md>`_
+plugin makes it easy:
 
-.. note:: Ensure that the plugins are available to the Orchestrator, either by installing them on the same machine or by making them available via a shared filesystem
+.. image:: /images/plugins/operators/examples/evaluation.gif
 
+Need to compute embedding for your dataset so you can visualize them in the
+:ref:`Embeddings panel <app-embeddings-panel>`? Kick off the task with the
+`@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/brain/README.md>`_
+plugin and proceed with other work while the execution happens in the background:
 
+.. image:: /images/plugins/operators/examples/embeddings.gif
 
-Setting up a FiftyOne Orchestrator on Google Compute Engine
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+When you choose delegated execution in the App, these tasks are automatically
+scheduled for execution on your
+:ref:`connected orchestrator <teams-delegated-orchestrator>` and you can
+continue with other work. Meanwhile, all datasets have a
+:ref:`Runs tab <teams-managing-delegated-operations>` in the App where you can
+browse a history of all delegated operations that have been run on the dataset
+and their status.
 
-Provision a VM with the resources required to run the operations you want to delegate. Take note of the IP of the VM, you'll need it in a later step.
+.. _teams-delegated-orchestrator:
 
-See the :ref:`Media Cache Config<teams-media-cache-config>` section for more information on the resources required.
+Setting up an orchestrator
+__________________________
 
-SSH into the instance, ensure the packages are up to date, and install python
+All delegated operations that have been scheduled by users of a FiftyOne Teams
+deployment will remain queued until a connected orchestrator picks them up and
+executes them.
+
+.. note::
+
+    This section describes how to configure an
+    `Apache Airflow <https://airflow.apache.org>`_ orchestrator, but other
+    options are available, such as `Flyte <https://flyte.org>`_. Delegated
+    operations in FiftyOne Teams are designed to be workflow tool-agnostic.
+
+To set up Airflow as an orchestrator to run delegated operations, you will need
+to:
+
+-   Provision a VM or instance with enough resources to run the operations you
+    want to delegate
+-   Install
+    `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
+    on the VM
+-   Install the appropriate version of the FiftyOne Teams SDK for the Teams
+    deployment that you are connecting to
+-   Ensure that your :ref:`team's plugins <teams-plugins-page>` are available
+    to the Orchestrator, either by installing them on the same machine or by
+    making them available via a shared filesystem
+-   Ensure that the required environment variables are set (see below)
+-   Install the
+    `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
+-   You're all set. Schedule those operations!
+
+The required environment variables are:
+
+.. code-block:: bash
+
+    # Configure where plugins source lives
+    export FIFTYONE_PLUGINS_DIR=...  # eg /mnt/nfs/shared/plugins
+
+    # Configure where media and models will be downloaded
+    export FIFTYONE_MEDIA_CACHE_DIR=...
+    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=...
+    export FIFTYONE_MODEL_ZOO_DIR=...
+
+    #
+    # Copy the values below from your Teams deployment
+    #
+
+    # Provide your encryption key so the orchestrator can access secrets
+    export FIFTYONE_ENCRYPTION_KEY=...
+    export FIFTYONE_INTERNAL_SERVICE=1
+
+    # If your deployment uses API connections
+    export FIFTYONE_API_KEY=...
+    export FIFTYONE_API_URL=...
+
+    # If your deployment uses direct mongo connections
+    export FIFTYONE_DATABASE_NAME=...
+    export FIFTYONE_DATABASE_URI=...
+    export FIFTYONE_API_KEY=...
+    export API_URL=...
+
+.. note::
+
+    Refer to :ref:`this section <teams-media-cache-config>` for more
+    information on media caching in FiftyOne Teams.
+
+.. note::
+
+    The Orchestrator will need to have all of the required dependencies
+    installed for running your Team's operations. For example, if running the
+    `@voxel51/brain/compute_visualization <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
+    operator, the orchestrator will need the `torch` and `torchvision` packages
+    installed.
+
+Example: Google Compute Engine
+------------------------------
+
+This section configures Airflow on a Google Compute Engine instance.
+
+**Provision VM**
+
+First, provision a VM with the resources required to run the operations you
+want to delegate. Take note of the IP of the VM, you'll need it in a later
+step.
+
+SSH into the instance, ensure the packages are up to date, and install python:
 
 .. code-block:: bash
 
@@ -384,295 +529,320 @@ SSH into the instance, ensure the packages are up to date, and install python
 
     pip install apache-airflow[gcp]
 
-ensure a successful install by checking the version
+ensure a successful install by checking the version:
 
 .. code-block:: bash
 
     airflow version
 
-Initialize the airflow db and create a user
+Initialize the airflow db and create a user:
 
 .. code-block:: bash
 
     airflow db init
     airflow users create -r Admin -u <username> -p <password> -e <email> -f <first name> -l <last name>
 
-.. note:: This username and password will be the account you use to log into the airflow interface in a later step.
+.. note::
 
-Start Aiflow
+    This username and password will be the account you use to log into the
+    airflow interface in a later step.
+
+**Launch Aiflow**
 
 Open 2 more ssh sessions, and start the webserver and scheduler in each.
 
-.. note:: You could run these commands with the `-D` flag to run them in the background, but we recommend running them in the foreground for debugging purposes.
+.. note::
+
+    You could run these commands with the `-D` flag to run them in the
+    background, but we recommend running them in the foreground for debugging
+    purposes.
 
 .. code-block:: bash
 
     airflow webserver -p 8080
     airflow scheduler
 
-.. note:: you could start airflow on the port of your choice, but ensure that the firewall rules allow traffic on that port.
+.. note::
+
+    You could start airflow on the port of your choice, but ensure that the
+    firewall rules allow traffic on that port.
 
 **Add the Firewall Rule**
 
-Navigate to the networking / firewall rules section of the google cloud console and allow traffic on that port for the VM.
+Navigate to the networking/firewall rules section of the google cloud console
+and allow traffic on that port for the VM.
 
-Once this is done, you should be able to navigate to the airflow interface at `http://<vm ip>:8080` (or the port you chose) and log in with the credentials you created earlier.
+Once this is done, you should be able to navigate to the airflow interface at
+`http://<vm ip>:8080` (or the port you chose) and log in with the credentials
+you created earlier.
 
 **Mount the Plugins Directory**
 
-The orchestrator must have the same plugins available to it as the instance which queued the operation. This could be accomplished by either installing the plugins on the orchestrator, or by mounting the plugins directory from the instance which queued the operation.
+The orchestrator must have the same plugins available to it as the instance
+which queued the operation. This could be accomplished by either installing the
+plugins on the orchestrator, or by mounting the plugins directory from the
+instance which queued the operation.
 
-To mount the plugins directory, locate the ip of the nfs server then run the following commands on the orchestrator:
+To mount the plugins directory, locate the ip of the nfs server then run the
+following commands on the orchestrator:
 
 .. code-block:: bash
 
     sudo mkdir -p /mnt/nfs/shared
     sudo mount -t nfs -o vers=4,rw,intr <ip of the nfs server>:/path/to/plugins /mnt/nfs/shared
 
-You might also want to add the same command to your startup tasks, located in `etc/fstab`
+You might also want to add the same command to your startup tasks, located in
+``etc/fstab``:
 
 .. code-block:: bash
 
     sudo pico /etc/fstab
 
-paste the following and save
+paste the following and save:
 
 .. code-block:: bash
 
-        <ip of the nfs server>:/path/to/fiftyone-plugins /mnt/nfs/shared/ nfs vers=4,rw,intr 0 0
+    $NFS_SERVER_ID:/path/to/fiftyone-plugins /mnt/nfs/shared/ nfs vers=4,rw,intr 0 0
 
-the path to the plugins should now be available at `/mnt/nfs/shared/plugins`. to test this, run the following command:
+the path to the plugins should now be available at `/mnt/nfs/shared/plugins`.
+To test this, run the following command:
 
 .. code-block:: bash
 
     ls /mnt/nfs/shared/plugins
 
-
-This path will be added to the environment variables as `FIFTYONE_PLUGINS_DIR` in a following step.
-
+This path will be added to the environment variables as
+``FIFTYONE_PLUGINS_DIR`` in a following step.
 
 **Install FiftyOne**
 
-Ensure the keyring is installed
+Ensure the keyring is installed:
 
 .. code-block:: bash
 
     pip install keyrings.google-artifactregistry-auth
 
-
-Install FiftyOne
+and then install FiftyOne:
 
 .. code-block:: bash
 
     INDEX_URL="https://us-central1-python.pkg.dev/computer-vision-team/dev-python/simple/"
-    pip --no-cache-dir install --extra-index-url "${INDEX_URL}" fiftyone
+    pip --no-cache-dir install --extra-index-url $INDEX_URL fiftyone
 
+**Configure environment variables**
 
-Add the FiftyOne Env Vars
+Now we need to configure the necessary environment variables.
 
 .. code-block:: bash
 
     pico ~/.profile
 
-Add the following lines to the bottom of the file, replacing the values with the appropriate values for your deployment.
+Add the following lines to the bottom of the file, replacing the values with
+the appropriate values for your deployment.
 
 .. code-block:: bash
 
-    export FIFTYONE_DATABASE_NAME=<database name>
-    export FIFTYONE_DATABASE_URI=<mongo db uri>
-    export FIFTYONE_PLUGINS_DIR=<mounted plugins dir> # /mnt/nfs/shared/plugins
-    export FIFTYONE_ENCRYPTION_KEY=<encryption key>
+    # Configure where plugins source lives
+    export FIFTYONE_PLUGINS_DIR=...  # eg /mnt/nfs/shared/plugins
+
+    # Configure where media and models will be downloaded
+    export FIFTYONE_MEDIA_CACHE_DIR=...
+    export FIFTYONE_MEDIA_CACHE_SIZE_BYTES=...
+    export FIFTYONE_MODEL_ZOO_DIR=...
+
+    #
+    # Copy the values below from your Teams deployment
+    #
+
+    # Provide your encryption key so the orchestrator can access secrets
+    export FIFTYONE_ENCRYPTION_KEY=...
     export FIFTYONE_INTERNAL_SERVICE=1
-    export FIFTYONE_API_KEY=<api key>
-    export API_URL=<api url>
 
-.. note:: Configure FiftyOne on the Orchestrator to use the same `FIFTYONE_DATABASE_URI` as the instance of FiftyOne which queued the operation
+    # If your deployment uses API connections
+    export FIFTYONE_API_KEY=...
+    export FIFTYONE_API_URL=...
 
-.. note:: These values will mostly be the same as the as the instance of FiftyOne which queued the operation
-
+    # If your deployment uses direct mongo connections
+    export FIFTYONE_DATABASE_NAME=...
+    export FIFTYONE_DATABASE_URI=...
+    export FIFTYONE_API_KEY=...
+    export API_URL=...
 
 **Add the Airflow DAG**
 
-check the default dags path by running the following command:
+Check the default DAGs path by running the following command:
 
 .. code-block:: bash
 
     airflow config list | grep dags_folder
 
-.. note:: The default dag folder path is `/home/<user>/airflow/dags`
+.. note::
 
-navigate to the dag folder and add the default airflow dag from the fiftyone-plugins repo, located at: `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/dags/airflow/check_delegated_operations.py>`_
+    The default DAG folder path is `/home/<user>/airflow/dags`.
 
-Open the airflow interface and ensure that the "Check Delegated Operations" DAG is visible. Any issues should be immediately visible as errors. Locate the dag and toggle it on, then refresh to make sure it's running. If no operations have been queued, it will still run a check and all runs should be green.
+Navigate to the DAG folder and add the
+`FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_.
+
+Open the Airflow interface and ensure that the DAG is visible. Any issues
+should be immediately visible as errors. Locate the dag and toggle it on, then
+refresh to make sure it's running. If no operations have been queued, it will
+still run a check and all runs should be green.
 
 .. image:: /images/teams/airflow.png
    :alt: airflow-dag
    :align: center
 
-..note:: The Orchestrator will need to have all of the required dependencies installed for running the plugins. For example, if running the compute visualizations plugin, the orchestrator will need the `torch` and `torchvision` packages installed.
+.. note::
 
+    The Orchestrator will need to have all of the required dependencies
+    installed for running your Team's operations. For example, if running the
+    `@voxel51/brain/compute_visualization <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
+    operator, the orchestrator will need the `torch` and `torchvision` packages
+    installed.
 
-Managing Delegated Operator Runs
-________________________________
+.. _teams-managing-delegated-operations:
 
+Managing delegated operations
+_____________________________
 
-The FiftyOne Teams runs page allows you to monitor and explore operator runs
-scheduled by any member of your organization.
+Every Teams dataset has a Runs page that allows users to monitor and explore
+delegated operator runs scheduled against that dataset.
 
+.. note::
 
-.. Scheduling an operator run
-.. --------------------------
-
-.. When invoking an delegated operator, you will see the `Schedule` (instead
-.. of the `Execute`) button to indicate that operator will run in delegated mode
-
-.. .. image:: /images/plugins/operators/runs/prompt.png
-
+    The Runs page only tracks operations that are *delegated* to your Team's
+    orchestrator, not operations that are executed immediately in the App.
 
 Runs page
 ---------
 
-The "Runs" page is accessible to all users with :ref:`Can view <teams-can-view>`
-access to the dataset.
+The Runs page is accessible to all users with Can view access to the dataset.
 
-You can access the "Runs" page by clicking the `Runs` from
+You can access the Runs page by clicking on the "Runs" tab from the
 :ref:`Samples tab <teams-using-datasets>`.
 
-Once you are on the "Runs" page, you will see a table with the list of all
-operators scheduled by any member of your organization. You can sort, search
-and filter runs listed to refine the list as you like.
-
-The image below provides a peek of the "Runs" page. The list will display the
-label and name of an operator, status, timestamp of current status, and the name
-of a user that scheduled a run. On the right side of the "Runs" page, you will
-see pinned and recently updated runs in your organization. 
-
-.. note::
-
-    This page is not auto-refreshed. You must manually reload the page to see
-    updates.
-
+Once you are on the Runs page, you will see a table with the list of all
+operators scheduled by any user of your organization on the dataset. You can
+sort, search and filter runs listed to refine the list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
 Sorting
 ^^^^^^^
 
-By default, the runs table is sorted by newest to oldest. You can use the
-drop-down menu in the upper left of table to sort the list of runs by updated
-time of a run and the name of an operator.
+By default, the runs table is sorted by recency, but you can use the dropdown
+menu in the upper left of table to sort by other fields like update time or the
+name of the operator:
 
 .. image:: /images/plugins/operators/runs/sort.png
 
 Filtering
 ^^^^^^^^^
 
-You can filter runs table to see a subset of runs
+You can also filter the runs table to see a subset of runs:
 
 **Showing only your runs**
 
-You can use the "My runs" radio button to see only the runs that you scheduled.
+Use the "My runs" radio button to see only the runs that you scheduled:
 
 .. image:: /images/plugins/operators/runs/my_runs.png
 
 **By status**
 
-Additionally, you can further refine the list of runs using the status
-drop-down which allows you to select one or more status you would like to filter
-by.
+You can further refine the list of runs using the status dropdown to select one
+or more status you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
 
 Searching
 ^^^^^^^^^
 
-In addition, you can also use the search functionality to filter the list of
-runs by a keyword. As you type your query in the search box, the list of runs
-will be updated to show only the runs matching your query
+You can also use the search functionality to filter the list of runs by
+keyword. As you type your query in the search box, the list of runs will be
+updated to show only the runs matching your query:
 
 .. note::
 
-    The search is case-sensitive and you can only search by the operator name
-    associated with a run. Searching by operator label is not supported (i.e.,
-    **Demo: Export to GCP** in example image below).
+    Search is case-sensitive and you can currently only search by operator
+    name. For example, searches will not match against operator label
+    **Demo: Export to GCP** in the image below.
 
 .. image:: /images/plugins/operators/runs/search_by_name.png
 
-Retrying
-^^^^^^^^
+Re-running
+^^^^^^^^^^
 
-From the "Runs" page, you can trigger retry any of the listed runs. To retry a
-run, click the three-dots to open actions menu for a run, then click `Re-run`
+From the Runs page, you can trigger a re-run of any listed run by clicking the
+three-dots to open actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
-
 
 Pinning
 ^^^^^^^
 
 Pinned runs are displayed to the right of runs table. By default, five pinned
 runs will be displayed. However, if there are more than five pinned runs, you
-will see a button to see the hidden pinned runs.
+will see a button to expand the list.
 
-To pin a run, hover over a run in runs table and click the pin icon which will
-appear beside the operator label of a run.
+To pin a run, hover over a run in runs table and click the pin icon that
+appears beside the operator label:
 
 .. image:: /images/plugins/operators/runs/pinning.png
 
 .. note::
 
-    Pinned runs are identical for all users in your organization.
+    Pinned runs are stored at the dataset-level and will be visible to all
+    users with access to the dataset.
 
 Run page
 --------
 
-The "Run" page allows you to see input, output, view, and error of each run.
+The Run page allows you to see information about a specific run such as inputs,
+outputs, and errors.
 
-You can visit the "Run" page for a run by clicking on a run in the runs table
-or in the list of runs under "Pinned runs" and "Recent runs".
+You can visit the Run page for a run by clicking on a run in the runs table,
+the Pinned runs, or Recent runs widgets.
 
 Input
 ^^^^^
 
-The "Input" tab on the "Run" page lets you see the input parameters that were
-provided when the run was scheduled.
+The Input tab on the Run page lets you see the input parameters that were
+provided when the run was scheduled:
 
 .. image:: /images/plugins/operators/runs/input.png
 
 **Raw input**
 
-By default, a preview (similar to what is displayed when invoking an operator)
-of input parameters is displayed. However, you can switch to raw by clicking the
-`Show raw` toggle button.
+By default, a rendered version (similar to what is displayed when invoking an
+operator) of input parameters is displayed. However, you can switch to raw view
+by clicking the "Show raw" toggle button:
 
 .. image:: /images/plugins/operators/runs/raw_input.png
 
 Output
 ^^^^^^
 
-The "Output" tab on the "Run" page lets you see the preview of the result of a
-completed run.
+The Output tab on the Run page lets you see the preview of the result of a
+completed run:
 
 .. note::
-    Output tab is only available for completed run
+
+    Output tab is only available for completed run.
 
 .. image:: /images/plugins/operators/runs/output.png
 
 Errors
 ^^^^^^
 
-The "Errors" tab on the "Run" page lets you see the errors occurred of a failed
-run.
-
-.. note::
-    Errors tab is only available for failed run
+The Errors tab on the Run page will appear if the run failed and lets you see
+the errors that occurred:
 
 .. image:: /images/plugins/operators/runs/errors.png
 
-
 View
 ^^^^
-The "View" tab on the "Run" page lets you see the view parameters that were
-included in operator context when the run was scheduled.
+
+The View tab on the Run page lets you see the dataset view on which the run was
+scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
