@@ -75,11 +75,7 @@ export const pathColor = selectorFamily<string, string>({
           ? path.split(".").slice(0, 2).join(".")
           : path.split(".")[0];
 
-      let adjustedPath = field?.embeddedDocType
-        ? parentPath.startsWith("frames.")
-          ? parentPath.slice("frames.".length)
-          : parentPath
-        : path;
+      let adjustedPath = field?.embeddedDocType ? parentPath : path;
 
       if (
         get(schemaAtoms.field(adjustedPath))?.embeddedDocType ===

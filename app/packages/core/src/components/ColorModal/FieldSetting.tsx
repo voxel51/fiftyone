@@ -53,7 +53,7 @@ const fieldColorSetting = selectorFamily<
         if (!newSetting || newSetting instanceof DefaultValue) {
           return {
             ...current,
-            fields: current.fields.filter((field) => field.path !== path),
+            fields: current.fields?.filter((field) => field.path !== path),
           };
         }
 
@@ -175,17 +175,17 @@ const FieldSetting = ({ path }: { path: string }) => {
       {coloring.by == "field" && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
-            name={`Use custom color for ${field.path} field`}
+            name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
               setSetting(
                 v
                   ? {
-                      fieldColor: colorMap(field.path),
+                      fieldColor: colorMap(path),
                     }
                   : undefined
               );
-              setInput(colorMap(field.path));
+              setInput(colorMap(path));
             }}
           />
           {state?.useFieldColor && input && (
@@ -199,7 +199,7 @@ const FieldSetting = ({ path }: { path: string }) => {
               }}
             >
               <FieldColorSquare
-                color={setting?.fieldColor || colorMap(field.path)}
+                color={setting?.fieldColor || colorMap(path)}
                 onClick={toggleColorPicker}
                 id="color-square"
               >

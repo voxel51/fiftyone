@@ -15,7 +15,7 @@ import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Input from "../../Common/Input";
 import { Button } from "../../utils";
-import { activeColorField } from "../state";
+import { activeColorPath } from "../state";
 import { colorPicker } from "./Colorpicker.module.css";
 
 const RowContainer = styled.div`
@@ -69,17 +69,17 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 }) => {
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activeField = useRecoilValue(activeColorField);
-  const { colorPool = [], fields } = useRecoilValue(fos.colorScheme);
+  const activePath = useRecoilValue(activeColorPath);
+  const { colorPool = [], fields = [] } = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
   const setting = useMemo(
-    () => fields.find((s) => s.path == activeField.path),
-    [activeField, fields]
+    () => fields.find((s) => s.path == activePath),
+    [activePath, fields]
   );
 
   const index = useMemo(
-    () => fields.findIndex((s) => s.path == activeField.path),
-    [activeField, fields]
+    () => fields.findIndex((s) => s.path == activePath),
+    [activePath, fields]
   );
 
   const defaultValue = {
@@ -174,7 +174,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(fields);
-      const idx = fields.findIndex((s) => s.path == activeField.path);
+      const idx = fields.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
         setColorScheme({ colorPool, fields: copy });
@@ -187,7 +187,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     setInput(values ?? []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeField.path]);
+  }, [activePath]);
 
   useEffect(() => {
     setInput(!useLabelColors ? [] : values);
