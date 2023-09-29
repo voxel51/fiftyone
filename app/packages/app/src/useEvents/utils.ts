@@ -14,17 +14,14 @@ export const ensureColorScheme = (
   defaultValue: any
 ): ColorSchemeInput => {
   return {
-    colorPool:
-      colorScheme.color_pool || colorScheme.colorPool || defaultValue.colorPool,
-    colorBy:
-      colorScheme.color_by || colorScheme.colorBy || defaultValue.colorBy,
-    opacity: colorScheme.opacity || defaultValue.opacity,
+    colorPool: toCamelCase(colorScheme).colorPool || defaultValue.colorPool,
+    colorBy: toCamelCase(colorScheme).colorBy || defaultValue.colorBy,
+    opacity: toCamelCase(colorScheme).opacity || defaultValue.opacity,
     useMultiColorKeypoints:
-      colorScheme.use_multi_color_keypoints ||
-      colorScheme.useMultiColorKeypoints ||
+      toCamelCase(colorScheme).useMultiColorKeypoints ||
       defaultValue.useMultiColorKeypoints,
     showKeypointSkeleton:
-      colorScheme.show_keypoint_skeleton || colorScheme.showKeypointSkeleton,
+      toCamelCase(colorScheme).showKeypointSkeleton == false ? false : true,
     fields: toCamelCase(colorScheme.fields || []) as ColorSchemeInput["fields"],
   };
 };

@@ -190,11 +190,11 @@ class ColorScheme(EmbeddedDocument):
     Args:
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
-        # TODO: add notes
-        color_by (None):
-        opacity (None):
-        use_multi_color_keypoints (None):
-        show_keypoint_skeleton (None):
+
+        color_by (None): an option that annotations can be colored by "field", "value" or "instance"
+        opacity (None): transparency of the annotation, between 0 and 1
+        use_multi_color_keypoints (None): whether to use multiple colors for keypoints.
+        show_keypoint_skeleton (None):whether to show the skeleton of keypoints.
         fields (None): an optional list of per-field custom colors. Each
             element should be a dict with the following keys:
 

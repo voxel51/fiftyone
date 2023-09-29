@@ -16,7 +16,6 @@ const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
   const colorScheme = useRecoilValue(fos.colorScheme);
-  const colorScheme = useRecoilValue(fos.colorScheme);
   const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {
