@@ -128,7 +128,11 @@ const Filter = ({ modal }: { modal: boolean }) => {
               </Box>
             </Tooltip>
           )}
-          <Tooltip text="Change field visibility" placement="bottom-center">
+          <Tooltip
+            text="Change field visibility"
+            placement="bottom-center"
+            data-cy="field-visibility-toggle-tooltip"
+          >
             <Settings
               data-cy="field-visibility-icon"
               onClick={() => {

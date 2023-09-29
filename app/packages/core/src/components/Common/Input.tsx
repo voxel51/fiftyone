@@ -74,6 +74,7 @@ const Input = React.memo(
           <StyledInput
             ref={ref}
             placeholder={placeholder}
+            data-cy={`input-${placeholder}`}
             value={value === null ? "" : String(value)}
             onChange={(e: React.FormEvent<HTMLInputElement>) => {
               if (validator(e.currentTarget.value)) {

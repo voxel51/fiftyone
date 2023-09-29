@@ -72,16 +72,18 @@ const viewBarKeyMap = {
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const view = useRecoilValue(fos.view);
+
+  const stageDefinitions = useRecoilValue(fos.stageDefinitions);
   const setView = fos.useSetView();
 
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
-
   useEffect(() => {
     send({
       type: "UPDATE",
       view,
       setView,
       fieldNames: fieldPaths,
+      stageDefinitions,
     });
   }, [view, fieldPaths]);
 

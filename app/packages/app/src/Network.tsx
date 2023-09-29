@@ -1,49 +1,32 @@
-import { Loading, RouteRenderer } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import { RelayEnvironmentContext } from "@fiftyone/relay";
 import { RelayEnvironmentKey } from "@fiftyone/state";
-
-import React, { Suspense, useContext, useEffect } from "react";
-import { Environment } from "react-relay";
-import { useRecoilValue } from "recoil";
-import { RecoilRelayEnvironmentProvider } from "recoil-relay";
-
-const Renderer: React.FC = () => {
-  const context = useContext(fos.RouterContext);
-
-  return (
-    <Suspense fallback={<Loading>Pixelating...</Loading>}>
-      <RouteRenderer router={context} />
-    </Suspense>
-  );
-};
+import React from "react";
+import { RelayEnvironmentProvider } from "react-relay";
+import { RecoilRelayEnvironment } from "recoil-relay";
+import { IEnvironment } from "relay-runtime";
+import Sync from "./Sync";
+import { Queries, Renderer, RouterContext, RoutingContext } from "./routing";
 
 const Network: React.FC<{
-  environment: Environment;
-  context: fos.RoutingContext<any>;
+  environment: IEnvironment;
+  context: RoutingContext<Queries>;
 }> = ({ environment, context }) => {
   return (
-    <RecoilRelayEnvironmentProvider
-      environment={environment}
-      environmentKey={RelayEnvironmentKey}
-    >
-      <fos.RouterContext.Provider value={context}>
-        <Renderer />
-      </fos.RouterContext.Provider>
-    </RecoilRelayEnvironmentProvider>
+    <RelayEnvironmentProvider environment={environment}>
+      <RecoilRelayEnvironment
+        environment={environment}
+        environmentKey={RelayEnvironmentKey}
+      >
+        <RouterContext.Provider value={context}>
+          <RelayEnvironmentContext.Provider value={environment}>
+            <Sync>
+              <Renderer />
+            </Sync>
+          </RelayEnvironmentContext.Provider>
+        </RouterContext.Provider>
+      </RecoilRelayEnvironment>
+    </RelayEnvironmentProvider>
   );
-};
-
-export const NetworkRenderer = ({ makeRoutes }) => {
-  const { context, environment } = fos.useRouter(makeRoutes, []);
-
-  const isModalOpen = useRecoilValue(fos.isModalActive);
-
-  useEffect(() => {
-    document.body.classList.toggle("noscroll", isModalOpen);
-    document.getElementById("modal")?.classList.toggle("modalon", isModalOpen);
-  }, [isModalOpen]);
-
-  return <Network environment={environment} context={context} />;
 };
 
 export default Network;

@@ -2,7 +2,6 @@ import { v4 as uuid } from "uuid";
 import { actions, assign, createMachine, send, spawn } from "xstate";
 
 import { viewsAreEqual } from "@fiftyone/state";
-import { getFetchFunction } from "@fiftyone/utilities";
 import viewStageMachine, {
   createParameter,
 } from "./ViewStage/viewStageMachine";
@@ -40,10 +39,6 @@ export const createStage = (
   prevStage: prevStage || "",
   added: added || false,
 });
-
-function getStageInfo(context) {
-  return getFetchFunction()("GET", "/stages");
-}
 
 function serializeStage(stage, stageMap, fieldNames) {
   return {
@@ -188,36 +183,20 @@ const viewBarMachine = createMachine(
         always: [
           {
             target: "running.hist",
-            cond: (ctx) => ctx.stageInfo && ctx.view,
             actions: [
               assign({
-                stages: (ctx) => setStages(ctx, ctx.stageInfo),
+                stages: (ctx) => {
+                  const view = ctx.view;
+                  if (view.length === 0)
+                    return makeEmptyView(ctx.fieldNames, ctx.stageInfo);
+                  return setStages(ctx, ctx.stageInfo);
+                },
               }),
             ],
-          },
-          {
-            target: "loading",
           },
         ],
       },
       initializing: {},
-      loading: {
-        invoke: {
-          src: getStageInfo,
-          onDone: {
-            target: "running",
-            actions: assign({
-              stageInfo: (_, e) => e.data.stages,
-              stages: (ctx, e) => {
-                const view = ctx.view;
-                if (view.length === 0)
-                  return makeEmptyView(ctx.fieldNames, e.data.stages);
-                return setStages(ctx, e.data.stages);
-              },
-            }),
-          },
-        },
-      },
       running: {
         type: "parallel",
         states: {
@@ -515,6 +494,7 @@ const viewBarMachine = createMachine(
             view: (_, { view }) => view,
             setView: (_, { setView }) => setView,
             fieldNames: (_, { fieldNames }) => fieldNames,
+            stageInfo: (_, { stageDefinitions }) => stageDefinitions,
           }),
           "sendStagesUpdate",
         ],

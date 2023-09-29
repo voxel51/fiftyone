@@ -71,8 +71,8 @@ export const Looker3d = () => {
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
+  const colorScheme = useRecoilValue(fos.colorScheme).fields;
   const getColor = useRecoilValue(fos.colorMap);
-  const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(

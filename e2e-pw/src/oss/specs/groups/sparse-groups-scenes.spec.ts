@@ -5,11 +5,11 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix(`sparse-groups-scene`);
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
-  grid: async ({ page, eventUtils }, use) => {
+  grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ eventUtils, page }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
 });
 
@@ -64,7 +64,9 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.clickOnLooker3d();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
+  const promise = modal.getLookerAttachedEvent();
   await modal.navigateNextSample(true);
+  await promise;
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.clickOnLooker();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");

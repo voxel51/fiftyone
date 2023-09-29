@@ -115,13 +115,14 @@ enum ColorBy {
 }
 
 type ColorScheme {
-  colorPool: [String!]
+  id: ID!
+  colorPool: [String!]!
   fields: [CustomizeColor!]
 }
 
 input ColorSchemeInput {
-  colorPool: [String!] = null
-  fields: JSONArray = null
+  colorPool: [String!]!
+  fields: [CustomizeColorInput!] = null
 }
 
 input Count {
@@ -138,9 +139,16 @@ input CountValues {
 
 type CustomizeColor {
   path: String!
-  fieldColor: String
+  valueColors: [ValueColor!]
   colorByAttribute: String
-  valueColors: [LabelSetting!]
+  fieldColor: String
+}
+
+input CustomizeColorInput {
+  path: String!
+  valueColors: [ValueColorInput!] = null
+  colorByAttribute: String = null
+  fieldColor: String = null
 }
 
 type DataAggregation implements Aggregation {
@@ -157,7 +165,6 @@ type Dataset {
   persistent: Boolean!
   groupMediaTypes: [Group!]
   groupField: String
-  groupSlice: String
   defaultGroupSlice: String
   mediaType: MediaType
   parentMediaType: MediaType
@@ -178,18 +185,18 @@ type Dataset {
   info: JSON
   headName: String
   snapshotName: String
-  stages(slug: String = null): BSONArray
+  stages(slug: String = null, view: BSONArray = null): BSONArray
 }
 
 type DatasetAppConfig {
+  colorScheme: ColorScheme
   mediaFields: [String!]
   plugins: JSON
   sidebarGroups: [SidebarGroup!]
   sidebarMode: SidebarMode
-  modalMediaField: String
-  gridMediaField: String
   spaces: JSON
-  colorScheme: ColorScheme
+  gridMediaField: String!
+  modalMediaField: String!
 }
 
 type DatasetStrConnection {
@@ -302,16 +309,9 @@ type IntValueCount {
 
 scalar JSON
 
-scalar JSONArray
-
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
-}
-
-type LabelSetting {
-  value: String!
-  color: String!
 }
 
 enum MediaType {
@@ -327,11 +327,25 @@ type MediaURL {
 }
 
 type Mutation {
+  setColorScheme(
+    subscription: String!
+    colorScheme: ColorSchemeInput!
+  ): Boolean!
+  setDatasetColorScheme(
+    subscription: String!
+    datasetName: String!
+    colorScheme: ColorSchemeInput = null
+  ): Void
   setDataset(
     subscription: String!
     session: String
     name: String
     viewName: String
+  ): Boolean!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    slice: String!
   ): Boolean!
   setSidebarGroups(
     subscription: String!
@@ -354,18 +368,11 @@ type Mutation {
     subscription: String!
     session: String
     datasetName: String!
-    view: BSONArray
-    savedViewSlug: String
-    form: StateForm
-  ): ViewResponse!
+    view: BSONArray = null
+    savedViewSlug: String = null
+    form: StateForm = null
+  ): BSONArray
   storeTeamsSubmission: Boolean!
-  setGroupSlice(
-    subscription: String!
-    session: String
-    view: BSONArray!
-    slice: String!
-    viewName: String = null
-  ): Dataset!
   createSavedView(
     subscription: String!
     session: String
@@ -390,14 +397,6 @@ type Mutation {
     datasetName: String = null
   ): SavedView
   setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
-  setColorScheme(
-    subscription: String!
-    session: String
-    dataset: String!
-    stages: BSONArray!
-    colorScheme: ColorSchemeInput!
-    saveToApp: Boolean!
-  ): Boolean!
   searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
 }
 
@@ -427,7 +426,7 @@ type Query {
     viewName: String = null
     form: ExtendedViewForm = null
   ): [AggregationResponses!]!
-  dataset(name: String!, view: BSONArray, savedViewSlug: String): Dataset
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
   datasets(
     search: String
     first: Int = 200
@@ -455,6 +454,7 @@ type Query {
     filter: SampleFilter!
     filters: JSON = null
   ): SampleItem
+  stageDefinitions: [StageDefinition!]!
   teamsSubmission: Boolean!
   uid: String!
   version: String!
@@ -579,6 +579,18 @@ enum SidebarMode {
   fast
 }
 
+type StageDefinition {
+  name: String!
+  params: [StageParameter!]!
+}
+
+type StageParameter {
+  name: String!
+  type: String!
+  default: String
+  placeholder: String
+}
+
 input StateForm {
   addStages: BSONArray = null
   filters: JSON = null
@@ -620,6 +632,16 @@ enum Theme {
   light
 }
 
+type ValueColor {
+  color: String!
+  value: String!
+}
+
+input ValueColorInput {
+  color: String!
+  value: String!
+}
+
 type VideoSample implements Sample {
   id: ID!
   sample: JSON!
@@ -629,10 +651,10 @@ type VideoSample implements Sample {
   frameRate: Float!
 }
 
-type ViewResponse {
-  view: BSONArray!
-  dataset: Dataset!
-}
+"""
+Represents NULL values
+"""
+scalar Void
 
 scalar date
 

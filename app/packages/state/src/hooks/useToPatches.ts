@@ -1,23 +1,22 @@
+import { subscribe } from "@fiftyone/relay";
 import { useRecoilCallback } from "recoil";
-import { patching, selectedSamples } from "../recoil";
-import useSetView from "./useSetView";
+import {
+  extendedStages,
+  filters,
+  groupSlice,
+  patching,
+  selectedSamples,
+  view,
+  viewStateForm_INTERNAL,
+} from "../recoil";
 
 export default function useToPatches() {
-  const onComplete = useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(patching, false);
-      },
-    []
-  );
-  const setView = useSetView(true, true, onComplete);
   return useRecoilCallback(
-    ({ set, reset }) =>
+    ({ set, snapshot }) =>
       async (field) => {
         set(patching, true);
-        setView(
-          (v) => v,
-          [
+        set(viewStateForm_INTERNAL, {
+          addStages: [
             {
               _cls: "fiftyone.core.stages.ToPatches",
               kwargs: [
@@ -25,9 +24,19 @@ export default function useToPatches() {
                 ["_state", null],
               ],
             },
-          ]
-        );
-        reset(selectedSamples);
+          ],
+          slice: await snapshot.getPromise(groupSlice),
+          filters: await snapshot.getPromise(filters),
+          extended: await snapshot.getPromise(extendedStages),
+          sampleIds: Array.from(await snapshot.getPromise(selectedSamples)),
+        });
+        set(view, (v) => v);
+
+        const unsubscribe = subscribe((_, { reset, set }) => {
+          reset(viewStateForm_INTERNAL);
+          set(patching, false);
+          unsubscribe();
+        });
       },
     []
   );

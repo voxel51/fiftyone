@@ -1,44 +1,41 @@
-import React, { useCallback, useEffect, useState } from "react";
-
-import { Selection } from "@fiftyone/components";
+import { Selection, useTheme } from "@fiftyone/components";
+import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 import {
-  atom,
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-} from "recoil";
-
+  COLOR_OPTIONS,
+  COLOR_OPTIONS_MAP,
+  DEFAULT_COLOR,
+  DEFAULT_COLOR_OPTION,
+} from "@fiftyone/components/src/components/Selection/SelectionColors";
+import * as fos from "@fiftyone/state";
+import { extendedStages } from "@fiftyone/state";
+import { toSlug } from "@fiftyone/utilities";
+import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
-import { useTheme } from "@fiftyone/components";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 import { viewDialogOpen } from ".";
-import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
-import * as fos from "@fiftyone/state";
+import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
 import {
   Box,
-  NameInput,
   DescriptionInput,
-  Label,
-  InputContainer,
   DialogBody,
-  ErrorText,
   ErrorBox,
+  ErrorText,
+  InputContainer,
+  Label,
+  NameInput,
 } from "./styledComponents";
-import {
-  COLOR_OPTIONS,
-  DEFAULT_COLOR,
-  COLOR_OPTIONS_MAP,
-  DEFAULT_COLOR_OPTION,
-} from "@fiftyone/components/src/components/Selection/SelectionColors";
-import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { toSlug } from "@fiftyone/utilities";
-import { extendedStages } from "@fiftyone/state";
 
 interface Props {
   id: string;

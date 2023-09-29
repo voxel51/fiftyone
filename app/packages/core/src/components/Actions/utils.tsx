@@ -1,12 +1,11 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { State, groupId, groupStatistics, isGroup } from "@fiftyone/state";
+import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
-
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { groupId, groupStatistics, isGroup, State } from "@fiftyone/state";
-import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
@@ -71,10 +70,8 @@ export const tagStatistics = selectorFamily<
         "/tagging",
         tagParameters({
           activeFields: get(fos.activeLabelFields({ modal })),
-
           dataset: get(fos.datasetName),
           filters: get(modal ? fos.modalFilters : fos.filters),
-
           groupData:
             get(isGroup) && get(fos.groupField)
               ? {
@@ -87,12 +84,7 @@ export const tagStatistics = selectorFamily<
           modal,
           sampleId: modal ? get(fos.sidebarSampleId) : null,
           selectedSamples: get(fos.selectedSamples),
-          selectedLabels: Object.entries(get(fos.selectedLabels)).map(
-            ([labelId, data]) => ({
-              labelId,
-              ...data,
-            })
-          ),
+          selectedLabels: get(fos.selectedLabels),
           targetLabels: countLabels,
           view: get(fos.view),
         })

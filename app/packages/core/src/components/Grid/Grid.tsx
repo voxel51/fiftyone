@@ -109,7 +109,7 @@ const Grid: React.FC<{}> = () => {
     useRecoilValue(fos.datasetName),
     useRecoilValue(fos.cropToContent(false)),
     fos.filterView(useRecoilValue(fos.view)),
-    useRecoilValue(fos.groupSlice(false)),
+    useRecoilValue(fos.groupSlice),
     useRecoilValue(fos.refresher),
     useRecoilValue(fos.similarityParameters),
     useRecoilValue(fos.selectedMediaField(false)),

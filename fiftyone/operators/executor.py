@@ -90,7 +90,7 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx, params):
+def execute_operator(operator_uri, ctx, params=None):
     """Executes the operator with the given name.
 
     Args:
@@ -107,14 +107,17 @@ def execute_operator(operator_uri, ctx, params):
             -   ``selected_labels``: an optional list of selected labels in the
                 format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
-
-        params: a dictionary of parameters for the operator. Consult the
-            operator's documentation for details
+            -   ``params``: a dictionary of parameters for the operator.
+                Consult the operator's documentation for details
+        params (None): you can optionally provide the ``ctx.params`` dict as
+            a separate argument
 
     Returns:
         an :class:`ExecutionResult`
     """
-    dataset_name, view_stages, selected, selected_labels = _parse_ctx(ctx)
+    dataset_name, view_stages, selected, selected_labels, params = _parse_ctx(
+        ctx, params=params
+    )
 
     request_params = dict(
         operator_uri=operator_uri,
@@ -130,11 +133,14 @@ def execute_operator(operator_uri, ctx, params):
     )
 
 
-def _parse_ctx(ctx):
+def _parse_ctx(ctx, params=None):
     dataset = ctx.get("dataset", None)
     view = ctx.get("view", None)
     selected = ctx.get("selected", None)
     selected_labels = ctx.get("selected_labels", None)
+
+    if params is None:
+        params = ctx.get("params", {})
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
@@ -152,7 +158,7 @@ def _parse_ctx(ctx):
     else:
         dataset_name = dataset
 
-    return dataset_name, view_stages, selected, selected_labels
+    return dataset_name, view_stages, selected, selected_labels, params
 
 
 # request token and user are teams-only
@@ -447,6 +453,10 @@ class ExecutionContext(object):
         Args:
             operator_name: the name of the operator
             params (None): a dictionary of parameters for the operator
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            the result of the invocation
         """
         if self.executor is None:
             raise ValueError("No executor available")

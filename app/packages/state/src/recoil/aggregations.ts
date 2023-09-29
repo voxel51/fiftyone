@@ -3,7 +3,6 @@ import { Stage, VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { VariablesOf } from "react-relay";
 import { GetRecoilValue, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
@@ -46,24 +45,27 @@ export const aggregationQuery = graphQLSelectorFamily<
       customView = undefined,
     }) =>
     ({ get }) => {
+      const dataset = get(selectors.datasetName);
+      if (!dataset) return null;
       mixed = mixed || get(groupStatistics(modal)) === "group";
-      const group = get(groupId) || null;
       const aggForm = {
         index: get(refresher),
-        dataset: get(selectors.datasetName),
+        dataset,
         extendedStages: root ? [] : get(selectors.extendedStages),
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
             : null,
-        groupId: !root && modal ? group : null,
+        groupId: !root && modal ? get(groupId) || null : null,
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
         sampleIds:
-          !root && modal && !group && !mixed ? [get(sidebarSampleId)] : [],
+          !root && modal && !get(groupId) && !mixed
+            ? [get(sidebarSampleId)]
+            : [],
         slices: mixed ? null : get(currentSlices(modal)), // when mixed, slice is not needed
-        slice: get(groupSlice(false)),
+        slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
       };
 

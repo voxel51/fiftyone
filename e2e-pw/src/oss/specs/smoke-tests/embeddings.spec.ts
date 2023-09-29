@@ -1,7 +1,7 @@
 import { test as base } from "src/oss/fixtures";
 import { GridPom } from "src/oss/poms/grid";
-import { PanelPom } from "src/oss/poms/panels/panel";
 import { EmbeddingsPom } from "src/oss/poms/panels/embeddings-panel";
+import { PanelPom } from "src/oss/poms/panels/panel";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
@@ -56,7 +56,7 @@ test.describe("embeddings on quickstart dataset", () => {
   }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifySelectorVisible();
-    await panel.close("Embeddings");
+    await panel.close();
   });
 
   test("lasso samples work", async ({
@@ -68,6 +68,6 @@ test.describe("embeddings on quickstart dataset", () => {
   }) => {
     await panel.open("Embeddings");
     await embeddings.asserter.verifyLassoSelectsSamples();
-    await panel.close("Embeddings");
+    await panel.close();
   });
 });

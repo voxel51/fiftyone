@@ -6,6 +6,7 @@ import {
 } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
+import { sessionAtom } from "../session";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -140,8 +141,9 @@ export const selectedPathsState = atomFamily({
         const viewSchema = await getPromise(viewSchemaState);
         const fieldSchema = await getPromise(fieldSchemaState);
         const combinedSchema = { ...fieldSchema, ...viewSchema };
-        const isImage = dataset.mediaType === "image";
-        const isVideo = dataset.mediaType === "video";
+        const mediaType = await getPromise(fos.mediaType);
+        const isImage = mediaType === "image";
+        const isVideo = mediaType === "video";
 
         const mapping = {};
         Object.keys(combinedSchema).forEach((path) => {
@@ -185,8 +187,9 @@ export const excludedPathsState = atomFamily({
         const isFrameView = await getPromise(fos.isFramesView);
         const isClipsView = await getPromise(fos.isClipsView);
         const isPatchesView = await getPromise(fos.isPatchesView);
-        const isVideo = dataset.mediaType === "video";
-        const isImage = dataset.mediaType === "image";
+        const mediaType = await getPromise(fos.mediaType);
+        const isImage = mediaType === "image";
+        const isVideo = mediaType === "video";
         const isInSearchMode = !!searchResults?.length;
 
         if (!dataset) {
@@ -289,25 +292,9 @@ export const excludedPathsState = atomFamily({
   ],
 });
 
-export const selectedFieldsStageState = atom<any>({
-  key: "selectedFieldsStageState",
-  default: undefined,
-  effects: [
-    ({ onSet }) => {
-      onSet((value) => {
-        const context = fos.getContext();
-        if (context.loaded) {
-          context.history.replace(
-            `${context.history.location.pathname}${context.history.location.search}`,
-            {
-              ...context.history.location.state,
-              selectedFieldsStage: value || null,
-            }
-          );
-        }
-      });
-    },
-  ],
+export const selectedFieldsStageState = sessionAtom({
+  key: "selectedFields",
+  default: null,
 });
 
 export const isFieldVisibilityActive = selector({

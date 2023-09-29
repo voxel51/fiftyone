@@ -1,25 +1,23 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
-  BOOLEAN_FIELD,
   FLOAT_FIELD,
-  Field,
-  INT_FIELD,
-  LIST_FIELD,
   NOT_VISIBLE_LIST,
-  STRING_FIELD,
   VALID_MASK_TYPES,
-  getColor,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
 import colorString from "color-string";
-import { cloneDeep } from "lodash";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { TwitterPicker } from "react-color";
-import { useRecoilValue } from "recoil";
+import {
+  DefaultValue,
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
-import { resetColor } from "./ColorFooter";
 import {
   FieldCHILD_STYLE,
   FieldColorSquare,
@@ -31,39 +29,80 @@ import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
-type Prop = {
-  prop: { field: Field; expandedPath: string };
-};
+const fieldColorSetting = selectorFamily<
+  Omit<CustomizeColorInput, "path"> | undefined,
+  string
+>({
+  key: "fieldColorSetting",
+  get:
+    (path) =>
+    ({ get }) => {
+      const field = get(fos.colorScheme).fields?.find(
+        (field) => path === field.path
+      );
+      if (field) {
+        const { path: _, ...setting } = field;
+        return setting;
+      }
+      return undefined;
+    },
+  set:
+    (path) =>
+    ({ set }, newSetting) => {
+      set(fos.colorScheme, (current) => {
+        if (!newSetting || newSetting instanceof DefaultValue) {
+          return {
+            ...current,
+            fields: current.fields?.filter((field) => field.path !== path),
+          };
+        }
 
-type State = {
-  useLabelColors: boolean;
-  useFieldColor: boolean;
-};
+        const setting = { ...newSetting, path };
+        const fields = [...(current.fields || [])];
 
-const FieldSetting: React.FC<Prop> = ({ prop }) => {
-  const wrapperRef: React.RefObject<HTMLDivElement> = React.useRef();
-  const pickerRef: React.RefObject<TwitterPicker> = React.useRef();
-  const { field, expandedPath } = prop;
-  const path = field?.path;
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
-  const setting = (fields ?? []).find((x) => x.path == path!);
-  const setColorScheme = fos.useSetSessionColorScheme();
+        let index = fields.findIndex((field) => field.path === path);
+
+        if (index < 0) {
+          index = 0;
+          fields.push(setting);
+        } else {
+          fields[index] = setting;
+        }
+
+        return {
+          ...current,
+          fields,
+        };
+      });
+    },
+});
+
+const FieldSetting = ({ path }: { path: string }) => {
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const pickerRef = React.useRef<TwitterPicker>(null);
+  const field = useRecoilValue(fos.field(path));
+
+  if (!field) {
+    throw new Error(`path ${path} is not a field`);
+  }
+
+  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
+  const [setting, setSetting] = useRecoilState(fieldColorSetting(path));
   const coloring = useRecoilValue(fos.coloring);
-  const color = getColor(colorPool, coloring.seed, path);
 
+  const colorMap = useRecoilValue(fos.colorMap);
   const [showFieldPicker, setShowFieldPicker] = useState(false);
-  const [input, setInput] = useState(color);
-  const [colors, setColors] = useState(colorPool);
-  const [state, setState] = useState<State>({
-    useLabelColors: Boolean(
-      setting?.valueColors && setting.valueColors.length > 0
-    ),
-    useFieldColor: Boolean(setting?.fieldColor),
-  });
-
-  const defaultColor =
-    coloring.pool[Math.floor(Math.random() * coloring.pool.length)];
-  const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
+  const [input, setInput] = useState(setting?.fieldColor);
+  const [colors, setColors] = useState(colorPool || []);
+  const state = useMemo(
+    () => ({
+      useLabelColors: Boolean(
+        setting?.valueColors && setting.valueColors.length > 0
+      ),
+      useFieldColor: Boolean(setting),
+    }),
+    [setting]
+  );
 
   const isMaskType =
     field.embeddedDocType &&
@@ -72,28 +111,17 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
   const isTypeValueSupported =
     !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
   const isTypeFieldSupported = !isNoShowType;
-  // non video frames. field expanded path
-  const commonExpandedPath = useRecoilValue(
-    fos.expandPath(expandedPath.startsWith("frames.") ? expandedPath : path)
-  );
-
-  const colorFields = useRecoilValue(
-    fos.fields({
-      path: commonExpandedPath,
-      ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
-    })
-  ).filter((field) =>
-    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield)
-  );
 
   const onChangeFieldColor = useCallback(
-    (color) => {
-      const newSetting = cloneDeep(fields ?? []);
-      const index = newSetting.findIndex((x) => x.path == path!);
-      newSetting[index].fieldColor = color;
-      setColorScheme(false, { colorPool, fields: newSetting });
+    (color: string) => {
+      setSetting((current) => {
+        if (!current) {
+          throw new Error("setting not defined");
+        }
+        return { ...current, fieldColor: color };
+      });
     },
-    [fields, path, setColorScheme, colorPool]
+    [setSetting]
   );
 
   const onValidateColor = useCallback(
@@ -110,7 +138,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
         setInput("invalid");
         const idx = fields.findIndex((x) => x.path == path!);
         setTimeout(() => {
-          setInput(fields[idx].fieldColor);
+          setInput(fields[idx].fieldColor || "");
         }, 1000);
       }
     },
@@ -132,40 +160,12 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
     }
   };
 
-  // initialize field settings
-  useEffect(() => {
-    // check setting to see if custom setting exists
-    const setting = fields.find((x) => x.path === path);
-    const copy = cloneDeep(fields) ?? [];
-    if (!setting) {
-      const defaultSetting = {
-        path: path,
-        fieldColor: undefined,
-        colorByAttribute: undefined,
-        valueColors: [],
-      } as fos.CustomizeColor;
-      const newSetting = [...copy, defaultSetting];
-      setColorScheme(false, { colorPool, fields: newSetting });
-    }
-    setState({
-      useLabelColors: Boolean(
-        (setting?.valueColors && setting.valueColors.length > 0) ||
-          setting?.colorByAttribute
-      ),
-      useFieldColor: Boolean(setting?.fieldColor),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, fields]);
-
-  // on reset, sync local state input with session values
-  useEffect(() => {
-    setInput(color);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useRecoilValue(resetColor)]);
-
   fos.useOutsideClick(wrapperRef, () => {
     setShowFieldPicker(false);
   });
+  useEffect(() => {
+    setInput(setting?.fieldColor);
+  }, [setting?.fieldColor]);
 
   return (
     <div>
@@ -174,25 +174,22 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
       {coloring.by == "field" && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
-            name={`Use custom color for ${field.path} field`}
+            name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              if (!v) {
-                const newSetting = cloneDeep(fields ?? []);
-                const index = newSetting.findIndex((x) => x.path === path);
-                newSetting[index].fieldColor = v
-                  ? setting?.fieldColor
-                  : undefined;
-                setColorScheme(false, {
-                  colorPool,
-                  fields: newSetting,
-                });
-              }
-              setState((s) => ({ ...s, useFieldColor: v }));
+              setSetting(
+                v
+                  ? {
+                      fieldColor: colorMap(path),
+                    }
+                  : undefined
+              );
+              setInput(colorMap(path));
             }}
           />
-          {state?.useFieldColor && (
+          {state?.useFieldColor && input && (
             <div
+              data-cy="field-color-div"
               style={{
                 margin: "1rem",
                 display: "flex",
@@ -201,7 +198,7 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
               }}
             >
               <FieldColorSquare
-                color={setting?.fieldColor ?? input}
+                color={setting?.fieldColor || colorMap(path)}
                 onClick={toggleColorPicker}
                 id="color-square"
               >
@@ -214,8 +211,8 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
                     ref={wrapperRef}
                   >
                     <TwitterPicker
-                      color={input ?? setting?.fieldColor}
-                      colors={colors}
+                      color={input ?? (setting?.fieldColor as string)}
+                      colors={[...colors]}
                       onChange={(color) => setInput(color.hex)}
                       onChangeComplete={(color) => {
                         onChangeFieldColor(color.hex);
@@ -255,29 +252,41 @@ const FieldSetting: React.FC<Prop> = ({ prop }) => {
               name={`Use custom colors for specific field values`}
               value={state.useLabelColors}
               setValue={(v: boolean) => {
-                const newSetting = cloneDeep(fields ?? []);
-                const index = newSetting.findIndex((x) => x.path === path);
-                newSetting[index].valueColors = v
-                  ? [{ value: "", color: defaultColor }]
-                  : [];
-                if (field.embeddedDocType && !v) {
-                  newSetting[index].colorByAttribute = undefined;
-                }
-                setColorScheme(false, {
-                  colorPool,
-                  fields: newSetting,
+                setSetting((cur) => {
+                  if (!cur) {
+                    cur = { valueColors: [] };
+                  }
+
+                  if (!cur?.valueColors?.length && v) {
+                    cur = {
+                      ...cur,
+                      valueColors: [
+                        {
+                          value: "",
+                          color:
+                            colorPool[
+                              Math.floor(Math.random() * colorPool.length)
+                            ],
+                        },
+                      ],
+                    };
+                  } else if (!v) {
+                    cur = { ...cur, valueColors: [] };
+                  }
+
+                  return {
+                    ...cur,
+                    colorByAttribute:
+                      field.embeddedDocType && !v ? null : cur.colorByAttribute,
+                  };
                 });
-                setState((s) => ({ ...s, useLabelColors: v }));
               }}
             />
             {/* set the attribute used for color */}
             <SectionWrapper>
               {path && field.embeddedDocType && state.useLabelColors && (
                 <>
-                  <ColorAttribute
-                    eligibleFields={colorFields}
-                    style={FieldCHILD_STYLE}
-                  />
+                  <ColorAttribute style={FieldCHILD_STYLE} />
                   <br />
                   <div style={FieldCHILD_STYLE}>
                     Use specific colors for the following values
