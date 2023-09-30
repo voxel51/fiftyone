@@ -104,8 +104,15 @@ const currentContextSelector = selectorFamily({
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const { datasetName, view, extended, filters, selectedSamples, params } =
-    curCtx;
+  const {
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    params,
+    selectedLabels,
+  } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -115,10 +122,20 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
+        selectedLabels,
       },
       hooks
     );
-  }, [params, datasetName, view, extended, filters, selectedSamples, hooks]);
+  }, [
+    params,
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    selectedLabels,
+    hooks,
+  ]);
 
   return ctx;
 };
