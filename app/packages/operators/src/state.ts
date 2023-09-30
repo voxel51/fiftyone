@@ -83,16 +83,8 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
-    const selectedLabels = get(fos.selectedLabels);
 
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    };
+    return { datasetName, view, extended, filters, selectedSamples };
   },
 });
 
@@ -112,15 +104,8 @@ const currentContextSelector = selectorFamily({
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const {
-    datasetName,
-    view,
-    extended,
-    filters,
-    selectedSamples,
-    params,
-    selectedLabels,
-  } = curCtx;
+  const { datasetName, view, extended, filters, selectedSamples, params } =
+    curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -130,20 +115,10 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
-        selectedLabels,
       },
       hooks
     );
-  }, [
-    params,
-    datasetName,
-    view,
-    extended,
-    filters,
-    selectedSamples,
-    selectedLabels,
-    hooks,
-  ]);
+  }, [params, datasetName, view, extended, filters, selectedSamples, hooks]);
 
   return ctx;
 };
