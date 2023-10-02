@@ -26,6 +26,7 @@ class DelegatedOperationDocument(object):
         context: dict = None,
     ):
         self.operator = operator
+        self.label = None
         self.operator_label = None
         self.delegation_target = delegation_target
         self.context = (
@@ -52,6 +53,7 @@ class DelegatedOperationDocument(object):
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
         self.run_state = doc["run_state"]
+        self.label = doc["label"] if "label" in doc else None
         self.updated_at = doc["updated_at"] if "updated_at" in doc else None
 
         # optional fields
