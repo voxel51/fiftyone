@@ -1,3 +1,4 @@
+import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
@@ -6,29 +7,14 @@ import {
   useMutation,
   useRelayEnvironment,
 } from "react-relay";
-import {
-  atom,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import { Button } from "@fiftyone/components";
 import {
-  BUTTON_STYLE,
   ButtonGroup,
   LONG_BUTTON_STYLE,
   ModalActionButtonContainer,
 } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
-import { isDefaultSetting } from "./utils";
-
-// this reset is used to trigger a sync of local state input with the session color values
-export const resetColor = atom<number>({
-  key: "resetColor",
-  default: 0,
-});
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
