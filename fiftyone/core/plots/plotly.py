@@ -1668,7 +1668,7 @@ def _check_plotly_jupyter_environment():
     #
     # Requirements source: https://plotly.com/python/getting-started
     #
-    # There is also a `notebook>=5.3` requirement in Jupyter notebooks, but
+    # There is also a `notebook>=6` requirement in Jupyter notebooks, but
     # we do not explicitly check that here because the requirement for
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
