@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
-import { getBrowserStorageEffectForKey } from "./atoms";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
