@@ -59,10 +59,10 @@ export const NonNestedDynamicGroup = ({
   return (
     <RootContainer>
       {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
-      {!isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+      {!isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
       <ElementsContainer>
         <>
-          {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+          {isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
           {isCarouselVisible && !isViewModePagination && (
             <DynamicGroupCarousel key={groupByFieldValue} />
           )}
@@ -85,7 +85,7 @@ export const NonNestedDynamicGroup = ({
   );
 };
 
-const UnorderedDynamicGroupBar = ({
+const NonNestedDynamicGroupBar = ({
   lookerRef,
 }: {
   lookerRef: React.MutableRefObject<fos.Lookers | undefined>;
