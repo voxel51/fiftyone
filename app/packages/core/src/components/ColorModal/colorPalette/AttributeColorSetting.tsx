@@ -190,9 +190,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   useEffect(() => {
     if (!values) {
       const copy = cloneDeep(colorScheme.fields);
-      const idx = colorScheme.fields?.findIndex(
-        (s) => s.path == activeField.path
-      );
+      const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
       if (idx > -1) {
         copy[idx].valueColors = [defaultValue];
         setColorScheme({ ...colorScheme, fields: copy });
