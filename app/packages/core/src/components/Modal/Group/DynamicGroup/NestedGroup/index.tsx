@@ -8,7 +8,7 @@ import { GroupElementsLinkBar } from "../pagination";
 export const NestedGroup = ({
   queryRef,
 }: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery, {}>;
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery>;
 }) => {
   return (
     <>

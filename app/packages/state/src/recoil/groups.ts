@@ -317,7 +317,7 @@ export const dynamicGroupIndex = atom<number>({
 });
 
 export const dynamicGroupSamplesQueryRef = atom<
-  PreloadedQuery<foq.paginateSamplesQuery, {}>
+  PreloadedQuery<foq.paginateSamplesQuery>
 >({
   key: "dynamicGroupSamplesQueryRef",
   default: null,

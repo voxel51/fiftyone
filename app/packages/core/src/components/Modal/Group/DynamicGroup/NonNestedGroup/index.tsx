@@ -29,7 +29,7 @@ const ElementsContainer = styled.div`
 export const NonNestedDynamicGroup = ({
   queryRef,
 }: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery, {}>;
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery>;
 }) => {
   const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();

@@ -63,7 +63,7 @@ export const DynamicGroupsFlashlightWrapper = () => {
     {
       ...opts,
       thumbnailTitle: (sample) =>
-        field.orderBy ? get(sample, field.orderBy) : null,
+        field?.orderBy ? get(sample, field.orderBy) : null,
     },
     highlight
   );
