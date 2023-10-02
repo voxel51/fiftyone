@@ -1,9 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
-  datasetFragment$key,
   graphQLSyncFragmentAtom,
-  graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
@@ -14,7 +12,7 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { PreloadedQuery, VariablesOf } from "react-relay";
+import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
@@ -26,7 +24,7 @@ import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
-import { view } from "./view";
+import { GROUP_BY_VIEW_STAGE, view } from "./view";
 
 export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
@@ -311,16 +309,75 @@ export const groupByFieldValue = atom<string | null>({
   default: null,
 });
 
+export const shouldRenderOrderedDynamicGroupAsVideo = atom<boolean>({
+  key: "shouldRenderOrderedDynamicGroupAsVideo",
+  default: true,
+});
+
 export const dynamicGroupIndex = atom<number>({
   key: "dynamicGroupIndex",
   default: null,
 });
 
-export const dynamicGroupSamplesQueryRef = atom<
-  PreloadedQuery<foq.paginateSamplesQuery>
->({
-  key: "dynamicGroupSamplesQueryRef",
-  default: null,
+export const dynamicGroupCurrentElementIndex = atom<number>({
+  key: "dynamicGroupCurrentElementIndex",
+  default: 1,
+});
+
+export const dynamicGroupParameters =
+  selector<State.DynamicGroupParameters | null>({
+    key: "dynamicGroupParameters",
+    get: ({ get }) => {
+      const viewArr = get(view);
+      if (!viewArr) return null;
+
+      const groupByViewStageNode = viewArr.find(
+        (view) => view._cls === GROUP_BY_VIEW_STAGE
+      );
+      if (!groupByViewStageNode) return null;
+
+      const isFlat = groupByViewStageNode.kwargs[2][1]; // third index is 'flat', we want it to be false for dynamic groups
+      if (isFlat) return null;
+
+      return {
+        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
+      };
+    },
+  });
+
+export const isDynamicGroup = selector<boolean>({
+  key: "isDynamicGroup",
+  get: ({ get }) => {
+    return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const isNonNestedDynamicGroup = selector<boolean>({
+  key: "isNonNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(groupField) === null;
+  },
+});
+
+export const isImaVidLookerAvailable = selector<boolean>({
+  key: "isImaVidLookerAvailable",
+  get: ({ get }) => {
+    const isOrderedDynamicGroupValue = get(isOrderedDynamicGroup);
+    const isNonNestedDynamicGroupValue = get(isNonNestedDynamicGroup);
+    return isOrderedDynamicGroupValue && isNonNestedDynamicGroupValue;
+  },
+});
+
+export const isOrderedDynamicGroup = selector<boolean>({
+  key: "isOrderedDynamicGroup",
+  get: ({ get }) => {
+    const params = get(dynamicGroupParameters);
+    if (!params) return false;
+
+    const { orderBy } = params;
+    return Boolean(orderBy?.length);
+  },
 });
 
 export const activeModalSample = selector({
