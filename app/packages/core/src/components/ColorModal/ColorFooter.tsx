@@ -6,9 +6,15 @@ import {
   useMutation,
   useRelayEnvironment,
 } from "react-relay";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import {
+  atom,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { v4 as uuid } from "uuid";
-import { Button } from "../utils";
+import { Button } from "@fiftyone/components";
 import {
   BUTTON_STYLE,
   ButtonGroup,
@@ -16,6 +22,13 @@ import {
   ModalActionButtonContainer,
 } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
+import { isDefaultSetting } from "./utils";
+
+// this reset is used to trigger a sync of local state input with the session color values
+export const resetColor = atom<number>({
+  key: "resetColor",
+  default: 0,
+});
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -44,18 +57,32 @@ const ColorFooter: React.FC = () => {
 
   return (
     <ModalActionButtonContainer>
-      <ButtonGroup>
+      <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
-          text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
               datasetDefault || { fields: [], colorPool: defaultColorPool }
             );
           }}
-          style={BUTTON_STYLE}
-        />
-        {canEdit && (
+        >
+          Reset
+        </Button>
+        <Button
+          title={
+            canEdit
+              ? `Save to dataset appConfig`
+              : "Can not save to dataset appConfig in read-only mode"
+          }
+          onClick={() => {
+            setColorScheme(true, colorScheme);
+            setActiveColorModalField(null);
+          }}
+          disabled={!canEdit}
+        >
+          Save as default
+        </Button>
+        {hasSavedSettings && (
           <Button
             text={"Save as default"}
             title={`Save to dataset appConfig`}
@@ -83,7 +110,7 @@ const ColorFooter: React.FC = () => {
         {canEdit && datasetDefault && (
           <Button
             text={"Clear default"}
-            title={`Clear`}
+            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
@@ -91,8 +118,10 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme({ fields: [], colorPool: defaultColorPool });
             }}
-            style={LONG_BUTTON_STYLE}
-          />
+            disabled={!canEdit}
+          >
+            Clear default
+          </Button>
         )}
       </ButtonGroup>
     </ModalActionButtonContainer>

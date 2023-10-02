@@ -164,6 +164,7 @@ const Tag = ({
   const [available, setAvailable] = useState(true);
   const labels = useRecoilValue(fos.selectedLabelIds);
   const samples = useRecoilValue(fos.selectedSamples);
+  const readOnly = useRecoilValue(fos.readOnly);
 
   const selected = labels.size > 0 || samples.size > 0;
   const tagging = useRecoilValue(fos.anyTagging);
@@ -180,15 +181,26 @@ const Tag = ({
   lookerRef &&
     useEventHandler(lookerRef.current, "pause", () => setAvailable(true));
 
+  const baseTitle = `Tag sample${modal ? "" : "s"} or labels`;
+  const title = readOnly
+    ? `Can not ${baseTitle.toLowerCase()} in read-only mode.`
+    : baseTitle;
+
   return (
     <ActionDiv ref={ref}>
       <PillButton
-        style={{ cursor: disabled || !available ? "default" : "pointer" }}
+        style={{
+          cursor: readOnly
+            ? "not-allowed"
+            : disabled || !available
+            ? "default"
+            : "pointer",
+        }}
         icon={disabled ? <Loading /> : <LocalOffer />}
         open={open}
-        onClick={() => !disabled && available && setOpen(!open)}
+        onClick={() => !disabled && available && !readOnly && setOpen(!open)}
         highlight={(selected || open) && available}
-        title={`Tag sample${modal ? "" : "s"} or labels`}
+        title={title}
         data-cy="action-tag-sample-labels"
       />
       {open && available && (
@@ -459,6 +471,11 @@ export const BrowseOperations = () => {
 
 export const GridActionsRow = () => {
   const hideTagging = useRecoilValue(fos.readOnly);
+  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
+  const isUsingSessionColorScheme = useRecoilValue(
+    fos.isUsingSessionColorScheme
+  );
   const actionsRowDivRef = useRef<HTMLDivElement>();
 
   useEffect(() => {
@@ -494,7 +511,7 @@ export const GridActionsRow = () => {
     >
       <ToggleSidebar modal={false} />
       <Colors />
-      {hideTagging ? null : <Tag modal={false} />}
+      <Tag modal={false} />
       <Patches />
       <Similarity modal={false} />
       <SaveFilters />
@@ -515,8 +532,6 @@ export const ModalActionsRow = ({
   lookerRef?: MutableRefObject<fos.Lookers | undefined>;
   isGroup?: boolean;
 }) => {
-  const hideTagging = useRecoilValue(fos.readOnly);
-
   return (
     <ActionsRowDiv
       style={{
@@ -528,7 +543,7 @@ export const ModalActionsRow = ({
       <Selected modal={true} lookerRef={lookerRef} />
       <Colors />
       <Similarity modal={true} />
-      {!hideTagging && <Tag modal={true} lookerRef={lookerRef} />}
+      <Tag modal={true} lookerRef={lookerRef} />
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
       <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />

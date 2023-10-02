@@ -2157,9 +2157,19 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
     width, height = frame_size
 
     if isinstance(segmentation, list):
+        # Filter out empty lists. For polygons of 4 points (1 pixel), duplicate
+        # to convert to valid polygon.
+        new_segmentation = []
+        for seg in segmentation:
+            if len(seg) == 0:
+                continue
+            if len(seg) == 4:
+                seg = seg * 4
+            new_segmentation.append(seg)
+
         # Polygon -- a single object might consist of multiple parts, so merge
         # all parts into one mask RLE code
-        segmentation = _normalize_coco_segmentation(segmentation)
+        segmentation = new_segmentation
         if len(segmentation) == 0:
             return None
 
