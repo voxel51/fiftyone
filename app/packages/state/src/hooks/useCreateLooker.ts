@@ -98,11 +98,13 @@ export default <T extends AbstractLooker>(
         if (isVideo) {
           constructor = VideoLooker;
         }
-      } else if (
-        isImaVidLookerAvailable &&
-        nonNestedDynamicGroupsViewMode === "video"
-      ) {
-        constructor = ImaVidLooker;
+
+        if (
+          isImaVidLookerAvailable &&
+          nonNestedDynamicGroupsViewMode === "video"
+        ) {
+          constructor = ImaVidLooker;
+        }
       } else {
         constructor = ImageLooker;
       }
