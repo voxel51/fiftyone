@@ -1,4 +1,4 @@
-import React, { MutableRefObject } from "react";
+import React, { MutableRefObject, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 
 import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
@@ -124,27 +124,37 @@ const SidebarMode = ({ modal }) => {
 
 const DynamicGroupsViewMode = () => {
   const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
+  const isImaVidLookerAvailable = useRecoilValue(fos.isImaVidLookerAvailable);
+
+  const tabOptions = useMemo(() => {
+    const options = [
+      {
+        text: "carousel",
+        title: "Sequential Access",
+        onClick: () => setMode("carousel"),
+      },
+      {
+        text: "pagination",
+        title: "Random Access",
+        onClick: () => setMode("pagination"),
+      },
+    ];
+
+    if (isImaVidLookerAvailable) {
+      options.push({
+        text: "video",
+        title: "Video",
+        onClick: () => setMode("video"),
+      });
+    }
+
+    return options;
+  }, [isImaVidLookerAvailable]);
 
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
-      <TabOption
-        active={mode}
-        options={[
-          {
-            dataCy: "set-dynamic-groups-mode-carousel",
-            text: "carousel",
-            title: "Sequential Access",
-            onClick: () => setMode("carousel"),
-          },
-          {
-            dataCy: "set-dynamic-groups-mode-pagination",
-            text: "pagination",
-            title: "Random Access",
-            onClick: () => setMode("pagination"),
-          },
-        ]}
-      />
+      <TabOption active={mode} options={tabOptions} />
     </>
   );
 };
@@ -160,7 +170,12 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
 
   return (
-    <Popout modal={modal} fixed anchorRef={anchorRef}>
+    <Popout
+      style={{ width: "250px" }}
+      modal={modal}
+      fixed
+      anchorRef={anchorRef}
+    >
       {modal && isNonNestedDynamicGroup && <DynamicGroupsViewMode />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />

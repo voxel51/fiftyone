@@ -5,6 +5,7 @@ import {
   PcdLooker,
   Sample,
   VideoLooker,
+  ImaVidLooker,
 } from "@fiftyone/looker";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -21,6 +22,8 @@ import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
+import * as groupAtoms from "../recoil/groups";
+import * as optionsAtoms from "../recoil/options";
 
 export default <T extends AbstractLooker>(
   isModal: boolean,
@@ -45,6 +48,13 @@ export default <T extends AbstractLooker>(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
   );
 
+  const isImaVidLookerAvailable = useRecoilValue(
+    groupAtoms.isImaVidLookerAvailable
+  );
+  const nonNestedDynamicGroupsViewMode = useRecoilValue(
+    optionsAtoms.nonNestedDynamicGroupsViewMode
+  );
+
   const create = useCallback(
     ({
       frameNumber,
@@ -55,6 +65,7 @@ export default <T extends AbstractLooker>(
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
+        | typeof ImaVidLooker
         | typeof PcdLooker
         | typeof VideoLooker = ImageLooker;
 
@@ -87,6 +98,11 @@ export default <T extends AbstractLooker>(
         if (isVideo) {
           constructor = VideoLooker;
         }
+      } else if (
+        isImaVidLookerAvailable &&
+        nonNestedDynamicGroupsViewMode === "video"
+      ) {
+        constructor = ImaVidLooker;
       } else {
         constructor = ImageLooker;
       }
@@ -149,18 +165,20 @@ export default <T extends AbstractLooker>(
       return looker;
     },
     [
-      isClip,
-      isFrame,
-      isPatch,
-      options,
-      thumbnail,
-      mediaField,
       dataset,
       fieldSchema,
       frameFieldSchema,
       handleError,
       highlight,
+      isClip,
+      isFrame,
+      isImaVidLookerAvailable,
+      isPatch,
+      mediaField,
+      nonNestedDynamicGroupsViewMode,
+      options,
       selected,
+      thumbnail,
       view,
     ]
   );
