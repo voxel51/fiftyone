@@ -537,7 +537,13 @@ An example Airflow DAG which runs operations in parallel, and ensures only a sin
 exists here:
 `FiftyOne Airflow Parallel Operations DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/orchestrators/airflow/run_parallel_delegated_operations.py>`_
 
+The out of the box airflow installation will use a `SequentialExecutor` by default. Information about the Sequential
+Executor can be found here: `Sequential Executor <https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/executor/sequential.html>`_
+This executor will run only one task insance at a time.
 
+To run operations in parallel, you will need to configure Airflow to use a different executor. The `CeleryExecutor` is
+a recommended executor for running production operations in parallel. Information about the Celery Executor can be found here:
+`Celery Executor <https://airflow.apache.org/docs/apache-airflow/stable/executor/celery.html>`_
 
 
 
