@@ -1564,11 +1564,11 @@ class PlotlyWidgetMixin(object):
             msg = (
                 "Interactive plots are currently only supported in Jupyter "
                 "notebooks. Support outside of notebooks and in Google Colab "
-                "will be included in an upcoming release. In the meantime, "
-                "you can still use this plot, but note that (i) selecting "
-                "data will not trigger callbacks, and (ii) you must manually "
-                "call `plot.show()` to launch a new plot that reflects the "
-                "current state of an attached session.\n\n"
+                "and Databricks will be included in an upcoming release. In "
+                "the meantime, you can still use this plot, but note that (i) "
+                "selecting data will not trigger callbacks, and (ii) you must "
+                "manually call `plot.show()` to launch a new plot that "
+                "reflects the current state of an attached session.\n\n"
                 "See https://docs.voxel51.com/user_guide/plots.html#working-in-notebooks"
                 " for more information."
             )
