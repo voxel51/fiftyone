@@ -410,7 +410,11 @@ export const Looker3d = () => {
             let key;
             if (setting?.colorByAttribute) {
               if (setting.colorByAttribute === "index") {
-                key = l._id;
+                if (["string", "number"].includes(l["index"])) {
+                  key = l.index;
+                } else {
+                  key = l._id;
+                }
               } else if (setting.colorByAttribute === "label") {
                 key = l.label;
               } else if (l.attributes[setting.colorByAttribute]) {

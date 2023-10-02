@@ -107,11 +107,17 @@ export abstract class CoordinateOverlay<
     }
     if (coloring.by === "value") {
       if (field) {
-        key = field.colorByAttribute
-          ? field.colorByAttribute === "index"
-            ? "id"
-            : field.colorByAttribute
-          : "label";
+        if (field.colorByAttribute) {
+          if (field.colorByAttribute === "index") {
+            key = ["string", "number"].includes(typeof this.label["index"])
+              ? "index"
+              : "id";
+          } else {
+            key = field.colorByAttribute;
+          }
+        } else {
+          key = "label";
+        }
 
         // use the first value as the fallback default if it's a listField
         const currentValue = Array.isArray(this.label[key])
