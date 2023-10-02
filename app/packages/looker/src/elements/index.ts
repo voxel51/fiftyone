@@ -4,6 +4,7 @@
 import {
   BaseState,
   FrameState,
+  ImaVidState,
   ImageState,
   PcdState,
   StateUpdate,
@@ -194,6 +195,70 @@ export const getVideoElements: GetElements<VideoState> = (
   };
 
   return createElementsTree<VideoState, common.LookerElement<VideoState>>(
+    config,
+    elements,
+    update,
+    dispatchEvent
+  );
+};
+
+export const getImaVidElements: GetElements<ImaVidState> = (
+  config,
+  update,
+  dispatchEvent
+) => {
+  const elements = {
+    node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
+    children: [
+      {
+        node: video.VideoElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
+      },
+      {
+        node: video.LoaderBar,
+      },
+      {
+        node: common.ControlsElement,
+        children: [
+          { node: video.SeekBarElement },
+          { node: video.SeekBarThumbElement },
+          { node: video.PlayButtonElement },
+          { node: video.TimeElement },
+          video.PLAYBACK_RATE,
+          { node: common.PlusElement },
+          { node: common.MinusElement },
+          { node: common.CropToContentButtonElement },
+          { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
+          { node: common.JSONButtonElement },
+          { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
+        ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.LoopVideoOptionElement },
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(
     config,
     elements,
     update,
