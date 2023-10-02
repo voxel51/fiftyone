@@ -1,10 +1,11 @@
+import Folder from "@mui/icons-material/Folder";
+import { TextField } from "@mui/material";
 import React from "react";
-import FileExplorer from "./FileExplorer";
 import FieldWrapper from "../FieldWrapper";
-import ObjectView from "../ObjectView";
+import FileExplorer from "./FileExplorer";
 
 export default function FileExplorerView(props) {
-  const { schema, onChange } = props;
+  const { schema, onChange, data } = props;
   const { view = {} } = schema;
   const { label, description, choose_button_label, readOnly } = view;
   const chooseMode = view.choose_dir ? "directory" : "file";
@@ -13,17 +14,25 @@ export default function FileExplorerView(props) {
     onChange(props.path, selectedFile);
   };
 
-  if (readOnly) return <ObjectView {...props} />;
-
   return (
     <FieldWrapper {...props}>
-      <FileExplorer
-        label={label}
-        description={description}
-        chooseButtonLabel={choose_button_label}
-        chooseMode={chooseMode}
-        onChoose={handleChoose}
-      />
+      {readOnly ? (
+        <TextField
+          value={data?.absolute_path}
+          disabled
+          InputProps={{ endAdornment: <Folder color="disabled" /> }}
+          fullWidth
+          size="small"
+        />
+      ) : (
+        <FileExplorer
+          label={label}
+          description={description}
+          chooseButtonLabel={choose_button_label}
+          chooseMode={chooseMode}
+          onChoose={handleChoose}
+        />
+      )}
     </FieldWrapper>
   );
 }
