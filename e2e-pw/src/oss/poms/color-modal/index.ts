@@ -53,13 +53,13 @@ export class ColorModalPom {
 
   // field level setting
   async toggleColorMode() {
-    return this.getFieldSelector(
+    await this.getFieldSelector(
       "button-toggle between color by value or color by field mode"
     ).click();
   }
 
   async useSpecialFieldColor(fieldName: string) {
-    return this.page
+    await this.page
       .getByTitle(`Use custom color for ${fieldName} field`)
       .first()
       .click({ force: true });
@@ -103,18 +103,18 @@ export class ColorModalPom {
     const saveAsDefaultButton = this.page.getByTestId(
       "button-Save to dataset appConfig"
     );
-    return saveAsDefaultButton.click();
+    await saveAsDefaultButton.click();
   }
 
   async resetColorScheme() {
     const resetButton = this.page.getByTestId(
       "button-Clear session settings and revert to default settings"
     );
-    return resetButton.click();
+    await resetButton.click();
   }
 
   async clearDefault() {
     const clearDefaultButton = this.page.getByTestId("button-Clear default");
-    return clearDefaultButton.click();
+    await clearDefaultButton.click();
   }
 }
