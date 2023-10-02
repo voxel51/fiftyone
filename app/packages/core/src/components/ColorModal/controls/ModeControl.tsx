@@ -67,7 +67,7 @@ const ModeControl: React.FC = () => {
         <SelectButton
           onClick={() => setOpen((o) => !o)}
           theme={theme}
-          data-cy="custom-colors-select-attribute"
+          data-cy="color-by-attribute"
         >
           <div>{colorScheme.colorBy}</div>
           {open ? (
@@ -86,7 +86,11 @@ const ModeControl: React.FC = () => {
             }}
           >
             {options.map((option) => (
-              <Option onClick={option.onClick} key={option.value}>
+              <Option
+                onClick={option.onClick}
+                key={option.value}
+                data-cy={"option-" + option.value}
+              >
                 {option.value}
               </Option>
             ))}
