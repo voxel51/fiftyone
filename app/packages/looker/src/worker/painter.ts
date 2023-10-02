@@ -32,7 +32,9 @@ export const PainterFactory = (requestColor) => ({
       if (setting) {
         const key = setting.colorByAttribute
           ? setting.colorByAttribute === "index"
-            ? "id"
+            ? label["index"] !== undefined
+              ? "index"
+              : "id"
             : setting.colorByAttribute
           : "label";
         const valueColor = setting?.valueColors?.find((l) => {
@@ -226,11 +228,19 @@ export const PainterFactory = (requestColor) => ({
       const cache = {};
 
       let color;
-      if (maskTargets && Object.keys(maskTargets).length === 1) {
-        color = get32BitColor(
-          setting?.fieldColor ??
-            (await requestColor(coloring.pool, coloring.seed, field))
-        );
+      let colorKey;
+      if (maskTargets && Object.keys(maskTargets).length === 0) {
+        if (coloring.by === "field") {
+          colorKey = field;
+        } else {
+          colorKey = label.id;
+        }
+
+        const requestedColor =
+          coloring.by === "field" && setting?.fieldColor
+            ? setting?.fieldColor
+            : await requestColor(coloring.pool, coloring.seed, colorKey);
+        color = get32BitColor(requestedColor);
       }
 
       const getColor = (i) => {
