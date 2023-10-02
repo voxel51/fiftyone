@@ -166,7 +166,7 @@ class ColorScheme:
     fields: t.Optional[t.List[CustomizeColor]] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
-    show_keypoint_skeleton: t.Optional[bool] = None
+    show_skeletons: t.Optional[bool] = None
 
 
 @dataclass
@@ -191,7 +191,7 @@ class SetColorScheme(Event):
             fields=fields,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
-            show_keypoint_skeleton=self.color_scheme.show_keypoint_skeleton,
+            show_skeletons=self.color_scheme.show_skeletons,
         )
 
 
