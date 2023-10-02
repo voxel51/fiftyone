@@ -1,7 +1,8 @@
 import { Loading, useTheme } from "@fiftyone/components";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { getHashLabel, isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { getColor } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -73,7 +74,7 @@ export const Looker3d = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const colorSchemeFields = colorScheme?.fields;
   const labelAlpha = colorScheme.opacity;
-  const getColor = useRecoilValue(fos.colorMap);
+  const getFieldColor = useRecoilValue(fos.colorMap);
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
@@ -400,18 +401,28 @@ export const Looker3d = () => {
           const path = l.path.join(".");
           let color: string;
           const setting = colorSchemeFields?.find((s) => s.path === path);
+
+          if (coloring.by === "instance") {
+            color = getColor(coloring.pool, coloring.seed, getHashLabel(l));
+          }
+
           if (coloring.by === "field") {
             if (isValidColor(setting?.fieldColor ?? "")) {
               color = setting.fieldColor;
             } else {
-              color = getColor(path);
+              color = getFieldColor(path);
             }
           }
+
           if (coloring.by === "value") {
             let key;
             if (setting?.colorByAttribute) {
               if (setting.colorByAttribute === "index") {
-                key = l._id;
+                if (l["index"]) {
+                  key = l.index;
+                } else {
+                  key = l._id;
+                }
               } else if (setting.colorByAttribute === "label") {
                 key = l.label;
               } else if (l.attributes[setting.colorByAttribute]) {
@@ -435,10 +446,10 @@ export const Looker3d = () => {
               if (isValidColor(labelColor)) {
                 color = labelColor;
               } else {
-                color = getColor(key);
+                color = getFieldColor(key);
               }
             } else {
-              color = getColor(key);
+              color = getFieldColor(key);
             }
           }
 
@@ -447,7 +458,7 @@ export const Looker3d = () => {
         .filter((l) => pathFilter(l.path.join("."), l)),
     [
       coloring,
-      getColor,
+      getFieldColor,
       pathFilter,
       sampleMap,
       selectedLabels,

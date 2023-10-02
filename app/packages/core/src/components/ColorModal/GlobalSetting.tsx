@@ -21,11 +21,12 @@ const GlobalSetting = () => {
         <LabelTitle>Color annotations by</LabelTitle>
         <SectionWrapper data-cy="colorBy-controls">
           <RadioGroup
-            choices={["field", "value"]}
+            choices={["field", "value", "instance"]}
             value={colorScheme.colorBy ?? "field"}
             setValue={(mode) =>
               setColorScheme({ ...colorScheme, colorBy: mode })
             }
+            horizontal
           />
         </SectionWrapper>
         <ShuffleColor />

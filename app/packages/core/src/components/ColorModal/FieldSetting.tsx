@@ -4,6 +4,7 @@ import * as fos from "@fiftyone/state";
 import {
   FLOAT_FIELD,
   NOT_VISIBLE_LIST,
+  SEGMENTATION,
   VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
@@ -306,6 +307,9 @@ const FieldSetting = ({ path }: { path: string }) => {
 
       {coloring.by == "value" && !isTypeValueSupported && (
         <div>Color by value is not supported for this field type</div>
+      )}
+      {coloring.by == "instance" && (
+        <div>Cannot customize settings under color by instance mode</div>
       )}
     </div>
   );
