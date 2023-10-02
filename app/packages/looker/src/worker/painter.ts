@@ -229,7 +229,7 @@ export const PainterFactory = (requestColor) => ({
 
       let color;
       let colorKey;
-      if (maskTargets && Object.keys(maskTargets).length === 0) {
+      if (maskTargets && Object.keys(maskTargets).length === 1) {
         if (coloring.by === "field") {
           colorKey = field;
         } else {
