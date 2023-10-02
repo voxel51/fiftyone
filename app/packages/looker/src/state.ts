@@ -53,12 +53,10 @@ export type OrthogrpahicProjectionMetadata = {
 };
 
 export type GenericLabel = {
-  [labelKey: string]:
-    | {
-        _cls: string;
-        [field: string]: unknown;
-      }
-    | OrthogrpahicProjectionMetadata;
+  [labelKey: string]: {
+    _cls: string;
+    [field: string]: unknown;
+  };
   // todo: add other label types
 };
 
@@ -69,6 +67,7 @@ export type Sample = {
     mime_type?: string;
   };
   _id: string;
+  id: string;
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -202,6 +201,10 @@ export interface VideoConfig extends BaseConfig {
   support?: [number, number];
 }
 
+export interface ImaVidConfig extends BaseConfig {
+  frameRate: number;
+}
+
 export type PcdConfig = BaseConfig;
 
 export interface FrameOptions extends BaseOptions {
@@ -219,6 +222,13 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
+}
+
+export interface ImaVidOptions extends BaseOptions {
+  autoplay: boolean;
+  loop: boolean;
+  playbackRate: number;
+  useFrameNumber: boolean;
 }
 
 export type PcdOptions = BaseOptions;
@@ -305,6 +315,20 @@ export interface VideoState extends BaseState {
   hasPoster: boolean;
   waitingForVideo: boolean;
   lockedToSupport: boolean;
+}
+
+export interface ImaVidState extends BaseState {
+  config: ImaVidConfig;
+  options: ImaVidOptions;
+  seeking: boolean;
+  playing: boolean;
+  frameNumber: number;
+  duration: number | null;
+  buffering: boolean;
+  buffers: Buffers;
+  seekBarHovering: boolean;
+  hasPoster: boolean;
+  waitingForVideo: boolean;
 }
 
 export interface PcdState extends BaseState {
