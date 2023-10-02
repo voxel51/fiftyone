@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-import React from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
@@ -69,17 +68,15 @@ const GlobalSetting = () => {
       <ControlGroupWrapper>
         <Checkbox
           name={"Multicolor keypoints"}
-          value={Boolean(colorScheme.useMultiColorKeypoints)}
+          value={Boolean(colorScheme.multicolorKeypoints)}
           setValue={(v) =>
-            setColorScheme({ ...colorScheme, useMultiColorKeypoints: v })
+            setColorScheme({ ...colorScheme, multicolorKeypoints: v })
           }
         />
         <Checkbox
           name={"Show keypoint skeletons"}
-          value={Boolean(colorScheme.showKeypointSkeleton)}
-          setValue={(v) =>
-            setColorScheme({ ...colorScheme, showKeypointSkeleton: v })
-          }
+          value={Boolean(colorScheme.showSkeletons)}
+          setValue={(v) => setColorScheme({ ...colorScheme, showSkeletons: v })}
         />
       </ControlGroupWrapper>
     </div>

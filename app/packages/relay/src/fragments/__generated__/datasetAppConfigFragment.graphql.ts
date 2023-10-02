@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<29a419308ee04f2bab4490be61d95edd>>
+ * @generated SignedSource<<5cc0b0cb8184b43666128eae767a86f3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,11 +9,12 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
-    readonly colorBy: string | null;
+    readonly colorBy: ColorBy | null;
     readonly colorPool: ReadonlyArray<string>;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: string | null;
@@ -25,9 +26,9 @@ export type datasetAppConfigFragment$data = {
       }> | null;
     }> | null;
     readonly id: string;
+    readonly multicolorKeypoints: boolean | null;
     readonly opacity: number | null;
-    readonly showKeypointSkeleton: boolean | null;
-    readonly useMultiColorKeypoints: boolean | null;
+    readonly showSkeletons: boolean | null;
   } | null;
   readonly gridMediaField: string;
   readonly mediaFields: ReadonlyArray<string> | null;
@@ -101,6 +102,13 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "colorBy",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "colorPool",
           "storageKey": null
         },
@@ -108,7 +116,7 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "colorBy",
+          "name": "multicolorKeypoints",
           "storageKey": null
         },
         {
@@ -122,14 +130,7 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
-          "name": "useMultiColorKeypoints",
-          "storageKey": null
-        },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "showKeypointSkeleton",
+          "name": "showSkeletons",
           "storageKey": null
         },
         {
@@ -197,6 +198,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "d11b06b4c6c0484949529a925e606cde";
+(node as any).hash = "e4da6ba620276ce79b8429c97980919b";
 
 export default node;

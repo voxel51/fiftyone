@@ -4,11 +4,11 @@ import r from "../resolve";
 
 export default r(graphql`
   fragment colorSchemeFragment on ColorScheme {
-    colorPool
     colorBy
+    colorPool
+    multicolorKeypoints
     opacity
-    useMultiColorKeypoints
-    showKeypointSkeleton
+    showSkeletons
     fields {
       colorByAttribute
       fieldColor

@@ -133,8 +133,8 @@ const dispatchSideEffect = ({
         colorPool: data.config.colorPool,
         colorBy: data.config.colorBy,
         opacity: 0.7,
-        useMultiColorKeypoints: false,
-        showKeypointSkeleton: true,
+        multicolorKeypoints: false,
+        showSkeletons: true,
       }
     );
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;

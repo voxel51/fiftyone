@@ -55,7 +55,6 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activeField = useRecoilValue(activeColorField);
   const currentColorScheme = useRecoilValue(fos.colorScheme);
 
   const index = currentColorScheme.fields.findIndex((s) => s.path == path);

@@ -163,10 +163,10 @@ class CustomizeColor:
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
-    opacity: t.Optional[float] = None
-    use_multi_color_keypoints: t.Optional[bool] = None
-    show_keypoint_skeleton: t.Optional[bool] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
+    multicolor_keypoints: t.Optional[bool] = None
+    opacity: t.Optional[float] = None
+    show_keypoint_skeleton: t.Optional[bool] = None
 
 
 @dataclass
@@ -188,10 +188,10 @@ class SetColorScheme(Event):
         return foo.ColorScheme(
             color_pool=self.color_scheme.color_pool,
             color_by=self.color_scheme.color_by,
-            opacity=self.color_scheme.opacity,
-            use_multi_color_keypoints=self.color_scheme.use_multi_color_keypoints,
-            show_keypoint_skeleton=self.color_scheme.show_keypoint_skeleton,
             fields=fields,
+            multicolor_keypoints=self.color_scheme.multicolor_keypoints,
+            opacity=self.color_scheme.opacity,
+            show_keypoint_skeleton=self.color_scheme.show_keypoint_skeleton,
         )
 
 

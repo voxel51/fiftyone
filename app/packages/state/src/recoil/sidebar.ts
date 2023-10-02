@@ -24,7 +24,6 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import { cloneDeep } from "lodash";
 import { VariablesOf, commitMutation } from "react-relay";
 import {
   DefaultValue,

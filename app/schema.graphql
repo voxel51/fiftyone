@@ -49,6 +49,7 @@ type AppConfig {
   colorscale: String!
   gridZoom: Int!
   loopVideos: Boolean!
+  multicolorKeypoints: Boolean!
   notebookHeight: Int!
   plugins: JSON
   showConfidence: Boolean!
@@ -117,20 +118,20 @@ enum ColorBy {
 type ColorScheme {
   id: ID!
   colorPool: [String!]!
-  colorBy: String
-  opacity: Float
-  useMultiColorKeypoints: Boolean
-  showKeypointSkeleton: Boolean
+  colorBy: ColorBy
   fields: [CustomizeColor!]
+  multicolorKeypoints: Boolean
+  opacity: Float
+  showSkeletons: Boolean
 }
 
 input ColorSchemeInput {
   colorPool: [String!]!
   colorBy: String = null
-  opacity: Float = null
-  useMultiColorKeypoints: Boolean = null
-  showKeypointSkeleton: Boolean = null
   fields: [CustomizeColorInput!] = null
+  multicolorKeypoints: Boolean = null
+  opacity: Float = null
+  showSkeletons: Boolean = null
 }
 
 input Count {

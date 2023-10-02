@@ -112,7 +112,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
     const newSetting = cloneDeep(colorScheme.fields);
     newSetting[index].valueColors = newInput;
     setInput(newInput);
-    setColorScheme({ ...colorScheme, fields: newSetting });
+    setColorScheme((cur) => ({ ...cur, fields: newSetting }));
     setShowPicker([...showPicker, false]);
   }, [
     colorScheme.colorPool,

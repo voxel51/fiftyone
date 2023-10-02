@@ -39,11 +39,11 @@ export const SESSION_DEFAULT: Session = {
   sessionSpaces: SPACES_DEFAULT,
   colorScheme: {
     colorPool: [],
-    fields: [],
     colorBy: "field",
+    fields: [],
+    multicolorKeypoints: false,
     opacity: 0.7,
-    showKeypointSkeleton: true,
-    useMultiColorKeypoints: false,
+    showSkeletons: true,
   },
 };
 

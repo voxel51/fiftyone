@@ -275,10 +275,16 @@ def build_color_scheme(
     if app_config is None:
         app_config = fo.app_config
 
+    if not color_scheme.color_by:
+        color_scheme.color_by = app_config.color_by
+
     if not color_scheme.color_pool:
         color_scheme.color_pool = app_config.color_pool
 
-    if not color_scheme.color_by:
-        color_scheme.color_by = app_config.color_by
+    if color_scheme.multicolor_keypoints is None:
+        color_scheme.multicolor_keypoints = app_config.multicolor_keypoints
+
+    if color_scheme.show_skeletons is None:
+        color_scheme.show_skeletons = app_config.show_skeletons
 
     return color_scheme

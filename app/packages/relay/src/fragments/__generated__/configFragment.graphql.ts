@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2f57ddd9cb5b6d92483ba1b832efaa3e>>
+ * @generated SignedSource<<13264b349b2956b06aec4b4b1c3ea746>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -21,6 +21,7 @@ export type configFragment$data = {
     readonly colorscale: string;
     readonly gridZoom: number;
     readonly loopVideos: boolean;
+    readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
     readonly plugins: object | null;
     readonly showConfidence: boolean;
@@ -89,6 +90,13 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "loopVideos",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "multicolorKeypoints",
           "storageKey": null
         },
         {
@@ -178,6 +186,6 @@ return {
 };
 })();
 
-(node as any).hash = "f615a13c21fc89dabb4ea9d7d48f36ad";
+(node as any).hash = "b9064045e9aedc401925305dc8c7ab6d";
 
 export default node;

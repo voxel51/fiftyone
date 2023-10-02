@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9148a7e906b703f61641925e8e0f40a8>>
+ * @generated SignedSource<<8dacb614e6a757b9006853a4e1eb9004>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,9 +9,10 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
-  readonly colorBy: string | null;
+  readonly colorBy: ColorBy | null;
   readonly colorPool: ReadonlyArray<string>;
   readonly fields: ReadonlyArray<{
     readonly colorByAttribute: string | null;
@@ -22,9 +23,9 @@ export type colorSchemeFragment$data = {
       readonly value: string;
     }> | null;
   }> | null;
+  readonly multicolorKeypoints: boolean | null;
   readonly opacity: number | null;
-  readonly showKeypointSkeleton: boolean | null;
-  readonly useMultiColorKeypoints: boolean | null;
+  readonly showSkeletons: boolean | null;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -42,6 +43,13 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
+      "name": "colorBy",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
       "name": "colorPool",
       "storageKey": null
     },
@@ -49,7 +57,7 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
-      "name": "colorBy",
+      "name": "multicolorKeypoints",
       "storageKey": null
     },
     {
@@ -63,14 +71,7 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
-      "name": "useMultiColorKeypoints",
-      "storageKey": null
-    },
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "showKeypointSkeleton",
+      "name": "showSkeletons",
       "storageKey": null
     },
     {
@@ -135,6 +136,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "8d543dfe22c119526e99339ec285cd7a";
+(node as any).hash = "0df00003de521a6296d8a5d56956247b";
 
 export default node;

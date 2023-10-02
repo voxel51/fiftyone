@@ -52,11 +52,11 @@ const ColorFooter: React.FC = () => {
             setColorScheme(
               datasetDefault || {
                 fields: [],
-                colorPool: configDeafult.colorPool,
-                colorBy: configDeafult.colorBy,
+                colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy,
+                multicolorKeypoints: false,
                 opacity: fos.DEFAULT_ALPHA,
-                useMultiColorKeypoints: false,
-                showKeypointSkeleton: true,
+                showSkeletons: true,
               }
             );
           }}
@@ -149,10 +149,20 @@ const useUpdateDatasetColorScheme = () => {
               return record;
             });
 
-            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
             colorSchemeRecord.setValue(
               [...(colorScheme.colorPool || [])],
               "colorPool"
+            );
+            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(
+              colorScheme.multicolorKeypoints,
+              "multicolorKeypoints"
+            );
+            colorSchemeRecord.setValue(colorScheme.opacity, "opacity");
+            colorSchemeRecord.setValue(
+              colorScheme.showSkeletons,
+              "showSkeletons"
             );
           });
       },

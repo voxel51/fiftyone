@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c8971c3718ec1a9f9c0150ddd2762928>>
+ * @generated SignedSource<<81330d476e5172dc67f7f97c56390e07>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,9 +13,9 @@ export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
+  multicolorKeypoints?: boolean | null;
   opacity?: number | null;
-  showKeypointSkeleton?: boolean | null;
-  useMultiColorKeypoints?: boolean | null;
+  showSkeletons?: boolean | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;

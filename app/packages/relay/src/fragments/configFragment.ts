@@ -10,6 +10,7 @@ export default r(graphql`
       colorscale
       gridZoom
       loopVideos
+      multicolorKeypoints
       notebookHeight
       plugins
       showConfidence

@@ -63,7 +63,7 @@ export const Looker3d = () => {
     "3d",
     defaultPluginSettings
   );
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
+  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
   const onSelectLabel = fos.useOnSelectLabel();
@@ -272,8 +272,8 @@ export const Looker3d = () => {
       }
 
       const selectedLabels = get(fos.selectedLabels);
-      if (selectedLabels && Object.keys(selectedLabels).length > 0) {
-        set(fos.selectedLabels, {});
+      if (selectedLabels && selectedLabels.length > 0) {
+        set(fos.selectedLabelMap, {});
         return;
       }
 

@@ -32,7 +32,7 @@ import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
-from fiftyone.server.color import ColorScheme
+from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 from fiftyone.server.metadata import MediaType
@@ -313,13 +313,6 @@ dataset_dataloader = get_dataloader_resolver(
 
 
 @gql.enum
-class ColorBy(Enum):
-    field = "field"
-    instance = "instance"
-    value = "value"
-
-
-@gql.enum
 class Theme(Enum):
     browser = "browser"
     dark = "dark"
@@ -333,6 +326,7 @@ class AppConfig:
     colorscale: str
     grid_zoom: int
     loop_videos: bool
+    multicolor_keypoints: bool
     notebook_height: int
     plugins: t.Optional[JSON]
     show_confidence: bool

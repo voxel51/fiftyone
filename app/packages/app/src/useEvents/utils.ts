@@ -13,16 +13,15 @@ export const ensureColorScheme = (
   colorScheme: any,
   defaultValue: any
 ): ColorSchemeInput => {
+  colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: toCamelCase(colorScheme).colorPool || defaultValue.colorPool,
-    colorBy: toCamelCase(colorScheme).colorBy || defaultValue.colorBy,
-    opacity: toCamelCase(colorScheme).opacity || defaultValue.opacity,
-    useMultiColorKeypoints:
-      toCamelCase(colorScheme).useMultiColorKeypoints ||
-      defaultValue.useMultiColorKeypoints,
-    showKeypointSkeleton:
-      toCamelCase(colorScheme).showKeypointSkeleton == false ? false : true,
-    fields: toCamelCase(colorScheme.fields || []) as ColorSchemeInput["fields"],
+    colorPool: colorScheme.colorPool || defaultValue.colorPool,
+    colorBy: colorScheme.colorBy || defaultValue.colorBy,
+    fields: colorScheme.fields as ColorSchemeInput["fields"],
+    multicolorKeypoints:
+      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
+    opacity: colorScheme.opacity || defaultValue.opacity,
+    showSkeletons: colorScheme.showSkeletons == false ? false : true,
   };
 };
 
@@ -36,7 +35,7 @@ export const processState = (
       colorPool: [],
       colorBy: "field",
       opacity: 0.7,
-      useMultiColorKeypoints: false,
+      multicolorKeypoints: false,
     })
   );
   setter("sessionGroupSlice", state.group_slice);
