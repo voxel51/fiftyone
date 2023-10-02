@@ -52,10 +52,9 @@ export class ColorModalPom {
   }
 
   // field level setting
-  async toggleColorMode() {
-    await this.getFieldSelector(
-      "button-toggle between color by value or color by field mode"
-    ).click();
+  async changeColorMode(mode: "value" | "field" | "instance") {
+    await this.getFieldSelector("color-by-attribute").click();
+    await this.getFieldSelector(`option-${mode}`).click();
   }
 
   async useSpecialFieldColor(fieldName: string) {
