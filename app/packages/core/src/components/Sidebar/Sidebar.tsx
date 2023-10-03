@@ -2,8 +2,8 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
-import { Controller, animated, config } from "@react-spring/web";
 import { Box, Switch, Typography } from "@mui/material";
+import { Controller, animated, config } from "@react-spring/web";
 import { Resizable } from "re-resizable";
 import { default as React, useCallback, useRef, useState } from "react";
 import { useRecoilState, useRecoilValue, useResetRecoilState } from "recoil";
@@ -430,6 +430,7 @@ const InteractiveSidebar = ({
   const [containerController] = useState(
     () => new Controller({ minHeight: 0 })
   );
+
   const [hideNoneFields, setHideNoneFields] = useRecoilState<boolean>(
     fos.hideNoneFields
   );
@@ -737,7 +738,6 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
-      <SchemaSettings />
       {modal && (
         <Box
           display="flex"
@@ -790,19 +790,15 @@ const InteractiveSidebar = ({
         <Container style={containerController.springs}>
           {order.current.map((key) => {
             const entry = items.current[key].entry;
-            console.log("order", order, entry);
             if (entry.kind === fos.EntryKind.GROUP) {
               group = entry.name;
             }
 
-            const { shadow, cursor, ...springs } = items.current[
-              key
-            ].controller.springs;
+            const { shadow, cursor, ...springs } =
+              items.current[key].controller.springs;
             const keyTrigger = ["tags", "_label_tags"].includes(key[1])
               ? null
               : trigger;
-
-            console.log("k", key, group, entry);
             const { children } = render(
               key,
               group,
@@ -840,7 +836,20 @@ const InteractiveSidebar = ({
                   ...style,
                 }}
               >
-                {children}
+                <div
+                  ref={(node) => {
+                    if (!items.current[key]) {
+                      return;
+                    }
+
+                    items.current[key].el &&
+                      observer.unobserve(items.current[key].el);
+                    node && observer.observe(node);
+                    items.current[key].el = node;
+                  }}
+                >
+                  {children}
+                </div>
               </animated.div>
             );
           })}
