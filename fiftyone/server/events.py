@@ -84,10 +84,10 @@ async def dispatch_event(
 
     if isinstance(event, SetGroupSlice):
         if _state.view is not None:
-            _state.view.group_slice = event.group_slice
+            _state.view.group_slice = event.slice
 
         elif _state.dataset is not None:
-            _state.dataset.group_slice = event.group_slice
+            _state.dataset.group_slice = event.slice
 
     if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state
