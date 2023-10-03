@@ -22,6 +22,7 @@ import {
   REGRESSION,
   Schema,
   STRING_FIELD,
+  VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
 import _ from "lodash";
@@ -485,7 +486,7 @@ const unwind = (
   }
 };
 
-const getFieldAndValue = (
+export const getFieldAndValue = (
   sample: Sample,
   schema: Schema,
   path: string
@@ -504,20 +505,41 @@ const getFieldAndValue = (
     path = path.split(".").slice(1).join(".");
   }
 
-  for (const key of path.split(".").slice(0, 2)) {
-    if (!schema?.[key]) {
+  const topLevelPaths = path.split(".").slice(0, 2);
+  for (const key of topLevelPaths) {
+    field = schema?.[key];
+    if (!field) {
       return [null, null];
     }
-
-    field = schema[key];
 
     if (
       field &&
       field.ftype === LIST_FIELD &&
       field.subfield === EMBEDDED_DOCUMENT_FIELD
     ) {
-      return [null, null];
+      if (path === field.name) {
+        return [null, null];
+      }
+
+      // single-level nested primitives in a list of dynamic documents can be visualized
+      if (Object.keys(field.fields).length) {
+        for (const value of Object.values(field.fields)) {
+          if (value["path"] === path && value.ftype === LIST_FIELD) {
+            if (!VALID_PRIMITIVE_TYPES.includes(value.subfield)) {
+              return [null, null];
+            }
+          } else if (
+            value["path"] === path &&
+            !VALID_PRIMITIVE_TYPES.includes(value.ftype)
+          ) {
+            return [null, null];
+          }
+        }
+      } else {
+        return [null, null];
+      }
     }
+
     if (values?.length && field) {
       values = unwind(field.dbField, values as RegularLabel[]).filter(
         (v) => v !== undefined && v !== null
