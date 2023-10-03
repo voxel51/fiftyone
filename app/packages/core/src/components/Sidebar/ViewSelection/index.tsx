@@ -250,6 +250,11 @@ export default function ViewSelection() {
               data-cy={`saved-views-create-new`}
               onClick={() => canEdit && !isEmptyView && setIsOpen(true)}
               disabled={isEmptyView || !canEdit}
+              title={
+                canEdit
+                  ? undefined
+                  : "Can not save filters as a view in read-only mode"
+              }
             >
               <Box style={{ width: "12%" }}>
                 <AddIcon fontSize="small" disabled={isEmptyView || !canEdit} />

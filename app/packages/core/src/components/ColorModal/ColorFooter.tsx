@@ -1,3 +1,4 @@
+import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
@@ -8,13 +9,7 @@ import {
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import { Button } from "../utils";
-import {
-  BUTTON_STYLE,
-  ButtonGroup,
-  LONG_BUTTON_STYLE,
-  ModalActionButtonContainer,
-} from "./ShareStyledDiv";
+import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
@@ -44,9 +39,8 @@ const ColorFooter: React.FC = () => {
 
   return (
     <ModalActionButtonContainer>
-      <ButtonGroup>
+      <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
-          text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
@@ -60,39 +54,40 @@ const ColorFooter: React.FC = () => {
               }
             );
           }}
-          style={BUTTON_STYLE}
-        />
-        {canEdit && (
-          <Button
-            text={"Save as default"}
-            title={`Save to dataset appConfig`}
-            onClick={() => {
-              updateDatasetColorScheme({
-                ...colorScheme,
-                fields: colorScheme.fields || [],
-                colorPool: colorScheme.colorPool || [],
-              });
+        >
+          Reset
+        </Button>
+        <Button
+          title={
+            canEdit
+              ? "Save to dataset app config"
+              : "Can not save to dataset appConfig in read-only mode"
+          }
+          onClick={() => {
+            updateDatasetColorScheme({
+              fields: colorScheme.fields || [],
+              colorPool: colorScheme.colorPool || [],
+            });
 
-              setDatasetColorScheme({
-                variables: {
-                  subscription,
-                  datasetName,
-                  colorScheme: {
-                    ...colorScheme,
-                    fields: colorScheme.fields || [],
-                    colorPool: colorScheme.colorPool || [],
-                  },
+            setDatasetColorScheme({
+              variables: {
+                subscription,
+                datasetName,
+                colorScheme: {
+                  fields: colorScheme.fields || [],
+                  colorPool: colorScheme.colorPool || [],
                 },
-              });
-              setActiveColorModalField(null);
-            }}
-            style={LONG_BUTTON_STYLE}
-          />
-        )}
-        {canEdit && datasetDefault && (
+              },
+            });
+            setActiveColorModalField(null);
+          }}
+          disabled={!canEdit}
+        >
+          Save as default
+        </Button>
+        {datasetDefault && (
           <Button
-            text={"Clear default"}
-            title={`Clear`}
+            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
@@ -103,8 +98,10 @@ const ColorFooter: React.FC = () => {
                 colorPool: configDefault.colorPool,
               });
             }}
-            style={LONG_BUTTON_STYLE}
-          />
+            disabled={!canEdit}
+          >
+            Clear default
+          </Button>
         )}
       </ButtonGroup>
     </ModalActionButtonContainer>
