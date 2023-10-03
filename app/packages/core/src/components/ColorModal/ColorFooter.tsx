@@ -50,34 +50,37 @@ const ColorFooter: React.FC = () => {
         >
           Reset
         </Button>
-        {canEdit && (
-          <Button
-            title={`Save to dataset app config`}
-            onClick={() => {
-              updateDatasetColorScheme({
-                fields: colorScheme.fields || [],
-                colorPool: colorScheme.colorPool || [],
-              });
+        <Button
+          title={
+            canEdit
+              ? "Save to dataset app config"
+              : "Can not save to dataset appConfig in read-only mode"
+          }
+          onClick={() => {
+            updateDatasetColorScheme({
+              fields: colorScheme.fields || [],
+              colorPool: colorScheme.colorPool || [],
+            });
 
-              setDatasetColorScheme({
-                variables: {
-                  subscription,
-                  datasetName,
-                  colorScheme: {
-                    fields: colorScheme.fields || [],
-                    colorPool: colorScheme.colorPool || [],
-                  },
+            setDatasetColorScheme({
+              variables: {
+                subscription,
+                datasetName,
+                colorScheme: {
+                  fields: colorScheme.fields || [],
+                  colorPool: colorScheme.colorPool || [],
                 },
-              });
-              setActiveColorModalField(null);
-            }}
-          >
-            Save as default
-          </Button>
-        )}
-        {canEdit && datasetDefault && (
+              },
+            });
+            setActiveColorModalField(null);
+          }}
+          disabled={!canEdit}
+        >
+          Save as default
+        </Button>
+        {datasetDefault && (
           <Button
-            title={"Clear dataset default"}
+            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
@@ -85,6 +88,7 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme({ fields: [], colorPool: defaultColorPool });
             }}
+            disabled={!canEdit}
           >
             Clear default
           </Button>
