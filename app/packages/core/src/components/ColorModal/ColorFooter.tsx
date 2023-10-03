@@ -9,11 +9,7 @@ import {
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import {
-  ButtonGroup,
-  LONG_BUTTON_STYLE,
-  ModalActionButtonContainer,
-} from "./ShareStyledDiv";
+import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
@@ -57,45 +53,33 @@ const ColorFooter: React.FC = () => {
         <Button
           title={
             canEdit
-              ? `Save to dataset appConfig`
+              ? "Save to dataset app config"
               : "Can not save to dataset appConfig in read-only mode"
           }
           onClick={() => {
-            setColorScheme(true, colorScheme);
+            updateDatasetColorScheme({
+              fields: colorScheme.fields || [],
+              colorPool: colorScheme.colorPool || [],
+            });
+
+            setDatasetColorScheme({
+              variables: {
+                subscription,
+                datasetName,
+                colorScheme: {
+                  fields: colorScheme.fields || [],
+                  colorPool: colorScheme.colorPool || [],
+                },
+              },
+            });
             setActiveColorModalField(null);
           }}
           disabled={!canEdit}
         >
           Save as default
         </Button>
-        {hasSavedSettings && (
+        {datasetDefault && (
           <Button
-            text={"Save as default"}
-            title={`Save to dataset appConfig`}
-            onClick={() => {
-              updateDatasetColorScheme({
-                fields: colorScheme.fields || [],
-                colorPool: colorScheme.colorPool || [],
-              });
-
-              setDatasetColorScheme({
-                variables: {
-                  subscription,
-                  datasetName,
-                  colorScheme: {
-                    fields: colorScheme.fields || [],
-                    colorPool: colorScheme.colorPool || [],
-                  },
-                },
-              });
-              setActiveColorModalField(null);
-            }}
-            style={LONG_BUTTON_STYLE}
-          />
-        )}
-        {canEdit && datasetDefault && (
-          <Button
-            text={"Clear default"}
             title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
