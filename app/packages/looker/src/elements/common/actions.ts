@@ -8,6 +8,7 @@ import {
   Control,
   ControlEventKeyType,
   ControlMap,
+  ImaVidState,
   VideoState,
 } from "../../state";
 import { clampScale } from "../../util";
@@ -396,7 +397,7 @@ export const COMMON = {
 
 export const COMMON_SHORTCUTS = readActions(COMMON);
 
-export const nextFrame: Control<VideoState> = {
+export const nextFrame: Control<VideoState | ImaVidState> = {
   title: "Next frame",
   eventKeys: [".", ">"],
   shortcut: ">",
@@ -404,18 +405,14 @@ export const nextFrame: Control<VideoState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      ({
-        frameNumber,
-        duration,
-        playing,
-        config: { frameRate, support, thumbnail },
-        lockedToSupport,
-      }) => {
+      ({ frameNumber, duration, playing, config }) => {
+        const { frameRate, thumbnail } = config;
+
         if (playing || thumbnail) {
           return {};
         }
-        const end = lockedToSupport
-          ? support[1]
+        const end = config.lockedToSupport
+          ? config.support[1]
           : getFrameNumber(duration, duration, frameRate);
 
         return {

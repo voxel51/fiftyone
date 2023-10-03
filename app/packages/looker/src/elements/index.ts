@@ -16,6 +16,7 @@ import * as image from "./image";
 import * as pcd from "./pcd";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
+import * as imavid from "./imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
@@ -211,7 +212,7 @@ export const getImaVidElements: GetElements<ImaVidState> = (
     node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
     children: [
       {
-        node: video.VideoElement,
+        node: imavid.ImaVidElement,
       },
       {
         node: common.CanvasElement,
