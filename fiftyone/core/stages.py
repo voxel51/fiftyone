@@ -3437,6 +3437,10 @@ class GroupBy(ViewStage):
 
         pipeline = []
 
+        # sort so that first document in each group comes from a sorted list
+        if self._sort_stage is not None:
+            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
+
         pipeline.extend(
             [
                 {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
@@ -3444,8 +3448,13 @@ class GroupBy(ViewStage):
             ]
         )
 
-        if self._sort_stage is not None:
-            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
+        # add a sort stage so that we return a stable ordering of groups
+        # sort by _id to preserve insertion order
+        pipeline.extend(
+            [
+                {"$sort": {"_id": 1}},
+            ]
+        )
 
         return pipeline
 
