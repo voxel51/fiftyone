@@ -470,12 +470,6 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const hideTagging = useRecoilValue(fos.readOnly);
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
   const actionsRowDivRef = useRef<HTMLDivElement>();
 
   useEffect(() => {
