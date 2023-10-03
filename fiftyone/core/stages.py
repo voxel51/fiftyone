@@ -3437,15 +3437,15 @@ class GroupBy(ViewStage):
 
         pipeline = []
 
-        if self._sort_stage is not None:
-            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
-
         pipeline.extend(
             [
                 {"$group": {"_id": group_expr, "doc": {"$first": "$$ROOT"}}},
                 {"$replaceRoot": {"newRoot": "$doc"}},
             ]
         )
+
+        if self._sort_stage is not None:
+            pipeline.extend(self._sort_stage.to_mongo(sample_collection))
 
         return pipeline
 
