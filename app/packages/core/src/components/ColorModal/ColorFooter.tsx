@@ -52,7 +52,7 @@ const ColorFooter: React.FC = () => {
         </Button>
         {canEdit && (
           <Button
-            title={`Save to dataset appConfig`}
+            title={`Save to dataset app config`}
             onClick={() => {
               updateDatasetColorScheme({
                 fields: colorScheme.fields || [],
@@ -77,7 +77,7 @@ const ColorFooter: React.FC = () => {
         )}
         {canEdit && datasetDefault && (
           <Button
-            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
+            title={"Clear dataset default"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
