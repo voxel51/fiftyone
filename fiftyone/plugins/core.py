@@ -27,7 +27,7 @@ from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
 
 
-_PLUGIN_METADATA_FILENAMES = ["fiftyone.yaml", "fiftyone.yml"]
+PLUGIN_METADATA_FILENAMES = ("fiftyone.yaml", "fiftyone.yml")
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +226,7 @@ def download_plugin(
         )
         if not metadata_paths:
             logger.info(
-                f"No {_PLUGIN_METADATA_FILENAMES} files found in {url} (max_depth={max_depth})"
+                f"No {PLUGIN_METADATA_FILENAMES} files found in {url} (max_depth={max_depth})"
             )
 
         for metadata_path in metadata_paths:
@@ -462,7 +462,7 @@ def create_plugin(
 
     yaml_path = _find_plugin_metadata_file(plugin_dir)
     if yaml_path is None:
-        yaml_path = os.path.join(plugin_dir, _PLUGIN_METADATA_FILENAMES[0])
+        yaml_path = os.path.join(plugin_dir, PLUGIN_METADATA_FILENAMES[0])
 
     pd = {"name": plugin_name}
     if description:
@@ -488,11 +488,11 @@ def create_plugin(
 
 
 def _is_plugin_metadata_file(path):
-    return os.path.basename(path) in _PLUGIN_METADATA_FILENAMES
+    return os.path.basename(path) in PLUGIN_METADATA_FILENAMES
 
 
 def _find_plugin_metadata_file(dirpath):
-    for filename in _PLUGIN_METADATA_FILENAMES:
+    for filename in PLUGIN_METADATA_FILENAMES:
         metadata_path = os.path.join(dirpath, filename)
         if os.path.isfile(metadata_path):
             return metadata_path
@@ -543,7 +543,7 @@ def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
 def _find_plugin_metadata_files(root_dir, max_depth=1):
     return fou.find_files(
         root_dir,
-        _PLUGIN_METADATA_FILENAMES,
+        PLUGIN_METADATA_FILENAMES,
         max_depth=max_depth,
     )
 
