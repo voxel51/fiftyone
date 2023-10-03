@@ -195,7 +195,7 @@ class GitHubRepository(object):
             resp = self._get_session().get(url)
             resp.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 403:
+            if e.response.status_code in (403, 404):
                 raise requests.exceptions.HTTPError(
                     (
                         "You can interact with private repositories and avoid "
