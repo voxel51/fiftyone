@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def list_zoo_plugins(info=False):
-    """Returs a list of available plugins registered in the
+    """Returns a list of available plugins registered in the
     `FiftyOne Plugins repository <https://github.com/voxel51/fiftyone-plugins>`_
     README.
 
