@@ -67,7 +67,7 @@ def list_zoo_plugins(info=False):
 
 
 def find_plugins(gh_repo, info=False):
-    """Returns the paths to the ``fiftyone.yml`` files for all plugins found in
+    """Returns the paths to the fiftyone YAML files for all plugins found in
     the given GitHub repository.
 
     Example usage::
@@ -87,10 +87,10 @@ def find_plugins(gh_repo, info=False):
             :class:`GitHubRepository <fiftyone.utils.github.GitHubRepository>`
             for details
         info (False): whether to retrieve full plugin info for each plugin
-            (True) or just return paths to the ``fiftyone.yml`` files (False)
+            (True) or just return paths to the fiftyone YAML files (False)
 
     Returns:
-        a list of paths to ``fiftyone.yml`` files or plugin info dicts
+        a list of paths to fiftyone YAML files or plugin info dicts
     """
     try:
         root = GitHubRepository.parse_url(gh_repo).get("path", None)
@@ -122,7 +122,7 @@ def get_plugin_info(gh_repo, path=None):
 
         import fiftyone.plugins.utils as fopu
 
-        # Directly link to a repository with a top-level `fiftyone.yml`
+        # Directly link to a repository with a top-level`fiftyone YAML
         info = fopu.get_plugin_info("https://github.com/voxel51/voxelgpt")
         print(info)
 
@@ -137,7 +137,7 @@ def get_plugin_info(gh_repo, path=None):
         info = fopu.get_plugin_info("https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation")
         print(info)
 
-        # Directly link to a `fiftyone.yml` file
+        # Directly link to a fiftyone YAML file
         info = fopu.get_plugin_info("https://github.com/voxel51/fiftyone-plugins/blob/main/plugins/annotation/fiftyone.yml")
         print(info)
 
@@ -145,8 +145,8 @@ def get_plugin_info(gh_repo, path=None):
         gh_repo: a GitHub repository, identifier, tree root, or blob. See
             :class:`GitHubRepository <fiftyone.utils.github.GitHubRepository>`
             for details
-        path (None): the path to a ``fiftyone.yml`` file or the directory that
-            contains it. This is only necessary if the ``fiftyone.yml`` file is
+        path (None): the path to a fiftyone YAML file or the directory that
+            contains it. This is only necessary if the fiftyone YAML file is
             not at the root of the repository and you have not implicitly
             included this path in ``gh_repo`` by providing a tree or blob path
 
@@ -176,6 +176,7 @@ def get_plugin_info(gh_repo, path=None):
     for path in paths:
         try:
             content = repo.get_file(path).decode()
+            break
         except Exception as e:
             if exception is None:
                 exception = e

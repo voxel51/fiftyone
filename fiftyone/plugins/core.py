@@ -27,7 +27,7 @@ from fiftyone.plugins.definitions import PluginDefinition
 from fiftyone.utils.github import GitHubRepository
 
 
-PLUGIN_METADATA_FILENAMES = ("fiftyone.yaml", "fiftyone.yml")
+PLUGIN_METADATA_FILENAMES = ("fiftyone.yml", "fiftyone.yaml")
 
 logger = logging.getLogger(__name__)
 
