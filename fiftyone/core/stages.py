@@ -6937,7 +6937,7 @@ class SortBy(ViewStage):
         return [
             {
                 "name": "field_or_expr",
-                "type": "field|str|json",
+                "type": "field",
                 "placeholder": "field or expression",
             },
             {
