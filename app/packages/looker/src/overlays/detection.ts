@@ -43,6 +43,11 @@ export default class DetectionOverlay<
 
     if (this.label.mask) {
       const [height, width] = this.label.mask.data.shape;
+
+      if (!height || !width) {
+        return;
+      }
+
       this.canvas = document.createElement("canvas");
       this.canvas.width = width;
       this.canvas.height = height;

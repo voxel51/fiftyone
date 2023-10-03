@@ -2,7 +2,10 @@ import React from "react";
 import { useRecoilValue } from "recoil";
 
 import * as fos from "@fiftyone/state";
-import { isGroup as isGroupAtom } from "@fiftyone/state";
+import {
+  isGroup as isGroupAtom,
+  parentMediaTypeSelector,
+} from "@fiftyone/state";
 import styled from "styled-components";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
@@ -60,9 +63,15 @@ const Count = () => {
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-  const isGroup = useRecoilValue(isGroupAtom);
+  const parent = useRecoilValue(parentMediaTypeSelector);
   const slice = useRecoilValue(fos.groupSlice(false));
-  if (isGroup) {
+
+  const isGroup = useRecoilValue(isGroupAtom);
+  if (
+    (isGroup && !isDynamicGroupViewStageActive) ||
+    (isDynamicGroupViewStageActive && parent === "group") ||
+    (isDynamicGroupViewStageActive && element.singular === "sample")
+  ) {
     element = {
       plural: "groups",
       singular: "group",
@@ -75,7 +84,7 @@ const Count = () => {
         <PathEntryCounts modal={false} path={""} />
         {` `}
         {isDynamicGroupViewStageActive &&
-          !isGroup &&
+          !["sample", "group"].includes(element.singular) &&
           `group${total === 1 ? "" : "s"} of `}
         {total === 1 ? element.singular : element.plural}
         {slice && ` with slice`}
