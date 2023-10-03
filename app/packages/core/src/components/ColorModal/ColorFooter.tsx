@@ -1,3 +1,4 @@
+import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
@@ -8,9 +9,7 @@ import {
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import { Button } from "../utils";
 import {
-  BUTTON_STYLE,
   ButtonGroup,
   LONG_BUTTON_STYLE,
   ModalActionButtonContainer,
@@ -44,18 +43,32 @@ const ColorFooter: React.FC = () => {
 
   return (
     <ModalActionButtonContainer>
-      <ButtonGroup>
+      <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
-          text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
               datasetDefault || { fields: [], colorPool: defaultColorPool }
             );
           }}
-          style={BUTTON_STYLE}
-        />
-        {canEdit && (
+        >
+          Reset
+        </Button>
+        <Button
+          title={
+            canEdit
+              ? `Save to dataset appConfig`
+              : "Can not save to dataset appConfig in read-only mode"
+          }
+          onClick={() => {
+            setColorScheme(true, colorScheme);
+            setActiveColorModalField(null);
+          }}
+          disabled={!canEdit}
+        >
+          Save as default
+        </Button>
+        {hasSavedSettings && (
           <Button
             text={"Save as default"}
             title={`Save to dataset appConfig`}
@@ -83,7 +96,7 @@ const ColorFooter: React.FC = () => {
         {canEdit && datasetDefault && (
           <Button
             text={"Clear default"}
-            title={`Clear`}
+            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
@@ -91,8 +104,10 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme({ fields: [], colorPool: defaultColorPool });
             }}
-            style={LONG_BUTTON_STYLE}
-          />
+            disabled={!canEdit}
+          >
+            Clear default
+          </Button>
         )}
       </ButtonGroup>
     </ModalActionButtonContainer>
