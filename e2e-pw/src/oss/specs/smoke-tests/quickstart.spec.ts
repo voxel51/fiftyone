@@ -56,9 +56,9 @@ test.describe("quickstart", () => {
   test("selection bookmark", async ({ page, grid }) => {
     await grid.toggleSelectFirstSample();
     await grid.actionsRow.assert.hasFiltersBookmark();
-    const gridRefreshPromiseGroupByLabel = grid.getWaitForGridRefreshPromise();
+    const gridRefresh = grid.getWaitForGridRefreshPromise();
     await grid.actionsRow.bookmarkFilters();
-    await gridRefreshPromiseGroupByLabel;
+    await gridRefresh;
     await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
   });
 });
