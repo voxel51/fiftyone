@@ -23,11 +23,11 @@ export const activeColorPath = selector<string>({
 export const activeColorField = selector({
   key: "activeColorField",
   get: ({ get }) => {
-    const path = get(field(get(activeColorPath)));
-    if (!path) {
-      throw new Error(`path ${path} is not a field`);
+    const { path: _, ...fieldValue } = get(field(get(activeColorPath)));
+    if (!field) {
+      throw new Error(`path ${fieldValue} is not a field`);
     }
 
-    return path;
+    return fieldValue;
   },
 });

@@ -9,7 +9,11 @@ export default graphql`
     sidebarMode
     colorScheme {
       id
+      colorBy
       colorPool
+      multicolorKeypoints
+      opacity
+      showSkeletons
       fields {
         colorByAttribute
         fieldColor

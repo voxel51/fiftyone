@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<09da3e28b3e7aebd7ea7bd8463d0cae5>>
+ * @generated SignedSource<<8dacb614e6a757b9006853a4e1eb9004>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,8 +9,10 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
+  readonly colorBy: ColorBy | null;
   readonly colorPool: ReadonlyArray<string>;
   readonly fields: ReadonlyArray<{
     readonly colorByAttribute: string | null;
@@ -21,6 +23,9 @@ export type colorSchemeFragment$data = {
       readonly value: string;
     }> | null;
   }> | null;
+  readonly multicolorKeypoints: boolean | null;
+  readonly opacity: number | null;
+  readonly showSkeletons: boolean | null;
   readonly " $fragmentType": "colorSchemeFragment";
 };
 export type colorSchemeFragment$key = {
@@ -38,7 +43,35 @@ const node: ReaderFragment = {
       "alias": null,
       "args": null,
       "kind": "ScalarField",
+      "name": "colorBy",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
       "name": "colorPool",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "multicolorKeypoints",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "opacity",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "showSkeletons",
       "storageKey": null
     },
     {
@@ -103,6 +136,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "d97bb99cef1d4ef65508882017ae8831";
+(node as any).hash = "0df00003de521a6296d8a5d56956247b";
 
 export default node;

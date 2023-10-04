@@ -6,6 +6,7 @@ FiftyOne Server coloring
 |
 """
 from dataclasses import asdict
+from enum import Enum
 import typing as t
 
 from bson import ObjectId
@@ -33,11 +34,22 @@ class CustomizeColor:
     fieldColor: t.Optional[str] = None
 
 
+@gql.enum
+class ColorBy(Enum):
+    field = "field"
+    instance = "instance"
+    value = "value"
+
+
 @gql.type
 class ColorScheme:
     id: gql.ID = gql.field(default_factory=lambda: str(ObjectId()))
     color_pool: t.List[str]
+    color_by: t.Optional[ColorBy] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
+    multicolor_keypoints: t.Optional[bool] = None
+    opacity: t.Optional[float] = None
+    show_skeletons: t.Optional[bool] = None
 
 
 @gql.input
@@ -57,7 +69,11 @@ class CustomizeColorInput:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.List[str]
+    color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
+    multicolor_keypoints: t.Optional[bool] = None
+    opacity: t.Optional[float] = None
+    show_skeletons: t.Optional[bool] = None
 
 
 @gql.type
@@ -86,14 +102,7 @@ class SetColorScheme:
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
-                foo.ColorScheme(
-                    color_pool=color_scheme.color_pool,
-                    fields=[asdict(f) for f in color_scheme.fields]
-                    if color_scheme.fields
-                    else None,
-                )
-                if color_scheme
-                else None
+                _to_odm_color_scheme(color_scheme) if color_scheme else None
             )
             dataset.save()
 
@@ -104,6 +113,10 @@ class SetColorScheme:
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
+        color_by=color_scheme.color_by,
+        multicolor_keypoints=color_scheme.multicolor_keypoints,
+        opacity=color_scheme.opacity,
+        show_skeletons=color_scheme.show_skeletons,
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],

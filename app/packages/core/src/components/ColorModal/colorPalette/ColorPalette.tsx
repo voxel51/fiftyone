@@ -68,8 +68,8 @@ const ColorPalette: React.FC<ColorPaletteProps> = ({
   const handleColorAdd = () => {
     if (colors.length < maxColors) {
       setColorScheme({
+        ...colorScheme,
         colorPool: [...colors, "#ffffff"],
-        fields: colorScheme.fields,
       });
     }
   };

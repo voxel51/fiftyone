@@ -341,7 +341,7 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
           <td>
             <ContentValue>
               Customize colors by{" "}
-              {props.colorBy == "field" ? "field" : "attribute value"}
+              {props.colorBy == "value" ? "attribute value" : props.colorBy}
             </ContentValue>
           </td>
         </tr>

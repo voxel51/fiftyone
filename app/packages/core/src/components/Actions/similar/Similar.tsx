@@ -277,20 +277,22 @@ const SortBySimilarity = ({
               setValue={(brainKey) => onChangeBrainKey(brainKey)}
             />
           </div>
-          {!isReadOnly && (
-            <>
-              Optional: store the distance between each sample and the query in
-              this field
-              <Input
-                placeholder={"dist_field (default = None)"}
-                validator={(value) => !value.startsWith("_")}
-                value={state.distField ?? ""}
-                setter={(value) =>
-                  updateState({ distField: !value.length ? undefined : value })
-                }
-              />
-            </>
-          )}
+          Optional: store the distance between each sample and the query in this
+          field
+          <Input
+            disabled={isReadOnly}
+            placeholder={"dist_field (default = None)"}
+            validator={(value) => !value.startsWith("_")}
+            value={state.distField ?? ""}
+            setter={(value) =>
+              updateState({ distField: !value.length ? undefined : value })
+            }
+            title={
+              isReadOnly
+                ? "Can not store the distance in a field in read-only mode"
+                : undefined
+            }
+          />
         </div>
       )}
     </Popout>

@@ -83,16 +83,8 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
-    const selectedLabels = get(fos.selectedLabels);
 
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    };
+    return { datasetName, view, extended, filters, selectedSamples };
   },
 });
 
