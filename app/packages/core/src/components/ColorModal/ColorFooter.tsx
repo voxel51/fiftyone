@@ -77,14 +77,15 @@ const ColorFooter: React.FC = () => {
                 subscription,
                 datasetName,
                 colorScheme: {
+                  ...colorScheme,
                   fields: colorScheme.fields || [],
                   colorPool: colorScheme.colorPool || [],
+                  labelTags: colorScheme.labelTags || {},
                 },
               },
             });
             setActiveColorModalField(null);
           }}
-          disabled={!canEdit}
         >
           Save as default
         </Button>

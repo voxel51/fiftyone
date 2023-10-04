@@ -13,10 +13,16 @@ export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
+  labelTags?: LabelTagColorInput | null;
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
 };
+export type LabelTagColorInput = {
+  fieldColor?: string | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
+};
+
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;
   fieldColor?: string | null;
