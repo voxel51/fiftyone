@@ -83,6 +83,8 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
+    await sidebar.waitForElement("checkbox-frog");
+    await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["frog", "ship"],
