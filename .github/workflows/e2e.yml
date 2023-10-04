@@ -51,7 +51,9 @@ jobs:
         run: make app
 
       - name: Install fiftyone
-        run: pip install .
+        run: |
+          pip install .
+          pip install fiftyone-db-ubuntu2204
 
       - name: Configure
         id: test_config

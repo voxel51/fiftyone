@@ -38,7 +38,6 @@ const PillButton = React.forwardRef<HTMLButtonElement, PillButtonProps>(
         id={id}
         ref={ref}
         style={{ ...baseStyles, ...style }}
-        title={title}
       >
         {text && <span>{text}</span>}
         {icon}

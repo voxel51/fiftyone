@@ -9,10 +9,19 @@ export const appReadyState = atom<AppReadyState>({
   default: AppReadyState.CONNECTING,
 });
 
-export const ensureColorScheme = (colorScheme: any): ColorSchemeInput => {
+export const ensureColorScheme = (
+  colorScheme: any,
+  defaultValue: any
+): ColorSchemeInput => {
+  colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.color_pool || colorScheme.colorPool,
-    fields: toCamelCase(colorScheme.fields || []) as ColorSchemeInput["fields"],
+    colorPool: colorScheme.colorPool || defaultValue.colorPool,
+    colorBy: colorScheme.colorBy || defaultValue.colorBy,
+    fields: colorScheme.fields as ColorSchemeInput["fields"],
+    multicolorKeypoints:
+      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
+    opacity: colorScheme.opacity || defaultValue.opacity,
+    showSkeletons: colorScheme.showSkeletons == false ? false : true,
   };
 };
 
@@ -22,7 +31,12 @@ export const processState = (
 ) => {
   setter(
     "colorScheme",
-    ensureColorScheme(state.color_scheme as ColorSchemeInput)
+    ensureColorScheme(state.color_scheme as ColorSchemeInput, {
+      colorPool: [],
+      colorBy: "field",
+      opacity: 0.7,
+      multicolorKeypoints: false,
+    })
   );
   setter("sessionGroupSlice", state.group_slice);
   setter("selectedSamples", new Set(state.selected));
