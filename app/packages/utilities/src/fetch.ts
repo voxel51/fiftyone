@@ -39,6 +39,7 @@ export const getFetchOrigin = () => {
 
   return fetchOrigin;
 };
+
 export function getFetchPathPrefix(): string {
   // window is not defined in the web worker
   if (hasWindow && typeof window.FIFTYONE_SERVER_PATH_PREFIX === "string") {
@@ -53,11 +54,21 @@ export function getFetchPathPrefix(): string {
   return "";
 }
 
+export const setFetchParameters = (
+  origin: string,
+  headers: HeadersInit = {},
+  pathPrefix = ""
+) => {
+  fetchHeaders = headers;
+  fetchOrigin = origin;
+  fetchPathPrefix = pathPrefix;
+};
+
 export const getFetchParameters = () => {
   return {
-    origin: getFetchOrigin(),
-    headers: getFetchHeaders(),
-    pathPrefix: getFetchPathPrefix(),
+    origin: fetchOrigin,
+    headers: fetchHeaders,
+    pathPrefix: fetchPathPrefix,
   };
 };
 
@@ -66,9 +77,7 @@ export const setFetchFunction = (
   headers: HeadersInit = {},
   pathPrefix = ""
 ) => {
-  fetchHeaders = headers;
-  fetchOrigin = origin;
-  fetchPathPrefix = pathPrefix;
+  setFetchParameters(origin, headers, pathPrefix);
   const fetchFunction: FetchFunction = async (
     method,
     path,
