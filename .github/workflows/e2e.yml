@@ -5,7 +5,7 @@ on: workflow_call
 jobs:
   test-e2e:
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DATABASE_ADMIN: true
       FIFTYONE_DO_NOT_TRACK: true
