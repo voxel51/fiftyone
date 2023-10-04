@@ -128,8 +128,13 @@ const dispatchSideEffect = ({
   if (currentDataset !== nextDataset) {
     session.sessionSpaces = fos.SPACES_DEFAULT;
     session.colorScheme = ensureColorScheme(
-      data.dataset?.appConfig?.colorScheme || {
+      data.dataset?.appConfig?.colorScheme,
+      {
         colorPool: data.config.colorPool,
+        colorBy: data.config.colorBy,
+        opacity: 0.7,
+        multicolorKeypoints: false,
+        showSkeletons: true,
       }
     );
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;

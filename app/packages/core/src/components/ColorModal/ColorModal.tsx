@@ -1,4 +1,10 @@
-import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import {
+  ExternalLink,
+  InfoIcon,
+  scrollable,
+  scrollableSm,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
@@ -133,10 +139,10 @@ const ColorModal = () => {
                 </DraggableModalTitle>
                 <DraggableContent height={height} width={width}>
                   <SidebarList />
-                  <Display>
+                  <Display className={`${scrollable} ${scrollableSm}`}>
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
-                    {typeof activeEntry === "object" && (
+                    {typeof activeEntry === "object" && activeEntry?.path && (
                       <FieldSetting
                         key={activeEntry.path}
                         path={activeEntry.path}

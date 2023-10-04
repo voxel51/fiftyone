@@ -45,7 +45,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
   private colorPool: string[];
-  private colorByValue: boolean;
+  private colorBy: "field" | "value" | "instance";
   private colorSeed: number;
   private playing = false;
   private attributeVisibility: object;
@@ -83,7 +83,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     } else if (
       (arraysAreEqual(activePaths, this.activePaths) &&
-        this.colorByValue === (coloring.by === "value") &&
+        this.colorBy === coloring.by &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
         _.isEqual(this.attributeVisibility, attributeVisibility) &&
@@ -250,6 +250,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       if (!param.label) {
         return null;
       }
+
       return {
         path,
         value: param.label,
@@ -291,7 +292,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         if (Array.isArray(sample.tags)) {
           sample.tags.forEach((tag) => {
             if (filter(path, [tag])) {
-              const v = coloring.by === "value" ? tag : "tags";
+              const v = coloring.by !== "field" ? tag : "tags";
               elements.push({
                 color: getAssignedColor({
                   coloring,
@@ -311,7 +312,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       } else if (path === "_label_tags") {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
-          const v = coloring.by === "value" ? tag : path;
+          const v = coloring.by !== "field" ? tag : path;
           if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
             elements.push({
               color: getColor(coloring.pool, coloring.seed, v),
@@ -399,7 +400,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
       }
     }
 
-    this.colorByValue = coloring.by === "value";
+    this.colorBy = coloring.by;
     this.colorSeed = coloring.seed;
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";

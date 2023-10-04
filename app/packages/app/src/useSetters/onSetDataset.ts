@@ -36,8 +36,12 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.selectedFields = undefined;
       sessionRef.current.colorScheme = entry.data.dataset?.appConfig
         ?.colorScheme || {
+        colorBy: entry.data.config.colorBy,
         colorPool: entry.data.config.colorPool,
         fields: [],
+        multicolorKeypoints: false,
+        opacity: 0.7,
+        showSkeletons: true,
       };
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;

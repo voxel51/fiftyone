@@ -27,7 +27,10 @@ const DatasetPageQueryNode = graphql`
     $extendedView: BSONArray
   ) {
     config {
+      colorBy
       colorPool
+      multicolorKeypoints
+      showSkeletons
     }
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
@@ -36,7 +39,11 @@ const DatasetPageQueryNode = graphql`
       appConfig {
         colorScheme {
           id
+          colorBy
           colorPool
+          multicolorKeypoints
+          opacity
+          showSkeletons
           fields {
             colorByAttribute
             fieldColor

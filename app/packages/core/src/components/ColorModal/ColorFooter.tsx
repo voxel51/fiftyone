@@ -26,7 +26,7 @@ const ColorFooter: React.FC = () => {
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
-  const defaultColorPool = useRecoilValue(fos.config).colorPool;
+  const configDefault = useRecoilValue(fos.config);
   const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
@@ -44,7 +44,14 @@ const ColorFooter: React.FC = () => {
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
-              datasetDefault || { fields: [], colorPool: defaultColorPool }
+              datasetDefault || {
+                fields: [],
+                colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy,
+                multicolorKeypoints: false,
+                opacity: fos.DEFAULT_ALPHA,
+                showSkeletons: true,
+              }
             );
           }}
         >
@@ -86,7 +93,10 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({ fields: [], colorPool: defaultColorPool });
+              setColorScheme({
+                fields: [],
+                colorPool: configDefault.colorPool,
+              });
             }}
             disabled={!canEdit}
           >
@@ -136,10 +146,20 @@ const useUpdateDatasetColorScheme = () => {
               return record;
             });
 
-            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
             colorSchemeRecord.setValue(
               [...(colorScheme.colorPool || [])],
               "colorPool"
+            );
+            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(
+              colorScheme.multicolorKeypoints,
+              "multicolorKeypoints"
+            );
+            colorSchemeRecord.setValue(colorScheme.opacity, "opacity");
+            colorSchemeRecord.setValue(
+              colorScheme.showSkeletons,
+              "showSkeletons"
             );
           });
       },
