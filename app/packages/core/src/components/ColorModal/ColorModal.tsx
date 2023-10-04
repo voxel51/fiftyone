@@ -1,4 +1,10 @@
-import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import {
+  ExternalLink,
+  InfoIcon,
+  scrollable,
+  scrollableSm,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import Typography from "@mui/material/Typography";
@@ -22,7 +28,6 @@ import {
 import SidebarList from "./SidebarList";
 import { activeColorEntry } from "./state";
 import { ACTIVE_FIELD } from "./utils";
-import { scrollable, scrollableSm } from "@fiftyone/components";
 
 const CUSTOM_COLOR_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
@@ -137,7 +142,7 @@ const ColorModal = () => {
                   <Display className={`${scrollable} ${scrollableSm}`}>
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
-                    {typeof activeEntry === "object" && (
+                    {typeof activeEntry === "object" && activeEntry?.path && (
                       <FieldSetting
                         key={activeEntry.path}
                         path={activeEntry.path}

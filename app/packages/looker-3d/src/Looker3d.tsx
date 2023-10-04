@@ -418,7 +418,7 @@ export const Looker3d = () => {
             let key;
             if (setting?.colorByAttribute) {
               if (setting.colorByAttribute === "index") {
-                if (l["index"]) {
+                if (["string", "number"].includes(typeof l.index)) {
                   key = l.index;
                 } else {
                   key = l._id;

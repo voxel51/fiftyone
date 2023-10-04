@@ -39,7 +39,7 @@ export const PainterFactory = (requestColor) => ({
       if (setting) {
         const key = setting.colorByAttribute
           ? setting.colorByAttribute === "index"
-            ? label["index"] !== undefined
+            ? ["string", "number"].includes(typeof label.index)
               ? "index"
               : "id"
             : setting.colorByAttribute

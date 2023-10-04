@@ -114,7 +114,7 @@ export abstract class CoordinateOverlay<
       if (field) {
         if (field.colorByAttribute) {
           if (field.colorByAttribute === "index") {
-            key = ["string", "number"].includes(typeof this.label["index"])
+            key = ["string", "number"].includes(typeof this.label.index)
               ? "index"
               : "id";
           } else {
