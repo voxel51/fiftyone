@@ -55,27 +55,29 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
   useOutsideClick(ref, () => open && setOpen(false));
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const { colorPool, fields } = useRecoilValue(fos.colorScheme);
-  if (!fields) {
-    throw new Error("no color scheme fields defined");
-  }
-  const index = fields.findIndex((s) => s.path == path);
+  const currentColorScheme = useRecoilValue(fos.colorScheme);
 
-  const options = subfields.map((field) => ({
-    value: field.path?.split(".").slice(-1)[0],
-    onClick: (e: React.MouseEvent) => {
-      e.preventDefault();
-      const copy = cloneDeep(fields);
-      if (index > -1) {
-        copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
-        setColorScheme({ colorPool, fields: copy });
-        setOpen(false);
-      }
-    },
-  }));
+  const index = currentColorScheme.fields.findIndex((s) => s.path == path);
+
+  const options = subfields.map((field) => {
+    const value = field.path?.split(".").slice(-1)[0];
+    return {
+      value,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        const copy = cloneDeep(currentColorScheme.fields);
+        if (index > -1) {
+          copy[index].colorByAttribute = value;
+          setColorScheme({ ...currentColorScheme, fields: copy });
+          setOpen(false);
+        }
+      },
+    };
+  });
 
   const selected =
-    fields[index]?.colorByAttribute ?? "Please select an attribute";
+    currentColorScheme.fields[index]?.colorByAttribute ??
+    "Please select an attribute";
 
   return (
     <div style={style}>

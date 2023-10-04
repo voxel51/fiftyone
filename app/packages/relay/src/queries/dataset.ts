@@ -8,7 +8,10 @@ export default graphql`
     $extendedView: BSONArray!
   ) {
     config {
+      colorBy
       colorPool
+      multicolorKeypoints
+      showSkeletons
     }
 
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
@@ -18,7 +21,11 @@ export default graphql`
       appConfig {
         colorScheme {
           id
+          colorBy
           colorPool
+          multicolorKeypoints
+          opacity
+          showSkeletons
           fields {
             colorByAttribute
             fieldColor

@@ -21,7 +21,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { isValidColor, sizeBytes } from "./util";
+import { getHashLabel, isValidColor, sizeBytes } from "./util";
 
 export type Classification = RegularLabel;
 
@@ -58,6 +58,11 @@ export class ClassificationsOverlay<
     const { coloring, customizeColorSetting } = state.options;
     const setting = customizeColorSetting.find((s) => s.path === field);
 
+    if (coloring.by === "instance") {
+      const key = label._cls === REGRESSION ? field : getHashLabel(label);
+      return getColor(coloring.pool, coloring.seed, key);
+    }
+
     // check if the field has a customized color, use it if it is a valid color
     if (
       coloring.by === "field" &&
@@ -67,7 +72,7 @@ export class ClassificationsOverlay<
       return setting.fieldColor;
     }
 
-    if (coloring.by !== "field") {
+    if (coloring.by === "value") {
       key = setting?.colorByAttribute ?? key;
 
       // check if this label has a assigned color, use it if it is a valid color

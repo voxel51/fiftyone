@@ -10,7 +10,10 @@ import style from "./index.module.css";
 const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
     config {
+      colorBy
       colorPool
+      multicolorKeypoints
+      showSkeletons
     }
 
     ...NavFragment
