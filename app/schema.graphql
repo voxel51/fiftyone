@@ -1,0 +1,680 @@
+input Aggregate {
+  count: Count = null
+  countValues: CountValues = null
+  histogramValues: HistogramValues = null
+}
+
+union AggregateResult =
+    BooleanAggregation
+  | DataAggregation
+  | IntAggregation
+  | FloatAggregation
+  | RootAggregation
+  | StringAggregation
+
+interface Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+}
+
+input AggregationForm {
+  dataset: String!
+  extendedStages: BSONArray!
+  filters: BSON
+  groupId: ID
+  hiddenLabels: [SelectedLabel!]!
+  index: Int
+  mixed: Boolean!
+  paths: [String!]!
+  sampleIds: [ID!]!
+  slice: String
+  slices: [String!]
+  view: BSONArray!
+  viewName: String = null
+}
+
+union AggregationResponses =
+    CountResponse
+  | BoolCountValuesResponse
+  | IntCountValuesResponse
+  | StrCountValuesResponse
+  | DatetimeHistogramValuesResponse
+  | FloatHistogramValuesResponse
+  | IntHistogramValuesResponse
+
+type AppConfig {
+  colorBy: ColorBy!
+  colorPool: [String!]!
+  colorscale: String!
+  gridZoom: Int!
+  loopVideos: Boolean!
+  multicolorKeypoints: Boolean!
+  notebookHeight: Int!
+  plugins: JSON
+  showConfidence: Boolean!
+  showIndex: Boolean!
+  showLabel: Boolean!
+  showSkeletons: Boolean!
+  showTooltip: Boolean!
+  sidebarMode: SidebarMode!
+  theme: Theme!
+  timezone: String
+  useFrameNumber: Boolean!
+  spaces: JSON
+}
+
+scalar BSON
+
+scalar BSONArray
+
+type BoolCountValuesResponse {
+  values: [BoolValueCount!]!
+}
+
+type BoolValueCount {
+  key: Boolean
+  value: Int!
+}
+
+type BooleanAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  false: Int!
+  true: Int!
+}
+
+type BrainRun implements Run {
+  key: String!
+  version: String
+  timestamp: datetime
+  config: BrainRunConfig
+  viewStages: [String!]
+}
+
+type BrainRunConfig implements RunConfig {
+  cls: String!
+  embeddingsField: String
+  method: String
+  patchesField: String
+  supportsPrompts: Boolean
+  type: BrainRunType
+  maxK: Int
+  supportsLeastSimilarity: Boolean
+}
+
+enum BrainRunType {
+  similarity
+  visualization
+}
+
+enum ColorBy {
+  field
+  instance
+  value
+}
+
+type ColorScheme {
+  id: ID!
+  colorPool: [String!]!
+  colorBy: ColorBy
+  fields: [CustomizeColor!]
+  labelTags: LabelTagColor
+  multicolorKeypoints: Boolean
+  opacity: Float
+  showSkeletons: Boolean
+}
+
+input ColorSchemeInput {
+  colorPool: [String!]!
+  colorBy: String = null
+  fields: [CustomizeColorInput!] = null
+  labelTags: LabelTagColorInput = null
+  multicolorKeypoints: Boolean = null
+  opacity: Float = null
+  showSkeletons: Boolean = null
+}
+
+input Count {
+  field: String!
+}
+
+type CountResponse {
+  count: Int!
+}
+
+input CountValues {
+  field: String!
+}
+
+type CustomizeColor {
+  path: String!
+  valueColors: [ValueColor!]
+  colorByAttribute: String
+  fieldColor: String
+}
+
+input CustomizeColorInput {
+  path: String!
+  valueColors: [ValueColorInput!] = null
+  colorByAttribute: String = null
+  fieldColor: String = null
+}
+
+type DataAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+}
+
+type Dataset {
+  id: ID!
+  name: String!
+  createdAt: date
+  lastLoadedAt: datetime
+  persistent: Boolean!
+  groupMediaTypes: [Group!]
+  groupField: String
+  defaultGroupSlice: String
+  mediaType: MediaType
+  parentMediaType: MediaType
+  maskTargets: [NamedTargets!]!
+  defaultMaskTargets: [Target!]
+  sampleFields: [SampleField!]!
+  frameFields: [SampleField!]
+  brainMethods: [BrainRun!]
+  evaluations: [EvaluationRun!]
+  savedViewSlug: String
+  savedViews: [SavedView!]
+  version: String
+  viewCls: String
+  viewName: String
+  defaultSkeleton: KeypointSkeleton
+  skeletons: [NamedKeypointSkeleton!]!
+  appConfig: DatasetAppConfig
+  info: JSON
+  stages(slug: String = null, view: BSONArray = null): BSONArray
+}
+
+type DatasetAppConfig {
+  colorScheme: ColorScheme
+  mediaFields: [String!]
+  plugins: JSON
+  sidebarGroups: [SidebarGroup!]
+  sidebarMode: SidebarMode
+  spaces: JSON
+  gridMediaField: String!
+  modalMediaField: String!
+}
+
+type DatasetStrConnection {
+  pageInfo: DatasetStrPageInfo!
+  edges: [DatasetStrEdge!]!
+  total: Int
+}
+
+type DatasetStrEdge {
+  node: Dataset!
+  cursor: String!
+}
+
+type DatasetStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type DatetimeHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [datetime!]!
+  other: Int!
+}
+
+type EvaluationRun implements Run {
+  key: String!
+  version: String
+  timestamp: datetime
+  config: EvaluationRunConfig
+  viewStages: [String!]
+}
+
+type EvaluationRunConfig implements RunConfig {
+  cls: String!
+  gtField: String
+  predField: String
+  method: String
+}
+
+input ExtendedViewForm {
+  filters: JSON = null
+  mixed: Boolean = null
+  sampleIds: [String!] = null
+  slice: String = null
+}
+
+type FloatAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  inf: Int!
+  max: Float
+  min: Float
+  nan: Int!
+  ninf: Int!
+}
+
+type FloatHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
+type Group {
+  name: String!
+  mediaType: MediaType!
+}
+
+input GroupElementFilter {
+  id: String = null
+  slice: String = null
+  slices: [String!] = null
+}
+
+input HistogramValues {
+  field: String!
+}
+
+type ImageSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type IntAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  max: Float
+  min: Float
+}
+
+type IntCountValuesResponse {
+  values: [IntValueCount!]!
+}
+
+type IntHistogramValuesResponse {
+  counts: [Int!]!
+  edges: [Float!]!
+  other: Int!
+}
+
+type IntValueCount {
+  key: Int
+  value: Int!
+}
+
+scalar JSON
+
+type KeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+}
+
+type LabelTagColor {
+  fieldColor: String
+  valueColors: [ValueColor!]
+}
+
+input LabelTagColorInput {
+  fieldColor: String = null
+  valueColors: [ValueColorInput!] = null
+}
+
+enum MediaType {
+  image
+  group
+  point_cloud
+  video
+}
+
+type MediaURL {
+  field: String!
+  url: String
+}
+
+type Mutation {
+  setColorScheme(
+    subscription: String!
+    colorScheme: ColorSchemeInput!
+  ): Boolean!
+  setDatasetColorScheme(
+    subscription: String!
+    datasetName: String!
+    colorScheme: ColorSchemeInput = null
+  ): Void
+  setDataset(
+    subscription: String!
+    session: String
+    name: String
+    viewName: String
+  ): Boolean!
+  setGroupSlice(
+    subscription: String!
+    session: String
+    slice: String!
+  ): Boolean!
+  setSidebarGroups(
+    subscription: String!
+    session: String
+    dataset: String!
+    stages: BSONArray!
+    sidebarGroups: [SidebarGroupInput!]!
+  ): Boolean!
+  setSelected(
+    subscription: String!
+    session: String
+    selected: [String!]!
+  ): Boolean!
+  setSelectedLabels(
+    subscription: String!
+    session: String
+    selectedLabels: [SelectedLabel!]!
+  ): Boolean!
+  setView(
+    subscription: String!
+    session: String
+    datasetName: String!
+    view: BSONArray = null
+    savedViewSlug: String = null
+    form: StateForm = null
+  ): BSONArray
+  storeTeamsSubmission: Boolean!
+  createSavedView(
+    subscription: String!
+    session: String
+    viewName: String!
+    viewStages: BSONArray = null
+    form: StateForm = null
+    datasetName: String = null
+    description: String = null
+    color: String = null
+  ): SavedView
+  deleteSavedView(
+    subscription: String!
+    session: String
+    viewName: String!
+    datasetName: String
+  ): String
+  updateSavedView(
+    viewName: String!
+    subscription: String
+    session: String
+    updatedInfo: SavedViewInfo!
+    datasetName: String = null
+  ): SavedView
+  setSpaces(subscription: String!, session: String, spaces: BSON!): Boolean!
+  searchSelectFields(datasetName: String!, metaFilter: JSON): [String!]!
+}
+
+type NamedKeypointSkeleton {
+  labels: [String!]
+  edges: [[Int!]!]!
+  name: String!
+}
+
+type NamedTargets {
+  name: String!
+  targets: [Target!]!
+}
+
+type PointCloudSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type Query {
+  aggregate(
+    datasetName: String!
+    view: BSONArray
+    aggregations: [Aggregate!]!
+    viewName: String = null
+    form: ExtendedViewForm = null
+  ): [AggregationResponses!]!
+  dataset(name: String!, savedViewSlug: String, view: BSONArray = null): Dataset
+  datasets(
+    search: String
+    first: Int = 200
+    after: String = null
+  ): DatasetStrConnection!
+  aggregations(form: AggregationForm!): [AggregateResult!]!
+  colorscale: [[Int!]!]
+  config: AppConfig!
+  context: String!
+  dev: Boolean!
+  doNotTrack: Boolean!
+  samples(
+    dataset: String!
+    view: BSONArray!
+    first: Int = 20
+    after: String = null
+    filter: SampleFilter = null
+    filters: BSON = null
+    extendedStages: BSON = null
+    paginationData: Boolean = true
+  ): SampleItemStrConnection!
+  sample(
+    dataset: String!
+    view: BSONArray!
+    filter: SampleFilter!
+    filters: JSON = null
+  ): SampleItem
+  stageDefinitions: [StageDefinition!]!
+  teamsSubmission: Boolean!
+  uid: String!
+  version: String!
+  savedViews(datasetName: String!): [SavedView!]
+  schemaForViewStages(
+    datasetName: String!
+    viewStages: BSONArray!
+  ): SchemaResult!
+}
+
+type RootAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  slice: Int
+  expandedFieldCount: Int!
+  frameLabelFieldCount: Int
+}
+
+interface Run {
+  key: String!
+  version: String
+  timestamp: datetime
+  config: RunConfig
+  viewStages: [String!]
+}
+
+interface RunConfig {
+  cls: String!
+}
+
+interface Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+}
+
+type SampleField {
+  ftype: String!
+  path: String!
+  subfield: String
+  embeddedDocType: String
+  dbField: String
+  description: String
+  info: JSON
+}
+
+input SampleFilter {
+  id: String = null
+  group: GroupElementFilter = null
+}
+
+union SampleItem = ImageSample | PointCloudSample | VideoSample
+
+type SampleItemStrConnection {
+  pageInfo: SampleItemStrPageInfo!
+  edges: [SampleItemStrEdge!]!
+  total: Int
+}
+
+type SampleItemStrEdge {
+  node: SampleItem!
+  cursor: String!
+}
+
+type SampleItemStrPageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+type SavedView {
+  id: String
+  datasetId: String
+  name: String
+  description: String
+  color: String
+  slug: String
+  viewStages: [String!]
+  createdAt: datetime
+  lastModifiedAt: datetime
+  lastLoadedAt: datetime
+  viewName: String
+  stageDicts: BSONArray
+}
+
+input SavedViewInfo {
+  name: String = null
+  description: String = null
+  color: String = null
+}
+
+type SchemaResult {
+  fieldSchema: [SampleField!]!
+  frameFieldSchema: [SampleField!]!
+}
+
+input SelectedLabel {
+  labelId: ID!
+  field: String!
+  sampleId: ID!
+  frameNumber: Int = null
+}
+
+type SidebarGroup {
+  name: String!
+  paths: [String!]
+  expanded: Boolean
+}
+
+input SidebarGroupInput {
+  name: String!
+  paths: [String!]
+  expanded: Boolean = null
+}
+
+enum SidebarMode {
+  all
+  best
+  fast
+}
+
+type StageDefinition {
+  name: String!
+  params: [StageParameter!]!
+}
+
+type StageParameter {
+  name: String!
+  type: String!
+  default: String
+  placeholder: String
+}
+
+input StateForm {
+  addStages: BSONArray = null
+  filters: JSON = null
+  sampleIds: [String!] = null
+  labels: [SelectedLabel!] = null
+  extended: BSON = null
+  slice: String = null
+}
+
+type StrCountValuesResponse {
+  values: [StrValueCount!]!
+}
+
+type StrValueCount {
+  key: String
+  value: Int!
+}
+
+type StringAggregation implements Aggregation {
+  path: String!
+  count: Int!
+  exists: Int!
+  values: [StringAggregationValue!]!
+}
+
+type StringAggregationValue {
+  count: Int!
+  value: String!
+}
+
+type Target {
+  target: String!
+  value: String!
+}
+
+enum Theme {
+  browser
+  dark
+  light
+}
+
+type ValueColor {
+  color: String!
+  value: String!
+}
+
+input ValueColorInput {
+  color: String!
+  value: String!
+}
+
+type VideoSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+  frameNumber: Int!
+  frameRate: Float!
+}
+
+"""
+Represents NULL values
+"""
+scalar Void
+
+scalar date
+
+scalar datetime

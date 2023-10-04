@@ -34,7 +34,7 @@ class CustomizeColor:
     fieldColor: t.Optional[str] = None
 
 
-@gql.input
+@gql.type
 class LabelTagColor:
     fieldColor: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None

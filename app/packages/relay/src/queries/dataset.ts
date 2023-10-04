@@ -32,6 +32,7 @@ export default graphql`
               value
               color
             }
+          }
           fields {
             colorByAttribute
             fieldColor
