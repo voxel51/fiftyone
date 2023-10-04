@@ -41,6 +41,13 @@ export type DatasetPageQuery$data = {
             readonly value: string;
           }> | null;
         }> | null;
+        readonly labelTags: ReadonlyMap<{
+          readonly fieldColor: string | null;
+          readonly valueColors: ReadonlyArray<{
+            readonly color: string;
+            readonly value: string;
+          }> | null;
+        }> | null;
         readonly id: string;
         readonly multicolorKeypoints: boolean | null;
         readonly opacity: number | null;

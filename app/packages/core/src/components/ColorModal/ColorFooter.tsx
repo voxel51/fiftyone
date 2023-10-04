@@ -46,6 +46,7 @@ const ColorFooter: React.FC = () => {
             setColorScheme(
               datasetDefault || {
                 fields: [],
+                labelTags: {},
                 colorPool: configDefault.colorPool,
                 colorBy: configDefault.colorBy,
                 multicolorKeypoints: false,
@@ -54,9 +55,7 @@ const ColorFooter: React.FC = () => {
               }
             );
           }}
-        >
-          Reset
-        </Button>
+        />
         <Button
           title={
             canEdit
@@ -65,8 +64,12 @@ const ColorFooter: React.FC = () => {
           }
           onClick={() => {
             updateDatasetColorScheme({
+              ...colorScheme,
               fields: colorScheme.fields || [],
               colorPool: colorScheme.colorPool || [],
+              colorBy: colorScheme.colorBy || "field",
+              multicolorKeypoints: colorScheme.multicolorKeypoints || false,
+              showSkeletons: colorScheme.showSkeletons || true,
             });
 
             setDatasetColorScheme({
@@ -95,6 +98,7 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme({
                 fields: [],
+                labelTags: {},
                 colorPool: configDefault.colorPool,
               });
             }}

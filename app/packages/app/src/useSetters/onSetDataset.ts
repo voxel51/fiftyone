@@ -39,6 +39,7 @@ const onSetDataset: RegisteredSetter =
         colorBy: entry.data.config.colorBy,
         colorPool: entry.data.config.colorPool,
         fields: [],
+        labelTags: {},
         multicolorKeypoints: false,
         opacity: 0.7,
         showSkeletons: true,

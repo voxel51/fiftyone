@@ -26,6 +26,12 @@ export default graphql`
           multicolorKeypoints
           opacity
           showSkeletons
+          labelTags {
+            fieldColor
+            valueColors {
+              value
+              color
+            }
           fields {
             colorByAttribute
             fieldColor

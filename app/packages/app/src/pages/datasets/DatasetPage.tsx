@@ -55,6 +55,13 @@ const DatasetPageQueryNode = graphql`
               value
             }
           }
+          labelTags {
+            fieldColor
+            valueColors {
+              color
+              value
+            }
+          }
         }
       }
       ...datasetFragment
