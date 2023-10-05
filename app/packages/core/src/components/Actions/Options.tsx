@@ -132,11 +132,13 @@ const DynamicGroupsViewMode = () => {
         active={mode}
         options={[
           {
+            dataCy: "set-dynamic-groups-mode-carousel",
             text: "carousel",
             title: "Sequential Access",
             onClick: () => setMode("carousel"),
           },
           {
+            dataCy: "set-dynamic-groups-mode-pagination",
             text: "pagination",
             title: "Random Access",
             onClick: () => setMode("pagination"),
