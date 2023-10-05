@@ -72,7 +72,7 @@ const SNACK_VISIBLE_DURATION = 5000;
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
   const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
-  const [snackErrors, setSnackErrors] = useRecoilState(fos.gqlNotiErrorsAtom);
+  const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
 
   useEffect(() => {
     document

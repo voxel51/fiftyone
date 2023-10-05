@@ -1,5 +1,5 @@
 import { Setter } from "@fiftyone/relay";
-import { Session, gqlNotiErrorsAtom } from "@fiftyone/state";
+import { Session, snackbarErrors } from "@fiftyone/state";
 import { MutableRefObject, useMemo } from "react";
 import { Environment } from "react-relay";
 import { Queries } from "../makeRoutes";
@@ -15,7 +15,7 @@ const useSetters = (
   const handleError = useRecoilCallback(
     ({ set: setRecoil }) =>
       async (errors: string[] = []) => {
-        setRecoil(gqlNotiErrorsAtom, errors);
+        setRecoil(snackbarErrors, errors);
       },
     []
   );

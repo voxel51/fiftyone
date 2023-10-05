@@ -101,8 +101,8 @@ export const loading = atom<boolean>({
   default: false,
 });
 
-export const gqlNotiErrorsAtom = atom<string[]>({
-  key: "gqlNotiErrorsAtom",
+export const snackbarErrors = atom<string[]>({
+  key: "snackbarErrors",
   default: [],
 });
 
