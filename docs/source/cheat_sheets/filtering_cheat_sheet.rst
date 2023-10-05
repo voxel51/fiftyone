@@ -328,7 +328,7 @@ dataset ``ds`` with detections in its ``predictions`` field:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Predictions with confidence > 0.95        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
-|                                           |     ds.filter_labels("predictions", F("confidence") > 0.95)                |
+|                                           |     ds.filter_labels("predictions", F("confidence") > 0.95)             |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most "wrong" predictions               |  .. code-block:: python                                                 |
 |                                           |                                                                         |
