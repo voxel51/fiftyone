@@ -363,9 +363,9 @@ export const isNonNestedDynamicGroup = selector<boolean>({
 export const isImaVidLookerAvailable = selector<boolean>({
   key: "isImaVidLookerAvailable",
   get: ({ get }) => {
-    const isOrderedDynamicGroupValue = get(isOrderedDynamicGroup);
-    const isNonNestedDynamicGroupValue = get(isNonNestedDynamicGroup);
-    return isOrderedDynamicGroupValue && isNonNestedDynamicGroupValue;
+    const isOrderedDynamicGroup_ = get(isOrderedDynamicGroup);
+    const isNonNestedDynamicGroup_ = get(isNonNestedDynamicGroup);
+    return isOrderedDynamicGroup_ && isNonNestedDynamicGroup_;
   },
 });
 

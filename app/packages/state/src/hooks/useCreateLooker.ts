@@ -100,6 +100,7 @@ export default <T extends AbstractLooker>(
         }
 
         if (
+          !isVideo &&
           isImaVidLookerAvailable &&
           nonNestedDynamicGroupsViewMode === "video"
         ) {
