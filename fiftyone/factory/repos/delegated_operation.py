@@ -39,7 +39,7 @@ class DelegatedOperationRepo(object):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
-        status: ExecutionProgress = None,
+        progress: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
@@ -49,7 +49,7 @@ class DelegatedOperationRepo(object):
         _id: ObjectId,
         progress: ExecutionProgress,
     ) -> DelegatedOperationDocument:
-        """Update the status of an operation."""
+        """Update the progress of an operation."""
         raise NotImplementedError("subclass must implement update_progress()")
 
     def get_queued_operations(
@@ -182,7 +182,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
-        status: ExecutionProgress = None,
+        progress: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -224,8 +224,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
 
-        if status is not None:
-            update["$set"]["status"] = status
+        if progress is not None:
+            update["$set"]["status"] = progress
             update["$set"]["status"]["updated_at"] = datetime.utcnow()
 
         doc = self._collection.find_one_and_update(

@@ -8,7 +8,6 @@ FiftyOne operator execution.
 import asyncio
 import traceback
 import types as python_types
-from typing import Callable
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod

@@ -51,33 +51,33 @@ class DelegatedOperationService(object):
         )
 
     def set_progress(self, doc_id, progress: ExecutionProgress):
-        """Sets the status of the given delegated operation.
+        """Sets the progress of the given delegated operation.
 
         Args:
             doc_id: the ID of the delegated operation
-            progress: the status of the operation
+            progress: the progress of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_progress(_id=doc_id, progress=progress)
 
-    def set_running(self, doc_id, status: ExecutionProgress = None):
+    def set_running(self, doc_id, progress: ExecutionProgress = None):
         """Sets the given delegated operation to running state.
 
         Args:
             doc_id: the ID of the delegated operation
-            status (None): the optional status of the operation
+            progress (None): the optional progress of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.RUNNING, status=status
+            _id=doc_id, run_state=ExecutionRunState.RUNNING, progress=progress
         )
 
     def set_completed(
-        self, doc_id, result=None, status: ExecutionProgress = None
+        self, doc_id, result=None, progress: ExecutionProgress = None
     ):
         """Sets the given delegated operation to completed state.
 
@@ -86,7 +86,7 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            status (None): the optional status of the operation
+            progress (None): the optional progress of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -95,11 +95,11 @@ class DelegatedOperationService(object):
             _id=doc_id,
             run_state=ExecutionRunState.COMPLETED,
             result=result,
-            status=status,
+            progress=progress,
         )
 
     def set_failed(
-        self, doc_id, result=None, status: ExecutionProgress = None
+        self, doc_id, result=None, progress: ExecutionProgress = None
     ):
         """Sets the given delegated operation to failed state.
 
@@ -108,7 +108,7 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            status (None): the optional status of the operation
+            progress (None): the optional progress of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -117,7 +117,7 @@ class DelegatedOperationService(object):
             _id=doc_id,
             run_state=ExecutionRunState.FAILED,
             result=result,
-            status=status,
+            progress=progress,
         )
 
     def set_pinned(self, doc_id, pinned=True):
@@ -305,7 +305,6 @@ class DelegatedOperationService(object):
                 logger.info(
                     "Operation %s failed\n%s", operation.id, result.error
                 )
-            # raise Exception(result.error)
 
     async def _execute_operator(self, doc, log=False):
         operator_uri = doc.operator
