@@ -5,7 +5,6 @@ import {
   stateSubscription,
   viewStateForm_INTERNAL,
 } from "@fiftyone/state";
-import { GQLError, GraphQLError } from "@fiftyone/utilities";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
@@ -29,9 +28,7 @@ const onSetView: RegisteredSetter =
       variables,
       onCompleted: ({ setView: view }, errors) => {
         if (errors?.length) {
-          handleError(
-            new GraphQLError({ errors: errors as GQLError[], variables })
-          );
+          handleError(errors.map((e) => e.message));
           return;
         }
         sessionRef.current.selectedLabels = [];

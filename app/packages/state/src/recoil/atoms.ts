@@ -101,6 +101,11 @@ export const loading = atom<boolean>({
   default: false,
 });
 
+export const gqlNotiErrorsAtom = atom<string[]>({
+  key: "gqlNotiErrorsAtom",
+  default: [],
+});
+
 // labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {

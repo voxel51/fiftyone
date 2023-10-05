@@ -1,6 +1,5 @@
 import { Setter } from "@fiftyone/relay";
 import { Session } from "@fiftyone/state";
-import { GraphQLError } from "@fiftyone/utilities";
 import { MutableRefObject } from "react";
 import { Environment } from "react-relay";
 import { Queries } from "../makeRoutes";
@@ -10,7 +9,8 @@ type SetterContext = {
   environment: Environment;
   router: RoutingContext<Queries>;
   sessionRef: MutableRefObject<Session>;
-  handleError: (error: GraphQLError) => void;
+  // for showing snackbar errors
+  handleError: (errors: string[]) => void;
 };
 
 export type RegisteredSetter = (ctx: SetterContext) => Setter;
