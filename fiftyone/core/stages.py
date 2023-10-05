@@ -3450,11 +3450,7 @@ class GroupBy(ViewStage):
 
         # add a sort stage so that we return a stable ordering of groups
         # sort by _id to preserve insertion order
-        pipeline.extend(
-            [
-                {"$sort": {"_id": 1}},
-            ]
-        )
+        pipeline.append({"$sort": {"_id": 1}})
 
         return pipeline
 
