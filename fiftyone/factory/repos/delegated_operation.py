@@ -17,7 +17,11 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators import OperatorRegistry
-from fiftyone.operators.executor import ExecutionResult, ExecutionRunState
+from fiftyone.operators.executor import (
+    ExecutionResult,
+    ExecutionRunState,
+    ExecutionProgress,
+)
 
 
 class DelegatedOperationRepo(object):
@@ -35,9 +39,18 @@ class DelegatedOperationRepo(object):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
+        status: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
         raise NotImplementedError("subclass must implement update_run_state()")
+
+    def update_progress(
+        self,
+        _id: ObjectId,
+        progress: ExecutionProgress,
+    ) -> DelegatedOperationDocument:
+        """Update the status of an operation."""
+        raise NotImplementedError("subclass must implement update_progress()")
 
     def get_queued_operations(
         self, operator: str = None, dataset_name=None
@@ -169,6 +182,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
+        status: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         update = None
 
@@ -209,6 +223,45 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
+
+        if status is not None:
+            update["$set"]["status"] = status
+            update["$set"]["status"]["updated_at"] = datetime.utcnow()
+
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update=update,
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+
+        return DelegatedOperationDocument().from_pymongo(doc)
+
+    def update_progress(
+        self,
+        _id: ObjectId,
+        progress: ExecutionProgress,
+    ) -> DelegatedOperationDocument:
+        if not isinstance(progress, ExecutionProgress):
+            raise ValueError("Invalid progress: {}".format(progress))
+
+        if not progress.progress and not progress.label:
+            raise ValueError("Invalid progress: {}".format(progress))
+
+        update = None
+
+        if progress is not None:
+            update = {
+                "$set": {
+                    "status": {
+                        "progress": progress.progress,
+                        "label": progress.label,
+                        "updated_at": datetime.utcnow(),
+                    },
+                }
+            }
+
+        if update is None:
+            raise ValueError("Invalid status: {}".format(progress))
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},

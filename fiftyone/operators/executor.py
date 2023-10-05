@@ -8,6 +8,7 @@ FiftyOne operator execution.
 import asyncio
 import traceback
 import types as python_types
+from typing import Callable
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -48,6 +49,20 @@ class InvocationRequest(object):
             "operator_uri": self.operator_uri,
             "params": self.params,
         }
+
+
+class ExecutionProgress:
+    """Represents the status of an operator execution.
+
+    Args:
+        progress: the progress of the operation, a float between 0 and 1 (0% to 100%) or None
+        label: an optional label to display
+    """
+
+    def __init__(self, progress: float = None, label: str = None):
+        self.progress = progress
+        self.label = label
+        self.updated_at = None
 
 
 class Executor(object):
@@ -217,14 +232,24 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-async def prepare_operator_executor(operator_uri, request_params):
+async def prepare_operator_executor(
+    operator_uri,
+    request_params,
+    set_progress=None,
+    delegated_operation_id=None,
+):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
-    ctx = ExecutionContext(request_params, executor)
+    ctx = ExecutionContext(
+        request_params=request_params,
+        executor=executor,
+        set_progress=set_progress,
+        delegated_operation_id=delegated_operation_id,
+    )
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
@@ -293,9 +318,17 @@ class ExecutionContext(object):
     Args:
         request_params (None): a optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
+        set_progress (None): an optional function to set the progress of the current operation
+        delegated_operation_id (None): an optional ID of the delegated operation
     """
 
-    def __init__(self, request_params=None, executor=None):
+    def __init__(
+        self,
+        request_params=None,
+        executor=None,
+        set_progress=None,
+        delegated_operation_id=None,
+    ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
@@ -304,6 +337,8 @@ class ExecutionContext(object):
         self._view = None
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
+        self._set_progress = set_progress
+        self._delegated_operation_id = delegated_operation_id
 
     @property
     def dataset(self):
@@ -468,6 +503,20 @@ class ExecutionContext(object):
         return {
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
+
+    def set_progress(self, progress: float = None, label: str = None):
+        """Sets the progress of the current operation.
+
+        Args:
+            progress: the progress to set
+        """
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress.progress} - {progress.label}")
 
 
 class ExecutionResult(object):

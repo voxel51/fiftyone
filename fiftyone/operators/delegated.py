@@ -17,6 +17,7 @@ from fiftyone.operators.executor import (
     prepare_operator_executor,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionProgress,
 )
 
 logger = logging.getLogger(__name__)
@@ -49,20 +50,35 @@ class DelegatedOperationService(object):
             context=context,
         )
 
-    def set_running(self, doc_id):
+    def set_progress(self, doc_id, progress: ExecutionProgress):
+        """Sets the status of the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            progress: the status of the operation
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.update_progress(_id=doc_id, progress=progress)
+
+    def set_running(self, doc_id, status: ExecutionProgress = None):
         """Sets the given delegated operation to running state.
 
         Args:
             doc_id: the ID of the delegated operation
+            status (None): the optional status of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.RUNNING
+            _id=doc_id, run_state=ExecutionRunState.RUNNING, status=status
         )
 
-    def set_completed(self, doc_id, result=None):
+    def set_completed(
+        self, doc_id, result=None, status: ExecutionProgress = None
+    ):
         """Sets the given delegated operation to completed state.
 
         Args:
@@ -70,15 +86,21 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
+            status (None): the optional status of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.COMPLETED, result=result
+            _id=doc_id,
+            run_state=ExecutionRunState.COMPLETED,
+            result=result,
+            status=status,
         )
 
-    def set_failed(self, doc_id, result=None):
+    def set_failed(
+        self, doc_id, result=None, status: ExecutionProgress = None
+    ):
         """Sets the given delegated operation to failed state.
 
         Args:
@@ -86,12 +108,16 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
+            status (None): the optional status of the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.FAILED, result=result
+            _id=doc_id,
+            run_state=ExecutionRunState.FAILED,
+            result=result,
+            status=status,
         )
 
     def set_pinned(self, doc_id, pinned=True):
@@ -244,20 +270,7 @@ class DelegatedOperationService(object):
         )
 
         for op in queued_ops:
-            try:
-                if log:
-                    logger.info(
-                        "\nRunning operation %s (%s)", op.id, op.operator
-                    )
-                execution_result = asyncio.run(self._execute_operator(op))
-                self.set_completed(doc_id=op.id, result=execution_result)
-                if log:
-                    logger.info("Operation %s complete", op.id)
-            except:
-                result = ExecutionResult(error=traceback.format_exc())
-                self.set_failed(doc_id=op.id, result=result)
-                if log:
-                    logger.info("Operation %s failed\n%s", op.id, result.error)
+            self.execute_operation(operation=op, log=log)
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.
@@ -271,13 +284,39 @@ class DelegatedOperationService(object):
         """
         return self._repo.count(filters=filters, search=search)
 
-    async def _execute_operator(self, doc):
+    def execute_operation(self, operation, log=False):
+        try:
+            if log:
+                logger.info(
+                    "\nRunning operation %s (%s)",
+                    operation.id,
+                    operation.operator,
+                )
+            execution_result = asyncio.run(
+                self._execute_operator(operation, log)
+            )
+            self.set_completed(doc_id=operation.id, result=execution_result)
+            if log:
+                logger.info("Operation %s complete", operation.id)
+        except Exception as e:
+            result = ExecutionResult(error=traceback.format_exc())
+            self.set_failed(doc_id=operation.id, result=result)
+            if log:
+                logger.info(
+                    "Operation %s failed\n%s", operation.id, result.error
+                )
+            # raise Exception(result.error)
+
+    async def _execute_operator(self, doc, log=False):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
 
         prepared = await prepare_operator_executor(
-            operator_uri, context.request_params
+            operator_uri=operator_uri,
+            request_params=context.request_params,
+            delegated_operation_id=doc.id,
+            set_progress=self.set_progress,
         )
 
         # if a validation error happened during preparation,
@@ -287,6 +326,9 @@ class DelegatedOperationService(object):
             raise prepared.to_exception()
         else:
             operator, _, ctx = prepared
+
+            if log:
+                logger.info("Running operator %s", operator_uri)
             self.set_running(doc_id=doc.id)
 
             raw_result = await (
