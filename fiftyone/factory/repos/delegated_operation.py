@@ -241,27 +241,27 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         _id: ObjectId,
         progress: ExecutionProgress,
     ) -> DelegatedOperationDocument:
+        execution_progress = progress
         if not isinstance(progress, ExecutionProgress):
-            raise ValueError("Invalid progress: {}".format(progress))
+            if isinstance(progress, dict):
+                execution_progress = ExecutionProgress(**progress)
+            else:
+                raise ValueError("Invalid progress: {}".format(progress))
 
-        if not progress.progress and not progress.label:
-            raise ValueError("Invalid progress: {}".format(progress))
+        if not execution_progress or (
+            not execution_progress.progress and not execution_progress.label
+        ):
+            raise ValueError("Invalid progress: {}".format(execution_progress))
 
-        update = None
-
-        if progress is not None:
-            update = {
-                "$set": {
-                    "status": {
-                        "progress": progress.progress,
-                        "label": progress.label,
-                        "updated_at": datetime.utcnow(),
-                    },
-                }
+        update = {
+            "$set": {
+                "status": {
+                    "progress": execution_progress.progress,
+                    "label": execution_progress.label,
+                    "updated_at": datetime.utcnow(),
+                },
             }
-
-        if update is None:
-            raise ValueError("Invalid status: {}".format(progress))
+        }
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},

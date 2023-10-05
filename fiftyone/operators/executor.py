@@ -507,6 +507,7 @@ class ExecutionContext(object):
         """Sets the progress of the current operation.
 
         Args:
+            label: string label to display
             progress: the progress to set
         """
         if self._set_progress:
