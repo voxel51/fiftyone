@@ -31,7 +31,7 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-20.04
+          - ubuntu-latest-m
           - windows-latest
         python:
           - 3.8
@@ -64,6 +64,7 @@ jobs:
       - name: Install fiftyone
         run: |
           pip install .
+          pip install fiftyone-db-ubuntu2204
       - name: Configure
         id: test_config
         run: |

@@ -85,8 +85,15 @@ const Draggable: React.FC<
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
+          ...(isReadOnly ? { cursor: "not-allowed" } : {}),
         }}
-        title={trigger ? "Drag to reorder" : null}
+        title={
+          isReadOnly
+            ? "Can not reorder in read-only mode"
+            : trigger
+            ? "Drag to reorder"
+            : undefined
+        }
       >
         {active && <DragIndicator style={{ color: theme.background.level1 }} />}
       </animated.div>

@@ -5,7 +5,12 @@
 """
 import functools
 import os
-from importlib import metadata
+
+try:
+    from importlib import metadata
+except ImportError:
+    # for Python 3.7
+    import importlib_metadata as metadata
 from typing import Any, BinaryIO, Dict, Iterator, Mapping, Optional
 from typing_extensions import Literal
 

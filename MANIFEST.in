@@ -3,8 +3,11 @@ global-exclude *.py[cod]
 
 prune .*
 prune app
+prune e2e
+prune e2e-pw
 prune eta
 prune package
+prune requirements
 prune tools
 prune tests
 

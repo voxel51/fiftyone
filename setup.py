@@ -19,6 +19,7 @@ INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
     "argcomplete",
+    "beautifulsoup4",
     "boto3",
     "cachetools",
     "dacite>=1.6.0,<1.8.0",
@@ -31,7 +32,7 @@ INSTALL_REQUIRES = [
     "Jinja2>=3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
-    "kaleido",
+    "kaleido!=0.2.1.post1",
     "matplotlib",
     "mongoengine==0.24.2",
     "motor>=2.5",
@@ -119,7 +120,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.14.1",
+    version="0.14.2",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
