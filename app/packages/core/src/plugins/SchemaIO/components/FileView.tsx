@@ -5,6 +5,7 @@ import HeaderView from "./HeaderView";
 import TabsView from "./TabsView";
 import TextFieldView from "./TextFieldView";
 import { getComponentProps } from "../utils";
+import { humanReadableBytes } from "@fiftyone/utilities";
 
 export default function FileView(props) {
   const { onChange, path, schema, autoFocused } = props;
@@ -34,7 +35,12 @@ export default function FileView(props) {
               const { error, result } = await fileToBase64(file);
               if (error) {
                 clear();
-                showError("Error reading file");
+                // NOTE: error is a ProgressEvent<EventTarget>
+                // there is no error message - so we print it to the console
+                const msg = "Error reading file";
+                console.error(msg);
+                console.error(error);
+                showError(msg);
                 return;
               }
               if (maxSize && file.size > maxSize) {
@@ -81,17 +87,4 @@ function fileToBase64(
     fileReader.onload = () => resolve({ result: fileReader.result as string });
     fileReader.onerror = (error) => resolve({ error });
   });
-}
-
-function humanReadableBytes(bytes: number): string {
-  if (!bytes) return "";
-
-  const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-  if (bytes === 0) return "0 Byte";
-
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
 }
