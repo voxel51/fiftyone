@@ -9,6 +9,8 @@ type SetterContext = {
   environment: Environment;
   router: RoutingContext<Queries>;
   sessionRef: MutableRefObject<Session>;
+  // for showing snackbar errors
+  handleError: (errors: string[]) => void;
 };
 
 export type RegisteredSetter = (ctx: SetterContext) => Setter;

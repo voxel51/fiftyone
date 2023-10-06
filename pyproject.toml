@@ -1,3 +1,5 @@
+[build-system]
+requires = ["importlib-metadata; python_version<'3.8'", "setuptools", "wheel"]
 [tool.black]
 line-length = 79
 include = '\.pyi?$'
