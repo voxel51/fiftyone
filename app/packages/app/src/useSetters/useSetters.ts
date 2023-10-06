@@ -2,10 +2,11 @@ import { Setter } from "@fiftyone/relay";
 import { Session, snackbarErrors } from "@fiftyone/state";
 import { MutableRefObject, useMemo } from "react";
 import { Environment } from "react-relay";
+import { useRecoilCallback } from "recoil";
+import { pendingEntry } from "../Renderer";
 import { Queries } from "../makeRoutes";
 import { RoutingContext } from "../routing";
 import { REGISTERED_SETTERS } from "./registerSetter";
-import { useRecoilCallback } from "recoil";
 
 const useSetters = (
   environment: Environment,
@@ -16,6 +17,7 @@ const useSetters = (
     ({ set: setRecoil }) =>
       async (errors: string[] = []) => {
         setRecoil(snackbarErrors, errors);
+        setRecoil(pendingEntry, false);
       },
     []
   );

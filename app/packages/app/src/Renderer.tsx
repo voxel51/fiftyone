@@ -12,21 +12,10 @@ import {
 import { Queries } from "./makeRoutes";
 import { Entry, useRouterContext } from "./routing";
 
-export const [pendingEntry, setPending] = (() => {
-  let set: (value: boolean) => void;
-  return [
-    atom<boolean>({
-      key: "pendingEntry",
-      default: false,
-      effects: [
-        ({ setSelf }) => {
-          set = setSelf;
-        },
-      ],
-    }),
-    (value: boolean) => set(value),
-  ];
-})();
+export const pendingEntry = atom<boolean>({
+  key: "pendingEntry",
+  default: false,
+});
 
 export const entry = atom<Entry<Queries> | null>({
   key: "Entry",
