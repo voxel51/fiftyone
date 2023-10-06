@@ -6822,7 +6822,7 @@ def _create_group_indexes(sample_collection_name, group_field):
     conn = foo.get_db_conn()
 
     sample_collection = conn[sample_collection_name]
-    sample_collection.create_index(group_field + ".id")
+    sample_collection.create_index(group_field + "._id")
     sample_collection.create_index(group_field + ".name")
 
 
