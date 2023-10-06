@@ -92,7 +92,7 @@
         "@babel/preset-typescript": "^7.9.0",
         "@babel/register": "^7.9.0",
         "cross-env": "^7.0.3",
-        "electron": "22.3.24",
+        "electron": "22.3.25",
         "electron-builder": "^23.0.3",
         "electron-devtools-installer": "^3.2.0",
         "typescript": "^4.7.4"

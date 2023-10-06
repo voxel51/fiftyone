@@ -4,6 +4,7 @@ import { getComponentProps } from "../utils";
 import autoFocus from "../utils/auto-focus";
 import AlertView from "./AlertView";
 import FieldWrapper from "./FieldWrapper";
+import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
@@ -76,37 +77,13 @@ export default function DropdownView(props) {
         multiple={multiple}
         {...getComponentProps(props, "select")}
       >
-        {choices.map(({ value, label, description, caption }) => (
+        {choices.map(({ value, ...choice }) => (
           <MenuItem
             key="value"
             value={value}
             {...getComponentProps(props, "optionContainer")}
           >
-            <ListItemText
-              primary={
-                <Typography {...getComponentProps(props, "optionLabel")}>
-                  {label}
-                </Typography>
-              }
-              secondary={
-                <Box>
-                  <Typography
-                    variant="body2"
-                    {...getComponentProps(props, "optionDescription")}
-                  >
-                    {description}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.tertiary"
-                    {...getComponentProps(props, "optionCaption")}
-                  >
-                    {caption}
-                  </Typography>
-                </Box>
-              }
-              {...getComponentProps(props, "option")}
-            />
+            <ChoiceMenuItemBody {...choice} {...props} />
           </MenuItem>
         ))}
       </Select>

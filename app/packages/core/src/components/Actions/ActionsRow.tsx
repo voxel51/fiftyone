@@ -366,8 +366,8 @@ const SaveFilters = () => {
 
         const unsubscribe = subscribe((_, { set, reset }) => {
           set(fos.savingFilters, false);
-          reset(fos.similarityParameters);
           reset(fos.extendedSelection);
+          reset(fos.viewStateForm_INTERNAL);
           unsubscribe();
         });
 
