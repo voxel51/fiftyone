@@ -1,3 +1,4 @@
+import { rollbackViewBar } from "@fiftyone/core";
 import { setView, setViewMutation } from "@fiftyone/relay";
 import {
   State,
@@ -7,7 +8,7 @@ import {
 } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
-import { pendingEntry } from "../Renderer";
+import { pendingEntry, setPending } from "../Renderer";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
@@ -29,6 +30,8 @@ const onSetView: RegisteredSetter =
       onCompleted: ({ setView: view }, errors) => {
         if (errors?.length) {
           handleError(errors.map((e) => e.message));
+          rollbackViewBar();
+          setPending(false);
           return;
         }
         sessionRef.current.selectedLabels = [];
