@@ -7,8 +7,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
 });
 
@@ -67,29 +67,28 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.assert.isSelectionCountEqualTo(0);
   });
 
-  // TODO: fixme
-  test.skip(`${extension} modal selection`, async ({
+  test(`${extension} modal selection`, async ({
     fiftyoneLoader,
     page,
     modal,
     grid,
   }) => {
+    const pcd = extension === "pcd";
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
     await grid.toggleSelectFirstSample();
-    // TODO: fixme, checkbox inexplicably gets unchecked
     await grid.assert.isNthSampleSelected(0);
     await grid.openNthSample(1);
     await modal.assert.verifySelectionCount(1);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(2);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(1);
     await modal.navigatePreviousSample(true);
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(0);
 
     // verify pressing escape clears modal but not selection
-    await modal.toggleSelection();
+    await modal.toggleSelection(pcd);
     await modal.assert.verifySelectionCount(1);
     await modal.close();
     await grid.assert.isSelectionCountEqualTo(1);

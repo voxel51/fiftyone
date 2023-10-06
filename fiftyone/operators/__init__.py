@@ -8,7 +8,6 @@ FiftyOne operators.
 from .operator import Operator, OperatorConfig
 from .registry import OperatorRegistry, get_operator, list_operators
 from .executor import execute_operator, execute_or_delegate_operator
-from .loader import PluginContext
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]

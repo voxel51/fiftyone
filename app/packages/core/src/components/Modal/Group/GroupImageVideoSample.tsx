@@ -18,7 +18,7 @@ export const GroupImageVideoSample: React.FC<{
 
   return (
     <GroupSampleWrapper
-      sampleId={sample.id}
+      sampleId={sample.sample._id}
       pinned={pinned}
       onClick={reset}
       {...hover.handlers}

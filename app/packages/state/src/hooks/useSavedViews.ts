@@ -1,21 +1,12 @@
-import { useCallback } from "react";
-import {
-  useRecoilCallback,
-  useRecoilRefresher_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-import { useMutation } from "react-relay";
-import { useErrorHandler } from "react-error-boundary";
-
-import * as fos from "@fiftyone/state";
 import * as foq from "@fiftyone/relay";
-import { viewStateForm } from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import { useCallback } from "react";
+import { useErrorHandler } from "react-error-boundary";
+import { useMutation } from "react-relay";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 
 export default function useSavedViews() {
-  const savedViews = useRecoilValue(fos.savedViewsSelector);
   const datasetNameValue = useRecoilValue(fos.datasetName);
-  const refresh = useRecoilRefresher_UNSTABLE(fos.savedViewsSelector);
-  const send = fos.useSendEvent();
   const onError = useErrorHandler();
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -27,66 +18,71 @@ export default function useSavedViews() {
     useMutation<foq.updateSavedViewMutation>(foq.updateSavedView);
 
   const handleDeleteView = useCallback(
-    (nameValue: string, onDeleteSuccess: (deletedId) => void) => {
+    (
+      nameValue: string,
+      onDeleteSuccess: (deletedId: string | null) => void
+    ) => {
       if (nameValue) {
-        send((session) =>
-          deleteView({
-            onError,
-            variables: {
-              viewName: nameValue,
-              datasetName: datasetNameValue,
-              subscription,
-              session,
-            },
-            onCompleted: (data, err) => {
-              if (err) {
-                console.log("handleDeleteView error:", err);
-              }
-              const deletedId = data?.deleteSavedView;
-              onDeleteSuccess(deletedId);
-            },
-          })
-        );
+        deleteView({
+          onError,
+          variables: {
+            viewName: nameValue,
+            datasetName: datasetNameValue,
+            subscription,
+          },
+          onCompleted: (data, err) => {
+            if (err) {
+              console.error("handleDeleteView error:", err);
+            }
+            const deletedId = data?.deleteSavedView;
+            onDeleteSuccess(deletedId);
+          },
+        });
       }
     },
-    [datasetNameValue, deleteView, onError, send, subscription]
+    [datasetNameValue, deleteView, onError, subscription]
   );
 
   const handleCreateSavedView = useRecoilCallback(
     ({ snapshot }) =>
-      (
+      async (
         name: string,
         description: string,
         color: string,
         view: fos.State.Stage[],
-        onSuccess: (saveView) => void
+        onSuccess: (
+          savedView: foq.createSavedViewMutation$data["createSavedView"]
+        ) => void
       ) => {
         if (name) {
-          send((session) =>
-            saveView({
-              onError,
-              variables: {
-                viewName: name,
-                datasetName: datasetNameValue,
-                viewStages: view,
-                form: snapshot.getLoadable(viewStateForm({ modal: false }))
-                  .contents,
-                description,
-                color,
-                subscription,
-                session,
+          saveView({
+            onError,
+            variables: {
+              viewName: name,
+              datasetName: datasetNameValue,
+              viewStages: view,
+              form: {
+                filters: await snapshot.getPromise(fos.filters),
+                sampleIds: Array.from(
+                  await snapshot.getPromise(fos.selectedSamples)
+                ),
+                slice: await snapshot.getPromise(fos.groupSlice),
+                extended: await snapshot.getPromise(fos.extendedStages),
               },
-              onCompleted: (data, err) => {
-                if (err) {
-                  console.log("handleCreateSavedView response error:", err);
-                }
-                onSuccess(data?.createSavedView);
-              },
-            })
-          );
+              description,
+              color,
+              subscription,
+            },
+            onCompleted: (data, err) => {
+              if (err) {
+                console.error("handleCreateSavedView response error:", err);
+              }
+              onSuccess(data?.createSavedView);
+            },
+          });
         }
       },
-    [datasetNameValue, saveView, onError, send, subscription]
+    [datasetNameValue, saveView, onError, subscription]
   );
 
   const handleUpdateSavedView = useCallback(
@@ -95,36 +91,33 @@ export default function useSavedViews() {
       name: string,
       description: string,
       color: string,
-      onSuccess: (saveView) => void
+      onSuccess: (
+        savedView: foq.updateSavedViewMutation$data["updateSavedView"]
+      ) => void
     ) => {
       if (initialName) {
-        send((session) =>
-          updateView({
-            onError,
-            variables: {
-              subscription,
-              session,
-              datasetName: datasetNameValue,
-              viewName: initialName,
-              updatedInfo: {
-                name,
-                color,
-                description,
-              },
+        updateView({
+          onError,
+          variables: {
+            subscription,
+            datasetName: datasetNameValue,
+            viewName: initialName,
+            updatedInfo: {
+              name,
+              color,
+              description,
             },
-            onCompleted: ({ updateSavedView }) => {
-              onSuccess(updateSavedView);
-            },
-          })
-        );
+          },
+          onCompleted: ({ updateSavedView }) => {
+            onSuccess(updateSavedView);
+          },
+        });
       }
     },
-    [datasetNameValue, updateView, onError, send, subscription]
+    [datasetNameValue, updateView, onError, subscription]
   );
 
   return {
-    savedViews,
-    refresh,
     isDeletingSavedView,
     handleDeleteView,
     isCreatingSavedView,

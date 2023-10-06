@@ -1,20 +1,23 @@
 import { Selection } from "@fiftyone/components";
+import {
+  savedViewsFragment,
+  savedViewsFragment$key,
+  savedViewsFragmentQuery,
+} from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { datasetQueryContext } from "@fiftyone/state";
 import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import { useRefetchableFragment } from "react-relay";
 import {
   atom,
   useRecoilState,
   useRecoilValue,
+  useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import { DatasetSavedViewsFragmentQuery } from "../../../__generated__/DatasetSavedViewsFragmentQuery.graphql";
-import { DatasetSavedViewsFragment$key } from "../../../__generated__/DatasetSavedViewsFragment.graphql";
-import { DatasetQueryRef, DatasetSavedViewsFragment } from "../../../Dataset";
 import { shouldToggleBookMarkIconOnSelector } from "../../Actions/ActionsRow";
-import { Box, LastOption, AddIcon, TextContainer } from "./styledComponents";
 import ViewDialog, { viewDialogContent } from "./ViewDialog";
-import { extendedStages } from "@fiftyone/state";
+import { AddIcon, Box, LastOption, TextContainer } from "./styledComponents";
 
 export const viewSearchTerm = atom<string>({
   key: "viewSearchTerm",
@@ -40,28 +43,25 @@ export default function ViewSelection() {
     fos.selectedSavedViewState
   );
   const datasetName = useRecoilValue(fos.datasetName);
-  const canEditSavedViews = useRecoilValue<boolean>(fos.canEditSavedViews);
-  const setIsOpen = useSetRecoilState<boolean>(viewDialogOpen);
-  const savedViewParam = useRecoilValue(fos.viewName);
+  const canEditSavedViews = useRecoilValue(fos.canEditSavedViews);
+  const setIsOpen = useSetRecoilState(viewDialogOpen);
+  const [savedViewParam, setViewName] = useRecoilState(fos.viewName);
   const setEditView = useSetRecoilState(viewDialogContent);
-  const setView = fos.useSetView();
+  const resetView = useResetRecoilState(fos.view);
   const [viewSearch, setViewSearch] = useRecoilState<string>(viewSearchTerm);
+  const fragmentRef = useContext(datasetQueryContext);
   const isReadOnly = useRecoilValue(fos.readOnly);
   const canEdit = useMemo(
     () => canEditSavedViews && !isReadOnly,
     [canEditSavedViews, isReadOnly]
   );
 
-  const { savedViews: savedViewsV2 = [] } = fos.useSavedViews();
-
-  const fragmentRef = useContext(DatasetQueryRef);
-
   if (!fragmentRef) throw new Error("ref not defined");
 
   const [data, refetch] = useRefetchableFragment<
-    DatasetSavedViewsFragmentQuery,
-    DatasetSavedViewsFragment$key
-  >(DatasetSavedViewsFragment, fragmentRef);
+    savedViewsFragmentQuery,
+    savedViewsFragment$key
+  >(savedViewsFragment, fragmentRef);
 
   const items = useMemo(() => data.savedViews || [], [data]);
 
@@ -108,9 +108,9 @@ export default function ViewSelection() {
     }
   }, [searchData, selected]);
 
-  const loadedView = useRecoilValue<fos.State.Stage[]>(fos.view);
+  const loadedView = useRecoilValue(fos.view);
   const bookmarkIconOn = useRecoilValue(shouldToggleBookMarkIconOnSelector);
-  const extendedStagesVal = useRecoilValue(extendedStages);
+  const extendedStagesVal = useRecoilValue(fos.extendedStages);
   const isEmptyView =
     !bookmarkIconOn && !loadedView?.length && extendedStagesVal?.length > 2;
 
@@ -125,7 +125,7 @@ export default function ViewSelection() {
         }
         setSelected(potentialView as fos.DatasetViewOption);
       } else {
-        const potentialUpdatedView = savedViewsV2.filter(
+        const potentialUpdatedView = items.filter(
           (v) => v.name === savedViewParam
         )?.[0];
         if (potentialUpdatedView) {
@@ -192,7 +192,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: () => {
                   if (createSavedView && reload) {
-                    setView([], undefined, createSavedView.slug);
+                    setViewName(createSavedView.slug);
                     setSelected({
                       ...createSavedView,
                       label: createSavedView.name,
@@ -209,7 +209,7 @@ export default function ViewSelection() {
                 fetchPolicy: "network-only",
                 onComplete: () => {
                   if (selected?.label === deletedSavedViewName) {
-                    setView([], []);
+                    resetView();
                   }
                 },
               }
@@ -222,11 +222,11 @@ export default function ViewSelection() {
           selected={selected}
           setSelected={(item: fos.DatasetViewOption) => {
             setSelected(item);
-            setView(item.viewStages, [], item.slug);
+            setViewName(item.slug);
           }}
           onClear={() => {
             setSelected(fos.DEFAULT_SELECTED);
-            setView([], []);
+            resetView();
           }}
           items={searchData}
           onEdit={(item) => {
@@ -250,6 +250,11 @@ export default function ViewSelection() {
               data-cy={`saved-views-create-new`}
               onClick={() => canEdit && !isEmptyView && setIsOpen(true)}
               disabled={isEmptyView || !canEdit}
+              title={
+                canEdit
+                  ? undefined
+                  : "Can not save filters as a view in read-only mode"
+              }
             >
               <Box style={{ width: "12%" }}>
                 <AddIcon fontSize="small" disabled={isEmptyView || !canEdit} />

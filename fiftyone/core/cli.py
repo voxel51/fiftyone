@@ -422,6 +422,9 @@ class DatasetsListCommand(Command):
 
         # List datasets matching a given pattern
         fiftyone datasets list --glob-patt 'quickstart-*'
+
+        # List datasets with the given tag(s)
+        fiftyone datasets list --tags automotive healthcare
     """
 
     @staticmethod
@@ -432,10 +435,17 @@ class DatasetsListCommand(Command):
             metavar="PATT",
             help="an optional glob pattern of dataset names to include",
         )
+        parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
 
     @staticmethod
     def execute(parser, args):
-        datasets = fod.list_datasets(glob_patt=args.glob_patt)
+        datasets = fod.list_datasets(glob_patt=args.glob_patt, tags=args.tags)
 
         if datasets:
             for dataset in datasets:
@@ -452,6 +462,7 @@ class DatasetsInfoCommand(Command):
         # Print basic information about multiple datasets
         fiftyone datasets info
         fiftyone datasets info --glob-patt 'quickstart-*'
+        fiftyone datasets info --tags automotive healthcare
         fiftyone datasets info --sort-by created_at
         fiftyone datasets info --sort-by name --reverse
 
@@ -474,6 +485,13 @@ class DatasetsInfoCommand(Command):
             help="an optional glob pattern of dataset names to include",
         )
         parser.add_argument(
+            "-t",
+            "--tags",
+            metavar="TAG",
+            nargs="+",
+            help="only show datasets with the given tag(s)",
+        )
+        parser.add_argument(
             "-s",
             "--sort-by",
             metavar="FIELD",
@@ -492,7 +510,9 @@ class DatasetsInfoCommand(Command):
         if args.name:
             _print_dataset_info(args.name)
         else:
-            _print_all_dataset_info(args.glob_patt, args.sort_by, args.reverse)
+            _print_all_dataset_info(
+                args.glob_patt, args.tags, args.sort_by, args.reverse
+            )
 
 
 def _print_dataset_info(name):
@@ -500,8 +520,8 @@ def _print_dataset_info(name):
     print(dataset)
 
 
-def _print_all_dataset_info(glob_patt, sort_by, reverse):
-    info = fod.list_datasets(glob_patt=glob_patt, info=True)
+def _print_all_dataset_info(glob_patt, tags, sort_by, reverse):
+    info = fod.list_datasets(glob_patt=glob_patt, tags=tags, info=True)
 
     headers = [
         "name",
@@ -511,7 +531,6 @@ def _print_all_dataset_info(glob_patt, sort_by, reverse):
         "persistent",
         "media_type",
         "tags",
-        "num_samples",
     ]
 
     if sort_by in headers:
@@ -2673,9 +2692,8 @@ def _print_operators_list(enabled, names_only):
         "uri",
         "enabled",
         "builtin",
-        "on_startup",
         "unlisted",
-        "dynamic",
+        "on_startup",
     ]
 
     enabled_plugins = set(fop.list_enabled_plugins())
@@ -2687,9 +2705,8 @@ def _print_operators_list(enabled, names_only):
                 "uri": op.uri,
                 "enabled": op.builtin or op.plugin_name in enabled_plugins,
                 "builtin": op.builtin,
-                "on_startup": op.config.on_startup,
                 "unlisted": op.config.unlisted,
-                "dynamic": op.config.dynamic,
+                "on_startup": op.config.on_startup,
             }
         )
 
@@ -2783,8 +2800,8 @@ def _launch_delegated_local():
         print("Delegated operation service running")
         print("\nTo exit, press ctrl + c")
         while True:
-            dos.execute_queued_operations(log=True)
-            time.sleep(1)
+            dos.execute_queued_operations(limit=1, log=True)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         pass
 
@@ -4100,7 +4117,15 @@ def _print_dict_as_table(d, headers=None):
     if headers is None:
         headers = ["key", "value"]
 
-    records = [(k, v) for k, v in d.items()]
+    records = []
+    for k, v in d.items():
+        if isinstance(v, list) and v:
+            records.append((k, v[0]))
+            for e in v[1:]:
+                records.append(("", e))
+        else:
+            records.append((k, v))
+
     table_str = tabulate(records, headers=headers, tablefmt=_TABLE_FORMAT)
     print(table_str)
 

@@ -4110,6 +4110,53 @@ class ViewStageTests(unittest.TestCase):
         self.assertEqual(result[0]["test_clf"].label, "enemy")
         self.assertEqual(result[1]["test_clf"].label, "friend")
 
+    def test_sort_by_indexes(self):
+        dataset = fo.Dataset()
+        dataset.add_samples(
+            [
+                fo.Sample(filepath="image1.jpg", foo="spam", field=2),
+                fo.Sample(filepath="image2.jpg", foo="spam", field=1),
+                fo.Sample(filepath="image3.jpg", foo="bar", field=3),
+            ]
+        )
+
+        view1 = dataset.sort_by("field")
+
+        self.assertListEqual(view1.values("field"), [1, 2, 3])
+        self.assertIn("field", dataset.list_indexes())
+
+        view2 = dataset.sort_by([("foo", 1), ("field", 1)])
+
+        self.assertListEqual(view2.values("foo"), ["bar", "spam", "spam"])
+        self.assertListEqual(view2.values("field"), [3, 1, 2])
+        self.assertIn("foo_1_field_1", dataset.list_indexes())
+
+        also_view2 = fo.DatasetView._build(dataset, view2._serialize())
+
+        self.assertListEqual(also_view2.values("foo"), ["bar", "spam", "spam"])
+        self.assertListEqual(also_view2.values("field"), [3, 1, 2])
+
+        dataset2 = dataset.clone()
+
+        self.assertNotIn("field", dataset2.list_indexes())
+        self.assertNotIn("foo_1_field_1", dataset2.list_indexes())
+
+        view3 = dataset2.sort_by(F("field"))
+
+        self.assertListEqual(view3.values("field"), [1, 2, 3])
+        self.assertIn("field", dataset2.list_indexes())
+
+        view4 = dataset2.sort_by([(F("foo"), 1), (F("field"), 1)])
+
+        self.assertListEqual(view4.values("foo"), ["bar", "spam", "spam"])
+        self.assertListEqual(view4.values("field"), [3, 1, 2])
+        self.assertIn("foo_1_field_1", dataset2.list_indexes())
+
+        also_view4 = fo.DatasetView._build(dataset2, view4._serialize())
+
+        self.assertListEqual(also_view4.values("foo"), ["bar", "spam", "spam"])
+        self.assertListEqual(also_view4.values("field"), [3, 1, 2])
+
     def test_take(self):
         result = list(self.dataset.take(1))
         self.assertIs(len(result), 1)

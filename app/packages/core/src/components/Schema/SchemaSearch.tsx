@@ -32,6 +32,7 @@ export const SchemaSearch = (props: Props) => {
     >
       <Box width="100%" paddingTop="0.5rem">
         <input
+          data-cy="filter-visibility-filter-rule-input"
           value={searchTerm}
           placeholder="search by fields and attributes"
           style={{

@@ -44,9 +44,10 @@ const BarContainer = styled.div`
 `;
 
 export const GroupElementsLinkBar = () => {
-  const dataset = useRecoilValue(fos.datasetName);
+  const dataset = useRecoilValue(fos.datasetName) as string;
   const view = useRecoilValue(fos.dynamicGroupViewQuery);
   const cursor = useRecoilValue(fos.nestedGroupIndex);
+  const slice = useRecoilValue(fos.groupSlice);
   const environment = useRelayEnvironment();
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
@@ -56,12 +57,16 @@ export const GroupElementsLinkBar = () => {
         {
           after: cursor ? String(cursor) : null,
           dataset,
-          filter: {},
+          filter: {
+            group: {
+              slice,
+            },
+          },
           view,
         }
       );
     },
-    [dataset, environment, view]
+    [dataset, environment, slice, view]
   );
 
   const queryRef = useMemo(

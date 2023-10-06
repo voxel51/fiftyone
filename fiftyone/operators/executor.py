@@ -15,6 +15,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+from fiftyone.plugins.secrets import PluginSecretsResolver
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -89,7 +90,7 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx, params):
+def execute_operator(operator_uri, ctx, params=None):
     """Executes the operator with the given name.
 
     Args:
@@ -106,14 +107,17 @@ def execute_operator(operator_uri, ctx, params):
             -   ``selected_labels``: an optional list of selected labels in the
                 format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
-
-        params: a dictionary of parameters for the operator. Consult the
-            operator's documentation for details
+            -   ``params``: a dictionary of parameters for the operator.
+                Consult the operator's documentation for details
+        params (None): you can optionally provide the ``ctx.params`` dict as
+            a separate argument
 
     Returns:
         an :class:`ExecutionResult`
     """
-    dataset_name, view_stages, selected, selected_labels = _parse_ctx(ctx)
+    dataset_name, view_stages, selected, selected_labels, params = _parse_ctx(
+        ctx, params=params
+    )
 
     request_params = dict(
         operator_uri=operator_uri,
@@ -129,11 +133,14 @@ def execute_operator(operator_uri, ctx, params):
     )
 
 
-def _parse_ctx(ctx):
+def _parse_ctx(ctx, params=None):
     dataset = ctx.get("dataset", None)
     view = ctx.get("view", None)
     selected = ctx.get("selected", None)
     selected_labels = ctx.get("selected_labels", None)
+
+    if params is None:
+        params = ctx.get("params", {})
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
@@ -151,7 +158,7 @@ def _parse_ctx(ctx):
     else:
         dataset_name = dataset
 
-    return dataset_name, view_stages, selected, selected_labels
+    return dataset_name, view_stages, selected, selected_labels, params
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
@@ -165,7 +172,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
     Returns:
         an :class:`ExecutionResult`
     """
-    prepared = prepare_operator_executor(operator_uri, request_params)
+    prepared = await prepare_operator_executor(operator_uri, request_params)
     if isinstance(prepared, ExecutionResult):
         raise prepared.to_exception()
     else:
@@ -210,7 +217,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-def prepare_operator_executor(operator_uri, request_params):
+async def prepare_operator_executor(operator_uri, request_params):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
@@ -218,6 +225,7 @@ def prepare_operator_executor(operator_uri, request_params):
     operator = registry.get_operator(operator_uri)
     executor = Executor()
     ctx = ExecutionContext(request_params, executor)
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
@@ -292,45 +300,73 @@ class ExecutionContext(object):
         self.params = self.request_params.get("params", {})
         self.executor = executor
 
-    @property
-    def results(self):
-        """A ``dict`` of results for the current operation. This is only availble
-        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
-        return self.request_params.get("results", {})
+        self._dataset = None
+        self._view = None
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
 
     @property
-    def delegated(self):
-        """``True`` if the operator's execution was delegated to an orchestrator. This is only availble
-        for methods that are invoked after an operator is executed, e.g. :meth:`resolve_output`."""
-        return self.request_params.get("delegated", False)
+    def dataset(self):
+        """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
+        if self._dataset is not None:
+            return self._dataset
+
+        dataset_name = self.request_params.get("dataset_name", None)
+
+        self._dataset = fod.load_dataset(dataset_name)
+        self._dataset.reload()
+
+        return self._dataset
+
+    @property
+    def dataset_name(self):
+        """The name of the :class:`fiftyone.core.dataset.Dataset` being
+        operated on.
+        """
+        return self.request_params.get("dataset_name", None)
+
+    @property
+    def dataset_id(self):
+        """The ID of the :class:`fiftyone.core.dataset.Dataset` being operated
+        on.
+        """
+        return self.request_params.get("dataset_id", None)
 
     @property
     def view(self):
-        """The :class:`fiftyone.core.view.DatasetView` to operate on.
+        """The :class:`fiftyone.core.view.DatasetView` being operated on."""
+        if self._view is not None:
+            return self._view
 
-        This property is only available when the operator is invoked via the
-        FiftyOne App and the user has defined a view.
-        """
-        stages = self.request_params.get("view", None)
-        extended = self.request_params.get("extended", None)
+        # Forces a dataset reload if necessary
+        _ = self.dataset
+
         dataset_name = self.request_params.get("dataset_name", None)
+        stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
-        return fosv.get_view(
+        extended = self.request_params.get("extended", None)
+
+        self._view = fosv.get_view(
             dataset_name,
             stages=stages,
-            extended_stages=extended,
             filters=filters,
+            extended_stages=extended,
+            reload=False,
         )
+
+        return self._view
 
     @property
     def selected(self):
-        """The list of selected sample IDs or an empty list."""
+        """The list of selected sample IDs (if any)."""
         return self.request_params.get("selected", [])
 
     @property
     def selected_labels(self):
-        """A list of labels currently selected in the App.
+        """A list of selected labels (if any).
+
         Items are dictionaries with the following keys:
+
         -   ``label_id``: the ID of the label
         -   ``sample_id``: the ID of the sample containing the label
         -   ``field``: the field name containing the label
@@ -340,37 +376,68 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
-    def dataset(self):
-        """The :class:`fiftyone.core.dataset.Dataset` to operate on."""
-        dataset_name = self.request_params.get("dataset_name", None)
-        d = fod.load_dataset(dataset_name)
-        return d
+    def delegated(self):
+        """Whether the operation's execution was delegated to an orchestrator.
+
+        This property is only availble for methods that are invoked after an
+        operator is executed, e.g. :meth:`resolve_output`.
+        """
+        return self.request_params.get("delegated", False)
 
     @property
-    def dataset_name(self):
-        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate
-        on.
+    def results(self):
+        """A ``dict`` of results for the current operation.
+
+        This property is only availble for methods that are invoked after an
+        operator is executed, e.g. :meth:`resolve_output`.
         """
-        return self.request_params.get("dataset_name", None)
+        return self.request_params.get("results", {})
 
     @property
-    def dataset_id(self):
-        """The name of the :class:`fiftyone.core.dataset.Dataset` to operate
-        on.
+    def secrets(self) -> dict:
+        """The dict of secrets available to the operation (if any)."""
+        return self._secrets
+
+    def secret(self, key):
+        """Retrieves the secret with the given key.
+
+        Args:
+            key: a secret key
+
+        Returns:
+            the secret value
         """
-        return self.request_params.get("dataset_id", None)
+        return self._secrets.get(key, None)
+
+    async def resolve_secret_values(self, keys, **kwargs):
+        """Resolves the values of the given secrets keys.
+
+        Args:
+            keys: a list of secret keys
+            **kwargs: additional keyword arguments to pass to the secrets
+                client for authentication if required
+        """
+        if None in (self._secrets_client, keys):
+            return None
+
+        for key in keys:
+            secret = await self._secrets_client.get_secret(key, **kwargs)
+            if secret:
+                self._secrets[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.
 
-        . note::
-
-            This method is only available when the operator is invoked via the
-            FiftyOne App. You can check this via ``ctx.executor``.
+        This method is only available when the operator is invoked via the
+        FiftyOne App. You can check this via ``ctx.executor``.
 
         Args:
             operator_name: the name of the operator
             params (None): a dictionary of parameters for the operator
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            the result of the invocation
         """
         if self.executor is None:
             raise ValueError("No executor available")
@@ -394,6 +461,12 @@ class ExecutionContext(object):
         return {
             "request_params": self.request_params,
             "params": self.params,
+        }
+
+    def to_dict(self):
+        """Returns the properties of the execution context as a dict."""
+        return {
+            k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
 

@@ -1,17 +1,13 @@
-import React, { Fragment, useCallback, useRef } from "react";
-import styled from "styled-components";
-
+import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-
+import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-
-import { Button, ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
+import { Fragment, useCallback, useRef } from "react";
+import styled from "styled-components";
 import { TabOption } from "../utils";
-
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useOutsideClick } from "@fiftyone/state";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -133,6 +129,7 @@ const SchemaSettings = () => {
             padding: "1.5rem",
             backgroundColor: theme.background.level2,
           }}
+          data-cy="field-visibility-container"
         >
           <Box
             style={{
@@ -188,7 +185,7 @@ const SchemaSettings = () => {
                 return {
                   key: value,
                   text: value,
-                  title: `Fiele ${value}`,
+                  title: `Field ${value}`,
                   onClick: () => {
                     setSelectedTab(value);
                     setShowNestedFields(false);
@@ -221,6 +218,7 @@ const SchemaSettings = () => {
             }}
           >
             <Button
+              data-cy="field-visibility-btn-apply"
               style={{
                 color: theme.text.primary,
                 marginRight: "0.5rem",
@@ -267,6 +265,7 @@ const SchemaSettings = () => {
               Apply
             </Button>
             <Button
+              data-cy="field-visibility-btn-reset"
               style={{
                 color: theme.text.primary,
                 boxShadow: "none",

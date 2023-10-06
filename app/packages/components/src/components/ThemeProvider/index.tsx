@@ -4,7 +4,7 @@ import {
   experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
 function dynamicTheme(accessor: string) {
@@ -205,7 +205,8 @@ const ThemeProvider: React.FC<
   React.PropsWithChildren<{ customTheme?: Theme }>
 > = ({ children, customTheme }) => {
   if (customTheme) theme = customTheme;
-  const current = useRecoilValue(fos.theme);
+  const loadable = useRecoilValueLoadable(fos.theme);
+  const current = loadable.state === "hasValue" ? loadable.contents : "dark";
 
   return (
     <LegacyTheme.Provider value={theme.colorSchemes[current].palette}>

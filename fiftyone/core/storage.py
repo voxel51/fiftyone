@@ -7,6 +7,7 @@ File storage utilities.
 """
 from contextlib import contextmanager
 from datetime import datetime
+import enum
 import json
 import logging
 import multiprocessing.dummy
@@ -31,7 +32,7 @@ import fiftyone.core.utils as fou
 logger = logging.getLogger(__name__)
 
 
-class FileSystem(object):
+class FileSystem(enum.Enum):
     """Enumeration of the available file systems."""
 
     LOCAL = "local"
@@ -622,6 +623,16 @@ def list_buckets(fs, abs_paths=False):
     """
     root = os.path.abspath(os.sep)
     return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
+
+
+def list_available_file_systems():
+    """Lists the file systems that are currently available for use with methods
+    like :func:`list_files` and :func:`list_buckets`.
+
+    Returns:
+        a list of :class:`FileSystem` values
+    """
+    return [FileSystem.LOCAL]
 
 
 def get_glob_matches(glob_patt):

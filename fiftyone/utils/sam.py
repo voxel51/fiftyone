@@ -132,9 +132,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
     def _download_model(self, config):
         config.download_model_if_necessary()
 
-    def _load_network(self, config):
+    def _load_model(self, config):
         entrypoint = etau.get_function(config.entrypoint_fcn)
-        return entrypoint(checkpoint=config.model_path)
+        model = entrypoint(checkpoint=config.model_path)
+
+        model = model.to(self._device)
+        if self.using_half_precision:
+            model = model.half()
+
+        model.eval()
+
+        return model
 
     def predict_all(self, imgs, samples=None):
         field_name = self._get_field()
@@ -225,6 +233,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
 
         outputs = []
         for img, detections in zip(imgs, self._curr_prompts):
+            ## If no detections, return empty tensors instead of running SAM
+            if detections is None or len(detections.detections) == 0:
+                h, w = img.shape[1], img.shape[2]
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, h, w]),
+                    }
+                )
+                continue
             inp = _to_sam_input(img)
             sam_predictor.set_image(inp)
             h, w = img.size(1), img.size(2)
@@ -250,7 +269,6 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
                 boxes=transformed_boxes,
                 multimask_output=False,
             )
-
             outputs.append(
                 {"boxes": input_boxes, "labels": labels, "masks": masks}
             )
@@ -270,6 +288,17 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
             h, w = img.size(1), img.size(2)
 
             boxes, labels, scores, masks = [], [], [], []
+
+            ## If no keypoints, return empty tensors instead of running SAM
+            if keypoints is None or len(keypoints.keypoints) == 0:
+                outputs.append(
+                    {
+                        "boxes": torch.tensor([[]]),
+                        "labels": torch.empty([0, 4]),
+                        "masks": torch.empty([0, 1, h, w]),
+                    }
+                )
+                continue
 
             for kp in keypoints.keypoints:
                 sam_points, sam_labels = _to_sam_points(kp.points, w, h)
@@ -316,17 +345,16 @@ class SegmentAnythingModel(fout.TorchImageModel, fout.TorchSamplesMixin):
         outputs = []
         for img in imgs:
             inp = _to_sam_input(img)
-            output = mask_generator.generate(inp)
-
-            mask = None
-            for i, out in enumerate(output, 1):
-                segi = out["segmentation"]
-                if mask is None:
-                    mask = np.zeros(segi.shape, dtype=np.uint8)
-
-                mask[segi] = i
-
-            outputs.append(fol.Segmentation(mask=mask))
+            detections = []
+            for data in mask_generator.generate(inp):
+                detection = fol.Detection.from_mask(
+                    mask=data["segmentation"],
+                    score=data["predicted_iou"],
+                    stability=data["stability_score"],
+                )
+                detections.append(detection)
+            detections = fol.Detections(detections=detections)
+            outputs.append(detections)
 
         return outputs
 

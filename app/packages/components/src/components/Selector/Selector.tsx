@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import React, {
   Suspense,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -13,9 +14,9 @@ import LoadingDots from "../Loading/LoadingDots";
 import Results from "../Results/Results";
 import style from "./Selector.module.css";
 
-interface UseSearch<T> {
+export type UseSearch<T> = {
   (search: string): { values: T[]; total?: number };
-}
+};
 
 type Props<T> = {
   active?: number;
@@ -28,7 +29,7 @@ type Props<T> = {
   toKey?: (value: T) => string;
 };
 
-const SelectorResults = <T extends unknown>({
+function SelectorResults<T>({
   active,
   component,
   cy,
@@ -37,7 +38,7 @@ const SelectorResults = <T extends unknown>({
   search,
   toKey = (value) => String(value),
   useSearch,
-}: Props<T>) => {
+}: Props<T>) {
   const { values, total } = useSearch(search);
 
   useLayoutEffect(() => {
@@ -55,7 +56,7 @@ const SelectorResults = <T extends unknown>({
       cy={cy}
     />
   );
-};
+}
 
 export interface SelectorProps<T> {
   id?: string;
@@ -70,11 +71,12 @@ export interface SelectorProps<T> {
   containerStyle?: React.CSSProperties;
   resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
+  overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
 }
 
-const Selector = <T extends unknown>(props: SelectorProps<T>) => {
+function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
     value,
@@ -88,6 +90,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
     containerStyle,
     resultsPlacement,
     overflow = false,
+    overflowContainer = false,
     onMouseEnter,
     cy,
     ...otherProps
@@ -97,15 +100,23 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
-  const ref = useRef<HTMLInputElement | null>(null);
-  const hovering = useRef(false);
+  const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
     return (value: T) => {
       onSelect(value);
+      local.current = toKey(value);
       setEditing(false);
     };
-  }, [onSelect]);
+  }, [onSelect, toKey]);
+
+  useEffect(() => {
+    setSearch(value || "");
+    local.current = value || "";
+  }, [value]);
+
+  const ref = useRef<HTMLInputElement | null>();
+  const hovering = useRef(false);
 
   useLayoutEffect(() => {
     if (!editing) {
@@ -123,7 +134,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
     isOpen: editing,
-    overflowContainer: false,
+    overflowContainer,
     auto: true,
     snap: true,
     placement: resultsPlacement ? resultsPlacement : "bottom-center",
@@ -155,7 +166,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
           triggerProps.ref(node);
         }}
         className={style.input}
-        value={editing ? search : value || ""}
+        value={editing ? search : local.current}
         placeholder={placeholder}
         data-cy={`selector-${cy || placeholder}`}
         onFocus={() => setEditing(true)}
@@ -239,6 +250,6 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
       )}
     </div>
   );
-};
+}
 
 export default Selector;

@@ -1,8 +1,8 @@
 import { useTheme } from "@fiftyone/components";
-import { readOnly } from "@fiftyone/state";
+import { isFieldVisibilityActive, readOnly } from "@fiftyone/state";
 import { DragIndicator } from "@mui/icons-material";
 import { animated, useSpring } from "@react-spring/web";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRecoilValue } from "recoil";
 
 const Draggable: React.FC<
@@ -20,11 +20,14 @@ const Draggable: React.FC<
   const [hovering, setHovering] = useState(false);
   const [dragging, setDragging] = useState(false);
   const isReadOnly = useRecoilValue(readOnly);
+  const isFieldVisibilityApplied = useRecoilValue(isFieldVisibilityActive);
+
   const disableDrag =
     !entryKey ||
     entryKey.split(",")[1]?.includes("tags") ||
     entryKey.split(",")[1]?.includes("_label_tags") ||
-    isReadOnly;
+    isReadOnly ||
+    isFieldVisibilityApplied;
   const active = trigger && (dragging || hovering) && !disableDrag;
 
   const style = useSpring({
@@ -38,15 +41,26 @@ const Draggable: React.FC<
         : "grab"
       : "pointer",
   });
+  const dataCyKey = entryKey
+    ?.split(",")?.[1]
+    ?.replace(/["]/g, "")
+    ?.replace("]", "");
+
+  const isDraggable = useMemo(
+    () => !disableDrag && trigger && !isReadOnly,
+    [disableDrag, trigger, isReadOnly]
+  );
 
   return (
     <>
       <animated.div
+        data-draggable={isDraggable}
+        data-cy={`sidebar-entry-draggable-${dataCyKey}`}
         onClick={(event) => {
           event.stopPropagation();
         }}
         onMouseDown={
-          trigger && !isReadOnly
+          isDraggable
             ? (event) => {
                 setDragging(true);
                 trigger(event, entryKey, () => setDragging(false));
@@ -71,8 +85,15 @@ const Draggable: React.FC<
           boxShadow: `0 2px 20px ${theme.custom.shadow}`,
           overflow: "hidden",
           ...style,
+          ...(isReadOnly ? { cursor: "not-allowed" } : {}),
         }}
-        title={trigger ? "Drag to reorder" : null}
+        title={
+          isReadOnly
+            ? "Can not reorder in read-only mode"
+            : trigger
+            ? "Drag to reorder"
+            : undefined
+        }
       >
         {active && <DragIndicator style={{ color: theme.background.level1 }} />}
       </animated.div>

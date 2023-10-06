@@ -6,6 +6,7 @@ Session class for interacting with the FiftyOne App.
 |
 """
 from collections import defaultdict
+from dataclasses import asdict
 from functools import wraps
 
 try:
@@ -37,7 +38,7 @@ import fiftyone.core.context as focx
 import fiftyone.core.plots as fop
 import fiftyone.core.service as fos
 from fiftyone.core.spaces import default_spaces, Space
-from fiftyone.core.state import StateDescription
+from fiftyone.core.state import build_color_scheme, StateDescription
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
@@ -47,6 +48,13 @@ from fiftyone.core.session.events import (
     CloseSession,
     DeactivateNotebookCell,
     ReactivateNotebookCell,
+    Refresh,
+    SelectLabels,
+    SelectSamples,
+    SetColorScheme,
+    SetDatasetColorScheme,
+    SetSpaces,
+    SetGroupSlice,
     StateUpdate,
 )
 import fiftyone.core.session.notebooks as fosn
@@ -358,7 +366,7 @@ class Session(object):
             )
 
         if address is None:
-            if fou.is_docker() or focx.is_databricks_context():
+            if fou.is_container() or focx.is_databricks_context():
                 address = "0.0.0.0"
             else:
                 address = fo.config.default_app_address
@@ -586,7 +594,6 @@ class Session(object):
         return self._state.spaces
 
     @spaces.setter  # type: ignore
-    @update_state()
     def spaces(self, spaces: t.Optional[Space]) -> None:
         if spaces is None:
             spaces = default_spaces.copy()
@@ -598,6 +605,7 @@ class Session(object):
             )
 
         self._state.spaces = spaces
+        self._client.send_event(SetSpaces(spaces=spaces.to_dict()))
 
     @property
     def color_scheme(self) -> food.ColorScheme:
@@ -605,7 +613,6 @@ class Session(object):
         return self._state.color_scheme
 
     @color_scheme.setter  # type: ignore
-    @update_state()
     def color_scheme(self, color_scheme: t.Optional[food.ColorScheme]) -> None:
         if color_scheme is None:
             color_scheme = build_color_scheme(None, self.dataset, self.config)
@@ -617,6 +624,7 @@ class Session(object):
             )
 
         self._state.color_scheme = color_scheme
+        self._client.send_event(SetColorScheme.from_odm(color_scheme))
 
     @property
     def _collection(self) -> t.Union[fod.Dataset, fov.DatasetView, None]:
@@ -729,7 +737,7 @@ class Session(object):
 
     def refresh(self) -> None:
         """Refreshes the current App window."""
-        self._client.send_event(StateUpdate(state=self._state, refresh=True))
+        self._client.send_event(Refresh(state=self._state))
 
     @property
     def selected(self) -> t.List[str]:
@@ -739,16 +747,15 @@ class Session(object):
         return list(self._state.selected)
 
     @selected.setter  # type: ignore
-    @update_state()
     def selected(self, sample_ids: t.List[str]) -> None:
         self._state.selected = list(sample_ids) if sample_ids else []
+        self._client.send_event(SelectSamples(sample_ids))
 
-    @update_state()
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
         self._state.selected = []
+        self._client.send_event(SelectSamples([]))
 
-    @update_state()
     def select_samples(
         self,
         ids: t.Optional[t.Union[str, t.Iterable[str]]] = None,
@@ -767,6 +774,7 @@ class Session(object):
             ids = []
 
         self._state.selected = list(ids)
+        self._client.send_event(SelectSamples(self._state.selected))
 
     @property
     def selected_labels(self) -> t.List[dict]:
@@ -783,11 +791,10 @@ class Session(object):
         return list(self._state.selected_labels)
 
     @selected_labels.setter  # type: ignore
-    @update_state()
     def selected_labels(self, labels: dict) -> None:
         self._state.selected_labels = list(labels) if labels else []
+        self._client.send_event(SelectLabels(self._state.selected_labels))
 
-    @update_state()
     def select_labels(
         self,
         labels: t.Optional[t.List[dict]] = None,
@@ -812,7 +819,7 @@ class Session(object):
                 ids=ids, tags=tags, fields=fields
             )
 
-        self._state.selected_labels = list(labels or [])
+        self.selected_labels = list(labels or [])
 
     @update_state()
     def clear_selected_labels(self) -> None:
@@ -1114,21 +1121,66 @@ class Session(object):
 
 
 def _attach_listeners(session: "Session"):
-    on_close_session: t.Callable[[CloseSession], None] = lambda event: setattr(
+    on_close_session: t.Callable[[CloseSession], None] = lambda _: setattr(
         session, "_wait_closed", True
     )
     session._client.add_event_listener("close_session", on_close_session)
 
-    on_state_update: t.Callable[[StateUpdate], None] = lambda event: (
-        setattr(session, "_state", event.state),
+    on_refresh: t.Callable[[Refresh], None] = lambda event: _on_refresh(
+        session, event.state
+    )
+    session._client.add_event_listener("refresh", on_refresh)
+
+    on_state_update: t.Callable[[StateUpdate], None] = lambda event: setattr(
+        session, "_state", event.state
     )
     session._client.add_event_listener("state_update", on_state_update)
+
+    on_select_samples: t.Callable[
+        [SelectSamples], None
+    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    session._client.add_event_listener("select_samples", on_select_samples)
+
+    on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(
+        session._state, "selected_labels", event.labels
+    )
+    session._client.add_event_listener("select_labels", on_select_labels)
+
+    on_set_color_scheme: t.Callable[
+        [SetColorScheme], None
+    ] = lambda event: setattr(session._state, "color_scheme", event.to_odm())
+    session._client.add_event_listener("set_color_scheme", on_set_color_scheme)
+
+    on_set_dataset_color_scheme: t.Callable[
+        [SetDatasetColorScheme], None
+    ] = lambda _: _on_refresh(session, None)
+    session._client.add_event_listener(
+        "set_dataset_color_scheme", on_set_dataset_color_scheme
+    )
+
+    on_set_group_slice: t.Callable[
+        [SetGroupSlice], None
+    ] = lambda event: setattr(
+        session._state.dataset,
+        "group_slice",
+        event.slice,
+    )
+    session._client.add_event_listener("set_group_slice", on_set_group_slice)
+
+    on_set_spaces: t.Callable[[SetSpaces], None] = lambda event: setattr(
+        session._state,
+        "spaces",
+        Space.from_dict(event.spaces),
+    )
+    session._client.add_event_listener("set_spaces", on_set_spaces)
 
     if focx.is_notebook_context() and not focx.is_colab_context():
 
         def on_capture_notebook_cell(event: CaptureNotebookCell) -> None:
             event.subscription in session._notebook_cells and fosn.capture(
-                session._notebook_cells[event.subscription], event
+                session._notebook_cells[event.subscription],
+                event,
+                proxy_url=session.config.proxy_url,
             )
 
         session._client.add_event_listener(
@@ -1210,21 +1262,6 @@ def _unregister_session(session: Session) -> None:
             service.stop()
 
 
-def build_color_scheme(
-    color_scheme: food.ColorScheme, dataset: fod.Dataset, app_config: AppConfig
-) -> food.ColorScheme:
-    if color_scheme is None:
-        if dataset is not None and dataset.app_config.color_scheme is not None:
-            color_scheme = dataset.app_config.color_scheme.copy()
-        else:
-            color_scheme = food.ColorScheme()
-
-    if not color_scheme.color_pool:
-        color_scheme.color_pool = app_config.color_pool
-
-    return color_scheme
-
-
 def _log_welcome_message_if_allowed():
     """Logs a welcome message the first time this function is called on a
     machine with a new FiftyOne version installed, if allowed.
@@ -1246,3 +1283,12 @@ def _log_welcome_message_if_allowed():
         etas.write_json({"version": focn.VERSION}, focn.WELCOME_PATH)
     except:
         pass
+
+
+def _on_refresh(session: Session, state: t.Optional[StateDescription]):
+    """Refreshes session state, including a dataset reload."""
+    if state:
+        session._state = state
+
+    if session.dataset is not None:
+        session.dataset.reload()

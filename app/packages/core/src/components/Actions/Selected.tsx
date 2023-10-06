@@ -4,37 +4,26 @@ import {
   ImageLooker,
   VideoLooker,
 } from "@fiftyone/looker";
-import { useEventHandler, useSetSelected } from "@fiftyone/state";
-import React, {
+import * as fos from "@fiftyone/state";
+import { State, useEventHandler, useSetSelected } from "@fiftyone/state";
+import {
   MutableRefObject,
+  default as React,
   RefObject,
   useCallback,
   useLayoutEffect,
 } from "react";
-import {
-  RecoilValueReadOnly,
-  useRecoilCallback,
-  useRecoilTransaction_UNSTABLE,
-  useRecoilValue,
-} from "recoil";
-
-import * as fos from "@fiftyone/state";
-import { State } from "@fiftyone/state";
+import { RecoilValueReadOnly, useRecoilCallback, useRecoilValue } from "recoil";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
 const useClearSampleSelection = (close) => {
   const setSelected = useSetSelected();
 
-  return useRecoilTransaction_UNSTABLE(
-    ({ reset }) =>
-      () => {
-        reset(fos.selectedSamples);
-        setSelected([]);
-        close();
-      },
-    [close]
-  );
+  return useCallback(() => {
+    setSelected(new Set());
+    close();
+  }, [close, setSelected]);
 };
 
 const useGridActions = (close: () => void) => {
@@ -53,7 +42,7 @@ const useGridActions = (close: () => void) => {
       ]);
       close();
     },
-    [selected]
+    [close, selected, setView]
   );
   return [
     {
@@ -84,10 +73,10 @@ const useSelectVisible = (
   visible?: fos.State.SelectedLabel[]
 ) => {
   return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(fos.selectedLabels);
+    const selected = await snapshot.getPromise(fos.selectedLabelMap);
     visible = visibleAtom ? await snapshot.getPromise(visibleAtom) : visible;
 
-    set(fos.selectedLabels, {
+    set(fos.selectedLabelMap, {
       ...selected,
       ...toLabelMap(visible || []),
     });
@@ -107,7 +96,7 @@ const useUnselectVisible = (
     const filtered = Object.entries(selected).filter(
       ([label_id]) => !visibleIds.has(label_id)
     );
-    set(fos.selectedLabels, Object.fromEntries(filtered));
+    set(fos.selectedLabelMap, Object.fromEntries(filtered));
   });
 };
 
@@ -115,7 +104,7 @@ const useClearSelectedLabels = (close) => {
   return useRecoilCallback(
     ({ set }) =>
       async () => {
-        set(fos.selectedLabels, {});
+        set(fos.selectedLabels, []);
         close();
       },
     []
@@ -123,10 +112,10 @@ const useClearSelectedLabels = (close) => {
 };
 
 const useHideSelected = () => {
-  return useRecoilCallback(({ snapshot, set }) => async () => {
-    const selected = await snapshot.getPromise(fos.selectedLabels);
+  return useRecoilCallback(({ snapshot, set, reset }) => async () => {
+    const selected = await snapshot.getPromise(fos.selectedLabelMap);
     const hidden = await snapshot.getPromise(fos.hiddenLabels);
-    set(fos.selectedLabels, {});
+    reset(fos.selectedLabels);
     set(fos.hiddenLabels, { ...hidden, ...selected });
   });
 };
@@ -267,15 +256,13 @@ interface SelectionActionsProps {
   lookerRef?: MutableRefObject<
     VideoLooker | ImageLooker | FrameLooker | undefined
   >;
-  bounds: any;
-  anchorRef?: MutableRefObject<unknown>;
+  anchorRef?: MutableRefObject<HTMLElement>;
 }
 
 const SelectionActions = ({
   modal,
   close,
   lookerRef,
-  bounds,
   anchorRef,
 }: SelectionActionsProps) => {
   useLayoutEffect(() => {
@@ -291,7 +278,7 @@ const SelectionActions = ({
   lookerRef && useEventHandler(lookerRef.current, "play", close);
 
   return (
-    <Popout modal={modal} bounds={bounds} fixed anchorRef={anchorRef} data-cy="selected-popout">
+    <Popout modal={modal} fixed anchorRef={anchorRef}>
       {actions.map((props, i) => (
         <ActionOption {...props} key={i} />
       ))}

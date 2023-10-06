@@ -1,10 +1,8 @@
-import { AbstractLooker } from "@fiftyone/looker";
 import {
   Lookers,
   ModalSample,
   modalSample,
   modalSampleId,
-  useClearModal,
   useHoveredSample,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
@@ -52,7 +50,7 @@ export const SampleWrapper = ({
       {...hover.handlers}
     >
       <SampleBar
-        sampleId={sample.id}
+        sampleId={sample.sample._id}
         lookerRef={lookerRef}
         visible={hovering}
         hoveringRef={hoveringRef}

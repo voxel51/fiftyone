@@ -4,17 +4,17 @@ on:
   push:
     tags:
       - graphql-v*
-  pull_request:
-    paths:
-      - package/graphql/**
-      - .github/workflows/build-graphql.yml
+  # pull_request:
+  #   paths:
+  #     - package/graphql/**
+  #     - .github/workflows/build-graphql.yml
 
 jobs:
   build:
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
@@ -34,18 +34,18 @@ jobs:
           cd package/graphql
           python setup.py sdist bdist_wheel
       - name: Upload wheel(s)
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: dist
           path: package/graphql/dist/*
 
   publish:
     runs-on: ubuntu-20.04
-    needs: [build, test]
+    needs: [build]
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
       - name: Download wheels
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: downloads
       - name: Install dependencies

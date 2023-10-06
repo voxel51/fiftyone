@@ -13,9 +13,9 @@ import {
 } from "recoil";
 import {
   BROWSER_CONTROL_KEYS,
+  RESOLVE_INPUT_VALIDATION_TTL,
   RESOLVE_PLACEMENTS_TTL,
   RESOLVE_TYPE_TTL,
-  RESOLVE_INPUT_VALIDATION_TTL,
 } from "./constants";
 import {
   ExecutionContext,
@@ -83,16 +83,8 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
-    const selectedLabels = get(fos.selectedLabels);
 
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    };
+    return { datasetName, view, extended, filters, selectedSamples };
   },
 });
 
@@ -112,8 +104,15 @@ const currentContextSelector = selectorFamily({
 
 const useExecutionContext = (operatorName, hooks = {}) => {
   const curCtx = useRecoilValue(currentContextSelector(operatorName));
-  const { datasetName, view, extended, filters, selectedSamples, params } =
-    curCtx;
+  const {
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    params,
+    selectedLabels,
+  } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
       params,
@@ -123,10 +122,20 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         extended,
         filters,
         selectedSamples,
+        selectedLabels,
       },
       hooks
     );
-  }, [params, datasetName, view, extended, filters, selectedSamples, hooks]);
+  }, [
+    params,
+    datasetName,
+    view,
+    extended,
+    filters,
+    selectedSamples,
+    selectedLabels,
+    hooks,
+  ]);
 
   return ctx;
 };
@@ -145,6 +154,7 @@ export const useOperatorPrompt = () => {
   const [inputFields, setInputFields] = useState();
   const [resolving, setResolving] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
+  const notify = fos.useNotification();
 
   const resolveInput = useCallback(
     throttle(
@@ -202,6 +212,7 @@ export const useOperatorPrompt = () => {
   );
 
   useEffect(() => {
+    if (executor.isExecuting || executor.hasExecuted) return;
     resolveInputFields();
   }, [ctx.params, executor.isExecuting, executor.hasResultOrError]);
   const [validationErrors, setValidationErrors] = useState([]);
@@ -282,8 +293,18 @@ export const useOperatorPrompt = () => {
   useEffect(() => {
     if (executor.hasExecuted && !executor.needsOutput && !executorError) {
       close();
+      if (executor.isDelegated) {
+        notify({ msg: "Operation successfully scheduled", variant: "success" });
+      }
     }
-  }, [executor.hasExecuted, executor.needsOutput]);
+  }, [
+    executor.hasExecuted,
+    executor.needsOutput,
+    executorError,
+    executor.isDelegated,
+    close,
+    notify,
+  ]);
 
   const pendingResolve = useMemo(
     () => ctx.params != resolvedCtx?.params,
@@ -604,6 +625,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [hasExecuted, setHasExecuted] = useState(false);
+  const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
@@ -638,6 +660,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         setNeedsOutput(await operator.needsOutput(ctx, result));
         setResult(result.result);
         setError(result.error);
+        setIsDelegated(result.delegated);
         handlers.onSuccess?.(result);
       } catch (e) {
         const isAbortError =
@@ -664,6 +687,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
     result,
     clear,
     hasResultOrError: result || error,
+    isDelegated,
   };
 }
 

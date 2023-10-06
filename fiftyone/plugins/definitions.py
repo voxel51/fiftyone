@@ -158,6 +158,11 @@ class PluginDefinition(object):
         """Whether the plugin has a JS bundle file."""
         return os.path.isfile(self.js_bundle_path)
 
+    @property
+    def secrets(self):
+        """A list of required secrets for the plugin."""
+        return self._metadata.get("secrets")
+
     def to_dict(self):
         """Returns a JSON dict representation of the plugin metadata.
 
@@ -180,6 +185,7 @@ class PluginDefinition(object):
             "has_py": self.has_py,
             "has_js": self.has_js,
             "server_path": self.server_path,
+            "secrets": self.secrets,
         }
 
     @classmethod

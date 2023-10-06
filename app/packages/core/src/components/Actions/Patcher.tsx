@@ -1,3 +1,5 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   useToClips,
   useToEvaluationPatches,
@@ -10,16 +12,13 @@ import {
   PATCHES_FIELDS,
 } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
-import React, { MutableRefObject, RefObject, useState } from "react";
+import React, { MutableRefObject, useState } from "react";
 import { selector, useRecoilValue } from "recoil";
 import {
   CLIPS_VIEWS,
   EVALUATION_PATCHES,
   OBJECT_PATCHES,
 } from "../../utils/links";
-
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { SwitchDiv, SwitcherDiv } from "./utils";
@@ -176,10 +175,10 @@ const EvaluationPatches = ({ close }) => {
 
 type PatcherProps = {
   close: () => void;
-  anchorRef?: MutableRefObject<unknown>;
+  anchorRef?: MutableRefObject<HTMLElement>;
 };
 
-const Patcher = ({ bounds, close, anchorRef }: PatcherProps) => {
+const Patcher = ({ close, anchorRef }: PatcherProps) => {
   const theme = useTheme();
   const isVideo =
     useRecoilValue(fos.isVideoDataset) && useRecoilValue(fos.isRootView);
@@ -199,7 +198,7 @@ const Patcher = ({ bounds, close, anchorRef }: PatcherProps) => {
     cursor: labels ? "pointer" : "default",
   });
   return (
-    <Popout modal={false} bounds={bounds} fixed anchorRef={anchorRef}>
+    <Popout modal={false} fixed anchorRef={anchorRef}>
       <SwitcherDiv>
         <SwitchDiv
           style={labelProps}

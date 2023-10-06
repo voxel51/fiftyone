@@ -11,21 +11,18 @@ import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
 
 export function EmbeddingsPlot({
   labelSelectorLoading,
-  brainKey,
   labelField,
-  el,
   bounds,
   plotSelection,
 }) {
   const theme = useTheme();
   const getColor = useRecoilValue(fos.colorMap);
-  const fields = useRecoilValue(fos.sessionColorScheme).fields;
+  const fields = useRecoilValue(fos.colorScheme).fields;
   const setting = useMemo(() => {
-    return fields.find((setting) => labelField?.includes(setting?.path ?? ""));
+    return fields?.find((setting) => labelField?.includes(setting?.path ?? ""));
   }, [fields, labelField]);
 
   const {
-    setPlotSelection,
     resolvedSelection,
     clearSelection,
     hasSelection,
@@ -53,7 +50,7 @@ export function EmbeddingsPlot({
     },
     [hasSelection]
   );
-  const colorscale = useRecoilValue(fos.colorscale);
+  const colorscale = useRecoilValue(fos.coloring).scale;
 
   if (error) {
     return <Loading>{error.message}</Loading>;
@@ -72,7 +69,7 @@ export function EmbeddingsPlot({
   const isCategorical = style === "categorical";
 
   return (
-    <div style={{ height: "100%" }}>
+    <div style={{ height: "100%" }} data-cy="embeddings-plot-container">
       {bounds?.width && (
         <Plot
           data={data}

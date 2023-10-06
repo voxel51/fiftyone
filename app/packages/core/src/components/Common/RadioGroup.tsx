@@ -34,7 +34,11 @@ const Radio = React.memo(
     const props = useHighlightHover(false);
     return (
       <StyledRadioContainer>
-        <StyledRadio {...props} onClick={() => setValue(value)}>
+        <StyledRadio
+          {...props}
+          onClick={() => setValue(value)}
+          data-cy={`radio-button-${value}`}
+        >
           <MaterialRadio
             style={{ color, padding: "0 0.5rem 0 0" }}
             checked={value === currentValue}
@@ -45,12 +49,16 @@ const Radio = React.memo(
     );
   }
 );
-
-const RadioGroupContainer = styled.div`
+type Props = {
+  horizontal: boolean;
+};
+const RadioGroupContainer = styled.div<Props>`
   overflow: auto visible;
   max-height: 165px;
   margin: 0 -0.5rem;
   scrollbar-width: none;
+  display: flex;
+  flex-direction: ${(props) => (props.horizontal ? "row" : "column")};
 
   &::-webkit-scrollbar {
     width: 0px;
@@ -68,10 +76,17 @@ interface RadioGroupProps {
   setValue: (value: string) => void;
   value: string;
   color?: string;
+  horizontal?: boolean;
 }
 
 const RadioGroup = React.memo(
-  ({ choices, color = null, value, setValue }: RadioGroupProps) => {
+  ({
+    choices,
+    color = null,
+    value,
+    setValue,
+    horizontal = false,
+  }: RadioGroupProps) => {
     const theme = useTheme();
     color = color ?? theme.primary.plainColor;
 
@@ -84,7 +99,7 @@ const RadioGroup = React.memo(
     }
 
     return (
-      <RadioGroupContainer>
+      <RadioGroupContainer horizontal={horizontal}>
         {choices.map((choice) => (
           <Radio
             value={choice}

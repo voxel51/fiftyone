@@ -5,13 +5,7 @@ import * as fos from "@fiftyone/state";
 import { selectedSamples, useBrowserStorage } from "@fiftyone/state";
 import { get } from "lodash";
 import { Resizable } from "re-resizable";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../../useFlashlightPager";
@@ -39,11 +33,11 @@ const pageParams = selector({
   key: "paginateGroupVariables",
   get: ({ get }) => {
     const params = {
-      dataset: get(fos.datasetName),
+      dataset: get(fos.datasetName) as string,
       view: get(fos.view),
       filter: {
         group: {
-          slice: get(fos.groupSlice(false)),
+          slice: get(fos.groupSlice),
           id: get(fos.groupId),
           slices: get(groupCarouselSlices),
         },
@@ -65,8 +59,7 @@ const Column: React.FC = () => {
   const opts = fos.useLookerOptions(true);
 
   const groupField = useRecoilValue(fos.groupField);
-  const currentSlice = useRecoilValue(fos.groupSlice(true));
-
+  const currentSlice = useRecoilValue(fos.modalGroupSlice);
   const highlight = useCallback(
     (sample) => get(sample, groupField).name === currentSlice,
     [currentSlice, groupField]
@@ -165,7 +158,7 @@ const Column: React.FC = () => {
     deferred(() => flashlight.updateItems(updateItem));
   }, [deferred, flashlight, updateItem, options, selected]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     init();
   }, [init]);
 

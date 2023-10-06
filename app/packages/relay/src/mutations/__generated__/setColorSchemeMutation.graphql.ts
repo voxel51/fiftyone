@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<98eab1035b9a3cd4474a2cda909c13c0>>
+ * @generated SignedSource<<4d167e4ba9f83f37ce281eb1b36eb8ba>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,15 +10,25 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
-  colorPool?: ReadonlyArray<string> | null;
-  fields?: Array | null;
+  colorBy?: string | null;
+  colorPool: ReadonlyArray<string>;
+  fields?: ReadonlyArray<CustomizeColorInput> | null;
+  multicolorKeypoints?: boolean | null;
+  opacity?: number | null;
+  showSkeletons?: boolean | null;
+};
+export type CustomizeColorInput = {
+  colorByAttribute?: string | null;
+  fieldColor?: string | null;
+  path: string;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
+};
+export type ValueColorInput = {
+  color: string;
+  value: string;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;
-  dataset: string;
-  saveToApp: boolean;
-  session?: string | null;
-  stages: Array;
   subscription: string;
 };
 export type setColorSchemeMutation$data = {
@@ -38,29 +48,9 @@ var v0 = {
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "dataset"
-},
-v2 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "saveToApp"
-},
-v3 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "session"
-},
-v4 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
-  "name": "stages"
-},
-v5 = {
-  "defaultValue": null,
-  "kind": "LocalArgument",
   "name": "subscription"
 },
-v6 = [
+v2 = [
   {
     "alias": null,
     "args": [
@@ -68,26 +58,6 @@ v6 = [
         "kind": "Variable",
         "name": "colorScheme",
         "variableName": "colorScheme"
-      },
-      {
-        "kind": "Variable",
-        "name": "dataset",
-        "variableName": "dataset"
-      },
-      {
-        "kind": "Variable",
-        "name": "saveToApp",
-        "variableName": "saveToApp"
-      },
-      {
-        "kind": "Variable",
-        "name": "session",
-        "variableName": "session"
-      },
-      {
-        "kind": "Variable",
-        "name": "stages",
-        "variableName": "stages"
       },
       {
         "kind": "Variable",
@@ -104,44 +74,36 @@ return {
   "fragment": {
     "argumentDefinitions": [
       (v0/*: any*/),
-      (v1/*: any*/),
-      (v2/*: any*/),
-      (v3/*: any*/),
-      (v4/*: any*/),
-      (v5/*: any*/)
+      (v1/*: any*/)
     ],
     "kind": "Fragment",
     "metadata": null,
     "name": "setColorSchemeMutation",
-    "selections": (v6/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Mutation",
     "abstractKey": null
   },
   "kind": "Request",
   "operation": {
     "argumentDefinitions": [
-      (v5/*: any*/),
-      (v3/*: any*/),
       (v1/*: any*/),
-      (v4/*: any*/),
-      (v0/*: any*/),
-      (v2/*: any*/)
+      (v0/*: any*/)
     ],
     "kind": "Operation",
     "name": "setColorSchemeMutation",
-    "selections": (v6/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "9a5cb504b80aeb4092afb482fa7b9eac",
+    "cacheID": "269c21750ef04dc7db3f08ae29118f9f",
     "id": null,
     "metadata": {},
     "name": "setColorSchemeMutation",
     "operationKind": "mutation",
-    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $session: String\n  $dataset: String!\n  $stages: BSONArray!\n  $colorScheme: ColorSchemeInput!\n  $saveToApp: Boolean!\n) {\n  setColorScheme(subscription: $subscription, session: $session, dataset: $dataset, stages: $stages, colorScheme: $colorScheme, saveToApp: $saveToApp)\n}\n"
+    "text": "mutation setColorSchemeMutation(\n  $subscription: String!\n  $colorScheme: ColorSchemeInput!\n) {\n  setColorScheme(subscription: $subscription, colorScheme: $colorScheme)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "193b0e609534a6ecbd3254c763b832c5";
+(node as any).hash = "9d1fb8d5093bc482e836e5222f4dbd86";
 
 export default node;

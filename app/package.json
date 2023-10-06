@@ -7,6 +7,7 @@
     "main": "index.js",
     "scripts": {
         "build": "yarn workspace @fiftyone/app build",
+        "compile": "yarn relay-compiler",
         "dev": "yarn workspace @fiftyone/app dev",
         "dev:py": "python ../fiftyone/server/main.py",
         "dev:wpy": "concurrently -k yarn:dev yarn:dev:py",

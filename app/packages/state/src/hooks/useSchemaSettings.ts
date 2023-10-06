@@ -2,7 +2,6 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import _, { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
-import { useRefetchableFragment } from "react-relay";
 import {
   useRecoilState,
   useRecoilValue,
@@ -18,11 +17,23 @@ import {
 
 const SELECT_ALL = "SELECT_ALL";
 
+const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
+  foq.viewSchemaFragment$key,
+  foq.viewSchemaFragment$data
+>(
+  {
+    fragments: [foq.viewSchemaFragment],
+    default: null,
+  },
+  { key: "viewSchemeSelector" }
+);
+
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
   const dataset = useRecoilValue(fos.dataset);
   const isGroupDataset = dataset?.groupField;
+  const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
 
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
   const datasetName = useRecoilValue(fos.datasetName);
@@ -78,27 +89,7 @@ export default function useSchemaSettings() {
   const [lastActionToggleSelection, setLastActionToggleSelection] =
     useRecoilState(fos.lastActionToggleSelectionState);
 
-  const vStages = useRecoilValue(fos.view);
-  const [data, refetch] = useRefetchableFragment<
-    foq.viewSchemaFragmentQuery,
-    foq.viewSchemaFragmentQuery$data
-  >(foq.viewSchema, null);
-
-  useEffect(() => {
-    if (datasetName && vStages) {
-      refetch(
-        { name: datasetName, viewStages: vStages || [] },
-        {
-          fetchPolicy: "store-and-network",
-          onComplete: (err) => {
-            if (err) {
-              console.error("failed to fetch view schema", err);
-            }
-          },
-        }
-      );
-    }
-  }, [vStages, datasetName]);
+  const data = useRecoilValue(viewSchemaSelector);
 
   const { fieldSchema: fieldSchemaRaw, frameFieldSchema } =
     data?.schemaForViewStages || {};
@@ -490,7 +481,7 @@ export default function useSchemaSettings() {
     finalSchemaKeyByPath,
     includeNestedFields,
     isFilterRuleActive: filterRuleTab,
-    isVideo: dataset?.mediaType === "video",
+    isVideo,
     lastAppliedPaths,
     resetExcludedPaths,
     resetSelectedPaths,
@@ -515,5 +506,6 @@ export default function useSchemaSettings() {
     toggleSelection,
     mergedSchema,
     resetAttributeFilters,
+    isFieldVisibilityActive,
   };
 }

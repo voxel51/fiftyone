@@ -4,8 +4,8 @@ on: workflow_call
 
 jobs:
   test-e2e:
-    timeout-minutes: 30
-    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
@@ -15,7 +15,7 @@ jobs:
         shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
 
@@ -30,7 +30,7 @@ jobs:
 
       - name: Install requirements.txt
         run: |
-          pip install -r requirements/github.txt
+          pip install -r requirements/e2e.txt
 
       - name: Cache Node Modules
         id: app-node-cache
@@ -50,7 +50,9 @@ jobs:
         run: make app
 
       - name: Install fiftyone
-        run: pip install .
+        run: |
+          pip install .
+          pip install fiftyone-db-ubuntu2204
 
       - name: Configure
         id: test_config
@@ -95,6 +97,10 @@ jobs:
 
       - name: Run Playwright tests
         run: yarn e2e
+        working-directory: e2e-pw
+
+      - name: Lint Playwright tests
+        run: yarn lint
         working-directory: e2e-pw
 
       - name: Upload test report

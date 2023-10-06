@@ -12,9 +12,11 @@ All of these tests are designed to be run manually via::
 import unittest
 
 import numpy as np
+import pytest
 
 import fiftyone as fo
 import fiftyone.zoo as foz
+import fiftyone.utils.torch as fout
 
 
 def test_apply_model():
@@ -47,6 +49,31 @@ def test_compute_embeddings():
     )
     embeddings2b = _load_embeddings(view, "embeddings2")
     _assert_embeddings_equal(embeddings2a, embeddings2b)
+
+
+def test_torch_hub_feature_extractor():
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(5)
+
+    model = fout.load_torch_hub_image_model(
+        "facebookresearch/dino:main",
+        "dino_vits16",
+        as_feature_extractor=True,
+        image_size=[224, 224],
+    )
+
+    embeddings1a = view.compute_embeddings(model, skip_failures=False)
+    view.compute_embeddings(model, embeddings_field="embeddings1")
+    embeddings1b = _load_embeddings(view, "embeddings1")
+    _assert_embeddings_equal(embeddings1a, embeddings1b)
+
+    with pytest.raises(ValueError):
+        fout.load_torch_hub_image_model(
+            "facebookresearch/dino:main",
+            "dino_vits16",
+            embeddings_layer="head",
+            image_size=[224, 224],
+        )
 
 
 def _load_embeddings(samples, path):

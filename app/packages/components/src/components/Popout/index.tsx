@@ -2,6 +2,8 @@ import { useSpring } from "@react-spring/web";
 import React, { PropsWithChildren } from "react";
 import PopoutDiv from "./PopoutDiv";
 
+export { PopoutDiv };
+
 export type PopoutProps = PropsWithChildren<{
   style?: any;
   modal?: boolean;

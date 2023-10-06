@@ -1,6 +1,6 @@
 import { Loading } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   useRecoilState,
   useRecoilTransaction_UNSTABLE,
@@ -14,12 +14,12 @@ import { GroupSampleWrapper } from "./GroupSampleWrapper";
 const Sample3dWrapper = () => {
   const sample = useRecoilValue(fos.pinned3DSample);
   const [pinned, setPinned] = useRecoilState(fos.pinned3d);
-  const hover = fos.useHoveredSample(sample);
+  const hover = fos.useHoveredSample(sample.sample);
   const hasGroupView = !useRecoilValue(fos.onlyPcd);
 
   return hasGroupView ? (
     <GroupSampleWrapper
-      sampleId={sample.id}
+      sampleId={sample.sample._id}
       pinned={pinned}
       onClick={() => setPinned(true)}
       {...hover.handlers}
@@ -37,7 +37,7 @@ export default () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
-  const groupSlice = useRecoilValue(fos.groupSlice(true));
+  const groupSlice = useRecoilValue(fos.groupSlice);
   const modalId = useRecoilValue(fos.modalSampleId);
 
   if (pcdSlices.state === "hasError") {
@@ -53,7 +53,8 @@ export default () => {
           [k: string]: fos.ModalSample;
         }
       ) => {
-        let newSlice: string | null = samples[pinnedSlice] ? pinnedSlice : null;
+        let newSlice: string | null =
+          pinnedSlice && samples[pinnedSlice] ? pinnedSlice : null;
         for (let index = 0; index < slices.length; index++) {
           const element = slices[index];
           if (samples[element]) {
@@ -79,7 +80,7 @@ export default () => {
       return;
     }
 
-    if (groupSlice && slices.includes(groupSlice)) {
+    if (groupSlice && slices.includes(groupSlice) && pinnedSlice) {
       return;
     }
 

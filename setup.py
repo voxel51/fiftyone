@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.21.6"
+VERSION = "0.22.0"
 
 
 def get_version():
@@ -46,7 +46,7 @@ INSTALL_REQUIRES = [
     "Jinja2>=3",
     # kaleido indirectly required by plotly for image export
     # https://plotly.com/python/static-image-export/
-    "kaleido",
+    "kaleido!=0.2.1.post1",
     "matplotlib",
     "mongoengine==0.24.2",
     "motor>=2.5",
@@ -75,7 +75,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.13.1,<0.14",
     "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.11,<0.12",
+    "voxel51-eta>=0.12,<0.13",
 ]
 
 

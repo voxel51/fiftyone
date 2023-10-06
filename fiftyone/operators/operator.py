@@ -27,6 +27,11 @@ class OperatorConfig(object):
         on_startup (False): whether the operator should be executed on startup
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
+        icon (None): icon to show for the operator in the Operator Browser
+        light_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the light mode
+        dark_icon (None): icon to show for the operator in the Operator Browser
+            when app is in the dark mode
     """
 
     def __init__(
@@ -88,6 +93,7 @@ class Operator(object):
         plugin_name = BUILTIN_OPERATOR_PREFIX if _builtin else None
 
         self._builtin = _builtin
+        self._plugin_secrets = None
         self.plugin_name = plugin_name
         self.definition = Object()
         self.definition.define_property("inputs", Object())
@@ -142,8 +148,8 @@ class Operator(object):
             return definition
 
         # pylint: disable=assignment-from-none
-        input_property = self.resolve_input(ctx)
-        output_property = self.resolve_output(ctx)
+        input_property = self.resolve_type(ctx, "inputs")
+        output_property = self.resolve_type(ctx, "outputs")
 
         if input_property is not None:
             definition.add_property("inputs", input_property)
@@ -191,7 +197,7 @@ class Operator(object):
         if type == "inputs":
             # pylint: disable=assignment-from-none
             input_property = self.resolve_input(ctx)
-            if input_property.view is None:
+            if input_property and input_property.view is None:
                 should_delegate = self.resolve_delegation(ctx)
                 if should_delegate:
                     input_property.view = PromptView(
@@ -208,7 +214,8 @@ class Operator(object):
         """Returns the resolved input property.
 
         Subclasses can implement this method to define the inputs to the
-        operator.
+        operator. This method should never be called directly. Instead
+        use :meth:`resolve_type`.
 
         By default, this method is called once when the operator is created.
         If the operator is dynamic, this method is called each time the input
@@ -273,3 +280,13 @@ class Operator(object):
             "_builtin": self._builtin,
             "uri": self.uri,
         }
+
+    def add_secrets(self, secrets):
+        """Adds secrets to the operator.
+
+        Args:
+            secrets: a list of secrets
+        """
+        if not self._plugin_secrets:
+            self._plugin_secrets = []
+        self._plugin_secrets.extend(secrets)

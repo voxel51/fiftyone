@@ -1,6 +1,6 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { activeColorField, coloring } from "@fiftyone/state";
+import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
 import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
@@ -19,6 +19,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -106,6 +107,7 @@ const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
 
 type FieldLabelAndInfo = {
   nested?: boolean;
+  path?: string;
   field: Field;
   color: string;
   expandedPath?: string;
@@ -117,6 +119,7 @@ const FieldLabelAndInfo = ({
   field,
   color,
   expandedPath,
+  path,
   template,
 }: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
@@ -125,7 +128,7 @@ const FieldLabelAndInfo = ({
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}
       {field.path !== "_label_tags" && fieldInfo.open && (
-        <FieldInfoExpanded {...fieldInfo} />
+        <FieldInfoExpanded {...fieldInfo} path={path} />
       )}
     </>
   );
@@ -240,6 +243,7 @@ function FieldInfoExpanded({
   color,
   close,
   expandedPath,
+  path,
   expandedRef,
 }) {
   const el = expandedRef;
@@ -249,7 +253,7 @@ function FieldInfoExpanded({
     descTooLong || tooManyInfoKeys
   );
 
-  const setIsCustomizingColor = useSetRecoilState(activeColorField);
+  const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -262,7 +266,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor({ field, expandedPath });
+    setIsCustomizingColor({ path: path || field.path });
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
@@ -337,7 +341,7 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
           <td>
             <ContentValue>
               Customize colors by{" "}
-              {props.colorBy == "field" ? "field" : "attribute value"}
+              {props.colorBy == "value" ? "attribute value" : props.colorBy}
             </ContentValue>
           </td>
         </tr>
