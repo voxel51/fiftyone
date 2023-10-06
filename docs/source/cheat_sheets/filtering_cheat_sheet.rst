@@ -399,7 +399,7 @@ classification predictions that have their ``logits`` attribute set:
 | 10 most likely annotation mistakes        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.match_tags("train").sort_by(                                     |
-|                                           |         "mistakenness", reverse=True                                     |
+|                                           |         "mistakenness", reverse=True                                    |
 |                                           |     )[:10]                                                              |
 +-------------------------------------------+-------------------------------------------------------------------------+
 
