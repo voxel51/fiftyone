@@ -700,6 +700,30 @@ still run a check and all runs should be green.
     operator, the orchestrator will need the `torch` and `torchvision` packages
     installed.
 
+**Running Delegated Parallel Operations**
+
+Considerations should be taken when running parallel delegated operations, as concurrency issues may arise. For example,
+if two operations are running on the same dataset, the results may be unpredictable.
+
+Or, if the same operator is running in multiple operations, and that operator needs to download a model or other
+artifacts to a specific location, collisions could arise.
+
+With this said, it is possible to run operations in parallel on your orchestrator, but you should ensure that,
+at the very least, the operations are not writing to the same dataset.
+
+An example Airflow DAG which runs operations in parallel, and ensures only a single dataset is written to at a time,
+exists here:
+`FiftyOne Airflow Parallel Operations DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/orchestrators/airflow/run_parallel_delegated_operations.py>`_
+
+The out of the box airflow installation will use a `SequentialExecutor` by default. Information about the Sequential
+Executor can be found here: `Sequential Executor <https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/executor/sequential.html>`_
+This executor will run only one task insance at a time.
+
+To run operations in parallel, you will need to configure Airflow to use a different executor. The `CeleryExecutor` is
+a recommended executor for running production operations in parallel. Information about the Celery Executor can be found here:
+`Celery Executor <https://airflow.apache.org/docs/apache-airflow/stable/executor/celery.html>`_
+
+
 .. _teams-managing-delegated-operations:
 
 Managing delegated operations
