@@ -2,7 +2,7 @@ import { PillButton, PopoutSectionTitle } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import ViewComfyIcon from "@mui/icons-material/ViewComfy";
-import React, { RefObject } from "react";
+import React, { RefObject, useMemo } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import Checkbox from "../Common/Checkbox";
@@ -38,6 +38,57 @@ const GroupMediaVisibilityPopout = ({
   const [isMainVisible, setIsMainVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
+  const isSequentialAccessAllowed =
+    useRecoilValue(fos.nonNestedDynamicGroupsViewMode) === "carousel";
+
+  const checkboxes = useMemo(() => {
+    const toReturn: React.ReactNode[] = [];
+
+    if (pointCloudSliceExists) {
+      toReturn.push(
+        <Checkbox
+          key="checkbox-3d-viewer"
+          name={"3D Viewer"}
+          value={isSlotVisible}
+          muted={!isMainVisible && !isCarouselVisible}
+          setValue={(value) => setIsSlotVisible(value)}
+        />
+      );
+    }
+
+    if (isSequentialAccessAllowed) {
+      toReturn.push(
+        <Checkbox
+          key="checkbox-carousel"
+          name={"Carousel"}
+          value={isCarouselVisible}
+          muted={!(isSlotVisible && pointCloudSliceExists) && !isMainVisible}
+          setValue={(value) => setIsCarouselVisible(value)}
+        />
+      );
+    }
+
+    toReturn.push(
+      <Checkbox
+        key="checkbox-viewer"
+        name={"Viewer"}
+        value={isMainVisible}
+        muted={
+          toReturn.length === 0 ||
+          (!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible)
+        }
+        setValue={(value) => setIsMainVisible(value)}
+      />
+    );
+
+    return toReturn;
+  }, [
+    pointCloudSliceExists,
+    isSequentialAccessAllowed,
+    isCarouselVisible,
+    isMainVisible,
+    isSlotVisible,
+  ]);
 
   return (
     <Popout
@@ -47,27 +98,7 @@ const GroupMediaVisibilityPopout = ({
       testId="group-media-visibility-popout"
     >
       <PopoutSectionTitle>{TITLE}</PopoutSectionTitle>
-      {pointCloudSliceExists && (
-        <Checkbox
-          name={"3D Viewer"}
-          value={isSlotVisible}
-          muted={!isMainVisible && !isCarouselVisible}
-          setValue={(value) => setIsSlotVisible(value)}
-        />
-      )}
-
-      <Checkbox
-        name={"Carousel"}
-        value={isCarouselVisible}
-        muted={!(isSlotVisible && pointCloudSliceExists) && !isMainVisible}
-        setValue={(value) => setIsCarouselVisible(value)}
-      />
-      <Checkbox
-        name={"Viewer"}
-        value={isMainVisible}
-        muted={!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible}
-        setValue={(value) => setIsMainVisible(value)}
-      />
+      {checkboxes}
     </Popout>
   );
 };
