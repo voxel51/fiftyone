@@ -101,6 +101,11 @@ export const loading = atom<boolean>({
   default: false,
 });
 
+export const snackbarErrors = atom<string[]>({
+  key: "snackbarErrors",
+  default: [],
+});
+
 // labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
