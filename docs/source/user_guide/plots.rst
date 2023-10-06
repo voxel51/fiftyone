@@ -123,9 +123,10 @@ data.
 .. note::
 
     Support for interactive plots in non-notebook contexts and in
-    `Google Colab <https://colab.research.google.com>`_ is coming soon! In the
-    meantime, you can still use FiftyOne's plotting features in these
-    environments, but you must manually call
+    `Google Colab <https://colab.research.google.com>`_ and
+    `Databricks <https://docs.databricks.com/en/notebooks/index.html>`_
+    is coming soon! In the meantime, you can still use FiftyOne's plotting
+    features in these environments, but you must manually call
     :meth:`plot.show() <fiftyone.core.plots.base.Plot.show>` to update the
     state of a plot to match the state of a connected |Session|, and any
     callbacks that would normally be triggered in response to interacting with
@@ -144,7 +145,7 @@ below for your environment:
 
     .. code-block:: shell
 
-        pip install "notebook>=5.3" "ipywidgets>=7.5,<8"
+        pip install "notebook>=6" "ipywidgets>=8,<9"
 
   .. group-tab:: JupyterLab
 
@@ -153,7 +154,7 @@ below for your environment:
 
     .. code-block:: shell
 
-        pip install "jupyterlab>=3" "ipywidgets>=7.6,<8"
+        pip install "jupyterlab>=4" "ipywidgets>=8,<9"
 
     If you run into any issues in JupyterLab, especially if you are trying to
     use JupyterLab 2.X rather than 3.0+, you may need to manually install the

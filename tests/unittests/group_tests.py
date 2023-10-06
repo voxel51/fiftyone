@@ -1875,6 +1875,167 @@ class DynamicGroupTests(unittest.TestCase):
         for sample in group.values():
             self.assertEqual(sample.scene, "bar")
 
+    @drop_datasets
+    def test_group_by_patches(self):
+        samples = [
+            fo.Sample(
+                filepath="image1.jpg",
+                detections=fo.Detections(
+                    detections=[
+                        fo.Detection(label="cat", bounding_box=[0, 0, 1, 1]),
+                        fo.Detection(label="dog", bounding_box=[0, 0, 1, 1]),
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath="image2.jpg",
+                detections=fo.Detections(
+                    detections=[
+                        fo.Detection(label="cow", bounding_box=[0, 0, 1, 1]),
+                        fo.Detection(label="fox", bounding_box=[0, 0, 1, 1]),
+                        fo.Detection(label="bird", bounding_box=[0, 0, 1, 1]),
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        sample2 = dataset.last()
+
+        view = dataset.to_patches("detections").group_by("sample_id")
+
+        self.assertEqual(view.media_type, "group")
+        self.assertEqual(len(view), 2)
+        self.assertTrue(view._is_dynamic_groups)
+        self.assertIsNone(view.group_field)
+        self.assertIsNone(view.group_media_types)
+        self.assertIsNone(view.group_slice)
+        self.assertIsNone(view.group_slices)
+
+        group = view.get_dynamic_group(sample2.id)
+
+        self.assertEqual(len(group), 3)
+        self.assertEqual(group.first().sample_id, sample2.id)
+
+        dataset.save_view("group_by_patches", view)
+
+        self.assertEqual(view.name, "group_by_patches")
+        self.assertTrue(view.is_saved)
+
+        dataset.reload()
+        also_view = dataset.load_saved_view("group_by_patches")
+
+        self.assertEqual(also_view, view)
+        self.assertEqual(also_view.media_type, "group")
+        self.assertEqual(also_view.name, "group_by_patches")
+        self.assertTrue(also_view.is_saved)
+        self.assertEqual(len(also_view), 2)
+
+    @drop_datasets
+    def test_group_by_frames(self):
+        sample1 = fo.Sample(filepath="video1.mp4")
+        sample1.frames[1] = fo.Frame(filepath="frame11.jpg")
+        sample1.frames[2] = fo.Frame(filepath="frame12.jpg")
+
+        sample2 = fo.Sample(filepath="video2.mp4")
+        sample2.frames[1] = fo.Frame(filepath="frame21.jpg")
+        sample2.frames[2] = fo.Frame(filepath="frame22.jpg")
+        sample2.frames[3] = fo.Frame(filepath="frame23.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        sample2 = dataset.last()
+
+        view = dataset.to_frames().group_by("sample_id")
+
+        self.assertEqual(view.media_type, "group")
+        self.assertEqual(len(view), 2)
+        self.assertTrue(view._is_dynamic_groups)
+        self.assertIsNone(view.group_field)
+        self.assertIsNone(view.group_media_types)
+        self.assertIsNone(view.group_slice)
+        self.assertIsNone(view.group_slices)
+
+        group = view.get_dynamic_group(sample2.id)
+
+        self.assertEqual(len(group), 3)
+        self.assertEqual(group.first().sample_id, sample2.id)
+
+        dataset.save_view("group_by_frames", view)
+
+        self.assertEqual(view.name, "group_by_frames")
+        self.assertTrue(view.is_saved)
+
+        dataset.reload()
+        also_view = dataset.load_saved_view("group_by_frames")
+
+        self.assertEqual(also_view, view)
+        self.assertEqual(also_view.media_type, "group")
+        self.assertEqual(also_view.name, "group_by_frames")
+        self.assertTrue(also_view.is_saved)
+        self.assertEqual(len(also_view), 2)
+
+    @drop_datasets
+    def test_group_by_clips(self):
+        samples = [
+            fo.Sample(
+                filepath="video1.mp4",
+                detections=fo.TemporalDetections(
+                    detections=[
+                        fo.TemporalDetection(label="cat", support=[1, 4]),
+                        fo.TemporalDetection(label="dog", support=[2, 5]),
+                    ]
+                ),
+            ),
+            fo.Sample(
+                filepath="video2.mp4",
+                detections=fo.TemporalDetections(
+                    detections=[
+                        fo.TemporalDetection(label="cow", support=[1, 4]),
+                        fo.TemporalDetection(label="fox", support=[2, 5]),
+                        fo.TemporalDetection(label="fox", support=[3, 6]),
+                    ]
+                ),
+            ),
+        ]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        sample2 = dataset.last()
+
+        view = dataset.to_clips("detections").group_by("sample_id")
+
+        self.assertEqual(view.media_type, "group")
+        self.assertEqual(len(view), 2)
+        self.assertTrue(view._is_dynamic_groups)
+        self.assertIsNone(view.group_field)
+        self.assertIsNone(view.group_media_types)
+        self.assertIsNone(view.group_slice)
+        self.assertIsNone(view.group_slices)
+
+        group = view.get_dynamic_group(sample2.id)
+
+        self.assertEqual(len(group), 3)
+        self.assertEqual(group.first().sample_id, sample2.id)
+
+        dataset.save_view("group_by_clips", view)
+        self.assertTrue(view.is_saved)
+
+        self.assertEqual(view.name, "group_by_clips")
+
+        dataset.reload()
+        also_view = dataset.load_saved_view("group_by_clips")
+
+        self.assertEqual(also_view, view)
+        self.assertEqual(also_view.media_type, "group")
+        self.assertEqual(also_view.name, "group_by_clips")
+        self.assertTrue(also_view.is_saved)
+        self.assertEqual(len(also_view), 2)
+
 
 def _make_group_by_dataset():
     sample_id1 = ObjectId()

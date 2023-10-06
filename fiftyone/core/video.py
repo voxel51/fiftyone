@@ -89,6 +89,7 @@ class FramesView(fov.DatasetView):
         frames_stage,
         frames_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         if _stages is None:
@@ -98,6 +99,7 @@ class FramesView(fov.DatasetView):
         self._frames_stage = frames_stage
         self._frames_dataset = frames_dataset
         self.__stages = _stages
+        self.__media_type = _media_type
         self.__name = _name
 
     def __copy__(self):
@@ -106,6 +108,7 @@ class FramesView(fov.DatasetView):
             deepcopy(self._frames_stage),
             self._frames_dataset,
             _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
             _name=self.__name,
         )
 
@@ -142,8 +145,25 @@ class FramesView(fov.DatasetView):
         )
 
     @property
+    def name(self):
+        return self.__name
+
+    @property
+    def is_saved(self):
+        return self.__name is not None
+
+    @property
     def media_type(self):
-        return fom.IMAGE
+        if self.__media_type is not None:
+            return self.__media_type
+
+        return self._dataset.media_type
+
+    def _set_name(self, name):
+        self.__name = name
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     def _get_sample_only_fields(
         self, include_private=False, use_db_fields=False

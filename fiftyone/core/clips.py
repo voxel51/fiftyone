@@ -81,6 +81,7 @@ class ClipsView(fov.DatasetView):
         clips_stage,
         clips_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         if _stages is None:
@@ -93,6 +94,7 @@ class ClipsView(fov.DatasetView):
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
         self.__stages = _stages
+        self.__media_type = _media_type
         self.__name = _name
 
     def __copy__(self):
@@ -101,6 +103,7 @@ class ClipsView(fov.DatasetView):
             deepcopy(self._clips_stage),
             self._clips_dataset,
             _stages=deepcopy(self.__stages),
+            _media_type=self.__media_type,
             _name=self.__name,
         )
 
@@ -149,8 +152,25 @@ class ClipsView(fov.DatasetView):
         )
 
     @property
+    def name(self):
+        return self.__name
+
+    @property
+    def is_saved(self):
+        return self.__name is not None
+
+    @property
     def media_type(self):
-        return fom.VIDEO
+        if self.__media_type is not None:
+            return self.__media_type
+
+        return self._dataset.media_type
+
+    def _set_name(self, name):
+        self.__name = name
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     def _tag_labels(self, tags, label_field, ids=None, label_ids=None):
         if label_field == self._classification_field:
@@ -435,6 +455,7 @@ class TrajectoriesView(ClipsView):
         clips_stage,
         clips_dataset,
         _stages=None,
+        _media_type=None,
         _name=None,
     ):
         if not isinstance(clips_stage, fost.ToTrajectories):
@@ -457,6 +478,7 @@ class TrajectoriesView(ClipsView):
         self._clips_stage = clips_stage
         self._clips_dataset = clips_dataset
         self.__stages = _stages
+        self.__media_type = _media_type
         self.__name = _name
 
     def __copy__(self):
@@ -465,6 +487,7 @@ class TrajectoriesView(ClipsView):
             deepcopy(self._clips_stage),
             self._clips_dataset,
             _stages=deepcopy(self.__stages[self._num_trajectory_stages :]),
+            _media_type=self.__media_type,
             _name=self.__name,
         )
 
@@ -479,6 +502,27 @@ class TrajectoriesView(ClipsView):
             + [self._clips_stage]
             + self.__stages[self._num_trajectory_stages :]
         )
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def is_saved(self):
+        return self.__name is not None
+
+    @property
+    def media_type(self):
+        if self.__media_type is not None:
+            return self.__media_type
+
+        return self._dataset.media_type
+
+    def _set_name(self, name):
+        self.__name = name
+
+    def _set_media_type(self, media_type):
+        self.__media_type = media_type
 
     @staticmethod
     def _make_trajectory_stages(source_collection, clips_stage, clips_dataset):

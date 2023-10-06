@@ -81,6 +81,12 @@ pages on this site apply to Teams deployments as well.
     :button_link: roles_and_permissions.html
 
 .. customcalloutitem::
+    :header: Dataset Versioning
+    :description: Explore or revert to historical snapshots of your FiftyOne Teams datasets.
+    :button_text: Version your FiftyOne datasets
+    :button_link: dataset_versioning.html
+
+.. customcalloutitem::
     :header: FiftyOne Teams App
     :description: See how you can collaboratively work on datasets in the FiftyOne Teams App.
     :button_text: Explore the Teams App
@@ -102,13 +108,7 @@ pages on this site apply to Teams deployments as well.
     :header: Secrets
     :description: Safely store and access secrets in your Teams deployment.
     :button_text: Learn more about storing secrets in Teams
-    :button_link: teams_secrets.html
-    
-.. customcalloutitem::
-    :header: Dataset Versioning
-    :description: Explore or revert to historical snapshots of your FiftyOne Teams datasets.
-    :button_text: Version your FiftyOne datasets
-    :button_link: dataset_versioning.html
+    :button_link: secrets.html
 
 .. customcalloutitem::
     :header: Migrations
@@ -140,9 +140,9 @@ pages on this site apply to Teams deployments as well.
     API connection <api_connection>
     Cloud-backed media <cloud_media>
     Roles and permissions <roles_and_permissions>
+    Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
     Plugins <teams_plugins>
     Secrets <secrets>
-    Dataset Versioning <dataset_versioning>
     Migrations <migrations>
