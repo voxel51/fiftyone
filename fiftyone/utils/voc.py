@@ -491,7 +491,9 @@ class VOCAnnotation(object):
         Returns:
             a :class:`VOCAnnotation`
         """
-        annotation = d["annotation"]
+        
+        ann_key= "annotation" if "annotation" in d else "Annotation"
+        annotation = d[ann_key]
 
         path = annotation.get("path", None)
         folder = annotation.get("folder", None)
