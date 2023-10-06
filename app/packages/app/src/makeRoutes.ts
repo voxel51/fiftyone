@@ -2,7 +2,12 @@ import { createResourceGroup } from "@fiftyone/utilities";
 import { ConcreteRequest } from "relay-runtime";
 import { IndexPageQuery } from "./pages/__generated__/IndexPageQuery.graphql";
 import { DatasetPageQuery } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
-import { Route, RouteDefinition, RouteOptions } from "./routing";
+import {
+  Route,
+  RouteDefinition,
+  RouteOptions,
+  RoutingContext,
+} from "./routing";
 
 interface Routes {
   "/": RouteOptions<IndexPageQuery>;
@@ -10,6 +15,7 @@ interface Routes {
 }
 
 export type Queries = DatasetPageQuery | IndexPageQuery;
+export type Router = RoutingContext<Queries>;
 const components = createResourceGroup<Route<Queries>>();
 
 const makeRouteDefinitions = (routes: Routes): RouteDefinition<Queries>[] => {

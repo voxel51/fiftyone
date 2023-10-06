@@ -119,7 +119,6 @@ export function graphQLSyncFragmentAtomFamily<
                       setter(update);
                     });
                   } catch (e) {
-                    console.error(e);
                     setter(null, transactionInterface);
                     return undefined;
                   }

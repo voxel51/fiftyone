@@ -7,6 +7,7 @@ import { SPACES_DEFAULT, stateSubscription } from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { resolveURL } from "../utils";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetDataset: RegisteredSetter =
@@ -20,14 +21,6 @@ const onSetDataset: RegisteredSetter =
           subscription: get(stateSubscription),
         },
       });
-
-    const params = new URLSearchParams(router.get().search);
-    params.delete("view");
-
-    let search = params.toString();
-    if (search.length) {
-      search = `?${search}`;
-    }
 
     subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
@@ -47,7 +40,7 @@ const onSetDataset: RegisteredSetter =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });
 
-    router.history.push(`/datasets/${datasetName}${search}`, {
+    router.history.push(resolveURL(router, datasetName), {
       view: [],
     });
   };
