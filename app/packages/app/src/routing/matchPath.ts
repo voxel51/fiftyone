@@ -56,7 +56,7 @@ export const matchPath = <T extends OperationType>(
 
   const proxy = params.get("proxy");
   if (proxy) {
-    pathname = pathname.replace(proxy, "");
+    pathname = pathname.replace(proxy, "").replace("//", "/");
   }
 
   const { regexp, keys } = compilePath(path);
