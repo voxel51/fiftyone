@@ -24,6 +24,9 @@ import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import * as groupAtoms from "../recoil/groups";
 import * as optionsAtoms from "../recoil/options";
+import { ImaVidConfig } from "@fiftyone/looker/src/state";
+import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
+import useImaVid from "./useImaVid";
 
 export default <T extends AbstractLooker>(
   isModal: boolean,
@@ -48,12 +51,11 @@ export default <T extends AbstractLooker>(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
   );
 
-  const isImaVidLookerAvailable = useRecoilValue(
-    groupAtoms.isImaVidLookerAvailable
+  const shouldRenderImaVidLooker = useRecoilValue(
+    groupAtoms.shouldRenderImaVidLooker
   );
-  const nonNestedDynamicGroupsViewMode = useRecoilValue(
-    optionsAtoms.nonNestedDynamicGroupsViewMode
-  );
+
+  const getImaVidController = useImaVid();
 
   const create = useCallback(
     ({
@@ -99,11 +101,7 @@ export default <T extends AbstractLooker>(
           constructor = VideoLooker;
         }
 
-        if (
-          !isVideo &&
-          isImaVidLookerAvailable &&
-          nonNestedDynamicGroupsViewMode === "video"
-        ) {
+        if (!isVideo && shouldRenderImaVidLooker) {
           constructor = ImaVidLooker;
         }
       } else {
@@ -111,19 +109,6 @@ export default <T extends AbstractLooker>(
       }
 
       let sampleMediaFilePath = urls[mediaField];
-
-      if (constructor === PcdLooker) {
-        const orthographicProjectionField = Object.entries(sample)
-          .find(
-            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
-          )
-          ?.at(0) as string | undefined;
-        if (orthographicProjectionField) {
-          sampleMediaFilePath = urls[
-            `${orthographicProjectionField}.filepath`
-          ] as string;
-        }
-      }
 
       const config: ConstructorParameters<T>[1] = {
         fieldSchema: {
@@ -155,6 +140,23 @@ export default <T extends AbstractLooker>(
         };
       }
 
+      if (constructor === PcdLooker) {
+        const orthographicProjectionField = Object.entries(sample)
+          .find(
+            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+          )
+          ?.at(0) as string | undefined;
+        if (orthographicProjectionField) {
+          sampleMediaFilePath = urls[
+            `${orthographicProjectionField}.filepath`
+          ] as string;
+        }
+      }
+
+      if (constructor === ImaVidLooker) {
+        (config as ImaVidConfig).framesController = getImaVidController(sample);
+      }
+
       const looker = new constructor(sample, config, {
         ...options,
         selected: selected.has(sample._id),
@@ -175,10 +177,9 @@ export default <T extends AbstractLooker>(
       highlight,
       isClip,
       isFrame,
-      isImaVidLookerAvailable,
+      shouldRenderImaVidLooker,
       isPatch,
       mediaField,
-      nonNestedDynamicGroupsViewMode,
       options,
       selected,
       thumbnail,

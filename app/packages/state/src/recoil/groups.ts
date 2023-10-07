@@ -19,6 +19,7 @@ import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import { dataset, mediaType } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
+import { nonNestedDynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
@@ -309,11 +310,6 @@ export const groupByFieldValue = atom<string | null>({
   default: null,
 });
 
-export const shouldRenderOrderedDynamicGroupAsVideo = atom<boolean>({
-  key: "shouldRenderOrderedDynamicGroupAsVideo",
-  default: true,
-});
-
 export const dynamicGroupIndex = atom<number>({
   key: "dynamicGroupIndex",
   default: null,
@@ -366,6 +362,16 @@ export const isImaVidLookerAvailable = selector<boolean>({
     const isOrderedDynamicGroup_ = get(isOrderedDynamicGroup);
     const isNonNestedDynamicGroup_ = get(isNonNestedDynamicGroup);
     return isOrderedDynamicGroup_ && isNonNestedDynamicGroup_;
+  },
+});
+
+export const shouldRenderImaVidLooker = selector<boolean>({
+  key: "shouldRenderImaVidLooker",
+  get: ({ get }) => {
+    return (
+      get(isImaVidLookerAvailable) &&
+      get(nonNestedDynamicGroupsViewMode) === "video"
+    );
   },
 });
 

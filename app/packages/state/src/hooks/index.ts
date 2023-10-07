@@ -5,7 +5,7 @@ export { default as useSimilarityType } from "./similaritySearch/useSimilarityTy
 export {
   BeforeScreenshotContext,
   callbacks as screenshotCallbacks,
-  default as useBeforeScreenshot,
+  default as useBeforeScreenshot
 } from "./useBeforeScreenshot";
 export * from "./useBrowserStorage";
 export { default as useClearModal } from "./useClearModal";
@@ -15,6 +15,7 @@ export { default as useExpandSample } from "./useExpandSample";
 export { default as useHelpPanel } from "./useHelpPanel";
 export { default as useHover } from "./useHover";
 export { default as useHoveredSample } from "./useHoveredSample";
+export * from "./useImaVid";
 export { default as useJSONPanel } from "./useJSONPanel";
 export * from "./useLookerStore";
 export { default as useLookerStore } from "./useLookerStore";
@@ -44,3 +45,4 @@ export { default as useToPatches } from "./useToPatches";
 export { default as useTooltip } from "./useTooltip";
 export { default as useUpdateSamples } from "./useUpdateSamples";
 export { default as withSuspense } from "./withSuspense";
+

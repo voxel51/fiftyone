@@ -1,8 +1,8 @@
-import { getImaVidElements } from "../elements";
-import { VIDEO_SHORTCUTS } from "../elements/common";
-import { ClassificationsOverlay } from "../overlays";
-import { Overlay } from "../overlays/base";
-import processOverlays from "../processOverlays";
+import { getImaVidElements } from "../../elements";
+import { VIDEO_SHORTCUTS } from "../../elements/common";
+import { ClassificationsOverlay } from "../../overlays";
+import { Overlay } from "../../overlays/base";
+import processOverlays from "../../processOverlays";
 import {
   Buffers,
   DEFAULT_VIDEO_OPTIONS,
@@ -12,10 +12,10 @@ import {
   Sample,
   VideoSample,
   VideoState,
-} from "../state";
+} from "../../state";
 
-import { AbstractLooker } from "./abstract";
-import { LookerUtils } from "./shared";
+import { AbstractLooker } from "../abstract";
+import { LookerUtils } from "../shared";
 
 interface ImaVidFrame {
   sample: Sample;
@@ -24,7 +24,10 @@ interface ImaVidFrame {
 
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private frames: Map<number, WeakRef<ImaVidFrame>> = new Map();
-  private requestFrames: (frameNumber: number) => void;
+
+  get firstSample() {
+    return this.sample;
+  }
 
   get frameNumber() {
     return this.state.frameNumber;

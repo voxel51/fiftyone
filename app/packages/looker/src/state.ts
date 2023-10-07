@@ -2,6 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
 import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
@@ -202,7 +203,7 @@ export interface VideoConfig extends BaseConfig {
 }
 
 export interface ImaVidConfig extends BaseConfig {
-  frameRate: number;
+  framesController: ImaVidFramesController;
 }
 
 export type PcdConfig = BaseConfig;

@@ -16,7 +16,6 @@ import {
   LabelData,
   Optional,
   StateUpdate,
-  VideoConfig,
   VideoSample,
   VideoState,
 } from "../state";
