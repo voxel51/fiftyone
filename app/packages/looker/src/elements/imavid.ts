@@ -524,7 +524,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
     update(({ config: { src } }) => {
       this.src = src;
 
-      this.element = document.createElement("img");
+      this.element = new Image();
       this.element.preload = "metadata";
       this.element.src = src;
 
@@ -753,114 +753,6 @@ const seekFn = (
     };
   }
   return {};
-};
-
-class VolumeBarContainerElement extends BaseElement<
-  ImaVidState,
-  HTMLDivElement
-> {
-  getEvents(): Events<ImaVidState> {
-    return {};
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerVolume);
-    return element;
-  }
-
-  renderSelf() {
-    return this.element;
-  }
-}
-
-class VolumBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
-  private volume: number;
-
-  getEvents(): Events<ImaVidState> {
-    return {
-      click: ({ event }) => {
-        event.stopPropagation();
-      },
-      input: ({ update, dispatchEvent }) => {
-        const percent = this.element.valueAsNumber;
-
-        dispatchEvent("options", { volume: percent });
-
-        update({
-          options: {
-            volume: percent,
-          },
-        });
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("input");
-    element.setAttribute("type", "range");
-    element.setAttribute("min", "0");
-    element.setAttribute("max", "1");
-    element.setAttribute("step", "0.01");
-    return element;
-  }
-
-  renderSelf({ options: { volume } }: Readonly<ImaVidState>) {
-    if (this.volume !== volume) {
-      this.element.style.setProperty("--volume", `${volume * 100}%`);
-      this.element.value = volume.toFixed(4);
-      this.element.title = `Volume ${(volume * 100).toFixed(0)}%`;
-
-      this.volume = volume;
-    }
-    return this.element;
-  }
-}
-
-class VolumeIconElement extends BaseElement<ImaVidState, HTMLDivElement> {
-  private muted: boolean;
-
-  getEvents(): Events<ImaVidState> {
-    return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        muteUnmute.action(update, dispatchEvent);
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("div");
-    element.classList.add(lookerClickable);
-    element.style.padding = "2px";
-    element.style.display = "flex";
-    return element;
-  }
-
-  renderSelf({ options: { volume } }) {
-    if ((volume === 0) === this.muted) {
-      return this.element;
-    }
-
-    this.muted = volume === 0;
-    if (this.element.firstChild) this.element.firstChild.remove();
-    if (this.muted) {
-      this.element.title = "Unmute (m)";
-      this.element.appendChild(volumeMuted);
-    } else {
-      this.element.title = "Mute (m)";
-      this.element.appendChild(volumeIcon);
-      this.element;
-    }
-
-    return this.element;
-  }
-}
-
-export const VOLUME = {
-  node: VolumeBarContainerElement,
-  children: [{ node: VolumeIconElement }, { node: VolumBarElement }],
 };
 
 class PlaybackRateContainerElement extends BaseElement<
