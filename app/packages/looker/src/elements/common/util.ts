@@ -18,6 +18,7 @@ import {
 } from "../../state";
 
 import { lookerCheckbox, lookerLabel } from "./util.module.css";
+import { getHashLabel } from "../../overlays/util";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
@@ -259,6 +260,14 @@ export function getAssignedColor({
     value,
     by === "value"
   );
+
+  if (by === "instance") {
+    return getColor(
+      coloring.pool,
+      coloring.seed,
+      path === "tags" ? param : getHashLabel(param)
+    );
+  }
 
   if (by === "field") {
     return getColorByField(setting, pool, seed, path, isValidColor);

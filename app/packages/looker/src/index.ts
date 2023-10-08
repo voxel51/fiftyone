@@ -7,6 +7,7 @@ export { freeVideos } from "./elements/util";
 export * from "./lookers";
 export type {
   Coloring,
+  CustomizeColor,
   FrameConfig,
   FrameOptions,
   ImageConfig,

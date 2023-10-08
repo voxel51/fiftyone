@@ -163,7 +163,7 @@ export default function OperatorBrowser() {
               data={initializationErrors}
             />
             <Link
-              href="https://docs.voxel51.com/user_guide/app.html#operations"
+              href="https://docs.voxel51.com/plugins/using_plugins.html#using-operators"
               style={{ display: "flex" }}
               target="_blank"
             >

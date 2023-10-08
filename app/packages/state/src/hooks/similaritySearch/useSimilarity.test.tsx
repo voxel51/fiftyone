@@ -11,7 +11,8 @@ const TEST_DS = {
 };
 
 const getRecoilRoot = (
-  type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default"
+  type: "selectedSample" | "selectedLabel" | "activeImageSort" | "default",
+  modal = false
 ) => {
   const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
     return (
@@ -22,12 +23,13 @@ const getRecoilRoot = (
             set(fos.selectedSamples, new Set(["1", "2"]));
           }
           if (type === "selectedLabel") {
-            set(fos.selectedLabels, {
-              "1": {
-                sampleId: "1",
+            set(fos.selectedLabels, [
+              {
+                labelId: "1",
                 field: "test-field",
+                sampleId: "1",
               },
-            });
+            ]);
             set(fos.currentModalSample, { id: "1", index: 1234 });
           }
           if (type === "activeImageSort") {
@@ -36,6 +38,9 @@ const getRecoilRoot = (
               k: 10,
               queryIds: ["1"],
             });
+          }
+          if (modal) {
+            set(fos.currentModalSample, { index: 0, id: "0" });
           }
         }}
       >
@@ -93,7 +98,7 @@ describe("similarity search helper text and icon are correct", () => {
     const { result } = renderHook(
       () => fos.useSimilarityType({ isImageSearch: false }),
       {
-        wrapper: getRecoilRoot("selectedLabel"),
+        wrapper: getRecoilRoot("selectedLabel", true),
       }
     );
     expect(result.current.text).toBe("Search by image similarity");

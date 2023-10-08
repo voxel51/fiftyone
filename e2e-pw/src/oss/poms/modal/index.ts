@@ -1,4 +1,5 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
@@ -15,7 +16,10 @@ export class ModalPom {
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    private readonly eventUtils: EventUtils
+  ) {
     this.assert = new ModalAsserter(this);
     this.locator = page.getByTestId("modal");
 
@@ -42,8 +46,19 @@ export class ModalPom {
     return this.locator.getByTestId("group-carousel");
   }
 
-  async toggleSelection() {
-    await this.looker.hover();
+  get toggleDisplayOptionsButton() {
+    return this.locator.getByTestId("action-display-options");
+  }
+
+  getLookerAttachedEvent() {
+    return this.eventUtils.getEventReceivedPromiseForPredicate(
+      "looker-attached",
+      () => true
+    );
+  }
+
+  async toggleSelection(pcd = false) {
+    pcd ? await this.looker3d.hover() : await this.looker.hover();
     await this.locator.getByTestId("selectable-bar").click();
   }
 

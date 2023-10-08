@@ -1,4 +1,4 @@
-import { useClearModal, useTo } from "@fiftyone/state";
+import { useClearModal } from "@fiftyone/state";
 import {
   GraphQLError,
   NetworkError,
@@ -13,12 +13,9 @@ import React, {
   useLayoutEffect,
 } from "react";
 import { ErrorBoundary as Boundary, FallbackProps } from "react-error-boundary";
-
 import { scrollable } from "../../scrollable.module.css";
 import CodeBlock from "../CodeBlock";
-
 import Loading from "../Loading";
-
 import style from "./ErrorBoundary.module.css";
 
 type AppError = GraphQLError | NetworkError | NotFoundError | ServerError;
@@ -32,7 +29,6 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
     error,
     resetErrorBoundary,
   }: Props<T>) => {
-    const { to } = useTo({ state: {} });
     const clearModal = useClearModal();
     useLayoutEffect(() => {
       clearModal();
@@ -69,8 +65,6 @@ const Errors = (onReset?: () => void, disableReset?: boolean) => {
     function handleReset() {
       if (onReset) {
         onReset();
-      } else {
-        to("/");
       }
       resetErrorBoundary();
     }

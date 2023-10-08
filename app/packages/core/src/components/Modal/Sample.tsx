@@ -4,6 +4,8 @@ import {
   modalSample,
   modalSampleId,
   useHoveredSample,
+  isDynamicGroup,
+  isDynamicGroup,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
@@ -39,10 +41,15 @@ export const SampleWrapper = ({
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const sample = useRecoilValue(sampleAtom);
+  const isGroup = useRecoilValue(isDynamicGroup);
   const hover = useHoveredSample(sample.sample, {
     update,
     clear,
   });
+
+  if (isGroup) {
+    return <>{children}</>;
+  }
 
   return (
     <div

@@ -1,24 +1,77 @@
-import { atom, selector } from "recoil";
-
+import {
+  datasetFragment,
+  graphQLSyncFragmentAtom,
+  stageDefinitionsFragment,
+  stageDefinitionsFragment$data,
+  stageDefinitionsFragment$key,
+  viewFragment,
+  viewFragment$key,
+} from "@fiftyone/relay";
 import { Stage } from "@fiftyone/utilities";
-import { groupByFieldValue } from "./groups";
+import { atom, selector } from "recoil";
+import { groupByFieldValue, groupField } from "./groups";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
 
-export const view = atom<State.Stage[]>({
-  key: "view",
-  default: [],
-});
+export const stageDefinitions = graphQLSyncFragmentAtom<
+  stageDefinitionsFragment$key,
+  stageDefinitionsFragment$data["stageDefinitions"]
+>(
+  {
+    fragments: [stageDefinitionsFragment],
+    read: (data) => {
+      return data.stageDefinitions;
+    },
+    default: [],
+  },
+  { key: "stageDefinitions" }
+);
 
-export const viewCls = atom<string>({
-  key: "viewCls",
-  default: null,
-});
+export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    read: (data) => {
+      return data?.stages || [];
+    },
+    default: [],
+    selectorEffect: true,
+  },
+  {
+    key: "view",
+  }
+);
 
-export const viewName = atom<string>({
-  key: "viewName",
-  default: null,
-});
+export const viewCls = graphQLSyncFragmentAtom<
+  viewFragment$key,
+  string | null | undefined
+>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    read: (data) => data.viewCls,
+    default: null,
+  },
+  {
+    key: "viewCls",
+  }
+);
+
+export const viewName = graphQLSyncFragmentAtom<
+  viewFragment$key,
+  string | null | undefined
+>(
+  {
+    fragments: [datasetFragment, viewFragment],
+    keys: ["dataset"],
+    read: (data) => data.viewName,
+    default: null,
+    selectorEffect: true,
+  },
+  {
+    key: "viewName",
+  }
+);
 
 export const isRootView = selector<boolean>({
   key: "isRootView",
@@ -60,7 +113,7 @@ export const rootElementName = selector<string>({
   key: "rootElementName",
   get: ({ get }) => {
     const cls = get(viewCls);
-    if (PATCH_VIEWS.includes(cls)) {
+    if (cls && PATCH_VIEWS.includes(cls)) {
       return ELEMENT_NAMES.PATCH;
     }
 
@@ -160,8 +213,8 @@ export const dynamicGroupParameters =
       if (isFlat) return null;
 
       return {
-        groupBy: groupByViewStageNode.kwargs[0][1], // first index is 'field_or_expr', which defines group-by
-        orderBy: groupByViewStageNode.kwargs[1][1], // second index is 'order_by', which defines order-by
+        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
       };
     },
   });
@@ -170,6 +223,13 @@ export const isDynamicGroup = selector<boolean>({
   key: "isDynamicGroup",
   get: ({ get }) => {
     return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const isNonNestedDynamicGroup = selector<boolean>({
+  key: "isNonNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(groupField) === null;
   },
 });
 

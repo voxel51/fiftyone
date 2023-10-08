@@ -18,7 +18,7 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [build, e2e, test]
     steps:
       - name: Download dist
         uses: actions/download-artifact@v3
@@ -42,20 +42,20 @@ jobs:
           python3 -m twine upload dist/*
 
   build-image:
-    needs: [build, test]
+    needs: [build, e2e, test]
     runs-on: ubuntu-20.04
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Download dist
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: dist
           path: dist
       - name: docker
         run: make docker-export -o python
       - name: Upload image
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docker-image
           path: fiftyone.tar.gz

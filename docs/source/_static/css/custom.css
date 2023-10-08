@@ -664,3 +664,9 @@ a.with-right-arrow,
   width: auto !important;
   height: auto;
 }
+
+#youtube {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+}

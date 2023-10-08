@@ -72,6 +72,7 @@ export const Text = styled.div`
 export const ButtonGroup = styled.div`
   display: flex;
   flex-direction: row;
+  gap: 8px;
 `;
 
 export const ActionDiv = styled.div`

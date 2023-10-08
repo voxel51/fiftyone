@@ -9,36 +9,29 @@ from dataclasses import asdict
 import strawberry as gql
 import typing as t
 
-from fiftyone.core.state import SampleField
 import eta.core.serial as etas
-from bson import json_util
 
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm as foo
+import fiftyone.core.session.events as fose
 from fiftyone.core.session.events import StateUpdate
-from fiftyone.core.session.session import build_color_scheme
 from fiftyone.core.spaces import default_spaces, Space
+from fiftyone.core.state import build_color_scheme
 import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
 from fiftyone.server.inputs import SelectedLabel
 from fiftyone.server.query import (
-    Dataset,
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
-
-
-@gql.type
-class ViewResponse:
-    view: BSONArray
-    dataset: Dataset
 
 
 @gql.input
@@ -63,14 +56,8 @@ class SavedViewInfo:
     color: t.Optional[str] = None
 
 
-@gql.input
-class ColorSchemeInput:
-    color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[JSONArray] = None
-
-
 @gql.type
-class Mutation:
+class Mutation(SetColorScheme):
     @gql.mutation
     async def set_dataset(
         self,
@@ -91,6 +78,18 @@ class Mutation:
             None, state.dataset, state.config
         )
         await dispatch_event(subscription, StateUpdate(state=state))
+        return True
+
+    @gql.mutation
+    async def set_group_slice(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        slice: str,
+    ) -> bool:
+        state = get_state()
+        state.dataset.group_slice = slice
+        await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
         return True
 
     @gql.mutation
@@ -135,10 +134,9 @@ class Mutation:
         session: t.Optional[str],
         selected: t.List[str],
     ) -> bool:
-        state = get_state()
-
-        state.selected = selected
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(
+            subscription, fose.SelectSamples(sample_ids=selected)
+        )
         return True
 
     @gql.mutation
@@ -151,7 +149,9 @@ class Mutation:
         state = get_state()
 
         state.selected_labels = [asdict(l) for l in selected_labels]
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(
+            subscription, fose.SelectLabels(labels=selected_labels)
+        )
         return True
 
     @gql.mutation
@@ -160,16 +160,27 @@ class Mutation:
         subscription: str,
         session: t.Optional[str],
         dataset_name: str,
-        view: t.Optional[BSONArray],
-        saved_view_slug: t.Optional[str],
-        form: t.Optional[StateForm],
-        info: Info,
-    ) -> ViewResponse:
+        view: t.Optional[BSONArray] = None,
+        saved_view_slug: t.Optional[str] = None,
+        form: t.Optional[StateForm] = None,
+    ) -> t.Union[BSONArray, None]:
         state = get_state()
         state.selected = []
         state.selected_labels = []
+        if not dataset_name:
+            state.dataset = None
+            state.view = None
+            state.spaces = default_spaces
+            await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None
+        ds = fod.load_dataset(dataset_name)
+        state.dataset = ds
+        if saved_view_slug is not None:
+            try:
+                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
+            except:
+                pass
 
         # Load saved views
         if saved_view_slug is not None:
@@ -200,6 +211,7 @@ class Mutation:
         state.view = result_view
         state.view_name = result_view.name
         state.saved_view_slug = slug
+
         await dispatch_event(
             subscription,
             StateUpdate(state=state),
@@ -209,45 +221,12 @@ class Mutation:
         if state and state.view:
             final_view = state.view._serialize()
 
-        dataset = await Dataset.resolver(
-            name=dataset_name,
-            view=final_view,
-            saved_view_slug=slug,
-            info=info,
-        )
-        return ViewResponse(
-            dataset=dataset,
-            view=final_view,
-        )
+        return final_view
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
         etas.write_json({"submitted": True}, foc.TEAMS_PATH)
         return True
-
-    @gql.mutation
-    async def set_group_slice(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        view: BSONArray,
-        slice: str,
-        info: Info,
-        view_name: t.Optional[str] = None,
-    ) -> Dataset:
-        state = get_state()
-        state.dataset.group_slice = slice
-        await dispatch_event(subscription, StateUpdate(state=state))
-        return await Dataset.resolver(
-            name=state.dataset.name,
-            view=view,
-            saved_view_slug=fou.to_slug(view_name)
-            if view_name
-            else fou.to_slug(state.view.name)
-            if state.view is not None and state.view.name
-            else None,
-            info=info,
-        )
 
     @gql.mutation
     async def create_saved_view(
@@ -404,35 +383,7 @@ class Mutation:
     ) -> bool:
         state = get_state()
         state.spaces = Space.from_dict(spaces)
-        await dispatch_event(subscription, StateUpdate(state=state))
-        return True
-
-    @gql.mutation
-    async def set_color_scheme(
-        self,
-        subscription: str,
-        session: t.Optional[str],
-        dataset: str,
-        stages: BSONArray,
-        color_scheme: ColorSchemeInput,
-        save_to_app: bool,
-    ) -> bool:
-        state = get_state()
-        view = get_view(dataset, stages=stages)
-        state.color_scheme = foo.ColorScheme(
-            color_pool=color_scheme.color_pool,
-            fields=color_scheme.fields,
-        )
-
-        if save_to_app:
-            view._dataset.app_config.color_scheme = foo.ColorScheme(
-                color_pool=color_scheme.color_pool,
-                fields=color_scheme.fields,
-            )
-            view._dataset.save()
-            state.view = view
-
-        await dispatch_event(subscription, StateUpdate(state=state))
+        await dispatch_event(subscription, fose.SetSpaces(spaces=spaces))
         return True
 
     @gql.mutation
@@ -452,8 +403,7 @@ class Mutation:
         except Exception as e:
             try:
                 view = dataset.select_fields(meta_filter)
-            except Exception as e:
-                print("failed to search select fields", e)
+            except Exception:
                 view = dataset
 
         res = []
@@ -465,7 +415,6 @@ class Mutation:
                     for st in stage.get_selected_fields(view, frames=is_video)
                 ]
         except Exception as e:
-            print("failed to get_selected_fields", e)
             res = []
 
         return res

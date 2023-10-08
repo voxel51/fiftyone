@@ -1,11 +1,11 @@
-import React from "react";
-import { useRecoilState } from "recoil";
 import * as fos from "@fiftyone/state";
-import { Button } from "../../utils";
 import { Autorenew } from "@mui/icons-material";
+import React from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import { Button } from "../../utils";
 
 const ShuffleColor: React.FC = () => {
-  const [colorSeed, setColorSeed] = useRecoilState(fos.colorSeed);
+  const setColorSeed = useSetRecoilState(fos.colorSeed);
   return (
     <>
       <Button
@@ -21,7 +21,8 @@ const ShuffleColor: React.FC = () => {
           </span>
         }
         title={"Shuffle field colors"}
-        onClick={() => setColorSeed(colorSeed + 1)}
+        onClick={() => setColorSeed((s) => s + 1)}
+        data-cy="shuffle-colors"
         style={{
           margin: "0.25rem -0.5rem",
           height: "2rem",

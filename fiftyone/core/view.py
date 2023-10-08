@@ -168,13 +168,6 @@ class DatasetView(foc.SampleCollection):
             if isinstance(stage, fost.GroupBy):
                 break
 
-        parent = self.__class__(
-            self.__dataset,
-            _stages=deepcopy(self.__stages),
-            _media_type=self.__media_type,
-            _group_slice=self.__group_slice,
-            _name=self.__name,
-        )
         return DatasetView._build(
             self._dataset, self._serialize()[:idx]
         ).media_type

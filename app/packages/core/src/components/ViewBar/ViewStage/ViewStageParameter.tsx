@@ -117,7 +117,7 @@ const Submit = React.memo(({ send }) => {
   const props = useSpring({
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
   });
   return (
@@ -174,7 +174,7 @@ const ObjectEditor = ({
         : theme.text.tertiary,
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
   }));
 
@@ -354,7 +354,7 @@ const ViewStageParameter = React.memo(({ parameterRef, barRef, stageRef }) => {
     borderRightWidth: 0,
     opacity: 1,
     from: {
-      opacity: 0,
+      opacity: 1,
     },
   });
 

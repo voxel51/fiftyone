@@ -14,7 +14,7 @@ import {
   IconButton,
   CircularProgress,
 } from "@mui/material";
-import { useFileExplorer } from "./state";
+import { useAvailableFileSystems, useFileExplorer } from "./state";
 import Close from "@mui/icons-material/Close";
 import { Folder, FolderOff } from "@mui/icons-material";
 
@@ -29,11 +29,10 @@ export default function FileExplorer({
   label,
   description,
   chooseButtonLabel,
-  buttonLabel,
   chooseMode,
   onChoose,
-  fsInfo,
 }) {
+  const fsInfo = useAvailableFileSystems();
   const {
     abort,
     clear,

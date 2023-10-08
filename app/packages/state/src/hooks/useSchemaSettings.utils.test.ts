@@ -1,13 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  disabledField,
-  getPath,
-  getSubPaths,
-  skipField,
-} from "./useSchemaSettings.utils";
 import {
   ARRAY_FIELD,
   CLASSIFICATIONS_FIELD,
+  CLASSIFICATION_DISABLED_SUB_PATHS,
   CLASSIFICATION_FIELD,
   DETECTIONS_FIELD,
   DETECTION_DISABLED_SUB_PATHS,
@@ -15,33 +9,39 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   FLOAT_FIELD,
   FRAME_NUMBER_FIELD,
+  FRAME_SUPPORT_FIELD,
+  GEOLOCATIONS_DISABLED_SUB_PATHS,
+  GEOLOCATION_DISABLED_SUB_PATHS,
   GEO_LOCATIONS_FIELD,
   GEO_LOCATION_FIELD,
+  HEATMAP_DISABLED_SUB_PATHS,
   HEATMAP_FIELD,
   INT_FIELD,
-  POLYLINE_DISABLED_SUB_PATHS,
+  KEYPOINTS_FIELD,
+  KEYPOINT_DISABLED_SUB_PATHS,
   KEYPOINT_FIELD,
   LIST_FIELD,
   OBJECT_ID_FIELD,
   POLYLINES_FIELD,
+  POLYLINE_DISABLED_SUB_PATHS,
   POLYLINE_FIELD,
+  REGRESSION_DISABLED_SUB_PATHS,
   REGRESSION_FIELD,
+  SEGMENTATION_DISABLED_SUB_PATHS,
   SEGMENTATION_FIELD,
   STRING_FIELD,
   TEMPORAL_DETECTIONS_FIELD,
-  TEMPORAL_DETECTION_FIELD,
-  CLASSIFICATION_DISABLED_SUB_PATHS,
-  REGRESSION_DISABLED_SUB_PATHS,
-  KEYPOINT_DISABLED_SUB_PATHS,
-  SEGMENTATION_DISABLED_SUB_PATHS,
-  HEATMAP_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
-  GEOLOCATION_DISABLED_SUB_PATHS,
-  GEOLOCATIONS_DISABLED_SUB_PATHS,
-  KEYPOINTS_FIELD,
+  TEMPORAL_DETECTION_FIELD,
   VECTOR_FIELD,
-  FRAME_SUPPORT_FIELD,
 } from "@fiftyone/utilities";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  disabledField,
+  getPath,
+  getSubPaths,
+  skipField,
+} from "./useSchemaSettings.utils";
 
 const BASE_FIELD = {
   path: null,
@@ -171,6 +171,22 @@ export const FIELDS = {
     path: "detection",
     ftype: DETECTION_FIELD,
   },
+  GROUND_TRUTH_FIELD: {
+    ...BASE_FIELD,
+    path: "ground_truth",
+    ftype: EMBEDDED_DOCUMENT_FIELD,
+    embeddedDocType: DETECTIONS_FIELD,
+  },
+  GROUND_TRUTH_DETECTIONS_FIELD: {
+    ...BASE_FIELD,
+    path: "ground_truth.detections",
+    ftype: LIST_FIELD,
+  },
+  GROUND_TRUTH_DETECTIONS_SKIP_FIELD: {
+    ...BASE_FIELD,
+    path: "ground_truth.annotator",
+    ftype: STRING_FIELD,
+  },
   DETECTIONS_FIELD: {
     ...BASE_FIELD,
     path: "detections",
@@ -193,13 +209,14 @@ export const FIELDS = {
     ...BASE_FIELD,
     path: "detections",
     ftype: LIST_FIELD,
-    embeddedDocType: DETECTIONS_FIELD,
+    embeddedDocType: DETECTION_FIELD,
   },
   // not a skip path
   DETECTIONS_NO_SKIP_FIELD: {
     ...BASE_FIELD,
     path: "detections.no_skip",
     ftype: LIST_FIELD,
+    subfield: DETECTION_FIELD,
   },
   CLASSIFICATION_FIELD: {
     ...BASE_FIELD,
@@ -333,10 +350,7 @@ const getEnabledNestedLabelFields = (prefix: string, paths: string[]) => {
   return res;
 };
 
-describe(`
-  should skip '.index' and '.bounding_box' subpaths if
-  the field's parent's embeddedDocumentType is Detections
-`, () => {
+describe("Skip field tests", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -351,8 +365,17 @@ describe(`
     );
   });
 
-  it("Do not skip regular path under Detections embeddedDocument type", () => {
+  it("Do not skip label fields under label list types (ex: Detections)", () => {
     expect(skipField(FIELDS.DETECTIONS_NO_SKIP_FIELD.path, SCHEMA)).toBe(false);
+  });
+
+  it("skip fields in an embedded document when they don't match embeddedDocType in parents.", () => {
+    expect(skipField(FIELDS.GROUND_TRUTH_DETECTIONS_FIELD.path, SCHEMA)).toBe(
+      false
+    );
+    expect(
+      skipField(FIELDS.GROUND_TRUTH_DETECTIONS_SKIP_FIELD.path, SCHEMA)
+    ).toBe(true);
   });
 
   it("A skipped path 'index' prefixed with 'frames.' should still be skipped", () => {

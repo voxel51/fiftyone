@@ -6,7 +6,7 @@ import ImageIcon from "@mui/icons-material/Image";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { IconButton } from "@mui/material";
-import React from "react";
+import React, { ForwardedRef } from "react";
 import styled from "styled-components";
 
 type ItemProp = {
@@ -15,7 +15,7 @@ type ItemProp = {
   tooltip?: string;
   color?: string; // icon color
   highlightedBGColor?: string; // background color onHover
-  onClick: () => void;
+  onClick: React.MouseEventHandler;
 };
 
 const Text = styled.div`

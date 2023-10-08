@@ -22,8 +22,8 @@ const test = base.extend<{
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  gridActionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
+  gridActionsRow: async ({ page, eventUtils }, use) => {
+    await use(new GridActionsRowPom(page, eventUtils));
   },
 });
 

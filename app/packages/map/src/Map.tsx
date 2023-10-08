@@ -68,7 +68,7 @@ const createSourceData = (samples: {
   };
 };
 
-const Plot: React.FC<{}> = () => {
+const Panel: React.FC<{}> = () => {
   const theme = foc.useTheme();
   const dataset = useRecoilValue(fos.dataset);
   const view = useRecoilValue(fos.view);
@@ -340,4 +340,4 @@ const Plot: React.FC<{}> = () => {
   );
 };
 
-export default Plot;
+export default Panel;
