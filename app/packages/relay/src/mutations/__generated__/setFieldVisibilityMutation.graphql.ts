@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5fb518ae7a6edd4bf1da287a08eaae16>>
+ * @generated SignedSource<<0251fb92ac6c3f393c2bf3f342e705f1>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -10,6 +10,7 @@
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type FieldVisibilityInput = {
+  excludedFields: ReadonlyArray<string | null>;
   selectedFields: ReadonlyArray<string | null>;
 };
 export type setFieldVisibilityMutation$variables = {

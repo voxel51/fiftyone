@@ -68,6 +68,7 @@ const SchemaSettings = () => {
     enabledSelectedPaths,
     setShowNestedFields,
     mergedSchema,
+    setFieldVisibility,
   } = fos.useSchemaSettings();
   const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
 
@@ -80,12 +81,6 @@ const SchemaSettings = () => {
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
-
-  // with session
-  const [fieldVisibility, setFieldVisibility] = useRecoilState(
-    fos.fieldVisibilityState
-  );
-  console.log("useSchemaSettings:fieldVisibility", fieldVisibility);
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
 
@@ -257,8 +252,15 @@ const SchemaSettings = () => {
                 }
 
                 try {
+                  console.log("selectedPaths", enabledSelectedPaths);
+                  console.log("excludedPaths", excludedPaths);
                   setFieldVisibility({
-                    selectedFields: enabledSelectedPaths,
+                    selectedFields: Array.from(
+                      enabledSelectedPaths[datasetName] || new Set()
+                    ),
+                    excludedFields: Array.from(
+                      excludedPaths[datasetName] || new Set()
+                    ),
                   });
                   setSelectedFieldsStage(stage);
                 } catch (e) {

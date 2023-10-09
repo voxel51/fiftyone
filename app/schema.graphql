@@ -136,6 +136,7 @@ input ColorSchemeInput {
 
 input FieldVisibilityInput {
   selectedFields: [String]!
+  excludedFields: [String]!
 }
 
 input Count {

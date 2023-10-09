@@ -29,6 +29,7 @@ export const processState = (
   setter: ReturnType<typeof useSessionSetter>,
   state: any
 ) => {
+  console.log("processState", state.field_visibility);
   setter(
     "colorScheme",
     ensureColorScheme(state.color_scheme as ColorSchemeInput, {
@@ -45,4 +46,6 @@ export const processState = (
     toCamelCase(state.selected_labels) as State.SelectedLabel[]
   );
   state.spaces && setter("sessionSpaces", state.spaces);
+  state.field_visibility &&
+    setter("fieldVisibilityState", state.field_visibility);
 };

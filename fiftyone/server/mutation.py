@@ -59,6 +59,7 @@ class SavedViewInfo:
 @gql.input
 class FieldVisibilityInput:
     selected_fields: t.List[str]
+    excluded_fields: t.List[str]
 
 
 @gql.type
@@ -73,9 +74,16 @@ class Mutation:
         state = get_state()
         state.field_visibility = input
         print("\n\nmutation:setFieldVisibility", input)
+        print(
+            fose.SetFieldVisibility(
+                input.selected_fields, input.excluded_fields
+            ),
+        )
         await dispatch_event(
             subscription,
-            fose.SetFieldVisibility(input),
+            fose.SetFieldVisibility(
+                input.selected_fields, input.excluded_fields
+            ),
         )
         return True
 

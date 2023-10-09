@@ -5,7 +5,7 @@ import {
 import { commitMutation } from "relay-runtime";
 import { RegisteredWriter } from "./registerWriter";
 
-const onSetFieldVisibility: RegisteredWriter<"fieldVisibility"> =
+const onSetFieldVisibility: RegisteredWriter<"fieldVisibilityState"> =
   ({ environment, subscription }) =>
   (input) => {
     console.log("input", input);

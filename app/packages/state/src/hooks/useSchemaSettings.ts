@@ -36,7 +36,7 @@ export default function useSchemaSettings() {
   const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
 
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
-  const datasetName = useRecoilValue(fos.datasetName);
+  const datasetName = useRecoilValue(fos.datasetName) as string;
 
   const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
 
@@ -78,6 +78,11 @@ export default function useSchemaSettings() {
     fos.lastAppliedPathsState
   );
 
+  const [fieldVisibility, setFieldVisibility] = useRecoilState(
+    fos.fieldVisibilityState
+  );
+  console.log("useSchemaSettings fieldVisibility", fieldVisibility);
+
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
   const isClipsView = useRecoilValue(fos.isClipsView);
@@ -118,6 +123,7 @@ export default function useSchemaSettings() {
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
 
+  console.log("place to set selected paths to session selected fields");
   const selectedPathState = fos.selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
 
@@ -152,7 +158,11 @@ export default function useSchemaSettings() {
     selectedPaths,
   ]);
 
-  const excludedPathsState = fos.excludedPathsState({});
+  const { excluded_fields: excludedFields } = fieldVisibility;
+  console.log("place to set exlcuded paths to session excluded fields");
+  const excludedPathsState = fos.excludedPathsState({
+    [datasetName]: new Set(excludedFields || []),
+  });
   const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
 
   const mergedSchema = useMemo(
@@ -441,6 +451,8 @@ export default function useSchemaSettings() {
     isPatchesView,
     isClipsView,
     isVideo,
+    isGroupDataset,
+    isFrameView,
   ]);
 
   const setAllFieldsCheckedWrapper = useCallback(
@@ -509,5 +521,6 @@ export default function useSchemaSettings() {
     mergedSchema,
     resetAttributeFilters,
     isFieldVisibilityActive,
+    setFieldVisibility,
   };
 }

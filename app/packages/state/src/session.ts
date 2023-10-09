@@ -26,7 +26,7 @@ export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
   colorScheme: ColorSchemeInput;
-  fieldVisibility: FieldVisibilityInput;
+  fieldVisibilityState: FieldVisibilityInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
@@ -50,8 +50,9 @@ export const SESSION_DEFAULT: Session = {
     opacity: 0.7,
     showSkeletons: true,
   },
-  fieldVisibility: {
+  fieldVisibilityState: {
     selectedFields: [],
+    excludedFields: [],
   },
 };
 

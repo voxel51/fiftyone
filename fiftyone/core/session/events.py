@@ -151,6 +151,7 @@ class SetFieldVisibility(Event):
     """Field visibility event"""
 
     selected_fields: t.List[str]
+    excluded_fields: t.List[str]
 
 
 @dataclass

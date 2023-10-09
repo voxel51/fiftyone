@@ -179,9 +179,21 @@ export const excludedPathsState = atomFamily({
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
+        const dataset = await getPromise(fos.dataset);
+
+        // from the session
+        const fieldVisibility = await getPromise(fos.fieldVisibilityState);
+        console.log("excludedPathsState fieldVisibility", fieldVisibility);
+        const { excludedFields } = fieldVisibility;
+        if (excludedFields.length) {
+          console.log("excludedPathsState load from session instead");
+          setSelf({ [dataset.name]: new Set(excludedFields) });
+          return;
+        }
+
         const viewSchema = await getPromise(fos.viewSchemaState);
         const fieldSchema = await getPromise(fos.fieldSchemaState);
-        const dataset = await getPromise(fos.dataset);
+
         const showNestedField = await getPromise(fos.showNestedFieldsState);
         const searchResults = await getPromise(fos.schemaSearchResults);
         const isFrameView = await getPromise(fos.isFramesView);
@@ -298,9 +310,10 @@ export const selectedFieldsStageState = sessionAtom({
 });
 
 export const fieldVisibilityState = sessionAtom({
-  key: "fieldVisibility",
+  key: "fieldVisibilityState",
   default: {
     selectedFields: [],
+    excludedFields: [],
   },
 });
 

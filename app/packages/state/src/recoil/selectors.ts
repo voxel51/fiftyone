@@ -441,6 +441,10 @@ export const extendedStages = selector({
       kwargs: string[];
     };
 
+    if (selectFieldsStage) {
+      console.log("ya ya", selectFieldsStage["kwargs"]);
+    }
+
     return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity

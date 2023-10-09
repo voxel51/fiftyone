@@ -138,6 +138,7 @@ const dispatchSideEffect = ({
       }
     );
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+    // TODO: field visibility session
   }
 
   commitMutation<setViewMutation>(environment, {

@@ -59,6 +59,7 @@ class StateDescription(etas.Serializable):
         color_scheme=None,
         view=None,
         view_name=None,
+        field_visibility=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
@@ -73,6 +74,8 @@ class StateDescription(etas.Serializable):
         )
         self.spaces = spaces
         self.color_scheme = color_scheme or build_color_scheme()
+        print("python state description of field visibility")
+        self.field_visibility = field_visibility
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -118,6 +121,8 @@ class StateDescription(etas.Serializable):
 
             if self.config.colorscale:
                 d["colorscale"] = self.config.get_colormap()
+
+            print("\nstate serialization", self.field_visibility)
 
             if isinstance(self.spaces, Space):
                 d["spaces"] = self.spaces.to_json()

@@ -13,6 +13,6 @@ REGISTERED_WRITERS["selectedLabels"] = onSelectLabels;
 REGISTERED_WRITERS["selectedSamples"] = onSelectSamples;
 REGISTERED_WRITERS["selectedFields"] = onSetSelectedFields;
 REGISTERED_WRITERS["sessionSpaces"] = onSetSessionSpaces;
-REGISTERED_WRITERS["fieldVisibility"] = onSetFieldVisibility;
+REGISTERED_WRITERS["fieldVisibilityState"] = onSetFieldVisibility;
 
 export { default } from "./useWriters";

@@ -12,6 +12,7 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
   return useCallback(
     (payload: any) => {
       processState(setter, payload.state);
+      console.log("useStateUpdate", payload.state);
 
       const searchParams = new URLSearchParams(router.history.location.search);
 

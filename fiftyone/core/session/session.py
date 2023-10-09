@@ -56,6 +56,7 @@ from fiftyone.core.session.events import (
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
+    SetFieldVisibility,
 )
 import fiftyone.core.session.notebooks as fosn
 
@@ -1156,6 +1157,15 @@ def _attach_listeners(session: "Session"):
     ] = lambda _: _on_refresh(session, None)
     session._client.add_event_listener(
         "set_dataset_color_scheme", on_set_dataset_color_scheme
+    )
+
+    on_set_field_visibility: t.Callable[
+        [SetFieldVisibility], None
+    ] = lambda event: setattr(
+        session._state, "field_visibility", event.field_visibility
+    )
+    session._client.add_event_listener(
+        "set_field_visibility", on_set_field_visibility
     )
 
     on_set_group_slice: t.Callable[
