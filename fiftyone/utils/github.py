@@ -38,9 +38,9 @@ class GitHubRepository(object):
 
     def __init__(self, repo):
         if etaw.is_url(repo):
-            params = self._parse_url(repo)
+            params = self.parse_url(repo)
         else:
-            params = self._parse_identifier(repo)
+            params = self.parse_identifier(repo)
 
         self._user = params.get("user")
         self._repo = params.get("repo")
@@ -84,8 +84,37 @@ class GitHubRepository(object):
         url = f"https://api.github.com/repos/{self.user}/{self.repo}"
         return self._get(url)
 
+    def get_file(self, path, outpath=None):
+        """Downloads the file at the given path.
+
+        Args:
+            path: the filepath in the repository
+            outpath (None): a path on disk to write the file
+
+        Returns:
+            the file bytes, if no ``outpath`` is provided
+        """
+        if self.ref:
+            ref = self.ref
+        else:
+            ref = self.get_repo_info()["default_branch"]
+
+        url = f"https://raw.githubusercontent.com/{self.user}/{self.repo}/{ref}/{path}"
+        content = self._get(url, json=False)
+
+        if outpath is not None:
+            etau.write_file(content, outpath)
+            return
+
+        return content
+
     def list_path_contents(self, path=None):
         """Returns the contents of the repo rooted at the given path.
+
+        .. note::
+
+            This method has a limit of 1,000 files.
+            `Documentation <https://docs.github.com/en/rest/repos/contents>`_.
 
         Args:
             path (None): an optional root path to start the search from
@@ -105,6 +134,11 @@ class GitHubRepository(object):
     def list_repo_contents(self, recursive=True):
         """Returns a flat list of the repository's contents.
 
+        .. note::
+
+            This method has a limit of 100,000 entries and 7MB response size.
+            `Documentation <https://docs.github.com/en/rest/git/trees>`_.
+
         Args:
             recursive (True): whether to recursively traverse subdirectories
 
@@ -116,7 +150,10 @@ class GitHubRepository(object):
         else:
             ref = self.get_repo_info()["default_branch"]
 
-        url = f"https://api.github.com/repos/{self.user}/{self.repo}/git/trees/{ref}?recursive={int(recursive)}"
+        url = f"https://api.github.com/repos/{self.user}/{self.repo}/git/trees/{ref}"
+        if recursive:
+            url += "?recursive=1"
+
         return self._get(url)["tree"]
 
     def download(self, outdir):
@@ -153,23 +190,45 @@ class GitHubRepository(object):
 
         return session
 
-    def _get(self, url):
-        session = self._get_session()
-        resp = session.get(url).json()
+    def _get(self, url, json=True):
+        try:
+            resp = self._get_session().get(url)
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code in (403, 404):
+                raise requests.exceptions.HTTPError(
+                    (
+                        "You can interact with private repositories and avoid "
+                        "rate limit errors by providing a personal access "
+                        "token via the 'GITHUB_TOKEN' environment variable"
+                    ),
+                    response=e.response,
+                )
+
+            raise
+
+        resp = resp.json() if json else resp.content
         if isinstance(resp, dict) and "message" in resp:
             error = resp["message"]
             raise ValueError(f"{error}: {self.identifier}")
 
         return resp
 
-    def _parse_url(self, url):
-        return re.search(
+    @staticmethod
+    def parse_url(url):
+        m = re.search(
             "github.com/(?P<user>[A-Za-z0-9_-]+)/((?P<repo>["
-            "A-Za-z0-9_-]+)((/.+?)?/(?P<ref>[A-Za-z0-9_-]+)?(?P<path>.*)?)?)",
-            url,
-        ).groupdict()
+            "A-Za-z0-9_-]+)((/.+?)?/(?P<ref>[A-Za-z0-9_-]+)?/(?P<path>.*)?)?)",
+            url.rstrip("/"),
+        )
 
-    def _parse_identifier(self, repo):
+        try:
+            return m.groupdict()
+        except:
+            raise ValueError(f"Invalid GitHub URL '{url}'")
+
+    @staticmethod
+    def parse_identifier(repo):
         params = repo.split("/")
         if len(params) < 2:
             raise ValueError(

@@ -1,8 +1,9 @@
 import React from "react";
-import { Autocomplete, TextField } from "@mui/material";
+import { Autocomplete, MenuItem, TextField } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
 import autoFocus from "../utils/auto-focus";
 import { getComponentProps } from "../utils";
+import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
 
 export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
@@ -24,7 +25,7 @@ export default function AutocompleteView(props) {
         options={choices.map((choice) => ({
           id: choice.value,
           label: choice.label || choice.value,
-          value: choice.value,
+          ...choice,
         }))}
         renderInput={(params) => (
           <TextField
@@ -44,6 +45,16 @@ export default function AutocompleteView(props) {
         }}
         isOptionEqualToValue={() => false} // allow duplicates
         multiple={multiple}
+        renderOption={(props, option) => {
+          return (
+            <MenuItem
+              {...props}
+              {...getComponentProps(props, "optionContainer")}
+            >
+              <ChoiceMenuItemBody {...option} {...props} />
+            </MenuItem>
+          );
+        }}
         {...getComponentProps(props, "autocomplete")}
       />
     </FieldWrapper>
