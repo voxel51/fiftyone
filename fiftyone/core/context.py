@@ -153,7 +153,7 @@ def get_url(
         from google.colab.output import eval_js
 
         _url = eval_js(f"google.colab.kernel.proxyPort({port})")
-        kwargs["polling"] = True
+        kwargs["polling"] = "true"
     elif _context == _DATABRICKS:
         _url = _get_databricks_proxy_url(port)
         kwargs["proxy"] = _get_databricks_proxy(port)
