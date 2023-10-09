@@ -1,4 +1,8 @@
-import { ColorSchemeInput, subscribe } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  subscribe,
+  FieldVisibilityInput,
+} from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { DefaultValue, RecoilState, atom, selector } from "recoil";
@@ -22,6 +26,7 @@ export interface Session {
   canEditCustomColors: boolean;
   canEditSavedViews: boolean;
   colorScheme: ColorSchemeInput;
+  fieldVisibility: FieldVisibilityInput;
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
@@ -44,6 +49,9 @@ export const SESSION_DEFAULT: Session = {
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,
+  },
+  fieldVisibility: {
+    selectedFields: [],
   },
 };
 

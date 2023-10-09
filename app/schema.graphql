@@ -134,6 +134,10 @@ input ColorSchemeInput {
   showSkeletons: Boolean = null
 }
 
+input FieldVisibilityInput {
+  selectedFields: [String]!
+}
+
 input Count {
   field: String!
 }
@@ -334,6 +338,11 @@ type MediaURL {
 }
 
 type Mutation {
+  setFieldVisibility(
+    subscription: String!
+    session: String
+    input: FieldVisibilityInput!
+  ): Boolean!
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!

@@ -297,6 +297,13 @@ export const selectedFieldsStageState = sessionAtom({
   default: null,
 });
 
+export const fieldVisibilityState = sessionAtom({
+  key: "fieldVisibility",
+  default: {
+    selectedFields: [],
+  },
+});
+
 export const isFieldVisibilityActive = selector({
   key: "isClearFieldVisibilityVisible",
   get: ({ get }) => {

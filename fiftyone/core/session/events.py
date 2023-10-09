@@ -34,6 +34,7 @@ EventType = t.Union[
     "SetGroupSlice",
     "SetSpaces",
     "StateUpdate",
+    "SetFieldVisibility",
 ]
 
 _camel_to_snake = re.compile(r"(?<!^)(?=[A-Z])")
@@ -143,6 +144,13 @@ class SelectSamples(Event):
     """Select samples event"""
 
     sample_ids: t.List[str]
+
+
+@dataclass
+class SetFieldVisibility(Event):
+    """Field visibility event"""
+
+    selected_fields: t.List[str]
 
 
 @dataclass

@@ -56,8 +56,29 @@ class SavedViewInfo:
     color: t.Optional[str] = None
 
 
+@gql.input
+class FieldVisibilityInput:
+    selected_fields: t.List[str]
+
+
 @gql.type
-class Mutation(SetColorScheme):
+class Mutation:
+    @gql.mutation
+    async def set_field_visibility(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        input: FieldVisibilityInput,
+    ) -> bool:
+        state = get_state()
+        state.field_visibility = input
+        print("\n\nmutation:setFieldVisibility", input)
+        await dispatch_event(
+            subscription,
+            fose.SetFieldVisibility(input),
+        )
+        return True
+
     @gql.mutation
     async def set_dataset(
         self,

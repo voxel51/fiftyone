@@ -120,9 +120,11 @@ export default function useSchemaSettings() {
 
   const selectedPathState = fos.selectedPathsState({});
   const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
+
   // disabled paths are filtered
   const enabledSelectedPaths = useMemo(() => {
-    const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
+    const datasetSelectedPaths =
+      selectedPaths[datasetName as string] || new Set();
 
     return datasetSelectedPaths?.size && combinedSchema
       ? [...datasetSelectedPaths]?.filter(

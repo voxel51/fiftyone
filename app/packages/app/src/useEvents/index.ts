@@ -4,6 +4,7 @@ import useRefresh from "./useRefresh";
 import useSelectLabels from "./useSelectLabels";
 import useSetSelectedSamples from "./useSelectSamples";
 import useSetColorScheme from "./useSetColorScheme";
+import useSetFieldVisibility from "./useSetFieldVisibility";
 import useSetGroupSlice from "./useSetGroupSlice";
 import useSetSpaces from "./useSetSpaces";
 import useStateUpdate from "./useStateUpdate";
@@ -16,5 +17,6 @@ registerEvent("setColorScheme", useSetColorScheme);
 registerEvent("sessionGroupSlice", useSetGroupSlice);
 registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
+registerEvent("setFieldVisibility", useSetFieldVisibility);
 
 export { default } from "./useEvents";
