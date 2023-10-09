@@ -52,4 +52,13 @@ test.describe("quickstart", () => {
 
     await grid.assert.isEntryCountTextEqualTo("33 groups of patches");
   });
+
+  test("selection bookmark", async ({ page, grid }) => {
+    await grid.toggleSelectFirstSample();
+    await grid.actionsRow.assert.hasFiltersBookmark();
+    const gridRefresh = grid.getWaitForGridRefreshPromise();
+    await grid.actionsRow.bookmarkFilters();
+    await gridRefresh;
+    await expect(page.getByTestId("entry-counts")).toHaveText("1 sample");
+  });
 });

@@ -27,7 +27,7 @@ export default () => {
       ) => {
         set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
-        reset(groupAtoms.nestedGroupIndex);
+        reset(groupAtoms.dynamicGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
         groupByFieldValue &&
           set(groupAtoms.groupByFieldValue, groupByFieldValue);

@@ -57,6 +57,14 @@ export class ModalGroupActionsPom {
       .nth(index)
       .click();
   }
+
+  async setDynamicGroupsNavigationMode(mode: "carousel" | "pagination") {
+    await this.modal.toggleDisplayOptionsButton.click();
+    const selector = this.modal.locator.getByTestId(
+      `set-dynamic-groups-mode-${mode}`
+    );
+    return selector.click();
+  }
 }
 
 class ModalGroupActionsAsserter {
@@ -65,5 +73,25 @@ class ModalGroupActionsAsserter {
   async assertGroupPinnedText(text: string) {
     const pinnedText = await this.groupActionsPom.getGroupPinnedText();
     expect(pinnedText).toBe(text);
+  }
+
+  async assertIsCarouselVisible() {
+    await expect(this.groupActionsPom.modal.carousel).toBeVisible();
+  }
+
+  async assertIsCarouselNotVisible() {
+    await expect(this.groupActionsPom.modal.carousel).toBeHidden();
+  }
+
+  async assertIsPaginationBarVisible() {
+    await expect(
+      this.groupActionsPom.dynamicGroupPagination.locator
+    ).toBeVisible();
+  }
+
+  async assertIsPaginationBarNotVisible() {
+    await expect(
+      this.groupActionsPom.dynamicGroupPagination.locator
+    ).toBeHidden();
   }
 }

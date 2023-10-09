@@ -3,8 +3,6 @@ import {
   clone,
   Field,
   getFetchFunction,
-  GQLError,
-  GraphQLError,
   Schema,
   StrictField,
 } from "@fiftyone/utilities";
@@ -150,7 +148,7 @@ async function fetchGraphQL(
   text: string | null | undefined,
   variables: object
 ): Promise<GraphQLResponse> {
-  const data = await getFetchFunction()<unknown, GraphQLResponse>(
+  return await getFetchFunction()<unknown, GraphQLResponse>(
     "POST",
     "/graphql",
     {
@@ -158,14 +156,6 @@ async function fetchGraphQL(
       variables,
     }
   );
-
-  if ("errors" in data && data.errors) {
-    throw new GraphQLError({
-      errors: data.errors as GQLError[],
-      variables,
-    });
-  }
-  return data;
 }
 
 const fetchRelay = async (params, variables) => {
