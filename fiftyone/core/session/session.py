@@ -1136,9 +1136,14 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    on_select_samples: t.Callable[
-        [SelectSamples], None
-    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    # on_select_samples: t.Callable[
+    #     [], None
+    # ] = lambda event: setattr(session._state, "selected", event.sample_ids)
+    # session._client.add_event_listener("select_samples", on_select_samples)
+
+    on_select_samples: t.Callable[[], None] = lambda event: setattr(
+        session._state, "selected", event.sample_ids
+    )
     session._client.add_event_listener("select_samples", on_select_samples)
 
     on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(

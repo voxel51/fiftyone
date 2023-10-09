@@ -198,6 +198,14 @@ export namespace State {
     labelId: string;
   }
 
+  export interface FieldVisibilityStage {
+    _cls: string;
+    kwargs: {
+      field_names: string[];
+      _allow_missing: boolean;
+    };
+  }
+
   export interface Description {
     dataset: string;
     selected: string[];

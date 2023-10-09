@@ -28,6 +28,7 @@ export interface Session {
   sessionSpaces: SpaceNodeJSON;
   selectedFields?: State.Stage;
   sessionGroupSlice?: string;
+  fieldVisibilityStage?: State.FieldVisibilityStage;
 }
 
 export const SESSION_DEFAULT: Session = {
@@ -45,6 +46,7 @@ export const SESSION_DEFAULT: Session = {
     opacity: 0.7,
     showSkeletons: true,
   },
+  fieldVisibilityStage: undefined,
 };
 
 type SetterKeys = keyof Omit<

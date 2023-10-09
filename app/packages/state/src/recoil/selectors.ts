@@ -8,7 +8,11 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import { selectedFieldsStageState } from "@fiftyone/state";
+import {
+  fieldVisibilityStage,
+  fieldVisibilityStage,
+  selectedFieldsStageState,
+} from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -438,18 +442,39 @@ export const extendedStages = selector({
     const similarity = get(atoms.similarityParameters);
     const selectFieldsStage = get(selectedFieldsStageState) as {
       _cls: string;
-      kwargs: string[];
+      kwargs: {};
     };
 
-    return {
+    const fvStage = get(fieldVisibilityStage);
+    const finalFieldVisibilityStage = fvStage
+      ? {
+          [fvStage["cls"]]: {
+            field_names: fvStage["kwargs"]["field_names"],
+            _allow_missing: fvStage["kwargs"]["allow_missing"],
+          },
+        }
+      : {};
+    console.log(
+      "extendedStages:fieldVisibilityStage",
+      fvStage,
+      "\n",
+      finalFieldVisibilityStage
+    );
+
+    console.log("finalFieldVisibilityStage", finalFieldVisibilityStage);
+
+    const res = {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
-      ...(selectFieldsStage
-        ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
-        : {}),
+      // ...(selectFieldsStage
+      //   ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
+      //   : {}),
+      ...(finalFieldVisibilityStage ? finalFieldVisibilityStage : {}),
     };
+    console.log("extendedStages", res);
+    return res;
   },
 });
 

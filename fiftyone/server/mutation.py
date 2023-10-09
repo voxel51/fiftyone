@@ -50,6 +50,18 @@ class StateForm:
 
 
 @gql.input
+class FieldVisibilityStageInputKwargs:
+    field_names: t.List[str]
+    allow_missing: bool
+
+
+@gql.input
+class FieldVisibilityStageInput:
+    cls: str
+    kwargs: FieldVisibilityStageInputKwargs
+
+
+@gql.input
 class SavedViewInfo:
     name: t.Optional[str] = None
     description: t.Optional[str] = None
@@ -58,6 +70,22 @@ class SavedViewInfo:
 
 @gql.type
 class Mutation(SetColorScheme):
+    @gql.mutation
+    async def set_field_visibility_stage(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        input: FieldVisibilityStageInput,
+    ) -> bool:
+        state = get_state()
+        state.field_visibility_stage = input
+        print("\n\nmutation:set_field_visibility_stage", input)
+        await dispatch_event(
+            subscription,
+            fose.SetFieldVisibilityStage(input.cls, input.kwargs),
+        )
+        return True
+
     @gql.mutation
     async def set_dataset(
         self,

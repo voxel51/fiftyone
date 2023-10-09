@@ -137,6 +137,7 @@ def get_view(
         view = _project_pagination_paths(view)
 
     if filters or extended_stages or pagination_data:
+        print("extendedStages", extended_stages)
         view = get_extended_view(
             view,
             filters,

@@ -8,6 +8,7 @@ import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
+import { useRecoilState } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -79,6 +80,10 @@ const SchemaSettings = () => {
 
   const { setViewToFields: setSelectedFieldsStage } =
     fos.useSetSelectedFieldsStage();
+  const [fieldVisibilityState, setFieldVisibilityStage] = useRecoilState(
+    fos.fieldVisibilityStage
+  );
+  console.log("fieldVisibilityState", fieldVisibilityState);
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
 
@@ -250,7 +255,15 @@ const SchemaSettings = () => {
                 }
 
                 try {
+                  console.log("stage", stage);
                   setSelectedFieldsStage(stage);
+                  setFieldVisibilityStage({
+                    cls: stage["_cls"],
+                    kwargs: {
+                      field_names: stage["kwargs"]["field_names"],
+                      _allow_missing: true,
+                    },
+                  });
                 } catch (e) {
                   console.error("error setting field visibility", e);
                 } finally {
