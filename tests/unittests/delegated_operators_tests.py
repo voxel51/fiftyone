@@ -380,13 +380,19 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         with patch.object(
             DelegatedOperationService, "set_progress"
         ) as set_progress:
-            self.svc.execute_operation(operation=doc)
+            self.svc.execute_operation(
+                operation=doc, run_link="http://run.info"
+            )
             self.assertEqual(set_progress.call_count, 10)
             for x in range(10):
                 call = set_progress.call_args_list[x]
                 self.assertEqual(call.args[0], doc.id)
                 self.assertEqual(call.args[1].progress, x / 10)
                 self.assertEqual(call.args[1].label, f"progress {x}")
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertEqual(doc.run_link, "http://run.info")
 
     @patch(
         "fiftyone.core.dataset.load_dataset",

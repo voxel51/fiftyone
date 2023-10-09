@@ -302,7 +302,15 @@ class DelegatedOperationService(object):
         """
         return self._repo.count(filters=filters, search=search)
 
-    def execute_operation(self, operation, log=False):
+    def execute_operation(self, operation, log=False, run_link=None):
+        """Executes the given delegated operation.
+
+        Args:
+            operation: the :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+            log (False): the optional boolean flag to log the execution of the
+                delegated operations
+            run_link (None): the optional run link to orchestrator specific run information
+        """
         try:
             if log:
                 logger.info(
@@ -311,7 +319,7 @@ class DelegatedOperationService(object):
                     operation.operator,
                 )
             execution_result = asyncio.run(
-                self._execute_operator(operation, log)
+                self._execute_operator(operation, log, run_link=run_link)
             )
             self.set_completed(doc_id=operation.id, result=execution_result)
             if log:
@@ -324,7 +332,7 @@ class DelegatedOperationService(object):
                     "Operation %s failed\n%s", operation.id, result.error
                 )
 
-    async def _execute_operator(self, doc, log=False):
+    async def _execute_operator(self, doc, log=False, run_link=None):
         operator_uri = doc.operator
         context = doc.context
         context.request_params["run_doc"] = doc.id
@@ -346,7 +354,7 @@ class DelegatedOperationService(object):
 
             if log:
                 logger.info("Running operator %s", operator_uri)
-            self.set_running(doc_id=doc.id)
+            self.set_running(doc_id=doc.id, run_link=run_link)
 
             raw_result = await (
                 operator.execute(ctx)
