@@ -142,6 +142,7 @@ const ColorModal = () => {
                   <Display className={`${scrollable} ${scrollableSm}`}>
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
+                    {activeEntry === ACTIVE_FIELD._label_tags && <LabelTag />}
                     {typeof activeEntry === "object" && activeEntry?.path && (
                       <FieldSetting
                         key={activeEntry.path}

@@ -4,7 +4,6 @@ import * as fos from "@fiftyone/state";
 import {
   FLOAT_FIELD,
   NOT_VISIBLE_LIST,
-  SEGMENTATION,
   VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
@@ -95,6 +94,7 @@ const FieldSetting = ({ path }: { path: string }) => {
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(setting?.fieldColor);
   const [colors, setColors] = useState(colorPool || []);
+
   const state = useMemo(
     () => ({
       useLabelColors: Boolean(
@@ -179,13 +179,11 @@ const FieldSetting = ({ path }: { path: string }) => {
             name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting(
-                v
-                  ? {
-                      fieldColor: colorMap(path),
-                    }
-                  : undefined
-              );
+              setSetting({
+                fieldColor: v ? colorMap(path) : undefined,
+                valueColors: setting?.valueColors,
+                colorByAttribute: setting?.colorByAttribute,
+              });
               setInput(colorMap(path));
             }}
           />
