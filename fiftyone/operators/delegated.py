@@ -49,20 +49,21 @@ class DelegatedOperationService(object):
             context=context,
         )
 
-    def set_running(self, doc_id):
+    def set_running(self, doc_id, run_link: str = None):
         """Sets the given delegated operation to running state.
 
         Args:
             doc_id: the ID of the delegated operation
+            run_link (None): the optional run link to orchestrator specific run information
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.RUNNING
+            _id=doc_id, run_state=ExecutionRunState.RUNNING, run_link=run_link
         )
 
-    def set_completed(self, doc_id, result=None):
+    def set_completed(self, doc_id, result=None, run_link: str = None):
         """Sets the given delegated operation to completed state.
 
         Args:
@@ -70,15 +71,19 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
+            run_link (None): the optional run link to orchestrator specific run information
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.COMPLETED, result=result
+            _id=doc_id,
+            run_state=ExecutionRunState.COMPLETED,
+            result=result,
+            run_link=run_link,
         )
 
-    def set_failed(self, doc_id, result=None):
+    def set_failed(self, doc_id, result=None, run_link: str = None):
         """Sets the given delegated operation to failed state.
 
         Args:
@@ -86,12 +91,16 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
+            run_link (None): the optional run link to orchestrator specific run information
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_run_state(
-            _id=doc_id, run_state=ExecutionRunState.FAILED, result=result
+            _id=doc_id,
+            run_state=ExecutionRunState.FAILED,
+            result=result,
+            run_link=run_link,
         )
 
     def set_pinned(self, doc_id, pinned=True):
