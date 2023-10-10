@@ -10,7 +10,7 @@ registerComponent({
   name: "Map",
   label: "Map",
   component: Map,
-  type: PluginComponentType.Plot,
+  type: PluginComponentType.Panel,
   activator: hasGeoField,
   Icon: MapIcon,
   panelOptions: {

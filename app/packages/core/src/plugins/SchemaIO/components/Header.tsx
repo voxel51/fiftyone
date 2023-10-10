@@ -1,6 +1,7 @@
 import { Box, Stack, StackProps, Typography } from "@mui/material";
 import React from "react";
 import { ErrorView, HelpTooltip } from ".";
+import { getComponentProps } from "../utils";
 
 export default function Header(props: HeaderProps) {
   const {
@@ -15,7 +16,7 @@ export default function Header(props: HeaderProps) {
     omitCaption = false,
     omitErrors = false,
     errors,
-    componentsProps = {},
+    componentsProps,
   } = props;
 
   const labelVariantMap = {
@@ -26,15 +27,7 @@ export default function Header(props: HeaderProps) {
 
   if (!label && !description && (!caption || omitCaption)) return null;
 
-  const {
-    container = {},
-    headingsContainer = {},
-    actionsContainer = {},
-    labelContainer = {},
-    label: labelProps = {},
-    description: descriptionProps = {},
-    caption: captionProps = {},
-  } = componentsProps;
+  const viewProps = { schema: { view: { componentsProps } } };
 
   return (
     <Stack
@@ -53,22 +46,22 @@ export default function Header(props: HeaderProps) {
             }
           : {}),
       }}
-      {...container}
+      {...getComponentProps(viewProps, "container")}
     >
-      <Box {...headingsContainer}>
-        <Stack {...labelContainer}>
+      <Box {...getComponentProps(viewProps, "headingsContainer")}>
+        <Stack {...getComponentProps(viewProps, "labelContainer")}>
           <Typography
             variant={labelVariantMap[variant]}
             color="text.primary"
             sx={{ display: "flex", alignItems: "center" }}
-            {...labelProps}
+            {...getComponentProps(viewProps, "label")}
           >
             {label}
             {descriptionView === "tooltip" && (
               <HelpTooltip
                 title={description}
                 sx={{ ml: 1 }}
-                {...descriptionProps}
+                {...getComponentProps(viewProps, "description")}
               />
             )}
           </Typography>
@@ -77,19 +70,27 @@ export default function Header(props: HeaderProps) {
           <Typography
             variant="body2"
             color="text.secondary"
-            {...descriptionProps}
+            {...getComponentProps(viewProps, "description")}
           >
             {description}
           </Typography>
         )}
         {caption && !omitCaption && (
-          <Typography variant="body2" color="text.tertiary" {...captionProps}>
+          <Typography
+            variant="body2"
+            color="text.tertiary"
+            {...getComponentProps(viewProps, "caption")}
+          >
             {caption}
           </Typography>
         )}
         {!omitErrors && <ErrorView schema={{}} data={errors} />}
       </Box>
-      {Actions && <Box {...actionsContainer}>{Actions}</Box>}
+      {Actions && (
+        <Box {...getComponentProps(viewProps, "actionsContainer")}>
+          {Actions}
+        </Box>
+      )}
     </Stack>
   );
 }
@@ -106,5 +107,5 @@ export type HeaderProps = {
   omitErrors?: boolean;
   descriptionView?: "inline" | "tooltip";
   errors: object;
-  componentsProps?: any;
+  componentsProps?: unknown;
 };

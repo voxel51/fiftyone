@@ -83,16 +83,22 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
+    await sidebar.waitForElement("checkbox-frog");
+    await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["frog", "ship"],
+      ["frog"],
+      "show-samples-with-label"
+    );
+
+    await sidebar.applyLabelFromList(
+      "ground_truth.detections.label",
+      ["ship"],
       "show-samples-with-label"
     );
 
     // verify the number of samples in the result
-    await grid.waitForGridToLoad();
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
-
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog.png",
       { animations: "allow" }
@@ -150,7 +156,6 @@ test.describe("classification-sidebar-filter-visibility", () => {
       "omit-samples-with-label"
     );
 
-    await grid.waitForGridToLoad();
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "hide-ship.png",
       { animations: "allow" }

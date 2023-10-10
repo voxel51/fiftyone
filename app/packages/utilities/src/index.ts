@@ -8,8 +8,9 @@ export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
-export * from "./styles";
 export * from "./paths";
+export * from "./styles";
+export * from "./type-check";
 
 interface O {
   [key: string]: O | any;
@@ -254,6 +255,13 @@ export const LABEL_LIST = {
   TemporalDetections: "detections",
 };
 
+export const LABEL_LIST_PATH = Object.fromEntries(
+  Object.entries(LABEL_LIST).map(([docType, field]) => [
+    withPath(`fiftyone.core.labels`, docType),
+    field,
+  ])
+);
+
 export const NOT_VISIBLE_LIST = [
   "DictField",
   "ArrayField",
@@ -314,22 +322,30 @@ export const GROUP = "fiftyone.core.groups.Group";
 
 export const VALID_LIST_FIELDS = [FRAME_SUPPORT_FIELD, LIST_FIELD];
 
-export const DISABLED_LABEL_FIELDS_VISIBILITY = [
+export const VALID_NON_LIST_LABEL_TYPES = [
   DETECTION_FIELD,
-  DETECTIONS_FIELD,
   CLASSIFICATION_FIELD,
-  CLASSIFICATIONS_FIELD,
   KEYPOINT_FIELD,
-  KEYPOINTS_FIELD,
   TEMPORAL_DETECTION_FIELD,
-  TEMPORAL_DETECTIONS_FIELD,
   REGRESSION_FIELD,
   HEATMAP_FIELD,
   SEGMENTATION_FIELD,
   GEO_LOCATION_FIELD,
-  GEO_LOCATIONS_FIELD,
   POLYLINE_FIELD,
+];
+
+export const VALID_LIST_LABEL_FIELDS = [
+  DETECTIONS_FIELD,
+  CLASSIFICATIONS_FIELD,
+  KEYPOINTS_FIELD,
+  TEMPORAL_DETECTIONS_FIELD,
+  GEO_LOCATIONS_FIELD,
   POLYLINES_FIELD,
+];
+
+export const DISABLED_LABEL_FIELDS_VISIBILITY = [
+  ...VALID_NON_LIST_LABEL_TYPES,
+  ...VALID_LIST_LABEL_FIELDS,
 ];
 
 export const VALID_PRIMITIVE_TYPES = [

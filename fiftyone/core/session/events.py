@@ -162,7 +162,11 @@ class CustomizeColor:
 @dataclass
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
+    color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
+    multicolor_keypoints: t.Optional[bool] = None
+    opacity: t.Optional[float] = None
+    show_skeletons: t.Optional[bool] = None
 
 
 @dataclass
@@ -183,7 +187,11 @@ class SetColorScheme(Event):
         )
         return foo.ColorScheme(
             color_pool=self.color_scheme.color_pool,
+            color_by=self.color_scheme.color_by,
             fields=fields,
+            multicolor_keypoints=self.color_scheme.multicolor_keypoints,
+            opacity=self.color_scheme.opacity,
+            show_skeletons=self.color_scheme.show_skeletons,
         )
 
 

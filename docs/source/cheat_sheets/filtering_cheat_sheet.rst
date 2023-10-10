@@ -328,7 +328,7 @@ dataset ``ds`` with detections in its ``predictions`` field:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Predictions with confidence > 0.95        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
-|                                           |     filter_labels("predictions", F("confidence") > 0.95)                |
+|                                           |     ds.filter_labels("predictions", F("confidence") > 0.95)             |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most "wrong" predictions               |  .. code-block:: python                                                 |
 |                                           |                                                                         |
@@ -399,7 +399,7 @@ classification predictions that have their ``logits`` attribute set:
 | 10 most likely annotation mistakes        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.match_tags("train").sort_by(                                     |
-|                                           |         "mistakenness, reverse=True                                     |
+|                                           |         "mistakenness", reverse=True                                    |
 |                                           |     )[:10]                                                              |
 +-------------------------------------------+-------------------------------------------------------------------------+
 

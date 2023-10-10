@@ -20,6 +20,7 @@ import { SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
 import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 
 export const refresher = atom<number>({
   key: "refresher",
@@ -99,6 +100,11 @@ export const activePlot = atom<string>({
 export const loading = atom<boolean>({
   key: "loading",
   default: false,
+});
+
+export const snackbarErrors = atom<string[]>({
+  key: "snackbarErrors",
+  default: [],
 });
 
 // labels: whether label tag or sample tag
@@ -224,11 +230,6 @@ export const viewCounter = atom({
 
 export const DEFAULT_ALPHA = 0.7;
 
-export const alpha = atom<number>({
-  key: "alpha",
-  default: DEFAULT_ALPHA,
-});
-
 export const colorSeed = atom<number>({
   key: "colorSeed",
   default: 0,
@@ -321,80 +322,6 @@ export const lookerPanels = atom({
     help: { isOpen: false },
   },
 });
-
-// recoil effect that syncs state with local storage
-export const getBrowserStorageEffectForKey =
-  <T>(
-    key: string,
-    props: {
-      map?: (value: unknown) => unknown;
-      sessionStorage?: boolean;
-      valueClass?: "string" | "stringArray" | "number" | "boolean";
-      prependDatasetNameInKey?: boolean;
-      useJsonSerialization?: boolean;
-    } = {
-      sessionStorage: false,
-      valueClass: "string",
-      prependDatasetNameInKey: false,
-      useJsonSerialization: false,
-    }
-  ): AtomEffect<T> =>
-  ({ setSelf, onSet, getPromise }) => {
-    (async () => {
-      const {
-        valueClass,
-        sessionStorage,
-        useJsonSerialization,
-        prependDatasetNameInKey,
-      } = props;
-
-      const storage = sessionStorage
-        ? window.sessionStorage
-        : window.localStorage;
-
-      if (prependDatasetNameInKey) {
-        const datasetName = (await getPromise(dataset))?.name;
-        key = `${datasetName}_${key}`;
-      }
-
-      const value = storage.getItem(key);
-      let procesedValue;
-
-      if (useJsonSerialization) {
-        procesedValue = JSON.parse(value);
-      } else if (valueClass === "number") {
-        procesedValue = Number(value);
-      } else if (valueClass === "boolean") {
-        procesedValue = value === "true";
-      } else if (valueClass === "stringArray") {
-        if (value?.length > 0) {
-          procesedValue = value?.split(",");
-        } else {
-          procesedValue = [];
-        }
-      } else {
-        procesedValue = value;
-      }
-
-      if (value != null) setSelf(procesedValue);
-
-      onSet((newValue, _oldValue, isReset) => {
-        if (props.map) {
-          newValue = props.map(newValue) as T;
-        }
-        if (isReset || newValue === undefined) {
-          storage.removeItem(key);
-        } else {
-          storage.setItem(
-            key,
-            useJsonSerialization
-              ? JSON.stringify(newValue)
-              : (newValue as string)
-          );
-        }
-      });
-    })();
-  };
 
 export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   key: "groupMediaIsCarouselVisibleSetting",

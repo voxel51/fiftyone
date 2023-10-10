@@ -1,3 +1,4 @@
+import { rollbackViewBar } from "@fiftyone/core";
 import { setView, setViewMutation } from "@fiftyone/relay";
 import {
   State,
@@ -11,21 +12,27 @@ import { pendingEntry } from "../Renderer";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetView: RegisteredSetter =
-  ({ environment, router, sessionRef }) =>
+  ({ environment, handleError, router, sessionRef }) =>
   ({ get, set }, view: State.Stage[]) => {
     set(pendingEntry, true);
     if (view instanceof DefaultValue) {
       view = [];
     }
+    const variables = {
+      view,
+      datasetName: get(datasetName) as string,
+      subscription: get(stateSubscription),
+      form: get(viewStateForm_INTERNAL) || {},
+    };
     commitMutation<setViewMutation>(environment, {
       mutation: setView,
-      variables: {
-        view,
-        datasetName: get(datasetName) as string,
-        subscription: get(stateSubscription),
-        form: get(viewStateForm_INTERNAL) || {},
-      },
-      onCompleted: ({ setView: view }) => {
+      variables,
+      onCompleted: ({ setView: view }, errors) => {
+        if (errors?.length) {
+          handleError(errors.map((e) => e.message));
+          rollbackViewBar();
+          return;
+        }
         sessionRef.current.selectedLabels = [];
         sessionRef.current.selectedSamples = new Set();
         sessionRef.current.selectedFields = undefined;

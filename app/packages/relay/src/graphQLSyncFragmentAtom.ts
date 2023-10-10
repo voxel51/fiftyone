@@ -17,10 +17,7 @@ export type GraphQLSyncFragmentAtomOptions<K> = Omit<AtomOptions<K>, "default">;
 export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
-  read?: (
-    data: KeyTypeData<T>,
-    previous: KeyTypeData<T> | null
-  ) => K | ((current: K) => K);
+  read?: (data: KeyTypeData<T>, previous: KeyTypeData<T> | null) => K;
   default: K;
   selectorEffect?:
     | "write"
@@ -122,6 +119,10 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K>(
       {
         key: `_${options.key}__setter`,
         get: ({ get }) => get(value),
+        set:
+          fragmentOptions.selectorEffect instanceof Function
+            ? fragmentOptions.selectorEffect
+            : undefined,
         state:
           fragmentOptions.selectorEffect === "write" || isTest
             ? value

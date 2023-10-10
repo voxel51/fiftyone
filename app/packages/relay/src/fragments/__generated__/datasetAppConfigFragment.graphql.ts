@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b0572b9908b4f2b4a6e40a11c5caec2a>>
+ * @generated SignedSource<<5cc0b0cb8184b43666128eae767a86f3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,10 +9,12 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
+export type ColorBy = "field" | "instance" | "value" | "%future added value";
 export type SidebarMode = "all" | "best" | "fast" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
+    readonly colorBy: ColorBy | null;
     readonly colorPool: ReadonlyArray<string>;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: string | null;
@@ -24,6 +26,9 @@ export type datasetAppConfigFragment$data = {
       }> | null;
     }> | null;
     readonly id: string;
+    readonly multicolorKeypoints: boolean | null;
+    readonly opacity: number | null;
+    readonly showSkeletons: boolean | null;
   } | null;
   readonly gridMediaField: string;
   readonly mediaFields: ReadonlyArray<string> | null;
@@ -97,7 +102,35 @@ const node: ReaderFragment = {
           "alias": null,
           "args": null,
           "kind": "ScalarField",
+          "name": "colorBy",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
           "name": "colorPool",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "multicolorKeypoints",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "opacity",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "showSkeletons",
           "storageKey": null
         },
         {
@@ -165,6 +198,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "01a72352cac6b13ecdb1635977b0e9d0";
+(node as any).hash = "e4da6ba620276ce79b8429c97980919b";
 
 export default node;

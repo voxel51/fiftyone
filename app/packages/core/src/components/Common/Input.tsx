@@ -44,6 +44,7 @@ interface InputProps {
   onBlur?: () => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   style?: React.CSSProperties;
+  title?: string;
 }
 
 const Input = React.memo(
@@ -61,6 +62,7 @@ const Input = React.memo(
         onBlur,
         onKeyDown,
         style,
+        title,
       }: InputProps,
       ref
     ) => {
@@ -88,12 +90,17 @@ const Input = React.memo(
               e.key === "Escape" && e.currentTarget.blur();
               onKeyDown && onKeyDown(e);
             }}
-            style={disabled ? { color: theme.text.secondary } : {}}
+            style={
+              disabled
+                ? { color: theme.text.secondary, cursor: "not-allowed" }
+                : {}
+            }
             disabled={disabled}
             onFocus={(_: React.FocusEvent<HTMLInputElement>) => {
               onFocus && onFocus();
             }}
             onBlur={onBlur}
+            title={title}
           />
         </StyledInputContainer>
       );

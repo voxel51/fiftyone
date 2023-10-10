@@ -11,9 +11,7 @@ import { useResetPlotZoom, useZoomRevision } from "./useResetPlotZoom";
 
 export function EmbeddingsPlot({
   labelSelectorLoading,
-  brainKey,
   labelField,
-  el,
   bounds,
   plotSelection,
 }) {
@@ -21,11 +19,10 @@ export function EmbeddingsPlot({
   const getColor = useRecoilValue(fos.colorMap);
   const fields = useRecoilValue(fos.colorScheme).fields;
   const setting = useMemo(() => {
-    return fields.find((setting) => labelField?.includes(setting?.path ?? ""));
+    return fields?.find((setting) => labelField?.includes(setting?.path ?? ""));
   }, [fields, labelField]);
 
   const {
-    setPlotSelection,
     resolvedSelection,
     clearSelection,
     hasSelection,

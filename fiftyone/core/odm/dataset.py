@@ -171,6 +171,7 @@ class ColorScheme(EmbeddedDocument):
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
+            color_by = "field",
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             fields=[
                 {
@@ -179,11 +180,16 @@ class ColorScheme(EmbeddedDocument):
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                 }
-            ]
+            ],
+            multicolor_keypoints = False,
+            opacity = 0.5,
+            show_skeletons = True
         )
         dataset.save()
 
     Args:
+        color_by (None): an option that annotations can be colored by "field",
+            "value" or "instance"
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
         fields (None): an optional list of per-field custom colors. Each
@@ -198,13 +204,21 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+        multicolor_keypoints (None): whether to use multiple colors for
+            keypoints
+        opacity (None): transparency of the annotation, between 0 and 1
+        show_skeletons (None): whether to show skeletons of keypoints
     """
 
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
     color_pool = ListField(ColorField(), null=True)
+    color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
+    multicolor_keypoints = BooleanField(null=True)
+    opacity = FloatField(null=True)
+    show_skeletons = BooleanField(null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

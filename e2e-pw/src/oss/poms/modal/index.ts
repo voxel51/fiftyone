@@ -46,6 +46,10 @@ export class ModalPom {
     return this.locator.getByTestId("group-carousel");
   }
 
+  get toggleDisplayOptionsButton() {
+    return this.locator.getByTestId("action-display-options");
+  }
+
   getLookerAttachedEvent() {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",

@@ -1,3 +1,4 @@
+import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useMemo } from "react";
@@ -8,13 +9,7 @@ import {
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
-import { Button } from "../utils";
-import {
-  BUTTON_STYLE,
-  ButtonGroup,
-  LONG_BUTTON_STYLE,
-  ModalActionButtonContainer,
-} from "./ShareStyledDiv";
+import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
@@ -31,7 +26,7 @@ const ColorFooter: React.FC = () => {
     useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
-  const defaultColorPool = useRecoilValue(fos.config).colorPool;
+  const configDefault = useRecoilValue(fos.config);
   const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
@@ -44,55 +39,69 @@ const ColorFooter: React.FC = () => {
 
   return (
     <ModalActionButtonContainer>
-      <ButtonGroup>
+      <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
-          text={"Reset"}
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
             setColorScheme(
-              datasetDefault || { fields: [], colorPool: defaultColorPool }
+              datasetDefault || {
+                fields: [],
+                colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy,
+                multicolorKeypoints: false,
+                opacity: fos.DEFAULT_ALPHA,
+                showSkeletons: true,
+              }
             );
           }}
-          style={BUTTON_STYLE}
-        />
-        {canEdit && (
-          <Button
-            text={"Save as default"}
-            title={`Save to dataset appConfig`}
-            onClick={() => {
-              updateDatasetColorScheme({
-                fields: colorScheme.fields || [],
-                colorPool: colorScheme.colorPool || [],
-              });
+        >
+          Reset
+        </Button>
+        <Button
+          title={
+            canEdit
+              ? "Save to dataset app config"
+              : "Can not save to dataset appConfig in read-only mode"
+          }
+          onClick={() => {
+            updateDatasetColorScheme({
+              fields: colorScheme.fields || [],
+              colorPool: colorScheme.colorPool || [],
+            });
 
-              setDatasetColorScheme({
-                variables: {
-                  subscription,
-                  datasetName,
-                  colorScheme: {
-                    fields: colorScheme.fields || [],
-                    colorPool: colorScheme.colorPool || [],
-                  },
+            setDatasetColorScheme({
+              variables: {
+                subscription,
+                datasetName,
+                colorScheme: {
+                  fields: colorScheme.fields || [],
+                  colorPool: colorScheme.colorPool || [],
                 },
-              });
-              setActiveColorModalField(null);
-            }}
-            style={LONG_BUTTON_STYLE}
-          />
-        )}
-        {canEdit && datasetDefault && (
+              },
+            });
+            setActiveColorModalField(null);
+          }}
+          disabled={!canEdit}
+        >
+          Save as default
+        </Button>
+        {datasetDefault && (
           <Button
-            text={"Clear default"}
-            title={`Clear`}
+            title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
               updateDatasetColorScheme(null);
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({ fields: [], colorPool: defaultColorPool });
+              setColorScheme({
+                fields: [],
+                colorPool: configDefault.colorPool,
+              });
             }}
-            style={LONG_BUTTON_STYLE}
-          />
+            disabled={!canEdit}
+          >
+            Clear default
+          </Button>
         )}
       </ButtonGroup>
     </ModalActionButtonContainer>
@@ -137,10 +146,20 @@ const useUpdateDatasetColorScheme = () => {
               return record;
             });
 
-            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
             colorSchemeRecord.setValue(
               [...(colorScheme.colorPool || [])],
               "colorPool"
+            );
+            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setValue(
+              colorScheme.multicolorKeypoints,
+              "multicolorKeypoints"
+            );
+            colorSchemeRecord.setValue(colorScheme.opacity, "opacity");
+            colorSchemeRecord.setValue(
+              colorScheme.showSkeletons,
+              "showSkeletons"
             );
           });
       },

@@ -14,7 +14,7 @@ export { default as Link } from "./Link";
 export { default as Loading, LoadingDots } from "./Loading";
 export { default as Pending } from "./Pending";
 export { default as PillButton } from "./PillButton";
-export { default as Popout } from "./Popout";
+export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutSectionTitle } from "./PopoutSectionTitle";
 export { default as Selection } from "./Selection";
 export { default as Selector } from "./Selector";

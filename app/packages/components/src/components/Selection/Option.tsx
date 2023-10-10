@@ -3,8 +3,7 @@ import React from "react";
 import styled from "styled-components";
 import { useHover } from "@fiftyone/state";
 import { Edit, Check } from "@mui/icons-material";
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
+import { IconButton, useTheme } from "@fiftyone/components";
 
 const Box = styled.div`
   display: flex;
@@ -73,31 +72,43 @@ export default function SelectionOption(props: Props) {
         <TextContainer>{label}</TextContainer>
       </Box>
       <Box style={{ width: "18%" }}>
-        {!readonly && (isHovered || isSelected) && (
+        {(isHovered || isSelected) && (
           <EditBox>
             <Box>
               {isHovered && item.id !== "1" && (
-                <Edit
-                  data-cy="btn-edit-selection"
-                  fontSize="small"
-                  sx={{
-                    color: theme.neutral[400],
-                    zIndex: "9999",
-                    marginRight: isSelected ? "0.5rem" : "0",
+                <IconButton
+                  title={
+                    readonly ? "Can not edit in read-only mode" : undefined
+                  }
+                  disableRipple
+                >
+                  <Edit
+                    data-cy="btn-edit-selection"
+                    fontSize="small"
+                    sx={{
+                      color: readonly
+                        ? theme.text.disabled
+                        : theme.text.secondary,
+                      zIndex: "9999",
+                      marginRight: isSelected ? "0.5rem" : "0",
 
-                    "&:hover": {
-                      color: theme.text.primary,
-                    },
-                  }}
-                  onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    e.preventDefault();
+                      "&:hover": {
+                        color: readonly
+                          ? theme.text.disabled
+                          : theme.text.primary,
+                      },
+                      cursor: readonly ? "not-allowed" : "inherit",
+                    }}
+                    onClick={(e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      e.preventDefault();
 
-                    if (onEdit) {
-                      onEdit(item);
-                    }
-                  }}
-                />
+                      if (onEdit && !readonly) {
+                        onEdit(item);
+                      }
+                    }}
+                  />
+                </IconButton>
               )}
               {isSelected && (
                 <Check

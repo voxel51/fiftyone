@@ -21,6 +21,10 @@ const JSONViewer: React.FC = () => {
   const setting = useMemo(() => {
     return {
       colorPool: colorScheme?.colorPool ?? [],
+      colorBy: colorScheme?.colorBy ?? "field",
+      opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
+      multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
+      showSkeletons: colorScheme?.showSkeletons,
       fields: validateJSONSetting(colorScheme.fields || []),
     };
   }, [colorScheme]);
@@ -56,13 +60,40 @@ const JSONViewer: React.FC = () => {
     const validatedSetting = validateJSONSetting(
       fields as ColorSchemeInput["fields"]
     );
+    const validatedColorBy = ["field", "label"].includes(data?.colorBy)
+      ? data?.colorBy
+      : colorScheme.colorBy ?? "field";
+    const validatedOpacity =
+      typeof data?.opacity === "number" &&
+      data.opacity <= 1 &&
+      data.opacity >= 0
+        ? data?.opacity
+        : colorScheme.opacity ?? fos.DEFAULT_ALPHA;
+    const validatedMulticolorKeypoints =
+      typeof data?.multicolorKeypoints === "boolean"
+        ? data?.multicolorKeypoints
+        : colorScheme?.multicolorKeypoints ?? false;
+    const validatedShowSkeletons = Boolean(
+      typeof data?.showSkeletons === "boolean"
+        ? data?.showSkeletons
+        : colorScheme?.showSkeletons
+    );
+
     setData({
       colorPool: validColors,
       fields: validatedSetting,
+      colorBy: validatedColorBy,
+      multicolorKeypoints: validatedMulticolorKeypoints,
+      opacity: validatedOpacity,
+      showSkeletons: validatedShowSkeletons,
     });
     setColorScheme({
       colorPool: validColors,
+      colorBy: validatedColorBy,
       fields: validatedSetting,
+      multicolorKeypoints: validatedMulticolorKeypoints,
+      opacity: validatedOpacity,
+      showSkeletons: validatedShowSkeletons,
     });
   };
 

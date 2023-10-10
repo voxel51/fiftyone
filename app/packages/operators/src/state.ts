@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { throttle } from "lodash";
+import { debounce } from "lodash";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
@@ -83,16 +83,8 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
-    const selectedLabels = get(fos.selectedLabels);
 
-    return {
-      datasetName,
-      view,
-      extended,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    };
+    return { datasetName, view, extended, filters, selectedSamples };
   },
 });
 
@@ -165,7 +157,7 @@ export const useOperatorPrompt = () => {
   const notify = fos.useNotification();
 
   const resolveInput = useCallback(
-    throttle(
+    debounce(
       async (ctx) => {
         try {
           setResolving(true);
@@ -183,7 +175,8 @@ export const useOperatorPrompt = () => {
         setResolving(false);
         setResolvedCtx(ctx);
       },
-      operator.isRemote ? RESOLVE_TYPE_TTL : 0
+      operator.isRemote ? RESOLVE_TYPE_TTL : 0,
+      { leading: true }
     ),
     []
   );
@@ -215,7 +208,7 @@ export const useOperatorPrompt = () => {
     });
   }, []);
   const validateThrottled = useCallback(
-    throttle(validate, RESOLVE_INPUT_VALIDATION_TTL),
+    debounce(validate, RESOLVE_INPUT_VALIDATION_TTL, { leading: true }),
     []
   );
 
@@ -794,13 +787,7 @@ export function useOperatorPlacements(place: Place) {
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const setContext = useSetRecoilState(operatorThrottledContext);
   const setThrottledContext = useCallback(
-    throttle(
-      (context) => {
-        setContext(context);
-      },
-      RESOLVE_PLACEMENTS_TTL,
-      { leading: true, trailing: true }
-    ),
+    debounce(setContext, RESOLVE_PLACEMENTS_TTL, { leading: true }),
     []
   );
 
