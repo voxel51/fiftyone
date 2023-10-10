@@ -9,7 +9,7 @@ import {
 } from "@fiftyone/relay";
 import { Stage } from "@fiftyone/utilities";
 import { atom, selector } from "recoil";
-import { groupByFieldValue } from "./groups";
+import { groupByFieldValue, groupField } from "./groups";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
 
@@ -223,6 +223,13 @@ export const isDynamicGroup = selector<boolean>({
   key: "isDynamicGroup",
   get: ({ get }) => {
     return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const isNonNestedDynamicGroup = selector<boolean>({
+  key: "isNonNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(groupField) === null;
   },
 });
 

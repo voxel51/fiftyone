@@ -1,15 +1,17 @@
 import { Bar } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
+import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useRef } from "react";
-import { useRecoilValue } from "recoil";
+import React, { useEffect, useRef } from "react";
+import { PreloadedQuery } from "react-relay";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ModalActionsRow } from "../../../Actions";
-import Sample from "../../Sample";
-import { Sample3d } from "../../Sample3d";
-import { useGroupContext } from "../GroupContextProvider";
-import { GroupSuspense } from "../GroupSuspense";
-import { DynamicGroupCarousel } from "./carousel/DynamicGroupCarousel";
+import { ModalActionsRow } from "../../../../Actions";
+import Sample from "../../../Sample";
+import { Sample3d } from "../../../Sample3d";
+import { useGroupContext } from "../../GroupContextProvider";
+import { GroupSuspense } from "../../GroupSuspense";
+import { DynamicGroupCarousel } from ".././carousel/DynamicGroupCarousel";
+import { GroupElementsLinkBar } from "../pagination";
 
 const RootContainer = styled.div`
   height: 100%;
@@ -24,16 +26,31 @@ const ElementsContainer = styled.div`
   justify-content: center;
 `;
 
-export const UnorderedDynamicGroup = () => {
+export const NonNestedDynamicGroup = ({
+  queryRef,
+}: {
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery>;
+}) => {
   const { lookerRefCallback } = useGroupContext();
-  const lookerRef = useRef<AbstractLooker>();
+  const lookerRef = useRef<fos.Lookers>();
   const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
 
-  const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisibleSetting);
+  const [isMainVisible, setIsMainVisible] = useRecoilState(
+    fos.groupMediaIsMainVisibleSetting
+  );
+  const viewMode = useRecoilValue(fos.nonNestedDynamicGroupsViewMode);
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
   const parent = useRecoilValue(fos.parentMediaTypeSelector);
+
+  const isViewModePagination = viewMode === "pagination";
+
+  useEffect(() => {
+    if (!isMainVisible && isViewModePagination) {
+      setIsMainVisible(true);
+    }
+  }, [isMainVisible, isViewModePagination]);
 
   if (!groupByFieldValue) {
     return null;
@@ -42,14 +59,14 @@ export const UnorderedDynamicGroup = () => {
   return (
     <RootContainer>
       {/* weird conditional rendering of the bar because lookerControls messes up positioning of the bar in firefox in inexplicable ways */}
-      {!isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
+      {!isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
       <ElementsContainer>
         <>
-          {isMainVisible && <UnorderedDynamicGroupBar lookerRef={lookerRef} />}
-          {isCarouselVisible && (
+          {isMainVisible && <NonNestedDynamicGroupBar lookerRef={lookerRef} />}
+          {isCarouselVisible && !isViewModePagination && (
             <DynamicGroupCarousel key={groupByFieldValue} />
           )}
-          {isMainVisible && (
+          {(isViewModePagination || isMainVisible) && (
             <GroupSuspense>
               {parent !== "point_cloud" ? (
                 <Sample
@@ -62,15 +79,16 @@ export const UnorderedDynamicGroup = () => {
             </GroupSuspense>
           )}
         </>
+        {isViewModePagination && <GroupElementsLinkBar queryRef={queryRef} />}
       </ElementsContainer>
     </RootContainer>
   );
 };
 
-const UnorderedDynamicGroupBar = ({
+const NonNestedDynamicGroupBar = ({
   lookerRef,
 }: {
-  lookerRef: React.MutableRefObject<AbstractLooker | undefined>;
+  lookerRef: React.MutableRefObject<fos.Lookers | undefined>;
 }) => {
   return (
     <Bar

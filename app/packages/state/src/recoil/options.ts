@@ -4,8 +4,9 @@ import {
   mediaFieldsFragment,
   mediaFieldsFragment$key,
 } from "@fiftyone/relay";
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { aggregationQuery } from "./aggregations";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
@@ -60,6 +61,12 @@ export const selectedMediaField = selectorFamily<string, boolean>({
 export const sidebarMode = atomFamily<"all" | "best" | "fast" | null, boolean>({
   key: "sidebarMode",
   default: null,
+});
+
+export const nonNestedDynamicGroupsViewMode = atom<"carousel" | "pagination">({
+  key: "nonNestedDynamicGroupsViewMode",
+  default: "carousel",
+  effects: [getBrowserStorageEffectForKey("nonNestedDynamicGroupsViewMode")],
 });
 
 export const configuredSidebarModeDefault = selectorFamily<
