@@ -282,6 +282,45 @@ class ImageExportCoersionTests(ImageDatasetTests):
             len(dataset3), dataset.count("ground_truth.detections")
         )
 
+        #
+        # A patches view is provided, so object patches are exported as images
+        #
+
+        export_dir4 = self._new_dir()
+
+        patches = dataset.to_patches("ground_truth")
+        patches.export(
+            export_dir=export_dir4,
+            dataset_type=fo.types.ImageDirectory,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir4,
+            dataset_type=fo.types.ImageDirectory,
+        )
+
+        self.assertEqual(len(dataset2), len(patches))
+
+        #
+        # A patches view is provided, so the object patches are exported as an
+        # image classification directory tree
+        #
+
+        export_dir5 = self._new_dir()
+
+        patches = dataset.to_patches("ground_truth")
+        patches.export(
+            export_dir=export_dir5,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir5,
+            dataset_type=fo.types.ImageClassificationDirectoryTree,
+        )
+
+        self.assertEqual(len(dataset2), len(patches))
+
     @drop_datasets
     def test_single_label_to_lists(self):
         sample = fo.Sample(
@@ -3703,15 +3742,15 @@ class VideoExportCoersionTests(VideoDatasetTests):
         )
 
         #
-        # Export video classification clips directly from a ClipsView
+        # Export video classification clips directly from a clips view
         #
 
         export_dir = self._new_dir()
 
-        dataset.to_clips("predictions").export(
+        clips = dataset.to_clips("predictions")
+        clips.export(
             export_dir=export_dir,
             dataset_type=fo.types.VideoClassificationDirectoryTree,
-            label_field="predictions",
         )
 
         dataset2 = fo.Dataset.from_dir(
@@ -3753,7 +3792,6 @@ class VideoExportCoersionTests(VideoDatasetTests):
         export_dir = self._new_dir()
 
         clips = dataset.to_clips("predictions")
-
         clips.export(
             export_dir=export_dir, dataset_type=fo.types.FiftyOneDataset
         )
