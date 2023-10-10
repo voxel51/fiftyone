@@ -1,5 +1,5 @@
 import { ColorSchemeInput } from "@fiftyone/relay";
-import { State, useSessionSetter } from "@fiftyone/state";
+import { State, ensureColorScheme, useSessionSetter } from "@fiftyone/state";
 import { toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import { AppReadyState } from "./registerEvent";
@@ -8,22 +8,6 @@ export const appReadyState = atom<AppReadyState>({
   key: "appReadyState",
   default: AppReadyState.CONNECTING,
 });
-
-export const ensureColorScheme = (
-  colorScheme: any,
-  defaultValue: any
-): ColorSchemeInput => {
-  colorScheme = toCamelCase(colorScheme);
-  return {
-    colorPool: colorScheme.colorPool || defaultValue.colorPool,
-    colorBy: colorScheme.colorBy || defaultValue.colorBy,
-    fields: colorScheme.fields as ColorSchemeInput["fields"],
-    multicolorKeypoints:
-      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
-    opacity: colorScheme.opacity || defaultValue.opacity,
-    showSkeletons: colorScheme.showSkeletons == false ? false : true,
-  };
-};
 
 export const processState = (
   setter: ReturnType<typeof useSessionSetter>,

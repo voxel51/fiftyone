@@ -22,7 +22,7 @@ import {
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
-import { ensureColorScheme } from "./useEvents/utils";
+
 import useEventSource, { getDatasetName } from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
@@ -127,7 +127,7 @@ const dispatchSideEffect = ({
   const data: DatasetPageQuery$data = nextEntry.data;
   if (currentDataset !== nextDataset) {
     session.sessionSpaces = fos.SPACES_DEFAULT;
-    session.colorScheme = ensureColorScheme(
+    session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
       {
         colorPool: data.config.colorPool,

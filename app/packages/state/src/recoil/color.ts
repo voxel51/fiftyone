@@ -6,12 +6,14 @@ import {
   createColorGenerator,
   getColor,
   hexToRgb,
+  toCamelCase,
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { ColorSchemeInput } from "@fiftyone/relay";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -23,7 +25,7 @@ export const coloring = selector<Coloring>({
       pool: colorScheme.colorPool,
       scale: [],
       by: colorScheme.colorBy,
-      points: colorScheme.useMultiColorKeypoints,
+      points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
@@ -109,3 +111,19 @@ export const eligibleFieldsToCustomizeColor = selector({
     return fields;
   },
 });
+
+export const ensureColorScheme = (
+  colorScheme: any,
+  defaultValue: any
+): ColorSchemeInput => {
+  colorScheme = toCamelCase(colorScheme);
+  return {
+    colorPool: colorScheme.colorPool || defaultValue.colorPool,
+    colorBy: colorScheme.colorBy || defaultValue.colorBy,
+    fields: colorScheme.fields as ColorSchemeInput["fields"],
+    multicolorKeypoints:
+      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
+    opacity: colorScheme.opacity || defaultValue.opacity,
+    showSkeletons: colorScheme.showSkeletons == false ? false : true,
+  };
+};
