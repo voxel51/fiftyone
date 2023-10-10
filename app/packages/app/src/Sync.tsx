@@ -22,7 +22,6 @@ import {
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
-
 import useEventSource, { getDatasetName } from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
