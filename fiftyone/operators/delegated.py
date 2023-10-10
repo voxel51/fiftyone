@@ -39,7 +39,7 @@ class DelegatedOperationService(object):
         Args:
             operator: the operator name
             delegation_target (None): an optional delegation target
-            label: an optional label for the operation (will default to the operator if not supplied)
+            label (None): an optional label for the operation (will default to the operator if not supplied)
             context (None): an
                 :class:`fiftyone.operators.executor.ExecutionContext`
 
