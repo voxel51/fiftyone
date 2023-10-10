@@ -53,9 +53,10 @@ class InvocationRequest(object):
 class ExecutionProgress:
     """Represents the status of an operator execution.
 
+    at least one of progress or label must be provided
     Args:
-        progress: the progress of the operation, a float between 0 and 1 (0% to 100%) or None
-        label: an optional label to display
+        progress (None): an optional float between 0 and 1 (0% to 100%)
+        label (None): an optional label to display
     """
 
     def __init__(self, progress: float = None, label: str = None):
@@ -508,8 +509,8 @@ class ExecutionContext(object):
         """Sets the progress of the current operation.
 
         Args:
-            label: string label to display
-            progress: the progress to set
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
         """
         if self._set_progress:
             self._set_progress(
