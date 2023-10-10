@@ -133,7 +133,7 @@ class Service(object):
         """Waits for the service to exit and returns its exit code."""
         return self.child.wait()
 
-    def _wait_for_child_port(self, port=None, timeout=60):
+    def _wait_for_child_port(self, port=None, timeout=600):
         """Waits for any child process of this service to bind to a TCP port.
 
         Args:
