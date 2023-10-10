@@ -75,13 +75,13 @@ class DelegatedOperationRepo(object):
         self, _id: ObjectId, pinned: bool = True
     ) -> DelegatedOperationDocument:
         """Sets the pinned flag on / off."""
-        raise NotImplementedError("subclass must implement toggle_pinned()")
+        raise NotImplementedError("subclass must implement set_pinned()")
 
     def set_label(
         self, _id: ObjectId, label: str
     ) -> DelegatedOperationDocument:
         """Sets the label for the delegated operation."""
-        raise NotImplementedError("subclass must implement toggle_pinned()")
+        raise NotImplementedError("subclass must implement set_label()")
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
