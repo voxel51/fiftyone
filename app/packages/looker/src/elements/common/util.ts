@@ -17,8 +17,8 @@ import {
   DispatchEvent,
 } from "../../state";
 
-import { lookerCheckbox, lookerLabel } from "./util.module.css";
 import { getHashLabel } from "../../overlays/util";
+import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
@@ -238,6 +238,7 @@ type ColorParams = {
   // if primitive fields
   value?: string | number | boolean;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors?: CustomizeColor;
   isValidColor: (string) => boolean;
 };
 
@@ -248,9 +249,13 @@ export function getAssignedColor({
   fallbackLabel = "label",
   value,
   customizeColorSetting,
+  labelTagColors,
   isValidColor,
 }: ColorParams): string {
-  const setting = findColorSetting(customizeColorSetting, path);
+  const setting =
+    path === "_label_tags"
+      ? labelTagColors
+      : findColorSetting(customizeColorSetting, path);
   const isPrimitive = ![null, undefined].includes(value);
   const { by, seed, pool } = coloring;
   const fallbackColor = getFallbackColor(
@@ -289,6 +294,10 @@ export function getAssignedColor({
     );
 
     if (path === "tags") {
+      return getTagColor(setting, pool, seed, param, isValidColor);
+    }
+
+    if (path === "_label_tags") {
       return getTagColor(setting, pool, seed, param, isValidColor);
     }
 

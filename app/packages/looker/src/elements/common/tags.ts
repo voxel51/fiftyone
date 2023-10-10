@@ -90,6 +90,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorBy === coloring.by &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
+        _.isEqual(this.labelTagColors, labelTagColors) &&
         _.isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
@@ -319,7 +320,14 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           const v = coloring.by !== "field" ? tag : path;
           if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
             elements.push({
-              color: getColor(coloring.pool, coloring.seed, v),
+              color: getAssignedColor({
+                coloring,
+                path,
+                param: tag,
+                labelTagColors,
+                customizeColorSetting,
+                isValidColor,
+              }),
               title: value,
               value: value,
               path: v,
@@ -409,6 +417,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
     this.activePaths = [...activePaths];
     this.element.innerHTML = "";
     this.customizedColors = customizeColorSetting;
+    this.labelTagColors = labelTagColors;
     this.colorPool = coloring.pool as string[];
     this.attributeVisibility = attributeVisibility;
 
