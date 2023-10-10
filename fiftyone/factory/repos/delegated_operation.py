@@ -38,6 +38,7 @@ class DelegatedOperationRepo(object):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
+        run_link: str = None,
         progress: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         """Update the run state of an operation."""
@@ -197,6 +198,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         _id: ObjectId,
         run_state: ExecutionRunState,
         result: ExecutionResult = None,
+        run_link: str = None,
         progress: ExecutionProgress = None,
     ) -> DelegatedOperationDocument:
         update = None
@@ -235,6 +237,9 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                     "updated_at": datetime.utcnow(),
                 }
             }
+
+        if run_link is not None:
+            update["$set"]["run_link"] = run_link
 
         if update is None:
             raise ValueError("Invalid run_state: {}".format(run_state))
