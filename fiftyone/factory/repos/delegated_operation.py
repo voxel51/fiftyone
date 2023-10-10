@@ -249,7 +249,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 raise ValueError("Invalid progress: {}".format(progress))
 
         if not execution_progress or (
-            not execution_progress.progress and not execution_progress.label
+            execution_progress.progress is None
+            and not execution_progress.label
         ):
             raise ValueError("Invalid progress: {}".format(execution_progress))
 
