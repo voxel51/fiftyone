@@ -34,6 +34,8 @@ import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
 
+import _ from "lodash";
+
 interface TagData {
   color: string;
   title: string;
@@ -44,6 +46,7 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
+  private labelTagColors: CustomizeColor = {};
   private colorPool: string[];
   private colorBy: "field" | "value" | "instance";
   private colorSeed: number;
@@ -68,6 +71,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         coloring,
         timeZone,
         customizeColorSetting,
+        labelTagColors,
         filter,
         attributeVisibility,
       },

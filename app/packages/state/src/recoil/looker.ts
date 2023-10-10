@@ -67,6 +67,7 @@ export const lookerOptions = selectorFamily<
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring),
         customizeColorSetting: get(atoms.colorScheme).fields ?? [],
+        labelTagColors: get(atoms.colorScheme).labelTags ?? {},
         attributeVisibility: get(attributeVisibility),
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
@@ -77,7 +78,7 @@ export const lookerOptions = selectorFamily<
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
         alpha: get(atoms.colorScheme).opacity,
-        showSkeletons: get(atoms.colorScheme).showKeypointSkeleton,
+        showSkeletons: get(atoms.colorScheme).showSkeletons,
         defaultSkeleton: get(atoms.dataset)?.defaultSkeleton,
         skeletons: Object.fromEntries(
           get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])

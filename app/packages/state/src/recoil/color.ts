@@ -81,9 +81,12 @@ export const pathColor = selectorFamily<string, string>({
         adjustedPath = path;
       }
 
-      const setting = get(atoms.colorScheme)?.fields?.find(
-        (x) => x.path === adjustedPath
-      );
+      const setting =
+        path === "_label_tags"
+          ? get(atoms.colorScheme).labelTags
+          : get(atoms.colorScheme)?.fields?.find(
+              (x) => x.path === adjustedPath
+            );
 
       if (isValidColor(setting?.fieldColor ?? "")) {
         return setting!.fieldColor;
