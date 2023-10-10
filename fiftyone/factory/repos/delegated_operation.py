@@ -17,7 +17,6 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 
-# from fiftyone.operators import OperatorRegistry
 from fiftyone.operators.executor import ExecutionResult, ExecutionRunState
 
 
