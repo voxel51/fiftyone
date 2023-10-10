@@ -1,5 +1,6 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -13,7 +14,6 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
-import { ColorSchemeInput } from "@fiftyone/relay";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -114,16 +114,20 @@ export const eligibleFieldsToCustomizeColor = selector({
 
 export const ensureColorScheme = (
   colorScheme: any,
-  defaultValue: any
+  appConfig?: datasetQuery$data["config"]
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.colorPool || defaultValue.colorPool,
-    colorBy: colorScheme.colorBy || defaultValue.colorBy,
+    colorPool: colorScheme.colorPool || appConfig.colorPool,
+    colorBy: colorScheme.colorBy || appConfig.colorBy,
     fields: colorScheme.fields as ColorSchemeInput["fields"],
     multicolorKeypoints:
-      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
-    opacity: colorScheme.opacity || defaultValue.opacity,
-    showSkeletons: colorScheme.showSkeletons == false ? false : true,
+      colorScheme.multicolorKeypoints || appConfig.multicolorKeypoints,
+    opacity:
+      typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
+    showSkeletons:
+      typeof colorScheme.showSkeletons == "boolean"
+        ? colorScheme.showSkeletons
+        : appConfig.showSkeletons,
   };
 };

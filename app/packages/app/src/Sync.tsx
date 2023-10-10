@@ -129,13 +129,7 @@ const dispatchSideEffect = ({
     session.sessionSpaces = fos.SPACES_DEFAULT;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
-      {
-        colorPool: data.config.colorPool,
-        colorBy: data.config.colorBy,
-        opacity: 0.7,
-        multicolorKeypoints: false,
-        showSkeletons: true,
-      }
+      data.config
     );
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
   }
