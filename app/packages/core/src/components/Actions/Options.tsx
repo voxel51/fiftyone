@@ -12,6 +12,7 @@ import {
 } from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
 import Popout from "./Popout";
+import { Box } from "@mui/material";
 
 const SortFilterResults = ({ modal }) => {
   const [{ count, asc }, setSortFilterResults] = useRecoilState(
@@ -154,6 +155,35 @@ type OptionsProps = {
   anchorRef: MutableRefObject<HTMLElement>;
 };
 
+const EmptyFieldsControl = () => {
+  const [hideEmptyFields, setHideEmptyFields] = useRecoilState(
+    fos.hideNoneFields
+  );
+
+  return (
+    <>
+      <PopoutSectionTitle>Empty fields</PopoutSectionTitle>
+      <TabOption
+        active={hideEmptyFields ? "Hide" : "Show"}
+        options={[
+          {
+            dataCy: "hide-empty-fields",
+            text: "Show",
+            title: "Hide empty/none fields",
+            onClick: () => setHideEmptyFields(false),
+          },
+          {
+            dataCy: "show-empty-fields",
+            text: "Hide",
+            title: "Show empty/none fields",
+            onClick: () => setHideEmptyFields(true),
+          },
+        ]}
+      />
+    </>
+  );
+};
+
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
@@ -165,6 +195,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
+      {modal && <EmptyFieldsControl />}
       {!modal && <SidebarMode modal={modal} />}
       <SortFilterResults modal={modal} />
     </Popout>

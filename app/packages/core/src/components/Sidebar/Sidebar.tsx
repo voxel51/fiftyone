@@ -2,7 +2,7 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { replace, useEventHandler } from "@fiftyone/state";
 import { move, scrollbarStyles } from "@fiftyone/utilities";
-import { Box, Switch, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { Controller, animated, config } from "@react-spring/web";
 import { Resizable } from "re-resizable";
 import { default as React, useCallback, useRef, useState } from "react";
@@ -738,28 +738,6 @@ const InteractiveSidebar = ({
         [resizableSide]: resizeHandle,
       }}
     >
-      {modal && (
-        <Box
-          display="flex"
-          padding="0.5rem 1rem 0rem 1rem"
-          alignItems="center"
-          sx={{ background: (theme) => theme.palette.background.paper }}
-          justifyContent="space-between"
-        >
-          <Typography pl={1} fontSize={16}>
-            Hide &quot;None&quot; values
-          </Typography>
-          <Box height="100%" display="flex" alignItems="center">
-            <Switch
-              {...label}
-              value={hideNoneFields}
-              onChange={() => {
-                setHideNoneFields(!hideNoneFields);
-              }}
-            />
-          </Box>
-        </Box>
-      )}
       {modalContainer && <SchemaSettings />}
       {!modal && (
         <Box
