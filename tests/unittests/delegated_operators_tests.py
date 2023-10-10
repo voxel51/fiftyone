@@ -121,7 +121,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value._doc.id = dataset_id
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
-            label=mock_get_operator.return_value.name,
+            label=mock_get_operator.return_value.config.label,
             delegation_target="foo",
             context=ExecutionContext(
                 request_params={"foo": "bar", "dataset_name": dataset_name},
@@ -129,8 +129,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         )
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.queued_at)
-        self.assertEqual(doc.operator_label, "Mock Operator")
+        self.assertEqual(doc.label, "Mock Operator")
         self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        doc2 = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target="foo",
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_name": dataset_name},
+            ),
+        )
+        self.docs_to_delete.append(doc2)
+        self.assertIsNotNone(doc2.queued_at)
+        self.assertEqual(doc2.label, "@voxelfiftyone/operator/foo")
+        self.assertEqual(doc2.run_state, ExecutionRunState.QUEUED)
 
     @patch(
         "fiftyone.core.dataset.load_dataset",

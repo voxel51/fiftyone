@@ -32,14 +32,14 @@ class DelegatedOperationService(object):
         self._repo = repo
 
     def queue_operation(
-        self, operator, label, delegation_target=None, context=None
+        self, operator, label=None, delegation_target=None, context=None
     ):
         """Queues the given delegated operation for execution.
 
         Args:
             operator: the operator name
             delegation_target (None): an optional delegation target
-            label: a label for the operation
+            label: an optional label for the operation (will default to the operator if not supplied)
             context (None): an
                 :class:`fiftyone.operators.executor.ExecutionContext`
 
@@ -48,7 +48,7 @@ class DelegatedOperationService(object):
         """
         return self._repo.queue_operation(
             operator=operator,
-            label=label,
+            label=label if label else operator,
             delegation_target=delegation_target,
             context=context,
         )
