@@ -32,12 +32,15 @@ class DelegatedOperationService(object):
 
         self._repo = repo
 
-    def queue_operation(self, operator, delegation_target=None, context=None):
+    def queue_operation(
+        self, operator, label=None, delegation_target=None, context=None
+    ):
         """Queues the given delegated operation for execution.
 
         Args:
             operator: the operator name
             delegation_target (None): an optional delegation target
+            label (None): an optional label for the operation (will default to the operator if not supplied)
             context (None): an
                 :class:`fiftyone.operators.executor.ExecutionContext`
 
@@ -46,6 +49,7 @@ class DelegatedOperationService(object):
         """
         return self._repo.queue_operation(
             operator=operator,
+            label=label if label else operator,
             delegation_target=delegation_target,
             context=context,
         )
@@ -131,6 +135,18 @@ class DelegatedOperationService(object):
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.set_pinned(_id=doc_id, pinned=pinned)
+
+    def set_label(self, doc_id, label):
+        """Sets the pinned flag for the given delegated operation.
+
+        Args:
+            doc_id: the ID of the delegated operation
+            label: the label to set
+
+        Returns:
+            a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
+        """
+        return self._repo.set_label(_id=doc_id, label=label)
 
     def delete_operation(self, doc_id):
         """Deletes the given delegated operation.

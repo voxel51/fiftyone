@@ -8,7 +8,6 @@ FiftyOne delegated operation repository document.
 import logging
 from datetime import datetime
 
-from fiftyone.operators import OperatorRegistry
 from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
@@ -27,7 +26,7 @@ class DelegatedOperationDocument(object):
         context: dict = None,
     ):
         self.operator = operator
-        self.operator_label = None
+        self.label = None
         self.delegation_target = delegation_target
         self.context = (
             context.to_dict()
@@ -49,11 +48,12 @@ class DelegatedOperationDocument(object):
         self.id = None
         self._doc = None
 
-    def from_pymongo(self, doc: dict, registry: OperatorRegistry = None):
+    def from_pymongo(self, doc: dict):
         # required fields
         self.operator = doc["operator"]
         self.queued_at = doc["queued_at"]
         self.run_state = doc["run_state"]
+        self.label = doc["label"] if "label" in doc else None
         self.updated_at = doc["updated_at"] if "updated_at" in doc else None
 
         # optional fields
@@ -99,22 +99,6 @@ class DelegatedOperationDocument(object):
         # internal fields
         self.id = doc["_id"]
         self._doc = doc
-
-        # generated fields:
-        try:
-            if registry is None:
-                registry = OperatorRegistry(enabled="all")
-
-            if registry.operator_exists(self.operator) is False:
-                raise ValueError(
-                    "Operator '%s' does not exist" % self.operator
-                )
-
-            self.operator_label = registry.get_operator(
-                self.operator
-            ).config.label
-        except Exception as e:
-            logger.debug("Error getting operator label: %s" % e)
 
         return self
 

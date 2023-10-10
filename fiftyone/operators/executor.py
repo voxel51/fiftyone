@@ -200,6 +200,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=operator.delegation_target,
+                label=operator.name,
             )
 
             execution = ExecutionResult(
@@ -413,7 +414,7 @@ class ExecutionContext(object):
     def delegated(self):
         """Whether the operation's execution was delegated to an orchestrator.
 
-        This property is only availble for methods that are invoked after an
+        This property is only available for methods that are invoked after an
         operator is executed, e.g. :meth:`resolve_output`.
         """
         return self.request_params.get("delegated", False)
@@ -422,7 +423,7 @@ class ExecutionContext(object):
     def results(self):
         """A ``dict`` of results for the current operation.
 
-        This property is only availble for methods that are invoked after an
+        This property is only available for methods that are invoked after an
         operator is executed, e.g. :meth:`resolve_output`.
         """
         return self.request_params.get("results", {})

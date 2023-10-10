@@ -16,7 +16,6 @@ from pymongo.collection import Collection
 import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
-from fiftyone.operators import OperatorRegistry
 from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
@@ -87,7 +86,13 @@ class DelegatedOperationRepo(object):
         self, _id: ObjectId, pinned: bool = True
     ) -> DelegatedOperationDocument:
         """Sets the pinned flag on / off."""
-        raise NotImplementedError("subclass must implement toggle_pinned()")
+        raise NotImplementedError("subclass must implement set_pinned()")
+
+    def set_label(
+        self, _id: ObjectId, label: str
+    ) -> DelegatedOperationDocument:
+        """Sets the label for the delegated operation."""
+        raise NotImplementedError("subclass must implement set_label()")
 
     def get(self, _id: ObjectId) -> DelegatedOperationDocument:
         """Get an operation by id."""
@@ -101,7 +106,7 @@ class DelegatedOperationRepo(object):
 class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     COLLECTION_NAME = "delegated_ops"
 
-    required_props = ["operator", "delegation_target", "context"]
+    required_props = ["operator", "delegation_target", "context", "label"]
 
     def __init__(self, collection: Collection = None):
         self._collection = (
@@ -173,6 +178,16 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
             update={"$set": {"pinned": pinned}},
+            return_document=pymongo.ReturnDocument.AFTER,
+        )
+        return DelegatedOperationDocument().from_pymongo(doc)
+
+    def set_label(
+        self, _id: ObjectId, label: str
+    ) -> DelegatedOperationDocument:
+        doc = self._collection.find_one_and_update(
+            filter={"_id": _id},
+            update={"$set": {"label": label}},
             return_document=pymongo.ReturnDocument.AFTER,
         )
         return DelegatedOperationDocument().from_pymongo(doc)
@@ -335,11 +350,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if paging.limit:
             docs = docs.limit(paging.limit)
 
-        registry = OperatorRegistry(enabled="all")
-        return [
-            DelegatedOperationDocument().from_pymongo(doc, registry=registry)
-            for doc in docs
-        ]
+        return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
