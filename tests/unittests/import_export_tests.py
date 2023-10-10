@@ -299,7 +299,9 @@ class ImageExportCoersionTests(ImageDatasetTests):
             dataset_type=fo.types.ImageDirectory,
         )
 
-        self.assertEqual(len(dataset2), len(patches))
+        self.assertEqual(
+            len(dataset2), dataset.count("ground_truth.detections")
+        )
 
         #
         # A patches view is provided, so the object patches are exported as an
@@ -319,7 +321,9 @@ class ImageExportCoersionTests(ImageDatasetTests):
             dataset_type=fo.types.ImageClassificationDirectoryTree,
         )
 
-        self.assertEqual(len(dataset2), len(patches))
+        self.assertEqual(
+            len(dataset2), dataset.count("ground_truth.detections")
+        )
 
     @drop_datasets
     def test_single_label_to_lists(self):
@@ -3735,6 +3739,27 @@ class VideoExportCoersionTests(VideoDatasetTests):
         dataset2 = fo.Dataset.from_dir(
             dataset_dir=export_dir,
             dataset_type=fo.types.VideoClassificationDirectoryTree,
+        )
+
+        self.assertEqual(
+            len(dataset2), dataset.count("predictions.detections")
+        )
+
+        #
+        # Export video clips directly from a clips view
+        #
+
+        export_dir = self._new_dir()
+
+        clips = dataset.to_clips("predictions")
+        clips.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.VideoDirectory,
         )
 
         self.assertEqual(
