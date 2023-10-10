@@ -130,11 +130,6 @@ class StateDescription(etas.Serializable):
             if self.field_visibility_stage:
                 d["field_visibility_stage"] = self.field_visibility_stage
 
-            print(
-                "state:serialize field_visibility_stage",
-                self.field_visibility_stage,
-            )
-
             return d
 
     def attributes(self):
@@ -204,6 +199,7 @@ class StateDescription(etas.Serializable):
             view=view,
             spaces=spaces,
             color_scheme=color_scheme,
+            field_visibility_stage=d.get("field_visibility_stage"),
         )
 
 

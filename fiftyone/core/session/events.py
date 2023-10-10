@@ -218,17 +218,9 @@ class SetGroupSlice(Event):
 
 
 @dataclass
-class FieldVisibilityKwargs(Event):
-    """Set field visibility eventt"""
-
-    fieldNames: t.List[str]
-    _allowMissing: bool
-
-
-@dataclass
 class SetFieldVisibilityStage(Event):
-    _cls: str
-    kwargs: FieldVisibilityKwargs
+    cls: str
+    field_names: t.List[str]
 
 
 @dataclass

@@ -1,4 +1,8 @@
-import { ColorSchemeInput, subscribe } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  selectorWithEffect,
+  subscribe,
+} from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
 import { DefaultValue, RecoilState, atom, selector } from "recoil";
@@ -127,6 +131,17 @@ export function sessionAtom<K extends keyof Session>(
       },
     ],
   });
+
+  const transitionKeys = new Set<string>(["fieldVisibility"]);
+  if (transitionKeys.has(options.key)) {
+    return selectorWithEffect<Session[K]>(
+      {
+        key: `__${options.key}_selector`,
+        get: ({ get }) => get(value),
+      },
+      options.key
+    );
+  }
 
   return selector<Session[K]>({
     key: `__${options.key}_selector`,
