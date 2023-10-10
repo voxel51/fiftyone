@@ -144,10 +144,10 @@ const ColorModal = () => {
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
                     {typeof activeEntry === "object" &&
-                      activeEntry?.path === "label_tags" && <LabelTag />}
+                      activeEntry?.path === "_label_tags" && <LabelTag />}
                     {typeof activeEntry === "object" &&
                       activeEntry?.path &&
-                      activeEntry.path !== "label_tags" && (
+                      activeEntry.path !== "_label_tags" && (
                         <FieldSetting
                           key={activeEntry.path}
                           path={activeEntry.path}

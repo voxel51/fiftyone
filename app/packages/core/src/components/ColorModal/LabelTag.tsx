@@ -139,14 +139,14 @@ const LabelTag: React.FC = () => {
                 v
                   ? {
                       valueColors: labelTags?.valueColors,
-                      fieldColor: colorMap("label_tags"),
+                      fieldColor: colorMap("_label_tags"),
                     }
                   : {
                       valueColors: labelTags?.valueColors,
                       fieldColor: undefined,
                     }
               );
-              setInput(colorMap("label_tags"));
+              setInput(colorMap("_label_tags"));
             }}
           />
           {state?.useFieldColor && input && (
@@ -160,7 +160,7 @@ const LabelTag: React.FC = () => {
               }}
             >
               <FieldColorSquare
-                color={labelTags?.fieldColor || colorMap("label_tags")}
+                color={labelTags?.fieldColor || colorMap("_label_tags")}
                 onClick={toggleColorPicker}
                 id="color-square"
               >

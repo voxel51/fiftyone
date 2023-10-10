@@ -26,7 +26,7 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
-    { paths: [{ path: "tags" }, { path: "label_tags" }], name: "tags" },
+    { paths: [{ path: "tags" }, { path: "_label_tags" }], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
