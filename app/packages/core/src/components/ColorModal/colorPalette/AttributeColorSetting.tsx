@@ -75,15 +75,19 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
   const activePath = useRecoilValue(activeColorPath);
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const setting = useMemo(
-    () => colorScheme.fields?.find((s) => s.path == activePath),
-    [activePath, colorScheme.fields]
-  );
+  const setting = useMemo(() => {
+    if (activePath === "_label_tags") {
+      return colorScheme.labelTags;
+    }
+    return colorScheme.fields?.find((s) => s.path == activePath);
+  }, [activePath, colorScheme.fields, colorScheme.labelTags]);
 
-  const index = useMemo(
-    () => colorScheme.fields?.findIndex((s) => s.path == activePath),
-    [activePath, colorScheme.fields]
-  );
+  const index = useMemo(() => {
+    if (activePath === "_label_tags") {
+      return null;
+    }
+    return colorScheme.fields?.findIndex((s) => s.path == activePath);
+  }, [activePath, colorScheme.fields]);
 
   const defaultValue = {
     value: "",
@@ -93,9 +97,13 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       ],
   };
 
-  const values = setting?.valueColors;
+  const values = useMemo(() => setting?.valueColors, [setting]);
 
-  const [input, setInput] = useState<Input[]>([]);
+  const [input, setInput] = useState<Input[]>(
+    (activePath === "_label_tags"
+      ? colorScheme.labelTags?.valueColors
+      : values) ?? []
+  );
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
@@ -109,10 +117,17 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
         ],
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
-    const newSetting = cloneDeep(colorScheme.fields);
-    newSetting[index].valueColors = newInput;
     setInput(newInput);
-    setColorScheme((cur) => ({ ...cur, fields: newSetting }));
+    if (activePath === "_label_tags") {
+      setColorScheme((cur) => ({
+        ...cur,
+        labelTags: { ...cur.labelTags, valueColors: newInput },
+      }));
+    } else {
+      const newSetting = cloneDeep(colorScheme.fields);
+      newSetting[index].valueColors = newInput;
+      setColorScheme((cur) => ({ ...cur, fields: newSetting }));
+    }
     setShowPicker([...showPicker, false]);
   }, [
     colorScheme.colorPool,
@@ -121,6 +136,8 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
     colorScheme.fields,
     setColorScheme,
     showPicker,
+    colorScheme.labelTags,
+    activePath,
   ]);
 
   const handleDelete = useCallback(
@@ -130,21 +147,48 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
         ...input.slice(colorIdx + 1),
       ];
       setInput(valueColors);
-      const newSetting = cloneDeep(colorScheme.fields);
-      newSetting[index].valueColors = valueColors;
-      setColorScheme({ ...colorScheme, fields: newSetting });
+      if (activePath === "_label_tags") {
+        setColorScheme((cur) => ({
+          ...cur,
+          labelTags: { ...cur.labelTags, valueColors },
+        }));
+      } else {
+        const newSetting = cloneDeep(colorScheme.fields);
+        newSetting[index].valueColors = valueColors;
+        setColorScheme((cur) => ({ ...cur, fields: newSetting }));
+      }
     },
-    [index, colorScheme.fields, setColorScheme, input]
+    [
+      activePath,
+      index,
+      colorScheme.fields,
+      setColorScheme,
+      input,
+      colorScheme.labelTags,
+    ]
   );
 
   const onSyncUpdate = useCallback(
     (copy: Input[]) => {
-      const newSetting = cloneDeep(colorScheme.fields);
-      newSetting[index].valueColors = copy;
       setInput(copy);
-      setColorScheme({ ...colorScheme, fields: newSetting });
+      if (activePath === "_label_tags") {
+        setColorScheme((cur) => ({
+          ...cur,
+          labelTags: { ...cur.labelTags, valueColors: copy },
+        }));
+      } else {
+        const newSetting = cloneDeep(colorScheme.fields);
+        newSetting[index].valueColors = copy;
+        setColorScheme({ ...colorScheme, fields: newSetting });
+      }
     },
-    [colorScheme.fields, index, setColorScheme]
+    [
+      colorScheme.fields,
+      index,
+      setColorScheme,
+      activePath,
+      colorScheme.labelTags,
+    ]
   );
 
   // color picker selection and sync with session
@@ -189,11 +233,19 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 
   useEffect(() => {
     if (!values) {
-      const copy = cloneDeep(colorScheme.fields);
-      const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-      if (idx > -1) {
-        copy[idx].valueColors = [defaultValue];
-        setColorScheme({ ...colorScheme, fields: copy });
+      if (activePath === "_label_tags") {
+        if (!colorScheme.labelTags?.valueColors) {
+          const copy = cloneDeep(colorScheme.labelTags);
+          copy["valueColors"] = [defaultValue];
+          setColorScheme({ ...colorScheme, labelTags: copy });
+        }
+      } else {
+        const copy = cloneDeep(colorScheme.fields);
+        const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
+        if (idx > -1) {
+          copy[idx].valueColors = [defaultValue];
+          setColorScheme({ ...colorScheme, fields: copy });
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -201,7 +253,11 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 
   // on reset, sync local state with new session values
   useEffect(() => {
-    setInput(values ?? []);
+    if (activePath === "_label_tags") {
+      setInput(colorScheme.labelTags?.valueColors ?? []);
+    } else {
+      setInput(values ?? []);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePath]);
 
