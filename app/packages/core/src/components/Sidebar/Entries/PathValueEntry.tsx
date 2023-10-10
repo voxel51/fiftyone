@@ -408,7 +408,8 @@ const Loadable = ({
 
   return (
     <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
-      {none ? "None" : formatted}
+      {field}
+      {formatted}
     </div>
   );
 };
