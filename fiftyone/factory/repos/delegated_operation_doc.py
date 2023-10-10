@@ -12,6 +12,7 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionProgress,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,10 @@ class DelegatedOperationDocument(object):
         self.run_state = (
             ExecutionRunState.QUEUED
         )  # default to queued state on create
+        self.run_link = None
         self.queued_at = datetime.utcnow()
         self.updated_at = datetime.utcnow()
+        self.status = None
         self.dataset_id = None
         self.started_at = None
         self.pinned = False
@@ -65,6 +68,7 @@ class DelegatedOperationDocument(object):
         self.failed_at = doc["failed_at"] if "failed_at" in doc else None
         self.pinned = doc["pinned"] if "pinned" in doc else None
         self.dataset_id = doc["dataset_id"] if "dataset_id" in doc else None
+        self.run_link = doc["run_link"] if "run_link" in doc else None
 
         if (
             "context" in doc
@@ -84,6 +88,15 @@ class DelegatedOperationDocument(object):
 
             if res.result or res.error:
                 self.result = res
+
+        if "status" in doc and doc["status"] is not None:
+            self.status = ExecutionProgress()
+            if "progress" in doc["status"]:
+                self.status.progress = doc["status"]["progress"]
+            if "label" in doc["status"]:
+                self.status.label = doc["status"]["label"]
+            if "updated_at" in doc["status"]:
+                self.status.updated_at = doc["status"]["updated_at"]
 
         # internal fields
         self.id = doc["_id"]

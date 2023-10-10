@@ -23,13 +23,15 @@ from fiftyone.operators.executor import (
     ExecutionContext,
     ExecutionResult,
     ExecutionRunState,
+    ExecutionProgress,
 )
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 
 class MockOperator(Operator):
-    def __init__(self, success=True, **kwargs):
+    def __init__(self, success=True, sets_progress=False, **kwargs):
         self.success = success
+        self.sets_progress = sets_progress
         super().__init__(**kwargs)
 
     @property
@@ -49,12 +51,16 @@ class MockOperator(Operator):
     def execute(self, ctx):
         if not self.success:
             raise Exception("MockOperator failed")
+
+        if self.sets_progress:
+            ctx.set_progress(0.5, "halfway there")
         return ExecutionResult(result={"executed": True})
 
 
 class MockGeneratorOperator(Operator):
-    def __init__(self, success=True, **kwargs):
+    def __init__(self, success=True, sets_progress=False, **kwargs):
         self.success = success
+        self.sets_progress = sets_progress
         super().__init__(**kwargs)
 
     @property
@@ -63,7 +69,6 @@ class MockGeneratorOperator(Operator):
             name="mock_operator",
             label="Mock Operator",
             disable_schema_validation=True,
-            execute_as_generator=True,
         )
 
     def resolve_input(self, *args, **kwargs):
@@ -76,7 +81,26 @@ class MockGeneratorOperator(Operator):
         if not self.success:
             raise Exception("MockOperator failed")
 
+        if self.sets_progress:
+            ctx.set_progress(0.5, "halfway there")
+
         yield {"executed": True}
+
+
+class MockProgressiveOperator(MockGeneratorOperator):
+    def __init__(self, success=True, **kwargs):
+        self.success = success
+        self.sets_progress = True
+        super().__init__(**kwargs)
+
+    def execute(self, ctx):
+        if not self.success:
+            raise Exception("MockOperator failed")
+
+        for x in range(10):
+            ctx.set_progress(x / 10, f"progress {x}")
+            yield {"executed": True}
+            time.sleep(0.1)
 
 
 @patch(
@@ -261,6 +285,27 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
+    def test_sets_progress(self, mock_get_operator, mock_operator_exists):
+        mock_get_operator.return_value = MockOperator(sets_progress=True)
+
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target=f"test_target",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        self.svc.execute_queued_operations(delegation_target="test_target")
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertIsNotNone(doc.status)
+        self.assertEqual(doc.status.progress, 0.5)
+        self.assertEqual(doc.status.label, "halfway there")
+        self.assertIsNotNone(doc.status.updated_at)
+
     def test_full_run_success(self, mock_get_operator, mock_operator_exists):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
@@ -312,6 +357,60 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.completed_at)
         self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
+
+    def test_generator_sets_progress(
+        self, mock_get_operator, mock_operator_exists
+    ):
+        mock_get_operator.return_value = MockGeneratorOperator(
+            sets_progress=True
+        )
+
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target=f"test_target",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        self.svc.execute_queued_operations(delegation_target="test_target")
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertIsNotNone(doc.status)
+        self.assertEqual(doc.status.progress, 0.5)
+        self.assertEqual(doc.status.label, "halfway there")
+        self.assertIsNotNone(doc.status.updated_at)
+
+    def test_updates_progress(self, mock_get_operator, mock_operator_exists):
+        mock_get_operator.return_value = MockProgressiveOperator()
+
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            delegation_target=f"test_target",
+            context=ExecutionContext(request_params={"foo": "bar"}),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        with patch.object(
+            DelegatedOperationService, "set_progress"
+        ) as set_progress:
+            self.svc.execute_operation(
+                operation=doc, run_link="http://run.info"
+            )
+            self.assertEqual(set_progress.call_count, 10)
+            for x in range(10):
+                call = set_progress.call_args_list[x]
+                self.assertEqual(call.args[0], doc.id)
+                self.assertEqual(call.args[1].progress, x / 10)
+                self.assertEqual(call.args[1].label, f"progress {x}")
+
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        self.assertEqual(doc.run_link, "http://run.info")
 
     @patch(
         "fiftyone.core.dataset.load_dataset",
