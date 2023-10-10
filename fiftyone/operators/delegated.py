@@ -69,7 +69,7 @@ class DelegatedOperationService(object):
 
         Args:
             doc_id: the ID of the delegated operation
-            run_link (None): the optional run link to orchestrator specific run information
+            run_link (None): an optional run link to orchestrator specific run information
             progress (None): the optional progress of the operation
 
         Returns:
