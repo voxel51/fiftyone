@@ -19,7 +19,7 @@ export const colorBlindFriendlyPalette = [
 export enum ACTIVE_FIELD {
   JSON = "JSON editor",
   GLOBAL = "Global settings",
-  LABEL_TAGS = "label tags",
+  LABEL_TAGS = "label_tags",
 }
 
 // disregard the order
@@ -74,8 +74,10 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
     if (path.path === "tags") {
       return "sample tags";
     }
+    if (path.path === "label_tags") {
+      return "label tags";
+    }
     return path.path;
   }
-
   return path;
 };
