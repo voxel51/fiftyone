@@ -20,6 +20,7 @@ from bson import ObjectId, json_util
 import fiftyone as fo
 import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
+from fiftyone.core.collections import SampleCollection
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
@@ -35,6 +36,8 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
 import fiftyone.server.events as fose
+from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
+from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
@@ -271,6 +274,9 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    frame_indexes: t.Optional[t.List[Index]]
+    sample_indexes: t.Optional[t.List[Index]]
+
     @gql.field
     def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
         if not slug:
@@ -375,6 +381,7 @@ class SchemaResult:
 @gql.type
 class Query(fosa.AggregateQuery):
     aggregations = gql.field(resolver=aggregate_resolver)
+    lightning = gql.field(resolver=lightning_resolver)
 
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
@@ -645,6 +652,14 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
+            _assign_indexes(data, collection)
+
         return data
 
     return await run_sync_task(run)
+
+
+def _assign_indexes(dataset: Dataset, collection: SampleCollection):
+    sample, frame = indexes_from_dict(collection.get_index_information())
+    dataset.sample_indexes = sample
+    dataset.frame_indexes = frame
