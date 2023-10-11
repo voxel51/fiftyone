@@ -43,7 +43,6 @@ export class LoaderBar extends BaseElement<ImaVidState> {
     error,
     config: { frameRate },
   }: Readonly<ImaVidState>) {
-    debugger;
     if (
       (buffering || waitingForVideo) &&
       hovering &&
@@ -64,6 +63,7 @@ export class LoaderBar extends BaseElement<ImaVidState> {
   }
 }
 
+// controls element: not shown in grid (thumbnail = off)
 export class PlayButtonElement extends BaseElement<
   ImaVidState,
   HTMLDivElement
@@ -148,8 +148,9 @@ export class PlayButtonElement extends BaseElement<
     buffering,
     loaded,
     duration,
-    config,
+    config: { thumbnail },
   }: Readonly<ImaVidState>) {
+    debugger;
     let updatePlay = false;
     if (
       playing !== this.isPlaying ||
@@ -190,6 +191,7 @@ export class PlayButtonElement extends BaseElement<
   }
 }
 
+// controls element: not shown in grid (thumbnail = off)
 export class SeekBarThumbElement extends BaseElement<
   ImaVidState,
   HTMLDivElement
@@ -251,6 +253,7 @@ export class SeekBarThumbElement extends BaseElement<
   }
 }
 
+// controls element: not shown in grid (thumbnail = off)
 export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
   getEvents(): Events<ImaVidState> {
     return {
@@ -328,6 +331,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
   }
 }
 
+// controls element: not shown in grid (thumbnail = off)
 export class TimeElement extends BaseElement<ImaVidState> {
   createHTMLElement() {
     const element = document.createElement("div");
@@ -377,6 +381,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   getEvents(): Events<ImaVidState> {
     return {
       load: () => {
+        // assign value for looker's canvas
+        this.canvas = document.createElement("canvas");
+        this.canvas.style.imageRendering = "pixelated";
+        this.canvas.width = this.element.naturalWidth;
+        this.canvas.height = this.element.naturalHeight;
+
         this.imageSource = this.element;
 
         this.update({
@@ -505,6 +515,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.element = new Image();
     this.element.crossOrigin = "Anonymous";
     this.element.loading = "eager";
+
     this.element.addEventListener("load", () => {
       dispatchEvent("load");
     });
@@ -636,9 +647,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   //   });
   // }
 
+  pause() {}
+
+  play() {
+    this.imageSource = this.canvas;
+  }
+
   renderSelf({
     options: { loop, playbackRate },
-    config: { frameRate, thumbnail, src },
+    config: { frameRate, thumbnail, src: thumbnailSrc },
     frameNumber,
     seeking,
     playing,
@@ -648,29 +665,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     hasPoster,
     destroyed,
   }: Readonly<ImaVidState>) {
-    if (this.src !== src) {
-      this.src = src;
-
-      this.element.setAttribute("src", src);
+    if (this.src !== thumbnailSrc) {
+      this.src = thumbnailSrc;
+      this.element.setAttribute("src", thumbnailSrc);
     }
-    return null;
 
     if (destroyed) {
       // triggered when, for example, grid is reset, do nothing
       // this.releaseVideo();
     }
 
-    if (!this.element) {
-      if (hovering && thumbnail) {
-        // const result = this.acquireVideo();
-        // if (result) {
-        //   return null;
-        // }
-      }
-    } else if (thumbnail && !hovering) {
-      // no need to playback video, just show the thumbnail, "release video"
-      // this.releaseVideo();
-      return null;
+    if (hovering && thumbnail) {
+      this.play();
+      return;
     }
 
     if (hasPoster && frameNumber === this.posterFrame) {
@@ -683,22 +690,27 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return null;
     }
 
-    if (loaded && playing && !seeking && !buffering && this.element.paused) {
-      this.waitingToPlay = true;
-      this.element.play().then(() => {
-        this.waitingToPlay = false;
-        this.waitingToPause && this.element && this.element.pause();
-        this.waitingToPause = false;
+    // sashank
+    // if (loaded && playing && !seeking && !buffering && this.element.paused) {
+    //   this.waitingToPlay = true;
+    //   this.element.play().then(() => {
+    //     this.waitingToPlay = false;
+    //     this.waitingToPause && this.element && this.element.pause();
+    //     this.waitingToPause = false;
 
-        if (this.waitingToRelease) {
-          this.releaseVideo();
-          return null;
-        }
-      });
-    }
-    // if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
-    //   !this.waitingToPlay ? this.element.pause() : (this.waitingToPause = true);
+    //     if (this.waitingToRelease) {
+    //       this.releaseVideo();
+    //       return null;
+    //     }
+    //   });
     // }
+    if (loaded && (!playing || seeking || buffering)) {
+      if (!this.waitingToPlay) {
+        this.pause();
+      } else {
+        this.waitingToPause = true;
+      }
+    }
 
     if (this.loop !== loop) {
       // this.element.loop = loop;
@@ -733,10 +745,10 @@ export function withVideoLookerEvents(): () => Events<ImaVidState> {
         });
       },
       mouseleave: ({ update }) => {
-        update(({ config: { thumbnail, support } }) => {
+        update(({ config: { thumbnail } }) => {
           if (thumbnail) {
             return {
-              frameNumber: support ? support[0] : 1,
+              frameNumber: 1,
               playing: false,
             };
           }
@@ -757,12 +769,7 @@ export function withVideoLookerEvents(): () => Events<ImaVidState> {
 }
 
 const seekFn = (
-  {
-    seeking,
-    duration,
-    config: { frameRate, support },
-    lockedToSupport,
-  }: Readonly<ImaVidState>,
+  { seeking, duration, config: { frameRate } }: Readonly<ImaVidState>,
   event: MouseEvent
 ): Optional<ImaVidState> => {
   if (duration && seeking) {
@@ -780,11 +787,6 @@ const seekFn = (
 
     return {
       frameNumber,
-      lockedToSupport: support
-        ? lockedToSupport &&
-          frameNumber >= support[0] &&
-          frameNumber <= support[1]
-        : false,
     };
   }
   return {};
