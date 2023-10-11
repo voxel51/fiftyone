@@ -203,6 +203,7 @@ export interface VideoConfig extends BaseConfig {
 }
 
 export interface ImaVidConfig extends BaseConfig {
+  frameRate: number;
   framesController: ImaVidFramesController;
 }
 

@@ -2,43 +2,24 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { Optional, StateUpdate, ImaVidState } from "../state";
+import { ImaVidState, Optional, StateUpdate } from "../state";
 import { BaseElement, Events } from "./base";
-import {
-  muteUnmute,
-  playPause,
-  resetPlaybackRate,
-  supportLock,
-} from "./common/actions";
-import {
-  lookerControlActive,
-  lookerClickable,
-  lookerTime,
-} from "./common/controls.module.css";
-import {
-  acquirePlayer,
-  acquireThumbnailer,
-  getFrameNumber,
-  getFrameString,
-  getFullTimeString,
-  getTime,
-} from "./util";
+import { playPause, resetPlaybackRate } from "./common/actions";
+import { lookerClickable, lookerTime } from "./common/controls.module.css";
+import { getFrameNumber, getTime } from "./util";
 
 import {
   bufferingCircle,
   bufferingPath,
-  lookerSeekBar,
-  lookerVolume,
   lookerPlaybackRate,
+  lookerSeekBar,
   lookerThumb,
   lookerThumbSeeking,
 } from "./video.module.css";
-import lockIcon from "../icons/lock.svg";
-import lockOpenIcon from "../icons/lockOpen.svg";
 
+import { playbackRate } from "../icons";
 import { lookerLoader } from "./common/looker.module.css";
 import { dispatchTooltipEvent } from "./common/util";
-import { volume as volumeIcon, volumeMuted, playbackRate } from "../icons";
 
 export class LoaderBar extends BaseElement<ImaVidState> {
   private buffering = false;
@@ -60,28 +41,26 @@ export class LoaderBar extends BaseElement<ImaVidState> {
     hovering,
     waitingForVideo,
     error,
-    config,
+    config: { frameRate },
   }: Readonly<ImaVidState>) {
+    debugger;
+    if (
+      (buffering || waitingForVideo) &&
+      hovering &&
+      !error === this.buffering
+    ) {
+      return this.element;
+    }
+
+    // this.buffering = (buffering || waitingForVideo) && hovering && !error;
+    this.buffering = hovering && !error;
+
+    if (this.buffering) {
+      this.element.style.display = "block";
+    } else {
+      this.element.style.display = "none";
+    }
     return this.element;
-    // if (
-    //   (buffering || waitingForVideo) &&
-    //   hovering &&
-    //   !error === this.buffering
-    // ) {
-    //   return this.element;
-    // }
-    // const start = 1;
-    // const end = getFrameNumber(duration, duration, frameRate);
-
-    // this.buffering =
-    //   (buffering || waitingForVideo) && hovering && !error && start !== end;
-
-    // if (this.buffering) {
-    //   this.element.style.display = "block";
-    // } else {
-    //   this.element.style.display = "none";
-    // }
-    // return this.element;
   }
 }
 
@@ -301,10 +280,9 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
 
   renderSelf({
     frameNumber,
-    config: { frameRate, support, thumbnail },
+    config: { frameRate, thumbnail },
     duration,
     buffers,
-    lockedToSupport,
   }: Readonly<ImaVidState>) {
     if (thumbnail) {
       return this.element;
@@ -312,15 +290,11 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
 
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
-      const start = lockedToSupport
-        ? ((support[0] - 1) / (frameCount - 1)) * 100
-        : 0;
+      const start = 0;
 
       this.element.style.setProperty("--start", `${start}%`);
 
-      const end = lockedToSupport
-        ? ((support[1] - 1) / (frameCount - 1)) * 100
-        : 100;
+      const end = 100;
 
       this.element.style.setProperty("--end", `${end}%`);
       let bufferValue = 100;
@@ -383,7 +357,7 @@ export class TimeElement extends BaseElement<ImaVidState> {
   }
 }
 
-export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
+export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private frameNumber: number;
   private loop = false;
@@ -398,13 +372,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
   private waitingToPlay = false;
   private waitingToRelease = false;
 
-  imageSource: HTMLCanvasElement | HTMLVideoElement;
+  imageSource: HTMLCanvasElement | HTMLImageElement;
 
   getEvents(): Events<ImaVidState> {
     return {
-      error: ({ update }) => {
-        this.releaseVideo();
-        update({ error: true });
+      load: () => {
+        this.imageSource = this.element;
+
+        this.update({
+          loaded: true,
+          dimensions: [this.element.naturalWidth, this.element.naturalHeight],
+        });
+      },
+      error: (e) => {
+        e.update({ error: true });
       },
       loadedmetadata: ({ update }) => {
         update(({ config: { frameRate }, frameNumber }) => {
@@ -517,94 +498,147 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
       },
     };
   }
-
-  createHTMLElement(update: StateUpdate<ImaVidState>) {
+  createHTMLElement(update: StateUpdate<ImaVidState>, dispatchEvent, { src }) {
     this.update = update;
-    this.element = null;
-    update(({ config: { src } }) => {
-      this.src = src;
+    // this.element = null;
 
-      this.element = new Image();
-      this.element.preload = "metadata";
-      this.element.src = src;
-
-      return {};
+    this.element = new Image();
+    this.element.crossOrigin = "Anonymous";
+    this.element.loading = "eager";
+    this.element.addEventListener("load", () => {
+      dispatchEvent("load");
     });
 
-    this.requestCallback = (callback: (time: number) => void) => {
-      requestAnimationFrame(() => {
-        this.element && callback(this.element.currentTime);
-      });
-    };
+    // update(({ config: { thumbnail, src, frameRate } }) => {
+    //   if (thumbnail) {
+    //     // in the grid
+    //     this.canvas = document.createElement("canvas");
+    //     this.canvas.style.imageRendering = "pixelated";
+
+    //     acquireThumbnailer().then(([video, release]) => {
+    //       const error = () => {
+    //         video.removeEventListener("error", error);
+    //         video.removeEventListener("seeked", seeked);
+    //         release();
+    //         update({ error: true, loaded: true, dimensions: [512, 512] });
+    //       };
+
+    //       const seeked = () => {
+    //         requestAnimationFrame(() => {
+    //           requestAnimationFrame(() => {
+    //             setTimeout(() => {
+    //               const ctx = this.canvas.getContext("2d");
+    //               ctx.imageSmoothingEnabled = false;
+    //               ctx.drawImage(video, 0, 0);
+    //               release();
+    //               video.removeEventListener("seeked", seeked);
+    //               video.removeEventListener("error", error);
+    //               this.update({
+    //                 hasPoster: true,
+    //                 duration: video.duration,
+    //                 loaded: true,
+    //               });
+    //             }, 20);
+    //           });
+    //         });
+    //       };
+
+    //       const load = () => {
+    //         video.addEventListener("seeked", seeked);
+    //         video.currentTime = 0;
+    //         video.removeEventListener("loadedmetadata", load);
+
+    //         this.canvas.width = video.videoWidth;
+    //         this.canvas.height = video.videoHeight;
+
+    //         update({ dimensions: [video.videoWidth, video.videoHeight] });
+    //       };
+
+    //       video.src = src;
+    //       video.addEventListener("error", error);
+    //       video.addEventListener("loadedmetadata", load);
+    //     });
+    //   }
+    //   this.element = new HTMLImageElement();
+    //   this.element.src = src;
+
+    //   return {};
+    // });
+
+    // this.requestCallback = (callback: (time: number) => void) => {
+    //   requestAnimationFrame(() => {
+    //     this.element && callback(this.element.currentTime);
+    //   });
+    // };
 
     return this.element;
   }
 
-  private acquireVideo() {
-    let called = false;
+  // private acquireVideo() {
+  //   let called = false;
 
-    this.update(({ waitingForVideo, error }) => {
-      if (!waitingForVideo && !error) {
-        acquirePlayer().then(([video, release]) => {
-          this.update(
-            ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
-              this.element = video;
-              this.release = release;
-              if ((!hovering && thumbnail) || this.waitingToRelease) {
-                this.releaseVideo();
-              } else {
-                this.attachEvents();
-                this.frameNumber = getTime(frameNumber, frameRate);
-                this.element.currentTime = getTime(frameNumber, frameRate);
-                this.element.src = this.src;
-              }
+  //   this.update(({ waitingForVideo, error }) => {
+  //     if (!waitingForVideo && !error) {
+  //       acquirePlayer().then(([video, release]) => {
+  //         this.update(
+  //           ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
+  //             this.element = video;
+  //             this.release = release;
+  //             if ((!hovering && thumbnail) || this.waitingToRelease) {
+  //               this.releaseVideo();
+  //             } else {
+  //               this.attachEvents();
+  //               this.frameNumber = getTime(frameNumber, frameRate);
+  //               this.element.currentTime = getTime(frameNumber, frameRate);
+  //               this.element.src = this.src;
+  //             }
 
-              return {};
-            }
-          );
-        });
+  //             return {};
+  //           }
+  //         );
+  //       });
 
-        called = true;
+  //       called = true;
 
-        return { waitingForVideo: true };
-      }
+  //       return { waitingForVideo: true };
+  //     }
 
-      return {};
-    });
+  //     return {};
+  //   });
 
-    return called;
-  }
+  //   return called;
+  // }
 
-  private releaseVideo() {
-    if (this.waitingToPause || this.waitingToPlay || !this.element) {
-      this.waitingToRelease = true;
-      this.imageSource = this.canvas;
-      this.canvas &&
-        this.update(({ waitingForVideo }) =>
-          waitingForVideo ? { waitingForVideo: false } : {}
-        );
-      return;
-    }
+  // private releaseVideo() {
+  //   if (this.waitingToPause || this.waitingToPlay || !this.element) {
+  //     this.waitingToRelease = true;
+  //     this.imageSource = this.canvas;
+  //     this.canvas &&
+  //       this.update(({ waitingForVideo }) =>
+  //         waitingForVideo ? { waitingForVideo: false } : {}
+  //       );
+  //     return;
+  //   }
 
-    !this.element.paused && this.element.pause();
+  //   !this.element.paused && this.element.pause();
 
-    this.waitingToRelease = false;
+  //   this.waitingToRelease = false;
 
-    this.removeEvents();
-    this.element = null;
-    this.release && this.release();
-    this.release = null;
+  //   this.removeEvents();
+  //   this.element = null;
+  //   this.release && this.release();
+  //   this.release = null;
 
-    this.update({
-      waitingForVideo: false,
-      frameNumber: this.posterFrame,
-      playing: false,
-    });
-  }
+  //   this.update({
+  //     waitingForVideo: false,
+  //     frameNumber: this.posterFrame,
+  //     playing: false,
+  //   });
+  // }
 
   renderSelf({
-    options: { loop, volume, playbackRate },
-    config: { frameRate, thumbnail },
+    options: { loop, playbackRate },
+    config: { frameRate, thumbnail, src },
     frameNumber,
     seeking,
     playing,
@@ -614,22 +648,28 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
     hasPoster,
     destroyed,
   }: Readonly<ImaVidState>) {
+    if (this.src !== src) {
+      this.src = src;
+
+      this.element.setAttribute("src", src);
+    }
     return null;
 
     if (destroyed) {
-      this.releaseVideo();
+      // triggered when, for example, grid is reset, do nothing
+      // this.releaseVideo();
     }
 
     if (!this.element) {
       if (hovering && thumbnail) {
-        const result = this.acquireVideo();
-
-        if (result) {
-          return null;
-        }
+        // const result = this.acquireVideo();
+        // if (result) {
+        //   return null;
+        // }
       }
     } else if (thumbnail && !hovering) {
-      this.releaseVideo();
+      // no need to playback video, just show the thumbnail, "release video"
+      // this.releaseVideo();
       return null;
     }
 
@@ -656,27 +696,22 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLVideoElement> {
         }
       });
     }
-    if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
-      !this.waitingToPlay ? this.element.pause() : (this.waitingToPause = true);
-    }
+    // if (loaded && (!playing || seeking || buffering) && !this.element.paused) {
+    //   !this.waitingToPlay ? this.element.pause() : (this.waitingToPause = true);
+    // }
 
     if (this.loop !== loop) {
-      this.element.loop = loop;
+      // this.element.loop = loop;
       this.loop = loop;
     }
 
     if (this.playbackRate !== playbackRate) {
-      this.element.playbackRate = playbackRate;
+      // this.element.playbackRate = playbackRate;
       this.playbackRate = playbackRate;
     }
 
-    if (this.volume !== volume) {
-      this.element.volume = volume;
-      this.volume = volume;
-    }
-
     if (this.frameNumber !== frameNumber) {
-      this.element.currentTime = getTime(frameNumber, frameRate);
+      // this.element.currentTime = getTime(frameNumber, frameRate);
       this.frameNumber = frameNumber;
     }
 
@@ -860,45 +895,3 @@ export const PLAYBACK_RATE = {
     { node: PlaybackRateBarElement },
   ],
 };
-
-export class SupportLockButtonElement extends BaseElement<
-  ImaVidState,
-  HTMLImageElement
-> {
-  private active: boolean;
-
-  isShown(config: Readonly<ImaVidState["config"]>) {
-    return Boolean(config.support);
-  }
-
-  getEvents(): Events<ImaVidState> {
-    return {
-      click: ({ event, update, dispatchEvent }) => {
-        event.stopPropagation();
-        event.preventDefault();
-        supportLock.action(update, dispatchEvent);
-      },
-    };
-  }
-
-  createHTMLElement() {
-    const element = document.createElement("img");
-    element.style.padding = "2px";
-    element.title = `${supportLock.title} (${supportLock.shortcut})`;
-    element.style.gridArea = "2 / 8 / 2 / 8";
-    element.style.cursor = "pointer";
-    return element;
-  }
-
-  renderSelf({ lockedToSupport }) {
-    if (this.active !== lockedToSupport) {
-      lockedToSupport
-        ? this.element.classList.add(lookerControlActive)
-        : this.element.classList.remove(lookerControlActive);
-      this.element.src = lockedToSupport ? lockIcon : lockOpenIcon;
-      this.active = lockedToSupport;
-    }
-
-    return this.element;
-  }
-}

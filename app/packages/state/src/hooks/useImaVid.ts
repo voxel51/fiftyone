@@ -43,14 +43,10 @@ const useImaVid = () => {
   const shouldRenderImaVidLooker_ = useRecoilValue(shouldRenderImaVidLooker);
   const [store] = useState(() => createImaVidStore());
 
-  const fetchMore = useCallback(() => {
-    
-  }, [])
+  const fetchMore = useCallback(() => {}, []);
 
   const getImaVidController = useCallback(
     (sample: any) => {
-      debugger; // check value of sample to type it
-
       if (!shouldRenderImaVidLooker_) {
         return null;
       }

@@ -155,6 +155,8 @@ export default <T extends AbstractLooker>(
 
       if (constructor === ImaVidLooker) {
         (config as ImaVidConfig).framesController = getImaVidController(sample);
+        // todo
+        (config as ImaVidConfig).frameRate = 24;
       }
 
       const looker = new constructor(sample, config, {
