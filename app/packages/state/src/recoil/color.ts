@@ -125,7 +125,8 @@ export const ensureColorScheme = (
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
         : appConfig?.multicolorKeypoints,
-    opacity: typeof colorScheme.opacity === "number" ? colorScheme.opacity : 1,
+    opacity:
+      typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
       typeof colorScheme.showSkeletons == "boolean"
         ? colorScheme.showSkeletons

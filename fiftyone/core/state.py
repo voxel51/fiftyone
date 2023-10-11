@@ -285,7 +285,7 @@ def build_color_scheme(
         color_scheme.multicolor_keypoints = app_config.multicolor_keypoints
 
     if color_scheme.opacity is None:
-        color_scheme.opacity = 1
+        color_scheme.opacity = 0.7
 
     if color_scheme.show_skeletons is None:
         color_scheme.show_skeletons = app_config.show_skeletons
