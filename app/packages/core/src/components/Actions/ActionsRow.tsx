@@ -234,7 +234,7 @@ const Selected = ({
       setLoading(e.detail)
     );
 
-  if (samples.size < 1 && !modal) {
+  if (!samples.size || (samples.size < 1 && !modal)) {
     return null;
   }
 
