@@ -6,7 +6,7 @@ Data utilities.
 |
 """
 import logging
-import multiprocessing
+import multiprocessing.dummy
 import requests
 import os
 import pathlib
@@ -119,8 +119,8 @@ def download_image_classification_dataset(
         dataset_dir: the directory to write the dataset
         classes (None): an optional list of classes. By default, this will be
             inferred from the contents of ``csv_path``
-        num_workers (None): the number of processes to use to download images.
-            By default, ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of threads to use to download
+            images
     """
     fos.ensure_local(dataset_dir)
 
@@ -164,16 +164,14 @@ def download_images(image_urls, output_dir, num_workers=None):
     Args:
         image_urls: a list of image URLs to download
         output_dir: the directory to write the images
-        num_workers (None): the number of processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of threads to use
 
     Returns:
         the list of downloaded image paths
     """
     fos.ensure_local(output_dir)
 
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     inputs = []
     for url in image_urls:
@@ -197,9 +195,7 @@ def _download_images(inputs):
 
 def _download_images_multi(inputs, num_workers):
     with fou.ProgressBar(inputs) as pb:
-        with fou.get_multiprocessing_context().Pool(
-            processes=num_workers
-        ) as pool:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
             for _ in pb(pool.imap_unordered(_download_image, inputs)):
                 pass
 

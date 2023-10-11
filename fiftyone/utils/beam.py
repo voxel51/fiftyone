@@ -6,7 +6,6 @@
 |
 """
 import logging
-import multiprocessing
 import numpy as np
 
 import fiftyone.core.dataset as fod
@@ -89,14 +88,13 @@ def beam_import(
         options (None): a
             ``apache_beam.options.pipeline_options.PipelineOptions`` that
             configures how to run the pipeline. By default, the pipeline will
-            be run via Beam's direct runner using
-            ``multiprocessing.cpu_count()`` threads
+            be run via Beam's direct runner using threads
         verbose (False): whether to log the Beam pipeline's messages
     """
     if options is None:
         options = PipelineOptions(
             runner="direct",
-            direct_num_workers=multiprocessing.cpu_count(),
+            direct_num_workers=fou.recommend_thread_pool_workers(),
             direct_running_mode="multi_threading",
         )
 
@@ -183,8 +181,7 @@ def beam_merge(
         options (None): a
             ``apache_beam.options.pipeline_options.PipelineOptions`` that
             configures how to run the pipeline. By default, the pipeline will
-            be run via Beam's direct runner using
-            ``multiprocessing.cpu_count()`` threads
+            be run via Beam's direct runner using threads
         verbose (False): whether to log the Beam pipeline's messages
         **kwargs: keyword arguments for
             :meth:`fiftyone.core.dataset.Dataset.merge_samples`
@@ -213,7 +210,7 @@ def beam_merge(
     if options is None:
         options = PipelineOptions(
             runner="direct",
-            direct_num_workers=multiprocessing.cpu_count(),
+            direct_num_workers=fou.recommend_thread_pool_workers(),
             direct_running_mode="multi_threading",
         )
 
@@ -290,8 +287,7 @@ def beam_export(
         options (None): a
             ``apache_beam.options.pipeline_options.PipelineOptions`` that
             configures how to run the pipeline. By default, the pipeline will
-            be run via Beam's direct runner using
-            ``min(num_shards, multiprocessing.cpu_count())`` processes
+            be run via Beam's direct runner using multiprocessing
         verbose (False): whether to log the Beam pipeline's messages
         render_kwargs (None): a function that renders ``kwargs`` for the
             current shard. The function should have signature
@@ -303,7 +299,7 @@ def beam_export(
             :meth:`fiftyone.core.collections.SampleCollection.export`
     """
     if options is None:
-        num_workers = min(num_shards, multiprocessing.cpu_count())
+        num_workers = min(num_shards, fou.recommend_process_pool_workers())
         options = PipelineOptions(
             runner="direct",
             direct_num_workers=num_workers,
