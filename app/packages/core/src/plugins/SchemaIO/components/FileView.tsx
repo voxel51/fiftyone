@@ -2,8 +2,6 @@ import { Alert, Box, Typography } from "@mui/material";
 import React, { useState } from "react";
 import FileDrop from "./FileDrop";
 import HeaderView from "./HeaderView";
-import TabsView from "./TabsView";
-import TextFieldView from "./TextFieldView";
 import { getComponentProps } from "../utils";
 import { humanReadableBytes } from "@fiftyone/utilities";
 
@@ -11,7 +9,7 @@ export default function FileView(props) {
   const { onChange, path, schema, autoFocused } = props;
   const { view = {} } = schema;
   const { types } = view;
-  const [type, setType] = useState("file");
+  const [type] = useState("file");
   const isObject = schema.type === "object";
   const maxSize = view.max_size || null;
   const customMaxSizeMessage = view.max_size_error_message || null;
@@ -29,7 +27,7 @@ export default function FileView(props) {
           <FileDrop
             onChange={async (files, clear) => {
               if (files?.length === 0) {
-                return onChange(path, "");
+                return onChange(path, null);
               }
               const [file] = files;
               const { error, result } = await fileToBase64(file);
