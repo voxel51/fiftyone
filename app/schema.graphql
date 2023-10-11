@@ -84,6 +84,20 @@ type BooleanAggregation implements Aggregation {
   true: Int!
 }
 
+type BooleanLightningAggregation implements LightningAggregation {
+  path: String!
+  false: Boolean!
+  true: Boolean!
+}
+
+union BooleanLightningAggregationDateLightningAggregationDateTimeLightningAggregationFloatLightningAggregationIntLightningAggregationStringLightningAggregation =
+    BooleanLightningAggregation
+  | DateLightningAggregation
+  | DateTimeLightningAggregation
+  | FloatLightningAggregation
+  | IntLightningAggregation
+  | StringLightningAggregation
+
 type BrainRun implements Run {
   key: String!
   version: String
@@ -176,6 +190,8 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  frameIndexes: [Index!]
+  sampleIndexes: [Index!]
   stages(slug: String = null): BSONArray
 }
 
@@ -206,6 +222,18 @@ type DatasetStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type DateLightningAggregation implements LightningAggregation {
+  path: String!
+  max: date
+  min: date
+}
+
+type DateTimeLightningAggregation implements LightningAggregation {
+  path: String!
+  max: datetime
+  min: datetime
 }
 
 type DatetimeHistogramValuesResponse {
@@ -253,6 +281,15 @@ type FloatHistogramValuesResponse {
   other: Int!
 }
 
+type FloatLightningAggregation implements LightningAggregation {
+  path: String!
+  inf: Boolean!
+  max: Float
+  min: Float
+  nan: Boolean!
+  ninf: Boolean!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -275,6 +312,24 @@ type ImageSample implements Sample {
   aspectRatio: Float!
 }
 
+type Index {
+  name: String!
+  key: [IndexFields!]!
+  unique: Boolean
+}
+
+type IndexFields {
+  field: String!
+  type: IndexType!
+}
+
+enum IndexType {
+  asc
+  desc
+  sphere
+  text
+}
+
 type IntAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -291,6 +346,12 @@ type IntHistogramValuesResponse {
   counts: [Int!]!
   edges: [Float!]!
   other: Int!
+}
+
+type IntLightningAggregation implements LightningAggregation {
+  path: String!
+  max: Float
+  min: Float
 }
 
 type IntValueCount {
@@ -310,6 +371,22 @@ type KeypointSkeleton {
 type LabelSetting {
   value: String!
   color: String!
+}
+
+interface LightningAggregation {
+  path: String!
+}
+
+input LightningInput {
+  dataset: String!
+  paths: [LightningPathInput!]!
+}
+
+input LightningPathInput {
+  path: String!
+  exclude: [String!] = null
+  first: Int = null
+  search: String = null
 }
 
 enum MediaType {
@@ -432,6 +509,9 @@ type Query {
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
+  lightning(
+    input: LightningInput!
+  ): [BooleanLightningAggregationDateLightningAggregationDateTimeLightningAggregationFloatLightningAggregationIntLightningAggregationStringLightningAggregation!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -605,6 +685,11 @@ type StringAggregation implements Aggregation {
 type StringAggregationValue {
   count: Int!
   value: String!
+}
+
+type StringLightningAggregation implements LightningAggregation {
+  path: String!
+  values: [String!]!
 }
 
 type Target {
