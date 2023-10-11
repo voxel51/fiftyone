@@ -12,7 +12,6 @@ from datetime import datetime
 import itertools
 import logging
 import math
-import multiprocessing
 import multiprocessing.dummy
 import os
 from packaging.version import Version
@@ -118,8 +117,8 @@ def import_annotations(
         download_media (False): whether to download the images or videos found
             in CVAT to the directory or filepaths in ``data_path`` if not
             already present
-        num_workers (None): the number of processes to use when downloading
-            media. By default, ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of threads to use when
+            downloading media
         occluded_attr (None): an optional attribute name in which to store the
             occlusion information for all spatial labels
         group_id_attr (None): an optional attribute name in which to store the
@@ -325,8 +324,7 @@ def _parse_task_metadata(
 
 
 def _download_media(tasks, num_workers):
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     logger.info("Downloading media...")
     if num_workers <= 1:
