@@ -264,6 +264,30 @@ exported.
         label_field="ground_truth",
     )
 
+You can also directly call
+:meth:`export() <fiftyone.core.collections.SampleCollection.export>` on
+:ref:`patches views <object-patches-views>` to export the specified object
+patches along with their appropriately typed labels.
+
+.. code-block:: python
+    :linenos:
+
+    # Continuing from above...
+
+    patches = dataset.to_patches("ground_truth")
+
+    # Export the object patches as a directory of images
+    patches.export(
+        export_dir="/tmp/quickstart/also-patches",
+        dataset_type=fo.types.ImageDirectory,
+    )
+
+    # Export the object patches as an image classification directory tree
+    patches.export(
+        export_dir="/tmp/quickstart/also-objects",
+        dataset_type=fo.types.ImageClassificationDirectoryTree,
+    )
+
 Video clips
 ~~~~~~~~~~~
 
@@ -278,7 +302,7 @@ specified :ref:`video clips <app-video-clips>` will be exported.
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    dataset = foz.load_zoo_dataset("quickstart-video").limit(2).clone()
+    dataset = foz.load_zoo_dataset("quickstart-video", max_samples=2)
 
     # Add some temporal detections to the dataset
     sample1 = dataset.first()
@@ -333,12 +357,10 @@ their appropriately typed labels.
         dataset_type=fo.types.VideoDirectory,
     )
 
-    # A classification field is provided, so the clips are exported as a video
-    # classification directory tree
+    # Export the clips as a video classification directory tree
     clips.export(
         export_dir="/tmp/quickstart-video/clip-classifications",
         dataset_type=fo.types.VideoClassificationDirectoryTree,
-        label_field="events",
     )
 
     # Export the clips along with their associated frame labels

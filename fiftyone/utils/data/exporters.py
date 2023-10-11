@@ -247,7 +247,7 @@ def export_samples(
             # Export unlabeled image patches
             samples = foup.ImagePatchesExtractor(
                 samples,
-                label_field,
+                patches_field=label_field,
                 include_labels=False,
                 **patches_kwargs,
             )
@@ -259,7 +259,7 @@ def export_samples(
             )
 
     elif isinstance(dataset_exporter, UnlabeledVideoDatasetExporter):
-        if found_clips:
+        if found_clips and not samples._is_clips:
             # Export unlabeled video clips
             samples = samples.to_clips(label_field)
             num_samples = len(samples)
@@ -276,7 +276,7 @@ def export_samples(
         # Note that if the dataset exporter does not use `export_media`, this
         # will not work properly...
         #
-        if samples._dataset._is_clips and _export_media:
+        if _export_media and samples._is_clips:
             dataset_exporter.export_media = "move"
 
         sample_parser = FiftyOneUnlabeledVideoSampleParser(
@@ -293,7 +293,7 @@ def export_samples(
             # Export labeled image patches
             samples = foup.ImagePatchesExtractor(
                 samples,
-                label_field,
+                patches_field=label_field,
                 include_labels=True,
                 **patches_kwargs,
             )
@@ -310,7 +310,7 @@ def export_samples(
             )
 
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
-        if found_clips:
+        if found_clips and not samples._is_clips:
             # Export labeled video clips
             samples = samples.to_clips(label_field)
             num_samples = len(samples)
@@ -327,7 +327,7 @@ def export_samples(
         # Note that if the dataset exporter does not use `export_media`, this
         # will not work properly...
         #
-        if samples._dataset._is_clips and _export_media:
+        if _export_media and samples._is_clips:
             dataset_exporter.export_media = "move"
 
         label_fcn = _make_label_coercion_functions(
@@ -513,10 +513,8 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
         else:
             label_field = None
 
-    if label_field is None:
-        return False, {}, kwargs
-
     found_patches = False
+    patches_kwargs = {}
 
     if isinstance(dataset_exporter, UnlabeledImageDatasetExporter):
         try:
@@ -532,7 +530,12 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
                 label_field,
                 label_type,
             )
-
+        elif samples._is_patches:
+            found_patches = True
+            logger.info(
+                "Detected an unlabeled image exporter and a patches view. "
+                "Exporting image patches...",
+            )
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
         label_cls = dataset_exporter.label_cls
 
@@ -570,8 +573,6 @@ def _check_for_patches_export(samples, dataset_exporter, label_field, kwargs):
         patches_kwargs, kwargs = fou.extract_kwargs_for_class(
             foup.ImagePatchesExtractor, kwargs
         )
-    else:
-        patches_kwargs = {}
 
     return found_patches, patches_kwargs, kwargs
 
@@ -602,12 +603,17 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
                 label_field,
                 label_type,
             )
+        elif samples._is_clips:
+            found_clips = True
+            logger.info(
+                "Detected an unlabeled video exporter and a clips view. "
+                "Exporting video clips...",
+            )
 
-        if found_clips or samples._dataset._is_clips:
+        if found_clips:
             clips_kwargs, kwargs = fou.extract_kwargs_for_class(
                 FiftyOneUnlabeledVideoSampleParser, kwargs
             )
-
     elif isinstance(dataset_exporter, LabeledVideoDatasetExporter):
         label_cls = dataset_exporter.label_cls
 
@@ -642,8 +648,10 @@ def _check_for_clips_export(samples, dataset_exporter, label_field, kwargs):
                 label_field,
                 label_type,
             )
+        elif samples._is_clips:
+            found_clips = True
 
-        if found_clips or samples._dataset._is_clips:
+        if found_clips:
             clips_kwargs, kwargs = fou.extract_kwargs_for_class(
                 FiftyOneLabeledVideoSampleParser, kwargs
             )
