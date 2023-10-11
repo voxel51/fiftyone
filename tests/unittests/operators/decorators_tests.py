@@ -5,12 +5,13 @@ Unit tests for operators/decorators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import asyncio
 import os
 import unittest
 from unittest import mock
 from unittest.mock import patch
 
-from fiftyone.operators.decorators import dir_state
+from fiftyone.operators.decorators import coroutine_timeout, dir_state
 
 
 class DirStateTests(unittest.TestCase):
@@ -60,3 +61,32 @@ class DirStateTests(unittest.TestCase):
         mock_getmtime.assert_has_calls(
             [unittest.mock.call("file1.txt"), unittest.mock.call("file2.txt")]
         )
+
+
+async def dummy_coroutine_fn(duration):
+    await asyncio.sleep(duration)
+    return "Success"
+
+
+@coroutine_timeout(seconds=2)
+async def timeout_dummy_coroutine_fn(duration):
+    return await dummy_coroutine_fn(duration)
+
+
+def non_coroutine_fn():
+    pass
+
+
+class TestCoroutineTimeoutDecorator(unittest.TestCase):
+    def test_successful_execution(self):
+        result = asyncio.run(timeout_dummy_coroutine_fn(1))
+        self.assertEqual(result, "Success")
+
+    def test_timeout_exception(self):
+        with self.assertRaises(TimeoutError):
+            asyncio.run(timeout_dummy_coroutine_fn(3))
+
+    def test_non_coroutine_function(self):
+        decorated_function = coroutine_timeout(2)(non_coroutine_fn)
+        with self.assertRaises(TypeError):
+            asyncio.run(decorated_function())
