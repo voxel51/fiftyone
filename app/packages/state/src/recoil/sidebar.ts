@@ -1,4 +1,17 @@
-import { setSidebarGroups, setSidebarGroupsMutation } from "@fiftyone/relay";
+import {
+  datasetFragment,
+  frameFieldsFragment,
+  frameFieldsFragment$key,
+  graphQLSyncFragmentAtomFamily,
+  readFragment,
+  sampleFieldsFragment,
+  sampleFieldsFragment$key,
+  setSidebarGroups,
+  setSidebarGroupsMutation,
+  sidebarGroupsFragment,
+  sidebarGroupsFragment$data,
+  sidebarGroupsFragment$key,
+} from "@fiftyone/relay";
 import {
   DICT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -18,9 +31,9 @@ import {
   selector,
   selectorFamily,
   useRecoilStateLoadable,
-  useRecoilValue,
+  useRecoilValueLoadable,
 } from "recoil";
-import { getCurrentEnvironment } from "../hooks/useRouter";
+import { collapseFields, getCurrentEnvironment } from "../utils";
 import * as aggregationAtoms from "./aggregations";
 import * as atoms from "./atoms";
 import { isLargeVideo } from "./options";
@@ -31,6 +44,7 @@ import {
   filterPaths,
   pathIsShown,
 } from "./schema";
+import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 import { datasetName, isVideoDataset, stateSubscription } from "./selectors";
 import { State } from "./types";
 import {
@@ -41,7 +55,6 @@ import {
   unsupportedMatcher,
 } from "./utils";
 import * as viewAtoms from "./view";
-import { isFieldVisibilityActive as isFieldVisibilityActiveState } from "./schemaSettings.atoms";
 
 export enum EntryKind {
   EMPTY = "EMPTY",
@@ -104,12 +117,12 @@ export const useEntries = (
   const [entries, setEntries] = useRecoilStateLoadable(
     sidebarEntries({ modal, loading: false, filtered: true })
   );
-  const loadingEntries = useRecoilValue(
+  const loadingEntries = useRecoilValueLoadable(
     sidebarEntries({ modal, loading: true, filtered: true })
   );
 
   return [
-    entries.state === "loading" ? loadingEntries : entries.contents,
+    entries.state === "loading" ? loadingEntries.contents : entries.contents,
     setEntries,
   ];
 };
@@ -172,31 +185,24 @@ export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
   sidebarGroups?: State.SidebarGroup[],
-  current?: State.SidebarGroup[]
+  config: NonNullable<
+    sidebarGroupsFragment$data["appConfig"]
+  >["sidebarGroups"] = []
 ): State.SidebarGroup[] => {
-  let groups = sidebarGroups
-    ? JSON.parse(JSON.stringify(sidebarGroups))
-    : undefined;
-
-  const expanded = current
-    ? current.reduce((map, { name, expanded }) => {
-        map[name] = expanded;
-        return map;
-      }, {})
-    : {};
-
-  if (!groups) {
-    groups = JSON.parse(
-      JSON.stringify(
-        frameFields.length ? DEFAULT_VIDEO_GROUPS : DEFAULT_IMAGE_GROUPS
-      )
-    );
-  }
+  let groups = sidebarGroups?.length
+    ? sidebarGroups
+    : frameFields.length
+    ? DEFAULT_VIDEO_GROUPS
+    : DEFAULT_IMAGE_GROUPS;
+  const expanded = config.reduce((map, { name, expanded }) => {
+    map[name] = expanded;
+    return map;
+  }, {});
 
   groups = groups.map((group) => {
     return expanded[group.name] !== undefined
       ? { ...group, expanded: expanded[group.name] }
-      : group;
+      : { ...group };
   });
 
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
@@ -272,13 +278,51 @@ const groupUpdater = (
   };
 };
 
-export const sidebarGroupsDefinition = atomFamily<
-  State.SidebarGroup[],
-  boolean
->({
-  key: "sidebarGroupsDefinition",
-  default: [],
-});
+export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
+  let config: NonNullable<
+    sidebarGroupsFragment$data["appConfig"]
+  >["sidebarGroups"] = [];
+  let current: State.SidebarGroup[] = [];
+  return [
+    (sampleFields: StrictField[], frameFields: StrictField[]) => {
+      return resolveGroups(sampleFields, frameFields, current, config);
+    },
+    graphQLSyncFragmentAtomFamily<
+      sidebarGroupsFragment$key,
+      State.SidebarGroup[],
+      boolean
+    >(
+      {
+        fragments: [datasetFragment, sidebarGroupsFragment],
+        keys: ["dataset"],
+        sync: (modal) => !modal,
+        read: (data, prev) => {
+          config = data.appConfig?.sidebarGroups || [];
+          current = resolveGroups(
+            collapseFields(
+              readFragment(
+                sampleFieldsFragment,
+                data as sampleFieldsFragment$key
+              ).sampleFields
+            ),
+            collapseFields(
+              readFragment(frameFieldsFragment, data as frameFieldsFragment$key)
+                .frameFields
+            ),
+            data.name === prev?.name ? current : [],
+            config
+          );
+
+          return current;
+        },
+        default: [],
+      },
+      {
+        key: "sidebarGroupsDefinition",
+      }
+    ),
+  ];
+})();
 
 export const sidebarGroups = selectorFamily<
   State.SidebarGroup[],
@@ -542,12 +586,10 @@ export const sidebarEntries = selectorFamily<
 export const disabledPaths = selector<Set<string>>({
   key: "disabledPaths",
   get: ({ get }) => {
-    const dataset = get(atoms.dataset);
-    const paths = new Set(
-      fieldsMatcher(dataset.sampleFields, unsupportedMatcher)
-    );
+    const sampleFields = get(atoms.sampleFields);
+    const paths = new Set(fieldsMatcher(sampleFields, unsupportedMatcher));
 
-    dataset.sampleFields.filter(groupFilter).forEach((parent) => {
+    sampleFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
         (field) => {
@@ -569,14 +611,13 @@ export const disabledPaths = selector<Set<string>>({
       ).forEach((path) => paths.add(path));
     });
 
-    fieldsMatcher(
-      dataset.frameFields,
-      primitivesMatcher,
-      undefined,
-      "frames."
-    ).forEach((path) => paths.add(path));
+    const frameFields = get(atoms.frameFields);
 
-    dataset.frameFields.filter(groupFilter).forEach((parent) => {
+    fieldsMatcher(frameFields, primitivesMatcher, undefined, "frames.").forEach(
+      (path) => paths.add(path)
+    );
+
+    frameFields.filter(groupFilter).forEach((parent) => {
       fieldsMatcher(
         parent.fields || [],
         (field) => {

@@ -1,17 +1,14 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-
-import { Option, Select } from "@mui/joy";
-import styled from "styled-components";
-
-import { useOutsideClick, DEFAULT_SELECTED } from "@fiftyone/state";
-import SelectionOption from "./Option";
 import { IconButton, useTheme } from "@fiftyone/components";
-import { DatasetViewOption } from "./Option";
+import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
+import { CloseRounded } from "@mui/icons-material";
+import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import styled from "styled-components";
+import { JoyThemeProvider } from "../ThemeProvider";
+import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { CloseRounded } from "@mui/icons-material";
-import { JoyThemeProvider } from "../ThemeProvider";
 
 const Box = styled.div`
   display: flex;

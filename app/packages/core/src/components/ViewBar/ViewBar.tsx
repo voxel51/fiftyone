@@ -69,20 +69,28 @@ const viewBarKeyMap = {
   VIEW_BAR_ENTER: "enter",
 };
 
+export let rollbackViewBar: () => void;
+
 const ViewBar = React.memo(() => {
   const [state, send] = useMachine(viewBarMachine);
   const view = useRecoilValue(fos.view);
+
+  const stageDefinitions = useRecoilValue(fos.stageDefinitions);
   const setView = fos.useSetView();
 
   const fieldPaths = useRecoilValue(fos.fieldPaths({}));
-
   useEffect(() => {
-    send({
-      type: "UPDATE",
-      view,
-      setView,
-      fieldNames: fieldPaths,
-    });
+    const setViewBar = () =>
+      send({
+        type: "UPDATE",
+        view,
+        setView,
+        fieldNames: fieldPaths,
+        stageDefinitions,
+      });
+
+    setViewBar();
+    rollbackViewBar = setViewBar;
   }, [view, fieldPaths]);
 
   const { stages, activeStage } = state.context;

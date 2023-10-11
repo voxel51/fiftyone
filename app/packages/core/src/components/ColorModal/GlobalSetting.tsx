@@ -1,36 +1,32 @@
+import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-import React from "react";
-
-import * as fos from "@fiftyone/state";
-
+import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
-import ColorPalette from "./colorPalette/ColorPalette";
-
 import {
   ControlGroupWrapper,
   LabelTitle,
   SectionWrapper,
 } from "./ShareStyledDiv";
+import ColorPalette from "./colorPalette/ColorPalette";
 import ShuffleColor from "./controls/RefreshColor";
 
-const GlobalSetting: React.FC = ({}) => {
-  const { props } = fos.useGlobalColorSetting();
-  const handleSliderChange = (event: Event, newValue: number | number[]) => {
-    props.setOpacity(newValue as number);
-  };
-
+const GlobalSetting = () => {
+  const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
   return (
     <div>
       <Divider>General</Divider>
       <ControlGroupWrapper>
         <LabelTitle>Color annotations by</LabelTitle>
-        <SectionWrapper>
+        <SectionWrapper data-cy="colorBy-controls">
           <RadioGroup
-            choices={["field", "value"]}
-            value={props.colorBy}
-            setValue={(mode) => props.setColorBy(mode)}
+            choices={["field", "value", "instance"]}
+            value={colorScheme.colorBy ?? "field"}
+            setValue={(mode) =>
+              setColorScheme({ ...colorScheme, colorBy: mode })
+            }
+            horizontal
           />
         </SectionWrapper>
         <ShuffleColor />
@@ -46,9 +42,11 @@ const GlobalSetting: React.FC = ({}) => {
       <ControlGroupWrapper>
         <LabelTitle>
           <span>Label opacity</span>
-          {props.opacity !== fos.DEFAULT_ALPHA && (
+          {colorScheme.opacity !== fos.DEFAULT_ALPHA && (
             <span
-              onClick={() => props.setOpacity(fos.DEFAULT_ALPHA)}
+              onClick={() =>
+                setColorScheme({ ...colorScheme, opacity: fos.DEFAULT_ALPHA })
+              }
               style={{ cursor: "pointer", margin: "0.5rem" }}
               title={"Reset label opacity"}
             >
@@ -57,8 +55,10 @@ const GlobalSetting: React.FC = ({}) => {
           )}
         </LabelTitle>
         <Slider
-          value={Number(props.opacity)}
-          onChange={handleSliderChange}
+          value={Number(colorScheme.opacity)}
+          onChange={(event: Event, newValue: number | number[]) => {
+            setColorScheme({ ...colorScheme, opacity: newValue as number });
+          }}
           min={0}
           max={1}
           step={0.01}
@@ -69,16 +69,17 @@ const GlobalSetting: React.FC = ({}) => {
       <ControlGroupWrapper>
         <Checkbox
           name={"Multicolor keypoints"}
-          value={Boolean(props.useMulticolorKeypoints)}
-          setValue={(v) => props.setUseMultiplecolorKeypoints(v)}
+          value={Boolean(colorScheme.multicolorKeypoints)}
+          setValue={(v) =>
+            setColorScheme({ ...colorScheme, multicolorKeypoints: v })
+          }
         />
         <Checkbox
           name={"Show keypoint skeletons"}
-          value={Boolean(props.showSkeleton)}
-          setValue={(v) => props.setShowSkeleton(v)}
+          value={Boolean(colorScheme.showSkeletons)}
+          setValue={(v) => setColorScheme({ ...colorScheme, showSkeletons: v })}
         />
       </ControlGroupWrapper>
-      Note that in this panel the color pool is the only savable option for now.
     </div>
   );
 };

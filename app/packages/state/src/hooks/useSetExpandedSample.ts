@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   useRecoilCallback,
   useRecoilTransaction_UNSTABLE,
@@ -13,9 +14,11 @@ import * as groupAtoms from "../recoil/groups";
 export default () => {
   const types = useRecoilValue(groupAtoms.groupMediaTypes);
   const map = useRecoilValue(groupAtoms.groupMediaTypesMap);
-
+  const groupSlice = useRecoilValue(groupAtoms.groupSlice);
+  const r = useRef(groupSlice);
+  r.current = groupSlice;
   const setter = useRecoilTransaction_UNSTABLE(
-    ({ get, reset, set }) =>
+    ({ reset, set }) =>
       (
         id: string,
         index: number,
@@ -24,21 +27,21 @@ export default () => {
       ) => {
         set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
-        reset(groupAtoms.nestedGroupIndex);
+        reset(groupAtoms.dynamicGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
         groupByFieldValue &&
           set(groupAtoms.groupByFieldValue, groupByFieldValue);
 
-        let fallback = get(groupAtoms.groupSlice(false));
-        if (map[fallback] === "point_cloud") {
+        let fallback = r.current;
+        if (map[groupSlice] === "point_cloud") {
           fallback = types
             .filter(({ mediaType }) => mediaType !== "point_cloud")
             .map(({ name }) => name)
             .sort()[0];
         }
-        set(groupAtoms.groupSlice(true), fallback);
+        set(groupAtoms.modalGroupSlice, fallback);
       },
-    [map, types]
+    [r, map, types]
   );
 
   return useRecoilCallback(

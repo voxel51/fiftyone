@@ -1,8 +1,8 @@
-import { AbstractLooker } from "@fiftyone/looker";
+import { Lookers } from "@fiftyone/state";
 import React, { useContext } from "react";
 
 export type GroupContext = {
-  lookerRefCallback: (looker: AbstractLooker) => void;
+  lookerRefCallback: (looker: Lookers) => void;
 };
 
 const defaultOptions: GroupContext = {
@@ -15,7 +15,7 @@ export const useGroupContext = () => useContext(groupContext);
 
 interface GroupContextProviderProps {
   children: React.ReactNode;
-  lookerRefCallback: (looker: AbstractLooker) => void;
+  lookerRefCallback: (looker: Lookers) => void;
 }
 
 export const GroupContextProvider = ({

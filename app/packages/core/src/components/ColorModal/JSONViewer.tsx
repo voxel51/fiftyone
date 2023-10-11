@@ -1,35 +1,46 @@
 import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ColorSchemeInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import Editor from "@monaco-editor/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "@mui/material";
+import colorString from "color-string";
+import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
-import { ActionOption } from "../Actions/Common";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import { validateJSONSetting } from "./utils";
-import colorString from "color-string";
-import { Link } from "@mui/material";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
   const theme = useTheme();
-  const editorRef = useRef(null);
-  const sessionColor = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  const ref = useRef<HTMLDivElement>(null);
 
   const setting = useMemo(() => {
     return {
-      colorPool: sessionColor?.colorPool ?? [],
-      fields: validateJSONSetting(sessionColor?.fields ?? []),
+      colorPool: colorScheme?.colorPool ?? [],
+      colorBy: colorScheme?.colorBy ?? "field",
+      opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
+      multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
+      showSkeletons: colorScheme?.showSkeletons,
+      fields: validateJSONSetting(colorScheme.fields || []),
     };
-  }, [sessionColor]);
+  }, [colorScheme]);
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
-  const handleEditorDidMount = (editor) => (editorRef.current = editor);
   const handleEditorChange = (value: string | undefined) => {
     value && setData(JSON.parse(value));
+    // dispatch a custom event for e2e test to capture
+    if (ref?.current) {
+      ref.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
   };
 
   const onApply = () => {
@@ -45,26 +56,66 @@ const JSONViewer: React.FC = () => {
     const { colorPool, fields } = data;
     const validColors = colorPool
       ?.filter((c) => isValidColor(c))
-      .map((c) => colorString.to.hex(colorString.get(c).value));
-    const validatedSetting = validateJSONSetting(fields);
+      .map((c) => colorString.to.hex(colorString.get(c)!.value));
+    const validatedSetting = validateJSONSetting(
+      fields as ColorSchemeInput["fields"]
+    );
+    const validatedColorBy = ["field", "label"].includes(data?.colorBy)
+      ? data?.colorBy
+      : colorScheme.colorBy ?? "field";
+    const validatedOpacity =
+      typeof data?.opacity === "number" &&
+      data.opacity <= 1 &&
+      data.opacity >= 0
+        ? data?.opacity
+        : colorScheme.opacity ?? fos.DEFAULT_ALPHA;
+    const validatedMulticolorKeypoints =
+      typeof data?.multicolorKeypoints === "boolean"
+        ? data?.multicolorKeypoints
+        : colorScheme?.multicolorKeypoints ?? false;
+    const validatedShowSkeletons = Boolean(
+      typeof data?.showSkeletons === "boolean"
+        ? data?.showSkeletons
+        : colorScheme?.showSkeletons
+    );
+
     setData({
       colorPool: validColors,
       fields: validatedSetting,
+      colorBy: validatedColorBy,
+      multicolorKeypoints: validatedMulticolorKeypoints,
+      opacity: validatedOpacity,
+      showSkeletons: validatedShowSkeletons,
     });
-    setColorScheme(false, {
+    setColorScheme({
       colorPool: validColors,
+      colorBy: validatedColorBy,
       fields: validatedSetting,
+      multicolorKeypoints: validatedMulticolorKeypoints,
+      opacity: validatedOpacity,
+      showSkeletons: validatedShowSkeletons,
     });
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setData(setting);
-  }, [setting]);
+    if (ref?.current) {
+      ref?.current.dispatchEvent(
+        new CustomEvent("json-viewer-update", {
+          bubbles: true,
+        })
+      );
+    }
+  }, [setting, ref]);
 
   const haveChanges = JSON.stringify(setting) !== JSON.stringify(data);
 
   return (
-    <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
+    <div
+      data-cy="color-scheme-editor"
+      style={{ width: "100%", height: "100%", overflow: "hidden" }}
+      ref={ref}
+    >
       <SectionWrapper>
         <p style={{ margin: 0, lineHeight: "1.3rem" }}>
           You can use the JSON editor below to copy/edit your current color
@@ -82,7 +133,6 @@ const JSONViewer: React.FC = () => {
         width={"100%"}
         height={"calc(100% - 90px)"}
         wrapperProps={{ padding: 0 }}
-        onMount={handleEditorDidMount}
         onChange={handleEditorChange}
       />
       {haveChanges && (

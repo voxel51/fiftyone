@@ -1,7 +1,7 @@
 import {
-  dataset,
   extendedSelection,
   getBrowserStorageEffectForKey,
+  sampleFields,
   theme,
 } from "@fiftyone/state";
 import { atom, selector } from "recoil";
@@ -53,10 +53,8 @@ export const activeField = atom<string>({
 export const geoFields = selector<string[]>({
   key: "@fiftyone/map/state.geoFields",
   get: ({ get }) => {
-    return get(dataset)
-      .sampleFields.filter(
-        (f) => f.embeddedDocType === "fiftyone.core.labels.GeoLocation"
-      )
+    return get(sampleFields)
+      .filter((f) => f.embeddedDocType === "fiftyone.core.labels.GeoLocation")
       .map(({ name }) => name)
       .sort();
   },

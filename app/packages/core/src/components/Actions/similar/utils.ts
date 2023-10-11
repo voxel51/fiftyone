@@ -1,19 +1,8 @@
 import * as fos from "@fiftyone/state";
-import {
-  Method,
-  selectedLabels,
-  useBrowserStorage,
-  useUnprocessedStateUpdate,
-} from "@fiftyone/state";
+import { Method, selectedLabels, useBrowserStorage } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { useMemo } from "react";
-import { useErrorHandler } from "react-error-boundary";
-import {
-  Snapshot,
-  selectorFamily,
-  useRecoilCallback,
-  useRecoilValue,
-} from "recoil";
+import { Snapshot, selectorFamily, useRecoilCallback } from "recoil";
 
 export const getQueryIds = async (
   snapshot: Snapshot,
@@ -33,12 +22,14 @@ export const getQueryIds = async (
     );
   }
 
-  const selectedSamples = await snapshot.getPromise(fos.selectedSamples);
+  const selectedSamples = Array.from(
+    await snapshot.getPromise(fos.selectedSamples)
+  );
   const isPatches = await snapshot.getPromise(fos.isPatchesView);
 
   if (isPatches) {
-    if (selectedSamples.size) {
-      return [...selectedSamples].map((id) => {
+    if (selectedSamples.length) {
+      return selectedSamples.map((id) => {
         const sample = fos.getSample(id);
         if (sample) {
           return sample.sample[labels_field]._id as string;
@@ -52,7 +43,7 @@ export const getQueryIds = async (
       ._id as string;
   }
 
-  if (selectedSamples.size) {
+  if (selectedSamples.length) {
     return [...selectedSamples];
   }
 
@@ -60,9 +51,6 @@ export const getQueryIds = async (
 };
 
 export const useSortBySimilarity = (close) => {
-  const update = useUnprocessedStateUpdate(true);
-  const handleError = useErrorHandler();
-  const datasetId = useRecoilValue(fos.dataset).id;
   const [lastUsedBrainkeys, setLastUsedBrainKeys] =
     useBrowserStorage("lastUsedBrainKeys");
   const current = useMemo(() => {
@@ -73,6 +61,10 @@ export const useSortBySimilarity = (close) => {
     ({ snapshot, set }) =>
       async (parameters: fos.State.SortBySimilarityParameters) => {
         set(fos.similaritySorting, true);
+        const dataset = await snapshot.getPromise(fos.dataset);
+        if (!dataset) {
+          throw new Error("dataset is not defined");
+        }
 
         const queryIds = parameters.query
           ? null
@@ -88,43 +80,24 @@ export const useSortBySimilarity = (close) => {
         };
 
         combinedParameters["query"] = query ?? queryIds;
+        const filters = await snapshot.getPromise(fos.filters);
 
         // save the brainkey into local storage
         setLastUsedBrainKeys(
           JSON.stringify({
             ...current,
-            [datasetId]: combinedParameters.brainKey,
+            [dataset.id]: combinedParameters.brainKey,
           })
         );
-
-        try {
-          const data: fos.StateUpdate = await getFetchFunction()(
-            "POST",
-            "/sort",
-            {
-              dataset: await snapshot.getPromise(fos.datasetName),
-              view,
-              subscription,
-              filters: await snapshot.getPromise(fos.filters),
-              extended: toSnakeCase(combinedParameters),
-            }
-          );
-
-          update(({ reset, set }) => {
-            set(fos.similarityParameters, combinedParameters);
-            reset(fos.currentModalSample);
-            set(fos.similaritySorting, false);
-            set(fos.savedLookerOptions, (cur) => ({ ...cur, showJSON: false }));
-            set(fos.hiddenLabels, {});
-            reset(fos.selectedLabels);
-            reset(fos.selectedSamples);
-            close();
-
-            return data;
-          });
-        } catch (error) {
-          handleError(error);
-        }
+        await getFetchFunction()("POST", "/sort", {
+          dataset: dataset.name,
+          view,
+          subscription,
+          filters,
+          extended: toSnakeCase(combinedParameters),
+        });
+        set(fos.similarityParameters, combinedParameters);
+        close();
       },
     []
   );

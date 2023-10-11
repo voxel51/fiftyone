@@ -4,7 +4,7 @@
 
 import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { isValidColor, sizeBytes } from "./util";
+import { getHashLabel, isValidColor, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -97,11 +97,13 @@ export abstract class CoordinateOverlay<
     options: { coloring, customizeColorSetting },
   }: Readonly<State>): string {
     let key;
-    // video fields path needs to be converted
-    const path = this.field.startsWith("frames.")
-      ? this.field.slice("frames.".length)
-      : this.field;
+    const path = this.field;
     const field = customizeColorSetting.find((s) => s.path === path);
+
+    if (coloring.by === "instance") {
+      return getColor(coloring.pool, coloring.seed, getHashLabel(this.label));
+    }
+
     if (coloring.by === "field") {
       if (isValidColor(field?.fieldColor)) {
         return field.fieldColor;
@@ -110,11 +112,17 @@ export abstract class CoordinateOverlay<
     }
     if (coloring.by === "value") {
       if (field) {
-        key = field.colorByAttribute
-          ? field.colorByAttribute === "index"
-            ? "id"
-            : field.colorByAttribute
-          : "label";
+        if (field.colorByAttribute) {
+          if (field.colorByAttribute === "index") {
+            key = ["string", "number"].includes(typeof this.label.index)
+              ? "index"
+              : "id";
+          } else {
+            key = field.colorByAttribute;
+          }
+        } else {
+          key = "label";
+        }
 
         // use the first value as the fallback default if it's a listField
         const currentValue = Array.isArray(this.label[key])

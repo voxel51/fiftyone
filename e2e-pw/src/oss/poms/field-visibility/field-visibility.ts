@@ -1,4 +1,3 @@
-import { SidebarPom } from "../sidebar";
 import { Locator, Page, expect } from "src/oss/fixtures";
 
 const enabledParentPaths = ["uniqueness", "predictions", "ground_truth"];

@@ -1,3 +1,5 @@
+import { useTheme } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
 import {
   useToClips,
   useToEvaluationPatches,
@@ -17,9 +19,6 @@ import {
   EVALUATION_PATCHES,
   OBJECT_PATCHES,
 } from "../../utils/links";
-
-import { useTheme } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
 import { ActionOption } from "./Common";
 import Popout from "./Popout";
 import { SwitchDiv, SwitcherDiv } from "./utils";

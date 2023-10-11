@@ -3,6 +3,88 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+
+.. _release-notes-teams-v1.4.2:
+
+FiftyOne Teams 1.4.2
+--------------------
+*Released October 6, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.22.1 <release-notes-v0.22.1>`, plus:
+
+General
+
+- Error messages now clearly indicate when attempting to use a duplicate
+  key on datasets a user does not have access to 
+- Fixed issue with setting default access permissions for new datasets
+- Deleting a dataset now deletes all dataset-related references
+- Default fields now populate properly when creating a new dataset regardless of client
+- Improved complex/multi collection aggregations in the api client
+- Fixed issue where users could not list other users within their own org
+- Snapshots now properly include all run results
+- Fixed issue where reverting a snapshot behaved incorrectly in some cases
+- Fixed Python 3.7 support in the fiftyone-teams SDK
+
+App
+
+- Searching users has been improved
+- Resolved issue with recent views not displaying properly
+
+.. _release-notes-v0.22.1:
+
+FiftyOne 0.22.1
+---------------
+*Released October 6, 2023*
+
+App
+
+- Fixed empty detection instance masks
+  `#3559 <https://github.com/voxel51/fiftyone/pull/3559>`_
+- Fixed a visual issue with scrollbars
+  `#3605 <https://github.com/voxel51/fiftyone/pull/3605>`_ 
+- Fixed a bug with color by index for videos
+  `#3606 <https://github.com/voxel51/fiftyone/pull/3606>`_ 
+- Fixed an issue where |Detections| (and other label types) subfields were properly handling
+  primitive types.
+  `#3577 <https://github.com/voxel51/fiftyone/pull/3577>`_
+
+Core
+
+- Resolved groups aggregation issue resulting in unstable ordering of documents
+  `#3641 <https://github.com/voxel51/fiftyone/pull/3614>`_
+- Fixed an issue where group id indexes were not created against the right id property
+  `#3627 <https://github.com/voxel51/fiftyone/pull/3627>`_
+- Fixed fiftyone app cells in Databrick notebooks
+  `#3609 <https://github.com/voxel51/fiftyone/pull/3609>`_
+- Fixed issue with empty segmentation mask conversion in coco formatted datasets
+  `#3595 <https://github.com/voxel51/fiftyone/pull/3595/commits/ad0607aeabbd5d6dcbcfccc622ee5caf1f71f930>`_
+
+Plugins
+
+- Added a new :mod:`fiftyone.plugins.utils` module that provides common utilities for plugin development
+  `#3612 <https://github.com/voxel51/fiftyone/pull/3612>`_
+- Re-enabled text-only placement support when icon is not available
+  `#3593 <https://github.com/voxel51/fiftyone/pull/3593>`_
+- Added read-only support for :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+  `#3639 <https://github.com/voxel51/fiftyone/pull/3597>`_
+- The ``fiftyone delegated launch`` CLI command will now only run one operation at a time 
+  `#3615 <https://github.com/voxel51/fiftyone/pull/3615>`_
+- Fixed an issue where custom component props were not supported
+  `#3595 <https://github.com/voxel51/fiftyone/pull/3549>`_
+- Fixed issue where ``selected_labels`` were missing from the :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
+  during ``resolve_input`` and ``resolve_output``.
+  `#3575 <https://github.com/voxel51/fiftyone/pull/3574>`_
+
+.. _release-notes-teams-v1.4.1:
+
+FiftyOne Teams 1.4.1
+--------------------
+*Released September 21, 2023*
+
+Bugs
+
+- Patched a regression that prevented the Teams App from working behind proxies
+
 .. _release-notes-teams-v1.4.0:
 
 FiftyOne Teams 1.4.0
@@ -15,8 +97,8 @@ News
 
 - Added support for :ref:`dataset versioning <dataset_versioning>`!
 - Added support for scheduling
-  :ref:`delegated operations <teams-plugins-managing-operators-runs>` via the
-  App using a connected orchestrator like Apache Airflow!
+  :ref:`delegated operations <teams-delegated-operations>` via the App using a
+  connected orchestrator like Apache Airflow!
 
 App
 
@@ -241,7 +323,7 @@ Plugins
   plugin execution contexts
   `#3295 <https://github.com/voxel51/fiftyone/pull/3295>`_
 - Added support for configuring custom
-  :ref:`Operator icons <fiftyone-operators>`
+  :ref:`Operator icons <using-operators>`
   `#3299 <https://github.com/voxel51/fiftyone/pull/3299>`_
 - Improved Operator form validation debounce behavior
   `#3291 <https://github.com/voxel51/fiftyone/pull/3291>`_
@@ -615,7 +697,7 @@ Core
 
 Plugins
 
-- Added :ref:`Operators <fiftyone-operators>` to the plugin framework
+- Added :ref:`Operators <using-operators>` to the plugin framework
   `#2679 <https://github.com/voxel51/fiftyone/pull/2679>`_
 - Added CLI methods for :ref:`plugins <cli-fiftyone-plugins>` and
   :ref:`operators <cli-fiftyone-operators>`

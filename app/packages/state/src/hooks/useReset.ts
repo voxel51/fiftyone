@@ -1,12 +1,10 @@
-import { useRecoilTransaction_UNSTABLE } from "recoil";
-import { selectedLabels, selectedSamples, view } from "../recoil";
+import useSetView from "./useSetView";
 
+/**
+ * @deprecated use {@link [useSetView](../hooks/useSetView.ts)} instead
+ */
 const useReset = () => {
-  return useRecoilTransaction_UNSTABLE(({ set }) => () => {
-    set(selectedSamples, new Set());
-    set(selectedLabels, {});
-    set(view, []);
-  });
+  return useSetView();
 };
 
 export default useReset;

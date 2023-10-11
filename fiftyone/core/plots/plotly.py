@@ -1564,11 +1564,11 @@ class PlotlyWidgetMixin(object):
             msg = (
                 "Interactive plots are currently only supported in Jupyter "
                 "notebooks. Support outside of notebooks and in Google Colab "
-                "will be included in an upcoming release. In the meantime, "
-                "you can still use this plot, but note that (i) selecting "
-                "data will not trigger callbacks, and (ii) you must manually "
-                "call `plot.show()` to launch a new plot that reflects the "
-                "current state of an attached session.\n\n"
+                "and Databricks will be included in an upcoming release. In "
+                "the meantime, you can still use this plot, but note that (i) "
+                "selecting data will not trigger callbacks, and (ii) you must "
+                "manually call `plot.show()` to launch a new plot that "
+                "reflects the current state of an attached session.\n\n"
                 "See https://docs.voxel51.com/user_guide/plots.html#working-in-notebooks"
                 " for more information."
             )
@@ -1668,12 +1668,12 @@ def _check_plotly_jupyter_environment():
     #
     # Requirements source: https://plotly.com/python/getting-started
     #
-    # There is also a `notebook>=5.3` requirement in Jupyter notebooks, but
+    # There is also a `notebook>=6` requirement in Jupyter notebooks, but
     # we do not explicitly check that here because the requirement for
     # JupyterLab is different and I don't know how to distinguish Jupyter
     # notebooks from JupyterLab right now...
     #
-    fou.ensure_package("ipywidgets>=7.5,<8")
+    fou.ensure_package("ipywidgets>=8,<9")
 
 
 class PlotlyNotebookPlot(PlotlyWidgetMixin, Plot):
