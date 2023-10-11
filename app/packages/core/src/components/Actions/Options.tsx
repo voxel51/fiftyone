@@ -122,6 +122,33 @@ const SidebarMode = ({ modal }) => {
   );
 };
 
+const DynamicGroupsViewMode = () => {
+  const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
+
+  return (
+    <>
+      <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
+      <TabOption
+        active={mode}
+        options={[
+          {
+            dataCy: "set-dynamic-groups-mode-carousel",
+            text: "carousel",
+            title: "Sequential Access",
+            onClick: () => setMode("carousel"),
+          },
+          {
+            dataCy: "set-dynamic-groups-mode-pagination",
+            text: "pagination",
+            title: "Random Access",
+            onClick: () => setMode("pagination"),
+          },
+        ]}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   anchorRef: MutableRefObject<HTMLElement>;
@@ -130,9 +157,11 @@ type OptionsProps = {
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
+      {modal && isNonNestedDynamicGroup && <DynamicGroupsViewMode />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />

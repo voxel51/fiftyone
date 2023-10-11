@@ -14,12 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import {
-  PreloadedQuery,
-  loadQuery,
-  usePreloadedQuery,
-  useRelayEnvironment,
-} from "react-relay";
+import { PreloadedQuery, usePreloadedQuery } from "react-relay";
 import {
   useRecoilCallback,
   useRecoilState,
@@ -28,8 +23,8 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import style from "./GroupElementsLinkBar.module.css";
 import { PaginationComponentWithTooltip } from "./PaginationComponentWithTooltip";
+import style from "./index.module.css";
 
 const BarContainer = styled.div`
   width: 100%;
@@ -43,55 +38,9 @@ const BarContainer = styled.div`
   }
 `;
 
-export const GroupElementsLinkBar = () => {
-  const dataset = useRecoilValue(fos.datasetName) as string;
-  const view = useRecoilValue(fos.dynamicGroupViewQuery);
-  const cursor = useRecoilValue(fos.nestedGroupIndex);
-  const slice = useRecoilValue(fos.groupSlice);
-  const environment = useRelayEnvironment();
-  const loadDynamicGroupSamples = useCallback(
-    (cursor?: number) => {
-      return loadQuery<foq.paginateSamplesQuery>(
-        environment,
-        foq.paginateSamples,
-        {
-          after: cursor ? String(cursor) : null,
-          dataset,
-          filter: {
-            group: {
-              slice,
-            },
-          },
-          view,
-        }
-      );
-    },
-    [dataset, environment, slice, view]
-  );
-
-  const queryRef = useMemo(
-    () => loadDynamicGroupSamples(cursor),
-    [loadDynamicGroupSamples, cursor]
-  );
-
-  return (
-    <BarContainer data-cy="dynamic-group-pagination-bar">
-      <Suspense
-        fallback={
-          <Loading>
-            <LoadingDots text={""} />
-          </Loading>
-        }
-      >
-        <GroupElementsLinkBarImpl queryRef={queryRef} />
-      </Suspense>
-    </BarContainer>
-  );
-};
-
-const GroupElementsLinkBarImpl = React.memo(
+export const GroupElementsLinkBar = React.memo(
   ({ queryRef }: { queryRef: PreloadedQuery<foq.paginateSamplesQuery> }) => {
-    const setCursor = useSetRecoilState(fos.nestedGroupIndex);
+    const setCursor = useSetRecoilState(fos.dynamicGroupIndex);
     const { orderBy } = useRecoilValue(fos.dynamicGroupParameters)!;
 
     const data = usePreloadedQuery(foq.paginateSamples, queryRef);
@@ -107,31 +56,28 @@ const GroupElementsLinkBarImpl = React.memo(
     ) as fos.State.DynamicGroupParameters;
     const groupField = useRecoilValue(fos.groupField);
     const setSample = useRecoilTransaction_UNSTABLE(
-      ({ set, get }) =>
-        (sample: fos.ModalSample) => {
-          const current = get(fos.currentModalSample);
-          const currentGroup = get(fos.groupByFieldValue);
-          const nextGroup = String(
-            getValue(sample.sample, dynamicGroupParameters.groupBy)
-          );
+      ({ set, get }) => (sample: fos.ModalSample) => {
+        const current = get(fos.currentModalSample);
+        const currentGroup = get(fos.groupByFieldValue);
+        const nextGroup = String(
+          getValue(sample.sample, dynamicGroupParameters.groupBy)
+        );
 
-          if (
-            current &&
-            current.id !== sample.id &&
-            currentGroup === nextGroup
-          ) {
-            set(currentModalSample, { index: current.index, id: sample.id });
+        if (current && current.id !== sample.id) {
+          set(currentModalSample, { index: current.index, id: sample.id });
+
+          if (groupField && currentGroup === nextGroup) {
             set(fos.groupId, getValue(sample.sample, groupField)._id as string);
           }
-        },
+        }
+      },
       [dynamicGroupParameters, groupField]
     );
 
     const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
-    const mapRef = useMemo(
-      () => new Map<number, fos.ModalSample>(),
-      [groupByFieldValue]
-    );
+    const mapRef = useMemo(() => new Map<number, fos.ModalSample>(), [
+      groupByFieldValue,
+    ]);
 
     const map = useMemo(() => {
       if (data?.samples?.edges?.length) {
@@ -164,7 +110,7 @@ const GroupElementsLinkBarImpl = React.memo(
     const onPageChange = useCallback(
       async (
         e: React.ChangeEvent<HTMLInputElement>,
-        newElementIndex: number
+        newElementIndex?: number
       ) => {
         if (newElementIndex === deferred) {
           return;
@@ -212,12 +158,12 @@ const GroupElementsLinkBarImpl = React.memo(
 
     const keyNavigationHandler = useRecoilCallback(
       () => (e: KeyboardEvent) => {
-        if (e.key === "<") {
+        if (e.key === ",") {
           e.preventDefault();
           setDynamicGroupCurrentElementIndex((prev) =>
             prev <= 1 ? prev : prev - 1
           );
-        } else if (e.key === ">") {
+        } else if (e.key === ".") {
           e.preventDefault();
           setDynamicGroupCurrentElementIndex((prev) =>
             prev >= elementsCount ? prev : prev + 1
@@ -231,44 +177,54 @@ const GroupElementsLinkBarImpl = React.memo(
 
     return (
       <>
-        <Pagination
-          count={elementsCount}
-          siblingCount={1}
-          boundaryCount={2}
-          page={deferred}
-          onChange={onPageChange as PaginationProps["onChange"]}
-          shape="rounded"
-          color="primary"
-          classes={{
-            root: style.noRipple,
-          }}
-          renderItem={(item) => {
-            return (
-              <PaginationItem
-                component={PaginationComponentWithTooltip}
-                orderByValue={
-                  item.page >= 0 && orderBy
-                    ? map.get(item.page - 1)?.sample[orderBy]
-                    : undefined
-                }
-                // hack because page is not being forwarded as-is for some reason
-                currentPage={item.page}
-                isButton={item.type !== "page"}
-                {...item}
-              />
-            );
-          }}
-        />
+        <BarContainer data-cy="dynamic-group-pagination-bar">
+          <Suspense
+            fallback={
+              <Loading>
+                <LoadingDots text={""} />
+              </Loading>
+            }
+          >
+            <Pagination
+              count={elementsCount}
+              siblingCount={1}
+              boundaryCount={2}
+              page={deferred}
+              onChange={onPageChange as PaginationProps["onChange"]}
+              shape="rounded"
+              color="primary"
+              classes={{
+                root: style.noRipple,
+              }}
+              renderItem={(item) => {
+                return (
+                  <PaginationItem
+                    component={PaginationComponentWithTooltip}
+                    orderByValue={
+                      item.page >= 0 && orderBy
+                        ? map.get(item.page - 1)?.sample[orderBy]
+                        : undefined
+                    }
+                    // hack because page is not being forwarded as-is for some reason
+                    currentPage={item.page}
+                    isButton={item.type !== "page"}
+                    {...item}
+                  />
+                );
+              }}
+            />
 
-        {elementsCount >= 10 && (
-          <input
-            data-cy="dynamic-group-pagination-bar-input"
-            ref={textBoxRef}
-            className={style.currentPageInput}
-            value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
-            onChange={onPageChange}
-          />
-        )}
+            {elementsCount >= 10 && (
+              <input
+                data-cy="dynamic-group-pagination-bar-input"
+                ref={textBoxRef}
+                className={style.currentPageInput}
+                value={isTextBoxEmpty ? "" : dynamicGroupCurrentElementIndex}
+                onChange={onPageChange}
+              />
+            )}
+          </Suspense>
+        </BarContainer>
       </>
     );
   }

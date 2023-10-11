@@ -3,6 +3,7 @@ export * from "./atoms";
 export * from "./attributeVisibility";
 export * from "./color";
 export * from "./config";
+export * from "./customEffects";
 export * from "./distributions";
 export * from "./filters";
 export * from "./groupEntries";
