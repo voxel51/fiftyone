@@ -85,19 +85,19 @@ type BooleanAggregation implements Aggregation {
   true: Int!
 }
 
-type BooleanLightningAggregation implements LightningAggregation {
+type BooleanLightningResult implements LightningResult {
   path: String!
   false: Boolean!
   true: Boolean!
 }
 
-union BooleanLightningAggregationDateLightningAggregationDateTimeLightningAggregationFloatLightningAggregationIntLightningAggregationStringLightningAggregation =
-    BooleanLightningAggregation
-  | DateLightningAggregation
-  | DateTimeLightningAggregation
-  | FloatLightningAggregation
-  | IntLightningAggregation
-  | StringLightningAggregation
+union BooleanLightningResultDateLightningResultDateTimeLightningResultFloatLightningResultIntLightningResultStringLightningResult =
+    BooleanLightningResult
+  | DateLightningResult
+  | DateTimeLightningResult
+  | FloatLightningResult
+  | IntLightningResult
+  | StringLightningResult
 
 type BrainRun implements Run {
   key: String!
@@ -240,13 +240,13 @@ type DatasetStrPageInfo {
   endCursor: String
 }
 
-type DateLightningAggregation implements LightningAggregation {
+type DateLightningResult implements LightningResult {
   path: String!
   max: date
   min: date
 }
 
-type DateTimeLightningAggregation implements LightningAggregation {
+type DateTimeLightningResult implements LightningResult {
   path: String!
   max: datetime
   min: datetime
@@ -297,7 +297,7 @@ type FloatHistogramValuesResponse {
   other: Int!
 }
 
-type FloatLightningAggregation implements LightningAggregation {
+type FloatLightningResult implements LightningResult {
   path: String!
   inf: Boolean!
   max: Float
@@ -364,7 +364,7 @@ type IntHistogramValuesResponse {
   other: Int!
 }
 
-type IntLightningAggregation implements LightningAggregation {
+type IntLightningResult implements LightningResult {
   path: String!
   max: Float
   min: Float
@@ -382,10 +382,6 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
-interface LightningAggregation {
-  path: String!
-}
-
 input LightningInput {
   dataset: String!
   paths: [LightningPathInput!]!
@@ -394,8 +390,12 @@ input LightningInput {
 input LightningPathInput {
   path: String!
   exclude: [String!] = null
-  first: Int = null
+  first: Int = 25
   search: String = null
+}
+
+interface LightningResult {
+  path: String!
 }
 
 enum MediaType {
@@ -519,7 +519,7 @@ type Query {
   aggregations(form: AggregationForm!): [AggregateResult!]!
   lightning(
     input: LightningInput!
-  ): [BooleanLightningAggregationDateLightningAggregationDateTimeLightningAggregationFloatLightningAggregationIntLightningAggregationStringLightningAggregation!]!
+  ): [BooleanLightningResultDateLightningResultDateTimeLightningResultFloatLightningResultIntLightningResultStringLightningResult!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -708,9 +708,9 @@ type StringAggregationValue {
   value: String!
 }
 
-type StringLightningAggregation implements LightningAggregation {
+type StringLightningResult implements LightningResult {
   path: String!
-  values: [String!]!
+  values: [String]!
 }
 
 type Target {

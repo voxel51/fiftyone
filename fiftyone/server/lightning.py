@@ -7,6 +7,7 @@ FiftyOne Server lightning queries
 """
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+import math
 import re
 import typing as t
 
@@ -16,8 +17,9 @@ from motor.motor_asyncio import AsyncIOMotorCollection
 import strawberry as gql
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
 import fiftyone.core.fields as fof
+
+from fiftyone.server.data import Info
 from fiftyone.server.utils import meets_type
 
 
@@ -26,7 +28,7 @@ class LightningPathInput:
     path: str
 
     exclude: t.Optional[t.List[str]] = None
-    first: t.Optional[int] = None
+    first: t.Optional[int] = 25
     search: t.Optional[str] = None
 
 
@@ -76,7 +78,7 @@ class IntLightningResult(LightningResult):
 
 @gql.type
 class StringLightningResult(LightningResult):
-    values: t.List[str]
+    values: t.List[t.Optional[str]]
 
 
 LIGHTNING_QUERIES = (
@@ -93,7 +95,7 @@ INT_CLS = {
 
 
 async def lightning_resolver(
-    input: LightningInput,
+    input: LightningInput, info: Info
 ) -> t.List[
     t.Union[
         BooleanLightningResult,
@@ -102,12 +104,12 @@ async def lightning_resolver(
         FloatLightningResult,
         IntLightningResult,
         StringLightningResult,
-    ]
+    ],
 ]:
     dataset: fo.Dataset = fo.load_dataset(input.dataset)
     collections, queries, resolvers = zip(
         *[
-            _resolve_lightning_path_queries(path, dataset)
+            _resolve_lightning_path_queries(path, dataset, info)
             for path in input.paths
         ]
     )
@@ -139,7 +141,7 @@ class DistinctQuery:
 
 
 def _resolve_lightning_path_queries(
-    path: LightningPathInput, dataset: fo.Dataset
+    path: LightningPathInput, dataset: fo.Dataset, info: Info
 ) -> t.Tuple[
     AsyncIOMotorCollection,
     t.Union[DistinctQuery, t.List[t.Dict]],
@@ -153,7 +155,7 @@ def _resolve_lightning_path_queries(
         field_path = field_path[len(dataset._FRAMES_PREFIX) :]
         collection = dataset._frame_collection_name
 
-    collection = foo.get_async_db_conn()[collection]
+    collection = info.context.db[collection]
 
     while isinstance(field, fof.ListField):
         field = field.field
@@ -186,7 +188,6 @@ def _resolve_lightning_path_queries(
 
         def _resolve_int(results):
             min, max = results
-            print(results)
             return INT_CLS[field.__class__](
                 path=path.path,
                 max=_parse_result(max, key),
@@ -212,10 +213,12 @@ def _resolve_lightning_path_queries(
             nan = bool(nan)
             ninf = bool(ninf)
 
+            has_bounds = not inf and not ninf
+
             return FloatLightningResult(
                 path=path.path,
-                max=_parse_result(max, key, not inf and not nan),
-                min=_parse_result(min, key, not ninf and not nan),
+                max=_parse_result(max, key, has_bounds),
+                min=_parse_result(min, key, has_bounds),
                 ninf=ninf,
                 inf=inf,
                 nan=nan,
@@ -280,13 +283,8 @@ async def _do_async_query(
                 break
 
         return values
-    else:
-        result = collection.aggregate(query)
 
-    try:
-        return [i async for i in result]
-    except:
-        return None
+    return [i async for i in collection.aggregate(query)]
 
 
 def _first(
@@ -308,7 +306,10 @@ def _first(
     parent = path.split(".")[:-1]
     if parent:
         new_root = ".".join(parent)
-        pipeline.append({"$replaceRoot": {"newRoot": f"${new_root}"}})
+        pipeline += [
+            {"$match": {new_root: {"$exists": True}}},
+            {"$replaceRoot": {"newRoot": f"${new_root}"}},
+        ]
 
     return pipeline
 
@@ -323,7 +324,9 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
 
 def _parse_result(data, key, check=True):
     if check and data and data[0]:
-        return data[0].get(key, None)
+        value = data[0].get(key, None)
+        if not isinstance(value, float) or not math.isnan(value):
+            return value
 
     return None
 

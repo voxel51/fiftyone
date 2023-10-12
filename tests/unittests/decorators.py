@@ -25,6 +25,26 @@ def drop_datasets(func):
     return wrapper
 
 
+def drop_async_dataset(func):
+    """Decorator that drops all non-persistent datasets from the database
+    before running a test.
+    """
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        dataset = fo.Dataset()
+        dataset.persistent = True
+        try:
+            await func(args[0], dataset, *args[1:], **kwargs)
+        except Exception as exc:
+            dataset.delete()
+            raise exc
+
+        dataset.delete()
+
+    return wrapper
+
+
 def skip_windows(func):
     """Decorator that skips a test when running on Windows."""
 
