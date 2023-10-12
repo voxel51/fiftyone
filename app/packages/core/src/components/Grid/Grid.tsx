@@ -162,7 +162,7 @@ const Grid: React.FC<{}> = () => {
 
         if (!isModalOpen) {
           reset(fos.selectedSamples);
-          setSelectedSamples([]);
+          setSelectedSamples(new Set());
         }
       },
     [setSelectedSamples, isModalOpen]
