@@ -291,7 +291,7 @@ def _delete_non_persistent_datasets(min_age=None, verbose=False):
             and not dataset.deleted
             and is_old_enough(dataset.created_at)
         ):
-            dataset.delete()
+            dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -4031,6 +4031,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
+        self._delete()
+
+    def _delete(self):
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
@@ -6685,7 +6688,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self.save()
+        self._save()
 
 
 def _get_random_characters(n):
