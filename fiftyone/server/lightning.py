@@ -1,5 +1,5 @@
 """
-FiftyOne Server lightning aggregations
+FiftyOne Server lightning queries
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -37,30 +37,30 @@ class LightningInput:
 
 
 @gql.interface
-class LightningAggregation:
+class LightningResult:
     path: str
 
 
 @gql.type
-class BooleanLightningAggregation(LightningAggregation):
+class BooleanLightningResult(LightningResult):
     false: bool
     true: bool
 
 
 @gql.type
-class DateLightningAggregation(LightningAggregation):
+class DateLightningResult(LightningResult):
     max: t.Optional[date]
     min: t.Optional[date]
 
 
 @gql.type
-class DateTimeLightningAggregation(LightningAggregation):
+class DateTimeLightningResult(LightningResult):
     max: t.Optional[datetime]
     min: t.Optional[datetime]
 
 
 @gql.type
-class FloatLightningAggregation(LightningAggregation):
+class FloatLightningResult(LightningResult):
     inf: bool
     max: t.Optional[float]
     min: t.Optional[float]
@@ -69,26 +69,26 @@ class FloatLightningAggregation(LightningAggregation):
 
 
 @gql.type
-class IntLightningAggregation(LightningAggregation):
+class IntLightningResult(LightningResult):
     max: t.Optional[float]
     min: t.Optional[float]
 
 
 @gql.type
-class StringLightningAggregation(LightningAggregation):
+class StringLightningResult(LightningResult):
     values: t.List[str]
 
 
-LIGHTNING_AGGREGATIONS = (
-    BooleanLightningAggregation,
-    FloatLightningAggregation,
-    IntLightningAggregation,
+LIGHTNING_QUERIES = (
+    BooleanLightningResult,
+    FloatLightningResult,
+    IntLightningResult,
 )
 
 INT_CLS = {
-    fof.DateField: DateLightningAggregation,
-    fof.DateTimeField: DateTimeLightningAggregation,
-    fof.IntField: IntLightningAggregation,
+    fof.DateField: DateLightningResult,
+    fof.DateTimeField: DateTimeLightningResult,
+    fof.IntField: IntLightningResult,
 }
 
 
@@ -96,12 +96,12 @@ async def lightning_resolver(
     input: LightningInput,
 ) -> t.List[
     t.Union[
-        BooleanLightningAggregation,
-        DateLightningAggregation,
-        DateTimeLightningAggregation,
-        FloatLightningAggregation,
-        IntLightningAggregation,
-        StringLightningAggregation,
+        BooleanLightningResult,
+        DateLightningResult,
+        DateTimeLightningResult,
+        FloatLightningResult,
+        IntLightningResult,
+        StringLightningResult,
     ]
 ]:
     dataset: fo.Dataset = fo.load_dataset(input.dataset)
@@ -171,7 +171,7 @@ def _resolve_lightning_path_queries(
 
         def _resolve_bool(results):
             false, true = results
-            return BooleanLightningAggregation(
+            return BooleanLightningResult(
                 path=path.path, false=bool(false), true=bool(true)
             )
 
@@ -186,6 +186,7 @@ def _resolve_lightning_path_queries(
 
         def _resolve_int(results):
             min, max = results
+            print(results)
             return INT_CLS[field.__class__](
                 path=path.path,
                 max=_parse_result(max, key),
@@ -211,7 +212,7 @@ def _resolve_lightning_path_queries(
             nan = bool(nan)
             ninf = bool(ninf)
 
-            return FloatLightningAggregation(
+            return FloatLightningResult(
                 path=path.path,
                 max=_parse_result(max, key, not inf and not nan),
                 min=_parse_result(min, key, not ninf and not nan),
@@ -225,9 +226,7 @@ def _resolve_lightning_path_queries(
     if meets_type(field, fof.StringField):
 
         def _resolve_string(results):
-            return StringLightningAggregation(
-                path=path.path, values=results[0]
-            )
+            return StringLightningResult(path=path.path, values=results[0])
 
         d = asdict(path)
         d["path"] = field_path
@@ -322,7 +321,7 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
     ]
 
 
-def _parse_result(data, key, check=True, is_not=None):
+def _parse_result(data, key, check=True):
     if check and data and data[0]:
         return data[0].get(key, None)
 

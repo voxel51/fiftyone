@@ -22,8 +22,6 @@ from fiftyone.server.lightning import (
     LightningPathInput,
 )
 
-from decorators import drop_datasets
-
 
 @gql.type
 class LightningQuery:
@@ -37,47 +35,17 @@ schema = gql.Schema(
 )
 
 
-LOWER_BOUND_DATA = dict(
-    bool=False,
-    bool_list=[False],
-    float=-1,
-    float_list=[-1],
-    date=date(2000, 1, 1),
-    date_list=[date(2000, 1, 1)],
-    datetime=datetime(2000, 1, 1),
-    datetime_list=[datetime(2000, 1, 1)],
-    str="one",
-    str_list=["one"],
-)
-
-UPPER_BOUND_DATA = dict(
-    bool=True,
-    bool_list=[True],
-    date=date(2010, 1, 1),
-    date_list=[date(2010, 1, 1)],
-    datetime=datetime(2010, 1, 1, 3, 3, 3, 3),
-    datetime_list=[datetime(2010, 1, 1, 3, 3, 3, 3)],
-    str="two",
-    str_list=["two"],
-)
-
-
-class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
-    @drop_datasets
-    async def test_floats(self):
+class TestBooleanLightningQueries(unittest.IsolatedAsyncioTestCase):
+    async def test_booleans(self):
         lower = dict(
-            float=-1.0,
-            float_list=[-1.0],
-            inf=float("-inf"),
-            inf_list=float("-inf"),
-            nan=float("nan"),
-            nan_list=[float("nan")],
+            bool=False,
+            bool_list=[False],
+            none=False,
         )
         upper = dict(
-            float=1.0,
-            float_list=[1.0],
-            inf=float("inf"),
-            inf_list=float("inf"),
+            bool=True,
+            float_list=[True],
+            none=None,
         )
         dataset: fo.Dataset = fo.Dataset()
         one = fo.Sample(
@@ -96,9 +64,271 @@ class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
         dataset.add_dynamic_sample_fields()
 
         query = """
-            query ImageDatasetQuery($input: LightningInput!) {
+            query Query($input: LightningInput!) {
                 lightning(input: $input) {
-                    ... on FloatLightningAggregation {
+                    ... on BooleanLightningResult {
+                        false
+                        path
+                        true
+                    }
+                }
+            }
+        """
+
+        result = await schema.execute(
+            query,
+            variable_values={
+                "input": asdict(
+                    LightningInput(
+                        dataset=dataset.name,
+                        paths=_get_paths(dataset, fo.BooleanField),
+                    )
+                )
+            },
+        )
+
+        self.assertDictEqual(
+            result.data,
+            {
+                "lightning": [
+                    {"false": True, "path": "bool", "true": True},
+                    {"false": True, "path": "bool_list", "true": False},
+                    {
+                        "false": True,
+                        "path": "classification.bool",
+                        "true": True,
+                    },
+                    {
+                        "false": True,
+                        "path": "classification.bool_list",
+                        "true": False,
+                    },
+                    {
+                        "false": False,
+                        "path": "classification.float_list",
+                        "true": True,
+                    },
+                    {
+                        "false": True,
+                        "path": "classification.none",
+                        "true": False,
+                    },
+                    {
+                        "false": True,
+                        "path": "detections.detections.bool",
+                        "true": True,
+                    },
+                    {
+                        "false": True,
+                        "path": "detections.detections.bool_list",
+                        "true": False,
+                    },
+                    {
+                        "false": False,
+                        "path": "detections.detections.float_list",
+                        "true": True,
+                    },
+                    {
+                        "false": True,
+                        "path": "detections.detections.none",
+                        "true": False,
+                    },
+                    {"false": False, "path": "float_list", "true": True},
+                    {"false": True, "path": "none", "true": False},
+                ]
+            },
+        )
+
+
+class TestDateLightningQueries(unittest.IsolatedAsyncioTestCase):
+    async def test_dates(self):
+        lower = dict(
+            date=date(2000, 1, 1),
+            date_list=[date(2000, 1, 1)],
+        )
+        upper = dict(
+            date=date(2001, 1, 1),
+            date_list=[date(2001, 1, 1)],
+        )
+        dataset: fo.Dataset = fo.Dataset()
+        one = fo.Sample(
+            filepath="one.mp4",
+            **lower,
+        )
+        two = fo.Sample(
+            filepath="two.mp4",
+            **upper,
+        )
+        dataset.add_samples([one, two])
+        dataset.add_dynamic_sample_fields()
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on DateLightningResult {
+                        max
+                        min
+                        path
+                    }
+                }
+            }
+        """
+
+        result = await schema.execute(
+            query,
+            variable_values={
+                "input": asdict(
+                    LightningInput(
+                        dataset=dataset.name,
+                        paths=_get_paths(dataset, fo.DateField),
+                    )
+                )
+            },
+        )
+        self.assertDictEqual(
+            result.data,
+            {
+                "lightning": [
+                    {
+                        "max": 978307200000.0,
+                        "min": 946684800000.0,
+                        "path": "date",
+                    },
+                    {
+                        "max": 978307200000.0,
+                        "min": 946684800000.0,
+                        "path": "date_list",
+                    },
+                ]
+            },
+        )
+
+
+class TestDatetimeLightningQueries(unittest.IsolatedAsyncioTestCase):
+    async def test_datetimes(self):
+        lower = dict(
+            datetime=datetime(2000, 1, 1, 1, 59, 59, 59),
+            datetime_list=[datetime(2000, 1, 1, 1, 59, 59, 59)],
+        )
+        upper = dict(
+            datetime=datetime(2001, 1, 1, 23, 59, 59, 59),
+            datetime_list=[datetime(2001, 1, 1, 23, 59, 59, 59)],
+        )
+        dataset: fo.Dataset = fo.Dataset()
+        one = fo.Sample(
+            filepath="one.mp4",
+            classification=fo.Classification(**upper),
+            detections=fo.Detections(detections=[fo.Detection(**upper)]),
+            **lower,
+        )
+        two = fo.Sample(
+            filepath="two.mp4",
+            classification=fo.Classification(**upper),
+            detections=fo.Detections(detections=[fo.Detection(**upper)]),
+            **upper,
+        )
+        dataset.add_samples([one, two])
+        dataset.add_dynamic_sample_fields()
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on DateTimeLightningResult {
+                        max
+                        min
+                        path
+                    }
+                }
+            }
+        """
+
+        result = await schema.execute(
+            query,
+            variable_values={
+                "input": asdict(
+                    LightningInput(
+                        dataset=dataset.name,
+                        paths=_get_paths(dataset, fo.DateTimeField),
+                    )
+                )
+            },
+        )
+
+        self.assertDictEqual(
+            result.data,
+            {
+                "lightning": [
+                    {
+                        "max": 978393599000.0,
+                        "min": 978393599000.0,
+                        "path": "classification.datetime",
+                    },
+                    {
+                        "max": 978393599000.0,
+                        "min": 978393599000.0,
+                        "path": "classification.datetime_list",
+                    },
+                    {
+                        "max": 978393599000.0,
+                        "min": 946691999000.0,
+                        "path": "datetime",
+                    },
+                    {
+                        "max": 978393599000.0,
+                        "min": 946691999000.0,
+                        "path": "datetime_list",
+                    },
+                    {
+                        "max": 978393599000.0,
+                        "min": 978393599000.0,
+                        "path": "detections.detections.datetime",
+                    },
+                    {
+                        "max": 978393599000.0,
+                        "min": 978393599000.0,
+                        "path": "detections.detections.datetime_list",
+                    },
+                ]
+            },
+        )
+
+
+class TestFloatLightningQueries(unittest.IsolatedAsyncioTestCase):
+    async def test_floats(self):
+        lower = dict(
+            float=-1.0,
+            float_list=[-1.0],
+            inf=float("-inf"),
+            inf_list=float("-inf"),
+            nan=float("nan"),
+            nan_list=[float("nan")],
+        )
+        upper = dict(
+            float=1.0,
+            float_list=[1.0],
+            inf=float("inf"),
+            inf_list=float("inf"),
+        )
+        dataset: fo.Dataset = fo.Dataset()
+        one = fo.Sample(
+            filepath="one.mp4",
+            classification=fo.Classification(**upper),
+            detections=fo.Detections(detections=[fo.Detection(**upper)]),
+            **lower,
+        )
+        two = fo.Sample(
+            filepath="two.mp4",
+            classification=fo.Classification(**upper),
+            detections=fo.Detections(detections=[fo.Detection(**upper)]),
+            **upper,
+        )
+        dataset.add_samples([one, two])
+        dataset.add_dynamic_sample_fields()
+
+        query = """
+            query Query($input: LightningInput!) {
+                lightning(input: $input) {
+                    ... on FloatLightningResult {
                         inf
                         max
                         min
@@ -121,7 +351,7 @@ class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
                 )
             },
         )
-        fo.pprint(result)
+
         self.assertDictEqual(
             result.data,
             {
@@ -136,50 +366,34 @@ class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
                     },
                     {
                         "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
+                        "max": None,
+                        "min": None,
                         "path": "classification.float",
                         "nan": False,
                         "ninf": False,
                     },
                     {
                         "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
+                        "max": None,
+                        "min": None,
                         "path": "classification.float_list",
                         "nan": False,
                         "ninf": False,
                     },
                     {
-                        "inf": True,
+                        "inf": False,
                         "max": None,
                         "min": None,
                         "path": "classification.inf",
                         "nan": False,
-                        "ninf": True,
-                    },
-                    {
-                        "inf": True,
-                        "max": None,
-                        "min": None,
-                        "path": "classification.inf_list",
-                        "nan": False,
-                        "ninf": True,
-                    },
-                    {
-                        "inf": False,
-                        "max": None,
-                        "min": None,
-                        "path": "classification.nan",
-                        "nan": True,
                         "ninf": False,
                     },
                     {
                         "inf": False,
                         "max": None,
                         "min": None,
-                        "path": "classification.nan_list",
-                        "nan": True,
+                        "path": "classification.inf_list",
+                        "nan": False,
                         "ninf": False,
                     },
                     {
@@ -200,90 +414,90 @@ class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
                     },
                     {
                         "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
+                        "max": None,
+                        "min": None,
                         "path": "detections.detections.float",
                         "nan": False,
                         "ninf": False,
                     },
                     {
                         "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
+                        "max": None,
+                        "min": None,
                         "path": "detections.detections.float_list",
                         "nan": False,
                         "ninf": False,
                     },
                     {
-                        "inf": True,
+                        "inf": False,
                         "max": None,
                         "min": None,
                         "path": "detections.detections.inf",
                         "nan": False,
-                        "ninf": True,
+                        "ninf": False,
                     },
                     {
-                        "inf": True,
+                        "inf": False,
                         "max": None,
                         "min": None,
                         "path": "detections.detections.inf_list",
                         "nan": False,
-                        "ninf": True,
-                    },
-                    {
-                        "inf": False,
-                        "max": None,
-                        "min": None,
-                        "path": "detections.detections.nan",
-                        "nan": True,
                         "ninf": False,
                     },
                     {
                         "inf": False,
                         "max": None,
                         "min": None,
-                        "path": "detections.detections.nan_list",
-                        "nan": True,
-                        "ninf": False,
-                    },
-                    {
-                        "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
                         "path": "float",
                         "nan": False,
                         "ninf": False,
                     },
                     {
                         "inf": False,
-                        "max": 1.0,
-                        "min": -1.0,
+                        "max": None,
+                        "min": None,
                         "path": "float_list",
                         "nan": False,
                         "ninf": False,
                     },
                     {
-                        "inf": True,
+                        "inf": False,
                         "max": None,
                         "min": None,
                         "path": "inf",
                         "nan": False,
-                        "ninf": True,
+                        "ninf": False,
                     },
                     {
-                        "inf": True,
+                        "inf": False,
                         "max": None,
                         "min": None,
                         "path": "inf_list",
                         "nan": False,
-                        "ninf": True,
+                        "ninf": False,
+                    },
+                    {
+                        "inf": False,
+                        "max": None,
+                        "min": None,
+                        "path": "metadata.duration",
+                        "nan": False,
+                        "ninf": False,
+                    },
+                    {
+                        "inf": False,
+                        "max": None,
+                        "min": None,
+                        "path": "metadata.frame_rate",
+                        "nan": False,
+                        "ninf": False,
                     },
                     {
                         "inf": False,
                         "max": None,
                         "min": None,
                         "path": "nan",
-                        "nan": True,
+                        "nan": False,
                         "ninf": False,
                     },
                     {
@@ -291,7 +505,7 @@ class TestLightningFloat(unittest.IsolatedAsyncioTestCase):
                         "max": None,
                         "min": None,
                         "path": "nan_list",
-                        "nan": True,
+                        "nan": False,
                         "ninf": False,
                     },
                 ]
