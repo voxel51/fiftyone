@@ -37,6 +37,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
+from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
@@ -166,6 +167,7 @@ class SaveContext(object):
             float number of seconds between batched saves
     """
 
+    @mutates_data(data_obj_param="sample_collection")
     def __init__(self, sample_collection, batch_size=None):
         if batch_size is None:
             batch_size = 0.2
@@ -301,6 +303,11 @@ class SampleCollection(object):
         such as patches views.
         """
         raise NotImplementedError("Subclass must implement _root_dataset")
+
+    @property
+    def _readonly(self):
+        """Whether this collection is read-only."""
+        return self._dataset._readonly
 
     @property
     def _is_generated(self):
@@ -1025,6 +1032,7 @@ class SampleCollection(object):
             self, batch_size, clear=clear, quiet=quiet, **kwargs
         )
 
+    @mutates_data
     def save_context(self, batch_size=None):
         """Returns a context that can be used to save samples from this
         collection according to a configurable batching strategy.
@@ -1610,6 +1618,7 @@ class SampleCollection(object):
                 "%s has no %s '%s'" % (self.__class__.__name__, ftype, _path)
             )
 
+    @mutates_data
     def tag_samples(self, tags):
         """Adds the tag(s) to all samples in this collection, if necessary.
 
@@ -1625,6 +1634,7 @@ class SampleCollection(object):
         view = self.match_tags(tags, bool=False, all=True)
         view._edit_sample_tags(update)
 
+    @mutates_data
     def untag_samples(self, tags):
         """Removes the tag(s) from all samples in this collection, if
         necessary.
@@ -1656,6 +1666,7 @@ class SampleCollection(object):
         """
         return self.count_values("tags")
 
+    @mutates_data
     def tag_labels(self, tags, label_fields=None):
         """Adds the tag(s) to all labels in the specified label field(s) of
         this collection, if necessary.
@@ -1690,6 +1701,7 @@ class SampleCollection(object):
             update_fcn, label_field, ids=ids, label_ids=label_ids
         )
 
+    @mutates_data
     def untag_labels(self, tags, label_fields=None):
         """Removes the tag from all labels in the specified label field(s) of
         this collection, if necessary.
@@ -1897,6 +1909,7 @@ class SampleCollection(object):
 
         return dict(counts)
 
+    @mutates_data
     def split_labels(self, in_field, out_field, filter=None):
         """Splits the labels from the given input field into the given output
         field of the collection.
@@ -1925,6 +1938,7 @@ class SampleCollection(object):
 
         move_view.merge_labels(in_field, out_field)
 
+    @mutates_data
     def merge_labels(self, in_field, out_field):
         """Merges the labels from the given input field into the given output
         field of the collection.
@@ -1964,6 +1978,7 @@ class SampleCollection(object):
         else:
             dataset.delete_labels(ids=del_ids, fields=in_field)
 
+    @mutates_data
     def set_values(
         self,
         field_name,
@@ -2267,6 +2282,7 @@ class SampleCollection(object):
                 self._dataset._doc.media_type = fom.GROUP
                 self._dataset.save()
 
+    @mutates_data
     def set_label_values(
         self,
         field_name,
@@ -2822,6 +2838,7 @@ class SampleCollection(object):
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
+    # This method may mutate data, which is enforced by subcalls internally
     def compute_metadata(
         self, overwrite=False, num_workers=None, skip_failures=True
     ):
@@ -2950,6 +2967,7 @@ class SampleCollection(object):
 
         return self.values(_media_fields[0], unwind=True)
 
+    @mutates_data
     def apply_model(
         self,
         model,
@@ -3026,6 +3044,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data(condition_param="embeddings_field")
     def compute_embeddings(
         self,
         model,
@@ -3104,6 +3123,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data(condition_param="embeddings_field")
     def compute_patch_embeddings(
         self,
         model,
@@ -3198,6 +3218,7 @@ class SampleCollection(object):
             skip_failures=skip_failures,
         )
 
+    @mutates_data
     def evaluate_regressions(
         self,
         pred_field,
@@ -3257,6 +3278,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data
     def evaluate_classifications(
         self,
         pred_field,
@@ -3327,6 +3349,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data
     def evaluate_detections(
         self,
         pred_field,
@@ -3455,6 +3478,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data
     def evaluate_segmentations(
         self,
         pred_field,
@@ -3559,6 +3583,7 @@ class SampleCollection(object):
         """
         return foev.EvaluationMethod.list_runs(self, type=type, **kwargs)
 
+    @mutates_data
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
 
@@ -3616,6 +3641,7 @@ class SampleCollection(object):
             self, eval_key, select_fields=select_fields
         )
 
+    @mutates_data
     def delete_evaluation(self, eval_key):
         """Deletes the evaluation results associated with the given evaluation
         key from this collection.
@@ -3625,6 +3651,7 @@ class SampleCollection(object):
         """
         foev.EvaluationMethod.delete_run(self, eval_key)
 
+    @mutates_data
     def delete_evaluations(self):
         """Deletes all evaluation results from this collection."""
         foev.EvaluationMethod.delete_runs(self)
@@ -3659,6 +3686,7 @@ class SampleCollection(object):
         """
         return fob.BrainMethod.list_runs(self, type=type, **kwargs)
 
+    @mutates_data
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
 
@@ -3718,6 +3746,7 @@ class SampleCollection(object):
             self, brain_key, select_fields=select_fields
         )
 
+    @mutates_data
     def delete_brain_run(self, brain_key):
         """Deletes the brain method run with the given key from this
         collection.
@@ -3727,6 +3756,7 @@ class SampleCollection(object):
         """
         fob.BrainMethod.delete_run(self, brain_key)
 
+    @mutates_data
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
@@ -6244,6 +6274,7 @@ class SampleCollection(object):
             )
         )
 
+    # This populates a temporary field, which doesn't count as mutation
     @view_stage
     def shuffle(self, seed=None):
         """Randomly shuffles the samples in the collection.
@@ -6337,6 +6368,8 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.Skip(skip))
 
+    # This may create indexes and populate temporary fields, neither of which
+    # count as mutations
     @view_stage
     def sort_by(self, field_or_expr, reverse=False, create_index=True):
         """Sorts the samples in the collection by the given field(s) or
@@ -6417,6 +6450,7 @@ class SampleCollection(object):
             )
         )
 
+    @mutates_data(condition_param="dist_field")
     @view_stage
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
@@ -6499,6 +6533,7 @@ class SampleCollection(object):
             )
         )
 
+    # This populates a temporary field, which doesn't count as mutation
     @view_stage
     def take(self, size, seed=None):
         """Randomly samples the given number of samples from the collection.
@@ -6673,6 +6708,7 @@ class SampleCollection(object):
             fos.ToEvaluationPatches(eval_key, **kwargs)
         )
 
+    # This may populate temporary fields, which doesn't count as mutation
     @view_stage
     def to_clips(self, field_or_expr, **kwargs):
         """Creates a view that contains one sample per clip defined by the
@@ -6767,6 +6803,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToClips(field_or_expr, **kwargs))
 
+    # This may populate temporary fields, which doesn't count as mutation
     @view_stage
     def to_trajectories(self, field, **kwargs):
         """Creates a view that contains one clip for each unique object
@@ -6818,6 +6855,7 @@ class SampleCollection(object):
         """
         return self._add_view_stage(fos.ToTrajectories(field, **kwargs))
 
+    @mutates_data(condition_param="sample_frames")
     @view_stage
     def to_frames(self, **kwargs):
         """Creates a view that contains one sample per frame in the video
@@ -8437,6 +8475,7 @@ class SampleCollection(object):
             if tmp_dir is not None:
                 etau.delete_dir(tmp_dir)
 
+    @mutates_data
     def annotate(
         self,
         anno_key,
@@ -8616,6 +8655,7 @@ class SampleCollection(object):
         """
         return foan.AnnotationMethod.list_runs(self, type=type, **kwargs)
 
+    @mutates_data
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
 
@@ -8681,6 +8721,7 @@ class SampleCollection(object):
             self, anno_key, select_fields=select_fields
         )
 
+    @mutates_data
     def load_annotations(
         self,
         anno_key,
@@ -8731,6 +8772,7 @@ class SampleCollection(object):
             **kwargs,
         )
 
+    @mutates_data
     def delete_annotation_run(self, anno_key):
         """Deletes the annotation run with the given key from this collection.
 
@@ -8747,6 +8789,7 @@ class SampleCollection(object):
         """
         foan.AnnotationMethod.delete_run(self, anno_key)
 
+    @mutates_data
     def delete_annotation_runs(self):
         """Deletes all annotation runs from this collection.
 
@@ -8808,6 +8851,7 @@ class SampleCollection(object):
 
         return index_info
 
+    # Indexes don't count as mutation because they only exist in-memory
     def create_index(self, field_or_spec, unique=False, **kwargs):
         """Creates an index on the given field or with the given specification,
         if necessary.
@@ -8929,6 +8973,7 @@ class SampleCollection(object):
 
         return name
 
+    # Indexes don't count as mutation because they only exist in-memory
     def drop_index(self, field_or_name):
         """Drops the index for the given field or name.
 

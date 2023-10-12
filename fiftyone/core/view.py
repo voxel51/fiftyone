@@ -16,12 +16,12 @@ from pymongo.errors import CursorNotFound
 
 import eta.core.utils as etau
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
+from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 
@@ -193,6 +193,10 @@ class DatasetView(foc.SampleCollection):
         return self._outputs_dynamic_groups()
 
     @property
+    def _readonly(self):
+        return self._dataset._readonly
+
+    @property
     def _sample_cls(self):
         return fos.SampleView
 
@@ -306,6 +310,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.tags
 
     @tags.setter
+    @mutates_data
     def tags(self, tags):
         self._root_dataset.tags = tags
 
@@ -314,6 +319,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.description
 
     @description.setter
+    @mutates_data
     def description(self, description):
         self._root_dataset.description = description
 
@@ -322,6 +328,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.info
 
     @info.setter
+    @mutates_data
     def info(self, info):
         self._root_dataset.info = info
 
@@ -330,6 +337,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.app_config
 
     @app_config.setter
+    @mutates_data
     def app_config(self, config):
         self._root_dataset.app_config = config
 
@@ -338,6 +346,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.classes
 
     @classes.setter
+    @mutates_data
     def classes(self, classes):
         self._root_dataset.classes = classes
 
@@ -346,6 +355,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.default_classes
 
     @default_classes.setter
+    @mutates_data
     def default_classes(self, classes):
         self._root_dataset.default_classes = classes
 
@@ -354,6 +364,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.mask_targets
 
     @mask_targets.setter
+    @mutates_data
     def mask_targets(self, targets):
         self._root_dataset.mask_targets = targets
 
@@ -362,6 +373,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.default_mask_targets
 
     @default_mask_targets.setter
+    @mutates_data
     def default_mask_targets(self, targets):
         self._root_dataset.default_mask_targets = targets
 
@@ -370,6 +382,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.skeletons
 
     @skeletons.setter
+    @mutates_data
     def skeletons(self, skeletons):
         self._root_dataset.skeletons = skeletons
 
@@ -378,6 +391,7 @@ class DatasetView(foc.SampleCollection):
         return self._root_dataset.default_skeleton
 
     @default_skeleton.setter
+    @mutates_data
     def default_skeleton(self, skeleton):
         self._root_dataset.default_skeleton = skeleton
 
@@ -442,6 +456,7 @@ class DatasetView(foc.SampleCollection):
         """
         return copy(self)
 
+    @mutates_data(condition_param="autosave")
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the view.
 
@@ -556,6 +571,7 @@ class DatasetView(foc.SampleCollection):
 
         return make_sample
 
+    @mutates_data(condition_param="autosave")
     def iter_groups(
         self,
         group_slices=None,
@@ -936,6 +952,7 @@ class DatasetView(foc.SampleCollection):
 
         return schema
 
+    @mutates_data
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field of the view into a new field of the
         dataset.
@@ -965,6 +982,7 @@ class DatasetView(foc.SampleCollection):
             {field_name: new_field_name}, view=self
         )
 
+    @mutates_data
     def clone_sample_fields(self, field_mapping):
         """Clones the given sample fields of the view into new fields of the
         dataset.
@@ -992,6 +1010,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clone_sample_fields(field_mapping, view=self)
 
+    @mutates_data
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field of the view into a new field.
 
@@ -1022,6 +1041,7 @@ class DatasetView(foc.SampleCollection):
             {field_name: new_field_name}, view=self
         )
 
+    @mutates_data
     def clone_frame_fields(self, field_mapping):
         """Clones the frame-level fields of the view into new frame-level
         fields of the dataset.
@@ -1051,6 +1071,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clone_frame_fields(field_mapping, view=self)
 
+    @mutates_data
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the view.
 
@@ -1078,6 +1099,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_sample_fields(field_name, view=self)
 
+    @mutates_data
     def clear_sample_fields(self, field_names):
         """Clears the values of the fields from all samples in the view.
 
@@ -1105,6 +1127,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_sample_fields(field_names, view=self)
 
+    @mutates_data
     def clear_frame_field(self, field_name):
         """Clears the values of the frame-level field from all samples in the
         view.
@@ -1135,6 +1158,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_fields(field_name, view=self)
 
+    @mutates_data
     def clear_frame_fields(self, field_names):
         """Clears the values of the frame-level fields from all samples in the
         view.
@@ -1165,6 +1189,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frame_fields(field_names, view=self)
 
+    @mutates_data
     def clear(self):
         """Deletes all samples in the view from the underlying dataset.
 
@@ -1176,6 +1201,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear(view=self)
 
+    @mutates_data
     def clear_frames(self):
         """Deletes all frame labels from the samples in the view from the
         underlying dataset.
@@ -1188,6 +1214,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._clear_frames(view=self)
 
+    @mutates_data
     def keep(self):
         """Deletes all samples that are **not** in the view from the underlying
         dataset.
@@ -1200,6 +1227,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._keep(view=self)
 
+    @mutates_data
     def keep_fields(self):
         """Deletes all fields that are excluded from the view from the
         underlying dataset.
@@ -1212,6 +1240,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._keep_fields(view=self)
 
+    @mutates_data
     def keep_frames(self):
         """For each sample in the view, deletes all frames labels that are
         **not** in the view from the underlying dataset.
@@ -1224,6 +1253,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._keep_frames(view=self)
 
+    @mutates_data
     def ensure_frames(self):
         """Ensures that the video view contains frame instances for every frame
         of each sample's source video.
@@ -1239,6 +1269,7 @@ class DatasetView(foc.SampleCollection):
         """
         self._dataset._ensure_frames(view=self)
 
+    @mutates_data
     def save(self, fields=None):
         """Saves the contents of the view to the database.
 

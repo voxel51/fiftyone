@@ -18,6 +18,7 @@ import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
+from fiftyone.core.readonly import mutates_data
 from fiftyone.core.singletons import SampleSingleton
 
 
@@ -161,6 +162,7 @@ class _SampleMixin(object):
 
         return super().get_field(field_name)
 
+    @mutates_data
     def set_field(
         self,
         field_name,
@@ -188,6 +190,7 @@ class _SampleMixin(object):
             dynamic=dynamic,
         )
 
+    @mutates_data
     def clear_field(self, field_name):
         if field_name == "frames" and self.media_type == fomm.VIDEO:
             self.frames.clear()
@@ -195,6 +198,7 @@ class _SampleMixin(object):
 
         super().clear_field(field_name)
 
+    # This method may mutate data, which is enforced by subcalls internally
     def compute_metadata(self, overwrite=False, skip_failures=False):
         """Populates the ``metadata`` field of the sample.
 
@@ -207,6 +211,7 @@ class _SampleMixin(object):
             self, overwrite=overwrite, skip_failures=skip_failures
         )
 
+    @mutates_data
     def add_labels(
         self,
         labels,
@@ -349,6 +354,7 @@ class _SampleMixin(object):
                 dynamic=dynamic,
             )
 
+    @mutates_data
     def merge(
         self,
         sample,
@@ -602,6 +608,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
 
         super().reload(hard=hard)
 
+    @mutates_data
     def save(self):
         """Saves the sample to the database."""
         super().save()
@@ -790,6 +797,7 @@ class SampleView(_SampleMixin, DocumentView):
 
         return d
 
+    @mutates_data
     def save(self):
         """Saves the sample view to the database.
 

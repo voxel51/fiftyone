@@ -27,6 +27,7 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 from fiftyone.core.odm.document import MongoEngineBaseDocument
+from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fova
@@ -7179,6 +7180,10 @@ class SortBySimilarity(ViewStage):
             {"name": "_state", "type": "NoneType|json", "default": "None"},
         ]
 
+    @mutates_data(
+        condition_param="self._dist_field",
+        data_obj_param="sample_collection",
+    )
     def validate(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,
@@ -8056,6 +8061,10 @@ class ToFrames(ViewStage):
         """Parameters specifying how to perform the conversion."""
         return self._config
 
+    @mutates_data(
+        condition_param="self._config.sample_frames",
+        data_obj_param="sample_collection",
+    )
     def load_view(self, sample_collection):
         state = {
             "dataset": sample_collection.dataset_name,

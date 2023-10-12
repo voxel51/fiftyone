@@ -17,7 +17,7 @@ import eta.core.utils as etau
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
 from fiftyone.core.odm.runs import RunDocument
-
+from fiftyone.core.readonly import mutates_data
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +201,8 @@ class Run(Configurable):
         """
         return []
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def rename(self, samples, key, new_key):
         """Performs any necessary operations required to rename this run's key.
 
@@ -211,6 +213,8 @@ class Run(Configurable):
         """
         pass
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def cleanup(self, samples, key):
         """Cleans up the results of the run with the given key from the
         collection.
@@ -221,6 +225,7 @@ class Run(Configurable):
         """
         pass
 
+    @mutates_data(data_obj_param="samples")
     def register_run(self, samples, key, overwrite=True):
         """Registers a run of this method under the given key on the given
         collection.
@@ -375,6 +380,7 @@ class Run(Configurable):
         return sorted(keys)
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def update_run_key(cls, samples, key, new_key):
         """Replaces the key for the given run with a new key.
 
@@ -456,6 +462,7 @@ class Run(Configurable):
             ) from e
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def save_run_info(cls, samples, run_info, overwrite=True):
         """Saves the run information on the collection.
 
@@ -497,6 +504,7 @@ class Run(Configurable):
         dataset.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def update_run_config(cls, samples, key, config):
         """Updates the :class:`RunConfig` for the given run on the collection.
 
@@ -513,6 +521,7 @@ class Run(Configurable):
         run_doc.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def save_run_results(
         cls, samples, key, run_results, overwrite=True, cache=True
     ):
@@ -695,6 +704,7 @@ class Run(Configurable):
         return view
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def delete_run(cls, samples, key):
         """Deletes the results associated with the given run key from the
         collection.
@@ -738,6 +748,7 @@ class Run(Configurable):
         dataset.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def delete_runs(cls, samples):
         """Deletes all runs from the collection.
 
@@ -831,6 +842,7 @@ class RunResults(etas.Serializable):
         """The run key for these results."""
         return self._key
 
+    @mutates_data(data_obj_param="self.samples")
     def save(self):
         """Saves the results to the database."""
         # Only cache if the results are already cached
@@ -844,6 +856,7 @@ class RunResults(etas.Serializable):
             cache=cache,
         )
 
+    @mutates_data(data_obj_param="self.samples")
     def save_config(self):
         """Saves these results config to the database."""
         self.backend.update_run_config(self.samples, self.key, self.config)
