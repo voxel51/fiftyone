@@ -23,10 +23,8 @@ def coroutine_timeout(seconds):
         async def wrapper(*args, **kwargs):
             try:
                 if asyncio.iscoroutinefunction(func):
-                    return await asyncio.shield(
-                        asyncio.wait_for(
-                            func(*args, **kwargs), timeout=seconds
-                        )
+                    return await asyncio.wait_for(
+                        func(*args, **kwargs), timeout=seconds
                     )
                 else:
                     raise TypeError(
