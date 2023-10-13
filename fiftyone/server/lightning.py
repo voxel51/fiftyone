@@ -184,14 +184,13 @@ def _resolve_lightning_path_queries(
             _first(field_path, dataset, 1, is_frame_field),
             _first(field_path, dataset, -1, is_frame_field),
         ]
-        key = field_path.split(".")[-1]
 
         def _resolve_int(results):
             min, max = results
             return INT_CLS[field.__class__](
                 path=path.path,
-                max=_parse_result(max, key),
-                min=_parse_result(min, key),
+                max=_parse_result(max),
+                min=_parse_result(min),
             )
 
         return collection, queries, _resolve_int
@@ -207,7 +206,6 @@ def _resolve_lightning_path_queries(
 
         def _resolve_float(results):
             min, max, ninf, inf, nan = results
-            key = field_path.split(".")[-1]
 
             inf = bool(inf)
             nan = bool(nan)
@@ -217,8 +215,8 @@ def _resolve_lightning_path_queries(
 
             return FloatLightningResult(
                 path=path.path,
-                max=_parse_result(max, key, has_bounds),
-                min=_parse_result(min, key, has_bounds),
+                max=_parse_result(max, has_bounds),
+                min=_parse_result(min, has_bounds),
                 ninf=ninf,
                 inf=inf,
                 nan=nan,
@@ -257,17 +255,11 @@ async def _do_async_query(
     query: t.Union[DistinctQuery, t.List[t.Dict]],
 ):
     if isinstance(query, DistinctQuery):
-        search = None
         match = None
         if query.search:
-            match = (
-                re.escape(query.search)
-                .replace(r"\*", ".*")
-                .replace(r"\?", ".")
-            )
-            search = {query.path: {"$regex": Regex(match)}}
+            match = query.search
 
-        result = await collection.distinct(query.path, filter=search)
+        result = await collection.distinct(query.path)
         values = []
         exclude = set(query.exclude or [])
 
@@ -275,7 +267,7 @@ async def _do_async_query(
             if value in exclude:
                 continue
 
-            if match and match not in value:
+            if not value or (match and match not in value):
                 continue
 
             values.append(value)
@@ -293,25 +285,11 @@ def _first(
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
 ):
-    pipeline = [
-        {"$project": {path: 1}},
-        {"$sort": {path: sort}},
-    ]
-    unwound = _unwind(path, dataset, is_frame_field)
-    if unwound:
-        pipeline += unwound + [{"$sort": {path: sort}}]
-
-    pipeline.append({"$limit": 1})
-
-    parent = path.split(".")[:-1]
-    if parent:
-        new_root = ".".join(parent)
-        pipeline += [
-            {"$match": {new_root: {"$exists": True}}},
-            {"$replaceRoot": {"newRoot": f"${new_root}"}},
-        ]
-
-    return pipeline
+    return (
+        [{"$sort": {path: sort}}, {"$limit": 1}]
+        + _unwind(path, dataset, is_frame_field)
+        + [{"$group": {"_id": {"$min" if sort else "$max": f"${path}"}}}]
+    )
 
 
 def _match(path: str, value: t.Union[str, float, int, bool]):
@@ -322,9 +300,9 @@ def _match(path: str, value: t.Union[str, float, int, bool]):
     ]
 
 
-def _parse_result(data, key, check=True):
+def _parse_result(data, check=True):
     if check and data and data[0]:
-        value = data[0].get(key, None)
+        value = data[0].get("_id", None)
         if not isinstance(value, float) or not math.isnan(value):
             return value
 

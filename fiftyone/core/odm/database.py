@@ -249,8 +249,10 @@ def _async_connect(use_global=False):
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
 
-    if use_global:
-        _async_client = client
+        if use_global:
+            _async_client = client
+    else:
+        client = _async_client
 
     return client
 
