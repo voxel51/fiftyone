@@ -3,7 +3,6 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-
 .. _release-notes-teams-v1.4.2:
 
 FiftyOne Teams 1.4.2
@@ -18,7 +17,8 @@ General
   key on datasets a user does not have access to 
 - Fixed issue with setting default access permissions for new datasets
 - Deleting a dataset now deletes all dataset-related references
-- Default fields now populate properly when creating a new dataset regardless of client
+- Default fields now populate properly when creating a new dataset regardless
+  of client
 - Improved complex/multi collection aggregations in the api client
 - Fixed issue where users could not list other users within their own org
 - Snapshots now properly include all run results
@@ -44,35 +44,43 @@ App
   `#3605 <https://github.com/voxel51/fiftyone/pull/3605>`_ 
 - Fixed a bug with color by index for videos
   `#3606 <https://github.com/voxel51/fiftyone/pull/3606>`_ 
-- Fixed an issue where |Detections| (and other label types) subfields were properly handling
-  primitive types.
+- Fixed an issue where |Detections| (and other label types) subfields were
+  properly handling primitive types
   `#3577 <https://github.com/voxel51/fiftyone/pull/3577>`_
+- Fixed an issue launching the App in Databrick notebooks
+  `#3609 <https://github.com/voxel51/fiftyone/pull/3609>`_
 
 Core
 
 - Resolved groups aggregation issue resulting in unstable ordering of documents
   `#3641 <https://github.com/voxel51/fiftyone/pull/3614>`_
-- Fixed an issue where group id indexes were not created against the right id property
+- Fixed an issue where group indexes were not created against the correct `id`
+  property
   `#3627 <https://github.com/voxel51/fiftyone/pull/3627>`_
-- Fixed fiftyone app cells in Databrick notebooks
-  `#3609 <https://github.com/voxel51/fiftyone/pull/3609>`_
-- Fixed issue with empty segmentation mask conversion in coco formatted datasets
+- Fixed issue with empty segmentation mask conversion in COCO-formatted datasets
   `#3595 <https://github.com/voxel51/fiftyone/pull/3595/commits/ad0607aeabbd5d6dcbcfccc622ee5caf1f71f930>`_
 
 Plugins
 
-- Added a new :mod:`fiftyone.plugins.utils` module that provides common utilities for plugin development
+- Added a new :mod:`fiftyone.plugins.utils` module that provides common
+  utilities for plugin development
   `#3612 <https://github.com/voxel51/fiftyone/pull/3612>`_
 - Re-enabled text-only placement support when icon is not available
   `#3593 <https://github.com/voxel51/fiftyone/pull/3593>`_
-- Added read-only support for :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+- Added read-only support for
+  :class:`FileExplorerView <fiftyone.operators.types.FileExplorerView>`
   `#3639 <https://github.com/voxel51/fiftyone/pull/3597>`_
-- The ``fiftyone delegated launch`` CLI command will now only run one operation at a time 
+- The ``fiftyone delegated launch`` CLI command will now only run one operation
+  at a time
   `#3615 <https://github.com/voxel51/fiftyone/pull/3615>`_
 - Fixed an issue where custom component props were not supported
   `#3595 <https://github.com/voxel51/fiftyone/pull/3549>`_
-- Fixed issue where ``selected_labels`` were missing from the :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
-  during ``resolve_input`` and ``resolve_output``.
+- Fixed issue where ``selected_labels`` were missing from the
+  :class:`ExecutionContext <fiftyone.operators.executor.ExecutionContext>`
+  during
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+  and
+  :meth:`resolve_output() <fiftyone.operators.operator.Operator.resolve_output>`
   `#3575 <https://github.com/voxel51/fiftyone/pull/3574>`_
 
 .. _release-notes-teams-v1.4.1:
