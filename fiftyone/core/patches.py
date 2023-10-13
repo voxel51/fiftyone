@@ -439,7 +439,7 @@ class PatchesView(_PatchesView):
 
     Patches views contain an ordered collection of patch samples, each of which
     contains a subset of a sample of the parent dataset corresponding to a
-    single object or logical grouping of of objects.
+    single object or logical grouping of objects.
 
     Patches retrieved from patches views are returned as :class:`PatchView`
     objects.

@@ -615,9 +615,6 @@ class COCODetectionDatasetExporter(
 ):
     """Exporter that writes COCO detection datasets to disk.
 
-    This class currently only supports exporting detections and instance
-    segmentations.
-
     See :ref:`this page <COCODetectionDataset-export>` for format details.
 
     Args:

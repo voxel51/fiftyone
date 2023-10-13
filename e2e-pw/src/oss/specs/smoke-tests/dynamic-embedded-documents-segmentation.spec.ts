@@ -21,18 +21,20 @@ test.describe("dynamic embedded documents (DED) visibility / filter", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.executePythonCode(`
       import fiftyone as fo
+      import fiftyone.core.storage as fos
       dataset = fo.Dataset("${datasetName}")
       dataset.persistent = True
-  
+
       sample1 = fo.Sample(filepath="src/shared/assets/images/test.png")
       dataset.add_samples([sample1])
       dataset.save()
 
       sample = dataset.first()
 
+      mask_path = fos.normalize_path("src/shared/assets/masks/mask.png")
       seg = fo.Segmentation(
         label='cat',
-        mask_path='src/shared/assets/masks/mask.png'
+        mask_path=mask_path
       )
 
       sample['emb_doc_fld'] = fo.DynamicEmbeddedDocument(seg=seg)

@@ -118,16 +118,18 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.colorPool || appConfig.colorPool,
-    colorBy: colorScheme.colorBy || appConfig.colorBy,
+    colorPool: colorScheme.colorPool || appConfig?.colorPool,
+    colorBy: colorScheme.colorBy || appConfig?.colorBy,
     fields: colorScheme.fields as ColorSchemeInput["fields"],
     multicolorKeypoints:
-      colorScheme.multicolorKeypoints || appConfig.multicolorKeypoints,
+      typeof colorScheme.multicolorKeypoints == "boolean"
+        ? colorScheme.multicolorKeypoints
+        : appConfig?.multicolorKeypoints,
     opacity:
       typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
       typeof colorScheme.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig.showSkeletons,
+        : appConfig?.showSkeletons,
   };
 };

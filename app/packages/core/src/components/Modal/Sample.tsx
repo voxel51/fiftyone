@@ -1,11 +1,10 @@
 import {
   Lookers,
   ModalSample,
+  isDynamicGroup,
   modalSample,
   modalSampleId,
   useHoveredSample,
-  isDynamicGroup,
-  isDynamicGroup,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
