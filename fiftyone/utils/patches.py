@@ -23,12 +23,13 @@ class ImagePatchesExtractor(object):
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        patches_field: the name of the field defining the image patches in each
-            sample to extract. Must be of type
+        patches_field (None): the name of the field defining the image patches
+            in each sample to extract. Must be of type
             :class:`fiftyone.core.labels.Detection`,
             :class:`fiftyone.core.labels.Detections`,
             :class:`fiftyone.core.labels.Polyline`, or
-            :class:`fiftyone.core.labels.Polylines`
+            :class:`fiftyone.core.labels.Polylines`. This can be automatically
+            inferred (only) if ``samples`` is a patches view
         include_labels (False): whether to emit ``(img_patch, label)`` tuples
             rather than just image patches
         force_rgb (False): whether to force convert the images to RGB
@@ -45,12 +46,21 @@ class ImagePatchesExtractor(object):
     def __init__(
         self,
         samples,
-        patches_field,
+        patches_field=None,
         include_labels=False,
         force_rgb=False,
         force_square=False,
         alpha=None,
     ):
+        if patches_field is None:
+            if samples._is_patches:
+                patches_field = samples._label_fields[0]
+            else:
+                raise ValueError(
+                    "You must provide a 'patches_field' when 'samples' is not "
+                    "a patches view"
+                )
+
         self.samples = samples
         self.patches_field = patches_field
         self.include_labels = include_labels
