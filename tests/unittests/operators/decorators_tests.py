@@ -16,54 +16,53 @@ from fiftyone.operators.decorators import coroutine_timeout, dir_state
 
 
 class DirStateTests(unittest.TestCase):
-    @patch("glob.glob")
     @patch("os.path.isdir")
-    def test_dir_state_non_existing_dir(self, mock_isdir, mock_glob):
+    @patch("os.path.getmtime")
+    def test_dir_state_non_existing_dir(self, mock_getmtime, mock_isdir):
         mock_isdir.return_value = False
         dirpath = "/non/existing/dir"
         try:
             result = dir_state(dirpath)
         except Exception as e:
             self.fail(e)
-
+        mock_isdir.assert_called_once_with(dirpath)
         self.assertIsNone(result)
-        assert not mock_glob.called
+        mock_getmtime.assert_not_called()
 
-    @patch("glob.glob")
     @patch("os.path.isdir")
-    def test_dir_state_existing_empty_dir(self, mock_isdir, mock_glob):
+    @patch("os.path.getmtime")
+    def test_dir_state_existing_empty_dir(self, mock_getmtime, mock_isdir):
         mock_isdir.return_value = True
-        mock_glob.return_value = []
         dirpath = "/existing/empty/dir"
+        mock_getmtime.return_value = 1000
 
         try:
             result = dir_state(dirpath)
         except Exception as e:
             self.fail(e)
-        self.assertIsNone(result)
         mock_isdir.assert_called_once_with(dirpath)
-        mock_glob.assert_called_once_with(os.path.join(dirpath, "*"))
+        mock_getmtime.assert_called_once_with(dirpath)
+        self.assertEqual(result, 1000)
 
     @patch("os.path.isdir")
-    @patch("glob.glob")
     @patch("os.path.getmtime")
     def test_dir_state_with_existing_nonempty_dir(
-        self, mock_getmtime, mock_glob, mock_isdir
+        self, mock_getmtime, mock_isdir
     ):
         mock_isdir.return_value = True
-        mock_glob.return_value = ["file1.txt", "file2.txt"]
-        mock_getmtime.side_effect = [1000, 2000]
+        mock_getmtime.return_value = 2000
 
         result = dir_state("/my/dir/path")
 
-        self.assertEqual(result, 2000)
         mock_isdir.assert_called_once_with("/my/dir/path")
-        mock_glob.assert_called_once_with(os.path.join("/my/dir/path", "*"))
-        mock_getmtime.assert_has_calls(
-            [unittest.mock.call("file1.txt"), unittest.mock.call("file2.txt")]
-        )
+        mock_getmtime.assert_called_once_with("/my/dir/path")
+        self.assertEqual(result, 2000)
 
-    def test_dir_state_change_with_delete(self):
+    def test_rgrs_dir_state_empty(self):
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            self.assertGreater(dir_state(tmpdirname), 0)
+
+    def test_rgrs_dir_state_change_with_delete(self):
         plugin_paths = ["plugin1/file1.txt", "plugin2file2.txt"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
