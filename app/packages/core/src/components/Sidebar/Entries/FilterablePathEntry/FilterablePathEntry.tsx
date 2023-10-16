@@ -23,11 +23,7 @@ import {
   meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
-import {
-  KeyboardArrowDown,
-  KeyboardArrowUp,
-  VisibilityOff,
-} from "@mui/icons-material";
+import { VisibilityOff } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
 import Color from "color";
 import React, { Suspense, useMemo } from "react";
@@ -38,17 +34,17 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import FieldLabelAndInfo from "../../FieldLabelAndInfo";
+import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import {
   BooleanFieldFilter,
   NumericFieldFilter,
   StringFieldFilter,
-} from "../../Filters";
-import LabelFieldFilter from "../../Filters/LabelFieldFilter";
-import { NameAndCountContainer } from "../../utils";
-import { PathEntryCounts } from "./EntryCounts";
-import RegularEntry from "./RegularEntry";
-import { makePseudoField, pathIsExpanded } from "./utils";
+} from "../../../Filters";
+import LabelFieldFilter from "../../../Filters/LabelFieldFilter";
+import { NameAndCountContainer } from "../../../utils";
+import { PathEntryCounts } from "../EntryCounts";
+import RegularEntry from "../RegularEntry";
+import { makePseudoField, pathIsExpanded } from "../utils";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -271,10 +267,7 @@ const FilterableEntry = ({
   const theme = useTheme();
   const skeleton = useRecoilValue(fos.getSkeleton);
   const expandedPath = useRecoilValue(fos.expandPath(path));
-  const [expanded, setExpanded] = useRecoilState(
-    pathIsExpanded({ modal, path: expandedPath })
-  );
-  const Arrow = expanded ? KeyboardArrowUp : KeyboardArrowDown;
+
   const activeColor = useRecoilValue(fos.pathColor(path));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
@@ -284,6 +277,9 @@ const FilterableEntry = ({
       path: expandedPath,
       ftype: VALID_PRIMITIVE_TYPES,
     })
+  );
+  const expanded = useRecoilValue(
+    pathIsExpanded({ modal, path: expandedPath })
   );
 
   const field = useRecoilValue(fos.field(path));
@@ -351,27 +347,6 @@ const FilterableEntry = ({
                       key="count"
                       modal={modal}
                       path={expandedPath}
-                    />
-                  )}
-
-                  {!disabled && (
-                    <Arrow
-                      key="arrow"
-                      data-cy={`sidebar-field-arrow-${path}`}
-                      style={{ cursor: "pointer", margin: 0 }}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        setExpanded(!expanded);
-                      }}
-                      onMouseDown={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                      }}
-                      onMouseUp={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                      }}
                     />
                   )}
                 </NameAndCountContainer>

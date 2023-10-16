@@ -67,6 +67,7 @@ export default graphql`
 
     ...frameFieldsFragment
     ...groupSliceFragment
+    ...indexesFragment
     ...mediaFieldsFragment
     ...mediaTypeFragment
     ...sampleFieldsFragment

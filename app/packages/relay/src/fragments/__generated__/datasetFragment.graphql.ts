@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<415b2906dc1dd0c5d4059cd4e775f7ed>>
+ * @generated SignedSource<<4c46f11a92db2a49e168791cb7bb7738>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,11 +28,11 @@ export type datasetFragment$data = {
       readonly type: BrainRunType | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
-  readonly createdAt: any | null;
+  readonly createdAt: number | null;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
     readonly value: string;
@@ -48,7 +48,7 @@ export type datasetFragment$data = {
       readonly predField: string | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
@@ -59,7 +59,7 @@ export type datasetFragment$data = {
   }> | null;
   readonly id: string;
   readonly info: object | null;
-  readonly lastLoadedAt: any | null;
+  readonly lastLoadedAt: number | null;
   readonly maskTargets: ReadonlyArray<{
     readonly name: string;
     readonly targets: ReadonlyArray<{
@@ -75,7 +75,7 @@ export type datasetFragment$data = {
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -425,6 +425,11 @@ return {
     {
       "args": null,
       "kind": "FragmentSpread",
+      "name": "indexesFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
       "name": "mediaFieldsFragment"
     },
     {
@@ -453,6 +458,6 @@ return {
 };
 })();
 
-(node as any).hash = "85d19a2f683ddaa9b25ad3ba09246b41";
+(node as any).hash = "0573f740be94f96bc1fbe56056c17228";
 
 export default node;

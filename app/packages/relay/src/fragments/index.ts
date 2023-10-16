@@ -4,6 +4,7 @@ export * from "./__generated__/datasetAppConfigFragment.graphql";
 export * from "./__generated__/datasetFragment.graphql";
 export * from "./__generated__/frameFieldsFragment.graphql";
 export * from "./__generated__/groupSliceFragment.graphql";
+export * from "./__generated__/indexesFragment.graphql";
 export * from "./__generated__/mediaFieldsFragment.graphql";
 export * from "./__generated__/mediaTypeFragment.graphql";
 export * from "./__generated__/sampleFieldsFragment.graphql";
@@ -19,6 +20,7 @@ export { default as datasetAppConfigFragment } from "./datasetAppConfigFragment"
 export { default as datasetFragment } from "./datasetFragment";
 export { default as frameFieldsFragment } from "./frameFieldsFragment";
 export { default as groupSliceFragment } from "./groupSliceFragment";
+export { default as indexesFragment } from "./indexesFragment";
 export { default as mediaFieldsFragment } from "./mediaFieldsFragment";
 export { default as mediaTypeFragment } from "./mediaTypeFragment";
 export { default as sampleFieldsFragment } from "./sampleFieldsFragment";
