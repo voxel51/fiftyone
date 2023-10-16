@@ -16,7 +16,7 @@ import * as image from "./image";
 import * as pcd from "./pcd";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
-import * as imavid from "./imavid";
+import * as imavid from "./imavid/imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,

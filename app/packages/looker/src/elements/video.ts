@@ -673,8 +673,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
       this.releaseVideo();
     }
 
-    debugger;
-
     if (!this.element) {
       if (hovering && thumbnail) {
         const result = this.acquireVideo();

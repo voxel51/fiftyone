@@ -126,18 +126,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     );
   }
 
-  loadOverlays(sample: VideoSample) {
-    console.log(
-      "imavid: loading overlays for sample ...",
-      sample.filepath.slice(-10)
-    );
-  }
-
-  pluckOverlays(state: VideoState) {
-    console.log("imavid: plucking overlays");
-    return [];
-  }
-
   getDefaultOptions() {
     return DEFAULT_VIDEO_OPTIONS;
   }
