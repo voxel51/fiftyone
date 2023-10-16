@@ -231,6 +231,8 @@ type ColorParams = {
   path: string;
   // if embeddedDocumentField or tags
   param?: Classification | Regression | string;
+  // for embeddedDocumentField, if the annotation has an active label tag applied
+  isTagged?: boolean;
   // fallback for index key, defaulted to "id" (not applicable for primitive fields)
   fallbackIndex?: string;
   // fallback for label key, defaulted to "label" (not applicable for primitive fields)
@@ -246,6 +248,7 @@ export function getAssignedColor({
   coloring,
   path,
   param,
+  isTagged = false,
   fallbackLabel = "label",
   value,
   customizeColorSetting,
@@ -275,10 +278,29 @@ export function getAssignedColor({
   }
 
   if (by === "field") {
+    if (isTagged) {
+      if (isValidColor(labelTagColors?.fieldColor)) {
+        return labelTagColors.fieldColor;
+      }
+      return getColor(pool, seed, "_label_tags");
+    }
+
     return getColorByField(setting, pool, seed, path, isValidColor);
   }
 
   if (by === "value") {
+    if (isTagged) {
+      const tagColor = labelTagColors?.valueColors?.find((pair) =>
+        param.tags.includes(pair.value)
+      )?.color;
+      if (isValidColor(tagColor)) {
+        return tagColor;
+      } else if (isValidColor(labelTagColors?.fieldColor)) {
+        return labelTagColors.fieldColor;
+      } else {
+        return getColor(coloring.pool, coloring.seed, "_label_tags");
+      }
+    }
     if (!setting) {
       return isPrimitive
         ? fallbackColor

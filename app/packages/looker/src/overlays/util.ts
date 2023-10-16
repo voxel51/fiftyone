@@ -141,6 +141,16 @@ export const getHashLabel = (label: RegularLabel): string => {
   }
 };
 
+export const shouldShowLabelTag = (
+  selectedLabelTags: string[], // labelTags that are active
+  labelTags: string[] // current label's tags
+) => {
+  return (
+    (selectedLabelTags?.length == 0 && labelTags.length > 0) ||
+    selectedLabelTags?.some((tag) => labelTags.includes(tag))
+  );
+};
+
 type LabelColorProps = {
   coloring: Coloring;
   path: string;
@@ -186,12 +196,12 @@ export const getLabelColor = ({
       // if the label's tag is currently active, use the _label_tag color rules
       // specified tag color > label tag field color > default label tag color
 
-      const tagColor = labelTagColors.valueColors?.find((pair) =>
+      const tagColor = labelTagColors?.valueColors?.find((pair) =>
         label.tags.includes(pair.value)
       )?.color;
       if (isValidColor(tagColor)) {
         return tagColor;
-      } else if (isValidColor(labelTagColors.fieldColor)) {
+      } else if (isValidColor(labelTagColors?.fieldColor)) {
         return labelTagColors.fieldColor;
       } else {
         return getColor(coloring.pool, coloring.seed, "_label_tags");

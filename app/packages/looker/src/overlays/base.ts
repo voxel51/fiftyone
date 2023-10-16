@@ -3,7 +3,7 @@
  */
 
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { getLabelColor, sizeBytes } from "./util";
+import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -106,17 +106,11 @@ export abstract class CoordinateOverlay<
       labelTagColors,
     },
   }: Readonly<State>): string {
-    const path = this.field;
-    // when label tag is not in active path, it is null;
-    // when label tag is active (all tags are active), it is [] ;
-    const isTagged =
-      (selectedLabelTags?.length == 0 && this.label.tags.length > 0) ||
-      selectedLabelTags?.some((tag) => this.label.tags.includes(tag));
     return getLabelColor({
       coloring,
-      path,
+      path: this.field,
       label: this.label,
-      isTagged,
+      isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
     });

@@ -28,7 +28,7 @@ import {
 import _ from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
-import { isValidColor } from "../../overlays/util";
+import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
 import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
@@ -72,6 +72,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         timeZone,
         customizeColorSetting,
         labelTagColors,
+        selectedLabelTags,
         filter,
         attributeVisibility,
       },
@@ -264,6 +265,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           coloring,
           path,
           param,
+          isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
           customizeColorSetting,
           isValidColor,
         }),
@@ -318,7 +320,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         Object.entries(sample._label_tags ?? {}).forEach(([tag, count]) => {
           const value = `${tag}: ${count}`;
           const v = coloring.by !== "field" ? tag : path;
-          if (shouldShowLabelTag(tag, attributeVisibility["_label_tags"])) {
+          if (shouldShowLabel(tag, attributeVisibility["_label_tags"])) {
             elements.push({
               color: getAssignedColor({
                 coloring,
@@ -626,7 +628,7 @@ function sortObjectArrays(a, b) {
   return 0;
 }
 
-const shouldShowLabelTag = (labelTag: string, visibility: object) => {
+const shouldShowLabel = (labelTag: string, visibility: object) => {
   if (!visibility) return true;
 
   const values = visibility["values"];
