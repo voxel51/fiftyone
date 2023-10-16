@@ -55,7 +55,9 @@ const ColorFooter: React.FC = () => {
               }
             );
           }}
-        />
+        >
+          Reset
+        </Button>
         <Button
           title={
             canEdit

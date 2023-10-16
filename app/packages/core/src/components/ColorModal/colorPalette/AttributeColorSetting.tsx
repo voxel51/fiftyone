@@ -97,7 +97,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       ],
   };
 
-  const values = useMemo(() => setting?.valueColors, [setting]);
+  const values = useMemo(() => setting?.valueColors ?? [], [setting]);
 
   const [input, setInput] = useState<Input[]>(
     (activePath === "_label_tags"
@@ -125,7 +125,7 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
       }));
     } else {
       const newSetting = cloneDeep(colorScheme.fields);
-      newSetting[index].valueColors = newInput;
+      newSetting[index]["valueColors"] = newInput;
       setColorScheme((cur) => ({ ...cur, fields: newSetting }));
     }
     setShowPicker([...showPicker, false]);
@@ -170,16 +170,20 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
 
   const onSyncUpdate = useCallback(
     (copy: Input[]) => {
-      setInput(copy);
-      if (activePath === "_label_tags") {
-        setColorScheme((cur) => ({
-          ...cur,
-          labelTags: { ...cur.labelTags, valueColors: copy },
-        }));
-      } else {
-        const newSetting = cloneDeep(colorScheme.fields);
-        newSetting[index].valueColors = copy;
-        setColorScheme({ ...colorScheme, fields: newSetting });
+      if (copy) {
+        setInput(copy);
+        if (activePath === "_label_tags") {
+          setColorScheme((cur) => ({
+            ...cur,
+            labelTags: { ...cur.labelTags, valueColors: copy },
+          }));
+        } else {
+          const newSetting = cloneDeep(colorScheme.fields);
+          if (newSetting[index]) {
+            newSetting[index].valueColors = copy;
+            setColorScheme({ ...colorScheme, fields: newSetting });
+          }
+        }
       }
     },
     [
@@ -333,8 +337,12 @@ const AttributeColorSetting: React.FC<ColorPickerRowProps> = ({
               })
             }
             style={{ width: "150px" }}
-            onBlur={() => onSyncColor(index, input[index].color)}
-            onEnter={() => onSyncColor(index, input[index].color)}
+            onBlur={() => {
+              onSyncColor(index, input[index].color);
+            }}
+            onEnter={(e) => {
+              onSyncColor(index, input[index].color);
+            }}
           />
           <DeleteButton
             onClick={() => {
