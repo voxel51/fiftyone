@@ -11,6 +11,7 @@ import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
+import { filters, modalFilters } from "./filters";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
@@ -54,6 +55,15 @@ export const lookerOptions = selectorFamily<
           }
         : {};
 
+      const activePaths = get(schemaAtoms.activeFields({ modal }));
+      const activeFilter = withFilter
+        ? modal
+          ? get(modalFilters)
+          : get(filters)
+        : {};
+      const activeVisibility = get(attributeVisibility);
+      const isLabelTagActive = activePaths.includes("_label_tags");
+
       return {
         showJSON: panels.json.isOpen,
         showHelp: panels.help.isOpen,
@@ -63,17 +73,22 @@ export const lookerOptions = selectorFamily<
         showLabel,
         useFrameNumber,
         showTooltip,
+        activePaths,
         ...video,
         isPointcloudDataset: get(selectors.isPointcloudDataset),
         coloring: get(colorAtoms.coloring),
         customizeColorSetting: get(atoms.colorScheme).fields ?? [],
         labelTagColors: get(atoms.colorScheme).labelTags ?? {},
-        attributeVisibility: get(attributeVisibility),
+        attributeVisibility: activeVisibility,
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],
+        selectedLabelTags: getActiveLabelTags(
+          isLabelTagActive,
+          activeFilter,
+          activeVisibility
+        ),
         fullscreen: get(atoms.fullscreen),
         filter: withFilter ? get(pathFilter(modal)) : undefined,
-        activePaths: get(schemaAtoms.activeFields({ modal })),
         zoom: get(viewAtoms.isPatchesView) && get(atoms.cropToContent(modal)),
         timeZone: get(selectors.timeZone),
         showOverlays: modal ? get(atoms.showOverlays) : true,
@@ -98,4 +113,17 @@ export const useLookerOptions = (
   const loading = useRecoilValue(lookerOptions({ modal, withFilter: false }));
 
   return loaded.contents instanceof Promise ? loading : loaded.contents;
+};
+
+const getActiveLabelTags = (
+  isLabelTagActive,
+  activeFilter,
+  activeVisibility
+) => {
+  if (!isLabelTagActive) return null;
+  const labelTagFilters = activeFilter["_label_tags"]?.values ?? [];
+  const labelTagVisibility = activeVisibility["_label_tags"]?.values ?? [];
+  if (labelTagFilters.length === 0) return labelTagVisibility;
+  if (labelTagVisibility.length === 0) return labelTagFilters;
+  return labelTagFilters.filter((tag) => labelTagVisibility.includes(tag));
 };

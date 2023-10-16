@@ -2,9 +2,17 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
-import { BaseState, Coordinates, MaskTargets, RgbMaskTargets } from "../state";
+import {
+  BaseState,
+  Coloring,
+  Coordinates,
+  CustomizeColor,
+  MaskTargets,
+  RgbMaskTargets,
+} from "../state";
 import { BaseLabel, RegularLabel } from "./base";
 
 export const t = (state: BaseState, x: number, y: number): Coordinates => {
@@ -130,5 +138,108 @@ export const getHashLabel = (label: RegularLabel): string => {
     return `${label.label}.${label.index}`;
   } else {
     return `${label.label}.${label.id}`;
+  }
+};
+
+type LabelColorProps = {
+  coloring: Coloring;
+  path: string;
+  label: RegularLabel;
+  isTagged: boolean;
+  labelTagColors: CustomizeColor;
+  customizeColorSetting: CustomizeColor[];
+};
+
+export const getLabelColor = ({
+  coloring,
+  path,
+  label,
+  isTagged,
+  labelTagColors,
+  customizeColorSetting,
+}: LabelColorProps): string => {
+  let key;
+  const field = customizeColorSetting.find((s) => s.path === path);
+
+  if (coloring.by === "instance") {
+    return getColor(coloring.pool, coloring.seed, getHashLabel(label));
+  }
+
+  if (coloring.by === "field") {
+    // if the label is tagged, use _label_tag color rules
+    // otherwise use color rules for the field
+    if (isTagged) {
+      if (isValidColor(labelTagColors.fieldColor)) {
+        return labelTagColors.fieldColor;
+      }
+      return getColor(coloring.pool, coloring.seed, "_label_tags");
+    } else {
+      if (isValidColor(field?.fieldColor)) {
+        return field.fieldColor;
+      }
+      return getColor(coloring.pool, coloring.seed, path);
+    }
+  }
+
+  if (coloring.by === "value") {
+    if (isTagged) {
+      // if the label's tag is currently active, use the _label_tag color rules
+      // specified tag color > label tag field color > default label tag color
+
+      const tagColor = labelTagColors.valueColors?.find((pair) =>
+        label.tags.includes(pair.value)
+      )?.color;
+      if (isValidColor(tagColor)) {
+        return tagColor;
+      } else if (isValidColor(labelTagColors.fieldColor)) {
+        return labelTagColors.fieldColor;
+      } else {
+        return getColor(coloring.pool, coloring.seed, "_label_tags");
+      }
+    } else {
+      // if the field has custom color rules, use the field/value specific rules
+      if (field) {
+        if (field.colorByAttribute) {
+          if (field.colorByAttribute === "index") {
+            key = ["string", "number"].includes(typeof label.index)
+              ? "index"
+              : "id";
+          } else {
+            key = field.colorByAttribute;
+          }
+        } else {
+          key = "label";
+        }
+
+        // use the first value as the fallback default if it's a listField
+        const currentValue = Array.isArray(label[key])
+          ? label[key][0]
+          : label[key];
+        // check if this label has a assigned color, use it if it is a valid color
+        const valueColor = field?.valueColors?.find((l) => {
+          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
+            return typeof label[key] === "string"
+              ? l.value?.toLowerCase === label[key]
+              : !label[key];
+          }
+          if (["True", "False"].includes(l.value?.toString())) {
+            return (
+              l.value?.toString().toLowerCase() ==
+              label[key]?.toString().toLowerCase()
+            );
+          }
+          return Array.isArray(label[key])
+            ? label[key]
+                .map((list) => list.toString())
+                .includes(l.value?.toString())
+            : l.value?.toString() == label[key]?.toString();
+        })?.color;
+        return isValidColor(valueColor)
+          ? valueColor
+          : getColor(coloring.pool, coloring.seed, currentValue);
+      } else {
+        return getColor(coloring.pool, coloring.seed, label["label"]);
+      }
+    }
   }
 };

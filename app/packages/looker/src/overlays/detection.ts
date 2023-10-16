@@ -1,14 +1,14 @@
 /**
  * Copyright 2017-2023, Voxel51, Inc.
  */
-import { NONFINITES } from "@fiftyone/utilities";
+import { getColor, NONFINITES } from "@fiftyone/utilities";
 
 import { INFO_COLOR } from "../constants";
 import { OverlayMask } from "../numpy";
 import { BaseState, BoundingBox, Coordinates, NONFINITE } from "../state";
 import { distanceFromLineSegment } from "../util";
 import { CONTAINS, CoordinateOverlay, PointInfo, RegularLabel } from "./base";
-import { t } from "./util";
+import { getLabelColor, t } from "./util";
 
 export interface DetectionLabel extends RegularLabel {
   _cls: "Detection";

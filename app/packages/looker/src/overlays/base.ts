@@ -2,9 +2,8 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { getColor } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { getHashLabel, isValidColor, sizeBytes } from "./util";
+import { getLabelColor, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
 export enum CONTAINS {
@@ -93,67 +92,34 @@ export abstract class CoordinateOverlay<
     return state.options.selectedLabels.includes(this.label.id);
   }
 
+  isTagFiltered(state: Readonly<State>): boolean {
+    return state.options.selectedLabelTags?.some((tag) =>
+      this.label.tags.includes(tag)
+    );
+  }
+
   getColor({
-    options: { coloring, customizeColorSetting },
+    options: {
+      coloring,
+      customizeColorSetting,
+      selectedLabelTags,
+      labelTagColors,
+    },
   }: Readonly<State>): string {
-    let key;
     const path = this.field;
-    const field = customizeColorSetting.find((s) => s.path === path);
-
-    if (coloring.by === "instance") {
-      return getColor(coloring.pool, coloring.seed, getHashLabel(this.label));
-    }
-
-    if (coloring.by === "field") {
-      if (isValidColor(field?.fieldColor)) {
-        return field.fieldColor;
-      }
-      return getColor(coloring.pool, coloring.seed, this.field);
-    }
-    if (coloring.by === "value") {
-      if (field) {
-        if (field.colorByAttribute) {
-          if (field.colorByAttribute === "index") {
-            key = ["string", "number"].includes(typeof this.label.index)
-              ? "index"
-              : "id";
-          } else {
-            key = field.colorByAttribute;
-          }
-        } else {
-          key = "label";
-        }
-
-        // use the first value as the fallback default if it's a listField
-        const currentValue = Array.isArray(this.label[key])
-          ? this.label[key][0]
-          : this.label[key];
-        // check if this label has a assigned color, use it if it is a valid color
-        const valueColor = field?.valueColors?.find((l) => {
-          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-            return typeof this.label[key] === "string"
-              ? l.value?.toLowerCase === this.label[key]
-              : !this.label[key];
-          }
-          if (["True", "False"].includes(l.value?.toString())) {
-            return (
-              l.value?.toString().toLowerCase() ==
-              this.label[key]?.toString().toLowerCase()
-            );
-          }
-          return Array.isArray(this.label[key])
-            ? this.label[key]
-                .map((list) => list.toString())
-                .includes(l.value?.toString())
-            : l.value?.toString() == this.label[key]?.toString();
-        })?.color;
-        return isValidColor(valueColor)
-          ? valueColor
-          : getColor(coloring.pool, coloring.seed, currentValue);
-      } else {
-        return getColor(coloring.pool, coloring.seed, this.label["label"]);
-      }
-    }
+    // when label tag is not in active path, it is null;
+    // when label tag is active (all tags are active), it is [] ;
+    const isTagged =
+      (selectedLabelTags?.length == 0 && this.label.tags.length > 0) ||
+      selectedLabelTags?.some((tag) => this.label.tags.includes(tag));
+    return getLabelColor({
+      coloring,
+      path,
+      label: this.label,
+      isTagged,
+      labelTagColors,
+      customizeColorSetting,
+    });
   }
 
   abstract containsPoint(state: Readonly<State>): CONTAINS;
