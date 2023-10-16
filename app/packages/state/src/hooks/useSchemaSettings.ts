@@ -70,12 +70,9 @@ export default function useSchemaSettings() {
     fos.includeNestedFieldsState
   );
 
-  // const [affectedPathCount, setAffectedPathCount] = useRecoilState(
-  //   fos.affectedPathCountState
-  // );
   const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
   const affectedPathCount =
-    fieldVisibilityStage?.["kwargs"]?.field_names?.length || 0;
+    fieldVisibilityStage?.kwargs?.field_names?.length || 0;
 
   const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
     fos.lastAppliedPathsState
@@ -451,28 +448,6 @@ export default function useSchemaSettings() {
     },
     [finalSchema]
   );
-
-  // // updates the affected fields count
-  // useEffect(() => {
-  //   if (finalSchema?.length && excludedPaths?.[datasetName]) {
-  //     if (filterRuleTab && searchResults?.length) {
-  //       // setAffectedPathCount(
-  //       //   Object.keys(bareFinalSchema)?.length - searchResults.length
-  //       // );
-  //       console.log("reset count search");
-  //     } else {
-  //       console.log("reset count select");
-  //       // setAffectedPathCount(excludedPaths[datasetName].size);
-  //     }
-  //   }
-  // }, [
-  //   finalSchema,
-  //   filterRuleTab,
-  //   searchResults,
-  //   excludedPaths,
-  //   datasetName,
-  //   selectedPaths,
-  // ]);
 
   return {
     affectedPathCount,

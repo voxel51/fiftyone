@@ -8,7 +8,7 @@ import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -79,6 +79,9 @@ const SchemaSettings = () => {
     fos.useSearchSchemaFields(mergedSchema);
 
   const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
+  const resetFieldVisibilityStage = useResetRecoilState(
+    fos.fieldVisibilityStage
+  );
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
 
@@ -267,7 +270,8 @@ const SchemaSettings = () => {
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
-                setFieldVisibilityStage(undefined);
+                // setFieldVisibilityStage(undefined);
+                resetFieldVisibilityStage();
                 resetExcludedPaths();
                 setSearchResults([]);
                 resetAttributeFilters();
