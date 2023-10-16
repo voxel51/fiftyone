@@ -230,34 +230,18 @@ const SchemaSettings = () => {
               onClick={() => {
                 resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-                let stage;
-                if (isFilterRuleActive) {
-                  stage = {
-                    _cls: "fiftyone.core.stages.SelectFields",
-                    kwargs: {
-                      meta_filter: searchMetaFilter,
-                      _allow_missing: true,
-                    },
-                  };
-                } else {
-                  stage = {
-                    _cls: "fiftyone.core.stages.ExcludeFields",
-                    kwargs: {
-                      field_names: initialFieldNames,
-                      _allow_missing: true,
-                    },
-                  };
-                }
+                const stage = {
+                  cls: "fiftyone.core.stages.ExcludeFields",
+                  kwargs: {
+                    meta_filter: searchMetaFilter,
+                    field_names: initialFieldNames,
+                    allow_missing: true,
+                  },
+                };
 
                 try {
                   console.log("stage", stage);
-                  setFieldVisibilityStage({
-                    cls: stage["_cls"],
-                    kwargs: {
-                      field_names: stage["kwargs"]["field_names"],
-                      allow_missing: stage["kwargs"]["allow_missing"],
-                    },
-                  });
+                  setFieldVisibilityStage(stage);
                 } catch (e) {
                   console.error("error setting field visibility", e);
                 } finally {

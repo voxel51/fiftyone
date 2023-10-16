@@ -99,7 +99,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 }}
                 onClick={() => {
                   resetSelectedFieldStages();
-                  // setFieldVisibilityStage(undefined);
                   resetExcludedPaths();
                   setSearchResults([]);
                 }}
