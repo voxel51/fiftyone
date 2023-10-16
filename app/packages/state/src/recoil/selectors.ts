@@ -445,12 +445,6 @@ export const extendedStages = selector({
           },
         }
       : {};
-    console.log(
-      "extendedStages:fieldVisibilityStage",
-      fvStage,
-      "\n",
-      finalFieldVisibilityStage
-    );
 
     console.log("finalFieldVisibilityStage", finalFieldVisibilityStage);
 
@@ -459,9 +453,6 @@ export const extendedStages = selector({
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
-      // ...(selectFieldsStage
-      //   ? { [selectFieldsStage["_cls"]]: selectFieldsStage["kwargs"] }
-      //   : {}),
       ...(finalFieldVisibilityStage ? finalFieldVisibilityStage : {}),
     };
     console.log("extendedStages", res);

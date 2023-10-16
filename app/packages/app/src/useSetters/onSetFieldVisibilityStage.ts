@@ -30,13 +30,15 @@ const onSetFieldVisibilityStage: RegisteredSetter =
       },
       onCompleted: () => {
         console.log("useWriter:onSetFieldVisibilityStage:onComplete", input);
+
         const unsubscribe = subscribeBefore(() => {
+          console.log("onSetFieldVisibilityStage:unsubscribe");
           sessionRef.current.fieldVisibilityStage = {
-            _cls: input.cls,
-            kwargs: [
-              ["field_names", fieldNames],
-              ["_allow_missing", true],
-            ],
+            cls: input.cls,
+            kwargs: {
+              field_names: fieldNames,
+              allow_missing: true,
+            },
           };
           unsubscribe();
         });
