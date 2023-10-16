@@ -78,8 +78,6 @@ class Mutation(SetColorScheme):
         input: FieldVisibilityStageInput,
     ) -> bool:
         # TODO: teams handling
-        state = get_state()
-        state.field_visibility_stage = input
         print("\n\nmutation:set_field_visibility_stage", input)
         await dispatch_event(
             subscription,

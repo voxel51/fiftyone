@@ -8,11 +8,7 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import {
-  fieldVisibilityStage,
-  fieldVisibilityStage,
-  selectedFieldsStageState,
-} from "@fiftyone/state";
+import { fieldVisibilityStage } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
@@ -441,9 +437,9 @@ export const extendedStages = selector({
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
     const fvStage = get(fieldVisibilityStage);
-    const finalFieldVisibilityStage = fvStage
+    const finalFieldVisibilityStage = fvStage?._cls
       ? {
-          [fvStage["cls"]]: {
+          [fvStage["_cls"]]: {
             field_names: fvStage["kwargs"]["field_names"],
             _allow_missing: fvStage["kwargs"]["allow_missing"],
           },

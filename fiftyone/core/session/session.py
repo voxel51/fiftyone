@@ -754,16 +754,13 @@ class Session(object):
 
     @property
     def field_visibility_stage(self):
-        return list(self._state.field_visibility_stage)
+        return self._state.field_visibility_stage
 
-    # @field_visibility_stage.setter  # type: ignore
-    # def field_visibility_stage(self, field_visibility_stage_arg) -> None:
-    #     self._state.field_visibility_stage = (
-    #         field_visibility_stage_arg if field_visibility_stage_arg else {}
-    #     )
-    #     self._client.send_event(
-    #         SetFieldVisibilityStage(field_visibility_stage_arg)
-    #     )
+    @field_visibility_stage.setter  # type: ignore
+    def field_visibility_stage(self, d) -> None:
+        self._state.field_visibility_stage = d or None
+        d = d or {}
+        self._client.send_event(SetFieldVisibilityStage(**d))
 
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
@@ -1186,7 +1183,9 @@ def _attach_listeners(session: "Session"):
     on_set_field_visibility_stage: t.Callable[
         [SetFieldVisibilityStage], None
     ] = lambda event: setattr(
-        session._state, "field_visibility_stage", event.field_visibility_stage
+        session._state,
+        "field_visibility_stage",
+        asdict(event),
     )
     session._client.add_event_listener(
         "set_field_visibility_stage", on_set_field_visibility_stage

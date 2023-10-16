@@ -12,6 +12,7 @@ const useEvents = (
   readyStateRef: MutableRefObject<AppReadyState>
 ) => {
   const eventNames = useMemo(() => Object.keys(EVENTS), []);
+
   const subscriptions = useMemo(() => eventNames.map(snakeCase), [eventNames]);
 
   const ctx = useMemo(
