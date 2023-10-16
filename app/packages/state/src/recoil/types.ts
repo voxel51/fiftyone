@@ -199,10 +199,10 @@ export namespace State {
   }
 
   export interface FieldVisibilityStage {
-    _cls: string;
+    cls: string;
     kwargs: {
       field_names: string[];
-      _allow_missing: boolean;
+      allow_missing: boolean;
     };
   }
 
@@ -216,5 +216,6 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
+    fieldVisibilityStage?: FieldVisibilityStage;
   }
 }

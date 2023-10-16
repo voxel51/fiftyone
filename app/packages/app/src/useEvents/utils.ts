@@ -26,38 +26,34 @@ export const processState = (
   );
   state.spaces && setter("sessionSpaces", state.spaces);
 
-  const visibility = state.field_visibility;
-  // const stage = visibility
-  //   ? {
-  //       visibility.cls,
-  //       kwargs: [
-  //         ["field_names", visibility.field_names.field_names],
-  //         ["_allow_missing", visibility.field_names.allow_missing],
-  //       ],
-  //     }
-  //   : null;
-  const stage = visibility
+  const visibility = state.field_visibility_stage;
+  console.log("processState:fieldVisibilityStage", visibility);
+  const visibilityStage = visibility
     ? {
-        cls: "fiftyone.core.stages.ExcludeFields",
-        _cls: "fiftyone.core.stages.ExcludeFields",
+        _cls: visibility.cls,
         kwargs: [
-          ["field_names", visibility.field_names.field_names],
-          ["_allow_missing", visibility.field_names.allow_missing],
+          ["field_names", visibility.field_names],
+          ["_allow_missing", true],
         ],
       }
     : null;
+  console.log("processState:visibilityStage", visibilityStage);
+  const stageAtom = visibility
+    ? {
+        cls: visibility.cls,
+        kwargs: {
+          field_names: visibility.field_names,
+          allow_missing: true,
+        },
+      }
+    : undefined;
 
   console.log("stage", visibility);
-  stage &&
-    setter("fieldVisibilityStage", {
-      ...stage,
-      kwargs: Object.fromEntries(stage?.kwargs),
-    });
+  stageAtom && setter("fieldVisibilityStage", stageAtom);
   return env().VITE_NO_STATE
     ? { view: [], extendedStages: [] }
     : {
         view: state.view || [],
-        extendedStages: {} ? [stage as State.Stage] : [],
-        // extendedStages: {} ? [stage as State.Stage] : [],
+        extendedStages: visibilityStage ? [visibilityStage as State.Stage] : [],
       };
 };

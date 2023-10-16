@@ -7,7 +7,7 @@ const useSetFieldVisibility: EventHandlerHook = () => {
   return useCallback(
     (payload) => {
       console.log("useSetFieldVisibility", payload);
-      setter("fieldVisibilityStage", payload.fieldVisibility);
+      setter("fieldVisibilityStage", payload.fieldVisibilityStage);
     },
     [setter]
   );

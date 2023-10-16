@@ -21,7 +21,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
 
   const setSchemaModal = useSetRecoilState(fos.settingsModal);
   const resetSelectedFieldStages = useResetRecoilState(
-    fos.selectedFieldsStageState
+    fos.fieldVisibilityStage
   );
 
   const {
@@ -33,9 +33,6 @@ const Filter = ({ modal }: { modal: boolean }) => {
   } = fos.useSchemaSettings();
 
   const { setSearchResults } = fos.useSearchSchemaFields(mergedSchema);
-
-  const { setViewToFields: setSelectedFieldsStage } =
-    fos.useSetSelectedFieldsStage();
 
   return (
     <FilterInputDiv modal={modal}>
@@ -102,7 +99,7 @@ const Filter = ({ modal }: { modal: boolean }) => {
                 }}
                 onClick={() => {
                   resetSelectedFieldStages();
-                  setSelectedFieldsStage(undefined);
+                  // setFieldVisibilityStage(undefined);
                   resetExcludedPaths();
                   setSearchResults([]);
                 }}

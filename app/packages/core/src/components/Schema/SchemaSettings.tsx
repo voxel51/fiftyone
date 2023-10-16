@@ -8,7 +8,7 @@ import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -78,12 +78,7 @@ const SchemaSettings = () => {
   const { setSearchResults, searchMetaFilter } =
     fos.useSearchSchemaFields(mergedSchema);
 
-  const { setViewToFields: setSelectedFieldsStage } =
-    fos.useSetSelectedFieldsStage();
-  const [fieldVisibilityState, setFieldVisibilityStage] = useRecoilState(
-    fos.fieldVisibilityStage
-  );
-  console.log("fieldVisibilityState", fieldVisibilityState);
+  const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
 
@@ -256,12 +251,11 @@ const SchemaSettings = () => {
 
                 try {
                   console.log("stage", stage);
-                  setSelectedFieldsStage(stage);
                   setFieldVisibilityStage({
                     cls: stage["_cls"],
                     kwargs: {
                       field_names: stage["kwargs"]["field_names"],
-                      _allow_missing: true,
+                      allow_missing: stage["kwargs"]["allow_missing"],
                     },
                   });
                 } catch (e) {
@@ -289,7 +283,7 @@ const SchemaSettings = () => {
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
-                setSelectedFieldsStage(null);
+                setFieldVisibilityStage(undefined);
                 resetExcludedPaths();
                 setSearchResults([]);
                 resetAttributeFilters();

@@ -440,11 +440,6 @@ export const extendedStages = selector({
   key: "extendedStages",
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
-    const selectFieldsStage = get(selectedFieldsStageState) as {
-      _cls: string;
-      kwargs: {};
-    };
-
     const fvStage = get(fieldVisibilityStage);
     const finalFieldVisibilityStage = fvStage
       ? {

@@ -61,6 +61,7 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
+    // TODO
     const affectedPathCount = get(affectedPathCountState);
     const isAttributeVisibilityOn = affectedPathCount > 0;
 

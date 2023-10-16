@@ -12,37 +12,34 @@ const onSetFieldVisibilityStage: RegisteredSetter =
   ({ get, set }, input) => {
     if (!input) return;
     set(pendingEntry, true);
-    console.log("input", input);
+    console.log("useWriter:onSetFieldVisibilityStage", input);
+    const fieldNames = input?.kwargs?.field_names || [];
+    const cls = input?.cls || "fiftyone.core.stages.ExcludeFields";
+
     commitMutation<setFieldVisibilityStageMutation>(environment, {
       mutation: setFieldVisibilityStage,
       variables: {
         input: {
-          cls: input?._cls,
+          cls,
           kwargs: {
-            fieldNames: input?.kwargs.field_names,
-            allowMissing: input?.kwargs._allow_missing,
+            fieldNames,
+            allowMissing: true,
           },
         },
         subscription: get(stateSubscription),
       },
       onCompleted: () => {
-        console.log({
-          _cls: input?._cls,
-          kwargs: {
-            field_names: input?.kwargs.field_names,
-            _allow_missing: input?.kwargs._allow_missing,
-          },
-        });
+        console.log("useWriter:onSetFieldVisibilityStage:onComplete", input);
         router.history.replace(
           `${router.history.location.pathname}${router.history.location.search}`,
           {
             ...router.get().state,
             extendedStages: [
               {
-                _cls: input?._cls,
+                _cls: cls,
                 kwargs: {
-                  field_names: input?.kwargs.field_names,
-                  _allow_missing: input?.kwargs._allow_missing,
+                  field_names: fieldNames,
+                  _allow_missing: true,
                 },
               },
             ],

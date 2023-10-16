@@ -132,7 +132,7 @@ export function sessionAtom<K extends keyof Session>(
     ],
   });
 
-  const transitionKeys = new Set<string>(["fieldVisibility"]);
+  const transitionKeys = new Set<string>(["fieldVisibilityStage"]);
   if (transitionKeys.has(options.key)) {
     return selectorWithEffect<Session[K]>(
       {

@@ -306,8 +306,16 @@ export const isFieldVisibilityActive = selector({
   key: "isClearFieldVisibilityVisible",
   get: ({ get }) => {
     const isSelectedFieldsStageActive = get(fos.selectedFieldsStageState);
-    const affectedCount = get(fos.affectedPathCountState);
+    // const affectedCount = get(fos.affectedPathCountState);
+    const affectedCount =
+      get(fieldVisibilityStage)?.kwargs?.field_names?.length;
 
-    return isSelectedFieldsStageActive && affectedCount > 0;
+    console.log(
+      "get(fieldVisibilityStage)",
+      get(fieldVisibilityStage),
+      affectedCount
+    );
+    return get(fieldVisibilityStage) && affectedCount > 0;
+    // return isSelectedFieldsStageActive && affectedCount > 0;
   },
 });
