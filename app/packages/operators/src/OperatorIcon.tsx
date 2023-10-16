@@ -3,11 +3,19 @@ import { useColorScheme } from "@mui/material";
 import { resolveServerPath } from "./utils";
 
 export default function OperatorIcon(props: CustomIconPropsType) {
-  const { pluginName, icon, lightIcon, darkIcon, _builtIn, Fallback } = props;
+  const {
+    pluginName,
+    icon,
+    lightIcon,
+    darkIcon,
+    _builtIn,
+    Fallback,
+    canExecute,
+  } = props;
   const { mode } = useColorScheme();
   const iconPath = mode === "dark" && darkIcon ? darkIcon : lightIcon || icon;
 
-  if (!iconPath) return Fallback ? <Fallback /> : null;
+  if (!iconPath || !canExecute) return Fallback ? <Fallback /> : null;
   if (_builtIn) return <ImageIcon src={iconPath} />;
   return <CustomOperatorIcon pluginName={pluginName} iconPath={iconPath} />;
 }
@@ -32,6 +40,7 @@ export type CustomIconPropsType = {
   darkIcon?: string;
   _builtIn?: boolean;
   Fallback?: React.ComponentType;
+  canExecute?: boolean;
 };
 
 type CustomOperatorIconPropsType = {
