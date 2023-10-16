@@ -9,6 +9,7 @@ import os
 import unittest
 
 import fiftyone as fo
+import fiftyone.core.odm as foo
 
 from decorators import drop_datasets
 
@@ -29,6 +30,13 @@ class SingleProcessSynchronizationTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             fo.Dataset("test_dataset")
+
+        dataset1.delete()
+        new_dataset1 = fo.Dataset("test_dataset")
+
+        dataset1.__class__._instances["test_dataset"] = dataset1
+        new_dataset1 = fo.load_dataset("test_dataset")
+        self.assertIsNot(dataset1, new_dataset1)
 
     @drop_datasets
     def test_sample_singletons(self):
