@@ -9,7 +9,6 @@ import os
 import unittest
 
 import fiftyone as fo
-import fiftyone.core.odm as foo
 
 from decorators import drop_datasets
 
