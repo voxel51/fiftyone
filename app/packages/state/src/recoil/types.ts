@@ -200,10 +200,10 @@ export namespace State {
 
   export interface FieldVisibilityStage {
     cls: string;
-    kwargs: {
-      field_names: string[];
-      allow_missing: boolean;
-    };
+    // kwargs: {
+    field_names: string[];
+    // allow_missing: boolean;
+    // };
   }
 
   export interface Description {
