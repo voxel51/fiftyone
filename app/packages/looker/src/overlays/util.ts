@@ -2,7 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { getColor } from "@fiftyone/utilities";
+import { REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import {
@@ -208,7 +208,7 @@ export const getLabelColor = ({
             key = field.colorByAttribute;
           }
         } else {
-          key = "label";
+          key = label._cls === REGRESSION ? "value" : "label";
         }
 
         // use the first value as the fallback default if it's a listField
@@ -238,7 +238,7 @@ export const getLabelColor = ({
           ? valueColor
           : getColor(coloring.pool, coloring.seed, currentValue);
       } else {
-        return getColor(coloring.pool, coloring.seed, label["label"]);
+        return getColor(coloring.pool, coloring.seed, label[key]);
       }
     }
   }
