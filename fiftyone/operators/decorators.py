@@ -88,7 +88,14 @@ def dir_state(dirpath):
     if not os.path.isdir(dirpath):
         return None
     # use glob instead of os.listdir to ignore hidden files (eg .DS_STORE)
+    # check top level dir in the case that files are deleted
     return max(
-        (os.path.getmtime(f) for f in glob.glob(os.path.join(dirpath, "*"))),
-        default=None,
+        max(
+            (
+                os.path.getmtime(f)
+                for f in glob.glob(os.path.join(dirpath, "*"))
+            ),
+            default=-1,
+        ),
+        os.path.getmtime(dirpath),
     )

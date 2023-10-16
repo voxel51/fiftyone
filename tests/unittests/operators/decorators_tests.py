@@ -7,10 +7,11 @@ Unit tests for operators/decorators.
 """
 import asyncio
 import os
+import shutil
+import tempfile
 import unittest
 from unittest import mock
 from unittest.mock import patch
-
 from fiftyone.operators.decorators import coroutine_timeout, dir_state
 
 
@@ -61,6 +62,24 @@ class DirStateTests(unittest.TestCase):
         mock_getmtime.assert_has_calls(
             [unittest.mock.call("file1.txt"), unittest.mock.call("file2.txt")]
         )
+
+    def test_dir_state_change_with_delete(self):
+        plugin_paths = ["plugin1/file1.txt", "plugin2file2.txt"]
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            initial_dir_state = dir_state(tmpdirname)
+            for p in plugin_paths:
+                os.makedirs(os.path.join(tmpdirname, p))
+
+            # verify that max time is greater after adding files
+            dir_state1 = dir_state(tmpdirname)
+            self.assertGreater(dir_state1, initial_dir_state)
+
+            # verify that max time is greater after deleting files
+            shutil.rmtree(
+                os.path.join(tmpdirname, plugin_paths[0].split("/")[0])
+            )
+            dir_state2 = dir_state(tmpdirname)
+            self.assertGreater(dir_state2, dir_state1)
 
 
 async def dummy_coroutine_fn(duration):
