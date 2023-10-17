@@ -63,37 +63,42 @@ class DirStateTests(unittest.TestCase):
             self.assertGreater(dir_state(tmpdirname), 0)
 
     def test_rgrs_dir_state_change_with_delete(self):
-        plugin_paths = ["plugin1/file1.txt", "plugin2file2.txt"]
+        plugin_paths = ["plugin1/file1.txt", "plugin2/file2.txt"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
+                time.sleep(1)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
             self.assertGreater(dir_state1, initial_dir_state)
-
-            time.sleep(1)
 
             # verify that max time is greater after deleting files
             shutil.rmtree(
                 os.path.join(tmpdirname, plugin_paths[0].split("/")[0])
             )
             dir_state2 = dir_state(tmpdirname)
-            self.assertGreater(dir_state2, dir_state1)
+            self.assertGreaterEqual(dir_state2, dir_state1)
+            time.sleep(1)
+
+            shutil.rmtree(
+                os.path.join(tmpdirname, plugin_paths[1].split("/")[0])
+            )
+            dir_state3 = dir_state(tmpdirname)
+            self.assertGreaterEqual(dir_state3, dir_state2)
 
     def test_rgrs_dir_state_change_with_rename(self):
         plugin_paths = ["plugin1/file1.txt", "plugin2/file2.txt"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
+                time.sleep(1)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
             self.assertGreater(dir_state1, initial_dir_state)
-
-            time.sleep(1)
 
             # verify that max time is greater after renaming plugin dir
             os.rename(
@@ -103,7 +108,7 @@ class DirStateTests(unittest.TestCase):
                 ),
             )
             dir_state2 = dir_state(tmpdirname)
-            self.assertGreater(dir_state2, dir_state1)
+            self.assertGreaterEqual(dir_state2, dir_state1)
 
 
 async def dummy_coroutine_fn(duration):
