@@ -803,6 +803,52 @@ class ServerViewTests(unittest.TestCase):
         )
         self.assertEqual(second_view.first().id, second.id)
 
+    @drop_datasets
+    def test_get_view_captures_all_parameters(self):
+        dataset = fod.Dataset("test")
+        dataset.app_group_field("group", default="left")
+        samples = []
+        group = fo.Group()
+        slices = ["left", "right"]
+        for i in range(10):
+            sample = fos.Sample(
+                filepath="image_" + str(i) + ".png",
+                group=group.element(name=slices[i % 2]),
+                predictions=fol.Detections(
+                    detections=[
+                        fol.Detection(
+                            label="carrot",
+                            confidence=0.25,
+                        ),
+                        fol.Detection(
+                            label="not_carrot",
+                            confidence=0.75,
+                        ),
+                    ]
+                ),
+            )
+            samples.append(sample)
+        dataset.add_samples(samples)
+
+        first = dataset.first()
+
+        view = fosv.get_view(
+            dataset.name,
+            sample_filter=fosv.SampleFilter(
+                group=fosv.GroupElementFilter(
+                    slice="left", id=first.group.id, slices=slices
+                )
+            ),
+            filters={
+                "predictions.detections.label": {
+                    "values": ["carrot"],
+                    "exclude": False,
+                    "isMatching": False,
+                }
+            },
+        )
+        self.assertEqual(len(view), 5)
+
 
 class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
     @drop_datasets
