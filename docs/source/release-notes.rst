@@ -21,6 +21,8 @@ App
 
 - Fixed dataset recreation across processes
   `#3655 <https://github.com/voxel51/fiftyone/pull/3655>`
+- Fixed the :attr:`Session.url <fiftyone.core.session.session.Session>`
+  property in Colab `#3645 <https://github.com/voxel51/fiftyone/pull/3645>`
 
 .. _release-notes-teams-v1.4.2:
 
