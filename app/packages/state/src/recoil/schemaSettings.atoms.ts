@@ -77,14 +77,6 @@ export const searchMetaFilterState = atom({
   default: {},
 });
 
-export const lastAppliedPathsState = atom({
-  key: "lastAppliedExcludedPathsState",
-  default: {
-    excluded: [],
-    selected: [],
-  },
-});
-
 // tracks action and value - currently used for (un)select all action
 export const lastActionToggleSelectionState = atom<Record<
   string,
@@ -157,14 +149,21 @@ export const selectedPathsState = atomFamily({
           }
         });
 
+        const fieldVisibilityStage = await getPromise(fos.fieldVisibilityStage);
+        const hiddenFieldPaths: string[] =
+          fieldVisibilityStage?.kwargs?.field_names || [];
+
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
             const skip = skipField(path, combinedSchema);
             return !!path && !skip;
+            // && !hiddenFieldPaths.includes(path);
           })
           .map((path) => mapping?.[path] || path);
 
+        console.log("selectedPaths", greenPaths);
+        console.log("selectedPaths:combinedSchema", combinedSchema);
         setSelf({
           [dataset?.name]: new Set(greenPaths),
         });
@@ -209,6 +208,10 @@ export const excludedPathsState = atomFamily({
           }
         });
 
+        const fieldVisibilityStage = await getPromise(fos.fieldVisibilityStage);
+        const hiddenFieldPaths: string[] =
+          fieldVisibilityStage?.kwargs?.field_names || [];
+
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
@@ -225,6 +228,7 @@ export const excludedPathsState = atomFamily({
                 isVideo,
                 isPatchesView
               )
+              // !hiddenFieldPaths.includes(rawPath)
             );
           })
           .map((path) => mapping?.[path] || path);

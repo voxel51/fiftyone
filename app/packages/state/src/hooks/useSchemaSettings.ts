@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import _, { isEmpty, keyBy } from "lodash";
+import _, { filter, isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   useRecoilState,
@@ -36,9 +36,7 @@ export default function useSchemaSettings() {
   const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
 
   const resetTextFilter = useResetRecoilState(fos.textFilter(false));
-  const datasetName = useRecoilValue(fos.datasetName);
-
-  const resetSelectedPaths = useResetRecoilState(fos.selectedPathsState({}));
+  const datasetName = useRecoilValue(fos.datasetName) as string;
 
   const [filters, setFilters] = useRecoilState(fos.filters);
   const [modalFilters, setModalFilters] = useRecoilState(fos.modalFilters);
@@ -73,10 +71,6 @@ export default function useSchemaSettings() {
   const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
   const affectedPathCount =
     fieldVisibilityStage?.kwargs?.field_names?.length || 0;
-
-  const [lastAppliedPaths, setLastAppliedPaths] = useRecoilState(
-    fos.lastAppliedPathsState
-  );
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
@@ -182,10 +176,7 @@ export default function useSchemaSettings() {
 
     const resSchema = Object.keys(finalSchemaKeyByPath)
       .sort()
-      .filter((path) => {
-        if (path === "undefined") return false;
-        return true;
-      })
+      .filter((path) => path !== "undefined")
       .map((path: string) => {
         const pathLabel = path.split(".");
         const hasFrames = path?.startsWith("frames.");
@@ -291,8 +282,13 @@ export default function useSchemaSettings() {
   );
 
   const resetExcludedPaths = useCallback(() => {
+    const newSelectedPaths = new Set([
+      ...viewPaths,
+      ...Object.keys(fieldSchema),
+    ]);
+    console.log("useSchemaSettings:resetExcludedPaths", newSelectedPaths);
     setSelectedPaths({
-      [datasetName]: new Set([...viewPaths, ...Object.keys(fieldSchema)]),
+      [datasetName]: newSelectedPaths,
     });
     setExcludedPaths({ [datasetName]: new Set() });
     setSearchResults([]);
@@ -305,18 +301,10 @@ export default function useSchemaSettings() {
         ...Object.keys(viewSchema),
         ...Object.keys(fieldSchema),
       ]);
+      console.log("useSchemaSettings:useEffect", combinedSchema);
       setSelectedPaths(() => ({
         [datasetName]: combinedSchema,
       }));
-      if (
-        !lastAppliedPaths.selected?.length &&
-        !lastAppliedPaths.excluded?.length
-      ) {
-        setLastAppliedPaths({
-          selected: [...combinedSchema],
-          excluded: [],
-        });
-      }
     }
   }, [viewSchema, fieldSchema]);
 
@@ -376,16 +364,6 @@ export default function useSchemaSettings() {
     ]
   );
 
-  const bareFinalSchema = useMemo(
-    () =>
-      mergedSchema
-        ? finalSchema.filter((field) => {
-            return !skipField(field.path, mergedSchema);
-          })
-        : finalSchema,
-    [mergedSchema, finalSchema, isGroupDataset]
-  );
-
   useEffect(() => {
     if (!allPaths?.length || !combinedSchema) return;
     if (lastActionToggleSelection) {
@@ -394,6 +372,7 @@ export default function useSchemaSettings() {
       if (val) {
         setExcludedPaths({ [datasetName]: new Set() });
         setSelectedPaths({ [datasetName]: new Set([...allPaths]) });
+        console.log("useSchemaSettings:useEffect:3", allPaths);
       } else {
         if (includeNestedFields && filterRuleTab) {
           setExcludedPaths({ [datasetName]: new Set(allPaths) });
@@ -419,6 +398,7 @@ export default function useSchemaSettings() {
           )
           .map((f) => f.path);
 
+        console.log("useSchemaSettings:useEffect:33", res);
         setSelectedPaths({
           [datasetName]: new Set(res),
         });
@@ -462,9 +442,7 @@ export default function useSchemaSettings() {
     includeNestedFields,
     isFilterRuleActive: filterRuleTab,
     isVideo,
-    lastAppliedPaths,
     resetExcludedPaths,
-    resetSelectedPaths,
     resetTextFilter,
     searchTerm,
     selectedPaths,
@@ -473,7 +451,6 @@ export default function useSchemaSettings() {
     setExcludedPaths,
     setExpandedPaths,
     setIncludeNestedFields,
-    setLastAppliedPaths,
     setSearchTerm,
     setSelectedPaths,
     setSelectedTab,

@@ -8,7 +8,7 @@ import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useRecoilState, useResetRecoilState, useSetRecoilState } from "recoil";
+import { useResetRecoilState } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -60,12 +60,7 @@ const SchemaSettings = () => {
     datasetName,
     excludedPaths,
     resetExcludedPaths,
-    setSelectedPaths,
-    setLastAppliedPaths,
-    lastAppliedPaths,
-    setExcludedPaths,
     isFilterRuleActive,
-    enabledSelectedPaths,
     setShowNestedFields,
     mergedSchema,
   } = fos.useSchemaSettings();
@@ -114,8 +109,6 @@ const SchemaSettings = () => {
     setSearchTerm("");
     setSearchResults([]);
     setSettingsModal({ open: false });
-    setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
-    setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
 
   return (
@@ -192,12 +185,6 @@ const SchemaSettings = () => {
                   onClick: () => {
                     setSelectedTab(value);
                     setShowNestedFields(false);
-                    setSelectedPaths({
-                      [datasetName]: new Set(lastAppliedPaths.selected),
-                    });
-                    setExcludedPaths({
-                      [datasetName]: new Set(lastAppliedPaths.excluded),
-                    });
                   },
                 };
               })}
@@ -250,10 +237,6 @@ const SchemaSettings = () => {
                 } finally {
                   setSettingsModal({ open: false });
                 }
-                setLastAppliedPaths({
-                  selected: enabledSelectedPaths[datasetName],
-                  excluded: excludedPaths[datasetName],
-                });
               }}
             >
               Apply
@@ -270,7 +253,6 @@ const SchemaSettings = () => {
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
-                // setFieldVisibilityStage(undefined);
                 resetFieldVisibilityStage();
                 resetExcludedPaths();
                 setSearchResults([]);

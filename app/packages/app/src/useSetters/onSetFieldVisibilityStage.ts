@@ -16,6 +16,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
     console.log("useWriter:onSetFieldVisibilityStage", input);
     const fieldNames = input?.kwargs?.field_names || [];
     const cls = input?.cls || "fiftyone.core.stages.ExcludeFields";
+
     commitMutation<setFieldVisibilityStageMutation>(environment, {
       mutation: setFieldVisibilityStage,
       variables: {
