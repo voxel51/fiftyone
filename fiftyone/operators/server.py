@@ -34,7 +34,7 @@ async def _get_operator_registry_for_route(
     if requires_authentication:
         if is_list:
             registry = await PermissionedOperatorRegistry.from_list_request(
-                request
+                request, dataset_ids
             )
         else:
             registry = await PermissionedOperatorRegistry.from_exec_request(
@@ -61,10 +61,16 @@ class ListOperators(HTTPEndpoint):
         registry = await _get_operator_registry_for_route(
             self.__class__, request, is_list=True, dataset_ids=dataset_ids
         )
+        role_scoped_registry = await _get_operator_registry_for_route(
+            self.__class__, request, is_list=True
+        )
         ctx = ExecutionContext()
         operators_as_json = [
-            operator.to_json(ctx) for operator in registry.list_operators()
+            operator.to_json(ctx)
+            for operator in role_scoped_registry.list_operators()
+            if role_scoped_registry.can_execute(operator.uri)
         ]
+
         for operator in operators_as_json:
             config = operator["config"]
             config["can_execute"] = registry.can_execute(operator["uri"])
@@ -94,6 +100,10 @@ class ResolvePlacements(HTTPEndpoint):
             return {"placements": placements}
 
         for operator in registry.list_operators():
+            # teams-only
+            if not registry.can_execute(operator.uri):
+                continue
+
             placement = resolve_placement(operator, data)
             if placement is not None:
                 placements.append(
