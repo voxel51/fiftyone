@@ -10,6 +10,7 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
+  Stage,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
@@ -25,7 +26,7 @@ import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
-import { GROUP_BY_VIEW_STAGE, view } from "./view";
+import { GROUP_BY_VIEW_STAGE, dynamicGroupViewQuery, view } from "./view";
 
 export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
@@ -384,6 +385,39 @@ export const isOrderedDynamicGroup = selector<boolean>({
     const { orderBy } = params;
     return Boolean(orderBy?.length);
   },
+});
+
+export const dynamicGroupPageSelector = selectorFamily<
+  (
+    cursor: number,
+    pageSize: number
+  ) => {
+    filter: Record<string, never>;
+    after: string;
+    count: number;
+    dataset: string;
+    view: Stage[];
+  },
+  string
+>({
+  key: "paginateDynamicGroupVariables",
+  get:
+    (groupByValue) =>
+    ({ get }) => {
+      const params = {
+        dataset: get(datasetName),
+        view: get(
+          dynamicGroupViewQuery({ groupByFieldValueExplicit: groupByValue })
+        ),
+      };
+
+      return (cursor: number, pageSize: number) => ({
+        ...params,
+        filter: {},
+        after: cursor ? String(cursor) : null,
+        count: pageSize,
+      });
+    },
 });
 
 export const activeModalSample = selector({
