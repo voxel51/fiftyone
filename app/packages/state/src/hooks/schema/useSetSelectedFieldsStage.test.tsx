@@ -47,10 +47,10 @@ describe("useSetShowNestedFields hook used in schema code", () => {
 
     const { result } = renderHook(
       () => {
-        const { setViewToFields } = fos.useSetSelectedFieldsStage();
+        const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
 
         return {
-          setViewToFields: (stage) => setViewToFields(stage),
+          setFieldVisibilityStage: (stage) => setFieldVisibilityStage(stage),
           selectedFieldsStage: useRecoilValue(fos.selectedFieldsStageState),
         };
       },
@@ -60,7 +60,7 @@ describe("useSetShowNestedFields hook used in schema code", () => {
     );
 
     act(() => {
-      result.current.setViewToFields(stage);
+      result.current.setFieldVisibilityStage(stage);
     });
 
     const resultView = result.current.selectedFieldsStage;
