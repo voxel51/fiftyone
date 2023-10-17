@@ -22,7 +22,7 @@ class OperatorObject extends BaseType {
    *  property it self. (default: `new Map()`)
    * @param properties initial properties on the object
    */
-  constructor(public properties: Map<string, Property> = new Map()) {
+  constructor(public properties: ObjectProperties = new Map()) {
     super();
   }
   /**
@@ -165,17 +165,19 @@ class OperatorObject extends BaseType {
   tuple(name, items: ANY_TYPE[], options: any = {}) {
     return this.defineProperty(name, new Tuple(items), options);
   }
+  static propertiesFromJSON(json: any): ObjectProperties {
+    const entries: Array<[string, Property]> = Object.entries(
+      json.properties
+    ).map(([k, v]) => [k, Property.fromJSON(v)]);
+    return new Map(entries);
+  }
   /**
    * Define an `Object` operator type by providing a json representing the type
    * @param json json object representing the definition of the property
    * @returns operator type `Object` created with json provided
    */
   static fromJSON(json: any) {
-    const entries = Object.entries(json.properties).map(([k, v]) => [
-      k,
-      Property.fromJSON(v),
-    ]);
-    return new OperatorObject(new Map(entries));
+    return new OperatorObject(OperatorObject.propertiesFromJSON(json));
   }
 }
 export { OperatorObject as Object };
@@ -424,6 +426,10 @@ export class File extends OperatorObject {
       label: "Directory Contents",
       description: "The contents of the directory",
     });
+  }
+
+  static fromJSON(json: any): File {
+    return new File(OperatorObject.propertiesFromJSON(json));
   }
 }
 
@@ -1138,3 +1144,4 @@ type PropertyOptions = {
   description?: string;
   view?: View;
 };
+type ObjectProperties = Map<string, Property>;

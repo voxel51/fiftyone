@@ -9,6 +9,7 @@ const inputComponentsByType = {
   OneOf: "OneOfView",
   Tuple: "TupleView",
   Map: "MapView",
+  File: "FileExplorerView",
 };
 const outputComponentsByType = {
   Object: "ObjectView",
@@ -18,6 +19,7 @@ const outputComponentsByType = {
   List: "ListView",
   OneOf: "OneOfView",
   Tuple: "TupleView",
+  File: "FileExplorerView",
 };
 const baseViews = ["View", "PromptView"];
 const viewAliases = {
@@ -41,6 +43,7 @@ const operatorTypeToJSONSchemaType = {
   OneOf: "oneOf",
   Tuple: "array",
   Map: "object",
+  File: "object",
 };
 const unsupportedView = "UnsupportedView";
 
