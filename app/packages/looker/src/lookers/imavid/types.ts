@@ -1,8 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import LRUCache from "lru-cache";
 
-export const IMAVID_BUFFER_SIZE = 100;
-
 export type SampleId = string;
 export type SampleResponse =
   foq.paginateSamplesQuery$data["samples"]["edges"][number]["node"];

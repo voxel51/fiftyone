@@ -3,6 +3,7 @@
  */
 
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
+import { ImaVidStore } from "../../lookers/imavid/store";
 import { ImaVidState, Optional, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
@@ -226,7 +227,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       const newStatePartials: Partial<ImaVidState> = {};
 
       this.buffer(framesController)
-        .then(() => {})
+        .then(() => {
+          const a = ImaVidStore;
+          debugger;
+        })
         .finally(() => {
           newStatePartials.buffering = false;
         });
