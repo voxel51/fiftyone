@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from unittest import mock
+import time
 from unittest.mock import patch
 from fiftyone.operators.decorators import coroutine_timeout, dir_state
 
@@ -73,9 +73,34 @@ class DirStateTests(unittest.TestCase):
             dir_state1 = dir_state(tmpdirname)
             self.assertGreater(dir_state1, initial_dir_state)
 
+            time.sleep(1)
+
             # verify that max time is greater after deleting files
             shutil.rmtree(
                 os.path.join(tmpdirname, plugin_paths[0].split("/")[0])
+            )
+            dir_state2 = dir_state(tmpdirname)
+            self.assertGreater(dir_state2, dir_state1)
+
+    def test_rgrs_dir_state_change_with_rename(self):
+        plugin_paths = ["plugin1/file1.txt", "plugin2/file2.txt"]
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            initial_dir_state = dir_state(tmpdirname)
+            for p in plugin_paths:
+                os.makedirs(os.path.join(tmpdirname, p))
+
+            # verify that max time is greater after adding files
+            dir_state1 = dir_state(tmpdirname)
+            self.assertGreater(dir_state1, initial_dir_state)
+
+            time.sleep(1)
+
+            # verify that max time is greater after renaming plugin dir
+            os.rename(
+                os.path.join(tmpdirname, plugin_paths[0].split("/")[0]),
+                os.path.join(
+                    tmpdirname, plugin_paths[0].split("/")[0] + "renamed"
+                ),
             )
             dir_state2 = dir_state(tmpdirname)
             self.assertGreater(dir_state2, dir_state1)
