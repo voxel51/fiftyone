@@ -87,6 +87,7 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   );
 
   // convert to patches
+  await grid.actionsRow.toggleToClipsOrPatches();
   const toPatchesRefresh = grid.getWaitForGridRefreshPromise();
   await gridActionsRow.clickToPatchesByLabelField("predictions");
   await toPatchesRefresh;

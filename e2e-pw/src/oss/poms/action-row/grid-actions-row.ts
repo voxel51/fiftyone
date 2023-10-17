@@ -52,11 +52,7 @@ export class GridActionsRowPom {
   }
 
   async clickToPatchesByLabelField(fieldName: string) {
-    await this.openAction("action-clips-patches");
-    await this.page
-      .getByTestId("popout")
-      .getByTestId(`item-action-${fieldName}`)
-      .click();
+    await this.toPatchesByLabelField(fieldName).click();
   }
 
   async groupBy(groupBy: string, orderBy?: string) {
@@ -69,5 +65,9 @@ export class GridActionsRowPom {
     }
 
     await this.dynamicGroup.submit();
+  }
+
+  toPatchesByLabelField(fieldName: string) {
+    return this.page.getByTestId(`item-action-${fieldName}`);
   }
 }
