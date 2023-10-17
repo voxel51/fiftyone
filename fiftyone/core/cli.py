@@ -3751,10 +3751,7 @@ class ComputeMetadataCommand(Command):
             "--num-workers",
             default=None,
             type=int,
-            help=(
-                "the number of worker processes to use. The default is "
-                "`multiprocessing.cpu_count()`"
-            ),
+            help="a suggested number of worker processes to use",
         )
         parser.add_argument(
             "-s",
@@ -3896,10 +3893,7 @@ class TransformImagesCommand(Command):
             "--num-workers",
             default=None,
             type=int,
-            help=(
-                "the number of worker processes to use. The default is "
-                "`multiprocessing.cpu_count()`"
-            ),
+            help="a suggested number of worker processes to use",
         )
         parser.add_argument(
             "-s",
