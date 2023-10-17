@@ -212,9 +212,18 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
-            view (None): the :class:`FileExplorerView` of the property
+            view (None): the :class:`View` of the property
         """
         return self.define_property(name, File(), **kwargs)
+
+    def uploaded_file(self, name, **kwargs):
+        """Defines a property on the object that is an uploaded file.
+
+        Args:
+            name: the name of the property
+            view (None): the :class:`View` of the property
+        """
+        return self.define_property(name, UploadedFile(), **kwargs)
 
     def view(self, name, view, **kwargs):
         """Defines a view-only property.
@@ -531,6 +540,45 @@ class File(Object):
             "date_modified",
             label="Last Modified",
             description="The last modified time of the file in isoformat",
+        )
+
+
+class UploadedFile(Object):
+    """Represents an object with uploaded file content and its metadata in
+    properties.
+
+    Properties:
+        name: the name of the file
+        type: the mime type of the file
+        size: the size of the file in bytes
+        content: the base64 encoded content of the file
+        last_modified: the last modified time of the file in ms since epoch
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.str(
+            "name", label="Name", description="The name of the uploaded file"
+        )
+        self.str(
+            "type",
+            label="Type",
+            description="The mime type of the uploaded file",
+        )
+        self.int(
+            "size",
+            label="Size",
+            description="The size of the uploaded file in bytes",
+        )
+        self.str(
+            "content",
+            label="Content",
+            description="The base64 encoded content of the uploaded file",
+        )
+        self.int(
+            "last_modified",
+            label="Last Modified",
+            description="The last modified time of the uploaded file in ms since epoch",
         )
 
 
@@ -992,29 +1040,15 @@ class AutocompleteView(Choices):
         super().__init__(**kwargs)
 
 
-class UploadedFile(dict):
-    """Represents an uploaded file.
-
-    Attributes:
-        name: the name of the file
-        type: the mime type of the file
-        size: the size of the file in bytes
-        content: the base64 encoded contents of the file
-        last_modified: the last modified time of the file in ms since epoch
-    """
-
-    def __init__(self):
-        pass
-
-
 class FileView(View):
     """Displays a file input.
 
     .. note::
 
-        This view can be used on string or object properties. If used on a
-        string property, the value will be the file base64 encoded contents.
-        If used on an object the value will be a :class:`UploadedFile` object.
+        This view can be used on :class:`String` or :class:`UploadedFile`
+        properties. If used on a :class:`String` property, the value will be the
+        value will be the file base64 encoded contents. If used on a
+        :class:`UploadedFile`, the value will be a :class:`UploadedFile` object.
 
     Args:
         max_size: the maximum size of the file in bytes

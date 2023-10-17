@@ -165,6 +165,24 @@ class OperatorObject extends BaseType {
   tuple(name, items: ANY_TYPE[], options: any = {}) {
     return this.defineProperty(name, new Tuple(items), options);
   }
+  /**
+   * Define a property of type {@link File} on the object
+   * @param name name of the property
+   * @param options
+   * @returns newly defined property
+   */
+  file(name, options: any = {}) {
+    return this.defineProperty(name, new File(), options);
+  }
+  /**
+   * Define a property of type {@link UploadedFile} on the object
+   * @param name name of the property
+   * @param options
+   * @returns newly defined property
+   */
+  uploadedFile(name, options: any = {}) {
+    return this.defineProperty(name, new UploadedFile(), options);
+  }
   static propertiesFromJSON(json: any): ObjectProperties {
     const entries: Array<[string, Property]> = Object.entries(
       json.properties
@@ -430,6 +448,41 @@ export class File extends OperatorObject {
 
   static fromJSON(json: any): File {
     return new File(OperatorObject.propertiesFromJSON(json));
+  }
+}
+
+/**
+ * Operator type for defining an uploaded file and its metadata.
+ */
+
+export class UploadedFile extends OperatorObject {
+  constructor(public properties: Map<string, Property> = new Map()) {
+    super(properties);
+    this.str("name", {
+      label: "Name",
+      description: "The name of the uploaded file",
+    });
+    this.str("type", {
+      label: "Type",
+      description: "The mime type of the uploaded file",
+    });
+    this.int("size", {
+      label: "Size",
+      description: "The size of the uploaded file in bytes",
+    });
+    this.str("content", {
+      label: "Content",
+      description: "The base64 encoded content of the uploaded file",
+    });
+    this.int("last_modified", {
+      label: "Last Modified",
+      description:
+        "The last modified time of the uploaded file in ms since epoch",
+    });
+  }
+
+  static fromJSON(json: object): File {
+    return new UploadedFile(OperatorObject.propertiesFromJSON(json));
   }
 }
 
@@ -1057,6 +1110,7 @@ const TYPES = {
   Tuple,
   Map: OperatorMap,
   File,
+  UploadedFile,
 };
 
 // NOTE: this should always match fiftyone/operators/types.py
@@ -1125,7 +1179,9 @@ export type ANY_TYPE =
   | Enum
   | OneOf
   | Tuple
-  | OperatorMap;
+  | OperatorMap
+  | File
+  | UploadedFile;
 export type ViewOrientation = "horizontal" | "vertical";
 export type ViewPropertyTypes =
   | string
