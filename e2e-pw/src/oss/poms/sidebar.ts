@@ -5,7 +5,7 @@ export class SidebarPom {
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
-  constructor(page: Page) {
+  constructor(page: Page, eventUtils: any) {
     this.page = page;
     this.asserter = new SidebarAsserter(this);
 
