@@ -1,12 +1,13 @@
 import {
   AbstractLooker,
   FrameLooker,
+  ImaVidLooker,
   ImageLooker,
   PcdLooker,
   Sample,
   VideoLooker,
-  ImaVidLooker,
 } from "@fiftyone/looker";
+import { ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
@@ -17,15 +18,12 @@ import { useErrorHandler } from "react-error-boundary";
 import { useRecoilValue } from "recoil";
 import { ModalSample, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
+import * as groupAtoms from "../recoil/groups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
-import * as groupAtoms from "../recoil/groups";
-import * as optionsAtoms from "../recoil/options";
-import { ImaVidConfig } from "@fiftyone/looker/src/state";
-import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import useImaVid from "./useImaVid";
 
 export default <T extends AbstractLooker>(
@@ -55,7 +53,9 @@ export default <T extends AbstractLooker>(
     groupAtoms.shouldRenderImaVidLooker
   );
 
-  const getImaVidController = useImaVid();
+  const sampleRef = useRef<ModalSample["sample"]["sample"] | null>(null);
+
+  const getImaVidController = useImaVid(sampleRef);
 
   const create = useCallback(
     ({
@@ -64,6 +64,8 @@ export default <T extends AbstractLooker>(
       sample,
       urls: rawUrls,
     }: ModalSample["sample"]): T => {
+      sampleRef.current = sample;
+
       let constructor:
         | typeof FrameLooker
         | typeof ImageLooker
@@ -154,7 +156,7 @@ export default <T extends AbstractLooker>(
       }
 
       if (constructor === ImaVidLooker) {
-        (config as ImaVidConfig).framesController = getImaVidController(sample);
+        (config as ImaVidConfig).framesController = getImaVidController();
         // todo
         (config as ImaVidConfig).frameRate = 24;
       }
@@ -186,6 +188,7 @@ export default <T extends AbstractLooker>(
       selected,
       thumbnail,
       view,
+      getImaVidController,
     ]
   );
   const createLookerRef = useRef(create);

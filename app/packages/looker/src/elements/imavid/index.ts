@@ -2,6 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { ImaVidState, Optional, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
@@ -209,12 +210,28 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     console.log("Pausing");
   }
 
+  async buffer(framesController: ImaVidFramesController) {
+    await framesController.hydrateIfEmpty();
+  }
+
   async play() {
+    if (this.waitingToPlay) {
+      return;
+    }
+
+    this.waitingToPlay = true;
+
     this.update((state) => {
-      if (state.config.framesController.store.frames.length === 0) {
-        state.config.framesController;
-      }
-      return { ...state };
+      const framesController = state.config.framesController;
+      const newStatePartials: Partial<ImaVidState> = {};
+
+      this.buffer(framesController)
+        .then(() => {})
+        .finally(() => {
+          newStatePartials.buffering = false;
+        });
+
+      return newStatePartials;
     });
   }
 
@@ -312,3 +329,12 @@ export const PLAYBACK_RATE = {
     { node: PlaybackRateBarElement },
   ],
 };
+
+export * from "./loader-bar";
+export * from "./play-button";
+export * from "./playback-rate-bar";
+export * from "./playback-rate-container";
+export * from "./playback-rate-icon";
+export * from "./seek-bar";
+export * from "./seek-bar-thumb";
+export * from "./time";
