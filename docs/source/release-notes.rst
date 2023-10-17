@@ -3,6 +3,25 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.3:
+
+FiftyOne Teams 1.4.3
+--------------------
+*Released October 20, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.22.2 <release-notes-v0.22.2>`, plus:
+
+.. _release-notes-v0.22.2:
+
+FiftyOne 0.22.2
+---------------
+*Released October 20, 2023*
+
+App
+
+- Fixed dataset recreation across processes
+  `#3655 <https://github.com/voxel51/fiftyone/pull/3655>`
+
 .. _release-notes-teams-v1.4.2:
 
 FiftyOne Teams 1.4.2
