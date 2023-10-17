@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<2522ed6f20daf6164764d1db674e39c2>>
+ * @generated SignedSource<<b6c5232a88a613ca3d4804b1ee4ac190>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -25,10 +25,10 @@ export type lightningQuery$variables = {
 export type lightningQuery$data = {
   readonly lightning: ReadonlyArray<{
     readonly __typename: string;
-    readonly dateMax?: any | null;
-    readonly dateMin?: any | null;
-    readonly datetimeMax?: any | null;
-    readonly datetimeMin?: any | null;
+    readonly dateMax?: number | null;
+    readonly dateMin?: number | null;
+    readonly datetimeMax?: number | null;
+    readonly datetimeMin?: number | null;
     readonly false?: boolean;
     readonly inf?: boolean;
     readonly intMax?: number | null;
