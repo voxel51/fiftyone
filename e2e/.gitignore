@@ -1,0 +1,17 @@
+node_modules
+cypress/videos
+cypress/downloads
+cypress/screenshots
+cypress/snapshots/diff
+cypress/snapshots/actual
+.env.cypress
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.yarnrc.yml
+coverage
+.snowpack
+yarn-error.log

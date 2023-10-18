@@ -3,6 +3,6 @@
 -r extras.txt
 -r test.txt
 
-ipython==7.16.3
+ipython==8.16.1
 pre-commit==2.18.1
 pylint==2.13.9
