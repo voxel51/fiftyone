@@ -26,12 +26,12 @@
     },
     "devDependencies": {
         "@testing-library/react-hooks": "latest",
-        "@vitest/ui": "^0.25.2",
+        "@vitest/ui": "^0.34.6",
         "babel-plugin-relay": "^14.1.0",
         "prettier": "^2.7.1",
         "typescript": "^4.7.4",
-        "vite": "^3.0.0",
-        "vitest": "^0.25.2"
+        "vite": "^3.2.7",
+        "vitest": "^0.34.6"
     },
     "dependencies": {
         "@fiftyone/looker": "*",
