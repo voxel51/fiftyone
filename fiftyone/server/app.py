@@ -57,9 +57,7 @@ class Static(StaticFiles):
         )
         if response.path.endswith("index.html"):
             response.headers["cache-control"] = "no-store"
-            return response
-
-        if self.is_not_modified(response.headers, request_headers):
+        elif self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
 
         return response
@@ -74,7 +72,7 @@ class Static(StaticFiles):
             response = await super().get_response(path, scope)
             if response.status_code == 404:
                 full_path, stat_result = self.lookup_path("index.html")
-                response = self.file_response(full_path, stat_result, scope)
+                return self.file_response(full_path, stat_result, scope)
 
         return response
 
