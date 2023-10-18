@@ -132,6 +132,24 @@ export class ValidationContext {
         new ValidationError("Invalid value type", property, path)
       );
     }
+
+    if (expectedType === "number") {
+      const { min, max } = property.type;
+      if (isNumber(min) && value < min) {
+        return this.addError(
+          new ValidationError(
+            `Value must be greater than ${min}`,
+            property,
+            path
+          )
+        );
+      }
+      if (isNumber(max) && value > max) {
+        return this.addError(
+          new ValidationError(`Value must be less than ${max}`, property, path)
+        );
+      }
+    }
   }
 }
 

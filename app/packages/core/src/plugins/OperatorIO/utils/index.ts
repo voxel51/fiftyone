@@ -105,6 +105,13 @@ function getSchema(property, options = {}) {
 
   const computedOptions = { ...options, readOnly: schema.view.readOnly };
 
+  if (typeName === "Number") {
+    const { min, max, float } = property.type;
+    schema.min = min;
+    schema.max = max;
+    schema.multipleOf = float ? 0.01 : 1;
+  }
+
   if (typeName === "Object") {
     schema.properties = getPropertiesSchema(property, computedOptions);
   }

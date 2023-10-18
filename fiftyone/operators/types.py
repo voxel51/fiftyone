@@ -120,11 +120,13 @@ class Object(BaseType):
         """
         return self.define_property(name, Boolean(), **kwargs)
 
-    def int(self, name, **kwargs):
+    def int(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is an integer.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -132,13 +134,17 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(int=True), **kwargs)
+        return self.define_property(
+            name, Number(int=True, min=min, max=max), **kwargs
+        )
 
-    def float(self, name, **kwargs):
+    def float(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is a float.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -146,7 +152,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(float=True), **kwargs)
+        return self.define_property(
+            name, Number(float=True, min=min, max=max), **kwargs
+        )
 
     def enum(self, name, values, **kwargs):
         """Defines a property on the object that is an enum.
