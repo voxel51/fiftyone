@@ -595,6 +595,135 @@ class AnnotationConfig(EnvConfig):
         return d
 
 
+class EvaluationConfig(EnvConfig):
+    """FiftyOne evaluation configuration settings."""
+
+    _BUILTIN_BACKENDS = {
+        "regression": {
+            "simple": {
+                "config_cls": "fiftyone.utils.eval.regression.SimpleEvaluationConfig",
+            },
+        },
+        "classification": {
+            "simple": {
+                "config_cls": "fiftyone.utils.eval.classification.SimpleEvaluationConfig",
+            },
+            "binary": {
+                "config_cls": "fiftyone.utils.eval.classification.BinaryEvaluationConfig",
+            },
+            "top-k": {
+                "config_cls": "fiftyone.utils.eval.classification.TopKEvaluationConfig",
+            },
+        },
+        "detection": {
+            "activitynet": {
+                "config_cls": "fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig",
+            },
+            "coco": {
+                "config_cls": "fiftyone.utils.eval.coco.COCOEvaluationConfig",
+            },
+            "open-images": {
+                "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig",
+            },
+        },
+        "segmentation": {
+            "simple": {
+                "config_cls": "fiftyone.utils.eval.segmentation.SimpleEvaluationConfig",
+            },
+        },
+    }
+
+    def __init__(self, d=None):
+        if d is None:
+            d = {}
+
+        self.default_regression_backend = self.parse_string(
+            d,
+            "default_regression_backend",
+            env_var="FIFTYONE_DEFAULT_REGRESSION_BACKEND",
+            default="simple",
+        )
+        self.default_classification_backend = self.parse_string(
+            d,
+            "default_classification_backend",
+            env_var="DEFAULT_FIFTYONE_CLASSIFICATION_BACKEND",
+            default="simple",
+        )
+        self.default_detection_backend = self.parse_string(
+            d,
+            "default_detection_backend",
+            env_var="DEFAULT_FIFTYONE_DETECTION_BACKEND",
+            default="coco",
+        )
+        self.default_segmentation_backend = self.parse_string(
+            d,
+            "default_segmentation_backend",
+            env_var="DEFAULT_FIFTYONE_SEGMENTATION_BACKEND",
+            default="simple",
+        )
+
+        self.regression_backends = self._parse_backends(d, "regression")
+        self.classification_backends = self._parse_backends(
+            d, "classification"
+        )
+        self.detection_backends = self._parse_backends(d, "detection")
+        self.segmentation_backends = self._parse_backends(d, "segmentation")
+
+    def _parse_backends(self, d, type):
+        TYPE = type.upper()
+
+        d = d.get(f"{type}_backends", {})
+        env_vars = dict(os.environ)
+
+        #
+        # `FIFTYONE_{TYPE}_BACKENDS` can be used to declare which backends
+        # are exposed. This may exclude builtin backends and/or declare new
+        # backends
+        #
+
+        if f"FIFTYONE_{TYPE}_BACKENDS" in env_vars:
+            backends = env_vars[f"FIFTYONE_{TYPE}_BACKENDS"].split(",")
+
+            # Declare new backends and omit any others not in `backends`
+            d = {backend: d.get(backend, {}) for backend in backends}
+        else:
+            backends = sorted(self._BUILTIN_BACKENDS[type].keys())
+
+            # Declare builtin backends if necessary
+            for backend in backends:
+                if backend not in d:
+                    d[backend] = {}
+
+        #
+        # Extract parameters from any environment variables of the form
+        # `FIFTYONE_{TYPE}_{BACKEND}_{PARAMETER}`
+        #
+
+        for backend, parameters in d.items():
+            BACKEND = backend.upper()
+            prefix = f"FIFTYONE_{TYPE}_{BACKEND}_"
+            for env_name, env_value in env_vars.items():
+                if env_name.startswith(prefix):
+                    type = env_name[len(prefix) :].lower()
+                    value = _parse_env_value(env_value)
+                    parameters[type] = value
+
+        #
+        # Set default parameters for builtin similarity backends
+        #
+
+        for backend, defaults in self._BUILTIN_BACKENDS[type].items():
+            if backend not in d:
+                continue
+
+            d_backend = d[backend]
+            for type, value in defaults.items():
+                if type not in d_backend:
+                    d_backend[type] = value
+
+        return d
+
+
 def locate_config():
     """Returns the path to the :class:`FiftyOneConfig` on disk.
 
@@ -648,6 +777,24 @@ def locate_annotation_config():
     return os.environ["FIFTYONE_ANNOTATION_CONFIG_PATH"]
 
 
+def locate_evaluation_config():
+    """Returns the path to the :class:`EvaluationConfig` on disk.
+
+    The default location is ``~/.fiftyone/evaluation_config.json``, but you can
+    override this path by setting the ``FIFTYONE_EVALUATION_CONFIG_PATH``
+    environment variable.
+
+    Note that a config file may not actually exist on disk.
+
+    Returns:
+        the path to the :class:`EvaluationConfig` on disk
+    """
+    if "FIFTYONE_EVALUATION_CONFIG_PATH" not in os.environ:
+        return foc.FIFTYONE_EVALUATION_CONFIG_PATH
+
+    return os.environ["FIFTYONE_EVALUATION_CONFIG_PATH"]
+
+
 def load_config():
     """Loads the FiftyOne config.
 
@@ -685,6 +832,19 @@ def load_annotation_config():
         return AnnotationConfig.from_json(annotation_config_path)
 
     return AnnotationConfig()
+
+
+def load_evaluation_config():
+    """Loads the FiftyOne evaluation config.
+
+    Returns:
+        an :class:`EvaluationConfig` instance
+    """
+    evaluation_config_path = locate_evaluation_config()
+    if os.path.isfile(evaluation_config_path):
+        return EvaluationConfig.from_json(evaluation_config_path)
+
+    return EvaluationConfig()
 
 
 def _parse_env_value(value):

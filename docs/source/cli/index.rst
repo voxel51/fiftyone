@@ -64,7 +64,7 @@ The FiftyOne command-line interface.
 .. code-block:: text
 
     fiftyone [-h] [-v] [--all-help]
-             {quickstart,annotation,brain,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+             {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
              ...
 
 **Arguments**
@@ -77,10 +77,11 @@ The FiftyOne command-line interface.
       --all-help            show help recursively and exit
 
     available commands:
-      {quickstart,annotation,brain,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
+      {quickstart,annotation,brain,evaluation,app,config,constants,convert,datasets,migrate,operators,delegated,plugins,utils,zoo}
         quickstart          Launch a FiftyOne quickstart.
         annotation          Tools for working with the FiftyOne annotation API.
         brain               Tools for working with the FiftyOne Brain.
+        evaluation          Tools for working with the FiftyOne evaluation API.
         app                 Tools for working with the FiftyOne App.
         config              Tools for working with your FiftyOne config.
         constants           Print constants from `fiftyone.constants`.
@@ -1748,7 +1749,7 @@ Tools for working with the FiftyOne annotation API.
       --all-help            show help recursively and exit
 
     available commands:
-      {config,launch,view,connect}
+      {config}
         config              Tools for working with your FiftyOne annotation config.
 
 .. _cli-fiftyone-annotation-config:
@@ -2080,7 +2081,7 @@ Tools for working with the FiftyOne Brain.
       --all-help            show help recursively and exit
 
     available commands:
-      {config,launch,view,connect}
+      {config}
         config              Tools for working with your FiftyOne Brain config.
 
 .. _cli-fiftyone-brain-config:
@@ -2121,6 +2122,68 @@ Tools for working with your FiftyOne Brain config.
 
     # Print the location of your brain config on disk (if one exists)
     fiftyone brain config --locate
+
+.. _cli-fiftyone-evaluation:
+
+FiftyOne Evaluation
+-------------------
+
+Tools for working with the FiftyOne evaluation API.
+
+.. code-block:: text
+
+    fiftyone evaluation [-h] [--all-help] {config} ...
+
+**Arguments**
+
+.. code-block:: text
+
+    optional arguments:
+      -h, --help            show this help message and exit
+      --all-help            show help recursively and exit
+
+    available commands:
+      {config}
+        config              Tools for working with your FiftyOne evaluation config.
+
+.. _cli-fiftyone-evaluation-config:
+
+Evaluation Config
+~~~~~~~~~~~~~~~~~
+
+Tools for working with your FiftyOne evaluation config.
+
+.. code-block:: text
+
+    fiftyone evaluation config [-h] [-l] [FIELD]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      FIELD         an evaluation config field to print
+
+    optional arguments:
+      -h, --help    show this help message and exit
+      -l, --locate  print the location of your evaluation config on disk
+
+**Examples**
+
+.. code-block:: shell
+
+    # Print your entire evaluation config
+    fiftyone evaluation config
+
+.. code-block:: shell
+
+    # Print a specific evaluation config field
+    fiftyone evaluation config <field>
+
+.. code-block:: shell
+
+    # Print the location of your evaluation config on disk (if one exists)
+    fiftyone evaluation config --locate
 
 .. _cli-fiftyone-zoo:
 
