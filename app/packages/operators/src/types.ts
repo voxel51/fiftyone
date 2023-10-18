@@ -237,10 +237,21 @@ export class Property {
  * Operator type for representing a string value for operator input/output.
  */
 class OperatorString extends BaseType {
+  allowEmpty?: boolean;
+
+  /**
+   * Construct operator type for string values
+   * @param options options for defining constraints on a string value
+   * @param options.allowEmpty allow an empty string value
+   * number
+   */
+  constructor(options: { allowEmpty?: boolean } = {}) {
+    super();
+    this.allowEmpty = options.allowEmpty;
+  }
+
   static fromJSON(json: any) {
-    const Type = this;
-    const type = new Type();
-    return type;
+    return new OperatorString({ allowEmpty: json.allow_empty });
   }
 }
 export { OperatorString as String };

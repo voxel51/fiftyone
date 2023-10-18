@@ -56,7 +56,7 @@ export class ValidationContext {
         ),
         true
       );
-    } else if (property.required && valueIsNullish) {
+    } else if (!existsOrNonRequired(property, value)) {
       this.addError(new ValidationError("Required property", property, path));
     } else if (type instanceof Enum && !valueIsNullish) {
       this.validateEnum(path, property, value);
@@ -133,6 +133,17 @@ export class ValidationContext {
       );
     }
   }
+}
+
+function existsOrNonRequired(property, value) {
+  const expectedType = getOperatorTypeName(property.type);
+  if (expectedType === "string" && !property.type.allowEmpty && value === "") {
+    return false;
+  }
+  if (expectedType === "number" && isNaN(value)) {
+    return false;
+  }
+  return !property.required || !isNullish(value);
 }
 
 function getPath(prefix, path) {

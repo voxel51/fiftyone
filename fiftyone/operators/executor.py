@@ -678,7 +678,7 @@ class ValidationContext(object):
                 property.error_message, property, path, True
             )
 
-        if property.required and value is None:
+        if not self.exists_or_non_required(property, value):
             return ValidationError("Required property", property, path)
 
         if value is not None:
@@ -739,3 +739,13 @@ class ValidationContext(object):
 
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)
+
+    def exists_or_non_required(self, property, value):
+        type_name = property.type.__class__.__name__
+
+        if type_name == "String":
+            allow_empty = property.type.allow_empty
+            if not allow_empty and value == "":
+                return False
+
+        return not property.required or value is not None
