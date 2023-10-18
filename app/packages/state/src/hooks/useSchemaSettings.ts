@@ -31,7 +31,7 @@ const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
 export default function useSchemaSettings() {
   const [settingModal, setSettingsModal] = useRecoilState(fos.settingsModal);
   const [showMetadata, setShowMetadata] = useRecoilState(fos.showMetadataState);
-  const dataset = useRecoilValue(fos.dataset);
+  const dataset = useRecoilValue<fos.State.Dataset>(fos.dataset);
   const isGroupDataset = dataset?.groupField;
   const isFieldVisibilityActive = useRecoilValue(fos.isFieldVisibilityActive);
 
@@ -224,6 +224,7 @@ export default function useSchemaSettings() {
 
     return [resSchema, finalSchemaKeyByPath];
   }, [
+    setExcludedPaths,
     searchTerm,
     excludedPaths,
     showNestedFields,
@@ -299,42 +300,42 @@ export default function useSchemaSettings() {
     ]
   );
 
-  useEffect(() => {
-    if (!allPaths?.length || !combinedSchema) return;
-    if (lastActionToggleSelection) {
-      const val = lastActionToggleSelection[SELECT_ALL];
+  // useEffect(() => {
+  //   if (!allPaths?.length || !combinedSchema) return;
+  //   if (lastActionToggleSelection) {
+  //     const val = lastActionToggleSelection[SELECT_ALL];
 
-      if (val) {
-        setExcludedPaths({ [datasetName]: new Set() });
-        console.log("useSchemaSettings:useEffect:3", allPaths);
-      } else {
-        if (includeNestedFields && filterRuleTab) {
-          setExcludedPaths({ [datasetName]: new Set(allPaths) });
-        } else {
-          const topLevelPaths = (allPaths || []).filter((path) =>
-            path.startsWith("frames.")
-              ? !path.replace("frames.", "").includes(".")
-              : !path.includes(".")
-          );
-          setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
-        }
-      }
+  //     if (val) {
+  //       setExcludedPaths({ [datasetName]: new Set() });
+  //       console.log("useSchemaSettings:useEffect:3", allPaths);
+  //     } else {
+  //       if (includeNestedFields && filterRuleTab) {
+  //         setExcludedPaths({ [datasetName]: new Set(allPaths) });
+  //       } else {
+  //         const topLevelPaths = (allPaths || []).filter((path) =>
+  //           path.startsWith("frames.")
+  //             ? !path.replace("frames.", "").includes(".")
+  //             : !path.includes(".")
+  //         );
+  //         setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
+  //       }
+  //     }
 
-      setLastActionToggleSelection(null);
-    }
-  }, [
-    lastActionToggleSelection,
-    allPaths,
-    setLastActionToggleSelection,
-    setExcludedPaths,
-    datasetName,
-    includeNestedFields,
-    filterRuleTab,
-    combinedSchema,
-    isPatchesView,
-    isClipsView,
-    isVideo,
-  ]);
+  //     setLastActionToggleSelection(null);
+  //   }
+  // }, [
+  //   lastActionToggleSelection,
+  //   allPaths,
+  //   setLastActionToggleSelection,
+  //   setExcludedPaths,
+  //   datasetName,
+  //   includeNestedFields,
+  //   filterRuleTab,
+  //   combinedSchema,
+  //   isPatchesView,
+  //   isClipsView,
+  //   isVideo,
+  // ]);
 
   const setAllFieldsCheckedWrapper = useCallback(
     (val: boolean) => {

@@ -4,7 +4,13 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
 import { sessionAtom } from "../session";
 
@@ -125,7 +131,21 @@ export const schemaSearchResults = atom<string[]>({
 
 export const excludedPathsState = atomFamily({
   key: "excludedPathsState",
-  default: (param: {}) => param,
+  default: selectorFamily({
+    key: "excludedPathsStateDefault",
+    get:
+      () =>
+      ({ get }) => {
+        const dataset = get(fos.dataset);
+        const fvStage = get(fieldVisibilityStage);
+
+        return {
+          [dataset?.name]: fvStage
+            ? new Set(fvStage.kwargs?.field_names)
+            : new Set(),
+        };
+      },
+  }),
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
@@ -234,6 +254,7 @@ export const excludedPathsState = atomFamily({
           });
         }
 
+        console.log("excludedPaths", finalGreenPaths);
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
         });

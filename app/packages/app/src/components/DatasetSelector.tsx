@@ -1,7 +1,12 @@
 import { Selector, UseSearch } from "@fiftyone/components";
-import { datasetName, useSetDataset } from "@fiftyone/state";
+import {
+  datasetName,
+  excludedPathsState,
+  fieldVisibilityStage,
+  useSetDataset,
+} from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useResetRecoilState, useSetRecoilState } from "recoil";
 
 const DatasetLink: React.FC<{ value: string; className: string }> = ({
   className,
@@ -19,6 +24,8 @@ const DatasetSelector: React.FC<{
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName) as string;
+  const resetFieldVisibility = useResetRecoilState(fieldVisibilityStage);
+
   return (
     <Selector<string>
       component={DatasetLink}
@@ -26,7 +33,10 @@ const DatasetSelector: React.FC<{
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
       onSelect={(name) => {
-        name !== dataset && setDataset(name);
+        if (name !== dataset) {
+          setDataset(name);
+          resetFieldVisibility();
+        }
       }}
       overflow={true}
       useSearch={useSearch}
