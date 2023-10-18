@@ -109,8 +109,9 @@ See :ref:`this section <creating-an-app-session>` for more details.
 Can I use FiftyOne in a notebook?
 ---------------------------------
 
-Yes! FiftyOne supports both `Jupyter Notebooks <https://jupyter.org>`_ and
-`Google Colab Notebooks <https://colab.research.google.com>`_.
+Yes! FiftyOne supports `Jupyter Notebooks <https://jupyter.org>`_,
+`Google Colab Notebooks <https://colab.research.google.com>`_, and
+`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
 
 All the usual FiftyOne commands can be run in notebook environments, and the
 App will launch/update in the output of your notebook cells!

@@ -169,8 +169,6 @@ def download_images(image_urls, output_dir, num_workers=None):
     Returns:
         the list of downloaded image paths
     """
-    fos.ensure_local(output_dir)
-
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     inputs = []
