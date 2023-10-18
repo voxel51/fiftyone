@@ -190,8 +190,8 @@ dataset = fo.Dataset()
 dataset.add_samples(samples)
 ```
 
-Therefore, any builtin Teams features must be implemeneted to support both
-local and cloud-backed media.
+Therefore, any builtin Teams features must be implemented to support both local
+and cloud-backed media.
 
 ### Writing cloud-friendly code
 
@@ -362,7 +362,7 @@ Local-only:
 def f(local_inpath, local_outpath):
     pass
 
-# A black box function that reads the contents of a srictly local directory
+# A black box function that reads the contents of a strictly local directory
 def g(local_dir):
     pass
 
