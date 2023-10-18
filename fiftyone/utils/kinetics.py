@@ -49,9 +49,8 @@ def download_kinetics_split(
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        num_workers (None): the number of processes to use when downloading
-            individual video. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual videos
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling

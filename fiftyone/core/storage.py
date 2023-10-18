@@ -2098,8 +2098,7 @@ def run(fcn, tasks, num_workers=None, progress=False):
     Args:
         fcn: a function that accepts a single argument
         tasks: an iterable of function aguments
-        num_workers (None): the number of threads to use. By default,
-            ``fiftyone.media_cache_config.num_workers`` is used
+        num_workers (None): a suggested number of threads to use
         progress (False): whether to render a progress bar tracking the status
             of the operation
 
@@ -2109,6 +2108,8 @@ def run(fcn, tasks, num_workers=None, progress=False):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
+
     try:
         num_tasks = len(tasks)
     except:
@@ -2116,7 +2117,7 @@ def run(fcn, tasks, num_workers=None, progress=False):
 
     kwargs = dict(total=num_tasks, iters_str="files", quiet=not progress)
 
-    if not num_workers or num_workers <= 1:
+    if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             results = [fcn(task) for task in pb(tasks)]
     else:
@@ -2385,6 +2386,8 @@ def _run(fcn, tasks, num_workers=None, progress=False):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
+
     try:
         num_tasks = len(tasks)
     except:
@@ -2392,7 +2395,7 @@ def _run(fcn, tasks, num_workers=None, progress=False):
 
     kwargs = dict(total=num_tasks, iters_str="files", quiet=not progress)
 
-    if not num_workers or num_workers <= 1:
+    if num_workers <= 1:
         with fou.ProgressBar(**kwargs) as pb:
             for task in pb(tasks):
                 fcn(task)

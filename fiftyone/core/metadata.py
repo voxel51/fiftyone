@@ -7,10 +7,10 @@ Metadata stored in dataset samples.
 """
 import itertools
 import logging
-import multiprocessing
 import os
 import re
 import requests
+import multiprocessing.dummy
 
 import backoff
 from PIL import Image
@@ -311,13 +311,11 @@ def compute_metadata(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         overwrite (False): whether to overwrite existing metadata
-        num_workers (None): the number of processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of processes to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
     """
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_process_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
@@ -360,6 +358,8 @@ def get_metadata(filepaths, num_workers=None, skip_failures=True):
     """
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
+
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     tasks = [(p, skip_failures) for p in filepaths]
 

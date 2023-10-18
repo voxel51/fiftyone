@@ -225,11 +225,16 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
-
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",
             env_var="FIFTYONE_MAX_THREAD_POOL_WORKERS",
+            default=None,
+        )
+        self.max_process_pool_workers = self.parse_int(
+            d,
+            "max_process_pool_workers",
+            env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
 
