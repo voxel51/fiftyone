@@ -55,6 +55,7 @@ export default function useSetShowNestedFields(
         });
       }
 
+      console.log("useShowNestedFields", newExcludePaths);
       setExcludedPaths({ [datasetName]: newExcludePaths });
       setShowNestedFieldsRaw(val);
     },

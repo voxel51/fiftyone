@@ -43,6 +43,7 @@ const Container = styled.div`
 
 const FIELD_VISIBILITY_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-field-visibility";
+const EXCLUDE_FIELDS_STAGE = "fiftyone.core.stages.ExcludeFields";
 
 const SchemaSettings = () => {
   const theme = useTheme();
@@ -221,7 +222,7 @@ const SchemaSettings = () => {
                 resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
                 const stage = {
-                  cls: "fiftyone.core.stages.ExcludeFields",
+                  cls: EXCLUDE_FIELDS_STAGE,
                   kwargs: {
                     meta_filter: searchMetaFilter,
                     field_names: initialFieldNames,
@@ -230,7 +231,6 @@ const SchemaSettings = () => {
                 };
 
                 try {
-                  console.log("stage", stage);
                   setFieldVisibilityStage(stage);
                 } catch (e) {
                   console.error("error setting field visibility", e);

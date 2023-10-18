@@ -83,15 +83,6 @@ export const searchMetaFilterState = atom({
   default: {},
 });
 
-// tracks action and value - currently used for (un)select all action
-export const lastActionToggleSelectionState = atom<Record<
-  string,
-  boolean
-> | null>({
-  key: "lastActionToggleSelectionState",
-  default: null,
-});
-
 const getRawPath = (path: string) =>
   path.startsWith("frames.") ? path.replace("frames.", "") : path;
 
@@ -138,7 +129,7 @@ export const excludedPathsState = atomFamily({
       ({ get }) => {
         const dataset = get(fos.dataset);
         const fvStage = get(fieldVisibilityStage);
-
+        console.log("excludedPaths:default", fvStage, dataset);
         return {
           [dataset?.name]: fvStage
             ? new Set(fvStage.kwargs?.field_names)
@@ -212,6 +203,7 @@ export const excludedPathsState = atomFamily({
         }
 
         const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
+        console.log("shouldFilterTopLevelFields", finalGreenPaths);
         finalGreenPaths = shouldFilterTopLevelFields
           ? finalGreenPaths.filter((path) => {
               const isEmbeddedOrListType = [
@@ -231,9 +223,9 @@ export const excludedPathsState = atomFamily({
                 : !path.includes(".");
 
               return !(
-                isEmbeddedOrListType &&
-                hasDynamicEmbeddedDocument &&
-                isTopLevelPath
+                // isEmbeddedOrListType &&
+                hasDynamicEmbeddedDocument
+                // isTopLevelPath
               );
             })
           : finalGreenPaths;
@@ -254,7 +246,7 @@ export const excludedPathsState = atomFamily({
           });
         }
 
-        console.log("excludedPaths", finalGreenPaths);
+        console.log("excludedPaths", showNestedField, finalGreenPaths);
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
         });

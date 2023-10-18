@@ -8,14 +8,12 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-import useSetShowNestedFields from "./schema/useSetShowNestedFields";
+// import useSetShowNestedFields from "./schema/useSetShowNestedFields";
 import {
   disabledField,
   getSubPaths,
   skipField,
 } from "./useSchemaSettings.utils";
-
-const SELECT_ALL = "SELECT_ALL";
 
 const viewSchemaSelector = foq.graphQLSyncFragmentAtom<
   foq.viewSchemaFragment$key,
@@ -80,9 +78,6 @@ export default function useSchemaSettings() {
     fos.expandedPathsState
   );
 
-  const [lastActionToggleSelection, setLastActionToggleSelection] =
-    useRecoilState(fos.lastActionToggleSelectionState);
-
   const data = useRecoilValue(viewSchemaSelector);
 
   const { fieldSchema: fieldSchemaRaw, frameFieldSchema } =
@@ -107,9 +102,12 @@ export default function useSchemaSettings() {
     }
   }, [viewSchema, fieldSchema, setViewSchema, setFieldSchema]);
 
-  const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
-    fieldSchema,
-    viewSchema
+  // const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
+  //   fieldSchema,
+  //   viewSchema
+  // );
+  const [showNestedFields, setShowNestedFields] = useRecoilState<boolean>(
+    fos.showNestedFieldsState
   );
 
   const [selectedTab, setSelectedTab] = useRecoilState(
@@ -224,19 +222,19 @@ export default function useSchemaSettings() {
 
     return [resSchema, finalSchemaKeyByPath];
   }, [
-    setExcludedPaths,
-    searchTerm,
-    excludedPaths,
-    showNestedFields,
-    viewSchema,
-    selectedTab,
-    searchResults,
     datasetName,
     fieldSchema,
-    includeNestedFields,
-    isPatchesView,
-    isClipsView,
     isVideo,
+    viewSchema,
+    searchResults,
+    isGroupDataset,
+    isFrameView,
+    isClipsView,
+    isPatchesView,
+    filterRuleTab,
+    excludedPaths,
+    showNestedFields,
+    includeNestedFields,
   ]);
 
   const setIncludeNestedFields = useCallback(
@@ -300,49 +298,32 @@ export default function useSchemaSettings() {
     ]
   );
 
-  // useEffect(() => {
-  //   if (!allPaths?.length || !combinedSchema) return;
-  //   if (lastActionToggleSelection) {
-  //     const val = lastActionToggleSelection[SELECT_ALL];
-
-  //     if (val) {
-  //       setExcludedPaths({ [datasetName]: new Set() });
-  //       console.log("useSchemaSettings:useEffect:3", allPaths);
-  //     } else {
-  //       if (includeNestedFields && filterRuleTab) {
-  //         setExcludedPaths({ [datasetName]: new Set(allPaths) });
-  //       } else {
-  //         const topLevelPaths = (allPaths || []).filter((path) =>
-  //           path.startsWith("frames.")
-  //             ? !path.replace("frames.", "").includes(".")
-  //             : !path.includes(".")
-  //         );
-  //         setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
-  //       }
-  //     }
-
-  //     setLastActionToggleSelection(null);
-  //   }
-  // }, [
-  //   lastActionToggleSelection,
-  //   allPaths,
-  //   setLastActionToggleSelection,
-  //   setExcludedPaths,
-  //   datasetName,
-  //   includeNestedFields,
-  //   filterRuleTab,
-  //   combinedSchema,
-  //   isPatchesView,
-  //   isClipsView,
-  //   isVideo,
-  // ]);
-
   const setAllFieldsCheckedWrapper = useCallback(
     (val: boolean) => {
       setAllFieldsChecked(val);
-      setLastActionToggleSelection({ SELECT_ALL: val });
+      if (includeNestedFields) {
+        console.log("includeNestedFields", val, allPaths);
+        setExcludedPaths({
+          [datasetName]: val ? new Set([]) : new Set(allPaths),
+        });
+      } else {
+        const topLevelPaths = (allPaths || []).filter((path) =>
+          path.startsWith("frames.")
+            ? !path.replace("frames.", "").includes(".")
+            : !path.includes(".")
+        );
+        setExcludedPaths({
+          [datasetName]: val ? new Set() : new Set(topLevelPaths),
+        });
+      }
     },
-    [setAllFieldsChecked, setLastActionToggleSelection]
+    [
+      setAllFieldsChecked,
+      setExcludedPaths,
+      datasetName,
+      includeNestedFields,
+      allPaths,
+    ]
   );
 
   return {
