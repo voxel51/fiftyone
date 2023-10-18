@@ -8,7 +8,6 @@ Utilities for working with datasets in
 """
 import csv
 import logging
-import multiprocessing
 import struct
 import os
 
@@ -417,6 +416,7 @@ def download_kitti_multiview_dataset(
     scratch_dir=None,
     overwrite=False,
     cleanup=False,
+    num_workers=None,
 ):
     """Downloads and prepares the multiview KITTI dataset.
 
@@ -464,6 +464,8 @@ def download_kitti_multiview_dataset(
             already exist
         cleanup (False): whether to delete the downloaded zips and scratch
             directory
+        num_workers (None): a suggested number of processes to use when
+            converting LiDAR to PCD
     """
     if splits is None:
         splits = ("test", "train")
@@ -530,7 +532,9 @@ def download_kitti_multiview_dataset(
 
     for split in splits:
         split_dir = os.path.join(dataset_dir, split)
-        _prepare_kitti_split(split_dir, overwrite=overwrite)
+        _prepare_kitti_split(
+            split_dir, overwrite=overwrite, num_workers=num_workers
+        )
 
     if cleanup:
         etau.delete_dir(scratch_dir)
@@ -810,7 +814,7 @@ def _make_kitti_detection_row(detection, frame_size):
 #
 
 
-def _prepare_kitti_split(split_dir, overwrite=False):
+def _prepare_kitti_split(split_dir, overwrite=False, num_workers=None):
     samples_path = os.path.join(split_dir, "samples.json")
     if not overwrite and os.path.isfile(samples_path):
         return
@@ -849,6 +853,7 @@ def _prepare_kitti_split(split_dir, overwrite=False):
         pcd_dir,
         uuids,
         overwrite=overwrite,
+        num_workers=num_workers,
     )
 
     left_map = make_map(left_images_dir)
@@ -1054,7 +1059,7 @@ def _proj_3d_to_right_camera(detections3d, calib, frame_size):
 
 
 def _convert_velodyne_to_pcd(
-    velodyne_map, calib_map, pcd_dir, uuids, overwrite=False
+    velodyne_map, calib_map, pcd_dir, uuids, overwrite=False, num_workers=None
 ):
     inputs = []
     for uuid in uuids:
@@ -1073,9 +1078,11 @@ def _convert_velodyne_to_pcd(
     etau.ensure_dir(pcd_dir)
 
     logger.info("Converting Velodyne scans to PCD format...")
-    num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_process_pool_workers(num_workers)
     with fou.ProgressBar(total=len(inputs)) as pb:
-        with multiprocessing.Pool(processes=num_workers) as pool:
+        with fou.get_multiprocessing_context().Pool(
+            processes=num_workers
+        ) as pool:
             for _ in pb(pool.imap_unordered(_do_conversion, inputs)):
                 pass
 

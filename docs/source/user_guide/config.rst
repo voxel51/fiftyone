@@ -79,6 +79,10 @@ FiftyOne supports the configuration options described below:
 | `logging_level`               | `FIFTYONE_LOGGING_LEVEL`            | `INFO`                        | Controls FiftyOne's package-wide logging level. Can be any valid ``logging`` level as  |
 |                               |                                     |                               | a string: ``DEBUG, INFO, WARNING, ERROR, CRITICAL``.                                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `max_thread_pool_workers`     | `FIFTYONE_MAX_THREAD_POOL_WORKERS`  | `None`                        | An optional maximum number of workers to use when creating thread pools                |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `max_process_pool_workers`    | `FIFTYONE_MAX_PROCESS_POOL_WORKERS` | `None`                        | An optional maximum number of workers to use when creating process pools               |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `model_zoo_dir`               | `FIFTYONE_MODEL_ZOO_DIR`            | `~/fiftyone/__models__`       | The default directory in which to store models that are downloaded from the            |
 |                               |                                     |                               | :ref:`FiftyOne Model Zoo <model-zoo>`.                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -151,6 +155,8 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
+            "max_thread_pool_workers": null,
+            "max_process_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
@@ -196,6 +202,8 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
+            "max_thread_pool_workers": null,
+            "max_process_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,

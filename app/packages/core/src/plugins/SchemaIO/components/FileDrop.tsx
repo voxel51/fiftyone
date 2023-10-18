@@ -28,13 +28,20 @@ export default function FileDrop({
   const [fileIds, setFileIds] = useState(new Set());
   const fileInputRef = useRef(null);
 
+  const clear = () => {
+    setFiles([]);
+    setFileIds(new Set());
+  };
+
   useEffect(() => {
     const updatedFileIds = new Set();
     for (const file of files) {
       updatedFileIds.add(getFileId(file));
     }
-    if (onChange) onChange(files);
     setFileIds(updatedFileIds);
+    if (onChange) {
+      onChange(files, clear);
+    }
   }, [files]);
 
   function addUniqueFiles(newFiles: FileList) {
