@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import _, { filter, isEmpty, keyBy } from "lodash";
+import _, { isEmpty, keyBy } from "lodash";
 import { useCallback, useEffect, useMemo } from "react";
 import {
   useRecoilState,
@@ -90,8 +90,13 @@ export default function useSchemaSettings() {
 
   const viewSchema = keyBy(frameFieldSchema, "path");
   const fieldSchema = keyBy(fieldSchemaRaw, "path");
-  const combinedSchema = { ...viewSchema, ...fieldSchema };
-  const allPaths = !isEmpty(combinedSchema) ? Object.keys(combinedSchema) : [];
+  const combinedSchema = useMemo(() => {
+    return { ...viewSchema, ...fieldSchema };
+  }, [fieldSchema, viewSchema]);
+
+  const allPaths = useMemo(() => {
+    return !isEmpty(combinedSchema) ? Object.keys(combinedSchema) : [];
+  }, [combinedSchema]);
 
   useEffect(() => {
     if (viewSchema && !isEmpty(viewSchema)) {
@@ -100,7 +105,7 @@ export default function useSchemaSettings() {
     if (fieldSchema && !isEmpty(fieldSchema)) {
       setFieldSchema(fieldSchema);
     }
-  }, [viewSchema, fieldSchema]);
+  }, [viewSchema, fieldSchema, setViewSchema, setFieldSchema]);
 
   const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
     fieldSchema,
@@ -111,38 +116,6 @@ export default function useSchemaSettings() {
     fos.schemaSelectedSettingsTab
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
-
-  const selectedPathState = fos.selectedPathsState({});
-  const [selectedPaths, setSelectedPaths] = useRecoilState(selectedPathState);
-  // disabled paths are filtered
-  const enabledSelectedPaths = useMemo(() => {
-    const datasetSelectedPaths = selectedPaths[datasetName] || new Set();
-
-    return datasetSelectedPaths?.size && combinedSchema
-      ? [...datasetSelectedPaths]?.filter(
-          ({ path }) =>
-            path &&
-            !disabledField(
-              path,
-              combinedSchema,
-              isGroupDataset,
-              isFrameView,
-              isClipsView,
-              isVideo,
-              isPatchesView
-            )
-        )
-      : [];
-  }, [
-    combinedSchema,
-    datasetName,
-    isClipsView,
-    isFrameView,
-    isGroupDataset,
-    isPatchesView,
-    isVideo,
-    selectedPaths,
-  ]);
 
   const excludedPathsState = fos.excludedPathsState({});
   const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
@@ -160,8 +133,7 @@ export default function useSchemaSettings() {
   } = fos.useSearchSchemaFields(mergedSchema);
 
   const [finalSchema, finalSchemaKeyByPath] = useMemo(() => {
-    if (!datasetName || !selectedPaths?.[datasetName] || isEmpty(fieldSchema))
-      return [[], {}];
+    if (!datasetName || isEmpty(fieldSchema)) return [[], {}];
     let finalSchemaKeyByPath = {};
     if (isVideo) {
       Object.keys(viewSchema).forEach((fieldPath) => {
@@ -209,9 +181,9 @@ export default function useSchemaSettings() {
         const isSelected =
           (filterRuleTab && isInSearchResult) ||
           (!filterRuleTab &&
-            selectedPaths?.[datasetName] &&
-            selectedPaths[datasetName] instanceof Set &&
-            selectedPaths[datasetName]?.has(fullPath));
+            excludedPaths?.[datasetName] &&
+            excludedPaths[datasetName] instanceof Set &&
+            !excludedPaths[datasetName]?.has(fullPath));
 
         return {
           path,
@@ -253,7 +225,6 @@ export default function useSchemaSettings() {
     return [resSchema, finalSchemaKeyByPath];
   }, [
     searchTerm,
-    selectedPaths,
     excludedPaths,
     showNestedFields,
     viewSchema,
@@ -267,8 +238,6 @@ export default function useSchemaSettings() {
     isVideo,
   ]);
 
-  const viewPaths = useMemo(() => Object.keys(viewSchema), [viewSchema]);
-
   const setIncludeNestedFields = useCallback(
     (val: boolean) => {
       if (searchMetaFilter) {
@@ -278,39 +247,18 @@ export default function useSchemaSettings() {
         setIncludeNestedFieldsRaw(val);
       }
     },
-    [searchMetaFilter]
+    [searchMetaFilter, searchSchemaFields, setIncludeNestedFieldsRaw]
   );
 
   const resetExcludedPaths = useCallback(() => {
-    const newSelectedPaths = new Set([
-      ...viewPaths,
-      ...Object.keys(fieldSchema),
-    ]);
-    console.log("useSchemaSettings:resetExcludedPaths", newSelectedPaths);
-    setSelectedPaths({
-      [datasetName]: newSelectedPaths,
-    });
     setExcludedPaths({ [datasetName]: new Set() });
     setSearchResults([]);
     setSearchTerm("");
-  }, [datasetName, viewPaths, fieldSchema]);
-
-  useEffect(() => {
-    if (!isEmpty(fieldSchema) && datasetName && !selectedPaths?.[datasetName]) {
-      const combinedSchema = new Set([
-        ...Object.keys(viewSchema),
-        ...Object.keys(fieldSchema),
-      ]);
-      console.log("useSchemaSettings:useEffect", combinedSchema);
-      setSelectedPaths(() => ({
-        [datasetName]: combinedSchema,
-      }));
-    }
-  }, [viewSchema, fieldSchema]);
+  }, [setExcludedPaths, datasetName, setSearchResults, setSearchTerm]);
 
   const toggleSelection = useCallback(
     (rawPath: string, checked: boolean) => {
-      if (!selectedPaths || !rawPath || !datasetName) return;
+      if (!rawPath || !datasetName) return;
       const pathAndSubPaths = getSubPaths(
         rawPath,
         fieldSchema,
@@ -322,22 +270,12 @@ export default function useSchemaSettings() {
       }
 
       if (checked) {
-        const newSelectedPaths = new Set(
-          [...selectedPaths[datasetName]].filter(
-            (path) => !pathAndSubPaths.has(path)
-          )
-        );
         const newExcludePaths = new Set([
           ...(excludedPaths[datasetName] || []),
           ...pathAndSubPaths,
         ]);
         setExcludedPaths({ [datasetName]: newExcludePaths });
-        setSelectedPaths({ [datasetName]: newSelectedPaths });
       } else {
-        const union = new Set<string>([
-          ...selectedPaths[datasetName],
-          ...pathAndSubPaths,
-        ]);
         const datasetExcludedPathsMap = new Set([
           ...(excludedPaths[datasetName] || []),
         ]);
@@ -347,12 +285,10 @@ export default function useSchemaSettings() {
         setExcludedPaths({
           [datasetName]: datasetExcludedPathsMap,
         });
-        setSelectedPaths({ [datasetName]: union });
       }
       setAllFieldsChecked(false);
     },
     [
-      selectedPaths,
       datasetName,
       fieldSchema,
       dataset.mediaType,
@@ -360,7 +296,6 @@ export default function useSchemaSettings() {
       setAllFieldsChecked,
       excludedPaths,
       setExcludedPaths,
-      setSelectedPaths,
     ]
   );
 
@@ -371,7 +306,6 @@ export default function useSchemaSettings() {
 
       if (val) {
         setExcludedPaths({ [datasetName]: new Set() });
-        setSelectedPaths({ [datasetName]: new Set([...allPaths]) });
         console.log("useSchemaSettings:useEffect:3", allPaths);
       } else {
         if (includeNestedFields && filterRuleTab) {
@@ -384,24 +318,6 @@ export default function useSchemaSettings() {
           );
           setExcludedPaths({ [datasetName]: new Set(topLevelPaths) });
         }
-        const res = Object.values(combinedSchema)
-          .filter((f) =>
-            disabledField(
-              f.path,
-              combinedSchema,
-              isGroupDataset,
-              isFrameView,
-              isClipsView,
-              isVideo,
-              isPatchesView
-            )
-          )
-          .map((f) => f.path);
-
-        console.log("useSchemaSettings:useEffect:33", res);
-        setSelectedPaths({
-          [datasetName]: new Set(res),
-        });
       }
 
       setLastActionToggleSelection(null);
@@ -412,7 +328,6 @@ export default function useSchemaSettings() {
     setLastActionToggleSelection,
     setExcludedPaths,
     datasetName,
-    setSelectedPaths,
     includeNestedFields,
     filterRuleTab,
     combinedSchema,
@@ -426,14 +341,13 @@ export default function useSchemaSettings() {
       setAllFieldsChecked(val);
       setLastActionToggleSelection({ SELECT_ALL: val });
     },
-    [finalSchema]
+    [setAllFieldsChecked, setLastActionToggleSelection]
   );
 
   return {
     affectedPathCount,
     allFieldsChecked,
     datasetName,
-    enabledSelectedPaths,
     excludedPaths,
     expandedPaths,
     filterRuleTab,
@@ -445,14 +359,12 @@ export default function useSchemaSettings() {
     resetExcludedPaths,
     resetTextFilter,
     searchTerm,
-    selectedPaths,
     selectedTab,
     setAllFieldsChecked: setAllFieldsCheckedWrapper,
     setExcludedPaths,
     setExpandedPaths,
     setIncludeNestedFields,
     setSearchTerm,
-    setSelectedPaths,
     setSelectedTab,
     setSettingsModal,
     setShowMetadata,

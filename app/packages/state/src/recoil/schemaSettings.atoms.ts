@@ -123,55 +123,6 @@ export const schemaSearchResults = atom<string[]>({
   default: [],
 });
 
-export const selectedPathsState = atomFamily({
-  key: "selectedPathsState",
-  default: (param: {}) => param,
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPathsMap) => {
-        const dataset = await getPromise(fos.dataset);
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-        const mediaType = await getPromise(fos.mediaType);
-        const isImage = mediaType === "image";
-        const isVideo = mediaType === "video";
-
-        const mapping = {};
-        Object.keys(combinedSchema).forEach((path) => {
-          if (isImage) {
-            mapping[path] = path;
-          }
-          if (isVideo && viewSchema) {
-            Object.keys(viewSchema).forEach((path) => {
-              mapping[path] = `frames.${path}`;
-            });
-          }
-        });
-
-        const fieldVisibilityStage = await getPromise(fos.fieldVisibilityStage);
-        const hiddenFieldPaths: string[] =
-          fieldVisibilityStage?.kwargs?.field_names || [];
-
-        const newPaths = newPathsMap?.[dataset?.name] || [];
-        const greenPaths = [...newPaths]
-          .filter((path) => {
-            const skip = skipField(path, combinedSchema);
-            return !!path && !skip;
-            // && !hiddenFieldPaths.includes(path);
-          })
-          .map((path) => mapping?.[path] || path);
-
-        console.log("selectedPaths", greenPaths);
-        console.log("selectedPaths:combinedSchema", combinedSchema);
-        setSelf({
-          [dataset?.name]: new Set(greenPaths),
-        });
-      });
-    },
-  ],
-});
-
 export const excludedPathsState = atomFamily({
   key: "excludedPathsState",
   default: (param: {}) => param,
@@ -208,10 +159,6 @@ export const excludedPathsState = atomFamily({
           }
         });
 
-        const fieldVisibilityStage = await getPromise(fos.fieldVisibilityStage);
-        const hiddenFieldPaths: string[] =
-          fieldVisibilityStage?.kwargs?.field_names || [];
-
         const newPaths = newPathsMap?.[dataset?.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
@@ -228,7 +175,6 @@ export const excludedPathsState = atomFamily({
                 isVideo,
                 isPatchesView
               )
-              // !hiddenFieldPaths.includes(rawPath)
             );
           })
           .map((path) => mapping?.[path] || path);
