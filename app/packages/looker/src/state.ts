@@ -177,6 +177,7 @@ export type Coordinates = [number, number];
 export type Dimensions = [number, number];
 
 export interface BaseConfig {
+  mediaField: string;
   thumbnail: boolean;
   src: string;
   sources: { [path: string]: string };

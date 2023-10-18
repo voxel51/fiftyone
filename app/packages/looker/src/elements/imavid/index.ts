@@ -4,6 +4,7 @@
 
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { ImaVidStore } from "../../lookers/imavid/store";
+import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import { ImaVidState, Optional, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
@@ -78,6 +79,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private loop = false;
   private playbackRate = 1;
   private posterFrame: number;
+  private mediaField: string;
+  private framesController: ImaVidFramesController;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
@@ -127,6 +130,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    */
   createHTMLElement(update: StateUpdate<ImaVidState>, dispatchEvent) {
     this.update = update;
+
+    // not really doing an update, just updating refs
+    this.update(({ config: { mediaField, framesController } }) => {
+      this.framesController = framesController;
+      this.mediaField = mediaField;
+
+      return {};
+    });
 
     this.element = new Image();
     this.element.crossOrigin = "Anonymous";
@@ -208,28 +219,86 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   // }
 
   pause() {
+    this.waitingToPause = true;
     console.log("Pausing");
+    this.frameNumber = 1;
+    this.update({ playing: false });
+    this.waitingToPause = false;
+    this.waitingToPlay = false;
   }
 
-  async buffer(framesController: ImaVidFramesController) {
-    await framesController.hydrateIfEmpty();
+  async buffer() {
+    this.update({ buffering: true });
+
+    if (!this.framesController.isHydrated()) {
+      await this.framesController.hydrateIfEmpty();
+    }
+
+    this.update({ buffering: false });
   }
+
+  async drawFrame() {
+    if (this.waitingToPause) {
+      return;
+    }
+
+    const samples = this.framesController.store.samples;
+    const indices = this.framesController.store.frameIndex;
+
+    if (samples.length === 0 || !indices.has(this.frameNumber)) {
+      // todo: buffer and resume
+      // todo: store max frames available for this dynamic group
+      console.log("no more frames. finishing playback.");
+      return;
+    }
+
+    const sample = samples.get(indices.get(this.frameNumber));
+
+    if (!sample) {
+      alert("missing sample");
+      return;
+    }
+
+    if (sample.__typename !== "ImageSample") {
+      alert("not an image sample");
+      return;
+    }
+
+    const urls = getStandardizedUrls(sample.urls);
+    const src = getSampleSrc(urls[this.mediaField]);
+    const image = new Image();
+    image.addEventListener("load", () => {
+      const ctx = this.canvas.getContext("2d");
+      ctx.drawImage(image, 0, 0);
+      requestAnimationFrame(this.drawFrame.bind(this));
+    });
+    image.src = src;
+    this.frameNumber += 1;
+    requestAnimationFrame(this.drawFrame.bind(this));
+  }
+
+  // async stream() {
+  //   requestAnimationFrame(this.drawFrame.bind(this));
+  // }
 
   async play() {
-    if (this.waitingToPlay) {
+    if (this.waitingToPlay || this.waitingToPause) {
       return;
     }
 
     this.waitingToPlay = true;
 
-    this.update((state) => {
-      const framesController = state.config.framesController;
+    this.buffer().then(() => {
+      this.update({ playing: true });
+    });
+
+    this.update(() => {
       const newStatePartials: Partial<ImaVidState> = {};
 
-      this.buffer(framesController)
+      this.buffer()
         .then(() => {
-          const a = ImaVidStore;
-          debugger;
+          newStatePartials.buffering = false;
+          requestAnimationFrame(this.drawFrame.bind(this));
         })
         .finally(() => {
           newStatePartials.buffering = false;

@@ -12,18 +12,18 @@ export type ImaVidStore = {
 
 export class ImaVidFrameSamples {
   public readonly samples: LRUCache<SampleId, SampleResponse>;
-  public readonly indices: Map<string, string>;
+  public readonly frameIndex: Map<number, string>;
 
   constructor() {
     this.samples = new LRUCache<SampleId, SampleResponse>({
       max: 500,
     });
 
-    this.indices = new Map<string, string>();
+    this.frameIndex = new Map<number, string>();
   }
 
   reset() {
-    this.indices.clear();
+    this.frameIndex.clear();
     this.samples.reset();
   }
 }

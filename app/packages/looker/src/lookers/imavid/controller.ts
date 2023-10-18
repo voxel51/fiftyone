@@ -6,17 +6,11 @@ import { ImaVidFrameSamples } from "./types";
 
 const IMAVID_BUFFER_SIZE = 100;
 
-/**
- * I need from React:
- * 1. groupByFieldValue
- * 2. dynamicGroupPageSelector(groupByFieldValue)
- * 3. recoil environment
- */
 export class ImaVidFramesController {
   private subscription: Subscription;
 
   constructor(
-    public readonly config: {
+    private readonly config: {
       posterSample: Sample;
       orderBy: string;
       page: any;
@@ -24,24 +18,29 @@ export class ImaVidFramesController {
     }
   ) {}
 
-  get posterSample() {
-    return this.config.posterSample;
-  }
-
-  get posterSampleId() {
+  private get posterSampleId() {
     return this.config.posterSample._id;
   }
 
-  get orderBy() {
-    return this.config.orderBy;
-  }
+  // todo: see if we can do without it
+  // private get orderBy() {
+  //   return this.config.orderBy;
+  // }
 
-  get page() {
+  private get page() {
     return this.config.page;
   }
 
-  get environment() {
+  private get environment() {
     return this.config.environment;
+  }
+
+  public get store() {
+    if (!ImaVidStore.has(this.posterSampleId)) {
+      ImaVidStore.set(this.posterSampleId, new ImaVidFrameSamples());
+    }
+
+    return ImaVidStore.get(this.posterSampleId);
   }
 
   public cleanup() {
@@ -63,7 +62,7 @@ export class ImaVidFramesController {
         next: (data) => {
           if (data?.samples?.edges?.length) {
             // update store
-            for (const { node } of data.samples.edges) {
+            for (const { cursor, node } of data.samples.edges) {
               if (!node) {
                 continue;
               }
@@ -73,20 +72,9 @@ export class ImaVidFramesController {
               }
 
               const nodeSampleId = node.sample["_id"] as string;
-              const frameNumber = node.sample[this.orderBy];
 
-              if (!ImaVidStore.has(this.posterSampleId)) {
-                ImaVidStore.set(this.posterSampleId, new ImaVidFrameSamples());
-              }
-
-              ImaVidStore.get(this.posterSampleId).samples.set(
-                node.sample["_id"],
-                node
-              );
-              ImaVidStore.get(this.posterSampleId).indices.set(
-                frameNumber,
-                nodeSampleId
-              );
+              this.store.samples.set(node.sample["_id"], node);
+              this.store.frameIndex.set(Number(cursor) + 1, nodeSampleId);
             }
           }
           resolve();
@@ -95,14 +83,14 @@ export class ImaVidFramesController {
     });
   }
 
+  public isHydrated() {
+    return (
+      ImaVidStore.has(this.posterSampleId) && this.store.samples.length > 0
+    );
+  }
+
   public async hydrateIfEmpty() {
-    if (!this.posterSampleId) {
-      throw new Error("poster sample invalid / not set");
-    }
-
-    console.log("Hydrating store for sample", this.posterSampleId);
-
-    if (!ImaVidStore.has(this.posterSampleId)) {
+    if (!this.isHydrated()) {
       return this.fetchMore(0);
     }
   }

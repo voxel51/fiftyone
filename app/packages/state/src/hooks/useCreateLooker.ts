@@ -7,14 +7,16 @@ import {
   Sample,
   VideoLooker,
 } from "@fiftyone/looker";
+import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
 import { ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
 } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
+import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { ModalSample, selectedMediaField } from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
@@ -24,9 +26,7 @@ import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
 import { getSampleSrc, getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
-import useImaVid from "./useImaVid";
-import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
-import { useRelayEnvironment } from "react-relay";
+import { getStandardizedUrls } from "../utils";
 
 export default <T extends AbstractLooker>(
   isModal: boolean,
@@ -73,18 +73,10 @@ export default <T extends AbstractLooker>(
 
         const mimeType = getMimeType(sample);
 
-        let urls: { [key: string]: string } = {};
-
         // sometimes the urls are an array of objects, sometimes they are just an object
         // this is a workaround to make sure we can handle both cases
         // todo: investigate why this is the case
-        if (Array.isArray(rawUrls)) {
-          for (const { field, url } of rawUrls) {
-            urls[field] = url;
-          }
-        } else {
-          urls = rawUrls;
-        }
+        const urls = getStandardizedUrls(rawUrls);
 
         // checking for pcd extension instead of media_type because this also applies for group slices
         // split("?")[0] is to remove query params, if any, from signed urls
@@ -128,8 +120,9 @@ export default <T extends AbstractLooker>(
           sampleId: sample._id,
           src: getSampleSrc(sampleMediaFilePath),
           support: isClip ? sample["support"] : undefined,
-          thumbnail,
           dataset,
+          mediaField,
+          thumbnail,
           view,
         };
 
