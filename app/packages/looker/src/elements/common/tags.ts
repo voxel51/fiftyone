@@ -266,6 +266,7 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
           path,
           param,
           isTagged: shouldShowLabelTag(selectedLabelTags, param.tags),
+          labelTagColors,
           customizeColorSetting,
           isValidColor,
         }),

@@ -256,7 +256,7 @@ export function getAssignedColor({
   isValidColor,
 }: ColorParams): string {
   const setting =
-    path === "_label_tags"
+    path === "_label_tags" || isTagged
       ? labelTagColors
       : findColorSetting(customizeColorSetting, path);
   const isPrimitive = ![null, undefined].includes(value);
@@ -291,7 +291,7 @@ export function getAssignedColor({
   if (by === "value") {
     if (isTagged) {
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
-        param.tags.includes(pair.value)
+        param.tags?.includes(pair.value)
       )?.color;
       if (isValidColor(tagColor)) {
         return tagColor;
