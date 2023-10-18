@@ -494,7 +494,7 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
         self.assertListEqual(
             result.data["lightning"],
             [
-                {"path": "classification.none", "values": [None, "none"]},
+                {"path": "classification.none", "values": ["none"]},
                 {"path": "classification.str", "values": ["lower", "upper"]},
                 {
                     "path": "classification.str_list",
@@ -502,7 +502,7 @@ class TestStringLightningQueries(unittest.IsolatedAsyncioTestCase):
                 },
                 {
                     "path": "detections.detections.none",
-                    "values": [None, "none"],
+                    "values": ["none"],
                 },
                 {
                     "path": "detections.detections.str",
