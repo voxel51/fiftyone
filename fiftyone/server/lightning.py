@@ -8,7 +8,6 @@ FiftyOne Server lightning queries
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 import math
-import re
 import typing as t
 
 import asyncio
@@ -134,8 +133,7 @@ async def lightning_resolver(
 class DistinctQuery:
     path: str
     first: int
-
-    only: t.Optional[bool] = False
+    has_list: bool
     exclude: t.Optional[t.List[str]] = None
     search: t.Optional[str] = None
 
@@ -231,6 +229,7 @@ def _resolve_lightning_path_queries(
 
         d = asdict(path)
         d["path"] = field_path
+        d["has_list"] = _has_list(dataset, field_path, is_frame_field)
         return (
             collection,
             [DistinctQuery(**d)],
@@ -255,28 +254,61 @@ async def _do_async_query(
     query: t.Union[DistinctQuery, t.List[t.Dict]],
 ):
     if isinstance(query, DistinctQuery):
-        match = None
-        if query.search:
-            match = query.search
+        if query.has_list:
+            return await _do_distinct_query(collection, query)
 
-        result = await collection.distinct(query.path)
-        values = []
-        exclude = set(query.exclude or [])
-
-        for value in result:
-            if value in exclude:
-                continue
-
-            if not value or (match and match not in value):
-                continue
-
-            values.append(value)
-            if len(values) == query.first:
-                break
-
-        return values
+        return await _do_distinct_pipeline(collection, query)
 
     return [i async for i in collection.aggregate(query)]
+
+
+async def _do_distinct_query(
+    collection: AsyncIOMotorCollection, query: DistinctQuery
+):
+    match = None
+    if query.search:
+        match = query.search
+
+    result = await collection.distinct(query.path)
+    values = []
+    exclude = set(query.exclude or [])
+
+    for value in result:
+        if value in exclude:
+            continue
+
+        if not value or (match and match not in value):
+            continue
+
+        values.append(value)
+        if len(values) == query.first:
+            break
+
+    return values
+
+
+async def _do_distinct_pipeline(
+    collection: AsyncIOMotorCollection, query: DistinctQuery
+):
+    pipeline = [{"$sort": {query.path: 1}}]
+    if query.search:
+        pipeline.append({"$match": {query.path: Regex(f"^{query.search}")}})
+
+    pipeline += [{"$group": {"_id": f"${query.path}"}}]
+
+    values = []
+    exclude = set(query.exclude or [])
+    async for value in collection.aggregate(pipeline):
+        value = value["_id"]
+        if value is None or value in exclude:
+            continue
+
+        values.append(value)
+
+        if len(values) == query.first:
+            break
+
+    return values
 
 
 def _first(
@@ -287,9 +319,26 @@ def _first(
 ):
     return (
         [{"$sort": {path: sort}}, {"$limit": 1}]
-        + _unwind(path, dataset, is_frame_field)
+        + _unwind(dataset, path, is_frame_field)
         + [{"$group": {"_id": {"$min" if sort else "$max": f"${path}"}}}]
     )
+
+
+def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
+    keys = path.split(".")
+    path = None
+
+    if is_frame_field:
+        path = "frames"
+        keys = keys[1:]
+
+    for key in keys:
+        path = ".".join([path, key]) if path else key
+        field = dataset.get_field(path)
+        if isinstance(field, fof.ListField):
+            return True
+
+    return False
 
 
 def _match(path: str, value: t.Union[str, float, int, bool]):
@@ -309,7 +358,7 @@ def _parse_result(data, check=True):
     return None
 
 
-def _unwind(path: str, dataset: fo.Dataset, is_frame_field: bool):
+def _unwind(dataset: fo.Dataset, path: str, is_frame_field: bool):
     keys = path.split(".")
     path = None
     pipeline = []

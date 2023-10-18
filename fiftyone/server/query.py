@@ -24,7 +24,7 @@ from fiftyone.core.collections import SampleCollection
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-from fiftyone.core.odm import SavedViewDocument
+from fiftyone.core.odm import get_async_db_conn, SavedViewDocument
 import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
@@ -255,6 +255,8 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
     frame_indexes: t.Optional[t.List[Index]]
     sample_indexes: t.Optional[t.List[Index]]
 
@@ -635,14 +637,23 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
-            _assign_indexes(data, collection)
+        _assign_lightning_info(data, dataset)
 
         return data
 
     return await run_sync_task(run)
 
 
-def _assign_indexes(dataset: Dataset, collection: SampleCollection):
-    sample, frame = indexes_from_dict(collection.get_index_information())
-    dataset.sample_indexes = sample
-    dataset.frame_indexes = frame
+def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
+    dataset.estimated_sample_count = (
+        fo_dataset._sample_collection.estimated_document_count()
+    )
+
+    if fo_dataset._has_frame_fields():
+        dataset.estimated_frame_count = (
+            fo_dataset._frame_collection.estimated_document_count()
+        )
+
+    dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
+        fo_dataset.get_index_information()
+    )
