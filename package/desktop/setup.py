@@ -16,7 +16,8 @@ import os
 import shutil
 
 
-VERSION = "0.20.3"
+VERSION = "0.21"
+
 
 def get_version():
     if "RELEASE_VERSION" in os.environ:

@@ -2105,9 +2105,6 @@ def run(fcn, tasks, num_workers=None, progress=False):
     Returns:
         the list of function outputs
     """
-    if num_workers is None:
-        num_workers = fo.media_cache_config.num_workers
-
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     try:
@@ -2383,9 +2380,6 @@ def _copy_files(inpaths, outpaths, skip_failures, cache, progress):
 
 
 def _run(fcn, tasks, num_workers=None, progress=False):
-    if num_workers is None:
-        num_workers = fo.media_cache_config.num_workers
-
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     try:
