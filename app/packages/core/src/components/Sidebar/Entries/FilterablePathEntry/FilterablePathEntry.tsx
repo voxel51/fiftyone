@@ -1,4 +1,4 @@
-import { PillButton, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import {
@@ -23,17 +23,10 @@ import {
   meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
-import { VisibilityOff } from "@mui/icons-material";
 import { Checkbox } from "@mui/material";
 import Color from "color";
-import React, { Suspense, useMemo } from "react";
-import {
-  DefaultValue,
-  selectorFamily,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-} from "recoil";
+import React, { useMemo } from "react";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import {
   BooleanFieldFilter,
@@ -41,10 +34,9 @@ import {
   StringFieldFilter,
 } from "../../../Filters";
 import LabelFieldFilter from "../../../Filters/LabelFieldFilter";
-import { NameAndCountContainer } from "../../../utils";
-import { PathEntryCounts } from "../EntryCounts";
 import RegularEntry from "../RegularEntry";
 import { makePseudoField, pathIsExpanded } from "../utils";
+import createTitleTemplate from "./createTitleTemplate";
 
 const FILTERS = {
   [BOOLEAN_FIELD]: BooleanFieldFilter,
@@ -164,59 +156,6 @@ const getFilterData = (
     .concat(extra);
 };
 
-const hiddenPathLabels = selectorFamily<string[], string>({
-  key: "hiddenPathLabels",
-  get:
-    (path) =>
-    ({ get }) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modalSampleId);
-
-      if (data[sampleId]) {
-        return data[sampleId][path] || [];
-      }
-
-      return [];
-    },
-  set:
-    (path) =>
-    ({ set, get }, value) => {
-      const data = get(fos.pathHiddenLabelsMap);
-      const sampleId = get(fos.modalSampleId);
-
-      set(fos.pathHiddenLabelsMap, {
-        ...data,
-        [sampleId]: {
-          ...data[sampleId],
-          [path]: value instanceof DefaultValue ? [] : value,
-        },
-      });
-    },
-});
-
-const Hidden = ({ path }: { path: string }) => {
-  const [hidden, set] = useRecoilState(hiddenPathLabels(path));
-  const num = hidden.length;
-  const text = num.toLocaleString();
-
-  return num ? (
-    <PillButton
-      title={text}
-      text={text}
-      icon={<VisibilityOff />}
-      onClick={() => set([])}
-      open={false}
-      highlight={false}
-      style={{
-        height: "1.5rem",
-        lineHeight: "1rem",
-        padding: "0.25rem 0.5rem",
-        margin: "0 0.5rem",
-      }}
-    />
-  ) : null;
-};
-
 const useOnClick = ({
   disabled,
   modal,
@@ -235,11 +174,6 @@ const useOnClick = ({
       },
     [disabled, modal, path]
   );
-};
-
-const PATH_OVERRIDES = {
-  tags: "sample tags",
-  _label_tags: "label tags",
 };
 
 const FilterableEntry = ({
@@ -295,6 +229,7 @@ const FilterableEntry = ({
 
   const onClick = useOnClick({ disabled, modal, path });
   const isLabelTag = path === "_label_tags";
+  const lightning = !useRecoilValue(fos.fieldIsLocked(path));
 
   return (
     <RegularEntry
@@ -327,30 +262,14 @@ const FilterableEntry = ({
               path={path}
               color={color}
               expandedPath={expandedPath}
-              template={({ hoverHandlers, hoverTarget, container }) => (
-                <NameAndCountContainer
-                  ref={container}
-                  data-cy={`sidebar-field-container-${path}`}
-                >
-                  <span key="path" data-cy={`sidebar-field-${path}`}>
-                    <span ref={hoverTarget} {...hoverHandlers}>
-                      {PATH_OVERRIDES[path] || path}
-                    </span>
-                  </span>
-                  {modal && (
-                    <Suspense>
-                      <Hidden path={path} />
-                    </Suspense>
-                  )}
-                  {isFilterMode && (
-                    <PathEntryCounts
-                      key="count"
-                      modal={modal}
-                      path={expandedPath}
-                    />
-                  )}
-                </NameAndCountContainer>
-              )}
+              template={createTitleTemplate({
+                disabled,
+                expandedPath,
+                modal,
+                path,
+                showCounts: isFilterMode,
+                lightning,
+              })}
             />
           }
         </>

@@ -15,7 +15,7 @@ interface CheckboxProps<T> {
   color?: string;
   name: T;
   value: boolean;
-  setValue: (value: boolean) => void;
+  setValue?: (value: boolean) => void;
   count?: number;
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
@@ -36,7 +36,7 @@ const StyledCheckbox = animated(styled(ItemAction)`
   margin: 0;
 `);
 
-const Checkbox = <T extends unknown>({
+function Checkbox<T>({
   color,
   name,
   value,
@@ -47,7 +47,7 @@ const Checkbox = <T extends unknown>({
   forceColor,
   muted,
   formatter,
-}: CheckboxProps<T>) => {
+}: CheckboxProps<T>) {
   const theme = useTheme();
   color = color ?? theme.primary.plainColor;
   const props = useHighlightHover(disabled);
@@ -68,7 +68,7 @@ const Checkbox = <T extends unknown>({
           e.preventDefault();
           e.stopPropagation();
 
-          !disabled && !muted && setValue(!value);
+          !disabled && !muted && setValue && setValue(!value);
         }}
       >
         {!disabled && (
@@ -103,6 +103,6 @@ const Checkbox = <T extends unknown>({
       </StyledCheckbox>
     </StyledCheckboxContainer>
   );
-};
+}
 
 export default Checkbox;

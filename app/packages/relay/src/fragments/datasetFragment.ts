@@ -65,6 +65,7 @@ export default graphql`
       edges
     }
 
+    ...estimatedCountsFragment
     ...frameFieldsFragment
     ...groupSliceFragment
     ...indexesFragment

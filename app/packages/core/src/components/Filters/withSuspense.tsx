@@ -1,6 +1,6 @@
+import { LoadingDots } from "@fiftyone/components";
 import React, { Suspense } from "react";
 import styled from "styled-components";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 
 const Container = styled.div`
   margin: 3px;
@@ -25,7 +25,7 @@ const Body = styled.div`
   position: relative;
 `;
 
-export const LoadingContainer = ({ path }: { path?: string; text: string }) => {
+export const LoadingContainer = ({ path }: { path?: string }) => {
   return (
     <Container>
       {path && <Header>{path.split(".").slice(-1)[0]}</Header>}
@@ -36,10 +36,8 @@ export const LoadingContainer = ({ path }: { path?: string; text: string }) => {
   );
 };
 
-const withSuspense = <T extends { path: string; named: boolean }>(
-  Component: React.FC<T>
-) => {
-  return (props: T) => {
+const withSuspense = (Component) => {
+  return <T extends { path: string; named?: boolean }>(props: T) => {
     return (
       <Suspense
         fallback={

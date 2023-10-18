@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import React, { MutableRefObject } from "react";
 import {
   RecoilState,
@@ -5,9 +6,6 @@ import {
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
-
-import * as fos from "@fiftyone/state";
-
 import Checkbox from "../../Common/Checkbox";
 import { Button } from "../../utils";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
@@ -15,21 +13,19 @@ import { V, isKeypointLabel } from "./CategoricalFilter";
 import FilterOption from "./filterOption/FilterOption";
 
 interface WrapperProps {
-  results: [V["value"], number][];
+  results: [V["value"], number | null][];
   selectedValuesAtom: RecoilState<V["value"][]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   color: string;
-  totalCount: number;
   modal: boolean;
   path: string;
-  selectedCounts: MutableRefObject<Map<V["value"], number>>;
+  selectedCounts: MutableRefObject<Map<V["value"], number | null>>;
 }
 
 const Wrapper = ({
   color,
   results,
-  totalCount,
   selectedValuesAtom,
   excludeAtom,
   isMatchingAtom,
@@ -46,10 +42,10 @@ const Wrapper = ({
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
-  const counts = Object.fromEntries(results);
+  const counts = new Map(results);
   let allValues: V[] = selected.map<V>((value) => ({
     value,
-    count: counts[String(value)] ?? 0,
+    count: counts.get(value) ?? 0,
   }));
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
@@ -81,28 +77,21 @@ const Wrapper = ({
   // if the field is a keypoint label, there is no need to show match options
   const isKeyPoints = fieldSchema?.dbField === "keypoints";
 
-  const initializeSettings = () => {
+  const handleReset = () => {
+    setSelected([]);
     excluded && setExcluded(false);
     isFilterMode && setIsMatching(!nestedField);
   };
 
-  const handleReset = () => {
-    setSelected([]);
-    initializeSettings();
-  };
-
-  if (totalCount === 0) {
+  if (!allValues.length) {
     return (
-      <>
-        <Checkbox
-          key={"No results"}
-          color={color}
-          value={false}
-          disabled={true}
-          name={"No results"}
-          setValue={() => {}}
-        />
-      </>
+      <Checkbox
+        key={"No results"}
+        color={color}
+        value={false}
+        disabled={true}
+        name={"No results"}
+      />
     );
   }
 
@@ -115,10 +104,10 @@ const Wrapper = ({
           value={selectedSet.has(value)}
           name={value}
           count={
-            count < 0 || !isFilterMode
+            typeof count !== "number" || !isFilterMode
               ? undefined
               : selectedCounts.current.has(value)
-              ? selectedCounts.current.get(value)
+              ? selectedCounts.current.get(value) ?? undefined
               : count
           }
           setValue={(checked: boolean) => {
@@ -137,21 +126,19 @@ const Wrapper = ({
           })}
         />
       ))}
-      {Boolean(selectedSet.size) && (
+      {!!selectedSet.size && (
         <>
-          {
-            <FilterOption
-              nestedField={nestedField}
-              shouldNotShowExclude={Boolean(shouldNotShowExclude)}
-              excludeAtom={excludeAtom}
-              isMatchingAtom={isMatchingAtom}
-              valueName={name}
-              color={color}
-              modal={modal}
-              path={path}
-              isKeyPointLabel={isKeyPoints}
-            />
-          }
+          <FilterOption
+            nestedField={nestedField}
+            shouldNotShowExclude={Boolean(shouldNotShowExclude)}
+            excludeAtom={excludeAtom}
+            isMatchingAtom={isMatchingAtom}
+            valueName={name}
+            color={color}
+            modal={modal}
+            path={path}
+            isKeyPointLabel={isKeyPoints}
+          />
           <Button
             text={"Reset"}
             color={color}
@@ -162,7 +149,7 @@ const Wrapper = ({
               borderRadius: 0,
               textAlign: "center",
             }}
-          ></Button>
+          />
         </>
       )}
     </>

@@ -21,16 +21,21 @@ const StringFieldFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
+  const lightning = !modal && true;
   return (
-    <CategoricalFilter<{ value: string | null; count: number }>
+    <CategoricalFilter
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
-      countsAtom={fos.stringCountResults({
-        modal,
-        path,
-        extended: false,
-      })}
+      resultsAtom={
+        lightning
+          ? fos.lightningStringResults({ path })
+          : fos.stringCountResults({
+              modal,
+              path,
+              extended: false,
+            })
+      }
       path={path}
       modal={modal}
       color={color}

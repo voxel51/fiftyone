@@ -1,5 +1,4 @@
 import { Selector, useTheme } from "@fiftyone/components";
-import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
 import { groupId, groupStatistics } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
@@ -43,7 +42,10 @@ const NamedCategoricalFilterHeader = styled.div`
   text-overflow: ellipsis;
 `;
 
-export type V = { value: string | number | null | boolean; count: number };
+export type V = {
+  value: string | number | null | boolean;
+  count: number | null;
+};
 
 const categoricalSearch = atomFamily<string, { path: string; modal: boolean }>({
   key: "categoricalSearchResults",
@@ -53,7 +55,7 @@ const categoricalSearch = atomFamily<string, { path: string; modal: boolean }>({
 const categoricalSearchResults = selectorFamily<
   {
     values: V[];
-    count: number;
+    count?: number;
   },
   { path: string; modal: boolean }
 >({
@@ -68,7 +70,13 @@ const categoricalSearchResults = selectorFamily<
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
-      let data: { values: V[]; count: number } = { values: [], count: null };
+      let data = { values: [] as V[], count: 0 };
+
+      return {
+        values: get(
+          fos.lightningStringResults({ path, search, exclude: selected })
+        ).map(([value]) => ({ value, count: null })),
+      };
 
       if (isLabelTag) {
         const labels = get(labelTagsCount({ modal, extended: false }));
@@ -129,7 +137,7 @@ const getUseSearch = ({ modal, path }: { modal: boolean; path: string }) => {
 
 const useOnSelect = (
   selectedAtom: RecoilState<V["value"][]>,
-  selectedCounts: MutableRefObject<Map<V["value"], number>>
+  selectedCounts: MutableRefObject<Map<V["value"], number | null>>
 ) => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
@@ -176,10 +184,13 @@ interface Props<T extends V = V> {
   selectedValuesAtom: RecoilState<T["value"][]>;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
-  countsAtom: RecoilValue<{
-    count: number;
-    results: [T["value"], number][];
-  }>;
+  resultsAtom: RecoilValue<
+    | {
+        count?: number;
+        results: [T["value"], number | null][];
+      }
+    | undefined
+  >;
   modal: boolean;
   path: string;
   named?: boolean;
@@ -187,7 +198,7 @@ interface Props<T extends V = V> {
 }
 
 const CategoricalFilter = <T extends V = V>({
-  countsAtom,
+  resultsAtom,
   selectedValuesAtom,
   excludeAtom,
   isMatchingAtom,
@@ -204,8 +215,8 @@ const CategoricalFilter = <T extends V = V>({
     : name;
 
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const selectedCounts = useRef(new Map<V["value"], number>());
-  const selectVisibility = useRef(new Map<V["value"], number>());
+  const selectedCounts = useRef(new Map<V["value"], number | null>());
+  const selectVisibility = useRef(new Map<V["value"], number | null>());
   const onSelect = useOnSelect(
     selectedValuesAtom,
     isFilterMode ? selectedCounts : selectVisibility
@@ -214,24 +225,26 @@ const CategoricalFilter = <T extends V = V>({
   const skeleton = useRecoilValue(isKeypointLabel(path));
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
-  const countsLoadable = useRecoilValueLoadable(countsAtom);
+  const resultsLoadable = useRecoilValueLoadable(resultsAtom);
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
-  if (countsLoadable.state === "hasError") throw countsLoadable.contents;
-  if (countsLoadable.state !== "hasValue") return null;
-  const { count, results } = countsLoadable.contents;
+  if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
+  if (resultsLoadable.state !== "hasValue") return null;
 
-  if (named && !results) {
+  if (named && !resultsLoadable.contents) {
     return null;
   }
+
+  const showSelector =
+    neverShowExpansion ||
+    !resultsLoadable.contents?.results ||
+    resultsLoadable.contents?.results.length > CHECKBOX_LIMIT;
 
   return (
     <NamedCategoricalFilterContainer
       data-cy={`categorical-filter-${path}`}
-      onClick={(e) => {
-        e.stopPropagation();
-      }}
+      onClick={(e) => e.stopPropagation()}
     >
       {named && field && (
         <FieldLabelAndInfo
@@ -248,36 +261,32 @@ const CategoricalFilter = <T extends V = V>({
       <CategoricalFilterContainer
         onMouseDown={(event) => event.stopPropagation()}
       >
-        {results === null && <LoadingDots text="" />}
-        {results !== null &&
-          (results.length > CHECKBOX_LIMIT || neverShowExpansion) &&
-          !skeleton && (
-            <Selector
-              useSearch={useSearch}
-              placeholder={`+ ${
-                isFilterMode ? "filter" : "set visibility"
-              } by ${name}`}
-              component={ResultComponent}
-              onSelect={onSelect}
-              inputStyle={{
-                color: theme.text.secondary,
-                fontSize: "1rem",
-                width: "100%",
-              }}
-              containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-              toKey={({ value }) => String(value)}
-              id={path}
-            />
-          )}
+        {showSelector && !skeleton && (
+          <Selector
+            useSearch={useSearch}
+            placeholder={`+ ${
+              isFilterMode ? "filter" : "set visibility"
+            } by ${name}`}
+            component={ResultComponent}
+            onSelect={onSelect}
+            inputStyle={{
+              color: theme.text.secondary,
+              fontSize: "1rem",
+              width: "100%",
+            }}
+            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+            toKey={({ value }) => String(value)}
+            id={path}
+          />
+        )}
         <Wrapper
           path={path}
           color={color}
-          results={results}
+          results={resultsLoadable.contents?.results || []}
           selectedValuesAtom={selectedValuesAtom}
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
           modal={modal}
-          totalCount={count}
           selectedCounts={selectedCounts}
         />
       </CategoricalFilterContainer>

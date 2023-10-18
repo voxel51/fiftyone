@@ -6,26 +6,28 @@ export default r(graphql`
   query lightningQuery($input: LightningInput!) {
     lightning(input: $input) {
       __typename
-      ... on LightningResult {
-        path
-      }
       ... on BooleanLightningResult {
+        path
         false
         true
       }
       ... on IntLightningResult {
+        path
         intMax: max
         intMin: min
       }
       ... on DateLightningResult {
+        path
         dateMax: max
         dateMin: min
       }
       ... on DateTimeLightningResult {
+        path
         datetimeMax: max
         datetimeMin: min
       }
       ... on FloatLightningResult {
+        path
         inf
         max
         min
@@ -33,6 +35,7 @@ export default r(graphql`
         ninf
       }
       ... on StringLightningResult {
+        path
         values
       }
     }

@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b6c5232a88a613ca3d4804b1ee4ac190>>
+ * @generated SignedSource<<60f8be69877a5bc4f6e1fb028ae7f883>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -24,22 +24,41 @@ export type lightningQuery$variables = {
 };
 export type lightningQuery$data = {
   readonly lightning: ReadonlyArray<{
-    readonly __typename: string;
-    readonly dateMax?: number | null;
-    readonly dateMin?: number | null;
-    readonly datetimeMax?: number | null;
-    readonly datetimeMin?: number | null;
-    readonly false?: boolean;
-    readonly inf?: boolean;
-    readonly intMax?: number | null;
-    readonly intMin?: number | null;
-    readonly max?: number | null;
-    readonly min?: number | null;
-    readonly nan?: boolean;
-    readonly ninf?: boolean;
-    readonly path?: string;
-    readonly true?: boolean;
-    readonly values?: ReadonlyArray<string | null>;
+    readonly __typename: "BooleanLightningResult";
+    readonly false: boolean;
+    readonly path: string;
+    readonly true: boolean;
+  } | {
+    readonly __typename: "DateLightningResult";
+    readonly dateMax: number | null;
+    readonly dateMin: number | null;
+    readonly path: string;
+  } | {
+    readonly __typename: "DateTimeLightningResult";
+    readonly datetimeMax: number | null;
+    readonly datetimeMin: number | null;
+    readonly path: string;
+  } | {
+    readonly __typename: "FloatLightningResult";
+    readonly inf: boolean;
+    readonly max: number | null;
+    readonly min: number | null;
+    readonly nan: boolean;
+    readonly ninf: boolean;
+    readonly path: string;
+  } | {
+    readonly __typename: "IntLightningResult";
+    readonly intMax: number | null;
+    readonly intMin: number | null;
+    readonly path: string;
+  } | {
+    readonly __typename: "StringLightningResult";
+    readonly path: string;
+    readonly values: ReadonlyArray<string | null>;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
   }>;
 };
 export type lightningQuery = {
@@ -55,7 +74,14 @@ var v0 = [
     "name": "input"
   }
 ],
-v1 = [
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "path",
+  "storageKey": null
+},
+v2 = [
   {
     "alias": null,
     "args": [
@@ -80,20 +106,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "path",
-            "storageKey": null
-          }
-        ],
-        "type": "LightningResult",
-        "abstractKey": "__isLightningResult"
-      },
-      {
-        "kind": "InlineFragment",
-        "selections": [
+          (v1/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -115,6 +128,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           {
             "alias": "intMax",
             "args": null,
@@ -136,6 +150,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           {
             "alias": "dateMax",
             "args": null,
@@ -157,6 +172,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           {
             "alias": "datetimeMax",
             "args": null,
@@ -178,6 +194,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -220,6 +237,7 @@ v1 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -241,7 +259,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "lightningQuery",
-    "selections": (v1/*: any*/),
+    "selections": (v2/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -250,19 +268,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "lightningQuery",
-    "selections": (v1/*: any*/)
+    "selections": (v2/*: any*/)
   },
   "params": {
-    "cacheID": "918718c98ea4b406823e7f51b6862540",
+    "cacheID": "947a19fdaf332914a40a3e18a935964b",
     "id": null,
     "metadata": {},
     "name": "lightningQuery",
     "operationKind": "query",
-    "text": "query lightningQuery(\n  $input: LightningInput!\n) {\n  lightning(input: $input) {\n    __typename\n    ... on LightningResult {\n      __isLightningResult: __typename\n      path\n    }\n    ... on BooleanLightningResult {\n      false\n      true\n    }\n    ... on IntLightningResult {\n      intMax: max\n      intMin: min\n    }\n    ... on DateLightningResult {\n      dateMax: max\n      dateMin: min\n    }\n    ... on DateTimeLightningResult {\n      datetimeMax: max\n      datetimeMin: min\n    }\n    ... on FloatLightningResult {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on StringLightningResult {\n      values\n    }\n  }\n}\n"
+    "text": "query lightningQuery(\n  $input: LightningInput!\n) {\n  lightning(input: $input) {\n    __typename\n    ... on BooleanLightningResult {\n      path\n      false\n      true\n    }\n    ... on IntLightningResult {\n      path\n      intMax: max\n      intMin: min\n    }\n    ... on DateLightningResult {\n      path\n      dateMax: max\n      dateMin: min\n    }\n    ... on DateTimeLightningResult {\n      path\n      datetimeMax: max\n      datetimeMin: min\n    }\n    ... on FloatLightningResult {\n      path\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on StringLightningResult {\n      path\n      values\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "498ef5c9558f882122beef6bc42cc303";
+(node as any).hash = "be98e4ecd7153d94f03477ed2645b539";
 
 export default node;

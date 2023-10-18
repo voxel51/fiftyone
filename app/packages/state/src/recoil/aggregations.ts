@@ -195,6 +195,7 @@ export const stringCountResults = selectorFamily({
   get:
     (params: { path: string; modal: boolean; extended: boolean }) =>
     ({ get }): { count: number; results: [string | null, number][] } => {
+      throw new Error("E");
       const keys = params.path.split(".");
       let parent = keys[0];
       const field = get(schemaAtoms.field(parent));
