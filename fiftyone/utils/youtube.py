@@ -14,7 +14,6 @@ except ImportError:
 
 import itertools
 import logging
-import multiprocessing
 import multiprocessing.dummy
 import os
 
@@ -114,9 +113,8 @@ def download_youtube_videos(
                 whose resolution is closest to this target value is downloaded
         max_videos (None): the maximum number of videos to successfully
             download. By default, all videos are downloaded
-        num_workers (None): the number of threads or processes to use when
-            downloading videos. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads/processes to use when
+            downloading videos
         skip_failures (True): whether to gracefully continue without raising
             an error if a video cannot be downloaded
         quiet (False): whether to suppress logging, except for a progress bar
@@ -166,14 +164,10 @@ def download_youtube_videos(
 
 
 def _parse_num_workers(num_workers, use_threads=False):
-    if num_workers is None:
-        if os.name == "nt" and not use_threads:
-            # Multiprocessing on Windows is bad news
-            return 1
+    if use_threads:
+        return fou.recommend_thread_pool_workers(num_workers)
 
-        return multiprocessing.cpu_count()
-
-    return num_workers
+    return fou.recommend_process_pool_workers(num_workers)
 
 
 def _build_tasks_list(
@@ -281,11 +275,11 @@ def _download_multi(
 
     with fou.ProgressBar(total=max_videos, iters_str="videos") as pb:
         if use_threads:
-            pool_cls = multiprocessing.dummy.Pool
+            ctx = multiprocessing.dummy
         else:
-            pool_cls = multiprocessing.Pool
+            ctx = fou.get_multiprocessing_context()
 
-        with pool_cls(num_workers) as pool:
+        with ctx.Pool(num_workers) as pool:
             for idx, url, video_path, error, warnings in pool.imap_unordered(
                 _do_download, tasks
             ):

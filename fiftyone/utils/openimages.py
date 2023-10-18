@@ -721,9 +721,8 @@ def download_open_images_split(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling

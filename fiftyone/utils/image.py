@@ -6,7 +6,6 @@ Image utilities.
 |
 """
 import logging
-import multiprocessing
 import os
 
 import eta.core.image as etai
@@ -117,8 +116,7 @@ def reencode_images(
             sample collection
         delete_originals (False): whether to delete the original images after
             re-encoding
-        num_workers (None): the number of worker processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of worker processes to use
         skip_failures (False): whether to gracefully continue without raising
             an error if an image cannot be re-encoded
     """
@@ -207,8 +205,7 @@ def transform_images(
             sample collection
         delete_originals (False): whether to delete the original images if any
             transformation was applied
-        num_workers (None): the number of worker processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of worker processes to use
         skip_failures (False): whether to gracefully continue without raising
             an error if an image cannot be transformed
     """
@@ -296,8 +293,7 @@ def _transform_images(
 ):
     ext = _parse_ext(ext)
 
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_process_pool_workers(num_workers)
 
     if num_workers <= 1:
         _transform_images_single(
