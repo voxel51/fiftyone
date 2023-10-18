@@ -55,9 +55,11 @@ class Static(StaticFiles):
             stat_result=stat_result,
             method=method,
         )
-        if not response.path.endswith("index.html") and self.is_not_modified(
-            response.headers, request_headers
-        ):
+        if response.path.endswith("index.html"):
+            response.headers["cache-control"] = "no-store"
+            return response
+
+        if self.is_not_modified(response.headers, request_headers):
             return NotModifiedResponse(response.headers)
 
         return response
