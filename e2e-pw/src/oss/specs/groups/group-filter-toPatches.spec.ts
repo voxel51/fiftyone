@@ -1,8 +1,3 @@
-// create a grouped dataset
-// apply a sidebar filter
-// toPatches conversion
-// verify the result
-
 import { test as base, expect } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
 import { GridPom } from "src/oss/poms/grid";
@@ -18,8 +13,8 @@ const test = base.extend<{
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  sidebar: async ({ eventUtils, page }, use) => {
-    await use(new SidebarPom(page, eventUtils));
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
   gridActionsRow: async ({ eventUtils, page }, use) => {
     await use(new GridActionsRowPom(page, eventUtils));
@@ -72,10 +67,8 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   await grid.assert.isEntryCountTextEqualTo("5 groups with slice");
 
   // apply a sidebar filter
-  const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-    "animation-onRest",
-    () => true
-  );
+  const entryExpandPromise =
+    eventUtils.getEventReceivedPromiseForPredicate("animation-onRest");
   await sidebar.clickFieldDropdown("predictions");
   await entryExpandPromise;
 
@@ -96,10 +89,8 @@ test(`group dataset with filters converts toPatches correctly`, async ({
   await grid.assert.isEntryCountTextEqualTo("5 patches");
 
   // not-carrot should not be in the sidebar filter anymore
-  const expandPromise = eventUtils.getEventReceivedPromiseForPredicate(
-    "animation-onRest",
-    () => true
-  );
+  const expandPromise =
+    eventUtils.getEventReceivedPromiseForPredicate("animation-onRest");
   await sidebar.clickFieldDropdown("predictions");
   await expandPromise;
   expect(await page.getByTestId("checkbox-not-carrot").count()).toEqual(0);
