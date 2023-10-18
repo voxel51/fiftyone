@@ -92,7 +92,7 @@ class Object(BaseType):
         self.add_property(name, property)
         return property
 
-    def str(self, name, **kwargs):
+    def str(self, name, allow_empty=False, **kwargs):
         """Defines a property on the object that is a string.
 
         Args:
@@ -104,7 +104,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, String(), **kwargs)
+        return self.define_property(
+            name, String(allow_empty=allow_empty), **kwargs
+        )
 
     def bool(self, name, **kwargs):
         """Defines a property on the object that is a boolean.
@@ -310,6 +312,7 @@ class Property(BaseType):
         self.invalid = kwargs.get("invalid", False)
         self.default = kwargs.get("default", None)
         self.required = kwargs.get("required", False)
+        # todo: deprecate and remove
         self.choices = kwargs.get("choices", None)
         self.error_message = kwargs.get("error_message", "Invalid property")
         self.view = kwargs.get("view", None)
@@ -327,10 +330,20 @@ class Property(BaseType):
 
 
 class String(BaseType):
-    """Represents a string."""
+    """Represents a string.
 
-    def __init__(self):
-        pass
+    Args:
+        allow_empty (False): allow an empty string value
+    """
+
+    def __init__(self, allow_empty=False):
+        self.allow_empty = allow_empty
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "allow_empty": self.allow_empty,
+        }
 
 
 class Boolean(BaseType):
