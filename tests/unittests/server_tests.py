@@ -806,37 +806,47 @@ class ServerViewTests(unittest.TestCase):
     @drop_datasets
     def test_get_view_captures_all_parameters(self):
         dataset = fod.Dataset("test")
-        dataset.app_group_field("group", default="left")
-        samples = []
-        group = fo.Group()
-        slices = ["left", "right"]
-        for i in range(10):
-            sample = fos.Sample(
-                filepath="image_" + str(i) + ".png",
-                group=group.element(name=slices[i % 2]),
-                predictions=fol.Detections(
-                    detections=[
-                        fol.Detection(
-                            label="carrot",
-                            confidence=0.25,
-                        ),
-                        fol.Detection(
-                            label="not_carrot",
-                            confidence=0.75,
-                        ),
-                    ]
-                ),
-            )
-            samples.append(sample)
-        dataset.add_samples(samples)
-
-        first = dataset.first()
+        dataset.add_group_field("group", default="first")
+        group_one = fo.Group()
+        group_two = fo.Group()
+        sample_one = fos.Sample(
+            filepath="image1.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(
+                        label="carrot", confidence=0.25, tags=["one", "two"]
+                    ),
+                    fol.Detection(
+                        label="not_carrot", confidence=0.75, tags=["two"]
+                    ),
+                ]
+            ),
+            group=group_one.element(name="first"),
+        )
+        sample_two = fos.Sample(
+            filepath="image2.png",
+            predictions=fol.Detections(
+                detections=[
+                    fol.Detection(
+                        label="carrot", confidence=0.25, tags=["one", "two"]
+                    ),
+                    fol.Detection(
+                        label="not_carrot", confidence=0.75, tags=["two"]
+                    ),
+                ]
+            ),
+            group=group_two.element(name="second"),
+        )
+        dataset.add_sample(sample_one)
+        dataset.add_sample(sample_two)
 
         view = fosv.get_view(
             dataset.name,
             sample_filter=fosv.SampleFilter(
                 group=fosv.GroupElementFilter(
-                    slice="left", id=first.group.id, slices=slices
+                    slice="first",
+                    id=dataset.first().group.id,
+                    slices=["first", "second"],
                 )
             ),
             filters={
@@ -847,7 +857,7 @@ class ServerViewTests(unittest.TestCase):
                 }
             },
         )
-        self.assertEqual(len(view), 5)
+        self.assertEqual(len(view), 1)
 
 
 class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
