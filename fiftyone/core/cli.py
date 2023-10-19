@@ -2736,7 +2736,7 @@ class OperatorsInfoCommand(Command):
 
 
 def _print_operator_info(operator_uri):
-    operator = foo.get_operator(operator_uri)
+    operator = foo.get_operator(operator_uri, enabled="all")
 
     d = operator.config.to_json()
     _print_dict_as_table(d)
