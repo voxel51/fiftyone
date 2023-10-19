@@ -222,7 +222,7 @@ def import_annotations(
                 "Ignoring annotations for %d filepaths (eg %s) that do not "
                 "appear in the input collection",
                 len(new_filepaths),
-                new_filepaths[0],
+                next(iter(new_filepaths)),
             )
 
     if dataset.media_type == fom.VIDEO:
