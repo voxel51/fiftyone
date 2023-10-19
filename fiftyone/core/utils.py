@@ -1368,6 +1368,26 @@ def safe_relpath(path, start=None, default=None):
     return relpath
 
 
+def expand_mask_paths(sample, rel_path):
+    """Finds all `mask_path` keys inside a serialized sample recursively and expand relative paths.
+    It is assumed that `mask_path` can only exist in `dict`.
+    
+    Args:
+        sample: a serialized sample
+        rel_path: part of path to make relative paths absolute
+    """
+    if isinstance(sample, dict):
+        for key, value in sample.items():
+            if key == "mask_path" and not os.path.isabs(key):
+                # Expand relative path
+                sample[key] = os.path.join(rel_path, value)
+            elif isinstance(value, (dict, list, tuple)):
+                expand_mask_paths(value, rel_path)
+    elif isinstance(sample, (list, tuple)):
+        for item in sample:
+            expand_mask_paths(item, rel_path)
+
+
 def compute_filehash(filepath, method=None, chunk_size=None):
     """Computes the hash of the given file.
 

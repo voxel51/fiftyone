@@ -1856,6 +1856,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 _parse_media_fields(sd, media_fields, rel_dir)
 
             sd["_dataset_id"] = dataset_id
+
+            # Find all mask_path keys recursively and extend relative paths
+            fou.expand_mask_paths(sd, rel_dir)
+            
             return sd
 
         sample_ids = foo.insert_documents(
