@@ -42,6 +42,7 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "ftfy",
+    "ga4mp>2",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",

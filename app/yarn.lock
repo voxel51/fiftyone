@@ -4280,6 +4280,7 @@ __metadata:
     react-dom: 18.1.0
     react-error-boundary: ^3.1.4
     react-ga: ^3.1.2
+    react-ga4: ^2.1.0
     react-hotkeys: ^2.0.0
     react-input-autosize: ^3.0.0
     react-is: ^17.0.1
@@ -4396,7 +4397,6 @@ __metadata:
     react-draggable: ^4.4.5
     react-error-boundary: ^3.1.4
     react-file-drop: ^3.1.6
-    react-ga: ^3.1.2
     react-hotkeys: ^2.0.0
     react-input-autosize: ^3.0.0
     react-is: ^17.0.1
@@ -23477,6 +23477,13 @@ __metadata:
   dependencies:
     prop-types: ^15.7.2
   checksum: c7891f9948df4a04edfa4d587059ffa9c2e44af7fced5c34a6998cdcb24bfe15b126c62b05633b8938ac688689c71edc1876683f8615880cee29f40fc0d88d7b
+  languageName: node
+  linkType: hard
+
+"react-ga4@npm:^2.1.0":
+  version: 2.1.0
+  resolution: "react-ga4@npm:2.1.0"
+  checksum: f7fb41141418d4ad14756f1126a1e9958db37d4d84ae6cd798043dc03a390b6dba74d69311af0349f0b9580a43bda8930138194ccc29c4100efe446e2d6eb057
   languageName: node
   linkType: hard
 

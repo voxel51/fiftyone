@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useContext, useEffect, useMemo } from "react";
 import ReactDOM from "react-dom";
-import ReactGA from "react-ga";
+import ReactGA from "react-ga4";
 import {
   PreloadedQuery,
   useFragment,
@@ -35,12 +35,12 @@ import style from "./Root.module.css";
 
 import * as fos from "@fiftyone/state";
 import { Route, RouterContext, getDatasetName } from "@fiftyone/state";
-import { isElectron } from "@fiftyone/utilities";
 import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
 import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
 import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
 import { RootQuery } from "./__generated__/RootQuery.graphql";
 
+import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { IconButton, useColorScheme } from "@mui/material";
 import DatasetSelector from "../components/DatasetSelector";
@@ -118,24 +118,20 @@ export const useGA = (prepared: PreloadedQuery<RootQuery>) => {
     }
     const dev = info.dev;
     const buildType = dev ? "dev" : "prod";
-
     ReactGA.initialize(gaConfig.app_ids[buildType], {
-      debug: false,
+      testMode: false,
       gaOptions: {
         storage: "none",
         cookieDomain: "none",
         clientId: info.uid,
+        page_location: "omitted",
+        page_path: "omitted",
+        kind: isElectron() ? "Desktop" : "Web",
+        version: info.version,
+        context: info.context,
+        checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-    ReactGA.set({
-      userId: info.uid,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [gaConfig.dimensions.dev]: buildType,
-      [gaConfig.dimensions.version]: `${info.version}`,
-      [gaConfig.dimensions.context]:
-        info.context + (isElectron() ? "-DESKTOP" : ""),
-    });
-    ReactGA.pageview("/");
   }, []);
 };
 

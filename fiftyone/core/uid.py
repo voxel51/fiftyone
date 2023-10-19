@@ -5,14 +5,14 @@ Utilities for usage analytics.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import multiprocessing
+import os
 from socket import gaierror
 import threading
 import uuid
 
+from ga4mp import GtagMP
 from httpx import HTTPError
-import universal_analytics as ua
 
 import fiftyone as fo
 import fiftyone.constants as foc
@@ -83,14 +83,16 @@ def log_import_if_allowed(test=False):
 
     def send_import_event():
         try:
-            with ua.HTTPRequest() as http:
-                tracker = ua.Tracker(foc.UA_ID, http, client_id=uid)
-                tracker.send(
-                    "event",
-                    "import",
-                    kind,
-                    label="%s-%s" % (foc.VERSION, _get_context()),
-                )
+            gtag = GtagMP(
+                api_secret=foc.GA4_ID[0],
+                measurement_id=foc.GA4_ID[1],
+                client_id=uid,
+            )
+            event = gtag.create_new_event(name="import")
+            event.set_event_param("python_kind", kind)
+            event.set_event_param("python_context", _get_context())
+            event.set_event_param("python_version", foc.VERSION)
+            gtag.send([event])
 
             global _import_logged
             _import_logged = True
