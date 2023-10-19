@@ -28,13 +28,16 @@ FiftyOne 0.22.2
 Core
 
 - Added a `fiftyone_max_thread_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+  `#3654 <https://github.com/voxel51/fiftyone/pull/3654>`_
 - Added a `fiftyone_max_process_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+  `#3654 <https://github.com/voxel51/fiftyone/pull/3654>`_
 - Added support for directly calling
   :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on 
   :ref:`patches views <object-patches-views>` to export image patches
   `#3651 <https://github.com/voxel51/fiftyone/pull/3651>`_
 - Fixed an `issue <https://github.com/voxel51/fiftyone/issues/3688>`_ where CVAT import fails when
   ``insert_new`` is ``False``
+  `#3691 <https://github.com/voxel51/fiftyone/pull/3691>`_
 
 App
 
@@ -43,14 +46,15 @@ App
 - Fixed the :attr:`Session.url <fiftyone.core.session.session.Session>`
   property in Colab `#3645 <https://github.com/voxel51/fiftyone/pull/3645>`_
 - Fixed converting to patches in :ref:`grouped datasets <groups>` when sidebar filters are present
+  `#3666 <https://github.com/voxel51/fiftyone/pull/3666>`_
 - Fixed browser cache issues when upgrading `#3683 <https://github.com/voxel51/fiftyone/pull/3683>`_
 
 Plugins
 
 - Use a fallback icon when an operator cannot be executed
   `#3661 <https://github.com/voxel51/fiftyone/pull/3661>`_
-- :ref:`fiftyone.operators.types.FileView` now captures content as well as filename and type of the
-  :ref:`fiftyone.operators.types.UploadedFile`
+- :class:`fiftyone.operators.types.FileView` now captures content as well as filename and type of the
+  :class:`fiftyone.operators.types.UploadedFile`
   `#3679 <https://github.com/voxel51/fiftyone/pull/3679>`_
 - Fixed issue where the ``fiftyone delegated launch`` CLI command would print confusing errors
   `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
@@ -69,7 +73,7 @@ Plugins
   `#3700 <https://github.com/voxel51/fiftyone/pull/3700>`_
 - :ref:`types.File <fiftyone.operators.types.File>` now uses :ref:`types.FileExplorerView <fiftyone.operators.types.FileExplorerView>`
   by default
-  `#3656 https://github.com/voxel51/fiftyone/pull/3656>`_
+  `#3656 <https://github.com/voxel51/fiftyone/pull/3656>`_
 
 Zoo
 
