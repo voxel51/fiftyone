@@ -136,6 +136,14 @@ class PluginContext(object):
             sys.modules[module.__name__] = module
             spec.loader.exec_module(module)
             module.register(self)
+        except ModuleNotFoundError as e:
+            logger.warning(
+                f"Disabling plugin {self.name} due to missing requirements: "
+                f"{e.name}. Install `{e.name}` and run `fiftyone plugins enable"
+                f"{self.name}` to use this plugin in the App."
+            )
+            fop.disable_plugin(self.name)
+            self.errors.append(traceback.format_exc())
         except:
             logger.warning(
                 f"Failed to register operators for plugin {self.name}"
