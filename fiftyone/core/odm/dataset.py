@@ -234,7 +234,7 @@ class ColorScheme(EmbeddedDocument):
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
-    default_mask_targets = DictField(DictField(), null=True)
+    default_mask_targets = DictField(null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

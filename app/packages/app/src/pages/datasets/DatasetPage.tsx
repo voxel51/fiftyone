@@ -46,6 +46,7 @@ const DatasetPageQueryNode = graphql`
           multicolorKeypoints
           opacity
           showSkeletons
+          defaultMaskTargets
           fields {
             colorByAttribute
             fieldColor
@@ -54,6 +55,7 @@ const DatasetPageQueryNode = graphql`
               color
               value
             }
+            maskTargets
           }
           labelTags {
             fieldColor

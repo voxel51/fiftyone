@@ -26,6 +26,7 @@ export default graphql`
           multicolorKeypoints
           opacity
           showSkeletons
+          defaultMaskTargets
           labelTags {
             fieldColor
             valueColors {
@@ -37,6 +38,7 @@ export default graphql`
             colorByAttribute
             fieldColor
             path
+            maskTargets
             valueColors {
               color
               value

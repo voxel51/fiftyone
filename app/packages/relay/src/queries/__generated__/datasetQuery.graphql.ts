@@ -33,6 +33,7 @@ export type datasetQuery$data = {
           readonly colorByAttribute: string | null;
           readonly fieldColor: string | null;
           readonly path: string;
+          readonly maskTargets: Record<string, string> | null;
           readonly valueColors: ReadonlyArray<{
             readonly color: string;
             readonly value: string;
@@ -49,6 +50,7 @@ export type datasetQuery$data = {
         readonly multicolorKeypoints: boolean | null;
         readonly opacity: number | null;
         readonly showSkeletons: boolean | null;
+        readonly defaultMaskTargets: Record<string, string> | null;
       } | null;
     } | null;
     readonly defaultGroupSlice: string | null;

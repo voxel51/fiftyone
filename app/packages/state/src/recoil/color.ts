@@ -125,6 +125,7 @@ export const ensureColorScheme = (
     colorBy: colorScheme.colorBy || appConfig?.colorBy,
     fields: colorScheme.fields as ColorSchemeInput["fields"],
     labelTags: colorScheme.labelTags as ColorSchemeInput["labelTags"],
+    defaultMaskTargets: colorScheme.defaultMaskTargets || {},
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints

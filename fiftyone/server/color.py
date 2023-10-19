@@ -73,6 +73,7 @@ class CustomizeColorInput:
     valueColors: t.Optional[t.List[ValueColorInput]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
+    maskTargets: t.Optional[dict] = None
 
 
 @gql.input

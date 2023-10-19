@@ -157,7 +157,7 @@ class CustomizeColor:
     fieldColor: t.Optional[str] = None
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
-    maskTargets: t.Optional[t.Dict[int, str]] = None
+    maskTargets: t.Optional[t.Dict[str, str]] = None
 
 
 @dataclass
@@ -175,7 +175,7 @@ class ColorScheme:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
-    default_mask_targets: t.Optional[t.Dict[int, str]] = None
+    default_mask_targets: t.Optional[t.Dict[str, str]] = None
 
 
 @dataclass

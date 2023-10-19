@@ -43,6 +43,7 @@ const onSetDataset: RegisteredSetter =
         multicolorKeypoints: false,
         opacity: 0.7,
         showSkeletons: true,
+        defaultMaskTargets: {},
       };
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;

@@ -17,6 +17,7 @@ export type ColorSchemeInput = {
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
+  defaultMaskTargets?: Record<string, string> | null;
 };
 
 export type LabelTagColorInput = {
@@ -26,6 +27,7 @@ export type LabelTagColorInput = {
 export interface CustomizeColorInput extends LabelTagColorInput {
   colorByAttribute?: string | null;
   path: string;
+  maskTargets?: Record<string, string>| null;
 };
 export type ValueColorInput = {
   color: string;

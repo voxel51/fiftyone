@@ -17,12 +17,14 @@ export type ColorSchemeInput = {
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
+  defaultMaskTargets?: Record<string, string> | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;
   fieldColor?: string | null;
   path: string;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
+  maskTargets?: Record<string, string>  | null;
 };
 export type ValueColorInput = {
   color: string;
