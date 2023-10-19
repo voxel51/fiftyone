@@ -971,8 +971,34 @@ class AutocompleteView(Choices):
         super().__init__(**kwargs)
 
 
+class UploadedFile(dict):
+    """Represents an uploaded file.
+
+    Attributes:
+        name: the name of the file
+        type: the mime type of the file
+        size: the size of the file in bytes
+        contents: the base64 encoded contents of the file
+        last_modified: the last modified time of the file in ms since epoch
+    """
+
+    def __init__(self):
+        pass
+
+
 class FileView(View):
-    """Displays a file input."""
+    """Displays a file input.
+
+    .. note::
+
+        This view can be used on string or object properties. If used on a
+        string property, the value will be the file base64 encoded contents.
+        If used on an object the value will be a :class:`UploadedFile` object.
+
+    Args:
+        max_size: the maximum size of the file in bytes
+        max_size_error_message: the error message to display if the file larger than the given max_size
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

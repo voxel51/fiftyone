@@ -70,7 +70,8 @@ class Socket:
         while True:
             # Attempt to read any messages from queue.
             try:
-                if msg := self._queue.get(timeout=_SOCKET_QUEUE_TIMEOUT):
+                msg = self._queue.get(timeout=_SOCKET_QUEUE_TIMEOUT)
+                if msg:
                     return msg
 
                 break
