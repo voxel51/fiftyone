@@ -11,6 +11,14 @@ FiftyOne Teams 1.4.3
 
 Includes all updates from :ref:`FiftyOne 0.22.2 <release-notes-v0.22.2>`, plus:
 
+General
+
+- Improved dataset listing queries
+- Improved error handling when listing datasets
+- Fixed issues with offline access and auth errors requiring cookies to be cleared manually
+- Reduced max export size of datasets to 100MB
+- Users will now only *see an operator* if their role meets the required role
+
 .. _release-notes-v0.22.2:
 
 FiftyOne 0.22.2
