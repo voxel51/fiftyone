@@ -154,6 +154,7 @@ export class ValidationContext {
 }
 
 function existsOrNonRequired(property, value) {
+  if (!property.required) return true;
   const expectedType = getOperatorTypeName(property.type);
   if (expectedType === "string" && !property.type.allowEmpty && value === "") {
     return false;
@@ -161,7 +162,7 @@ function existsOrNonRequired(property, value) {
   if (expectedType === "number" && isNaN(value)) {
     return false;
   }
-  return !property.required || !isNullish(value);
+  return !isNullish(value);
 }
 
 function getPath(prefix, path) {

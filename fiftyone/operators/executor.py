@@ -752,6 +752,9 @@ class ValidationContext(object):
             return ValidationError("Invalid value type", property, path)
 
     def exists_or_non_required(self, property, value):
+        if not property.required:
+            return True
+
         type_name = property.type.__class__.__name__
 
         if type_name == "String":
@@ -759,4 +762,4 @@ class ValidationContext(object):
             if not allow_empty and value == "":
                 return False
 
-        return not property.required or value is not None
+        return value is not None
