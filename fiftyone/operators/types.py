@@ -999,7 +999,7 @@ class UploadedFile(dict):
         name: the name of the file
         type: the mime type of the file
         size: the size of the file in bytes
-        contents: the base64 encoded contents of the file
+        content: the base64 encoded contents of the file
         last_modified: the last modified time of the file in ms since epoch
     """
 
