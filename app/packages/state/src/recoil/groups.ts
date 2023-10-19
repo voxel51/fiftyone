@@ -339,7 +339,11 @@ export const groupStatistics = graphQLSyncFragmentAtomFamily<
   "group" | "slice",
   boolean
 >(
-  { fragments: [datasetFragment], keys: ["dataset"], default: "slice" },
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset.groupField"],
+    default: "slice",
+  },
   {
     key: "groupStatistics",
   }
