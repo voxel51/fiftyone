@@ -19,6 +19,7 @@ from fiftyone.operators.executor import (
     ExecutionRunState,
     ExecutionProgress,
 )
+import fiftyone.operators as foo
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +305,13 @@ class DelegatedOperationService(object):
         )
 
         for op in queued_ops:
-            self.execute_operation(operation=op, log=log)
+            if op.operator in foo.list_operators():
+                self.execute_operation(operation=op, log=log)
+            else:
+                logger.info(
+                    "Skipping execution of unknown or " "disabled operator %s",
+                    op,
+                )
 
     def count(self, filters=None, search=None):
         """Counts the delegated operations matching the given criteria.

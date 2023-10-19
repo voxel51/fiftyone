@@ -6,7 +6,12 @@ FiftyOne operators.
 |
 """
 from .operator import Operator, OperatorConfig
-from .registry import OperatorRegistry, get_operator, list_operators
+from .registry import (
+    OperatorRegistry,
+    get_operator,
+    list_operators,
+    reload_registry,
+)
 from .executor import execute_operator, execute_or_delegate_operator
 
 # This enables Sphinx refs to directly use paths imported here

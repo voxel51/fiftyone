@@ -9,16 +9,20 @@ from .builtin import BUILTIN_OPERATORS
 import fiftyone.plugins.context as fopc
 
 
-def get_operator(operator_uri):
+_operator_registry = None
+
+
+def get_operator(operator_uri, include_disabled=False):
     """Gets the operator with the given URI.
 
     Args:
         operator_uri: the operator URI
+        enabled: whether to include only enabled operators (True) or any
 
     Returns:
         an :class:`fiftyone.operators.Operator`
     """
-    registry = OperatorRegistry(enabled="all")
+    registry = OperatorRegistry(enabled="all" if include_disabled else True)
     operator = registry.get_operator(operator_uri)
     if operator is None:
         raise ValueError(f"Operator '{operator_uri}' not found")
@@ -36,8 +40,16 @@ def list_operators(enabled=True):
     Returns:
         a list of :class:`fiftyone.operators.Operator` instances
     """
-    registry = OperatorRegistry(enabled=enabled)
-    return registry.list_operators(include_builtin=enabled != False)
+    global _operator_registry
+    if not _operator_registry:
+        _operator_registry = OperatorRegistry()
+    return _operator_registry.list_operators(include_builtin=enabled != False)
+
+
+def reload_registry():
+    """Reloads the operator registry."""
+    global _operator_registry
+    _operator_registry = OperatorRegistry()
 
 
 class OperatorRegistry(object):
@@ -50,6 +62,7 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
+    # @plugins_cache
     def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.
 

@@ -136,10 +136,22 @@ class PluginContext(object):
             sys.modules[module.__name__] = module
             spec.loader.exec_module(module)
             module.register(self)
+        except ModuleNotFoundError as e:
+            logger.warning(
+                f"Disabling plugin {self.name} due to "
+                f"missing "
+                f"requirements: {e.name}.\n Install `{e.name}` "
+                f"and "
+                f"run `fiftyone plugins enable {self.name}` to "
+                f"use this plugin in the App."
+            )
+            fop.disable_plugin(self.name)
+            self.errors.append(traceback.format_exc())
         except:
             logger.warning(
                 f"Failed to register operators for plugin {self.name}"
             )
+            traceback.print_exc()
             self.errors.append(traceback.format_exc())
 
     def dispose_all(self):
