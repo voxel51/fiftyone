@@ -126,7 +126,8 @@ def get_view(
                 )
             if sample_filter.group.slices:
                 view = view.select_group_slices(
-                    sample_filter.group.slices, _force_mixed=True
+                    sample_filter.group.slices,
+                    _force_mixed=len(sample_filter.group.slices) > 1,
                 )
 
         elif sample_filter.id:
