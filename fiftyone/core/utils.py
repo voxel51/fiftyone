@@ -1379,13 +1379,28 @@ def expand_mask_paths(sample, rel_path):
     if isinstance(sample, dict):
         for key, value in sample.items():
             if key == "mask_path" and not os.path.isabs(key):
-                # Expand relative path
-                sample[key] = os.path.join(rel_path, value)
+                expanded = os.path.join(rel_path, value)
+                sample[key] = make_path_os_safe(expanded)
             elif isinstance(value, (dict, list, tuple)):
                 expand_mask_paths(value, rel_path)
     elif isinstance(sample, (list, tuple)):
         for item in sample:
             expand_mask_paths(item, rel_path)
+
+
+def make_path_os_safe(path):
+    """Convert path delimiters depending on OS.
+    
+    Args:
+        path: path to make OS safe
+        
+    Returns:
+        valid path
+    """
+    if sys.platform == "win32":
+        return path.replace("/", "\\")
+    else:
+        return path.replace("\\", "/")
 
 
 def compute_filehash(filepath, method=None, chunk_size=None):
