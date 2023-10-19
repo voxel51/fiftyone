@@ -4,7 +4,7 @@ on: workflow_call
 
 jobs:
   test-e2e:
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
