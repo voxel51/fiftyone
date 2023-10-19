@@ -17,12 +17,56 @@ FiftyOne 0.22.2
 ---------------
 *Released October 20, 2023*
 
+Core
+
+- Added a `fiftyone_max_thread_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+- Added a `fiftyone_max_process_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+- Added support for directly calling
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on 
+  :ref:`patches views <object-patches-views>` to export image patches
+  `#3651 <https://github.com/voxel51/fiftyone/pull/3651>`_
+- Fixed an `issue <https://github.com/voxel51/fiftyone/issues/3688>`_ where CVAT import fails when
+  ``insert_new`` is ``False``
+
 App
 
 - Fixed dataset recreation across processes
-  `#3655 <https://github.com/voxel51/fiftyone/pull/3655>`
+  `#3655 <https://github.com/voxel51/fiftyone/pull/3655>`_
 - Fixed the :attr:`Session.url <fiftyone.core.session.session.Session>`
-  property in Colab `#3645 <https://github.com/voxel51/fiftyone/pull/3645>`
+  property in Colab `#3645 <https://github.com/voxel51/fiftyone/pull/3645>`_
+- Fixed converting to patches in :ref:`grouped datasets <groups>` when sidebar filters are present
+- Fixed browser cache issues when upgrading `#3683 <https://github.com/voxel51/fiftyone/pull/3683>`_
+
+Plugins
+
+- Use a fallback icon when an operator cannot be executed
+  `#3661 <https://github.com/voxel51/fiftyone/pull/3661>`_
+- :ref:`fiftyone.operators.types.FileView` now captures content as well as filename and type of the
+  :ref:`fiftyone.operators.types.UploadedFile`
+  `#3679 <https://github.com/voxel51/fiftyone/pull/3679>`_
+- Fixed issue where the ``fiftyone delegated launch`` CLI command would print confusing errors
+  `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
+- Added a utility for :func:`listing operators <fiftyone.operators.list_operators>`
+  `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
+- Added a utility for :func:`checking if an operator exists <fiftyone.operators.operator_exists>`
+  `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
+- :ref:`Number properties <fiftyone.operators.types.Number>` now support ``min`` and ``max`` options
+  in various views and validation.
+  `#3684 <https://github.com/voxel51/fiftyone/pull/3684>`_
+- Improved validation of primitive types in operators
+  `#3685 <https://github.com/voxel51/fiftyone/pull/3685>`_
+- Fixed issue where non-required property validated as required
+  `#3701 <https://github.com/voxel51/fiftyone/pull/3701>`_
+- Fixed an issue where plugin cache was not cleared when a plugin was deleted
+  `#3700 <https://github.com/voxel51/fiftyone/pull/3700>`_
+- :ref:`types.File <fiftyone.operators.types.File>` now uses :ref:`types.FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+  by default
+  `#3656 https://github.com/voxel51/fiftyone/pull/3656>`_
+
+Zoo
+
+- Fixed issue preventing :ref:`DINOv2 <dinov2-example>` models from being loaded
+  `#3660 <https://github.com/voxel51/fiftyone/pull/3690>`_
 
 .. _release-notes-teams-v1.4.2:
 
