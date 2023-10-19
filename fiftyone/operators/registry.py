@@ -17,7 +17,7 @@ def get_operator(operator_uri, include_disabled=False):
 
     Args:
         operator_uri: the operator URI
-        enabled: whether to include only enabled operators (True) or any
+        include_disabled (False): whether to include disabled operators
 
     Returns:
         an :class:`fiftyone.operators.Operator`
@@ -46,10 +46,16 @@ def list_operators(enabled=True):
     return _operator_registry.list_operators(include_builtin=enabled != False)
 
 
-def reload_registry():
-    """Reloads the operator registry."""
+def reload_registry(include_disabled=False):
+    """Reloads the operator registry.
+
+    Args:
+        include_disabled (False): whether to include disabled operators
+    """
     global _operator_registry
-    _operator_registry = OperatorRegistry()
+    _operator_registry = OperatorRegistry(
+        enabled="all" if include_disabled else True
+    )
 
 
 class OperatorRegistry(object):
@@ -62,7 +68,6 @@ class OperatorRegistry(object):
     def __init__(self, enabled=True):
         self.plugin_contexts = fopc.build_plugin_contexts(enabled=enabled)
 
-    # @plugins_cache
     def list_operators(self, include_builtin=True):
         """Lists the available FiftyOne operators.
 
