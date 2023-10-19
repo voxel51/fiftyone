@@ -7,6 +7,7 @@ export default function SliderView(props) {
   const { data, onChange, path, schema } = props;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
+  const { min = 0, max = 100, multipleOf = 1 } = schema;
 
   useEffect(() => {
     if (sliderRef.current && focus) {
@@ -17,6 +18,9 @@ export default function SliderView(props) {
   return (
     <FieldWrapper {...props}>
       <Slider
+        min={min}
+        max={max}
+        step={multipleOf}
         disabled={schema.view?.readOnly}
         valueLabelDisplay="auto"
         value={data ?? schema.default}

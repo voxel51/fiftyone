@@ -697,7 +697,7 @@ class ValidationContext(object):
                 property.error_message, property, path, True
             )
 
-        if property.required and value is None:
+        if not self.exists_or_non_required(property, value):
             return ValidationError("Required property", property, path)
 
         if value is not None:
@@ -751,13 +751,37 @@ class ValidationContext(object):
         if type_name == "String" and value_type != str:
             return ValidationError("Invalid value type", property, path)
 
-        if type_name == "Number" and (
-            value_type != int and value_type != float
-        ):
-            return ValidationError("Invalid value type", property, path)
+        if type_name == "Number":
+            min = property.type.min
+            min_type = type(min)
+            max = property.type.max
+            max_type = type(max)
+            if value_type != int and value_type != float:
+                return ValidationError("Invalid value type", property, path)
+            if (min_type == int or min_type == float) and value < min:
+                return ValidationError(
+                    f"Value must be greater than {min}", property, path
+                )
+            if (max_type == int or max_type == float) and value > max:
+                return ValidationError(
+                    f"Value must be less than {max}", property, path
+                )
 
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)
+
+    def exists_or_non_required(self, property, value):
+        if not property.required:
+            return True
+
+        type_name = property.type.__class__.__name__
+
+        if type_name == "String":
+            allow_empty = property.type.allow_empty
+            if not allow_empty and value == "":
+                return False
+
+        return value is not None
 
 
 # teams-only

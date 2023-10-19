@@ -92,7 +92,7 @@ class Object(BaseType):
         self.add_property(name, property)
         return property
 
-    def str(self, name, **kwargs):
+    def str(self, name, allow_empty=False, **kwargs):
         """Defines a property on the object that is a string.
 
         Args:
@@ -104,7 +104,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, String(), **kwargs)
+        return self.define_property(
+            name, String(allow_empty=allow_empty), **kwargs
+        )
 
     def bool(self, name, **kwargs):
         """Defines a property on the object that is a boolean.
@@ -120,11 +122,13 @@ class Object(BaseType):
         """
         return self.define_property(name, Boolean(), **kwargs)
 
-    def int(self, name, **kwargs):
+    def int(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is an integer.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -132,13 +136,17 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(int=True), **kwargs)
+        return self.define_property(
+            name, Number(int=True, min=min, max=max), **kwargs
+        )
 
-    def float(self, name, **kwargs):
+    def float(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is a float.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -146,7 +154,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(float=True), **kwargs)
+        return self.define_property(
+            name, Number(float=True, min=min, max=max), **kwargs
+        )
 
     def enum(self, name, values, **kwargs):
         """Defines a property on the object that is an enum.
@@ -302,6 +312,7 @@ class Property(BaseType):
         self.invalid = kwargs.get("invalid", False)
         self.default = kwargs.get("default", None)
         self.required = kwargs.get("required", False)
+        # todo: deprecate and remove
         self.choices = kwargs.get("choices", None)
         self.error_message = kwargs.get("error_message", "Invalid property")
         self.view = kwargs.get("view", None)
@@ -319,10 +330,20 @@ class Property(BaseType):
 
 
 class String(BaseType):
-    """Represents a string."""
+    """Represents a string.
 
-    def __init__(self):
-        pass
+    Args:
+        allow_empty (False): allow an empty string value
+    """
+
+    def __init__(self, allow_empty=False):
+        self.allow_empty = allow_empty
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "allow_empty": self.allow_empty,
+        }
 
 
 class Boolean(BaseType):
@@ -978,7 +999,7 @@ class UploadedFile(dict):
         name: the name of the file
         type: the mime type of the file
         size: the size of the file in bytes
-        contents: the base64 encoded contents of the file
+        content: the base64 encoded contents of the file
         last_modified: the last modified time of the file in ms since epoch
     """
 
