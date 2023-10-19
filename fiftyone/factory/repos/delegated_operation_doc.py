@@ -92,7 +92,7 @@ class DelegatedOperationDocument(object):
         # generated fields:
         try:
             if registry is None:
-                registry = OperatorRegistry(enabled="all")
+                registry = OperatorRegistry()
 
             if registry.operator_exists(self.operator) is False:
                 raise ValueError(
