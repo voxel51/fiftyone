@@ -321,17 +321,42 @@ export interface VideoState extends BaseState {
 }
 
 export interface ImaVidState extends BaseState {
+  /**
+   * parameters for imavid looker
+   */
   config: ImaVidConfig;
+  /**
+   * options for video player
+   */
   options: ImaVidOptions;
+  /**
+   * true if seeking
+   */
   seeking: boolean;
+  /**
+   * true if playing, false if paused
+   */
   playing: boolean;
+  /**
+   * current frame number
+   */
   frameNumber: number;
-  duration: number | null;
+  /**
+   * total number of frames
+   */
+  totalFrames: number;
+  /**
+   * true if frames are buffering
+   */
   buffering: boolean;
+  /**
+   * ranges of frame numbers that have been buffered
+   */
   buffers: Buffers;
+  /**
+   * true if the seek bar is being hovered
+   */
   seekBarHovering: boolean;
-  hasPoster: boolean;
-  waitingForVideo: boolean;
 }
 
 export interface PcdState extends BaseState {
