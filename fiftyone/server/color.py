@@ -32,6 +32,7 @@ class CustomizeColor:
     valueColors: t.Optional[t.List[ValueColor]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
+    maskTargets: t.Optional[dict] = None
 
 
 @gql.type
@@ -57,6 +58,7 @@ class ColorScheme:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
+    default_mask_targets: t.Optional[dict] = None
 
 
 @gql.input
@@ -88,6 +90,7 @@ class ColorSchemeInput:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
+    default_mask_targets: t.Optional[dict] = None
 
 
 @gql.type
@@ -131,6 +134,7 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         multicolor_keypoints=color_scheme.multicolor_keypoints,
         opacity=color_scheme.opacity,
         show_skeletons=color_scheme.show_skeletons,
+        default_mask_targets=color_scheme.default_mask_targets,
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],

@@ -179,6 +179,7 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
+                    "mask_target_colors": {1: "#ff0000", 2: "#00ff00"},
                 }
             ],
             label_tags={
@@ -187,10 +188,11 @@ class ColorScheme(EmbeddedDocument):
                     {"value": "correct", "color": "#ff00ff"},
                     {"value": "mistake", "color": "#00ff00"},
                 ]
-            }
-            multicolor_keypoints = False,
-            opacity = 0.5,
-            show_skeletons = True
+            },
+            multicolor_keypoints=False,
+            opacity=0.5,
+            show_skeletons=True,
+            default_mask_targets={ 1: "#FEC0AA", 2:"#EC4E20", 3: "#84732B" },
         )
         dataset.save()
 
@@ -232,6 +234,7 @@ class ColorScheme(EmbeddedDocument):
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
+    default_mask_targets = DictField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):
