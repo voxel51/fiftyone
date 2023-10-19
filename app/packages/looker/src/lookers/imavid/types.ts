@@ -1,5 +1,5 @@
 import * as foq from "@fiftyone/relay";
-import LRUCache from "lru-cache";
+import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 
 export type SampleId = string;
 export type SampleResponse =
@@ -9,21 +9,3 @@ export type PartitionSampleId = string;
 export type ImaVidStore = {
   [partitionSampleId: string]: ImaVidFrameSamples;
 };
-
-export class ImaVidFrameSamples {
-  public readonly samples: LRUCache<SampleId, SampleResponse>;
-  public readonly frameIndex: Map<number, string>;
-
-  constructor() {
-    this.samples = new LRUCache<SampleId, SampleResponse>({
-      max: 500,
-    });
-
-    this.frameIndex = new Map<number, string>();
-  }
-
-  reset() {
-    this.frameIndex.clear();
-    this.samples.reset();
-  }
-}

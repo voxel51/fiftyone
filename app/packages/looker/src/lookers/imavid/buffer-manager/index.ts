@@ -6,8 +6,8 @@ import { BufferRange, Buffers } from "../../../state";
 export class BufferManager {
   public buffers: Buffers;
 
-  constructor() {
-    this.buffers = [];
+  constructor(buffers?: Buffers) {
+    this.buffers = buffers ?? [];
   }
 
   /**

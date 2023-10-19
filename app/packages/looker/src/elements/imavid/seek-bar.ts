@@ -31,7 +31,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
   }
 
   renderSelf({
-    frameNumber,
+    currentFrameNumber: frameNumber,
     config: { frameRate, thumbnail },
     duration,
     buffers,

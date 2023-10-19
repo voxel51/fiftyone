@@ -16,12 +16,21 @@ import {
 
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
+import { BufferManager } from "./buffer-manager";
 
 interface ImaVidFrame {
   sample: Sample;
   overlays: Overlay<ImaVidState>[];
 }
 
+/**
+ * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
+ *
+ * @remarks
+ * 1. Max fps offered is 24.
+ * Because images are dynamically fetched, max
+ * 2. adfadsf
+ */
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private frames: Map<number, WeakRef<ImaVidFrame>> = new Map();
 
@@ -30,7 +39,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   get frameNumber() {
-    return this.state.frameNumber;
+    return this.state.currentFrameNumber;
   }
 
   get playing() {
@@ -105,9 +114,9 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       duration: null,
       seeking: false,
       playing: false,
-      frameNumber: firstFrame,
+      currentFrameNumber: firstFrame,
       buffering: false,
-      buffers: [[firstFrame, firstFrame]] as Buffers,
+      buffers: new BufferManager([[firstFrame, firstFrame]]),
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,

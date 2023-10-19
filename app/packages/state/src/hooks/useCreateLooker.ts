@@ -18,7 +18,11 @@ import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-import { ModalSample, selectedMediaField } from "../recoil";
+import {
+  ModalSample,
+  dynamicGroupsElementCount,
+  selectedMediaField,
+} from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
 import * as groupAtoms from "../recoil/groups";
 import * as schemaAtoms from "../recoil/schema";
@@ -154,15 +158,19 @@ export default <T extends AbstractLooker>(
           const groupByFieldValue = sample[
             getSanitizedGroupByExpression(groupBy)
           ] as string;
+          const totalFrameCount = snapshot
+            .getLoadable(dynamicGroupsElementCount(groupByFieldValue))
+            .valueOrThrow();
           const page = snapshot
             .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
             .valueOrThrow();
 
-          (config as ImaVidConfig).framesController =
+          (config as ImaVidConfig).frameStoreController =
             new ImaVidFramesController({
               environment,
               orderBy,
               page,
+              totalFrameCount,
               posterSample: sample,
             });
           // todo

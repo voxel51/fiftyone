@@ -111,19 +111,25 @@ export const aggregation = selectorFamily({
     },
 });
 
-export const dynamicGroupsElementCount = selector<number>({
+export const dynamicGroupsElementCount = selectorFamily<number, string | null>({
   key: "dynamicGroupsElementCount",
-  get: ({ get }) => {
-    const aggregations = get(
-      aggregationQuery({
-        customView: get(viewAtoms.dynamicGroupViewQuery({})),
-        extended: false,
-        modal: false,
-        paths: [""],
-      })
-    ).aggregations;
-    return aggregations?.at(0)?.count ?? 0;
-  },
+  get:
+    (groupByFieldValueExplicit: string | null = null) =>
+    ({ get }) => {
+      const aggregations = get(
+        aggregationQuery({
+          customView: get(
+            viewAtoms.dynamicGroupViewQuery(
+              groupByFieldValueExplicit ? { groupByFieldValueExplicit } : {}
+            )
+          ),
+          extended: false,
+          modal: false,
+          paths: [""],
+        })
+      ).aggregations;
+      return aggregations?.at(0)?.count ?? 0;
+    },
 });
 
 export const noneCount = selectorFamily<

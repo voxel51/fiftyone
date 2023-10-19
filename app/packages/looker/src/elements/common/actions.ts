@@ -405,7 +405,7 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      ({ frameNumber, duration, playing, config }) => {
+      ({ currentFrameNumber: frameNumber, duration, playing, config }) => {
         const { frameRate, thumbnail } = config;
 
         if (playing || thumbnail) {
@@ -416,7 +416,7 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
           : getFrameNumber(duration, duration, frameRate);
 
         return {
-          frameNumber: Math.min(end, frameNumber + 1),
+          currentFrameNumber: Math.min(end, frameNumber + 1),
         };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)

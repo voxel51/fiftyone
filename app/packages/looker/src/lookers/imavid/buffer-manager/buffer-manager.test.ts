@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test } from "vitest";
+
 import { BufferManager } from ".";
 
 describe("BufferManager class tests", () => {
-  const bufferManager = new BufferManager();
+  const bufferManager: BufferManager = new BufferManager();
 
   beforeEach(() => {
     bufferManager.reset();

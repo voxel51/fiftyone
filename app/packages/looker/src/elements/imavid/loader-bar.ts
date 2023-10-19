@@ -21,19 +21,11 @@ export class LoaderBar extends BaseElement<ImaVidState> {
     buffering,
     hovering,
     waitingForVideo,
+    playing,
     error,
     config: { frameRate },
   }: Readonly<ImaVidState>) {
-    if (
-      (buffering || waitingForVideo) &&
-      hovering &&
-      !error === this.buffering
-    ) {
-      return this.element;
-    }
-
-    // this.buffering = (buffering || waitingForVideo) && hovering && !error;
-    this.buffering = hovering && !error;
+    this.buffering = (buffering || waitingForVideo) && hovering && !error;
 
     if (this.buffering) {
       this.element.style.display = "block";

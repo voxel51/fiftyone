@@ -1,38 +1,39 @@
 import * as foq from "@fiftyone/relay";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { Sample } from "../..";
+import { DEFAULT_FRAME_RATE, LOOK_AHEAD_TIME_SECONDS } from "./constants";
+import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 import { ImaVidStore } from "./store";
-import { ImaVidFrameSamples } from "./types";
-
-const IMAVID_BUFFER_SIZE = 100;
 
 export class ImaVidFramesController {
   private subscription: Subscription;
+  private frameRate = DEFAULT_FRAME_RATE;
 
   constructor(
     private readonly config: {
-      posterSample: Sample;
-      orderBy: string;
-      page: any;
       environment: Environment;
+      // todo: see if we can do without it
+      orderBy: string;
+      // todo: remove any
+      page: any;
+      posterSample: Sample;
+      totalFrameCount: number;
     }
   ) {}
 
-  private get posterSampleId() {
-    return this.config.posterSample._id;
-  }
-
-  // todo: see if we can do without it
   // private get orderBy() {
   //   return this.config.orderBy;
   // }
+  private get environment() {
+    return this.config.environment;
+  }
 
   private get page() {
     return this.config.page;
   }
 
-  private get environment() {
-    return this.config.environment;
+  private get posterSampleId() {
+    return this.config.posterSample._id;
   }
 
   public get store() {
@@ -43,14 +44,34 @@ export class ImaVidFramesController {
     return ImaVidStore.get(this.posterSampleId);
   }
 
+  public get totalFrameCount() {
+    return this.config.totalFrameCount;
+  }
+
   public cleanup() {
     try {
       this.subscription?.unsubscribe();
     } catch {}
   }
 
-  public async fetchMore(cursor: number, limit = IMAVID_BUFFER_SIZE) {
-    const variables = this.page(cursor, limit);
+  public setFrameRate(newFrameRate: number) {
+    if (newFrameRate > 24) {
+      throw new Error("max frame rate is 24");
+    }
+
+    if (newFrameRate < 1) {
+      throw new Error("min frame rate is 1");
+    }
+
+    this.frameRate = newFrameRate;
+  }
+
+  public getFrameFetchBatchSize() {
+    return LOOK_AHEAD_TIME_SECONDS * this.frameRate;
+  }
+
+  public async fetchMore(cursor: number) {
+    const variables = this.page(cursor, this.getFrameFetchBatchSize());
 
     return new Promise<void>((resolve, _reject) => {
       // do a gql query here, get samples, update store

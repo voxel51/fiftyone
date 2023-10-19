@@ -2,6 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { BufferManager } from "./lookers/imavid/buffer-manager";
 import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
@@ -204,8 +205,16 @@ export interface VideoConfig extends BaseConfig {
 }
 
 export interface ImaVidConfig extends BaseConfig {
+  /**
+   * number of frames-per-second.
+   * this number is suggestive rather than authoritative,
+   * which is why we hide it from the user.
+   */
   frameRate: number;
-  framesController: ImaVidFramesController;
+  /**
+   * "C"ontroller for [ImaVidStore](./lookers/imavid/store.ts)
+   */
+  frameStoreController: ImaVidFramesController;
 }
 
 export type PcdConfig = BaseConfig;
@@ -228,10 +237,7 @@ export interface VideoOptions extends BaseOptions {
 }
 
 export interface ImaVidOptions extends BaseOptions {
-  autoplay: boolean;
   loop: boolean;
-  playbackRate: number;
-  useFrameNumber: boolean;
 }
 
 export type PcdOptions = BaseOptions;
@@ -322,15 +328,16 @@ export interface VideoState extends BaseState {
 
 export interface ImaVidState extends BaseState {
   /**
-   * parameters for imavid looker
+   * parameters for imavid looker (comes from [`useCreateLooker()`](../../state/src/hooks/useCreateLooker.ts))
    */
   config: ImaVidConfig;
   /**
-   * options for video player
+   * user configurable options for video player
+   * @see [Configuring FiftyOne](https://docs.voxel51.com/user_guide/config.html#configuring-the-app)
    */
   options: ImaVidOptions;
   /**
-   * true if seeking
+   * true if seeking, i.e. either seek thumb or bar is being clicked / dragged
    */
   seeking: boolean;
   /**
@@ -340,19 +347,19 @@ export interface ImaVidState extends BaseState {
   /**
    * current frame number
    */
-  frameNumber: number;
+  currentFrameNumber: number;
   /**
    * total number of frames
    */
   totalFrames: number;
   /**
-   * true if frames are buffering
+   * true if frames are buffering from server
    */
   buffering: boolean;
   /**
-   * ranges of frame numbers that have been buffered
+   * ranges of frame numbers that have been buffered.
    */
-  buffers: Buffers;
+  buffers: BufferManager;
   /**
    * true if the seek bar is being hovered
    */

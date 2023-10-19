@@ -2,15 +2,15 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { ImaVidFramesController } from "../../lookers/imavid/controller";
-import { ImaVidStore } from "../../lookers/imavid/store";
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
+import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { ImaVidState, Optional, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 import { PlaybackRateBarElement } from "./playback-rate-bar";
 import { PlaybackRateContainerElement } from "./playback-rate-container";
 import { PlaybackRateIconElement } from "./playback-rate-icon";
+import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 
 export function withVideoLookerEvents(): () => Events<ImaVidState> {
   return function () {
@@ -29,7 +29,7 @@ export function withVideoLookerEvents(): () => Events<ImaVidState> {
         update(({ config: { thumbnail } }) => {
           if (thumbnail) {
             return {
-              frameNumber: 1,
+              currentFrameNumber: 1,
               playing: false,
             };
           }
@@ -67,7 +67,7 @@ const seekFn = (
     );
 
     return {
-      frameNumber,
+      currentFrameNumber: frameNumber,
     };
   }
   return {};
@@ -83,7 +83,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private framesController: ImaVidFramesController;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
-  private src: string;
+  private thumbnailSrc: string;
   private update: StateUpdate<ImaVidState>;
   // private dispatchEvent:
   private waitingToPause = false;
@@ -132,12 +132,22 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.update = update;
 
     // not really doing an update, just updating refs
-    this.update(({ config: { mediaField, framesController } }) => {
-      this.framesController = framesController;
-      this.mediaField = mediaField;
+    this.update(
+      ({
+        config: {
+          mediaField,
+          frameRate,
+          frameStoreController: framesController,
+        },
+      }) => {
+        this.framesController = framesController;
+        this.mediaField = mediaField;
 
-      return {};
-    });
+        this.framesController.setFrameRate(frameRate);
+
+        return {};
+      }
+    );
 
     this.element = new Image();
     this.element.crossOrigin = "Anonymous";
@@ -155,68 +165,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     return this.element;
   }
-
-  // private acquireVideo() {
-  //   let called = false;
-
-  //   this.update(({ waitingForVideo, error }) => {
-  //     if (!waitingForVideo && !error) {
-  //       acquirePlayer().then(([video, release]) => {
-  //         this.update(
-  //           ({ frameNumber, hovering, config: { frameRate, thumbnail } }) => {
-  //             this.element = video;
-  //             this.release = release;
-  //             if ((!hovering && thumbnail) || this.waitingToRelease) {
-  //               this.releaseVideo();
-  //             } else {
-  //               this.attachEvents();
-  //               this.frameNumber = getTime(frameNumber, frameRate);
-  //               this.element.currentTime = getTime(frameNumber, frameRate);
-  //               this.element.src = this.src;
-  //             }
-
-  //             return {};
-  //           }
-  //         );
-  //       });
-
-  //       called = true;
-
-  //       return { waitingForVideo: true };
-  //     }
-
-  //     return {};
-  //   });
-
-  //   return called;
-  // }
-
-  // private releaseVideo() {
-  //   if (this.waitingToPause || this.waitingToPlay || !this.element) {
-  //     this.waitingToRelease = true;
-  //     this.imageSource = this.canvas;
-  //     this.canvas &&
-  //       this.update(({ waitingForVideo }) =>
-  //         waitingForVideo ? { waitingForVideo: false } : {}
-  //       );
-  //     return;
-  //   }
-
-  //   !this.element.paused && this.element.pause();
-
-  //   this.waitingToRelease = false;
-
-  //   this.removeEvents();
-  //   this.element = null;
-  //   this.release && this.release();
-  //   this.release = null;
-
-  //   this.update({
-  //     waitingForVideo: false,
-  //     frameNumber: this.posterFrame,
-  //     playing: false,
-  //   });
-  // }
 
   pause() {
     this.waitingToPause = true;
@@ -277,53 +225,55 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     requestAnimationFrame(this.drawFrame.bind(this));
   }
 
-  // async stream() {
-  //   requestAnimationFrame(this.drawFrame.bind(this));
-  // }
-
+  /**
+   * This method does the following:
+   * 1. Check if we have next 100 frames from current framestamp in store
+   * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
+   */
   async play() {
-    if (this.waitingToPlay || this.waitingToPause) {
-      return;
-    }
-
-    this.waitingToPlay = true;
+    // if (this.waitingToPlay || this.waitingToPause) {
+    //   return;
+    // }
+    // see if we can do without waitingTo__ flags unlike video looker
+    // this.waitingToPlay = true;
 
     this.buffer().then(() => {
       this.update({ playing: true });
-    });
-
-    this.update(() => {
-      const newStatePartials: Partial<ImaVidState> = {};
-
-      this.buffer()
-        .then(() => {
-          newStatePartials.buffering = false;
-          requestAnimationFrame(this.drawFrame.bind(this));
-        })
-        .finally(() => {
-          newStatePartials.buffering = false;
-        });
-
-      return newStatePartials;
+      requestAnimationFrame(this.drawFrame.bind(this));
     });
   }
 
-  // sashank
-  renderSelf({
-    options: { loop, playbackRate },
-    config: { frameRate, thumbnail, src: thumbnailSrc },
-    frameNumber,
-    seeking,
-    playing,
-    loaded,
-    buffering,
-    hovering,
-    hasPoster,
-    destroyed,
-  }: Readonly<ImaVidState>) {
-    // thumbnailSrc = source of first frame of the dynamic group
-    if (this.src !== thumbnailSrc) {
-      this.src = thumbnailSrc;
+  private getNecessaryFrameRange() {}
+
+  /**
+   * Check if current framestamp is in store with frames enough for
+   * [`LOOK_AHEAD_TIME_SECONDS`](../../lookers/imavid/constants.ts) given current frame rate
+   */
+  private shouldBuffer(currentFrameNumber: number, frameRate: number) {
+    const maxFrame = currentFrameNumber + LOOK_AHEAD_TIME_SECONDS * frameRate;
+    for (let i = currentFrameNumber; i < maxFrame; i++) {
+      if (!this.framesController.store.frameIndex.has(i)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  renderSelf(options: Readonly<ImaVidState>) {
+    const {
+      options: { loop },
+      config: { frameRate, thumbnail, src: thumbnailSrc },
+      currentFrameNumber,
+      seeking,
+      playing,
+      loaded,
+      buffering,
+      destroyed,
+    } = options;
+
+    // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
+    if (this.thumbnailSrc !== thumbnailSrc) {
+      this.thumbnailSrc = thumbnailSrc;
       this.element.setAttribute("src", thumbnailSrc);
     }
 
@@ -332,14 +282,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // this.releaseVideo();
     }
 
-    if (thumbnail) {
-      if (hovering) {
-        this.play();
-        return;
-      } else {
-        this.pause();
-        return;
-      }
+    // check if we need to buffer
+    if (
+      loaded &&
+      !buffering &&
+      !seeking &&
+      this.shouldBuffer(currentFrameNumber, frameRate)
+    ) {
+      this.buffer();
+    }
+
+    // now that we know we have some frames, we can begin streaming
+
+    if (loaded && playing && !seeking && !buffering) {
+      this.play();
     }
 
     this.imageSource = this.canvas;
@@ -379,16 +335,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.loop !== loop) {
       // this.element.loop = loop;
       this.loop = loop;
-    }
-
-    if (this.playbackRate !== playbackRate) {
-      // this.element.playbackRate = playbackRate;
-      this.playbackRate = playbackRate;
-    }
-
-    if (this.frameNumber !== frameNumber) {
-      // this.element.currentTime = getTime(frameNumber, frameRate);
-      this.frameNumber = frameNumber;
     }
 
     return null;
