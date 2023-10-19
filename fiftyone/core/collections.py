@@ -2115,8 +2115,8 @@ class SampleCollection(object):
         .. note::
 
             This method is appropriate when you have the IDs of the labels you
-            wish to modify. See :meth`set_values` and :meth:`set_field` if your
-            updates are not keyed by label ID.
+            wish to modify. See :meth:`set_values` and :meth:`set_field` if
+            your updates are not keyed by label ID.
 
         Examples::
 
