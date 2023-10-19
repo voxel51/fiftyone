@@ -2663,7 +2663,7 @@ __metadata:
     "@typescript-eslint/eslint-plugin": ^5.44.0
     "@typescript-eslint/parser": ^5.44.0
     "@vitest/coverage-v8": ^0.34.6
-    "@vitest/ui": ^0.34.6
+    "@vitest/ui": ^0.34.7
     concurrently: ^7.2.1
     eslint: ^8.28.0
     eslint-config-prettier: ^8.5.0
@@ -7355,7 +7355,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^0.34.6":
+"@vitest/ui@npm:^0.34.6, @vitest/ui@npm:^0.34.7":
   version: 0.34.7
   resolution: "@vitest/ui@npm:0.34.7"
   dependencies:
