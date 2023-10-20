@@ -31,6 +31,7 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 
@@ -195,6 +196,13 @@ class Mutation:
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None,
             )
 
         result_view = _build_result_view(result_view, form)
@@ -288,6 +296,11 @@ class Mutation:
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(slice=form.slice, slices=[form.slice])
+            )
+            if form.slice
+            else None,
         )
 
         result_view = _build_result_view(dataset_view, form)
@@ -481,9 +494,6 @@ class Mutation:
 
 
 def _build_result_view(view, form):
-    if form.slice:
-        view = view.select_group_slices([form.slice])
-
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 

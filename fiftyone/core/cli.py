@@ -2872,7 +2872,7 @@ class OperatorsInfoCommand(Command):
 
 
 def _print_operator_info(operator_uri):
-    operator = foo.get_operator(operator_uri)
+    operator = foo.get_operator(operator_uri, enabled="all")
 
     d = operator.config.to_json()
     _print_dict_as_table(d)
@@ -3910,10 +3910,7 @@ class ComputeMetadataCommand(Command):
             "--num-workers",
             default=None,
             type=int,
-            help=(
-                "the number of worker processes to use. The default is "
-                "`multiprocessing.cpu_count()`"
-            ),
+            help="a suggested number of worker processes to use",
         )
         parser.add_argument(
             "-s",
@@ -4055,10 +4052,7 @@ class TransformImagesCommand(Command):
             "--num-workers",
             default=None,
             type=int,
-            help=(
-                "the number of worker processes to use. The default is "
-                "`multiprocessing.cpu_count()`"
-            ),
+            help="a suggested number of worker processes to use",
         )
         parser.add_argument(
             "-s",
