@@ -3,6 +3,7 @@
  */
 
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
+import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { ImaVidState, Optional, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
@@ -10,7 +11,6 @@ import { getFrameNumber } from "../util";
 import { PlaybackRateBarElement } from "./playback-rate-bar";
 import { PlaybackRateContainerElement } from "./playback-rate-container";
 import { PlaybackRateIconElement } from "./playback-rate-icon";
-import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 
 export function withVideoLookerEvents(): () => Events<ImaVidState> {
   return function () {
@@ -166,15 +166,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return this.element;
   }
 
-  pause() {
-    this.waitingToPause = true;
-    console.log("Pausing");
-    this.frameNumber = 1;
-    this.update({ playing: false });
-    this.waitingToPause = false;
-    this.waitingToPlay = false;
-  }
-
   async buffer() {
     this.update({ buffering: true });
 
@@ -189,6 +180,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.waitingToPause) {
       return;
     }
+
+    // TODO: CACHE EVERYTHING INSIDE HERE
+    // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
     const samples = this.framesController.store.samples;
     const indices = this.framesController.store.frameIndex;
@@ -212,17 +206,27 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return;
     }
 
+    // TODO: CACHE EVERYTHING INSIDE HERE
+
     const urls = getStandardizedUrls(sample.urls);
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
     image.addEventListener("load", () => {
       const ctx = this.canvas.getContext("2d");
       ctx.drawImage(image, 0, 0);
-      requestAnimationFrame(this.drawFrame.bind(this));
+      // requestAnimationFrame(this.drawFrame.bind(this));
     });
     image.src = src;
     this.frameNumber += 1;
-    requestAnimationFrame(this.drawFrame.bind(this));
+  }
+
+  pause() {
+    this.waitingToPause = true;
+    console.log("Pausing");
+    this.frameNumber = 1;
+    this.update({ playing: false });
+    this.waitingToPause = false;
+    this.waitingToPlay = false;
   }
 
   /**
@@ -236,10 +240,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // }
     // see if we can do without waitingTo__ flags unlike video looker
     // this.waitingToPlay = true;
+    this.update(({ playing }) => {
+      if (playing) {
+        return {};
+      }
 
-    this.buffer().then(() => {
-      this.update({ playing: true });
-      requestAnimationFrame(this.drawFrame.bind(this));
+      if (!playing) {
+        requestAnimationFrame(this.drawFrame.bind(this));
+      }
+      return { playing: true };
     });
   }
 
@@ -294,9 +303,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     // now that we know we have some frames, we can begin streaming
 
-    if (loaded && playing && !seeking && !buffering) {
-      this.play();
-    }
+    // if (loaded && playing && !seeking && !buffering) {
+    //   this.play();
+    //   return null;
+    // }
+
+    return null;
 
     this.imageSource = this.canvas;
     // if (hasPoster && frameNumber === this.posterFrame) {

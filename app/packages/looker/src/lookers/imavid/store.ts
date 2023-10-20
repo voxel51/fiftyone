@@ -1,5 +1,6 @@
 import LRUCache from "lru-cache";
-import { ImaVidFrameSamples, PartitionSampleId } from "./types";
+import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
+import { PartitionSampleId } from "./types";
 
 /**
  * Each entry in the cache stores frames for ONE ordered dynamic group.
