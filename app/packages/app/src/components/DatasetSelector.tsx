@@ -25,7 +25,7 @@ const DatasetSelector: React.FC<{
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName) as string;
   const resetFieldVisibility = useResetRecoilState(fieldVisibilityStage);
-  const setExcludedPaths = useSetRecoilState(excludedPathsState({}));
+
   return (
     <Selector<string>
       component={DatasetLink}
@@ -36,7 +36,6 @@ const DatasetSelector: React.FC<{
         if (name !== dataset) {
           setDataset(name);
           resetFieldVisibility();
-          setExcludedPaths([]);
         }
       }}
       overflow={true}

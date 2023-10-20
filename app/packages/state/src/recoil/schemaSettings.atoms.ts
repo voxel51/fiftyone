@@ -129,7 +129,7 @@ export const excludedPathsState = atomFamily({
       ({ get }) => {
         const dataset = get(fos.dataset);
         const fvStage = get(fieldVisibilityStage);
-        console.log("excludedPaths:default", fvStage, dataset);
+
         return {
           [dataset?.name]: fvStage
             ? new Set(fvStage.kwargs?.field_names)

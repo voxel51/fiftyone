@@ -93,6 +93,24 @@ export default function useSchemaSettings() {
     return !isEmpty(combinedSchema) ? Object.keys(combinedSchema) : [];
   }, [combinedSchema]);
 
+  const excludedPathsState = fos.excludedPathsState({});
+  const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
+
+  useEffect(() => {
+    // when dataset changes, we need to initialize the excludedPaths
+    // so all fields are selected by default
+    if (datasetName && !excludedPaths?.[datasetName]) {
+      setExcludedPaths({ [datasetName]: new Set() });
+      setAllFieldsChecked(true);
+    }
+  }, [
+    datasetName,
+    fieldVisibilityStage,
+    excludedPaths,
+    setExcludedPaths,
+    setAllFieldsChecked,
+  ]);
+
   useEffect(() => {
     if (viewSchema && !isEmpty(viewSchema)) {
       setViewSchema(viewSchema);
@@ -102,10 +120,6 @@ export default function useSchemaSettings() {
     }
   }, [viewSchema, fieldSchema, setViewSchema, setFieldSchema]);
 
-  // const { showNestedFields, setShowNestedFields } = useSetShowNestedFields(
-  //   fieldSchema,
-  //   viewSchema
-  // );
   const [showNestedFields, setShowNestedFields] = useRecoilState<boolean>(
     fos.showNestedFieldsState
   );
@@ -114,9 +128,6 @@ export default function useSchemaSettings() {
     fos.schemaSelectedSettingsTab
   );
   const filterRuleTab = selectedTab === fos.TAB_OPTIONS_MAP.FILTER_RULE;
-
-  const excludedPathsState = fos.excludedPathsState({});
-  const [excludedPaths, setExcludedPaths] = useRecoilState(excludedPathsState);
 
   const mergedSchema = useMemo(
     () => ({ ...viewSchema, ...fieldSchema }),
