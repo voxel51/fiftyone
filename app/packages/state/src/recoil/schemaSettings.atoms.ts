@@ -238,11 +238,6 @@ export const excludedPathsState = atomFamily({
   ],
 });
 
-export const selectedFieldsStageState = sessionAtom({
-  key: "selectedFields",
-  default: null,
-});
-
 export const fieldVisibilityStage = sessionAtom({
   key: "fieldVisibilityStage",
   default: null,

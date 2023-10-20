@@ -1,6 +1,11 @@
 import React from "react";
 import { renderHook, act } from "@testing-library/react-hooks";
-import { RecoilRoot, useRecoilState, useRecoilValue } from "recoil";
+import {
+  RecoilRoot,
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+} from "recoil";
 
 import { afterEach, describe, expect, test, vi } from "vitest";
 import * as fos from "@fiftyone/state";
@@ -31,28 +36,25 @@ const Root: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
   );
 };
 
-describe("useSearchSchemaFields ", () => {
+describe("useResetExcludedFieldStage ", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test("should set selectedFieldsStageState to a value when called", async () => {
+  test("should reset excludedFieldsStageState field_names correctly", async () => {
     const { result } = renderHook(
       () => {
-        const [selectedFieldsStage, setSelectedFieldsStage] = useRecoilState(
-          fos.selectedFieldsStageState
+        const [excludedFieldsStage, setExcludedFieldsStage] = useRecoilState(
+          fos.excludedPathsState({})
+        );
+        const resetExcludedPaths = useResetRecoilState(
+          fos.excludedPathsState({})
         );
 
         return {
-          useSearchSchemaFields: fos.useSearchSchemaFields({
-            [FIELDS.ID_FIELD.path]: FIELDS.ID_FIELD,
-            [FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD.path]:
-              FIELDS.CUSTOM_EMBEDDED_DOCUMENT_FIELD,
-            [FIELDS.CUSTOM_EMBEDDED_DOCUMENT_NAME_FIELD.path]:
-              FIELDS.CUSTOM_EMBEDDED_DOCUMENT_NAME_FIELD,
-          }),
-          selectedFieldsStage,
-          setSelectedFieldsStage,
+          excludedFieldsStage,
+          setExcludedFieldsStage,
+          resetExcludedPaths,
         };
       },
       {
@@ -60,12 +62,14 @@ describe("useSearchSchemaFields ", () => {
       }
     );
 
-    expect(result.current.selectedFieldsStage).toBeNull();
-
-    act(() => {
-      result.current.setSelectedFieldsStage({});
+    expect(result.current.excludedFieldsStage).toStrictEqual({
+      [TEST_DS.name]: [FIELDS.METADATA_FIELD.path],
     });
 
-    expect(result.current.selectedFieldsStage).toBeDefined();
+    act(() => {
+      result.current.resetExcludedPaths();
+    });
+
+    expect(result.current.excludedFieldsStage[TEST_DS.name].size).toEqual(0);
   });
 });
