@@ -21,14 +21,17 @@ export interface Coloring {
   points: boolean;
   targets: string[];
 }
-export interface CustomizeColor {
-  path: string;
+export interface LabelTagColor {
   fieldColor?: string;
-  colorByAttribute?: string;
   valueColors?: {
     value: string;
     color: string;
   }[];
+}
+
+export interface CustomizeColor extends LabelTagColor {
+  path: string;
+  colorByAttribute?: string;
 }
 
 export type OrthogrpahicProjectionMetadata = {

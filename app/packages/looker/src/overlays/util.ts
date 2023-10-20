@@ -10,6 +10,7 @@ import {
   Coloring,
   Coordinates,
   CustomizeColor,
+  LabelTagColor,
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
@@ -96,7 +97,7 @@ export function isRgbMaskTargets(
 }
 
 // Return true is string is a valid color
-export function isValidColor(color: string): boolean {
+export function isValidColor(color: string | undefined | null): boolean {
   return CSS.supports("color", color);
 }
 
@@ -156,7 +157,7 @@ type LabelColorProps = {
   path: string;
   label: RegularLabel;
   isTagged: boolean;
-  labelTagColors: CustomizeColor;
+  labelTagColors: LabelTagColor;
   customizeColorSetting: CustomizeColor[];
 };
 

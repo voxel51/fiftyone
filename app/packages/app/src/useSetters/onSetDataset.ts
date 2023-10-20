@@ -3,7 +3,11 @@ import {
   setDatasetMutation,
   subscribeBefore,
 } from "@fiftyone/relay";
-import { SPACES_DEFAULT, stateSubscription } from "@fiftyone/state";
+import {
+  SPACES_DEFAULT,
+  ensureColorScheme,
+  stateSubscription,
+} from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
@@ -34,16 +38,10 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
       sessionRef.current.selectedFields = undefined;
-      sessionRef.current.colorScheme = entry.data.dataset?.appConfig
-        ?.colorScheme || {
-        colorBy: entry.data.config.colorBy,
-        colorPool: entry.data.config.colorPool,
-        fields: [],
-        labelTags: {},
-        multicolorKeypoints: false,
-        opacity: 0.7,
-        showSkeletons: true,
-      };
+      sessionRef.current.colorScheme = ensureColorScheme(
+        entry.data.dataset?.appConfig?.colorScheme,
+        entry.data.config
+      );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });

@@ -44,17 +44,7 @@ const ColorFooter: React.FC = () => {
         <Button
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(
-              datasetDefault || {
-                fields: [],
-                labelTags: {},
-                colorPool: configDefault.colorPool,
-                colorBy: configDefault.colorBy,
-                multicolorKeypoints: false,
-                opacity: fos.DEFAULT_ALPHA,
-                showSkeletons: true,
-              }
-            );
+            setColorScheme(fos.ensureColorScheme(datasetDefault));
           }}
         >
           Reset
@@ -68,11 +58,11 @@ const ColorFooter: React.FC = () => {
           onClick={() => {
             updateDatasetColorScheme({
               ...colorScheme,
-              fields: colorScheme.fields || [],
-              colorPool: colorScheme.colorPool || [],
-              colorBy: colorScheme.colorBy || "field",
-              multicolorKeypoints: colorScheme.multicolorKeypoints || false,
-              showSkeletons: colorScheme.showSkeletons || true,
+              fields: colorScheme.fields ?? [],
+              colorPool: colorScheme.colorPool ?? [],
+              colorBy: colorScheme.colorBy ?? "field",
+              multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+              showSkeletons: colorScheme.showSkeletons ?? true,
             });
 
             setDatasetColorScheme({
@@ -81,14 +71,15 @@ const ColorFooter: React.FC = () => {
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
-                  fields: colorScheme.fields || [],
-                  colorPool: colorScheme.colorPool || [],
-                  labelTags: colorScheme.labelTags || {},
+                  fields: colorScheme.fields ?? [],
+                  colorPool: colorScheme.colorPool ?? [],
+                  labelTags: colorScheme.labelTags ?? {},
                 },
               },
             });
             setActiveColorModalField(null);
           }}
+          disabled={!canEdit}
         >
           Save as default
         </Button>

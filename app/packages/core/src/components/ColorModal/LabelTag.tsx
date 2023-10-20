@@ -52,9 +52,7 @@ const LabelTag: React.FC = () => {
 
   const state = useMemo(
     () => ({
-      useLabelColors: Boolean(
-        labelTags?.valueColors && labelTags?.valueColors.length > 0
-      ),
+      useLabelColors: Boolean(labelTags?.valueColors?.length),
       useFieldColor: Boolean(labelTags?.fieldColor),
     }),
     [labelTags]

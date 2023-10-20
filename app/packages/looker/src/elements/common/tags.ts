@@ -25,7 +25,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   withPath,
 } from "@fiftyone/utilities";
-import _ from "lodash";
+import { isEqual } from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
@@ -91,8 +91,8 @@ export class TagsElement<State extends BaseState> extends BaseElement<State> {
         this.colorBy === coloring.by &&
         arraysAreEqual(this.colorPool, coloring.pool as string[]) &&
         compareObjectArrays(this.customizedColors, customizeColorSetting) &&
-        _.isEqual(this.labelTagColors, labelTagColors) &&
-        _.isEqual(this.attributeVisibility, attributeVisibility) &&
+        isEqual(this.labelTagColors, labelTagColors) &&
+        isEqual(this.attributeVisibility, attributeVisibility) &&
         this.colorSeed === coloring.seed) ||
       !sample
     ) {

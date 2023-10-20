@@ -160,7 +160,7 @@ class CustomizeColor:
 
 
 @dataclass
-class LabelTagColor:
+class LabelTagsColors:
     fieldColor: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
 
@@ -170,7 +170,7 @@ class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
-    label_tags: t.Optional[LabelTagColor] = None
+    label_tags: t.Optional[LabelTagsColors] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
