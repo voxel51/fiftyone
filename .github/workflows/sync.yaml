@@ -1,0 +1,18 @@
+on:
+  pull_request_target:
+    branches:
+      - release/*
+    types:
+      - closed
+
+jobs:
+  merge_release_branch_pr:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout release branch
+        uses: actions/checkout@v3
+      - name: create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          branch: merge-${{ github.head_ref }}
