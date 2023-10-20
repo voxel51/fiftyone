@@ -1,9 +1,9 @@
-name: Sync release
+name: Sync release (test)
 
 on:
   pull_request_target:
     branches:
-      - release/*
+      - chore/develop-sync
     types:
       - closed
 
