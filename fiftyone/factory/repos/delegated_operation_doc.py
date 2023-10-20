@@ -104,7 +104,6 @@ class DelegatedOperationDocument(object):
 
         return self
 
-
     def to_pymongo(self) -> dict:
         d = self.__dict__
         d["context"] = (

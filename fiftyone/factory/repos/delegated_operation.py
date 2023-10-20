@@ -357,7 +357,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
         return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
 
-
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
             filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE
