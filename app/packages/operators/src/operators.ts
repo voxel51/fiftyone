@@ -294,10 +294,14 @@ export function _registerBuiltInOperator(OperatorType: typeof Operator) {
   localRegistry.register(operator);
 }
 
-export async function loadOperatorsFromServer() {
+export async function loadOperatorsFromServer(datasetName: string) {
   initializationErrors = [];
   try {
-    const { operators, errors } = await getFetchFunction()("GET", "/operators");
+    const { operators, errors } = await getFetchFunction()(
+      "POST",
+      "/operators",
+      { dataset_name: datasetName }
+    );
     const operatorInstances = operators.map((d: any) =>
       Operator.fromRemoteJSON(d)
     );

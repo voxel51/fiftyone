@@ -102,6 +102,22 @@ class DelegatedOperationDocument(object):
         self.id = doc["_id"]
         self._doc = doc
 
+        # generated fields:
+        try:
+            if registry is None:
+                registry = OperatorRegistry()
+
+            if registry.operator_exists(self.operator) is False:
+                raise ValueError(
+                    "Operator '%s' does not exist" % self.operator
+                )
+
+            self.operator_label = registry.get_operator(
+                self.operator
+            ).config.label
+        except Exception as e:
+            logger.debug("Error getting operator label: %s" % e)
+
         return self
 
     def to_pymongo(self) -> dict:

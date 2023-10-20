@@ -355,7 +355,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if paging.limit:
             docs = docs.limit(paging.limit)
 
-        return [DelegatedOperationDocument().from_pymongo(doc) for doc in docs]
+        registry = OperatorRegistry()
+        return [
+            DelegatedOperationDocument().from_pymongo(doc, registry=registry)
+            for doc in docs
+        ]
 
     def delete_operation(self, _id: ObjectId) -> DelegatedOperationDocument:
         doc = self._collection.find_one_and_delete(
