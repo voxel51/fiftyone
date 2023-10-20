@@ -13,7 +13,6 @@ const onSetFieldVisibilityStage: RegisteredSetter =
   ({ get, set }, input) => {
     if (!input) return;
     set(pendingEntry, true);
-    console.log("useWriter:onSetFieldVisibilityStage", input);
     const fieldNames = input?.kwargs?.field_names || [];
     const cls = input?.cls || "fiftyone.core.stages.ExcludeFields";
 
@@ -30,10 +29,7 @@ const onSetFieldVisibilityStage: RegisteredSetter =
         subscription: get(stateSubscription),
       },
       onCompleted: () => {
-        console.log("useWriter:onSetFieldVisibilityStage:onComplete", input);
-
         const unsubscribe = subscribeBefore(() => {
-          console.log("onSetFieldVisibilityStage:unsubscribe");
           sessionRef.current.fieldVisibilityStage = {
             cls: input.cls,
             kwargs: {
