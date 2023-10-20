@@ -84,7 +84,6 @@ async def dispatch_event(
         _state.spaces = event.spaces
 
     if isinstance(event, SetFieldVisibilityStage):
-        print("dispatch_event", event)
         _state.field_visibility_stage = (
             {
                 "cls": event.cls,

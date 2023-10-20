@@ -77,8 +77,6 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         input: FieldVisibilityStageInput,
     ) -> bool:
-        # TODO: teams handling
-        print("\n\nmutation:set_field_visibility_stage", input)
         await dispatch_event(
             subscription,
             fose.SetFieldVisibilityStage(input.cls, input.kwargs.field_names),

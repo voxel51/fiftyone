@@ -1147,11 +1147,6 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    # on_select_samples: t.Callable[
-    #     [], None
-    # ] = lambda event: setattr(session._state, "selected", event.sample_ids)
-    # session._client.add_event_listener("select_samples", on_select_samples)
-
     on_select_samples: t.Callable[[], None] = lambda event: setattr(
         session._state, "selected", event.sample_ids
     )
@@ -1174,12 +1169,6 @@ def _attach_listeners(session: "Session"):
         "set_dataset_color_scheme", on_set_dataset_color_scheme
     )
 
-    # on_set_field_visibility_stage: t.Callable[
-    #     [SetFieldVisibilityStage], None
-    # ] = lambda _: _on_refresh(session, None)
-    # session._client.add_event_listener(
-    #     "set_field_visibility_stage", on_set_field_visibility_stage
-    # )
     on_set_field_visibility_stage: t.Callable[
         [SetFieldVisibilityStage], None
     ] = lambda event: setattr(
@@ -1190,8 +1179,6 @@ def _attach_listeners(session: "Session"):
     session._client.add_event_listener(
         "set_field_visibility_stage", on_set_field_visibility_stage
     )
-
-    print("session:_attach_listeners", session)
 
     on_set_group_slice: t.Callable[
         [SetGroupSlice], None
