@@ -92,7 +92,7 @@ class Object(BaseType):
         self.add_property(name, property)
         return property
 
-    def str(self, name, **kwargs):
+    def str(self, name, allow_empty=False, **kwargs):
         """Defines a property on the object that is a string.
 
         Args:
@@ -104,7 +104,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, String(), **kwargs)
+        return self.define_property(
+            name, String(allow_empty=allow_empty), **kwargs
+        )
 
     def bool(self, name, **kwargs):
         """Defines a property on the object that is a boolean.
@@ -120,11 +122,13 @@ class Object(BaseType):
         """
         return self.define_property(name, Boolean(), **kwargs)
 
-    def int(self, name, **kwargs):
+    def int(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is an integer.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -132,13 +136,17 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(int=True), **kwargs)
+        return self.define_property(
+            name, Number(int=True, min=min, max=max), **kwargs
+        )
 
-    def float(self, name, **kwargs):
+    def float(self, name, min=None, max=None, **kwargs):
         """Defines a property on the object that is a float.
 
         Args:
             name: the name of the property
+            min: minimum value of the property
+            max: maximum value of the property
             label (None): the label of the property
             description (None): the description of the property
             view (None): the :class:`View` of the property
@@ -146,7 +154,9 @@ class Object(BaseType):
         Returns:
             a :class:`Property`
         """
-        return self.define_property(name, Number(float=True), **kwargs)
+        return self.define_property(
+            name, Number(float=True, min=min, max=max), **kwargs
+        )
 
     def enum(self, name, values, **kwargs):
         """Defines a property on the object that is an enum.
@@ -202,9 +212,18 @@ class Object(BaseType):
 
         Args:
             name: the name of the property
-            view (None): the :class:`FileExplorerView` of the property
+            view (None): the :class:`View` of the property
         """
         return self.define_property(name, File(), **kwargs)
+
+    def uploaded_file(self, name, **kwargs):
+        """Defines a property on the object that is an uploaded file.
+
+        Args:
+            name: the name of the property
+            view (None): the :class:`View` of the property
+        """
+        return self.define_property(name, UploadedFile(), **kwargs)
 
     def view(self, name, view, **kwargs):
         """Defines a view-only property.
@@ -302,6 +321,7 @@ class Property(BaseType):
         self.invalid = kwargs.get("invalid", False)
         self.default = kwargs.get("default", None)
         self.required = kwargs.get("required", False)
+        # todo: deprecate and remove
         self.choices = kwargs.get("choices", None)
         self.error_message = kwargs.get("error_message", "Invalid property")
         self.view = kwargs.get("view", None)
@@ -319,10 +339,20 @@ class Property(BaseType):
 
 
 class String(BaseType):
-    """Represents a string."""
+    """Represents a string.
 
-    def __init__(self):
-        pass
+    Args:
+        allow_empty (False): allow an empty string value
+    """
+
+    def __init__(self, allow_empty=False):
+        self.allow_empty = allow_empty
+
+    def to_json(self):
+        return {
+            **super().to_json(),
+            "allow_empty": self.allow_empty,
+        }
 
 
 class Boolean(BaseType):
@@ -510,6 +540,45 @@ class File(Object):
             "date_modified",
             label="Last Modified",
             description="The last modified time of the file in isoformat",
+        )
+
+
+class UploadedFile(Object):
+    """Represents an object with uploaded file content and its metadata in
+    properties.
+
+    Properties:
+        name: the name of the file
+        type: the mime type of the file
+        size: the size of the file in bytes
+        content: the base64 encoded content of the file
+        last_modified: the last modified time of the file in ms since epoch
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.str(
+            "name", label="Name", description="The name of the uploaded file"
+        )
+        self.str(
+            "type",
+            label="Type",
+            description="The mime type of the uploaded file",
+        )
+        self.int(
+            "size",
+            label="Size",
+            description="The size of the uploaded file in bytes",
+        )
+        self.str(
+            "content",
+            label="Content",
+            description="The base64 encoded content of the uploaded file",
+        )
+        self.int(
+            "last_modified",
+            label="Last Modified",
+            description="The last modified time of the uploaded file in ms since epoch",
         )
 
 
@@ -971,29 +1040,15 @@ class AutocompleteView(Choices):
         super().__init__(**kwargs)
 
 
-class UploadedFile(dict):
-    """Represents an uploaded file.
-
-    Attributes:
-        name: the name of the file
-        type: the mime type of the file
-        size: the size of the file in bytes
-        contents: the base64 encoded contents of the file
-        last_modified: the last modified time of the file in ms since epoch
-    """
-
-    def __init__(self):
-        pass
-
-
 class FileView(View):
     """Displays a file input.
 
     .. note::
 
-        This view can be used on string or object properties. If used on a
-        string property, the value will be the file base64 encoded contents.
-        If used on an object the value will be a :class:`UploadedFile` object.
+        This view can be used on :class:`String` or :class:`UploadedFile`
+        properties. If used on a :class:`String` property, the value will be the
+        value will be the file base64 encoded contents. If used on a
+        :class:`UploadedFile`, the value will be a :class:`UploadedFile` object.
 
     Args:
         max_size: the maximum size of the file in bytes
