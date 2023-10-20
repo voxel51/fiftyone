@@ -15,4 +15,5 @@ jobs:
       - name: create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
+          base: develop
           branch: merge-${{ github.head_ref }}
