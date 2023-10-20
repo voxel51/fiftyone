@@ -281,7 +281,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if paging.limit:
             docs = docs.limit(paging.limit)
 
-        registry = OperatorRegistry(enabled="all")
+        registry = OperatorRegistry()
         return [
             DelegatedOperationDocument().from_pymongo(doc, registry=registry)
             for doc in docs
