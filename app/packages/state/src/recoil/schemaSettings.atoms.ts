@@ -249,11 +249,6 @@ export const isFieldVisibilityActive = selector({
     const affectedCount =
       get(fieldVisibilityStage)?.kwargs?.field_names?.length || 0;
 
-    console.log(
-      "get(fieldVisibilityStage)",
-      get(fieldVisibilityStage),
-      affectedCount
-    );
     return affectedCount > 0;
   },
 });

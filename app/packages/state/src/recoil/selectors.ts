@@ -446,8 +446,6 @@ export const extendedStages = selector({
         }
       : {};
 
-    console.log("finalFieldVisibilityStage", finalFieldVisibilityStage);
-
     const res = {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
@@ -455,7 +453,6 @@ export const extendedStages = selector({
         : undefined,
       ...(finalFieldVisibilityStage ? finalFieldVisibilityStage : {}),
     };
-    console.log("extendedStages", res);
     return res;
   },
 });

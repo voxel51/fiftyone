@@ -15,7 +15,6 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
   return useCallback(
     (payload) => {
       setPending(true);
-      console.log("useSetFieldVisibilityStage", payload);
 
       const unsubscribe = subscribeBefore(() => {
         session.fieldVisibilityStage = {

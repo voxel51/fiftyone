@@ -13,7 +13,6 @@ export const processState = (
   setter: ReturnType<typeof useSessionSetter>,
   state: any
 ) => {
-  console.log("processState", state);
   setter(
     "colorScheme",
     ensureColorScheme(state.color_scheme as ColorSchemeInput)
@@ -27,7 +26,6 @@ export const processState = (
   state.spaces && setter("sessionSpaces", state.spaces);
 
   const visibility = state.field_visibility_stage;
-  console.log("processState:fieldVisibilityStage", visibility);
   const visibilityStage = visibility
     ? {
         _cls: visibility.cls,
@@ -37,7 +35,6 @@ export const processState = (
         ],
       }
     : null;
-  console.log("processState:visibilityStage", visibilityStage);
   const stageAtom = visibility
     ? {
         cls: visibility.cls,
@@ -48,7 +45,6 @@ export const processState = (
       }
     : undefined;
 
-  console.log("stage", visibility);
   stageAtom && setter("fieldVisibilityStage", stageAtom);
   return env().VITE_NO_STATE
     ? { view: [], extendedStages: [] }

@@ -8,7 +8,6 @@ import { RegisteredWriter } from "./registerWriter";
 const onSetFieldVisibilityStage: RegisteredWriter<"fieldVisibilityStage"> =
   ({ environment, subscription }) =>
   (input) => {
-    console.log("onSetFieldVisibilityStage:input", input);
     if (!input) return;
 
     commitMutation<setFieldVisibilityStageMutation>(environment, {

@@ -8,7 +8,6 @@ import {
   useResetRecoilState,
   useSetRecoilState,
 } from "recoil";
-// import useSetShowNestedFields from "./schema/useSetShowNestedFields";
 import {
   disabledField,
   getSubPaths,
@@ -313,7 +312,6 @@ export default function useSchemaSettings() {
     (val: boolean) => {
       setAllFieldsChecked(val);
       if (includeNestedFields) {
-        console.log("includeNestedFields", val, allPaths);
         setExcludedPaths({
           [datasetName]: val ? new Set([]) : new Set(allPaths),
         });
