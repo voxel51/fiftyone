@@ -20,13 +20,7 @@ import ModeControl from "./controls/ModeControl";
 
 const labelTagSetting = selector<LabelTagColorInput>({
   key: "labelTagSetting",
-  get: ({ get }) => {
-    const labelTags = get(fos.colorScheme).labelTags;
-    if (labelTags) {
-      return labelTags;
-    }
-    return undefined;
-  },
+  get: ({ get }) => get(fos.colorScheme).labelTags || {},
   set: ({ set }, newSetting) => {
     set(fos.colorScheme, (current) => {
       if (!newSetting || newSetting instanceof DefaultValue) {
@@ -47,14 +41,10 @@ const labelTagSetting = selector<LabelTagColorInput>({
 const LabelTag: React.FC = () => {
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const pickerRef = React.useRef<TwitterPicker>(null);
-
-  const colorSeed = useRecoilValue(fos.colorSeed);
   const coloring = useRecoilValue(fos.coloring);
-  const { colorPool, labelTags } = useRecoilValue(fos.colorScheme);
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const setColorScheme = fos.useSetSessionColorScheme();
+  const { colorPool } = useRecoilValue(fos.colorScheme);
   const colorMap = useRecoilValue(fos.colorMap);
-  const [setting, setSetting] = useRecoilState(labelTagSetting);
+  const [labelTags, setSetting] = useRecoilState(labelTagSetting);
 
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(labelTags?.fieldColor);
@@ -135,17 +125,10 @@ const LabelTag: React.FC = () => {
             name={`Use custom color for label tags field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting(
-                v
-                  ? {
-                      valueColors: labelTags?.valueColors,
-                      fieldColor: colorMap("_label_tags"),
-                    }
-                  : {
-                      valueColors: labelTags?.valueColors,
-                      fieldColor: undefined,
-                    }
-              );
+              setSetting({
+                valueColors: labelTags?.valueColors,
+                fieldColor: v ? colorMap("_label_tags") : undefined,
+              });
               setInput(colorMap("_label_tags"));
             }}
           />

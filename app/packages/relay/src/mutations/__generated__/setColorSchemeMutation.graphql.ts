@@ -18,18 +18,19 @@ export type ColorSchemeInput = {
   opacity?: number | null;
   showSkeletons?: boolean | null;
 };
-
-export type LabelTagColorInput = {
-  fieldColor?: string | null;
-  valueColors?: ReadonlyArray<ValueColorInput> | null;
-};
-export interface CustomizeColorInput extends LabelTagColorInput {
+export type CustomizeColorInput = {
   colorByAttribute?: string | null;
+  fieldColor?: string | null;
   path: string;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type ValueColorInput = {
   color: string;
   value: string;
+};
+export type LabelTagColorInput = {
+  fieldColor?: string | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

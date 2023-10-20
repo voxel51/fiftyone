@@ -8,6 +8,7 @@ import {
   useRelayEnvironment,
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { RecordSourceProxy } from "relay-runtime";
 import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
@@ -143,22 +144,19 @@ const useUpdateDatasetColorScheme = () => {
               colorSchemeRecord = store.create(uuid(), "ColorScheme");
               appConfigRecord.setLinkedRecord(colorSchemeRecord, "colorScheme");
             }
-            const fields = colorScheme?.fields?.map((field) => {
-              const record = store.create(uuid(), "CustomizeColor");
-              Object.entries(field).forEach((key, value) => {
-                // @ts-ignore
-                record.setValue(value, key);
-              });
-
-              return record;
-            });
-
             colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
             colorSchemeRecord.setValue(
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
-            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setLinkedRecords(
+              setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
+              "fields"
+            );
+            colorSchemeRecord.setLinkedRecords(
+              setEntries(store, "LabelTagColor", colorScheme?.fields ?? null),
+              "labelTags"
+            );
             colorSchemeRecord.setValue(
               colorScheme.multicolorKeypoints,
               "multicolorKeypoints"
@@ -173,5 +171,20 @@ const useUpdateDatasetColorScheme = () => {
     [environment]
   );
 };
+
+const setEntries = (
+  store: RecordSourceProxy,
+  name: string,
+  entries: readonly object[] | null
+) =>
+  entries?.map((entry) => {
+    const record = store.create(uuid(), name);
+    Object.entries(entry).forEach((key, value) => {
+      // @ts-ignore
+      record.setValue(value, key);
+    });
+
+    return record;
+  });
 
 export default ColorFooter;
