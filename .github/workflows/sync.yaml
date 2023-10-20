@@ -1,4 +1,4 @@
-name: Sync release (test)
+name: Sync release (test test)
 
 on:
   pull_request_target:
