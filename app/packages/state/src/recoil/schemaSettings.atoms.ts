@@ -115,6 +115,13 @@ export const schemaSearchResults = atom<string[]>({
   default: [],
 });
 
+const isTopLevelField = (isVideo: boolean, path: string) => {
+  return isVideo
+    ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
+        !path.includes(".")
+    : !path.includes(".");
+};
+
 export const excludedPathsState = atomFamily({
   key: "excludedPathsState",
   default: selectorFamily({
@@ -150,6 +157,9 @@ export const excludedPathsState = atomFamily({
         const isImage = mediaType === "image";
         const isVideo = mediaType === "video";
         const isInSearchMode = !!searchResults?.length;
+        const includeNestedFields = await getPromise(
+          fos.includeNestedFieldsState
+        );
 
         if (!dataset) {
           return;
@@ -168,7 +178,7 @@ export const excludedPathsState = atomFamily({
           }
         });
 
-        const newPaths = newPathsMap?.[dataset?.name] || [];
+        const newPaths = newPathsMap?.[dataset.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
             const rawPath = path.replace("frames.", "");
@@ -193,10 +203,7 @@ export const excludedPathsState = atomFamily({
         let finalGreenPaths = greenPaths;
         if (!showNestedField && !isInSearchMode) {
           finalGreenPaths = greenPaths.filter((path) =>
-            isVideo
-              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
-                !path.includes(".")
-              : !path.includes(".")
+            isTopLevelField(isVideo, path)
           );
         }
 
@@ -213,19 +220,15 @@ export const excludedPathsState = atomFamily({
                 DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
-              const isTopLevelPath = isVideo
-                ? !(
-                    path.split(".").length === 2 && path.startsWith("frames.")
-                  ) || !path.includes(".")
-                : !path.includes(".");
-
-              return !(
-                isEmbeddedOrListType &&
-                hasDynamicEmbeddedDocument &&
-                isTopLevelPath
-              );
+              return !(isEmbeddedOrListType && hasDynamicEmbeddedDocument);
             })
           : finalGreenPaths;
+
+        if (isInSearchMode && !includeNestedFields) {
+          finalGreenPaths = finalGreenPaths.filter((path: string) =>
+            isTopLevelField(isVideo, path)
+          );
+        }
 
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
