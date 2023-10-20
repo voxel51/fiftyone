@@ -73,11 +73,6 @@ export const includeNestedFieldsState = atom({
   default: true,
 });
 
-export const affectedPathCountState = atom({
-  key: "affectedPathCountState",
-  default: 0,
-});
-
 export const searchMetaFilterState = atom({
   key: "searchMetaFilterState",
   default: {},
