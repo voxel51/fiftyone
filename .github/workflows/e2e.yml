@@ -9,6 +9,7 @@ jobs:
     env:
       FIFTYONE_DO_NOT_TRACK: true
       FIFTYONE_DATABASE_URI: mongodb://localhost:27017
+      FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
