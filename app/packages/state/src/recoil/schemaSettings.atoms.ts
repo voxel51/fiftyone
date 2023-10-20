@@ -202,8 +202,7 @@ export const excludedPathsState = atomFamily({
           );
         }
 
-        const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
-        console.log("shouldFilterTopLevelFields", finalGreenPaths);
+        const shouldFilterTopLevelFields = !showNestedField || isInSearchMode;
         finalGreenPaths = shouldFilterTopLevelFields
           ? finalGreenPaths.filter((path) => {
               const isEmbeddedOrListType = [
@@ -223,30 +222,13 @@ export const excludedPathsState = atomFamily({
                 : !path.includes(".");
 
               return !(
-                // isEmbeddedOrListType &&
-                hasDynamicEmbeddedDocument
-                // isTopLevelPath
+                isEmbeddedOrListType &&
+                hasDynamicEmbeddedDocument &&
+                isTopLevelPath
               );
             })
           : finalGreenPaths;
 
-        // filter out subpaths if a parent (or higher) path is also in the list
-        const finalGreenPathsSet = new Set(finalGreenPaths);
-        if (showNestedField) {
-          finalGreenPaths = finalGreenPaths.filter((path) => {
-            let tmp = path;
-            while (tmp.indexOf(".") > 0) {
-              const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
-              if (finalGreenPathsSet.has(parentPath) || path === parentPath) {
-                return false;
-              }
-              tmp = parentPath;
-            }
-            return true;
-          });
-        }
-
-        console.log("excludedPaths", showNestedField, finalGreenPaths);
         setSelf({
           [dataset.name]: new Set(finalGreenPaths),
         });

@@ -67,8 +67,8 @@ export default function useSchemaSettings() {
   );
 
   const fieldVisibilityStage = useRecoilValue(fos.fieldVisibilityStage);
-  const affectedPathCount =
-    fieldVisibilityStage?.kwargs?.field_names?.length || 0;
+  const extendedExcludedPaths = fieldVisibilityStage?.kwargs?.field_names || [];
+  const affectedPathCount = extendedExcludedPaths?.length || 0;
 
   const isPatchesView = useRecoilValue(fos.isPatchesView);
   const isFrameView = useRecoilValue(fos.isFramesView);
@@ -358,5 +358,6 @@ export default function useSchemaSettings() {
     mergedSchema,
     resetAttributeFilters,
     isFieldVisibilityActive,
+    extendedExcludedPaths,
   };
 }
