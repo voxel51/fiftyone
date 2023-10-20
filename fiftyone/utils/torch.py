@@ -1031,11 +1031,6 @@ class SaveLayerTensor(object):
 
         if _layer is None:
             raise ValueError("No layer found with name %s" % layer_name)
-        elif isinstance(_layer, torch.nn.Identity):
-            raise ValueError(
-                "Layer '%s' is an Identity layer. Use previous layer."
-                % layer_name
-            )
 
         _layer.register_forward_hook(self)
 

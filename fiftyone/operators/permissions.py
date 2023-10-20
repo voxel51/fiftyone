@@ -23,9 +23,11 @@ class PermissionedOperatorRegistry(OperatorRegistry):
         return self.managed_operators.has_operator(operator_uri)
 
     @classmethod
-    async def from_list_request(cls, request):
+    async def from_list_request(cls, request, dataset_ids=None):
         return PermissionedOperatorRegistry(
-            await ManagedOperators.for_request(request),
+            await ManagedOperators.for_request(
+                request, dataset_ids=dataset_ids
+            ),
         )
 
     @classmethod

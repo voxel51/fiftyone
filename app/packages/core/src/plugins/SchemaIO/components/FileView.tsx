@@ -50,15 +50,16 @@ export default function FileView(props) {
                 return;
               }
               setCurrentError(null);
+              const resultStripped = stripBase64Prefix(result);
               const obj = {
-                contents: result,
+                content: resultStripped,
                 name: file.name,
                 type: file.type,
                 size: file.size,
                 last_modified: file.lastModified,
               };
               if (isObject) return onChange(path, obj);
-              onChange(path, result);
+              onChange(path, resultStripped);
             }}
             types={types}
             autoFocused={autoFocused}
@@ -85,4 +86,8 @@ function fileToBase64(
     fileReader.onload = () => resolve({ result: fileReader.result as string });
     fileReader.onerror = (error) => resolve({ error });
   });
+}
+
+function stripBase64Prefix(data: string): string {
+  return data.slice(data.indexOf(",") + 1);
 }
