@@ -1972,7 +1972,7 @@ You can also view frame-level evaluation results as
 .. _custom-evaluation-backends:
 
 Custom evaluation backends
-_________________________
+__________________________
 
 If you would like to use an evaluation protocol that is not natively supported
 by FiftyOne, you can follow the instructions below to implement an interface
