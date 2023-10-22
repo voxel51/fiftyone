@@ -7,6 +7,6 @@ jupyter-client==6.1.3
 myst-parser==0.13.7
 nbsphinx==0.8.8
 sphinx-tabs==1.2.1
-Sphinx==2.4.4
+Sphinx==3.5.4
 sphinxcontrib-napoleon==0.7
 sphinx-copybutton==0.4.0
