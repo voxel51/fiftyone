@@ -49,9 +49,7 @@ const SortBySimilarity = ({
   anchorRef,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
-  const datasetId =
-    useRecoilValue(fos.dataset)?.name! +
-    useRecoilValue(fos.dataset)?.createdAt!;
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
   const [lastUsedBrainKeys] = useBrowserStorage("lastUsedBrainKeys");
 
   const lastUsedBrainkey = useMemo(() => {
