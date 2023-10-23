@@ -179,7 +179,17 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
-                    "mask_target_colors": {1: "#ff0000", 2: "#00ff00"},
+                    "mask_target_colors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
+                    "colorscale": {
+                          "list": [
+                            [0.00, "rgb(166,206,227)"],
+                            [0.25, "rgb(31,120,180)"],
+                            [0.45, "rgb(178,223,138)"],
+                            [0.65, "rgb(51,160,44)"],
+                            [0.85, "rgb(251,154,153)"],
+                            [1.00, "rgb(227,26,28)"]
+                          ]
+                    }
                 }
             ],
             label_tags={
@@ -192,7 +202,8 @@ class ColorScheme(EmbeddedDocument):
             multicolor_keypoints=False,
             opacity=0.5,
             show_skeletons=True,
-            default_mask_targets={ 1: "#FEC0AA", 2:"#EC4E20", 3: "#84732B" },
+            default_mask_targets_colors=[{idx: 1, color: "#FEC0AA" }, {idx: 2, color: "#EC4E20"}],
+            colorscale={ name: "RdBu"}
         )
         dataset.save()
 
@@ -201,6 +212,11 @@ class ColorScheme(EmbeddedDocument):
             "value" or "instance"
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
+        multicolor_keypoints (None): whether to use multiple colors for
+            keypoints
+        opacity (None): transparency of the annotation, between 0 and 1
+        show_skeletons (None): whether to show skeletons of keypoints
+
         fields (None): an optional list of per-field custom colors. Each
             element should be a dict with the following keys:
 
@@ -213,15 +229,31 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+            -   `maskTargetColors` (optional): a list of dicts specifying index and color for 2D masks
+        default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
+        colorscale (None): a dict of ``colorscale`` with either name or list provided. If both are provided, we will use the name
+            -   `name` (optional): the string name of any colorscale recognized by plotly. See
+                https://plotly.com/python/colorscales for possible options
+            -   `list` (optional): a manually-defined colorscale like the following::
+
+                    [
+                        [0.000, "rgb(165,0,38)"],
+                        [0.111, "rgb(215,48,39)"],
+                        [0.222, "rgb(244,109,67)"],
+                        [0.333, "rgb(253,174,97)"],
+                        [0.444, "rgb(254,224,144)"],
+                        [0.555, "rgb(224,243,248)"],
+                        [0.666, "rgb(171,217,233)"],
+                        [0.777, "rgb(116,173,209)"],
+                        [0.888, "rgb(69,117,180)"],
+                        [1.000, "rgb(49,54,149)"],
+                    ]
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags
             -    `valueColors` (optional): a list of dicts specifying colors to
             specific label tags
-        multicolor_keypoints (None): whether to use multiple colors for
-            keypoints
-        opacity (None): transparency of the annotation, between 0 and 1
-        show_skeletons (None): whether to show skeletons of keypoints
+
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -234,7 +266,8 @@ class ColorScheme(EmbeddedDocument):
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
-    default_mask_targets = DictField(null=True)
+    default_mask_targets_colors = ListField(DictField(), null=True)
+    colorscale = DictField(null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):
