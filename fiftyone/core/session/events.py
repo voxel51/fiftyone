@@ -160,7 +160,7 @@ class MaskColor:
 @dataclass
 class ColorScale:
     name: str
-    list: t.List[t.List[int, str]]
+    list: t.List[t.Tuple]
 
 
 @dataclass
@@ -169,7 +169,7 @@ class CustomizeColor:
     fieldColor: t.Optional[str] = None
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
-    maskTargets: t.Optional[t.List[MaskColor]] = None
+    maskTargetsColors: t.Optional[t.List[MaskColor]] = None
     colorScale: t.Optional[ColorScale] = None
 
 
@@ -183,12 +183,12 @@ class LabelTagColor:
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
-    label_tags: t.Optional[LabelTagColor] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
-    default_mask_targets: t.Optional[t.List[MaskColor]] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
+    default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    label_tags: t.Optional[LabelTagColor] = None
     colorscale: t.Optional[ColorScale] = None
 
 
@@ -208,12 +208,12 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
-        default_mask_targets = (
+        default_mask_targets_colors = (
             [
                 asdict(target)
-                for target in self.color_scheme.default_mask_targets
+                for target in self.color_scheme.default_mask_targets_colors
             ]
-            if self.color_scheme.default_mask_targets
+            if self.color_scheme.default_mask_targets_colors
             else None
         )
         label_tags = (
@@ -231,9 +231,9 @@ class SetColorScheme(Event):
             color_pool=self.color_scheme.color_pool,
             color_by=self.color_scheme.color_by,
             fields=fields,
+            default_mask_targets=default_mask_targets_colors,
             label_tags=label_tags,
             colorscale=colorscale,
-            default_mask_targets=default_mask_targets,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,

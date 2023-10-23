@@ -167,11 +167,11 @@ class ColorScheme(EmbeddedDocument):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("quickstart")
+        dataset=foz.load_zoo_dataset("quickstart")
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
-            color_by = "field",
+            color_by="field",
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             fields=[
                 {
@@ -179,7 +179,7 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
-                    "mask_target_colors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
+                    "maskTargetColors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
                     "colorscale": {
                           "list": [
                             [0.00, "rgb(166,206,227)"],
