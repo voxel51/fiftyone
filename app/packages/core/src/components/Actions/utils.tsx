@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { State, groupId, groupStatistics, isGroup } from "@fiftyone/state";
+import { State, groupId, groupStatisticsState, isGroup } from "@fiftyone/state";
 import { getFetchFunction, toSnakeCase } from "@fiftyone/utilities";
 import { animated, useSpring } from "@react-spring/web";
 import { useState } from "react";
@@ -77,7 +77,7 @@ export const tagStatistics = selectorFamily<
               ? {
                   id: modal ? get(groupId) : null,
                   slices: get(fos.currentSlices(modal)),
-                  mode: get(groupStatistics(modal)),
+                  mode: get(groupStatisticsState),
                 }
               : null,
           hiddenLabels: get(fos.hiddenLabelsArray),

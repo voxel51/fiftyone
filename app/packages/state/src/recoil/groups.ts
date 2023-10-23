@@ -334,20 +334,10 @@ export const activeModalSample = selector({
   },
 });
 
-export const groupStatistics = graphQLSyncFragmentAtomFamily<
-  datasetFragment$key,
-  "group" | "slice",
-  boolean
->(
-  {
-    fragments: [datasetFragment],
-    keys: ["dataset.groupField"],
-    default: "slice",
-  },
-  {
-    key: "groupStatistics",
-  }
-);
+export const groupStatisticsState = atom<"group" | "slice">({
+  key: "groupStatisticsState",
+  default: "slice",
+});
 
 export const dynamicGroupFields = selector<string[]>({
   key: "dynamicGroupFields",

@@ -1,7 +1,7 @@
 import { Selector, useTheme } from "@fiftyone/components";
 import LoadingDots from "@fiftyone/components/src/components/Loading/LoadingDots";
 import * as fos from "@fiftyone/state";
-import { groupId, groupStatistics } from "@fiftyone/state";
+import { groupId, groupStatisticsState } from "@fiftyone/state";
 import { VALID_KEYPOINTS, getFetchFunction } from "@fiftyone/utilities";
 import React, { MutableRefObject, useEffect, useRef } from "react";
 import {
@@ -63,7 +63,7 @@ const categoricalSearchResults = selectorFamily<
     async ({ get }) => {
       const search = get(categoricalSearch({ modal, path }));
       const sorting = get(fos.sortFilterResults(modal));
-      const mixed = get(groupStatistics(modal)) === "group";
+      const mixed = get(groupStatisticsState) === "group";
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));

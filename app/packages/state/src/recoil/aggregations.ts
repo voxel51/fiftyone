@@ -6,7 +6,12 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
-import { currentSlices, groupId, groupSlice, groupStatistics } from "./groups";
+import {
+  currentSlices,
+  groupId,
+  groupSlice,
+  groupStatisticsState,
+} from "./groups";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -47,7 +52,7 @@ export const aggregationQuery = graphQLSelectorFamily<
     ({ get }) => {
       const dataset = get(selectors.datasetName);
       if (!dataset) return null;
-      mixed = mixed || get(groupStatistics(modal)) === "group";
+      mixed = mixed || get(groupStatisticsState) === "group";
       const aggForm = {
         index: get(refresher),
         dataset,

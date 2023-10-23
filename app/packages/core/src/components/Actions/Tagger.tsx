@@ -1,7 +1,12 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
-import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
+import {
+  Lookers,
+  groupId,
+  groupStatisticsState,
+  refresher,
+} from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useSpring } from "@react-spring/web";
 import numeral from "numeral";
@@ -340,7 +345,7 @@ const useTagCallback = (
                   id: modal ? await snapshot.getPromise(groupId) : null,
                   slices,
                   slice: await snapshot.getPromise(fos.groupSlice),
-                  mode: await snapshot.getPromise(groupStatistics(modal)),
+                  mode: await snapshot.getPromise(groupStatisticsState),
                 }
               : null,
             modal,
