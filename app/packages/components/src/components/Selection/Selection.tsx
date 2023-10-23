@@ -83,7 +83,7 @@ function Selection(props: SelectionProps) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const ref = useRef();
-  useOutsideClick(ref, () => setIsOpen(false));
+  // useOutsideClick(ref, () => setIsOpen(false)); todo: fix
 
   const {
     placeholder: searchPlaceholder,
@@ -232,7 +232,7 @@ function Selection(props: SelectionProps) {
                 key={id + label}
                 value={id}
                 label={label}
-                onClick={() => {
+                onClick={(e) => {
                   setSelected(itemProps);
                   setIsOpen(false);
                 }}
