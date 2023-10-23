@@ -34,9 +34,9 @@ const Icon = ({ modal, path }: { modal: boolean; path: string }) => {
 };
 
 const Locked = ({ path }: { path: string }) => {
-  const locked = useRecoilValue(fos.pathIsLocked(path));
+  const lightning = useRecoilValue(fos.isLightningPath(path));
 
-  return locked ? (
+  return !lightning ? (
     <Lock
       style={{
         padding: 3,

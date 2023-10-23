@@ -45,8 +45,8 @@ const NONFINITES = {
 interface NonfiniteState {
   value: boolean;
   setValue: SetterOrUpdater<boolean>;
-  count: number;
-  subcountAtom: RecoilValueReadOnly<number>;
+  count?: number;
+  subcountAtom?: RecoilValueReadOnly<number>;
 }
 
 const useNonfiniteData = (params: {
@@ -55,13 +55,12 @@ const useNonfiniteData = (params: {
   defaultRange?: [number, number];
 }) => {
   const counts = useRecoilValue(
-    fos.nonfiniteCounts({
+    fos.nonfiniteData({
       modal: params.modal,
       path: params.path,
       extended: false,
     })
   );
-  fos.nonfiniteAtom;
 
   return (key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] => {
     const [value, setValue] = useRecoilState(
@@ -71,7 +70,6 @@ const useNonfiniteData = (params: {
     return [
       key,
       {
-        count: counts[key],
         setValue,
         value,
         subcountAtom: fos.nonfiniteCount({
@@ -142,6 +140,7 @@ const NumericFieldFilter = ({
       withBounds: true,
     })
   );
+
   const setExcluded = excludeAtom ? useSetRecoilState(excludeAtom) : null;
   const setIsMatching = isMatchingAtom
     ? useSetRecoilState(isMatchingAtom)
@@ -151,6 +150,7 @@ const NumericFieldFilter = ({
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
   const hasBounds = bounds.every((b) => b !== null);
+
   const nonfinites = useNonfinites({
     modal,
     path,

@@ -1,5 +1,7 @@
 import { selectorFamily } from "recoil";
 import { aggregation, count } from "../aggregations";
+import { isLightningPath, lightning } from "../lightning";
+import { lightningNonfinites } from "./lightningNumeric";
 
 export const bounds = selectorFamily({
   key: "bounds",
@@ -12,11 +14,15 @@ export const bounds = selectorFamily({
     },
 });
 
-export const nonfiniteCounts = selectorFamily({
-  key: "nonfiniteCounts",
+export const nonfiniteData = selectorFamily({
+  key: "nonfiniteData",
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
+      if (get(lightning) && get(isLightningPath(params.path))) {
+        return { lightning: true, ...get(lightningNonfinites(params.path)) };
+      }
+
       const { inf, nan, ninf, exists } = get(aggregation(params));
 
       const { count: parentCount } = get(

@@ -122,3 +122,12 @@ export const lightning = selector({
     );
   },
 });
+
+export const isLightningPath = selectorFamily({
+  key: "isLightningPath",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(lightning) && !get(pathIsLocked(path));
+    },
+});

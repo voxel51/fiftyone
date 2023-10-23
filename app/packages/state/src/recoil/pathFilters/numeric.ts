@@ -7,8 +7,10 @@ import {
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
+import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
 import * as schemaAtoms from "../schema";
+import { asDefaultRange } from "../utils";
 
 export interface NumericFilter {
   range: Range;
@@ -170,27 +172,20 @@ export const boundsAtom = selectorFamily<
   get:
     ({ path, defaultRange }) =>
     ({ get }) => {
-      let bounds = get(
-        pathData.bounds({ path, extended: false, modal: false })
-      ) as Range;
-
+      const lightning = get(isLightningPath(path));
+      const atom = lightning
+        ? pathData.lightningBounds(path)
+        : pathData.bounds({ path, extended: false, modal: false });
+      const bounds = get(atom);
       if (!bounds) {
-        return [null, null];
+        return lightning ? null : [null, null];
       }
 
       if (bounds.every((b) => b === null)) {
         return bounds;
       }
 
-      let [maxMin, minMax]: Range = [null, null];
-      if (defaultRange) {
-        [maxMin, minMax] = defaultRange;
-        bounds = [
-          maxMin < bounds[0] ? maxMin : bounds[0],
-          minMax > bounds[1] ? minMax : bounds[1],
-        ];
-      }
-      return [bounds[0], bounds[1]];
+      return asDefaultRange(bounds, defaultRange);
     },
 });
 
@@ -211,11 +206,11 @@ export const rangeAtom = selectorFamily<
       const range = isFilterMode
         ? getFilter(get, modal, path).range
         : getVisibility(get, modal, path).range;
-      if (withBounds && range.every((r) => r === null)) {
-        return get(boundsAtom({ path, defaultRange }));
+      if (!withBounds || range.some((r) => r !== null)) {
+        return range;
       }
 
-      return range;
+      return get(boundsAtom({ path, defaultRange }));
     },
   set:
     ({ modal, path }) =>
