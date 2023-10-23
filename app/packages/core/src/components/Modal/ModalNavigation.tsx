@@ -4,7 +4,12 @@ import {
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  useRecoilSnapshot,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 
 const Arrow = styled.span<{ isRight?: boolean }>`
@@ -43,6 +48,8 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   if (countLoadable.state === "hasValue") {
     count.current = countLoadable.contents;
   }
+  const current = useRecoilValue(fos.currentModalSample);
+  const [selected, setSelected] = useRecoilState(fos.selectedSamples);
 
   const index = useRecoilValue(fos.modalSampleIndex);
   const setModal = fos.useSetExpandedSample();
@@ -65,7 +72,18 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
           return;
         }
       }
-      if (e.key === "ArrowLeft") {
+      if (e.key === "x") {
+        const newSelected = new Set([...selected]);
+
+        if (current) {
+          if (newSelected.has(current.id)) {
+            newSelected.delete(current.id);
+          } else {
+            newSelected.add(current.id);
+          }
+        }
+        setSelected(newSelected);
+      } else if (e.key === "ArrowLeft") {
         navigatePrevious();
       } else if (e.key === "ArrowRight") {
         navigateNext();
@@ -74,7 +92,7 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
       }
       // note: don't stop event propagation here
     },
-    [navigateNext, navigatePrevious]
+    [current, navigateNext, navigatePrevious, selected, setSelected]
   );
 
   fos.useEventHandler(document, "keydown", keyboardHandler);

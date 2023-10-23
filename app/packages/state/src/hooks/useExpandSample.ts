@@ -1,7 +1,14 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { get } from "lodash";
 import { useRelayEnvironment } from "react-relay";
-import { CallbackInterface, RecoilState, useRecoilCallback } from "recoil";
+import {
+  CallbackInterface,
+  RecoilState,
+  useRecoilCallback,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -13,6 +20,7 @@ import { getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
+import useSetSelected from "./useSetSelected";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
@@ -32,6 +40,7 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const environment = useRelayEnvironment();
   const setExpandedSample = useSetExpandedSample();
+  const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
 
   const setModalState = useRecoilCallback(
     (cbInterface) => async (navigation: modalAtoms.ModalNavigation) => {
@@ -96,6 +105,22 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
   >(
     ({ snapshot }) =>
       async (next, sampleId, itemIndexMap) => {
+        const selected = await snapshot.getPromise(atoms.selectedSamples);
+        const isCtrlOrMetaDown = await snapshot.getPromise(
+          atoms.ctrlOrMetdaKeyDown
+        );
+        if (isCtrlOrMetaDown) {
+          const newSelected = new Set([...selected]);
+          if (sampleId) {
+            if (newSelected.has(sampleId)) {
+              newSelected.delete(sampleId);
+            } else {
+              newSelected.add(sampleId);
+            }
+          }
+          setSelectedSamples(newSelected);
+          return;
+        }
         const clickedIndex = itemIndexMap[sampleId];
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices
@@ -136,6 +161,6 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
         setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
       },
-    [setExpandedSample, setModalState, store]
+    [setExpandedSample, setModalState, store, setSelectedSamples]
   );
 };

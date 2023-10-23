@@ -3,7 +3,7 @@ import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { stringifyObj, useDeferrer, useExpandSample } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../useFlashlightPager";
 import { flashlightLooker } from "./Grid.module.css";
@@ -13,6 +13,8 @@ import {
   rowAspectRatioThreshold,
 } from "./recoil";
 import useResize from "./useResize";
+
+const CONTROL_KEYS = ["Meta", "Control"];
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
@@ -153,9 +155,14 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  const escEventHandler = useRecoilCallback(
+  const setCtrlMetaDown = useSetRecoilState(fos.ctrlOrMetdaKeyDown);
+  const keydownEventHandler = useRecoilCallback(
     ({ reset }) =>
       async (event: KeyboardEvent) => {
+        if (CONTROL_KEYS.indexOf(event.key) !== -1 && !isModalOpen) {
+          setCtrlMetaDown(true);
+          return;
+        }
         if (event.key !== "Escape") {
           return;
         }
@@ -168,20 +175,33 @@ const Grid: React.FC<{}> = () => {
     [setSelectedSamples, isModalOpen]
   );
 
+  const keyupEventHandler = useRecoilCallback(
+    () => async (event: KeyboardEvent) => {
+      if (CONTROL_KEYS.indexOf(event.key) !== -1 && !isModalOpen) {
+        setCtrlMetaDown(false);
+        return;
+      }
+    },
+    [setSelectedSamples, isModalOpen]
+  );
+
   useEffect(() => {
     // this deferred execution is a hack to address problem caused by a race condition in `isModalOpen`
     setTimeout(() => {
       if (!isModalOpen) {
-        document.addEventListener("keydown", escEventHandler);
+        document.addEventListener("keydown", keydownEventHandler);
+        document.addEventListener("keyup", keyupEventHandler);
       } else {
-        document.removeEventListener("keydown", escEventHandler);
+        document.removeEventListener("keydown", keydownEventHandler);
+        document.removeEventListener("keyup", keyupEventHandler);
       }
     }, 0);
 
     return () => {
-      document.removeEventListener("keydown", escEventHandler);
+      document.removeEventListener("keydown", keydownEventHandler);
+      document.removeEventListener("keyup", keyupEventHandler);
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, keyupEventHandler, keydownEventHandler]);
 
   useEffect(() => {
     init();

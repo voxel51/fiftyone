@@ -245,6 +245,11 @@ export const savedLookerOptions = atom({
   default: {},
 });
 
+export const ctrlOrMetdaKeyDown = atom({
+  key: "ctrlOrMetdaKeyDown",
+  default: false,
+});
+
 export const patching = atom<boolean>({
   key: "patching",
   default: false,
