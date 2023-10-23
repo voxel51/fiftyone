@@ -27,7 +27,7 @@ class LightningPathInput:
     path: str
 
     exclude: t.Optional[t.List[str]] = None
-    first: t.Optional[int] = 25
+    first: t.Optional[int] = None
     search: t.Optional[str] = None
 
 

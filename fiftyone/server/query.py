@@ -20,11 +20,10 @@ from bson import ObjectId, json_util
 import fiftyone as fo
 import fiftyone.brain as fob  # pylint: disable=import-error,no-name-in-module
 import fiftyone.constants as foc
-from fiftyone.core.collections import SampleCollection
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
 import fiftyone.core.media as fom
-from fiftyone.core.odm import get_async_db_conn, SavedViewDocument
+from fiftyone.core.odm import SavedViewDocument
 import fiftyone.core.stages as fosg
 from fiftyone.core.state import SampleField, serialize_fields
 import fiftyone.core.uid as fou
@@ -333,6 +332,7 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
+    lightning_threshold: int
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int

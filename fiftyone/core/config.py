@@ -329,6 +329,12 @@ class AppConfig(EnvConfig):
         self.grid_zoom = self.parse_int(
             d, "grid_zoom", env_var="FIFTYONE_APP_GRID_ZOOM", default=5
         )
+        self.lightning_threshold = self.parse_int(
+            d,
+            "lightning_threshold",
+            env_var="FIFTYONE_APP_LIGHTNING_THRESHOLD",
+            default=100,
+        )
         self.loop_videos = self.parse_bool(
             d,
             "loop_videos",
