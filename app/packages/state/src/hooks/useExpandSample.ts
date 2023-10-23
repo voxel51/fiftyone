@@ -58,7 +58,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         [sidebarAtoms.sidebarVisible(true), sidebarAtoms.sidebarVisible(false)],
         [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
-        [groupAtoms.groupStatisticsState, groupAtoms.groupStatisticsState],
+        [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
       ];
 
       const slice = await snapshot.getPromise(groupAtoms.groupSlice);

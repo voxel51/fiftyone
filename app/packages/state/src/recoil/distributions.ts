@@ -29,7 +29,7 @@ import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
-import { groupSlice, groupStatisticsState } from "./groups";
+import { groupSlice, groupStatistics } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { field, fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
@@ -50,7 +50,7 @@ const extendedViewForm = selector({
       sampleIds: get(extendedSelection)?.selection,
       filters: get(filters),
       slice: get(groupSlice),
-      mixed: get(groupStatisticsState) === "group",
+      mixed: get(groupStatistics(false)) === "group",
     };
   },
 });

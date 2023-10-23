@@ -60,7 +60,7 @@ const SampleModal = () => {
   const disabled = useRecoilValue(fos.disabledPaths);
   const labelPaths = useRecoilValue(fos.labelPaths({ expanded: false }));
 
-  const mode = useRecoilValue(fos.groupStatisticsState);
+  const mode = useRecoilValue(fos.groupStatistics(true));
   const screen = useRecoilValue(fos.fullscreen)
     ? { width: "100%", height: "100%" }
     : { width: "95%", height: "90%", borderRadius: "3px" };

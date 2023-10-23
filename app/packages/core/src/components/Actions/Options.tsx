@@ -7,7 +7,7 @@ import Checkbox from "../Common/Checkbox";
 import * as fos from "@fiftyone/state";
 import {
   configuredSidebarModeDefault,
-  groupStatisticsState,
+  groupStatistics,
   sidebarMode,
 } from "@fiftyone/state";
 import RadioGroup from "../Common/RadioGroup";
@@ -85,8 +85,8 @@ const MediaFields = ({ modal }) => {
   );
 };
 
-const GroupStatistics = () => {
-  const [statistics, setStatistics] = useRecoilState(groupStatisticsState);
+const GroupStatistics = ({ modal }) => {
+  const [statistics, setStatistics] = useRecoilState(groupStatistics(modal));
 
   return (
     <>
