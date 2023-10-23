@@ -3,6 +3,7 @@ import { graphql } from "relay-runtime";
 export default graphql`
   fragment datasetFragment on Dataset {
     createdAt
+    datasetId
     groupField
     id
     info

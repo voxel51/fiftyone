@@ -7,6 +7,8 @@ import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
+import { Snackbar } from "@material-ui/core";
+import MuiAlert, { AlertProps } from "@mui/material/Alert";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
@@ -15,8 +17,6 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { Snackbar } from "@material-ui/core";
-import MuiAlert, { AlertProps } from "@mui/material/Alert";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(

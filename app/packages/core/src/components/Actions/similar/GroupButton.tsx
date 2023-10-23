@@ -28,7 +28,7 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
   buttons,
 }) => {
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "row" }}>
       {buttons.map((button) => (
         <Tooltip
           text={button.tooltipText}
@@ -51,7 +51,7 @@ const GroupButton: React.FunctionComponent<GroupButtonProps> = ({
           </Container>
         </Tooltip>
       ))}
-    </>
+    </div>
   );
 };
 
