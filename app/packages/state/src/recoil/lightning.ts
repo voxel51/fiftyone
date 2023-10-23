@@ -1,14 +1,15 @@
 import * as foq from "@fiftyone/relay";
-import { atom, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
+import { config } from "./config";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import { datasetName } from "./selectors";
 
-const lightningQuery = graphQLSelectorFamily<
+export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
-  { path: string; search?: string; exclude?: string[]; first }[],
+  foq.LightningInput["paths"],
   ResponseFrom<foq.lightningQuery>["lightning"]
 >({
   environment: RelayEnvironmentKey,
@@ -55,8 +56,8 @@ const indexes = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   }
 );
 
-const indexesByField = selector({
-  key: "indexesByField",
+const indexesByPath = selector({
+  key: "indexesByPath",
   get: ({ get }) => {
     return new Set(
       get(indexes).sampleIndexes.map(({ key: [{ field }] }) => {
@@ -66,20 +67,20 @@ const indexesByField = selector({
   },
 });
 
-export const fieldIndex = selectorFamily({
-  key: "fieldIndex",
+export const pathIndex = selectorFamily({
+  key: "pathIndex",
   get:
-    (field: string) =>
+    (path: string) =>
     ({ get }) =>
-      get(indexesByField).has(field),
+      get(indexesByPath).has(get(schemaAtoms.dbPath(path))),
 });
 
-export const fieldIsLocked = selectorFamily({
-  key: "fieldIsLocked",
+export const pathIsLocked = selectorFamily({
+  key: "pathIsLocked",
   get:
-    (field: string) =>
+    (path: string) =>
     ({ get }) => {
-      return !get(fieldIndex(field));
+      return !get(pathIndex(path));
     },
 });
 
@@ -94,7 +95,30 @@ export const lightningPath = selectorFamily({
     },
 });
 
-export const lightning = atom({
+const lightningThreshold = selector({
+  key: "lightningThreshold",
+  get: ({ get }) => get(config).lightningThreshold,
+});
+
+const estimatedCounts =
+  foq.graphQLSyncFragmentAtom<foq.estimatedCountsFragment$key>(
+    {
+      keys: ["dataset"],
+      fragments: [foq.datasetFragment, foq.estimatedCounts],
+    },
+    {
+      key: "estimatedCounts",
+    }
+  );
+
+export const lightning = selector({
   key: "lightning",
-  default: true,
+  get: ({ get }) => {
+    const { estimatedFrameCount, estimatedSampleCount } = get(estimatedCounts);
+    const threshold = get(lightningThreshold);
+
+    return (
+      estimatedFrameCount >= threshold || estimatedSampleCount >= threshold
+    );
+  },
 });

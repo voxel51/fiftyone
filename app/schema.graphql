@@ -48,6 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
+  lightningThreshold: Int!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -392,7 +393,7 @@ input LightningInput {
 input LightningPathInput {
   path: String!
   exclude: [String!] = null
-  first: Int = 25
+  first: Int = null
   search: String = null
 }
 

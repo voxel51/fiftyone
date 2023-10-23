@@ -229,8 +229,9 @@ const FilterableEntry = ({
 
   const onClick = useOnClick({ disabled, modal, path });
   const isLabelTag = path === "_label_tags";
-  const lightning = !useRecoilValue(fos.fieldIsLocked(path));
+  const lightning = !useRecoilValue(fos.pathIsLocked(path));
 
+  console.log(path, lightning);
   return (
     <RegularEntry
       backgroundColor={

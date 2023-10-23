@@ -68,7 +68,6 @@ const categoricalSearchResults = selectorFamily<
       const mixed = get(groupStatistics(modal)) === "group";
       const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
 
-      const noneCount = get(fos.noneCount({ path, modal, extended: false }));
       const isLabelTag = path.startsWith("_label_tags");
       let data = { values: [] as V[], count: 0 };
 
@@ -77,6 +76,8 @@ const categoricalSearchResults = selectorFamily<
           fos.lightningStringResults({ path, search, exclude: selected })
         ).map(([value]) => ({ value, count: null })),
       };
+
+      const noneCount = get(fos.noneCount({ path, modal, extended: false }));
 
       if (isLabelTag) {
         const labels = get(labelTagsCount({ modal, extended: false }));
@@ -226,6 +227,7 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const resultsLoadable = useRecoilValueLoadable(resultsAtom);
+  const lightning = useRecoilValue(fos.lightning);
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");

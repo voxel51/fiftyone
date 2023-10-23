@@ -34,7 +34,7 @@ const Icon = ({ modal, path }: { modal: boolean; path: string }) => {
 };
 
 const Locked = ({ path }: { path: string }) => {
-  const locked = useRecoilValue(fos.fieldIsLocked(path));
+  const locked = useRecoilValue(fos.pathIsLocked(path));
 
   return locked ? (
     <Lock

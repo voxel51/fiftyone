@@ -1,3 +1,5 @@
+import * as fos from "@fiftyone/state";
+import { FLOAT_FIELD } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import {
   RecoilValueReadOnly,
@@ -7,11 +9,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-
-import * as fos from "@fiftyone/state";
-
-import { DATE_FIELD, DATE_TIME_FIELD, FLOAT_FIELD } from "@fiftyone/utilities";
-import { formatDateTime } from "../../utils/generic";
 import Checkbox from "../Common/Checkbox";
 import RangeSlider from "../Common/RangeSlider";
 import FieldLabelAndInfo from "../FieldLabelAndInfo";
@@ -52,7 +49,7 @@ interface NonfiniteState {
   subcountAtom: RecoilValueReadOnly<number>;
 }
 
-const getNonfiniteGetter = (params: {
+const useNonfiniteData = (params: {
   modal: boolean;
   path: string;
   defaultRange?: [number, number];
@@ -64,6 +61,7 @@ const getNonfiniteGetter = (params: {
       extended: false,
     })
   );
+  fos.nonfiniteAtom;
 
   return (key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] => {
     const [value, setValue] = useRecoilState(
@@ -97,7 +95,7 @@ const useNonfinites = ({
   modal: boolean;
   path: string;
 }): [fos.Nonfinite, NonfiniteState][] => {
-  const get = getNonfiniteGetter(rest);
+  const get = useNonfiniteData(rest);
   const data = [get("none")];
 
   if (fieldType === FLOAT_FIELD) {
@@ -165,12 +163,7 @@ const NumericFieldFilter = ({
     fos.fieldHasVisibilitySetting({ modal, path })
   );
 
-  const bounded = useRecoilValue(
-    fos.boundedCount({ modal, path, extended: false })
-  );
-
   const one = bounds[0] === bounds[1];
-  const timeZone = useRecoilValue(fos.timeZone);
 
   const hasNonfinites = !(
     nonfinites.length === 0 ||
@@ -240,17 +233,7 @@ const NumericFieldFilter = ({
         style={{ cursor: "default" }}
         data-cy={`numeric-slider-container-${key}`}
       >
-        {!hasBounds && !named && !hasNonfinites && (
-          <Checkbox
-            key={"No results"}
-            color={color}
-            value={false}
-            disabled={true}
-            name={"No results"}
-            setValue={() => {}}
-          />
-        )}
-        {hasBounds && !one ? (
+        {hasBounds && (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
@@ -267,28 +250,9 @@ const NumericFieldFilter = ({
             color={color}
             key={key}
           />
-        ) : hasBounds ? (
-          <Checkbox
-            key={bounds[0]}
-            color={color}
-            disabled={true}
-            name={bounds[0]}
-            setValue={() => {}}
-            count={isFilterMode ? bounded : undefined} // visibility mode does not show count
-            subcountAtom={fos.boundedCount({
-              modal,
-              path,
-              extended: true,
-            })}
-            formatter={
-              [DATE_TIME_FIELD, DATE_FIELD].includes(ftype)
-                ? (v) => (v ? formatDateTime(v, timeZone) : null)
-                : (v) => (typeof v === "number" ? v.toString() : null)
-            }
-            value={false}
-          />
-        ) : null}
+        )}
         {((hasNone && isSliderAtInitialPostion) || !hasBounds) &&
+          false &&
           nonfinites.map(([key, props]) => (
             <Checkbox
               key={key}
@@ -299,7 +263,7 @@ const NumericFieldFilter = ({
               {...props}
             />
           ))}
-        {isFiltered && hasBounds && (
+        {isFiltered && hasBounds && false && (
           <FilterOption
             nestedField={nestedField}
             shouldNotShowExclude={false} // only boolean fields don't use exclude
@@ -312,7 +276,7 @@ const NumericFieldFilter = ({
             isKeyPointLabel={isKeyPoints}
           />
         )}
-        {(isFiltered || hasVisibilitySetting) && (
+        {(isFiltered || hasVisibilitySetting) && false && (
           <Button
             text={"Reset"}
             color={color}
@@ -323,7 +287,7 @@ const NumericFieldFilter = ({
               borderRadius: 0,
               textAlign: "center",
             }}
-          ></Button>
+          />
         )}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>

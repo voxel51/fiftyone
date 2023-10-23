@@ -4,10 +4,10 @@ import {
   selectorFamily,
   SetRecoilState,
 } from "recoil";
-import * as aggregationAtoms from "../aggregations";
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
+import * as pathData from "../pathData";
 import * as schemaAtoms from "../schema";
 
 export interface NumericFilter {
@@ -171,7 +171,7 @@ export const boundsAtom = selectorFamily<
     ({ path, defaultRange }) =>
     ({ get }) => {
       let bounds = get(
-        aggregationAtoms.bounds({ path, extended: false, modal: false })
+        pathData.bounds({ path, extended: false, modal: false })
       ) as Range;
 
       if (!bounds) {

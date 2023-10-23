@@ -13,13 +13,11 @@ import {
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
-
-import { filters, modalFilters } from "../filters";
-
 import {
   attributeVisibility,
   modalAttributeVisibility,
 } from "../attributeVisibility";
+import { filters, modalFilters } from "../filters";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { State } from "../types";
@@ -29,6 +27,7 @@ import { listString, string } from "./string";
 export * from "./boolean";
 export * from "./numeric";
 export * from "./string";
+
 const primitiveFilter = selectorFamily<
   (value: any) => boolean,
   { modal: boolean; path: string }

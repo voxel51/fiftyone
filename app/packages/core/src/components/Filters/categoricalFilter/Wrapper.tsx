@@ -83,7 +83,7 @@ const Wrapper = ({
     isFilterMode && setIsMatching(!nestedField);
   };
 
-  if (!allValues.length) {
+  if (!allValues.length && neverShowExpansion) {
     return (
       <Checkbox
         key={"No results"}

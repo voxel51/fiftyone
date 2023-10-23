@@ -12,8 +12,8 @@ export const bounds = selectorFamily({
     },
 });
 
-export const nonfiniteValues = selectorFamily({
-  key: "nonfiniteValues",
+export const nonfiniteCounts = selectorFamily({
+  key: "nonfiniteCounts",
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
@@ -39,7 +39,7 @@ export const nonfiniteValues = selectorFamily({
  */
 export type Nonfinite = "nan" | "ninf" | "inf" | "none";
 
-export const nonfiniteValue = selectorFamily<
+export const nonfiniteCount = selectorFamily<
   number,
   { extended: boolean; path: string; modal: boolean; key: Nonfinite }
 >({
@@ -47,7 +47,7 @@ export const nonfiniteValue = selectorFamily<
   get:
     ({ key, ...params }) =>
     ({ get }) =>
-      get(nonfiniteValues(params))[key],
+      get(nonfiniteCounts(params))[key],
 });
 
 export const boundedCount = selectorFamily<
@@ -58,7 +58,7 @@ export const boundedCount = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const nonfinites = Object.entries(get(nonfiniteValues(params))).reduce(
+      const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
         (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
         0
       );

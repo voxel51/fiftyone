@@ -294,6 +294,22 @@ export const field = selectorFamily<Field | null, string>({
     },
 });
 
+export const dbPath = selectorFamily({
+  key: "dbPath",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const fieldData = get(field(path));
+      if (!fieldData?.dbField) {
+        return path;
+      }
+
+      const keys = path.split(".");
+      keys[keys.length - 1] = fieldData.dbField;
+      return keys.join(".");
+    },
+});
+
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get:

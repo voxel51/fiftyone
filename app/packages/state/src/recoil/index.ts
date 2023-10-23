@@ -13,6 +13,7 @@ export * from "./lightning";
 export * from "./looker";
 export * from "./modal";
 export * from "./options";
+export * from "./pathData";
 export * from "./pathFilters";
 export * from "./relay";
 export * from "./schema";
