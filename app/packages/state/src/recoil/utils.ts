@@ -163,9 +163,7 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
     )
     .flat();
 
-export function useAssertedRecoilValue<T>(
-  recoilValue: RecoilValue<T>
-): NonNullable<T> {
+export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
   const value = useRecoilValue(recoilValue);
 
   if (!value) {
