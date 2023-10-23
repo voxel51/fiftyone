@@ -20,13 +20,18 @@ export const coloring = selector<Coloring>({
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
+    const defaultMaskTargetsWithColors = combineTargetsAndColors(
+      get(selectors.defaultTargets),
+      colorScheme.defaultMaskTargets
+    );
+
     return {
       seed,
       pool: colorScheme.colorPool,
       scale: [],
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
-      defaultMaskTargets: get(selectors.defaultTargets),
+      defaultMaskTargets: defaultMaskTargetsWithColors,
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
@@ -137,4 +142,16 @@ export const ensureColorScheme = (
         ? colorScheme.showSkeletons
         : appConfig?.showSkeletons,
   };
+};
+
+const combineTargetsAndColors = (targets, colors) => {
+  let is2D = typeof Number(Object.keys(targets)[0]) === "number";
+
+  // if 2D mask type, apply applicable colors based on index value
+  if (is2D) {
+    Object.entries(targets).forEach(([key, _]) => {
+      targets[key]["color"] = colors[Number(key)];
+    });
+  }
+  return targets;
 };

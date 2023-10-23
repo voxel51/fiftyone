@@ -152,12 +152,25 @@ class ValueColor:
 
 
 @dataclass
+class MaskColor:
+    color: str
+    idx: int
+
+
+@dataclass
+class ColorScale:
+    name: str
+    list: t.List[t.List[int, str]]
+
+
+@dataclass
 class CustomizeColor:
     path: str
     fieldColor: t.Optional[str] = None
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
-    maskTargets: t.Optional[t.Dict[str, str]] = None
+    maskTargets: t.Optional[t.List[MaskColor]] = None
+    colorScale: t.Optional[ColorScale] = None
 
 
 @dataclass
@@ -175,7 +188,8 @@ class ColorScheme:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
-    default_mask_targets: t.Optional[t.Dict[str, str]] = None
+    default_mask_targets: t.Optional[t.List[MaskColor]] = None
+    colorscale: t.Optional[ColorScale] = None
 
 
 @dataclass
@@ -194,9 +208,22 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
+        default_mask_targets = (
+            [
+                asdict(target)
+                for target in self.color_scheme.default_mask_targets
+            ]
+            if self.color_scheme.default_mask_targets
+            else None
+        )
         label_tags = (
             asdict(self.color_scheme.label_tags)
             if self.color_scheme.label_tags
+            else None
+        )
+        colorscale = (
+            asdict(self.color_scheme.colorscale)
+            if self.color_scheme.colorscale
             else None
         )
 
@@ -205,6 +232,8 @@ class SetColorScheme(Event):
             color_by=self.color_scheme.color_by,
             fields=fields,
             label_tags=label_tags,
+            colorscale=colorscale,
+            default_mask_targets=default_mask_targets,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,

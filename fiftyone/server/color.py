@@ -27,12 +27,25 @@ class ValueColor:
 
 
 @gql.type
+class MaskColor:
+    color: str
+    idx: int
+
+
+@gql.type
+class ColorScale:
+    name: str
+    list: t.List[t.List[int, str]]
+
+
+@gql.type
 class CustomizeColor:
     path: str
     valueColors: t.Optional[t.List[ValueColor]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
-    maskTargets: t.Optional[dict] = None
+    maskTargets: t.Optional[t.List[MaskColor]] = None
+    colorScale: t.Optional[ColorScale] = None
 
 
 @gql.type
@@ -58,7 +71,8 @@ class ColorScheme:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
-    default_mask_targets: t.Optional[dict] = None
+    default_mask_targets: t.Optional[t.List[MaskColor]] = None
+    colorscale: t.Optional[ColorScale] = None
 
 
 @gql.input
@@ -68,12 +82,24 @@ class ValueColorInput:
 
 
 @gql.input
+class MaskColorInput:
+    color: str
+    idx: int
+
+
+@gql.input
+class ColorScaleInput:
+    name: str
+    list: t.List[t.List[int, str]]
+
+
+@gql.input
 class CustomizeColorInput:
     path: str
     valueColors: t.Optional[t.List[ValueColorInput]] = None
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
-    maskTargets: t.Optional[dict] = None
+    maskTargets: t.Optional[t.List[MaskColorInput]] = None
 
 
 @gql.input
@@ -91,7 +117,8 @@ class ColorSchemeInput:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
-    default_mask_targets: t.Optional[dict] = None
+    default_mask_targets: t.Optional[t.List[MaskColorInput]] = None
+    colorscale: t.Optional[ColorScaleInput] = None
 
 
 @gql.type
@@ -135,7 +162,14 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         multicolor_keypoints=color_scheme.multicolor_keypoints,
         opacity=color_scheme.opacity,
         show_skeletons=color_scheme.show_skeletons,
-        default_mask_targets=color_scheme.default_mask_targets,
+        colorscale=asdict(color_scheme.colorscale)
+        if color_scheme.colorscale
+        else {},
+        default_mask_targets=[
+            asdict(f) for f in color_scheme.default_mask_targets
+        ]
+        if color_scheme.default_mask_targets
+        else [],
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],
