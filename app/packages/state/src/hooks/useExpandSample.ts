@@ -107,7 +107,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
       async (next, sampleId, itemIndexMap) => {
         const selected = await snapshot.getPromise(atoms.selectedSamples);
         const isCtrlOrMetaDown = await snapshot.getPromise(
-          atoms.ctrlOrMetdaKeyDown
+          atoms.ctrlOrMetaKeyDown
         );
         if (isCtrlOrMetaDown) {
           const newSelected = new Set([...selected]);

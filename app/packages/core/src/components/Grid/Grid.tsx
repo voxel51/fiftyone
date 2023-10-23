@@ -155,7 +155,7 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  const setCtrlMetaDown = useSetRecoilState(fos.ctrlOrMetdaKeyDown);
+  const setCtrlMetaDown = useSetRecoilState(fos.ctrlOrMetaKeyDown);
   const keydownEventHandler = useRecoilCallback(
     ({ reset }) =>
       async (event: KeyboardEvent) => {

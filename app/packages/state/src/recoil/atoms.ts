@@ -245,8 +245,8 @@ export const savedLookerOptions = atom({
   default: {},
 });
 
-export const ctrlOrMetdaKeyDown = atom({
-  key: "ctrlOrMetdaKeyDown",
+export const ctrlOrMetaKeyDown = atom({
+  key: "ctrlOrMetaKeyDown",
   default: false,
 });
 
