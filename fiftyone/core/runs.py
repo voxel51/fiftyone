@@ -63,12 +63,8 @@ class BaseRunConfig(Config):
     """
 
     def __init__(self, **kwargs):
-        if kwargs:
-            logger.warning(
-                "Ignoring unsupported parameters %s for %s",
-                set(kwargs.keys()),
-                type(self),
-            )
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @property
     def type(self):
@@ -134,7 +130,7 @@ class BaseRunConfig(Config):
         try:
             config_cls = etau.get_class(config_cls)
         except:
-            logger.warning(
+            logger.debug(
                 "Unable to load '%s'; falling back to base class", config_cls
             )
             config_cls = cls.base_config_cls(type)
@@ -192,7 +188,7 @@ class BaseRunConfig(Config):
         if type == "uniqueness":
             return fbu.UniquenessConfig
 
-        logger.warning("Unrecognized run type '%s'", type)
+        logger.debug("Unrecognized run type '%s'", type)
         return RunConfig
 
 
@@ -965,7 +961,7 @@ class BaseRunResults(etas.Serializable):
         try:
             run_results_cls = etau.get_class(run_results_cls)
         except:
-            logger.warning(
+            logger.debug(
                 "Unable to load '%s'; falling back to base class",
                 run_results_cls,
             )
@@ -1037,7 +1033,7 @@ class BaseRunResults(etas.Serializable):
         if type == "uniqueness":
             return None
 
-        logger.warning("Unrecognized run type '%s'", type)
+        logger.debug("Unrecognized run type '%s'", type)
         return RunResults
 
 
