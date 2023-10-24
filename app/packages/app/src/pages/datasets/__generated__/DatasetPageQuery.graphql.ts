@@ -20,6 +20,14 @@ export type DatasetPageQuery$variables = {
   search?: string | null;
   view: Array;
 };
+export type Colorscale = {
+  readonly name: string | null;
+  readonly list: ReadonlyArray<tuple<number, string>> | null;
+} | null;
+export type MaskColors = {
+  readonly idx: number;
+  readonly color: string;
+}
 export type DatasetPageQuery$data = {
   readonly config: {
     readonly colorBy: ColorBy;
@@ -40,7 +48,10 @@ export type DatasetPageQuery$data = {
             readonly color: string;
             readonly value: string;
           }> | null;
+          readonly maskTargetColors: ReadonlyArray<MaskColors> | null;
+          readonly colorscale: Colorscale | null;
         }> | null;
+        readonly defaultMaskTargetsColors: ReadonlyArray<MaskColors> | null;
         readonly id: string;
         readonly labelTags: {
           readonly fieldColor: string | null;
@@ -49,6 +60,7 @@ export type DatasetPageQuery$data = {
             readonly value: string;
           }> | null;
         } | null;
+        readonly colorscale: Colorscale | null;
         readonly multicolorKeypoints: boolean | null;
         readonly opacity: number | null;
         readonly showSkeletons: boolean | null;
