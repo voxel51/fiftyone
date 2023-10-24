@@ -357,6 +357,7 @@ const SaveFilters = () => {
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         const selected = await snapshot.getPromise(fos.selectedSamples);
+
         if (loading) {
           return;
         }

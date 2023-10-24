@@ -3,7 +3,7 @@ import { freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { stringifyObj, useDeferrer, useExpandSample } from "@fiftyone/state";
 import React, { useEffect, useLayoutEffect, useRef } from "react";
-import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { v4 as uuid } from "uuid";
 import useFlashlightPager from "../../useFlashlightPager";
 import { flashlightLooker } from "./Grid.module.css";
@@ -13,8 +13,6 @@ import {
   rowAspectRatioThreshold,
 } from "./recoil";
 import useResize from "./useResize";
-
-const CONTROL_KEYS = ["Meta", "Control"];
 
 const Grid: React.FC<{}> = () => {
   const [id] = React.useState(() => uuid());
@@ -28,8 +26,6 @@ const Grid: React.FC<{}> = () => {
   const selected = useRecoilValue(fos.selectedSamples);
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
-
-  const setSelectedSamples = fos.useSetSelected();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
   const { page, reset } = useFlashlightPager(
@@ -155,34 +151,22 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  const setCtrlMetaDown = useSetRecoilState(fos.ctrlOrMetaKeyDown);
   const keydownEventHandler = useRecoilCallback(
     ({ reset }) =>
       async (event: KeyboardEvent) => {
-        if (CONTROL_KEYS.indexOf(event.key) !== -1 && !isModalOpen) {
-          setCtrlMetaDown(true);
+        if ((event.ctrlKey || event.metaKey) && !isModalOpen) {
           return;
         }
+
         if (event.key !== "Escape") {
           return;
         }
 
         if (!isModalOpen) {
           reset(fos.selectedSamples);
-          setSelectedSamples(new Set());
         }
       },
-    [setSelectedSamples, isModalOpen]
-  );
-
-  const keyupEventHandler = useRecoilCallback(
-    () => async (event: KeyboardEvent) => {
-      if (CONTROL_KEYS.indexOf(event.key) !== -1 && !isModalOpen) {
-        setCtrlMetaDown(false);
-        return;
-      }
-    },
-    [setSelectedSamples, isModalOpen]
+    [isModalOpen]
   );
 
   useEffect(() => {
@@ -190,18 +174,15 @@ const Grid: React.FC<{}> = () => {
     setTimeout(() => {
       if (!isModalOpen) {
         document.addEventListener("keydown", keydownEventHandler);
-        document.addEventListener("keyup", keyupEventHandler);
       } else {
         document.removeEventListener("keydown", keydownEventHandler);
-        document.removeEventListener("keyup", keyupEventHandler);
       }
     }, 0);
 
     return () => {
       document.removeEventListener("keydown", keydownEventHandler);
-      document.removeEventListener("keyup", keyupEventHandler);
     };
-  }, [isModalOpen, keyupEventHandler, keydownEventHandler]);
+  }, [isModalOpen, keydownEventHandler]);
 
   useEffect(() => {
     init();

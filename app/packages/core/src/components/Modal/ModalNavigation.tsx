@@ -5,8 +5,7 @@ import {
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useRef } from "react";
 import {
-  useRecoilSnapshot,
-  useRecoilState,
+  useRecoilCallback,
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
@@ -48,9 +47,6 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   if (countLoadable.state === "hasValue") {
     count.current = countLoadable.contents;
   }
-  const current = useRecoilValue(fos.currentModalSample);
-  const [selected, setSelected] = useRecoilState(fos.selectedSamples);
-
   const index = useRecoilValue(fos.modalSampleIndex);
   const setModal = fos.useSetExpandedSample();
 
@@ -64,35 +60,39 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     setModal((i) => i - 1);
   }, [onNavigate, setModal]);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
-        }
-      }
-      if (e.key === "x") {
-        const newSelected = new Set([...selected]);
-
-        if (current) {
-          if (newSelected.has(current.id)) {
-            newSelected.delete(current.id);
-          } else {
-            newSelected.add(current.id);
+  const keyboardHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (e: KeyboardEvent) => {
+        const active = document.activeElement;
+        if (active?.tagName === "INPUT") {
+          if ((active as HTMLInputElement).type === "text") {
+            return;
           }
         }
-        setSelected(newSelected);
-      } else if (e.key === "ArrowLeft") {
-        navigatePrevious();
-      } else if (e.key === "ArrowRight") {
-        navigateNext();
-      } else if (e.key === "c") {
-        setIsNavigationHidden((prev) => !prev);
-      }
-      // note: don't stop event propagation here
-    },
-    [current, navigateNext, navigatePrevious, selected, setSelected]
+        const current = await snapshot.getPromise(fos.currentModalSample);
+        if (e.key === "x") {
+          set(fos.selectedSamples, (selected) => {
+            const newSelected = new Set([...selected]);
+            if (current) {
+              if (newSelected.has(current.id)) {
+                newSelected.delete(current.id);
+              } else {
+                newSelected.add(current.id);
+              }
+            }
+
+            return newSelected;
+          });
+        } else if (e.key === "ArrowLeft") {
+          navigatePrevious();
+        } else if (e.key === "ArrowRight") {
+          navigateNext();
+        } else if (e.key === "c") {
+          setIsNavigationHidden((prev) => !prev);
+        }
+        // note: don't stop event propagation here
+      },
+    [navigateNext, navigatePrevious]
   );
 
   fos.useEventHandler(document, "keydown", keyboardHandler);

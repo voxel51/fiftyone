@@ -5,8 +5,6 @@ import {
   CallbackInterface,
   RecoilState,
   useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
   useSetRecoilState,
 } from "recoil";
 import * as atoms from "../recoil/atoms";
@@ -20,7 +18,6 @@ import { getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
-import useSetSelected from "./useSetSelected";
 
 const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
   const paths = await snapshot.getPromise(
@@ -104,20 +101,16 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     void
   >(
     ({ snapshot }) =>
-      async (next, sampleId, itemIndexMap) => {
+      async (next, sampleId, itemIndexMap, event) => {
         const selected = await snapshot.getPromise(atoms.selectedSamples);
-        const isCtrlOrMetaDown = await snapshot.getPromise(
-          atoms.ctrlOrMetaKeyDown
-        );
-        if (isCtrlOrMetaDown) {
+        if (event.ctrlKey || event.metaKey) {
           const newSelected = new Set([...selected]);
-          if (sampleId) {
-            if (newSelected.has(sampleId)) {
-              newSelected.delete(sampleId);
-            } else {
-              newSelected.add(sampleId);
-            }
+          if (newSelected.has(sampleId)) {
+            newSelected.delete(sampleId);
+          } else {
+            newSelected.add(sampleId);
           }
+
           setSelectedSamples(newSelected);
           return;
         }
