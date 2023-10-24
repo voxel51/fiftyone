@@ -18,5 +18,12 @@ export default r(graphql`
         value
       }
     }
+    labelTags {
+      fieldColor
+      valueColors {
+        value
+        color
+      }
+    }
   }
 `);

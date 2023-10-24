@@ -1,5 +1,4 @@
-import { ErrorBoundary, Loading, ThemeProvider } from "@fiftyone/components";
-import { usePlugins } from "@fiftyone/plugins";
+import { ErrorBoundary, ThemeProvider } from "@fiftyone/components";
 import { BeforeScreenshotContext, screenshotCallbacks } from "@fiftyone/state";
 import { SnackbarProvider } from "notistack";
 import React from "react";
@@ -11,10 +10,6 @@ import { useRouter } from "./routing";
 
 const App: React.FC = () => {
   const { context, environment } = useRouter();
-
-  const plugins = usePlugins();
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
-  if (plugins.hasError) return <Loading>Plugin error...</Loading>;
 
   return <Network environment={environment} context={context} />;
 };

@@ -54,9 +54,8 @@ def download_activitynet_split(
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
             relevant when a ``source_dir`` is provided
-        num_workers (None): the number of threads to use when downloading
-            individual video. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual videos
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling

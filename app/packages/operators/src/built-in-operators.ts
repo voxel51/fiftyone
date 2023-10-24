@@ -780,9 +780,9 @@ export function registerBuiltInOperators() {
   }
 }
 
-export async function loadOperators() {
+export async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
-  await loadOperatorsFromServer();
+  await loadOperatorsFromServer(datasetName);
 }
 
 function getLayout(layout) {

@@ -17,6 +17,7 @@ import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import skeletonFilter from "./skeletonFilter";
 import * as viewAtoms from "./view";
+import { State } from "./types";
 
 type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
@@ -116,9 +117,9 @@ export const useLookerOptions = (
 };
 
 const getActiveLabelTags = (
-  isLabelTagActive,
-  activeFilter,
-  activeVisibility
+  isLabelTagActive: boolean,
+  activeFilter: State.Filters,
+  activeVisibility: State.Filters
 ) => {
   if (!isLabelTagActive) return null;
   const labelTagFilters = activeFilter["_label_tags"]?.values ?? [];

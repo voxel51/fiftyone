@@ -128,8 +128,8 @@ export const ensureColorScheme = (
   return {
     colorPool: colorScheme.colorPool || appConfig?.colorPool,
     colorBy: colorScheme.colorBy || appConfig?.colorBy,
-    fields: colorScheme.fields as ColorSchemeInput["fields"],
-    labelTags: colorScheme.labelTags as ColorSchemeInput["labelTags"],
+    fields: (colorScheme.fields as ColorSchemeInput["fields"]) || [],
+    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) || {},
     defaultMaskTargets: colorScheme.defaultMaskTargets || {},
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"

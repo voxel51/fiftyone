@@ -19,9 +19,10 @@ export type ColorSchemeInput = {
   showSkeletons?: boolean | null;
   defaultMaskTargets?: Record<string, string> | null;
 };
-
-export type LabelTagColorInput = {
+export type CustomizeColorInput = {
+  colorByAttribute?: string | null;
   fieldColor?: string | null;
+  path: string;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export interface CustomizeColorInput extends LabelTagColorInput {
@@ -32,6 +33,10 @@ export interface CustomizeColorInput extends LabelTagColorInput {
 export type ValueColorInput = {
   color: string;
   value: string;
+};
+export type LabelTagColorInput = {
+  fieldColor?: string | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

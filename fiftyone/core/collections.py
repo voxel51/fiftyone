@@ -2141,8 +2141,8 @@ class SampleCollection(object):
         .. note::
 
             This method is appropriate when you have the IDs of the labels you
-            wish to modify. See :meth`set_values` and :meth:`set_field` if your
-            updates are not keyed by label ID.
+            wish to modify. See :meth:`set_values` and :meth:`set_field` if
+            your updates are not keyed by label ID.
 
         Examples::
 
@@ -2692,8 +2692,7 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
-            num_workers (None): the number of processes to use. By default,
-                ``multiprocessing.cpu_count()`` is used
+            num_workers (None): a suggested number of processes to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
         """

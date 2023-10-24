@@ -26,7 +26,7 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
       showSkeletons: colorScheme?.showSkeletons,
       fields: validateJSONSetting(colorScheme.fields || []),
-      labelTags: validateLabelTags(colorScheme?.labelTags),
+      labelTags: validateLabelTags(colorScheme?.labelTags || {}),
     };
   }, [colorScheme]);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -82,12 +82,15 @@ const JSONViewer: React.FC = () => {
     const validatedLabelTags = {
       fieldColor: isValidColor(data?.labelTags?.fieldColor)
         ? colorString.to.hex(
-            colorString.get(data?.labelTags?.fieldColor)!.value
+            colorString.get(data?.labelTags?.fieldColor as string)!.value
           )
         : undefined,
       valueColors: data?.labelTags?.valueColors
-        ?.filter((c) => isValidColor(c))
-        .map((c) => colorString.to.hex(colorString.get(c)!.value)),
+        ?.filter((pair) => isValidColor(pair.color))
+        .map((pair) => ({
+          color: colorString.to.hex(colorString.get(pair.color)!.value),
+          value: pair.value,
+        })),
     };
 
     setData({

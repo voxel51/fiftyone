@@ -50,6 +50,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
   const { label } = view;
   const { icon, darkIcon, lightIcon, prompt = true } = view?.options || {};
   const { execute } = useOperatorExecutor(uri);
+  const canExecute = operator?.config?.canExecute;
 
   const showIcon =
     isPrimitiveString(icon) ||
@@ -64,6 +65,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
       darkIcon={darkIcon}
       lightIcon={lightIcon}
       Fallback={Extension}
+      canExecute={canExecute}
     />
   );
 
