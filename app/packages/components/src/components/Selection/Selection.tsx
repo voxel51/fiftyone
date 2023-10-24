@@ -83,7 +83,7 @@ function Selection(props: SelectionProps) {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const ref = useRef();
-  // useOutsideClick(ref, () => setIsOpen(false)); todo: fix
+  useOutsideClick(ref, () => setIsOpen(false));
 
   const {
     placeholder: searchPlaceholder,
@@ -129,7 +129,7 @@ function Selection(props: SelectionProps) {
         value={selectedId}
         defaultValue={selectedId}
         listboxOpen={isOpen}
-        componentsProps={{
+        slotProps={{
           startDecorator: {
             sx: {
               margin: 0,
@@ -142,6 +142,7 @@ function Selection(props: SelectionProps) {
             },
           },
           listbox: {
+            disablePortal: true,
             sx: {
               "--List-decorator-size": "24px",
               padding: "0px",
@@ -190,10 +191,9 @@ function Selection(props: SelectionProps) {
               <IconButton
                 data-cy={`${id}-btn-selection-clear`}
                 size="small"
-                onMouseDown={(e) => {
+                onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                }}
-                onClick={() => {
                   setIsOpen(false);
                   onClear();
                 }}
