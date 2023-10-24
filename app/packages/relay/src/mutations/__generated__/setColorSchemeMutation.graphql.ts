@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<29fc0d6fa3ef42dbf89424fb62117722>>
+ * @generated SignedSource<<4c8f9e68b9cc242ada69f8e1bfa078b9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,31 +12,36 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
+  colorscale?: ColorScaleInput | null;
+  defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
   labelTags?: LabelTagColorInput | null;
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
-  defaultMaskTargets?: Record<string, string> | null;
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;
   fieldColor?: string | null;
+  maskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
   path: string;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
-};
-export interface CustomizeColorInput extends LabelTagColorInput {
-  colorByAttribute?: string | null;
-  path: string;
-  maskTargets?: Record<string, string>| null;
 };
 export type ValueColorInput = {
   color: string;
   value: string;
 };
+export type MaskColorInput = {
+  color: string;
+  idx: number;
+};
 export type LabelTagColorInput = {
   fieldColor?: string | null;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
+};
+export type ColorScaleInput = {
+  list: ReadonlyArray<ReadonlyArray<number>>;
+  name: string;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

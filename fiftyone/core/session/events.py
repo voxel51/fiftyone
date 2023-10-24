@@ -170,7 +170,7 @@ class CustomizeColor:
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
     maskTargetsColors: t.Optional[t.List[MaskColor]] = None
-    colorScale: t.Optional[ColorScale] = None
+    colorscale: t.Optional[ColorScale] = None
 
 
 @dataclass

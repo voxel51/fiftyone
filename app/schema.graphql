@@ -168,7 +168,7 @@ type CustomizeColor {
   colorByAttribute: String
   fieldColor: String
   maskTargetsColors: [MaskColor!]
-  colorScale: Colorscale
+  colorscale: Colorscale
 }
 
 input CustomizeColorInput {

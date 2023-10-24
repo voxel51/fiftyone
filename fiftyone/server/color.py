@@ -45,7 +45,7 @@ class CustomizeColor:
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
     maskTargetsColors: t.Optional[t.List[MaskColor]] = None
-    colorScale: t.Optional[Colorscale] = None
+    colorscale: t.Optional[Colorscale] = None
 
 
 @gql.type
