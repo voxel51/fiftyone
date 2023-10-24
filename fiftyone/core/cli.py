@@ -2751,6 +2751,7 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "fail", DelegatedFailCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
 
     @staticmethod
@@ -2969,6 +2970,49 @@ class DelegatedInfoCommand(Command):
         dos = food.DelegatedOperationService()
         op = dos.get(ObjectId(args.id))
         fo.pprint(op._doc)
+
+
+class DelegatedFailCommand(Command):
+    """Manually mark delegated operations in QUEUED or RUNNING state as failed.
+
+    Examples::
+
+        # Manually mark the specified operation(s) as FAILED
+        fiftyone delegated fail <id1> <id2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+            help="an operation ID or list of operation IDs",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if op.run_state in (
+                fooe.ExecutionRunState.QUEUED,
+                fooe.ExecutionRunState.RUNNING,
+            ):
+                print(
+                    "Marking operation %s in state %s as failed"
+                    % (id, op.run_state.upper())
+                )
+                dos.set_failed(ObjectId(id))
+            else:
+                print(
+                    "Cannot mark operation %s in state %s as failed"
+                    % (id, op.run_state.upper())
+                )
 
 
 class DelegatedCleanupCommand(Command):
