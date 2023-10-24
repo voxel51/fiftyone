@@ -22,6 +22,7 @@ import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -30,7 +31,7 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 
 
@@ -198,6 +199,13 @@ class Mutation(SetColorScheme):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None,
             )
 
         result_view = _build_result_view(result_view, form)
@@ -258,6 +266,11 @@ class Mutation(SetColorScheme):
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(slice=form.slice, slices=[form.slice])
+            )
+            if form.slice
+            else None,
         )
 
         result_view = _build_result_view(dataset_view, form)
@@ -421,9 +434,6 @@ class Mutation(SetColorScheme):
 
 
 def _build_result_view(view, form):
-    if form.slice:
-        view = view.select_group_slices([form.slice])
-
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 

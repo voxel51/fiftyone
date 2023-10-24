@@ -1,4 +1,5 @@
 import { Loading } from "@fiftyone/components";
+import { usePlugins } from "@fiftyone/plugins";
 import {
   setDataset,
   setDatasetMutation,
@@ -27,6 +28,14 @@ import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
+
+const Plugins = ({ children }: { children: React.ReactNode }) => {
+  const plugins = usePlugins();
+  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+  if (plugins.hasError) return <Loading>Plugin error...</Loading>;
+
+  return <>{children}</>;
+};
 
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
@@ -78,7 +87,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             });
           }}
         >
-          {children}
+          <Plugins>{children}</Plugins>
         </Writer>
       )}
     </SessionContext.Provider>

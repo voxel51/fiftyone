@@ -56,7 +56,7 @@ export class ValidationContext {
         ),
         true
       );
-    } else if (property.required && valueIsNullish) {
+    } else if (!existsOrNonRequired(property, value)) {
       this.addError(new ValidationError("Required property", property, path));
     } else if (type instanceof Enum && !valueIsNullish) {
       this.validateEnum(path, property, value);
@@ -132,7 +132,37 @@ export class ValidationContext {
         new ValidationError("Invalid value type", property, path)
       );
     }
+
+    if (expectedType === "number") {
+      const { min, max } = property.type;
+      if (isNumber(min) && value < min) {
+        return this.addError(
+          new ValidationError(
+            `Value must be greater than ${min}`,
+            property,
+            path
+          )
+        );
+      }
+      if (isNumber(max) && value > max) {
+        return this.addError(
+          new ValidationError(`Value must be less than ${max}`, property, path)
+        );
+      }
+    }
   }
+}
+
+function existsOrNonRequired(property, value) {
+  if (!property.required) return true;
+  const expectedType = getOperatorTypeName(property.type);
+  if (expectedType === "string" && !property.type.allowEmpty && value === "") {
+    return false;
+  }
+  if (expectedType === "number" && isNaN(value)) {
+    return false;
+  }
+  return !isNullish(value);
 }
 
 function getPath(prefix, path) {

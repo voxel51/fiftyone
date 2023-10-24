@@ -726,7 +726,7 @@ to:
 
 -   Install
     `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
--   Install the
+-   Install a
     `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
 -   Ensure that your :ref:`plugins directory <plugins-directory>` is available,
     either by installing them on the same machine or by making them available
