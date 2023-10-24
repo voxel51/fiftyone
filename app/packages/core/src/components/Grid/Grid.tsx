@@ -151,20 +151,15 @@ const Grid: React.FC<{}> = () => {
   );
   const isTagging = taggingLabels || taggingSamples;
 
-  const keydownEventHandler = useRecoilCallback(
-    ({ reset }) =>
+  const escEventHandler = useRecoilCallback(
+    ({ snapshot, reset }) =>
       async (event: KeyboardEvent) => {
-        if ((event.ctrlKey || event.metaKey) && !isModalOpen) {
-          return;
-        }
-
         if (event.key !== "Escape") {
           return;
         }
 
-        if (!isModalOpen) {
-          reset(fos.selectedSamples);
-        }
+        const isModalOpen = await snapshot.getPromise(fos.isModalActive);
+        isModalOpen && reset(fos.selectedSamples);
       },
     [isModalOpen]
   );
@@ -173,16 +168,16 @@ const Grid: React.FC<{}> = () => {
     // this deferred execution is a hack to address problem caused by a race condition in `isModalOpen`
     setTimeout(() => {
       if (!isModalOpen) {
-        document.addEventListener("keydown", keydownEventHandler);
+        document.addEventListener("keydown", escEventHandler);
       } else {
-        document.removeEventListener("keydown", keydownEventHandler);
+        document.removeEventListener("keydown", escEventHandler);
       }
     }, 0);
 
     return () => {
-      document.removeEventListener("keydown", keydownEventHandler);
+      document.removeEventListener("keydown", escEventHandler);
     };
-  }, [isModalOpen, keydownEventHandler]);
+  }, [isModalOpen, escEventHandler]);
 
   useEffect(() => {
     init();

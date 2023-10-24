@@ -1,12 +1,7 @@
 import { FlashlightConfig } from "@fiftyone/flashlight";
 import { get } from "lodash";
 import { useRelayEnvironment } from "react-relay";
-import {
-  CallbackInterface,
-  RecoilState,
-  useRecoilCallback,
-  useSetRecoilState,
-} from "recoil";
+import { CallbackInterface, RecoilState, useRecoilCallback } from "recoil";
 import * as atoms from "../recoil/atoms";
 import * as filterAtoms from "../recoil/filters";
 import * as groupAtoms from "../recoil/groups";
@@ -37,7 +32,6 @@ const setModalFilters = async ({ snapshot, set }: CallbackInterface) => {
 export default <T extends Lookers>(store: LookerStore<T>) => {
   const environment = useRelayEnvironment();
   const setExpandedSample = useSetExpandedSample();
-  const setSelectedSamples = useSetRecoilState(atoms.selectedSamples);
 
   const setModalState = useRecoilCallback(
     (cbInterface) => async (navigation: modalAtoms.ModalNavigation) => {
@@ -100,18 +94,19 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
     void
   >(
-    ({ snapshot }) =>
+    ({ snapshot, set }) =>
       async (next, sampleId, itemIndexMap, event) => {
-        const selected = await snapshot.getPromise(atoms.selectedSamples);
         if (event.ctrlKey || event.metaKey) {
-          const newSelected = new Set([...selected]);
-          if (newSelected.has(sampleId)) {
-            newSelected.delete(sampleId);
-          } else {
-            newSelected.add(sampleId);
-          }
+          set(atoms.selectedSamples, (selected) => {
+            const newSelected = new Set([...selected]);
+            if (newSelected.has(sampleId)) {
+              newSelected.delete(sampleId);
+            } else {
+              newSelected.add(sampleId);
+            }
 
-          setSelectedSamples(newSelected);
+            return newSelected;
+          });
           return;
         }
         const clickedIndex = itemIndexMap[sampleId];
@@ -154,6 +149,6 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
 
         setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
       },
-    [setExpandedSample, setModalState, store, setSelectedSamples]
+    [setExpandedSample, setModalState, store]
   );
 };

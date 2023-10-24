@@ -69,8 +69,8 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
             return;
           }
         }
-        const current = await snapshot.getPromise(fos.currentModalSample);
         if (e.key === "x") {
+          const current = await snapshot.getPromise(fos.currentModalSample);
           set(fos.selectedSamples, (selected) => {
             const newSelected = new Set([...selected]);
             if (current) {
