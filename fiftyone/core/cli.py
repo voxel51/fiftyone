@@ -18,6 +18,8 @@ import textwrap
 
 import argcomplete
 from bson import ObjectId
+import humanize
+import pytz
 from tabulate import tabulate
 import webbrowser
 
@@ -556,7 +558,11 @@ def _format_cell(cell):
         return "???"
 
     if isinstance(cell, datetime):
-        return cell.replace(microsecond=0)
+        # return cell.replace(microsecond=0)
+
+        if cell.tzinfo is None:
+            cell = cell.replace(tzinfo=pytz.utc).astimezone()
+        return humanize.naturaltime(cell)
 
     if etau.is_container(cell):
         return ",".join(cell)
@@ -2752,6 +2758,7 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
         _register_command(subparsers, "fail", DelegatedFailCommand)
+        _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
 
     @staticmethod
@@ -2851,7 +2858,7 @@ class DelegatedListCommand(Command):
         )
         parser.add_argument(
             "--sort-by",
-            default="queued_at",
+            default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
                 "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
@@ -2860,7 +2867,7 @@ class DelegatedListCommand(Command):
         parser.add_argument(
             "--reverse",
             action="store_true",
-            default=None,
+            default=False,
             help="whether to sort in reverse order",
         )
         parser.add_argument(
@@ -2917,9 +2924,6 @@ def _parse_sort_by(sort_by):
 def _parse_reverse(reverse):
     from fiftyone.factory import SortDirection
 
-    if reverse is None:
-        return None
-
     return SortDirection.ASCENDING if reverse else SortDirection.DESCENDING
 
 
@@ -2973,7 +2977,7 @@ class DelegatedInfoCommand(Command):
 
 
 class DelegatedFailCommand(Command):
-    """Manually mark delegated operations in QUEUED or RUNNING state as failed.
+    """Manually mark delegated operations as failed.
 
     Examples::
 
@@ -3011,6 +3015,43 @@ class DelegatedFailCommand(Command):
             else:
                 print(
                     "Cannot mark operation %s in state %s as failed"
+                    % (id, op.run_state.upper())
+                )
+
+
+class DelegatedDeleteCommand(Command):
+    """Delete delegated operations.
+
+    Examples::
+
+        # Delete the specified operation(s)
+        fiftyone delegated delete <id1> <id2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+            help="an operation ID or list of operation IDs",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if op.run_state != fooe.ExecutionRunState.RUNNING:
+                print("Deleting operation %s" % id)
+                dos.delete_operation(ObjectId(id))
+            else:
+                print(
+                    "Cannot delete operation %s in state %s"
                     % (id, op.run_state.upper())
                 )
 
