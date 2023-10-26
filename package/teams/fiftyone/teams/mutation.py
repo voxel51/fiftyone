@@ -22,6 +22,7 @@ from fiftyone.server.data import Info
 import fiftyone.core.dataset as fod
 
 import fiftyone.server.mutation as fosm
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import BSONArray
 
@@ -73,7 +74,6 @@ class Mutation(fosm.Mutation):
         form: t.Optional[fosm.StateForm],
         info: Info,
     ) -> fosm.ViewResponse:
-
         result_view = None
         if saved_view_slug is not None:
             try:
@@ -95,6 +95,13 @@ class Mutation(fosm.Mutation):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None,
             )
 
         result_view = fosm._build_result_view(result_view, form)
