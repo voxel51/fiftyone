@@ -48,6 +48,18 @@ export class BufferManager {
     this.buffers = stack;
   }
 
+  /**
+   * Checks if this interval is contained in one of the buffer ranges
+   */
+  containsRange(range: BufferRange): boolean {
+    for (const buffer of this.buffers) {
+      if (buffer[0] <= range[0] && buffer[1] >= range[1]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public reset() {
     this.buffers = [];
   }

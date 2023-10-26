@@ -59,4 +59,15 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers[0][0]).toBe(1);
     expect(mergedBuffers[0][1]).toBe(7);
   });
+
+  test("hasRange method - range exists", async () => {
+    bufferManager.addBufferRangeToBuffer([1, 4]);
+    bufferManager.addBufferRangeToBuffer([5, 15]);
+
+    expect(bufferManager.containsRange([2, 3])).toBe(true);
+    expect(bufferManager.containsRange([5, 10])).toBe(true);
+    expect(bufferManager.containsRange([10, 15])).toBe(true);
+    expect(bufferManager.containsRange([12, 17])).toBe(false);
+    expect(bufferManager.containsRange([20, 25])).toBe(false);
+  });
 });

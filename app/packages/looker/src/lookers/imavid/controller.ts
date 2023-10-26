@@ -21,9 +21,10 @@ export class ImaVidFramesController {
     }
   ) {}
 
-  // private get orderBy() {
-  //   return this.config.orderBy;
-  // }
+  public get currentFrameRate() {
+    return this.frameRate;
+  }
+
   private get environment() {
     return this.config.environment;
   }
