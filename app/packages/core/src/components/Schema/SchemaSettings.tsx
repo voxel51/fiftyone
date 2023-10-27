@@ -3,12 +3,12 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import { Fragment, useCallback, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
+import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
 import { SchemaSelection } from "./SchemaSelection";
-import { useResetRecoilState } from "recoil";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -221,17 +221,14 @@ const SchemaSettings = () => {
               onClick={() => {
                 resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
-                const stage = {
-                  cls: EXCLUDE_FIELDS_STAGE,
-                  kwargs: {
-                    meta_filter: searchMetaFilter,
-                    field_names: initialFieldNames,
-                    allow_missing: true,
-                  },
-                };
 
                 try {
-                  setFieldVisibilityStage(stage);
+                  setFieldVisibilityStage({
+                    cls: EXCLUDE_FIELDS_STAGE,
+                    kwargs: {
+                      field_names: initialFieldNames,
+                    },
+                  });
                 } catch (e) {
                   console.error("error setting field visibility", e);
                 } finally {
