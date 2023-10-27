@@ -24,7 +24,6 @@ import {
   PickerWrapper,
   SectionWrapper,
 } from "./ShareStyledDiv";
-import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
@@ -293,11 +292,6 @@ const FieldSetting = ({ path }: { path: string }) => {
                   </div>
                 </>
               )}
-
-              <AttributeColorSetting
-                style={FieldCHILD_STYLE}
-                useLabelColors={state.useLabelColors}
-              />
             </SectionWrapper>
           </form>
         </div>
