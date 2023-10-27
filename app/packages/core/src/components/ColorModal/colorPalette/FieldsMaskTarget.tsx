@@ -22,7 +22,7 @@ const FieldsMaskTargets: React.FC = () => {
     () => colorScheme.fields?.find((s) => s.path == activePath),
     [activePath, colorScheme.fields]
   );
-  const values = useMemo(() => setting?.maskTargetColors ?? [], [setting]);
+  const values = useMemo(() => setting?.maskTargetsColors ?? [], [setting]);
   const defaultValue = {
     idx: null,
     color: getRandomColorFromPool(colorScheme.colorPool),
@@ -32,7 +32,7 @@ const FieldsMaskTargets: React.FC = () => {
     [activePath]
   );
   const shouldShowAddButton = Boolean(
-    setting?.maskTargetColors && setting.maskTargetColors.length > 0
+    setting?.maskTargetsColors && setting.maskTargetsColors.length > 0
   );
 
   const onSyncUpdate = useCallback(
@@ -41,7 +41,7 @@ const FieldsMaskTargets: React.FC = () => {
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
         if (idx > -1) {
-          newSetting[idx].maskTargetColors = copy;
+          newSetting[idx].maskTargetsColors = copy;
           setColorScheme({ ...colorScheme, fields: newSetting });
         }
       }
@@ -54,7 +54,7 @@ const FieldsMaskTargets: React.FC = () => {
       const copy = cloneDeep(colorScheme.fields);
       const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
       if (idx > -1) {
-        copy[idx].maskTargetColors = [defaultValue];
+        copy[idx].maskTargetsColors = [defaultValue];
         setColorScheme({ ...colorScheme, fields: copy });
       }
     }

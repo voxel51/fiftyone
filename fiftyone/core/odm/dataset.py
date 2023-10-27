@@ -179,7 +179,7 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
-                    "maskTargetColors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
+                    "maskTargetsColors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
                     "colorscale": {
                           "list": [
                             [0.00, "rgb(166,206,227)"],
@@ -229,7 +229,7 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
-            -   `maskTargetColors` (optional): a list of dicts specifying index and color for 2D masks
+            -   `maskTargetsColors` (optional): a list of dicts specifying index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
         colorscale (None): a dict of ``colorscale`` with either name or list provided. If both are provided, we will use the name
             -   `name` (optional): the string name of any colorscale recognized by plotly. See
