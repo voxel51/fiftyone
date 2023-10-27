@@ -1,8 +1,10 @@
 import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
+import React, { useState } from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
+import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
 import {
   ControlGroupWrapper,
@@ -11,9 +13,11 @@ import {
 } from "./ShareStyledDiv";
 import ColorPalette from "./colorPalette/ColorPalette";
 import ShuffleColor from "./controls/RefreshColor";
+import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
+  const [state, setState] = useState({ useColorscaleName: "name" });
   return (
     <div>
       <Divider>General</Divider>
@@ -79,6 +83,35 @@ const GlobalSetting = () => {
           value={Boolean(colorScheme.showSkeletons)}
           setValue={(v) => setColorScheme({ ...colorScheme, showSkeletons: v })}
         />
+      </ControlGroupWrapper>
+
+      <Divider>Segmentation</Divider>
+      <ControlGroupWrapper>Default Target Masks</ControlGroupWrapper>
+      <DefaultMaskTargets />
+      <Divider>Colorscale</Divider>
+      <ControlGroupWrapper>
+        <RadioGroup
+          choices={["name", "list"]}
+          value={state.useColorscaleName}
+          setValue={(mode) =>
+            setState((s) => ({ ...s, useColorscaleName: mode }))
+          }
+          horizontal
+        />
+        {state.useColorscaleName === "name" && (
+          <div>
+            Use a named plotly colorscale:
+            {/* input can be null/undefined/valid plotly colorscale name */}
+            {/* // should use select and auto complete */}
+            <Input />
+          </div>
+        )}
+        {state.useColorscaleName === "list" && (
+          <div>
+            Define a custom colorscale:
+            {/* // when list is active, colorscale.name must be reset to null */}
+          </div>
+        )}
       </ControlGroupWrapper>
     </div>
   );

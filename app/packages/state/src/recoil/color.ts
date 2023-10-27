@@ -22,7 +22,7 @@ export const coloring = selector<Coloring>({
     const seed = get(atoms.colorSeed);
     const defaultMaskTargetsWithColors = combineTargetsAndColors(
       get(selectors.defaultTargets),
-      colorScheme.defaultMaskTargets
+      colorScheme.defaultMaskTargetsColors
     );
 
     return {
@@ -126,11 +126,11 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.colorPool || appConfig?.colorPool,
-    colorBy: colorScheme.colorBy || appConfig?.colorBy,
-    fields: (colorScheme.fields as ColorSchemeInput["fields"]) || [],
-    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) || {},
-    defaultMaskTargets: colorScheme.defaultMaskTargets || {},
+    colorPool: colorScheme.colorPool ?? appConfig?.colorPool,
+    colorBy: colorScheme.colorBy ?? appConfig?.colorBy,
+    fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
+    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {},
+    defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints

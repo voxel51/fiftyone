@@ -3,8 +3,9 @@ import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
   FLOAT_FIELD,
+  HEATMAP,
   NOT_VISIBLE_LIST,
-  VALID_MASK_TYPES,
+  SEGMENTATION,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
 import colorString from "color-string";
@@ -24,8 +25,10 @@ import {
   PickerWrapper,
   SectionWrapper,
 } from "./ShareStyledDiv";
-import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import FieldByValue from "./colorPalette/FieldByValue";
+import MaskTargets from "./colorPalette/FieldsMaskTarget";
+import LabelTagByValue from "./colorPalette/LabelTagByValue";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
@@ -105,12 +108,13 @@ const FieldSetting = ({ path }: { path: string }) => {
     [setting]
   );
 
-  const isMaskType =
-    field.embeddedDocType &&
-    VALID_MASK_TYPES.some((x) => field.embeddedDocType?.includes(x));
+  const isSegmentation = field.embeddedDocType?.includes(SEGMENTATION);
+
+  const isHeatmap = field.embeddedDocType?.includes(HEATMAP);
+
   const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
-  const isTypeValueSupported =
-    !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
+  const isTypeValueSupported = !isNoShowType && !(field.ftype == FLOAT_FIELD);
+
   const isTypeFieldSupported = !isNoShowType;
 
   const onChangeFieldColor = useCallback(
@@ -171,141 +175,169 @@ const FieldSetting = ({ path }: { path: string }) => {
 
   return (
     <div>
-      <ModeControl />
-      <Divider />
-      {coloring.by == "field" && isTypeFieldSupported && (
-        <div style={{ margin: "1rem", width: "100%" }}>
-          <Checkbox
-            name={`Use custom color for ${path} field`}
-            value={state.useFieldColor}
-            setValue={(v: boolean) => {
-              setSetting({
-                fieldColor: v ? colorMap(path) : undefined,
-                valueColors: setting?.valueColors,
-                colorByAttribute: setting?.colorByAttribute,
-              });
-              setInput(colorMap(path));
-            }}
-          />
-          {state?.useFieldColor && input && (
-            <div
-              data-cy="field-color-div"
-              style={{
-                margin: "1rem",
-                display: "flex",
-                flexDirection: "row",
-                alignItems: "end",
-              }}
-            >
-              <FieldColorSquare
-                color={setting?.fieldColor || colorMap(path)}
-                onClick={toggleColorPicker}
-                id="color-square"
-              >
-                {showFieldPicker && (
-                  <PickerWrapper
-                    id="twitter-color-container"
-                    onBlur={hideFieldColorPicker}
-                    visible={showFieldPicker}
-                    tabIndex={0}
-                    ref={wrapperRef}
-                  >
-                    <TwitterPicker
-                      color={input ?? (setting?.fieldColor as string)}
-                      colors={[...colors]}
-                      onChange={(color) => setInput(color.hex)}
-                      onChangeComplete={(color) => {
-                        onChangeFieldColor(color.hex);
-                        setColors([...new Set([...colors, color.hex])]);
-                      }}
-                      className={colorPicker}
-                      ref={pickerRef}
-                    />
-                  </PickerWrapper>
-                )}
-              </FieldColorSquare>
-              <Input
-                value={input}
-                setter={(v) => setInput(v)}
-                onBlur={() => onValidateColor(input)}
-                onEnter={() => onValidateColor(input)}
-                style={{
-                  width: 120,
-                  display: "inline-block",
-                  margin: 3,
-                }}
-              />
-            </div>
-          )}
-        </div>
+      {!isSegmentation && !isHeatmap && (
+        <>
+          <ModeControl />
+          <Divider />
+        </>
       )}
-      {coloring.by == "field" && !isTypeFieldSupported && (
-        <div>Color by field is not supported for this field type</div>
-      )}
-      {coloring.by == "value" && isTypeValueSupported && (
-        <div>
-          <form
-            style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
-          >
-            {/* set attribute value - color */}
+
+      {coloring.by == "field" &&
+        isTypeFieldSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div style={{ margin: "1rem", width: "100%" }}>
             <Checkbox
-              name={`Use custom colors for specific field values`}
-              value={state.useLabelColors}
+              name={`Use custom color for ${path} field`}
+              value={state.useFieldColor}
               setValue={(v: boolean) => {
-                setSetting((cur) => {
-                  if (!cur) {
-                    cur = { valueColors: [] };
-                  }
-
-                  if (!cur?.valueColors?.length && v) {
-                    cur = {
-                      ...cur,
-                      valueColors: [
-                        {
-                          value: "",
-                          color:
-                            colorPool[
-                              Math.floor(Math.random() * colorPool.length)
-                            ],
-                        },
-                      ],
-                    };
-                  } else if (!v) {
-                    cur = { ...cur, valueColors: [] };
-                  }
-
-                  return {
-                    ...cur,
-                    colorByAttribute:
-                      field.embeddedDocType && !v ? null : cur.colorByAttribute,
-                  };
+                setSetting({
+                  fieldColor: v ? colorMap(path) : undefined,
+                  valueColors: setting?.valueColors,
+                  colorByAttribute: setting?.colorByAttribute,
                 });
+                setInput(colorMap(path));
               }}
             />
-            {/* set the attribute used for color */}
-            <SectionWrapper>
-              {path && field.embeddedDocType && state.useLabelColors && (
-                <>
-                  <ColorAttribute style={FieldCHILD_STYLE} />
-                  <br />
-                  <div style={FieldCHILD_STYLE}>
-                    Use specific colors for the following values
-                  </div>
-                </>
-              )}
+            {state?.useFieldColor && input && (
+              <div
+                data-cy="field-color-div"
+                style={{
+                  margin: "1rem",
+                  display: "flex",
+                  flexDirection: "row",
+                  alignItems: "end",
+                }}
+              >
+                <FieldColorSquare
+                  color={setting?.fieldColor || colorMap(path)}
+                  onClick={toggleColorPicker}
+                  id="color-square"
+                >
+                  {showFieldPicker && (
+                    <PickerWrapper
+                      id="twitter-color-container"
+                      onBlur={hideFieldColorPicker}
+                      visible={showFieldPicker}
+                      tabIndex={0}
+                      ref={wrapperRef}
+                    >
+                      <TwitterPicker
+                        color={input ?? (setting?.fieldColor as string)}
+                        colors={[...colors]}
+                        onChange={(color) => setInput(color.hex)}
+                        onChangeComplete={(color) => {
+                          onChangeFieldColor(color.hex);
+                          setColors([...new Set([...colors, color.hex])]);
+                        }}
+                        className={colorPicker}
+                        ref={pickerRef}
+                      />
+                    </PickerWrapper>
+                  )}
+                </FieldColorSquare>
+                <Input
+                  value={input}
+                  setter={(v) => setInput(v)}
+                  onBlur={() => onValidateColor(input)}
+                  onEnter={() => onValidateColor(input)}
+                  style={{
+                    width: 120,
+                    display: "inline-block",
+                    margin: 3,
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
-              <AttributeColorSetting
-                style={FieldCHILD_STYLE}
-                useLabelColors={state.useLabelColors}
+      {coloring.by == "value" &&
+        isTypeValueSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>
+            <form
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                margin: "1rem",
+              }}
+            >
+              {/* set attribute value - color */}
+              <Checkbox
+                name={`Use custom colors for specific field values`}
+                value={state.useLabelColors}
+                setValue={(v: boolean) => {
+                  setSetting((cur) => {
+                    if (!cur) {
+                      cur = { valueColors: [] };
+                    }
+
+                    if (!cur?.valueColors?.length && v) {
+                      cur = {
+                        ...cur,
+                        valueColors: [
+                          {
+                            value: "",
+                            color:
+                              colorPool[
+                                Math.floor(Math.random() * colorPool.length)
+                              ],
+                          },
+                        ],
+                      };
+                    } else if (!v) {
+                      cur = { ...cur, valueColors: [] };
+                    }
+
+                    return {
+                      ...cur,
+                      colorByAttribute:
+                        field.embeddedDocType && !v
+                          ? null
+                          : cur.colorByAttribute,
+                    };
+                  });
+                }}
               />
-            </SectionWrapper>
-          </form>
-        </div>
-      )}
+              {/* set the attribute used for color */}
+              <SectionWrapper>
+                {path && field.embeddedDocType && state.useLabelColors && (
+                  <>
+                    <ColorAttribute style={FieldCHILD_STYLE} />
+                    <br />
+                    <div style={FieldCHILD_STYLE}>
+                      Use specific colors for the following values
+                    </div>
+                  </>
+                )}
+                {path === "_label_tags" ? (
+                  <LabelTagByValue />
+                ) : (
+                  <FieldByValue />
+                )}
+              </SectionWrapper>
+            </form>
+          </div>
+        )}
 
-      {coloring.by == "value" && !isTypeValueSupported && (
-        <div>Color by value is not supported for this field type</div>
-      )}
+      {coloring.by == "field" &&
+        !isTypeFieldSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>Color by field is not supported for this field type</div>
+        )}
+
+      {coloring.by == "value" &&
+        !isTypeValueSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>Color by value is not supported for this field type</div>
+        )}
+
+      {coloring.by !== "instance" && isSegmentation && <MaskTargets />}
+      {/* {coloring.by !== "instance" && isHeatmap && <FieldsColorscale />} */}
       {coloring.by == "instance" && (
         <div>Cannot customize settings under color by instance mode</div>
       )}
