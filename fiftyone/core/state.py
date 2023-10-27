@@ -199,7 +199,7 @@ class StateDescription(etas.Serializable):
             view=view,
             spaces=spaces,
             color_scheme=color_scheme,
-            field_visibility_stage=d.get("field_visibility_stage"),
+            field_visibility_stage=d.get("field_visibility_stage", None),
         )
 
 

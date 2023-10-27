@@ -1,5 +1,4 @@
 import { useSessionSetter } from "@fiftyone/state";
-import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { AppReadyState, EventHandlerHook } from "./registerEvent";

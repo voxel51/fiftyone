@@ -97,7 +97,6 @@ class Client:
                                     "set_group_slice",
                                     "set_spaces",
                                     "state_update",
-                                    "set_field_visibility_stage",
                                 ],
                                 initializer=state,
                                 subscription=self._subscription,

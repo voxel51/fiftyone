@@ -11,49 +11,37 @@ import { RegisteredSetter } from "./registerSetter";
 const onSetFieldVisibilityStage: RegisteredSetter =
   ({ environment, router, sessionRef }) =>
   ({ get, set }, input) => {
-    if (!input) return;
     set(pendingEntry, true);
-    const fieldNames = input?.kwargs?.field_names || [];
-    const cls = input?.cls || "fiftyone.core.stages.ExcludeFields";
 
+    const stage = input
+      ? {
+          _cls: input?.cls || "fiftyone.core.stages.ExcludeFields",
+          kwargs: {
+            field_names: input?.kwargs?.field_names || [],
+          },
+        }
+      : undefined;
+
+    const unsubscribe = subscribeBefore(() => {
+      sessionRef.current.fieldVisibilityStage = input;
+      unsubscribe();
+    });
+
+    // reload page query with new extended view
+    router.history.replace(
+      `${router.history.location.pathname}${router.history.location.search}`,
+      {
+        ...router.get().state,
+        fieldVisibility: stage,
+      }
+    );
+
+    // send event as side effect
     commitMutation<setFieldVisibilityStageMutation>(environment, {
       mutation: setFieldVisibilityStage,
       variables: {
-        input: {
-          cls,
-          kwargs: {
-            fieldNames,
-            allowMissing: true,
-          },
-        },
+        stage,
         subscription: get(stateSubscription),
-      },
-      onCompleted: () => {
-        const unsubscribe = subscribeBefore(() => {
-          sessionRef.current.fieldVisibilityStage = {
-            cls: input.cls,
-            kwargs: {
-              field_names: fieldNames,
-              allow_missing: true,
-            },
-          };
-          unsubscribe();
-        });
-        router.history.replace(
-          `${router.history.location.pathname}${router.history.location.search}`,
-          {
-            ...router.get().state,
-            extendedStages: [
-              {
-                _cls: cls,
-                kwargs: {
-                  field_names: fieldNames,
-                  _allow_missing: true,
-                },
-              },
-            ],
-          }
-        );
       },
     });
   };

@@ -84,14 +84,7 @@ async def dispatch_event(
         _state.spaces = event.spaces
 
     if isinstance(event, SetFieldVisibilityStage):
-        _state.field_visibility_stage = (
-            {
-                "cls": event.cls,
-                "field_names": event.field_names,
-            }
-            if event.cls
-            else None
-        )
+        _state.field_visibility_stage = event.stage
 
     if isinstance(event, SetGroupSlice):
         if _state.view is not None:

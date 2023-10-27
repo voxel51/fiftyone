@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0fec9e45e680b8f07f73be168a7caabd>>
+ * @generated SignedSource<<030c363b6286e739c631c4b28feb43a2>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,17 +9,9 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
-export type FieldVisibilityStageInput = {
-  cls: string;
-  kwargs?: FieldVisibilityStageInputKwargs | null;
-};
-export type FieldVisibilityStageInputKwargs = {
-  allowMissing?: boolean | null;
-  fieldNames: ReadonlyArray<string | null>;
-};
 export type setFieldVisibilityStageMutation$variables = {
-  input: FieldVisibilityStageInput;
   session?: string | null;
+  stage?: object | null;
   subscription: string;
 };
 export type setFieldVisibilityStageMutation$data = {
@@ -34,12 +26,12 @@ const node: ConcreteRequest = (function(){
 var v0 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "input"
+  "name": "session"
 },
 v1 = {
   "defaultValue": null,
   "kind": "LocalArgument",
-  "name": "session"
+  "name": "stage"
 },
 v2 = {
   "defaultValue": null,
@@ -52,13 +44,13 @@ v3 = [
     "args": [
       {
         "kind": "Variable",
-        "name": "input",
-        "variableName": "input"
+        "name": "session",
+        "variableName": "session"
       },
       {
         "kind": "Variable",
-        "name": "session",
-        "variableName": "session"
+        "name": "stage",
+        "variableName": "stage"
       },
       {
         "kind": "Variable",
@@ -89,24 +81,24 @@ return {
   "operation": {
     "argumentDefinitions": [
       (v2/*: any*/),
-      (v1/*: any*/),
-      (v0/*: any*/)
+      (v0/*: any*/),
+      (v1/*: any*/)
     ],
     "kind": "Operation",
     "name": "setFieldVisibilityStageMutation",
     "selections": (v3/*: any*/)
   },
   "params": {
-    "cacheID": "f614dacd343c124caf5557c937ba6332",
+    "cacheID": "9825597b80da566f3836d4f7e93d3f3e",
     "id": null,
     "metadata": {},
     "name": "setFieldVisibilityStageMutation",
     "operationKind": "mutation",
-    "text": "mutation setFieldVisibilityStageMutation(\n  $subscription: String!\n  $session: String\n  $input: FieldVisibilityStageInput!\n) {\n  setFieldVisibilityStage(subscription: $subscription, session: $session, input: $input)\n}\n"
+    "text": "mutation setFieldVisibilityStageMutation(\n  $subscription: String!\n  $session: String\n  $stage: BSON\n) {\n  setFieldVisibilityStage(subscription: $subscription, session: $session, stage: $stage)\n}\n"
   }
 };
 })();
 
-(node as any).hash = "bc8c23e431673fb886c252d76c5eeff9";
+(node as any).hash = "27b37142a47f9463d0245e634eada360";
 
 export default node;

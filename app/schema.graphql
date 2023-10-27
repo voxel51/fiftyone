@@ -146,15 +146,6 @@ input CountValues {
   field: String!
 }
 
-input FieldVisibilityStageInputKwargs {
-  fieldNames: [String]!
-  allowMissing: Boolean
-}
-input FieldVisibilityStageInput {
-  cls: String!
-  kwargs: FieldVisibilityStageInputKwargs
-}
-
 type CustomizeColor {
   path: String!
   valueColors: [ValueColor!]
@@ -343,11 +334,6 @@ type MediaURL {
 }
 
 type Mutation {
-  setFieldVisibilityStage(
-    subscription: String!
-    input: FieldVisibilityStageInput
-    session: String
-  ): Boolean!
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!
@@ -357,6 +343,11 @@ type Mutation {
     datasetName: String!
     colorScheme: ColorSchemeInput = null
   ): Void
+  setFieldVisibilityStage(
+    subscription: String!
+    session: String
+    stage: BSON
+  ): Boolean!
   setDataset(
     subscription: String!
     session: String

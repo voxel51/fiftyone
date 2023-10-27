@@ -219,8 +219,7 @@ class SetGroupSlice(Event):
 
 @dataclass
 class SetFieldVisibilityStage(Event):
-    cls: t.Optional[str] = None
-    field_names: t.Optional[t.List[str]] = None
+    stage: t.Optional[t.Dict] = None
 
 
 @dataclass

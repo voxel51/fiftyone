@@ -56,7 +56,6 @@ from fiftyone.core.session.events import (
     SetSpaces,
     SetGroupSlice,
     StateUpdate,
-    SetFieldVisibilityStage,
 )
 import fiftyone.core.session.notebooks as fosn
 
@@ -752,16 +751,6 @@ class Session(object):
         self._state.selected = list(sample_ids) if sample_ids else []
         self._client.send_event(SelectSamples(sample_ids))
 
-    @property
-    def field_visibility_stage(self):
-        return self._state.field_visibility_stage
-
-    @field_visibility_stage.setter  # type: ignore
-    def field_visibility_stage(self, d) -> None:
-        self._state.field_visibility_stage = d or None
-        d = d or {}
-        self._client.send_event(SetFieldVisibilityStage(**d))
-
     def clear_selected(self) -> None:
         """Clears the currently selected samples, if any."""
         self._state.selected = []
@@ -1147,9 +1136,9 @@ def _attach_listeners(session: "Session"):
     )
     session._client.add_event_listener("state_update", on_state_update)
 
-    on_select_samples: t.Callable[[], None] = lambda event: setattr(
-        session._state, "selected", event.sample_ids
-    )
+    on_select_samples: t.Callable[
+        [SelectSamples], None
+    ] = lambda event: setattr(session._state, "selected", event.sample_ids)
     session._client.add_event_listener("select_samples", on_select_samples)
 
     on_select_labels: t.Callable[[SelectLabels], None] = lambda event: setattr(
@@ -1167,17 +1156,6 @@ def _attach_listeners(session: "Session"):
     ] = lambda _: _on_refresh(session, None)
     session._client.add_event_listener(
         "set_dataset_color_scheme", on_set_dataset_color_scheme
-    )
-
-    on_set_field_visibility_stage: t.Callable[
-        [SetFieldVisibilityStage], None
-    ] = lambda event: setattr(
-        session._state,
-        "field_visibility_stage",
-        asdict(event),
-    )
-    session._client.add_event_listener(
-        "set_field_visibility_stage", on_set_field_visibility_stage
     )
 
     on_set_group_slice: t.Callable[

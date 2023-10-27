@@ -30,7 +30,6 @@ export interface Session {
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
   sessionSpaces: SpaceNodeJSON;
-  selectedFields?: State.Stage;
   sessionGroupSlice?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
 }

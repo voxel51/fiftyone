@@ -6,12 +6,12 @@ export default r(graphql`
   mutation setFieldVisibilityStageMutation(
     $subscription: String!
     $session: String
-    $input: FieldVisibilityStageInput!
+    $stage: BSON
   ) {
     setFieldVisibilityStage(
       subscription: $subscription
       session: $session
-      input: $input
+      stage: $stage
     )
   }
 `);
