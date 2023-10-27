@@ -1202,11 +1202,7 @@ formats:
 
 .. code-block:: text
 
-    fiftyone plugins download [-h]
-                              [-n [PLUGIN_NAMES ...]]
-                              [-d MAX_DEPTH]
-                              [-o]
-                              URL_OR_GH_REPO
+    fiftyone plugins download [-h] [-n [PLUGIN_NAMES ...]] [-o] URL_OR_GH_REPO
 
 **Arguments**
 
@@ -1219,8 +1215,6 @@ formats:
       -h, --help            show this help message and exit
       -n [PLUGIN_NAMES ...], --plugin-names [PLUGIN_NAMES ...]
                             a plugin name or list of plugin names to download
-      -d MAX_DEPTH, --max-depth MAX_DEPTH
-                            a maximum depth to search for plugins
       -o, --overwrite       whether to overwrite existing plugins
 
 **Examples**
@@ -1237,11 +1231,8 @@ formats:
 
 .. code-block:: shell
 
-    # Download specific plugins from a URL with a custom search depth
-    fiftyone plugins download \
-        <url> \
-        --plugin-names <name1> <name2> <name3> \
-        --max-depth 2  # search nested directories for plugins
+    # Download specific plugins from a URL
+    fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
 
 .. _cli-fiftyone-plugins-requirements:
 
