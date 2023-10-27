@@ -1,14 +1,19 @@
-import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { FieldCHILD_STYLE } from "../ShareStyledDiv";
-import ValueColorList from "../controls/ValueColorList";
+import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
+import IdxColorList from "../controls/IdxColorList";
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 
-const FieldByValue: React.FC = () => {
+type MaskTargetInput = {
+  idx: number;
+  color: string;
+};
+
+const FieldsMaskTargets: React.FC = () => {
+  const is2DMask = true; // TODO: add condition check;
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -17,9 +22,9 @@ const FieldByValue: React.FC = () => {
     () => colorScheme.fields?.find((s) => s.path == activePath),
     [activePath, colorScheme.fields]
   );
-  const values = useMemo(() => setting?.valueColors ?? [], [setting]);
+  const values = useMemo(() => setting?.maskTargetColors ?? [], [setting]);
   const defaultValue = {
-    value: "",
+    idx: null,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
   const index = useMemo(
@@ -27,16 +32,16 @@ const FieldByValue: React.FC = () => {
     [activePath]
   );
   const shouldShowAddButton = Boolean(
-    setting?.valueColors && setting.valueColors.length > 0
+    setting?.maskTargetColors && setting.maskTargetColors.length > 0
   );
 
   const onSyncUpdate = useCallback(
-    (copy: ValueColorInput[]) => {
+    (copy: MaskTargetInput[]) => {
       if (copy) {
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
         if (idx > -1) {
-          newSetting[idx].valueColors = copy;
+          newSetting[idx].maskTargetColors = copy;
           setColorScheme({ ...colorScheme, fields: newSetting });
         }
       }
@@ -49,22 +54,29 @@ const FieldByValue: React.FC = () => {
       const copy = cloneDeep(colorScheme.fields);
       const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
       if (idx > -1) {
-        copy[idx].valueColors = [defaultValue];
+        copy[idx].maskTargetColors = [defaultValue];
         setColorScheme({ ...colorScheme, fields: copy });
       }
     }
   }, [values]);
 
   return (
-    <ValueColorList
-      initialValue={values as ValueColorInput[]}
-      values={values as ValueColorInput[]}
-      resetValue={[] as ValueColorInput[]}
-      style={FieldCHILD_STYLE}
-      onSyncUpdate={onSyncUpdate}
-      shouldShowAddButton={shouldShowAddButton}
-    />
+    <SectionWrapper>
+      {is2DMask && (
+        <>
+          <div style={FieldCHILD_STYLE}>Set colors for mask targets:</div>
+          <IdxColorList
+            initialValue={values as MaskTargetInput[]}
+            values={values as MaskTargetInput[]}
+            resetValue={values as MaskTargetInput[]}
+            style={FieldCHILD_STYLE}
+            onSyncUpdate={onSyncUpdate}
+            shouldShowAddButton={shouldShowAddButton}
+          />
+        </>
+      )}
+    </SectionWrapper>
   );
 };
 
-export default FieldByValue;
+export default FieldsMaskTargets;

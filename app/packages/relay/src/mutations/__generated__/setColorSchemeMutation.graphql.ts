@@ -13,6 +13,7 @@ export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
+  defaultMaskTargetsColors?: ReadonlyArray<MaskTargetsInput> | null
   labelTags?: LabelTagColorInput | null;
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
@@ -23,10 +24,15 @@ export type CustomizeColorInput = {
   fieldColor?: string | null;
   path: string;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
+  maskTargetColors?: ReadonlyArray<MaskTargetsInput> | null;
 };
 export type ValueColorInput = {
   color: string;
   value: string;
+};
+export type MaskTargetsInput = {
+  idx: number;
+  color: string;
 };
 export type LabelTagColorInput = {
   fieldColor?: string | null;

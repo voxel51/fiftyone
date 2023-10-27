@@ -3,14 +3,13 @@ In color by value mode, fields and label tags use this component
 */
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilValue } from "recoil";
-import Input from "../../Common/Input";
+import Input, { NumberInput } from "../../Common/Input";
 import { Button } from "../../utils";
 import {
   AddContainer,
@@ -23,16 +22,21 @@ import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
+type MaskColorInput = {
+  idx: number;
+  color: string;
+};
+
 type ValueColorProp = {
-  initialValue: ValueColorInput[];
-  resetValue: ValueColorInput[];
-  values: ValueColorInput[];
+  initialValue: MaskColorInput[];
+  resetValue: MaskColorInput[];
+  values: MaskColorInput[];
   style: React.CSSProperties;
-  onSyncUpdate: (input: ValueColorInput[]) => void;
+  onSyncUpdate: (input: MaskColorInput[]) => void;
   shouldShowAddButton: boolean;
 };
 
-const ValueColorList: React.FC<ValueColorProp> = ({
+const IdxColorList: React.FC<ValueColorProp> = ({
   initialValue,
   resetValue,
   values,
@@ -40,18 +44,18 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   onSyncUpdate,
   shouldShowAddButton,
 }) => {
-  const [input, setInput] = useState<ValueColorInput[]>(initialValue);
+  const [input, setInput] = useState<MaskColorInput[]>(initialValue);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activePath = useRecoilValue(activeColorPath);
+  // const activePath = useRecoilValue(activeColorPath);
   const colorScheme = useRecoilValue(fos.colorScheme);
 
   const handleAdd = () => {
     const newValue = {
-      value: "",
+      idx: undefined,
       color: getRandomColorFromPool(colorScheme.colorPool),
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
@@ -112,9 +116,9 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   );
 
   // on changing tabs, sync local state with new session values
-  useEffect(() => {
-    setInput(values ?? []);
-  }, [activePath]);
+  // useEffect(() => {
+  //   setInput(values ?? []);
+  // }, [activePath]);
 
   useEffect(() => {
     setInput(resetValue);
@@ -130,13 +134,13 @@ const ValueColorList: React.FC<ValueColorProp> = ({
     <div style={style}>
       {input?.map((v, index) => (
         <RowContainer key={index}>
-          <Input
-            placeholder="Value (e.g. 'car')"
-            value={input[index].value ?? ""}
+          <NumberInput
+            placeholder="integer (0 to 255)"
+            value={input[index].idx}
             setter={(v) =>
               setInput((p) => {
                 const copy = cloneDeep(p);
-                copy[index].value = v;
+                copy[index].idx = v;
                 return copy;
               })
             }
@@ -215,4 +219,4 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   );
 };
 
-export default ValueColorList;
+export default IdxColorList;
