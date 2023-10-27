@@ -38,6 +38,21 @@ export const datasetName = graphQLSyncFragmentAtom<
   }
 );
 
+export const datasetId = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  string | null
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    read: ({ datasetId }) => datasetId,
+    default: null,
+  },
+  {
+    key: "datasetId",
+  }
+);
+
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
   get: () => {

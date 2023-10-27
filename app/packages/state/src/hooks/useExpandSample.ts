@@ -94,8 +94,21 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
     void
   >(
-    ({ snapshot }) =>
-      async (next, sampleId, itemIndexMap) => {
+    ({ snapshot, set }) =>
+      async (next, sampleId, itemIndexMap, event) => {
+        if (event.ctrlKey || event.metaKey) {
+          set(atoms.selectedSamples, (selected) => {
+            const newSelected = new Set([...selected]);
+            if (newSelected.has(sampleId)) {
+              newSelected.delete(sampleId);
+            } else {
+              newSelected.add(sampleId);
+            }
+
+            return newSelected;
+          });
+          return;
+        }
         const clickedIndex = itemIndexMap[sampleId];
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices

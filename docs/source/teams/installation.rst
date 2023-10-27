@@ -157,17 +157,16 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 Cloud credentials
 -----------------
 
-
 .. _teams-cors:
 
 Cross-Origin Resource Sharing (CORS)
-_________
+____________________________________
 
-If your datasets will include cloud-backed :ref:`point-cloud files <point-cloud-datasets>`
-or :ref:`segmentation maps <semantic-segmentation>`, you may also need to configure 
-cross-origin resource sharing (CORS) for your cloud buckets. Details are provided below
-for each cloud platform.
-
+If your datasets include cloud-backed
+:ref:`point clouds <point-cloud-datasets>` or
+:ref:`segmentation maps <semantic-segmentation>`, you may need to configure
+cross-origin resource sharing (CORS) for your cloud buckets. Details are
+provided below for each cloud platform.
 
 .. _teams-amazon-s3:
 

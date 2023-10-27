@@ -32,7 +32,7 @@ export default class SectionElement implements Section {
     rows: RowData[],
     render: Render,
     horizontal: boolean,
-    onItemClick?: (id: string) => void
+    onItemClick?: (id: string, event: MouseEvent) => void
   ) {
     this.index = index;
     this.itemIndex = itemIndex;
@@ -56,10 +56,11 @@ export default class SectionElement implements Section {
           if (onItemClick) {
             itemElement.addEventListener("click", (event) => {
               event.preventDefault();
-              onItemClick(itemData.id);
+              onItemClick(itemData.id, event);
             });
             itemElement.addEventListener("contextmenu", (event) => {
-              onItemClick(itemData.id);
+              event.preventDefault();
+              onItemClick(itemData.id, event);
             });
           }
 
