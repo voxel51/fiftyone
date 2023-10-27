@@ -96,3 +96,6 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   }
   return path;
 };
+
+export const getRandomColorFromPool = (pool: readonly string[]) =>
+  pool[Math.floor(Math.random() * pool.length)];
