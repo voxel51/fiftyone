@@ -15,11 +15,8 @@ const onSetFieldVisibilityStage: RegisteredSetter =
 
     const stage = input
       ? {
-          _cls: input?.cls || "fiftyone.core.stages.ExcludeFields",
-          kwargs: {
-            field_names: input?.kwargs?.field_names || [],
-            _allow_missing: true,
-          },
+          _cls: input.cls || "fiftyone.core.stages.ExcludeFields",
+          kwargs: input.kwargs,
         }
       : undefined;
 
