@@ -203,7 +203,6 @@ export namespace State {
     cls: string;
     kwargs: {
       field_names: string[];
-      _allow_missing: true;
     };
   }
 

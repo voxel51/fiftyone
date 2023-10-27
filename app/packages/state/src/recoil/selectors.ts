@@ -452,23 +452,22 @@ export const extendedStages = selector({
   get: ({ get }) => {
     const similarity = get(atoms.similarityParameters);
     const fvStage = get(fieldVisibilityStage);
-    const finalFieldVisibilityStage = fvStage?._cls
+    const rest = fvStage?.cls
       ? {
-          [fvStage["_cls"]]: {
-            field_names: fvStage["kwargs"]["field_names"],
-            _allow_missing: fvStage["kwargs"]["allow_missing"],
+          [fvStage.cls]: {
+            field_names: fvStage.kwargs.field_names,
+            _allow_missing: true,
           },
         }
       : {};
 
-    const res = {
+    return {
       ...get(extendedStagesUnsorted),
       "fiftyone.core.stages.SortBySimilarity": similarity
         ? toSnakeCase(similarity)
         : undefined,
-      ...(finalFieldVisibilityStage ? finalFieldVisibilityStage : {}),
+      ...rest,
     };
-    return res;
   },
 });
 

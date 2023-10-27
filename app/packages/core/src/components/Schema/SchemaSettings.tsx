@@ -227,7 +227,6 @@ const SchemaSettings = () => {
                   cls: EXCLUDE_FIELDS_STAGE,
                   kwargs: {
                     field_names: initialFieldNames,
-                    _allow_missing: true,
                   },
                 });
               }}
