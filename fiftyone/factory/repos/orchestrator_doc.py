@@ -19,18 +19,20 @@ class OrchestratorDocument:
         description: str = None,
         available_operators: List[str] = None,
     ):
+        self.id = None
         self.updated_at = None
         self.created_at = None
         self.deactivated_at = None
         self.available_operators = available_operators
-        self.instance_identifier = instance_identifier
+        self.instance_id = instance_identifier
         self.description = description
 
     def from_pymongo(self, doc: dict):
+        self.id = str(doc["_id"])
         self.available_operators = (
             doc["available_operators"] if "available_operators" in doc else []
         )
-        self.instance_identifier = doc["instance_identifier"]
+        self.instance_id = doc["instance_id"]
         self.description = doc["description"]
         self.created_at = doc["created_at"] if "created_at" in doc else None
         self.updated_at = doc["updated_at"] if "updated_at" in doc else None

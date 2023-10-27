@@ -26,19 +26,19 @@ class OrchestratorRepo:
 
     def upsert(
         self,
-        instance_identifier: str,
+        instance_id: str,
         description: str = None,
         available_operators: List[str] = None,
     ) -> OrchestratorDocument:
         raise NotImplementedError("subclass must implement upsert()")
 
     def get(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         raise NotImplementedError("subclass must implement get()")
 
     def deactivate(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         raise NotImplementedError("subclass must implement deactivate()")
 
@@ -55,14 +55,14 @@ class OrchestratorRepo:
         raise NotImplementedError("subclass must implement list()")
 
     def delete(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         raise NotImplementedError("subclass must implement delete()")
 
 
 class MongoOrchestratorRepo(OrchestratorRepo):
     COLLECTION_NAME = "orchestrators"
-    required_props = ["instance_identifier", "available_operators"]
+    required_props = ["instance_id", "available_operators"]
 
     def __init__(self, collection: Collection = None):
         self._collection = (
@@ -85,7 +85,7 @@ class MongoOrchestratorRepo(OrchestratorRepo):
         if "instance_id_1" not in index_names:
             indices_to_create.append(
                 IndexModel(
-                    [("instance_identifier", pymongo.ASCENDING)],
+                    [("instance_id", pymongo.ASCENDING)],
                     name="instance_id_1",
                 )
             )
@@ -101,14 +101,14 @@ class MongoOrchestratorRepo(OrchestratorRepo):
 
     def upsert(
         self,
-        instance_identifier: str,
+        instance_id: str,
         description: str = None,
         available_operators: List[str] = None,
     ) -> OrchestratorDocument:
         """Creates or updates an orchestrator registration
 
         Args:
-            instance_identifier: the instance identifier of the orchestrator. This must be unique to the DAG instance
+            instance_id: the instance identifier of the orchestrator. This must be unique to the DAG instance
                 on the orchestrator
             description: the description of the orchestrator
             available_operators: the list of available operators on the orchestrator
@@ -121,15 +121,13 @@ class MongoOrchestratorRepo(OrchestratorRepo):
             "description": description,
             "updated_at": datetime.utcnow(),
         }
-        existing = self._collection.find_one(
-            {"instance_identifier": instance_identifier}
-        )
+        existing = self._collection.find_one({"instance_id": instance_id})
         if not existing:
             update["created_at"] = datetime.utcnow()
-            update["instance_identifier"] = instance_identifier
+            update["instance_id"] = instance_id
 
         updated = self._collection.find_one_and_update(
-            filter={"instance_identifier": instance_identifier},
+            filter={"instance_id": instance_id},
             update={"$set": update},
             upsert=True,
             return_document=pymongo.ReturnDocument.AFTER,
@@ -137,75 +135,71 @@ class MongoOrchestratorRepo(OrchestratorRepo):
         return OrchestratorDocument().from_pymongo(updated)
 
     def get(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """
         Get an orchestrator by instance identifier or identifier
 
         Args:
-            instance_identifier: the instance identifier / name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the :class:`OrchestratorDocument`
 
         """
-        if instance_identifier is None and identifier is None:
-            raise ValueError(
-                "Must provide either instance_identifier or identifier"
-            )
+        if instance_id is None and id is None:
+            raise ValueError("Must provide either instance_id or id")
 
-        if instance_identifier is not None:
+        if instance_id is not None:
             doc = self._collection.find_one(
-                filter={"instance_identifier": instance_identifier}
+                filter={"instance_id": instance_id}
             )
             return OrchestratorDocument().from_pymongo(doc)
 
-        _id = identifier
+        _id = id
         # ensure the identifier is an object id
         if isinstance(_id, str):
             _id = ObjectId(_id)
 
         if not ObjectId.is_valid(_id):
-            raise ValueError("identifier must be a valid ObjectId")
+            raise ValueError("id must be a valid ObjectId")
 
         doc = self._collection.find_one({"_id": _id})
         return OrchestratorDocument().from_pymongo(doc)
 
     def deactivate(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """
         Deactivates an orchestrator by instance identifier or identifier
 
         Args:
-            instance_identifier: the instance identifier / name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the :class:`OrchestratorDocument`
 
         """
-        if instance_identifier is None and identifier is None:
-            raise ValueError(
-                "Must provide either instance_identifier or identifier"
-            )
+        if instance_id is None and id is None:
+            raise ValueError("Must provide either instance_id or id")
 
-        if instance_identifier is not None:
+        if instance_id is not None:
             doc = self._collection.find_one_and_update(
-                filter={"instance_identifier": instance_identifier},
+                filter={"instance_id": instance_id},
                 update={"$set": {"deactivated_at": datetime.utcnow()}},
                 return_document=pymongo.ReturnDocument.AFTER,
             )
             return OrchestratorDocument().from_pymongo(doc)
 
-        _id = identifier
+        _id = id
         # ensure the identifier is an object id
         if isinstance(_id, str):
             _id = ObjectId(_id)
 
         if not ObjectId.is_valid(_id):
-            raise ValueError("identifier must be a valid ObjectId")
+            raise ValueError("id must be a valid ObjectId")
 
         doc = self._collection.find_one_and_update(
             filter={"_id": _id},
@@ -228,7 +222,12 @@ class MongoOrchestratorRepo(OrchestratorRepo):
             filters = {}
         if search is None:
             search = {}
-        return self._collection.count_documents(filters)
+
+        include_deactivated = filters.get("include_deactivated", False)
+
+        query = self.build_query(search, include_deactivated)
+
+        return self._collection.count_documents(query)
 
     def list(
         self,
@@ -254,15 +253,24 @@ class MongoOrchestratorRepo(OrchestratorRepo):
         if paging is None:
             paging = OrchestratorPagingParams()
 
-        query = {}
         if search is None:
             search = {}
 
+        query = self.build_query(search, include_deactivated)
+
+        sort = [(paging.sort_by, paging.sort_direction)]
+        docs = self._collection.find(
+            query, sort=sort, skip=paging.skip, limit=paging.limit
+        )
+        return [OrchestratorDocument().from_pymongo(doc) for doc in docs]
+
+    def build_query(self, search, include_deactivated: bool = False):
+        query = {}
         for term in search:
             for field in search[term]:
-                if field not in ("instance_identifier", "available_operators"):
+                if field not in ("instance_id", "available_operators"):
                     raise ValueError("Invalid search field: {}".format(field))
-                if field == "instance_identifier":
+                if field == "instance_id":
                     query[field] = {"$regex": term}
                 if field == "available_operators":
                     query[field] = {"$regex": term}
@@ -271,45 +279,41 @@ class MongoOrchestratorRepo(OrchestratorRepo):
             # filter out any orchestrators where deactivated_at is not null
             query["deactivated_at"] = {"$exists": False}
 
-        sort = [(paging.sort_by, paging.sort_direction)]
-        docs = self._collection.find(
-            query, sort=sort, skip=paging.skip, limit=paging.limit
-        )
-        return [OrchestratorDocument().from_pymongo(doc) for doc in docs]
+        return query
 
     def delete(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """
         Deletes an orchestrator by instance identifier or identifier
         Args:
-            instance_identifier: the instance identifier / name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the :class:`OrchestratorDocument`
 
         """
-        if instance_identifier is None and identifier is None:
+        if instance_id is None and id is None:
             raise ValueError(
                 "Must provide either instance_identifier or identifier"
             )
 
-        if instance_identifier is not None:
+        if instance_id is not None:
             doc = self._collection.find_one_and_delete(
-                filter={"instance_identifier": instance_identifier},
+                filter={"instance_id": instance_id},
                 return_document=pymongo.ReturnDocument.BEFORE,
             )
 
             return OrchestratorDocument().from_pymongo(doc)
 
-        _id = identifier
+        _id = id
         # ensure the identifier is an object id
         if isinstance(_id, str):
             _id = ObjectId(_id)
 
         if not ObjectId.is_valid(_id):
-            raise ValueError("identifier must be a valid ObjectId")
+            raise ValueError("id must be a valid ObjectId")
 
         doc = self._collection.find_one_and_delete(
             filter={"_id": _id}, return_document=pymongo.ReturnDocument.BEFORE

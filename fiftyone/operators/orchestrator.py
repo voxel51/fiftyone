@@ -27,12 +27,12 @@ class OrchestratorService:
         self._repo = repo
 
     def register(
-        self, instance_identifier: str, description: str
+        self, instance_id: str, description: str
     ) -> OrchestratorDocument:
         """Registers a new orchestrator to run delegated operations
 
         Args:
-            instance_identifier: the instance identifier of the orchestrator. This must be unique to the DAG instance
+            instance_id: the instance identifier of the orchestrator. This must be unique to the DAG instance
                 on the orchestrator
             description: the description of the orchestrator
 
@@ -44,40 +44,40 @@ class OrchestratorService:
         ]
         # get the plugins
         return self._repo.upsert(
-            instance_identifier=instance_identifier,
+            instance_id=instance_id,
             description=description,
             available_operators=available_operators,
         )
 
     def deactivate(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """Deactivates an orchestrator
 
         Args:
-            instance_identifier: the instance identifier / unique name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / unique name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the orchestrator document
         """
-        return self._repo.deactivate(instance_identifier, identifier)
+        return self._repo.deactivate(instance_id, id)
 
     def get(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """Gets an orchestrator
 
         Args:
-            instance_identifier: the instance identifier / unique name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / unique name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the orchestrator document
         """
-        return self._repo.get(instance_identifier, identifier)
+        return self._repo.get(instance_id, id)
 
-    def count(self, filters=None, search=None):
+    def count(self, filters: dict = None, search: dict = None):
         """Counts the orchestrators matching the given criteria.
 
         Args:
@@ -115,15 +115,15 @@ class OrchestratorService:
         )
 
     def delete(
-        self, instance_identifier: str = None, identifier: str = None
+        self, instance_id: str = None, id: str = None
     ) -> OrchestratorDocument:
         """Deletes an orchestrator by instance identifier or identifier
 
         Args:
-            instance_identifier: the instance identifier / name of the orchestrator
-            identifier: the database identifier of the orchestrator
+            instance_id: the instance identifier / name of the orchestrator
+            id: the database identifier of the orchestrator
 
         Returns:
             the OrchestratorDocument
         """
-        return self._repo.delete(instance_identifier, identifier)
+        return self._repo.delete(instance_id, id)

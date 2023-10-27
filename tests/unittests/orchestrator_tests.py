@@ -62,59 +62,55 @@ class OrchestratorServiceTests(unittest.TestCase):
         unique = [
             obj
             for obj in self.docs_to_delete
-            if obj.instance_identifier not in seen
-            and not seen.add(obj.instance_identifier)
+            if obj.instance_id not in seen and not seen.add(obj.instance_id)
         ]
         for doc in unique:
-            self.svc.delete(instance_identifier=doc.instance_identifier)
+            self.svc.delete(instance_id=doc.instance_id)
 
     def test_register_and_update(self, mock_list_operators):
-        instance_identifier = str(uuid.uuid4())
-        doc = self.svc.register(
-            instance_identifier=instance_identifier, description="test"
-        )
+        instance_id = str(uuid.uuid4())
+        doc = self.svc.register(instance_id=instance_id, description="test")
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.available_operators)
-        self.assertEqual(doc.instance_identifier, instance_identifier)
+        self.assertEqual(doc.instance_id, instance_id)
+        self.assertIsNotNone(doc.id)
+        self.assertIsNotNone(doc.created_at)
+        self.assertIsNotNone(doc.updated_at)
+        self.assertIsNone(doc.deactivated_at)
+        self.assertEqual(doc.description, "test")
 
-        doc = self.svc.register(
-            instance_identifier=instance_identifier, description="test2"
-        )
+        doc = self.svc.register(instance_id=instance_id, description="test2")
         self.docs_to_delete.append(doc)
         self.assertIsNotNone(doc.available_operators)
         self.assertEqual(
             doc.available_operators, [x.uri for x in mock_operators()]
         )
-        self.assertEqual(doc.instance_identifier, instance_identifier)
+        self.assertEqual(doc.instance_id, instance_id)
         self.assertEqual(doc.description, "test2")
 
     def test_get(self, mock_list_operators):
-        instance_identifier = str(uuid.uuid4())
-        doc = self.svc.register(
-            instance_identifier=instance_identifier, description="test"
-        )
+        instance_id = str(uuid.uuid4())
+        doc = self.svc.register(instance_id=instance_id, description="test")
         self.docs_to_delete.append(doc)
-        doc = self.svc.get(instance_identifier=instance_identifier)
-        self.assertEqual(doc.instance_identifier, instance_identifier)
+        doc = self.svc.get(instance_id=instance_id)
+        self.assertEqual(doc.instance_id, instance_id)
 
     def test_deactivate(self, mock_list_operators):
-        instance_identifier = str(uuid.uuid4())
-        doc = self.svc.register(
-            instance_identifier=instance_identifier, description="test"
-        )
+        instance_id = str(uuid.uuid4())
+        doc = self.svc.register(instance_id=instance_id, description="test")
         self.docs_to_delete.append(doc)
-        doc = self.svc.deactivate(instance_identifier=instance_identifier)
+        doc = self.svc.deactivate(instance_id=instance_id)
         self.assertIsNotNone(doc.deactivated_at)
 
     def test_list(self, mock_list_operators):
 
-        instance_identifiers = []
+        instance_id = []
         for x in range(25):
-            instance_identifiers.append("test_" + str(uuid.uuid4()))
+            instance_id.append("test_" + str(uuid.uuid4()))
 
         for x in range(25):
             doc = self.svc.register(
-                instance_identifier=instance_identifiers[x],
+                instance_id=instance_id[x],
                 description=f"test_{x}",
             )
             self.docs_to_delete.append(doc)
@@ -126,14 +122,14 @@ class OrchestratorServiceTests(unittest.TestCase):
             MockOperator(100)
         ]
         doc = self.svc.register(
-            instance_identifier=instance_identifiers[24],
+            instance_id=instance_id[24],
             description=f"test_24",
         )
 
         docs = self.svc.list(paging=OrchestratorPagingParams(skip=0, limit=50))
         self.assertEqual(len(docs), 25)
 
-        self.svc.deactivate(instance_identifier=instance_identifiers[0])
+        self.svc.deactivate(instance_id=instance_id[0])
         docs = self.svc.list(paging=OrchestratorPagingParams(skip=0, limit=50))
         self.assertEqual(len(docs), 24)
 
@@ -147,7 +143,7 @@ class OrchestratorServiceTests(unittest.TestCase):
         docs = self.svc.list(
             paging=OrchestratorPagingParams(skip=0, limit=50),
             include_deactivated=True,
-            search={"noop": ["instance_identifier"]},
+            search={"noop": ["instance_id"]},
         )
         self.assertEqual(len(docs), 0)
 
@@ -155,7 +151,7 @@ class OrchestratorServiceTests(unittest.TestCase):
         docs = self.svc.list(
             paging=OrchestratorPagingParams(skip=0, limit=50),
             include_deactivated=True,
-            search={"test": ["instance_identifier"]},
+            search={"test": ["instance_id"]},
         )
         self.assertEqual(len(docs), 25)
 
@@ -173,9 +169,72 @@ class OrchestratorServiceTests(unittest.TestCase):
         )
         self.assertEqual(len(docs), 1)
 
-        self.svc.deactivate(instance_identifier=instance_identifiers[24])
+        self.svc.deactivate(instance_id=instance_id[24])
         docs = self.svc.list(
             paging=OrchestratorPagingParams(skip=0, limit=50),
             search={"mock_operator_100": ["available_operators"]},
         )
         self.assertEqual(len(docs), 0)
+
+    def test_count(self, mock_list_operators):
+
+        instance_id = []
+        for x in range(25):
+            for i in range(4):
+                instance_id.append(
+                    "test_" + str(i) + "_" + str(x) + "_" + str(uuid.uuid4())
+                )
+
+        for x in range(100):
+            doc = self.svc.register(
+                instance_id=instance_id[x],
+                description=f"test_{x}",
+            )
+            self.docs_to_delete.append(doc)
+
+        count = self.svc.count()
+        self.assertEqual(count, 100)
+
+        self.svc.deactivate(instance_id=instance_id[0])
+        count = self.svc.count()
+        self.assertEqual(count, 99)
+
+        count = self.svc.count(filters={"include_deactivated": True})
+        self.assertEqual(count, 100)
+
+        # returns no matches
+        count = self.svc.count(
+            filters={"include_deactivated": True},
+            search={"noop": ["instance_id"]},
+        )
+        self.assertEqual(count, 0)
+
+        # matches all the instance identifiers
+        docs = self.svc.count(
+            filters={"include_deactivated": True},
+            search={"test": ["instance_id"]},
+        )
+        self.assertEqual(docs, 100)
+
+        docs = self.svc.count(
+            filters={"include_deactivated": True},
+            search={"mock": ["available_operators"]},
+        )
+        self.assertEqual(docs, 100)
+
+        docs = self.svc.count(
+            filters={"include_deactivated": True},
+            search={"test_1": ["instance_id"]},
+        )
+        self.assertEqual(docs, 25)
+
+        docs = self.svc.count(
+            filters={"include_deactivated": True},
+            search={"test_0_0_": ["instance_id"]},
+        )
+        self.assertEqual(docs, 1)
+
+        docs = self.svc.count(
+            search={"test_0_0_": ["instance_id"]},
+        )
+        self.assertEqual(docs, 0)
