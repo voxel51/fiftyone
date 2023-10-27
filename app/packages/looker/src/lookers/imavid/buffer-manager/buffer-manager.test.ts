@@ -70,4 +70,33 @@ describe("BufferManager class tests", () => {
     expect(bufferManager.containsRange([12, 17])).toBe(false);
     expect(bufferManager.containsRange([20, 25])).toBe(false);
   });
+
+  test("totalFramesInBuffer method", async () => {
+    bufferManager.addBufferRangeToBuffer([1, 4]);
+    bufferManager.addBufferRangeToBuffer([5, 15]);
+
+    expect(bufferManager.totalFramesInBuffer).toBe(13);
+
+    bufferManager.reset();
+
+    expect(bufferManager.totalFramesInBuffer).toBe(0);
+  });
+
+  test("getRangeIndexForFrame method", async () => {
+    bufferManager.addBufferRangeToBuffer([2, 10]);
+    bufferManager.addBufferRangeToBuffer([12, 25]);
+
+    // check start
+    expect(bufferManager.getRangeIndexForFrame(2)).toBe(0);
+    expect(bufferManager.getRangeIndexForFrame(12)).toBe(1);
+    // check middle
+    expect(bufferManager.getRangeIndexForFrame(5)).toBe(0);
+    expect(bufferManager.getRangeIndexForFrame(14)).toBe(1);
+    // check end
+    expect(bufferManager.getRangeIndexForFrame(10)).toBe(0);
+    expect(bufferManager.getRangeIndexForFrame(25)).toBe(1);
+    // check out of bound
+    expect(bufferManager.getRangeIndexForFrame(11)).toBe(-1);
+    expect(bufferManager.getRangeIndexForFrame(27)).toBe(-1);
+  });
 });

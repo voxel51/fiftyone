@@ -6,8 +6,18 @@ import { BufferRange, Buffers } from "../../../state";
 export class BufferManager {
   public buffers: Buffers;
 
-  constructor(buffers?: Buffers) {
-    this.buffers = buffers ?? [];
+  constructor(buffers: Buffers = []) {
+    this.buffers = buffers;
+  }
+
+  /**
+   * Returns the total number of frames in the buffer.
+   */
+  get totalFramesInBuffer() {
+    return this.buffers.reduce(
+      (total, range) => total + range[1] - range[0],
+      0
+    );
   }
 
   /**
@@ -15,7 +25,7 @@ export class BufferManager {
    * If the new range overlaps with an existing range, the two ranges are merged.
    * Time complexity: O(nlogn)
    */
-  addBufferRangeToBuffer(range: BufferRange): void {
+  public addBufferRangeToBuffer(range: Readonly<BufferRange>): void {
     // add the new range to the buffer
     this.buffers.push(range);
 
@@ -23,7 +33,7 @@ export class BufferManager {
     this.buffers.sort((a, b) => a[0] - b[0]);
 
     // initialize a stack to store the merged ranges
-    const stack: BufferRange[] = [];
+    const stack = [];
 
     // push the first range to stack
     stack.push(this.buffers[0]);
@@ -51,7 +61,7 @@ export class BufferManager {
   /**
    * Checks if this interval is contained in one of the buffer ranges
    */
-  containsRange(range: BufferRange): boolean {
+  public containsRange(range: Readonly<BufferRange>): boolean {
     for (const buffer of this.buffers) {
       if (buffer[0] <= range[0] && buffer[1] >= range[1]) {
         return true;
@@ -60,6 +70,18 @@ export class BufferManager {
     return false;
   }
 
+  /**
+   * Returns the index of the buffer range that contains the given frame.
+   */
+  public getRangeIndexForFrame(frame: number) {
+    return this.buffers.findIndex(
+      (range) => range[0] <= frame && range[1] >= frame
+    );
+  }
+
+  /**
+   * Resets the buffer.
+   */
   public reset() {
     this.buffers = [];
   }
