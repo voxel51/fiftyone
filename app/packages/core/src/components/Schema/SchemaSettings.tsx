@@ -222,18 +222,13 @@ const SchemaSettings = () => {
                 resetAttributeFilters();
                 const initialFieldNames = [...excludedPaths[datasetName]];
 
-                try {
-                  setFieldVisibilityStage({
-                    cls: EXCLUDE_FIELDS_STAGE,
-                    kwargs: {
-                      field_names: initialFieldNames,
-                    },
-                  });
-                } catch (e) {
-                  console.error("error setting field visibility", e);
-                } finally {
-                  setSettingsModal({ open: false });
-                }
+                setSettingsModal({ open: false });
+                setFieldVisibilityStage({
+                  cls: EXCLUDE_FIELDS_STAGE,
+                  kwargs: {
+                    field_names: initialFieldNames,
+                  },
+                });
               }}
             >
               Apply
