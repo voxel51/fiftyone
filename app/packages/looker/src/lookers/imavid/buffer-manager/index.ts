@@ -25,7 +25,7 @@ export class BufferManager {
    * If the new range overlaps with an existing range, the two ranges are merged.
    * Time complexity: O(nlogn)
    */
-  public addBufferRangeToBuffer(range: Readonly<BufferRange>): void {
+  public addNewRange(range: Readonly<BufferRange>): void {
     // add the new range to the buffer
     this.buffers.push(range);
 
@@ -80,9 +80,34 @@ export class BufferManager {
   }
 
   /**
+   * Removes buffer range at given index.
+   */
+  public removeRangeAtIndex(index: number) {
+    this.buffers.splice(index, 1);
+  }
+
+  /**
    * Resets the buffer.
    */
   public reset() {
     this.buffers = [];
+  }
+
+  /**
+   * Removes the interval that's present in buffers and returns the remaining interval;
+   *
+   * @example
+   * buffers = [[1,100], [200,300]]
+   * input range: [5, 105]
+   * output: [101-105]
+   */
+  public getUnprocessedBufferRange(range: Readonly<BufferRange>) {
+    const startContainedInRangeIndex = this.getRangeIndexForFrame(range[0]);
+
+    if (startContainedInRangeIndex === -1) {
+      return range;
+    }
+
+    return [this.buffers[startContainedInRangeIndex][1] + 1, range[1]] as const;
   }
 }

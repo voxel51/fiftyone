@@ -168,11 +168,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   async buffer() {
     this.update({ buffering: true });
-
-    if (!this.framesController.isHydrated()) {
-      await this.framesController.hydrateIfEmpty();
-    }
-
+    console.log("invoking fetch");
+    await this.framesController.fetchMore(this.frameNumber);
+    console.log("after fetch");
     this.update({ buffering: false });
   }
 
@@ -252,33 +250,65 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     });
   }
 
-  private getNecessaryFrameRange() {}
-
-  /**
-   * Check if current framestamp is in store with frames enough for
-   * [`LOOK_AHEAD_TIME_SECONDS`](../../lookers/imavid/constants.ts) given current frame rate
-   */
-  private shouldBuffer(currentFrameNumber: number, frameRate: number) {
-    const maxFrame = currentFrameNumber + LOOK_AHEAD_TIME_SECONDS * frameRate;
-    for (let i = currentFrameNumber; i < maxFrame; i++) {
-      if (!this.framesController.store.frameIndex.has(i)) {
-        return true;
-      }
-    }
-    return false;
+  private getNecessaryFrameRange(state: Readonly<ImaVidState>) {
+    const frameRangeMax =
+      state.currentFrameNumber +
+      LOOK_AHEAD_TIME_SECONDS * this.framesController.currentFrameRate;
+    return [state.currentFrameNumber, frameRangeMax] as const;
   }
 
-  renderSelf(options: Readonly<ImaVidState>) {
+  private isPlayable() {
+    return (
+      this.framesController.store.samples.length > 0 &&
+      this.framesController.store.frameIndex.has(this.frameNumber)
+    );
+  }
+
+  private ensureBuffers(state: Readonly<ImaVidState>) {
+    if (this.framesController.isFetching) {
+      return;
+    }
+
+    let shouldBuffer = false;
+    const necessaryFrameRange = this.getNecessaryFrameRange(state);
+    const rangeAvailable =
+      this.framesController.storeBufferManager.containsRange(
+        necessaryFrameRange
+      );
+
+    if (state.config.thumbnail && state.hovering && !rangeAvailable) {
+      // for grid
+      // only buffer if hovering and range not available
+      shouldBuffer = true;
+    } else if (state.playing && !state.seeking && !rangeAvailable) {
+      // for modal
+      shouldBuffer = true;
+    }
+
+    if (shouldBuffer) {
+      this.framesController.resumeFetch();
+
+      const unprocessedBufferRange =
+        this.framesController.storeBufferManager.getUnprocessedBufferRange(
+          necessaryFrameRange
+        );
+      debugger;
+      this.framesController.enqueueFetch(unprocessedBufferRange);
+    }
+  }
+
+  renderSelf(state: Readonly<ImaVidState>) {
     const {
       options: { loop },
       config: { frameRate, thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
       playing,
+      bufferManager,
       loaded,
       buffering,
       destroyed,
-    } = options;
+    } = state;
 
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
@@ -288,21 +318,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     if (destroyed) {
       // triggered when, for example, grid is reset, do nothing
-      // this.releaseVideo();
+      this.framesController.cleanup();
     }
 
-    // check if we need to buffer
-    if (
-      loaded &&
-      !buffering &&
-      !seeking &&
-      this.shouldBuffer(currentFrameNumber, frameRate)
-    ) {
-      this.buffer();
-    }
+    this.ensureBuffers(state);
 
     // now that we know we have some frames, we can begin streaming
 
+    this.play();
     // if (loaded && playing && !seeking && !buffering) {
     //   this.play();
     //   return null;

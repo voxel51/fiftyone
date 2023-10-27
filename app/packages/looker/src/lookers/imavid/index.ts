@@ -116,7 +116,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
       playing: false,
       currentFrameNumber: firstFrame,
       buffering: false,
-      buffers: new BufferManager([[firstFrame, firstFrame]]),
+      bufferManager: new BufferManager([[firstFrame, firstFrame]]),
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
       hasPoster: false,
@@ -195,7 +195,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   updateSample(sample: Sample) {
-    this.state.buffers = [[1, 1]];
+    this.state.bufferManager = [[1, 1]];
     this.frames.clear();
     super.updateSample(sample);
   }

@@ -100,7 +100,7 @@ export type RgbMaskTargets = {
 export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 
 export type BufferRange = [number, number];
-export type Buffers = BufferRange[];
+export type Buffers = Readonly<BufferRange>[];
 
 export type DispatchEvent = (eventType: string, details?: any) => void;
 
@@ -318,7 +318,6 @@ export interface VideoState extends BaseState {
   duration: number | null;
   fragment: [number, number] | null;
   buffering: boolean;
-  buffers: Buffers;
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
@@ -359,7 +358,7 @@ export interface ImaVidState extends BaseState {
   /**
    * ranges of frame numbers that have been buffered.
    */
-  buffers: BufferManager;
+  bufferManager: BufferManager;
   /**
    * true if the seek bar is being hovered
    */

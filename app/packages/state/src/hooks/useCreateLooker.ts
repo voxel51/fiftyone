@@ -60,6 +60,13 @@ export default <T extends AbstractLooker>(
     groupAtoms.shouldRenderImaVidLooker
   );
 
+  // callback to get the latest promise inside another recoil callback
+  // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
+  const getPromise = useRecoilCallback(
+    ({ snapshot: { getPromise } }) => getPromise,
+    []
+  );
+
   const create = useRecoilCallback(
     ({ snapshot }) =>
       ({
@@ -154,23 +161,23 @@ export default <T extends AbstractLooker>(
         if (constructor === ImaVidLooker) {
           const { groupBy, orderBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
-            .valueOrThrow();
+            .valueMaybe();
           const groupByFieldValue = sample[
             getSanitizedGroupByExpression(groupBy)
           ] as string;
-          const totalFrameCount = snapshot
-            .getLoadable(dynamicGroupsElementCount(groupByFieldValue))
-            .valueOrThrow();
+          const totalFrameCountPromise = getPromise(
+            dynamicGroupsElementCount(groupByFieldValue)
+          );
           const page = snapshot
             .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
-            .valueOrThrow();
+            .valueMaybe();
 
           (config as ImaVidConfig).frameStoreController =
             new ImaVidFramesController({
               environment,
               orderBy,
               page,
-              totalFrameCount,
+              totalFrameCountPromise,
               posterSample: sample,
             });
           // todo
