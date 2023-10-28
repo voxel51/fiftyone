@@ -13,7 +13,7 @@ from setuptools import setup
 
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
-    "fiftyone~=0.15",
+    "fiftyone>0.14,<0.16",
 ]
 
 
