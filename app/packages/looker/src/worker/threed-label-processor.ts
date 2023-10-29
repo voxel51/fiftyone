@@ -78,6 +78,10 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
 
     if (label._cls === DETECTIONS) {
       for (const detection of label.detections as DetectionLabel[]) {
+        if (!detection.location || !detection.dimensions) {
+          continue;
+        }
+
         const [x, y] = detection.location;
         const [lx, ly] = detection.dimensions;
 
@@ -87,6 +91,10 @@ const getInferredParamsForUndefinedProjection = (sample: Readonly<Sample>) => {
         maxY = Math.max(maxY, y + ly / 2);
       }
     } else if (label._cls === "Detection") {
+      if (!label.location || !label.dimensions) {
+        continue;
+      }
+
       const [x, y] = label.location as DetectionLabel["location"];
       const [lx, ly] = label.dimensions as DetectionLabel["dimensions"];
 
@@ -144,6 +152,10 @@ const PainterFactory3D = (
     } = orthographicProjectionParams;
     const [xmin, ymin] = min_bound;
     const [xmax, ymax] = max_bound;
+
+    if (!label.location || !label.dimensions) {
+      return;
+    }
 
     const [x, y, z] = label.location; // centroid of bounding box
     const [lx, ly, lz] = label.dimensions; // length of bounding box in each dimension
