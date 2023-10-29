@@ -25,6 +25,7 @@ import {
   SectionWrapper,
 } from "./ShareStyledDiv";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import FieldByValue from "./colorPalette/FieldByValue";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
@@ -293,6 +294,7 @@ const FieldSetting = ({ path }: { path: string }) => {
                   </div>
                 </>
               )}
+              <FieldByValue />
             </SectionWrapper>
           </form>
         </div>

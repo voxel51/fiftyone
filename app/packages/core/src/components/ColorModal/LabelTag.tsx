@@ -9,13 +9,12 @@ import { DefaultValue, selector, useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
 import {
-  FieldCHILD_STYLE,
   FieldColorSquare,
   PickerWrapper,
   SectionWrapper,
 } from "./ShareStyledDiv";
-import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import LabelTagByValue from "./colorPalette/LabelTagByValue";
 import ModeControl from "./controls/ModeControl";
 
 const labelTagSetting = selector<LabelTagColorInput>({
@@ -223,10 +222,7 @@ const LabelTag: React.FC = () => {
               }}
             />
             <SectionWrapper>
-              <AttributeColorSetting
-                style={FieldCHILD_STYLE}
-                useLabelColors={state.useLabelColors}
-              />
+              <LabelTagByValue />
             </SectionWrapper>
           </form>
         </div>
