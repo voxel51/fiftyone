@@ -393,7 +393,16 @@ class Detection(_HasAttributesDict, _HasID, Label):
             ``[0, 1]`` in the following format::
 
             [<top-left-x>, <top-left-y>, <width>, <height>]
-
+        location (None): centroid of the 3D bounding box in the format
+            ``[x, y, z]`` in the coordinate space of the original data.
+            Note: this field doesn't apply for 2D detections.
+        dimensions (None): dimensions of the 3D bounding box in the format
+            ``[length, width, height]`` in the coordinate space of the original
+            data.
+            Note: this field doesn't apply for 2D detections.
+        rotation (None): rotation of the 3D bounding box in the format
+            ``[x, y, z, w]`` in the coordinate space of the original data.
+            Note: this field doesn't apply for 2D detections.
         mask (None): an instance segmentation mask for the detection within
             its bounding box, which should be a 2D binary or 0/1 integer numpy
             array
@@ -405,6 +414,9 @@ class Detection(_HasAttributesDict, _HasID, Label):
 
     label = fof.StringField()
     bounding_box = fof.ListField(fof.FloatField())
+    location = fof.ListField(fof.FloatField())
+    dimensions = fof.ListField(fof.FloatField())
+    rotation = fof.ListField(fof.FloatField())
     mask = fof.ArrayField()
     confidence = fof.FloatField()
     index = fof.IntField()
