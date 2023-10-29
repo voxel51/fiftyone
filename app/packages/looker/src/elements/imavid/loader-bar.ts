@@ -17,15 +17,13 @@ export class LoaderBar extends BaseElement<ImaVidState> {
   }
 
   renderSelf({
-    duration,
     buffering,
     hovering,
-    waitingForVideo,
     playing,
     error,
     config: { frameRate },
   }: Readonly<ImaVidState>) {
-    this.buffering = (buffering || waitingForVideo) && hovering && !error;
+    this.buffering = buffering && hovering && !error;
 
     if (this.buffering) {
       this.element.style.display = "block";

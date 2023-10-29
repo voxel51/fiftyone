@@ -34,7 +34,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     currentFrameNumber: frameNumber,
     config: { frameRate, thumbnail },
     duration,
-    buffers,
+    bufferManager: buffers,
   }: Readonly<ImaVidState>) {
     if (thumbnail) {
       return this.element;

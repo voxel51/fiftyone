@@ -75,7 +75,6 @@ const seekFn = (
 
 export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
-  private frameNumber: number;
   private loop = false;
   private playbackRate = 1;
   private posterFrame: number;
@@ -141,6 +140,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         },
       }) => {
         this.framesController = framesController;
+        this.framesController.setImaVidStateUpdater(this.update);
         this.mediaField = mediaField;
 
         this.framesController.setFrameRate(frameRate);
@@ -166,62 +166,61 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return this.element;
   }
 
-  async buffer() {
-    this.update({ buffering: true });
-    console.log("invoking fetch");
-    await this.framesController.fetchMore(this.frameNumber);
-    console.log("after fetch");
-    this.update({ buffering: false });
-  }
-
-  async drawFrame() {
-    if (this.waitingToPause) {
-      return;
-    }
-
-    // TODO: CACHE EVERYTHING INSIDE HERE
-    // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
-
+  private getCurrentFrameSample(currentFrameNumber: number) {
     const samples = this.framesController.store.samples;
     const indices = this.framesController.store.frameIndex;
 
-    if (samples.length === 0 || !indices.has(this.frameNumber)) {
-      // todo: buffer and resume
-      // todo: store max frames available for this dynamic group
-      console.log("no more frames. finishing playback.");
-      return;
-    }
-
-    const sample = samples.get(indices.get(this.frameNumber));
+    const sampleIndex = indices.get(currentFrameNumber);
+    const sample = samples.get(sampleIndex);
 
     if (!sample) {
-      alert("missing sample");
-      return;
+      return null;
     }
 
     if (sample.__typename !== "ImageSample") {
-      alert("not an image sample");
+      throw new Error("expected an image sample");
+    }
+
+    return sample;
+  }
+
+  async drawFrame(state: Readonly<ImaVidState>) {
+    if (this.waitingToPause) {
+      console.log("waiting to pause in drawframe");
       return;
     }
 
+    console.log(
+      "getting current frame sample for frame number",
+      state.currentFrameNumber
+    );
+    const currentFrameSample = this.getCurrentFrameSample(
+      state.currentFrameNumber
+    );
     // TODO: CACHE EVERYTHING INSIDE HERE
+    // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
-    const urls = getStandardizedUrls(sample.urls);
+    if (!currentFrameSample) {
+      return;
+    }
+
+    this.waitingToPlay = true;
+
+    const urls = getStandardizedUrls(currentFrameSample.urls);
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
     image.addEventListener("load", () => {
       const ctx = this.canvas.getContext("2d");
       ctx.drawImage(image, 0, 0);
-      // requestAnimationFrame(this.drawFrame.bind(this));
+      this.update({ currentFrameNumber: state.currentFrameNumber + 1 });
+      requestAnimationFrame(this.drawFrame.bind(this, state));
     });
     image.src = src;
-    this.frameNumber += 1;
   }
 
   pause() {
+    console.log("pausing");
     this.waitingToPause = true;
-    console.log("Pausing");
-    this.frameNumber = 1;
     this.update({ playing: false });
     this.waitingToPause = false;
     this.waitingToPlay = false;
@@ -232,22 +231,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * 1. Check if we have next 100 frames from current framestamp in store
    * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
    */
-  async play() {
-    // if (this.waitingToPlay || this.waitingToPause) {
-    //   return;
-    // }
-    // see if we can do without waitingTo__ flags unlike video looker
-    // this.waitingToPlay = true;
-    this.update(({ playing }) => {
-      if (playing) {
-        return {};
-      }
+  async play(state: Readonly<ImaVidState>) {
+    if (this.waitingToPlay || this.waitingToPause) {
+      return;
+    }
 
-      if (!playing) {
-        requestAnimationFrame(this.drawFrame.bind(this));
-      }
-      return { playing: true };
-    });
+    console.log("invoking drawFrame");
+
+    requestAnimationFrame(this.drawFrame.bind(this, state));
   }
 
   private getNecessaryFrameRange(state: Readonly<ImaVidState>) {
@@ -255,13 +246,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       state.currentFrameNumber +
       LOOK_AHEAD_TIME_SECONDS * this.framesController.currentFrameRate;
     return [state.currentFrameNumber, frameRangeMax] as const;
-  }
-
-  private isPlayable() {
-    return (
-      this.framesController.store.samples.length > 0 &&
-      this.framesController.store.frameIndex.has(this.frameNumber)
-    );
   }
 
   private ensureBuffers(state: Readonly<ImaVidState>) {
@@ -280,20 +264,25 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // for grid
       // only buffer if hovering and range not available
       shouldBuffer = true;
-    } else if (state.playing && !state.seeking && !rangeAvailable) {
+    } else if (
+      !state.config.thumbnail &&
+      state.playing &&
+      !state.seeking &&
+      !rangeAvailable
+    ) {
       // for modal
       shouldBuffer = true;
     }
 
     if (shouldBuffer) {
-      this.framesController.resumeFetch();
-
       const unprocessedBufferRange =
         this.framesController.storeBufferManager.getUnprocessedBufferRange(
           necessaryFrameRange
         );
-      debugger;
       this.framesController.enqueueFetch(unprocessedBufferRange);
+      this.framesController.resumeFetch();
+    } else {
+      this.framesController.pauseFetch();
     }
   }
 
@@ -303,12 +292,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       config: { frameRate, thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
+      hovering,
       playing,
       bufferManager,
       loaded,
       buffering,
       destroyed,
     } = state;
+
+    console.log("renderSelf", { currentFrameNumber, playing });
 
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
@@ -317,15 +309,32 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     if (destroyed) {
+      console.log("destroyed");
       // triggered when, for example, grid is reset, do nothing
       this.framesController.cleanup();
     }
 
     this.ensureBuffers(state);
 
+    /**
+     * - can play even if buffering
+     * - need a flag inside drawFrame to know when to pause
+     */
+
     // now that we know we have some frames, we can begin streaming
 
-    this.play();
+    const isPlayable = this.getCurrentFrameSample(currentFrameNumber) !== null;
+
+    if (!isPlayable) {
+      return null;
+    }
+
+    if (thumbnail && !hovering) {
+      this.framesController.cleanup();
+      this.waitingToPlay = false;
+    } else if (thumbnail && hovering && playing) {
+      this.play(state);
+    }
     // if (loaded && playing && !seeking && !buffering) {
     //   this.play();
     //   return null;

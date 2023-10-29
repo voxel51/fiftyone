@@ -1,15 +1,17 @@
 import * as foq from "@fiftyone/relay";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { Sample } from "../..";
-import { BufferRange } from "../../state";
+import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BufferManager } from "./buffer-manager";
 import {
-  BUFFERS_REFRESH_INTERVAL,
+  BUFFERS_REFRESH_TIMEOUT_YIELD,
   DEFAULT_FRAME_RATE,
   LOOK_AHEAD_TIME_SECONDS as DEFAULT_LOOK_AHEAD_TIME_SECONDS,
 } from "./constants";
 import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 import { ImaVidStore } from "./store";
+
+const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
   public storeBufferManager = new BufferManager();
@@ -17,9 +19,10 @@ export class ImaVidFramesController {
   private frameRate = DEFAULT_FRAME_RATE;
 
   public totalFrameCount: number;
-  private intervalId: number;
+  private timeoutId: number;
   public isFetching = false;
   private subscription: Subscription;
+  private updateImaVidState: StateUpdate<ImaVidState>;
 
   constructor(
     private readonly config: {
@@ -37,32 +40,67 @@ export class ImaVidFramesController {
     });
   }
 
+  public setImaVidStateUpdater(updater: StateUpdate<ImaVidState>) {
+    this.updateImaVidState = updater;
+  }
+
   public resumeFetch() {
     if (this.isFetching) {
       return;
     }
 
-    this.intervalId = window.setInterval(
+    // todo: might want to use setTimeout
+    this.timeoutId = window.setTimeout(
       this.executeFetch.bind(this),
-      BUFFERS_REFRESH_INTERVAL
+      BUFFERS_REFRESH_TIMEOUT_YIELD
     );
-
-    this.isFetching = true;
   }
 
   public pauseFetch() {
-    window.clearInterval(this.intervalId);
+    window.clearTimeout(this.timeoutId);
+    this.fetchBufferManager.reset();
     this.isFetching = false;
   }
 
   private async executeFetch() {
-    if (this.fetchBufferManager.buffers.length === 0) {
+    let totalUnfetchedRanges = 0;
+    let totalFetchingRanges = 0;
+    const unfetchedRanges = [];
+
+    for (let i = 0; i < this.fetchBufferManager.buffers.length; ++i) {
+      if (this.fetchBufferManager.bufferMetadata[i] === "fetching") {
+        totalFetchingRanges += 1;
+      } else {
+        totalUnfetchedRanges += 1;
+        unfetchedRanges.push(this.fetchBufferManager.buffers[i]);
+      }
+    }
+
+    if (totalUnfetchedRanges === 0 && totalFetchingRanges === 0) {
       this.isFetching = false;
+      this.updateImaVidState({ buffering: false });
       return;
     }
 
-    const fetchPromises = this.fetchBufferManager.buffers.map((range) => {
-      return this.fetchMore(range[0], range[1] - range[0]);
+    if (totalFetchingRanges > 0 && totalUnfetchedRanges === 0) {
+      this.timeoutId = window.setTimeout(
+        this.executeFetch.bind(this),
+        BUFFERS_REFRESH_TIMEOUT_YIELD
+      );
+      return;
+    }
+
+    this.isFetching = true;
+
+    this.updateImaVidState({ buffering: true });
+
+    const fetchPromises = unfetchedRanges.map((range, index) => {
+      this.fetchBufferManager.bufferMetadata[index] = BUFFER_METADATA_FETCHING;
+
+      // subtracting 1 from range[0] because cursor is 0-based
+      return this.fetchMore(range[0] - 1, range[1] - range[0]).finally(() => {
+        this.fetchBufferManager.bufferMetadata[index] = null;
+      });
     });
 
     const results = await Promise.allSettled(fetchPromises);
@@ -73,8 +111,15 @@ export class ImaVidFramesController {
         );
       } else {
         this.fetchBufferManager.removeRangeAtIndex(index);
+        this.fetchBufferManager.bufferMetadata[index] =
+          BUFFER_METADATA_FETCHING;
       }
     });
+
+    this.timeoutId = window.setTimeout(
+      this.executeFetch.bind(this),
+      BUFFERS_REFRESH_TIMEOUT_YIELD
+    );
   }
 
   public get currentFrameRate() {
@@ -131,9 +176,7 @@ export class ImaVidFramesController {
       count ?? DEFAULT_LOOK_AHEAD_TIME_SECONDS * this.frameRate
     );
 
-    const fetchUid = `${this.posterSampleId}-${variables.cursor}-${variables.count}`;
-
-    console.log(`fetching ${fetchUid}`);
+    const fetchUid = `${this.posterSampleId}-${cursor}-${variables.count}`;
 
     return new Promise<void>((resolve, _reject) => {
       // do a gql query here, get samples, update store
@@ -163,7 +206,7 @@ export class ImaVidFramesController {
               const nodeSampleId = node.sample["_id"] as string;
 
               this.store.samples.set(node.sample["_id"], node);
-              this.store.frameIndex.set(Number(cursor) + 1, nodeSampleId);
+              this.store.frameIndex.set(Number(cursor), nodeSampleId);
             }
 
             this.storeBufferManager.addNewRange([
@@ -174,6 +217,9 @@ export class ImaVidFramesController {
           resolve();
         },
       });
+      // todo: see if environment.retain() is applicable here,
+      // since fetchQuery() doesn't retain data after request completes
+      // reference: https://relay.dev/docs/api-reference/fetch-query/
     });
   }
 

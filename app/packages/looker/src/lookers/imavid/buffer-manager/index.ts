@@ -5,9 +5,13 @@ import { BufferRange, Buffers } from "../../../state";
  */
 export class BufferManager {
   public buffers: Buffers;
+  public bufferMetadata: {
+    [rangeIndex: number]: string;
+  };
 
   constructor(buffers: Buffers = []) {
     this.buffers = buffers;
+    this.bufferMetadata = {};
   }
 
   /**
