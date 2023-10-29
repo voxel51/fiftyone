@@ -216,6 +216,7 @@ const FieldSetting = ({ path }: { path: string }) => {
                       onChangeComplete={(color) => {
                         onChangeFieldColor(color.hex);
                         setColors([...new Set([...colors, color.hex])]);
+                        setShowFieldPicker(false);
                       }}
                       className={colorPicker}
                       ref={pickerRef}

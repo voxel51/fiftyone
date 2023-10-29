@@ -160,6 +160,7 @@ const LabelTag: React.FC = () => {
                       onChangeComplete={(color) => {
                         onChangeFieldColor(color.hex);
                         setColors([...new Set([...colors, color.hex])]);
+                        setShowFieldPicker(false);
                       }}
                       className={colorPicker}
                       ref={pickerRef}
