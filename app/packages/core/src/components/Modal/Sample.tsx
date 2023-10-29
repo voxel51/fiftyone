@@ -6,13 +6,7 @@ import {
   selectedMediaField,
   useHoveredSample,
 } from "@fiftyone/state";
-import React, {
-  MutableRefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { MutableRefObject, useCallback, useRef, useState } from "react";
 import { RecoilValueReadOnly, useRecoilValue } from "recoil";
 import { SampleBar } from "./Bars";
 import Looker from "./Looker";
