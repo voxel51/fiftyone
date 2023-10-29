@@ -159,6 +159,7 @@ type LabelColorProps = {
   isTagged: boolean;
   labelTagColors: LabelTagColor;
   customizeColorSetting: CustomizeColor[];
+  is3D?: boolean;
 };
 
 export const getLabelColor = ({
@@ -168,6 +169,7 @@ export const getLabelColor = ({
   isTagged,
   labelTagColors,
   customizeColorSetting,
+  is3D = false,
 }: LabelColorProps): string => {
   const field = customizeColorSetting.find((s) => s.path === path);
 
@@ -214,7 +216,7 @@ export const getLabelColor = ({
     }
   } else {
     // if the field has custom color rules, use the field/value specific rules
-    return getLabelColorByValue({ field, label, coloring });
+    return getLabelColorByValue({ field, label, coloring, is3D });
   }
 
   return getColor(coloring.pool, coloring.seed, path);
@@ -235,11 +237,19 @@ const getLabelColorByField = ({
   return getColor(coloring.pool, coloring.seed, path);
 };
 
-const getLabelColorKey = (field: CustomizeColor, label: RegularLabel) => {
+const getLabelColorKey = (
+  field: CustomizeColor,
+  label: RegularLabel,
+  is3D: boolean
+) => {
   let key;
   if (field.colorByAttribute) {
     if (field.colorByAttribute === "index") {
-      key = ["string", "number"].includes(typeof label.index) ? "index" : "id";
+      key = ["string", "number"].includes(typeof label.index)
+        ? "index"
+        : is3D
+        ? "_id"
+        : "id";
     } else {
       key = field.colorByAttribute;
     }
@@ -253,14 +263,16 @@ const getLabelColorByValue = ({
   field,
   label,
   coloring,
+  is3D,
 }: {
   field?: CustomizeColor;
   label: RegularLabel;
   coloring: Coloring;
+  is3D: boolean;
 }) => {
   let key;
   if (field) {
-    key = getLabelColorKey(field, label);
+    key = getLabelColorKey(field, label, is3D);
     // use the first value as the fallback value to get color,
     // if it's a listField
     const fallbackValue =

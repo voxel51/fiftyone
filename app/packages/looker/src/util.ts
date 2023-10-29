@@ -551,8 +551,8 @@ export const isFloatArray = (arr) =>
 
 // go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
-  prevColorScheme: CustomizeColor[],
-  nextColorScheme: CustomizeColor[]
+  prevColorScheme: Object[],
+  nextColorScheme: Object[]
 ) => {
   if (prevColorScheme?.length !== nextColorScheme?.length) {
     return true;
