@@ -263,9 +263,10 @@ const getLabelColorByValue = ({
     key = getLabelColorKey(field, label);
     // use the first value as the fallback value to get color,
     // if it's a listField
-    const fallbackValue = Array.isArray(label[key])
-      ? label[key][0]
-      : label[key];
+    const fallbackValue =
+      Array.isArray(label[key]) && label[key].length > 0
+        ? label[key][0]
+        : label[key];
 
     // check if this label has a assigned color, use it if it is a valid color
     const valueColor = field?.valueColors?.find((l) => {

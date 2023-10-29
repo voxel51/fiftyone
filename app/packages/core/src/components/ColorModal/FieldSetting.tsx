@@ -2,6 +2,7 @@ import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
+  COLOR_BY,
   FLOAT_FIELD,
   NOT_VISIBLE_LIST,
   VALID_MASK_TYPES,
@@ -173,7 +174,7 @@ const FieldSetting = ({ path }: { path: string }) => {
     <div>
       <ModeControl />
       <Divider />
-      {coloring.by == "field" && isTypeFieldSupported && (
+      {coloring.by == COLOR_BY.FIELD && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
             name={`Use custom color for ${path} field`}
@@ -240,10 +241,10 @@ const FieldSetting = ({ path }: { path: string }) => {
           )}
         </div>
       )}
-      {coloring.by == "field" && !isTypeFieldSupported && (
+      {coloring.by == COLOR_BY.FIELD && !isTypeFieldSupported && (
         <div>Color by field is not supported for this field type</div>
       )}
-      {coloring.by == "value" && isTypeValueSupported && (
+      {coloring.by == COLOR_BY.VALUE && isTypeValueSupported && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
@@ -300,10 +301,10 @@ const FieldSetting = ({ path }: { path: string }) => {
         </div>
       )}
 
-      {coloring.by == "value" && !isTypeValueSupported && (
+      {coloring.by == COLOR_BY.VALUE && !isTypeValueSupported && (
         <div>Color by value is not supported for this field type</div>
       )}
-      {coloring.by == "instance" && (
+      {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}
     </div>

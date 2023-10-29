@@ -30,8 +30,6 @@ const FieldByValue: React.FC = () => {
     setting?.valueColors && setting.valueColors.length > 0
   );
 
-  console.info(shouldShowAddButton);
-
   const onSyncUpdate = useCallback(
     (copy: ValueColorInput[]) => {
       if (copy) {
@@ -56,8 +54,6 @@ const FieldByValue: React.FC = () => {
       }
     }
   }, [values]);
-
-  console.info(values);
 
   return (
     <ValueColorList

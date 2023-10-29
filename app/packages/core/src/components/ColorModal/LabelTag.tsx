@@ -1,6 +1,7 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { LabelTagColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { COLOR_BY } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
 import colorString from "color-string";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -116,7 +117,7 @@ const LabelTag: React.FC = () => {
     <div>
       <ModeControl />
       <Divider />
-      {coloring.by === "field" && (
+      {coloring.by === COLOR_BY.FIELD && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
             name={`Use custom color for label tags field`}
@@ -183,7 +184,7 @@ const LabelTag: React.FC = () => {
         </div>
       )}
 
-      {coloring.by === "value" && (
+      {coloring.by === COLOR_BY.VALUE && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
@@ -215,9 +216,7 @@ const LabelTag: React.FC = () => {
                     cur = { ...cur, valueColors: [] };
                   }
 
-                  return {
-                    ...cur,
-                  };
+                  return cur;
                 });
               }}
             />
@@ -227,7 +226,7 @@ const LabelTag: React.FC = () => {
           </form>
         </div>
       )}
-      {coloring.by == "instance" && (
+      {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}
     </div>
