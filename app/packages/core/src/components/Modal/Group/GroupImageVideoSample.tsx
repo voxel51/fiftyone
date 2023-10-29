@@ -16,8 +16,6 @@ export const GroupImageVideoSample: React.FC<{
   const hover = fos.useHoveredSample(sample.sample);
   const { lookerRefCallback } = useGroupContext();
 
-  const mediaField = useRecoilValue(fos.selectedMediaField(true));
-
   return (
     <GroupSampleWrapper
       sampleId={sample.sample._id}
@@ -27,7 +25,7 @@ export const GroupImageVideoSample: React.FC<{
     >
       <Looker
         sample={sample}
-        key={`${sample.id}-${mediaField}`}
+        key={sample.id}
         lookerRef={lookerRef}
         lookerRefCallback={lookerRefCallback}
       />

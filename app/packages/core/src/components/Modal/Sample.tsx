@@ -3,7 +3,6 @@ import {
   ModalSample,
   modalSample,
   modalSampleId,
-  selectedMediaField,
   useHoveredSample,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useCallback, useRef, useState } from "react";
@@ -79,12 +78,10 @@ const Sample = ({
 
   const id = useRecoilValue(modalSampleId);
 
-  const mediaField = useRecoilValue(selectedMediaField(true));
-
   return (
     <SampleWrapper lookerRef={ref} actions={actions}>
       <Looker
-        key={`looker-${id}-${mediaField}`}
+        key={`looker-${id}`}
         lookerRef={ref}
         lookerRefCallback={lookerRefCallback}
       />
