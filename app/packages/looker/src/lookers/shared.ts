@@ -23,6 +23,7 @@ export const LookerUtils = {
     next: Readonly<Optional<BaseState["options"]>>
   ): boolean => {
     let reloadSample = false;
+    debugger;
 
     if (next.coloring && current.coloring.seed !== next.coloring.seed) {
       reloadSample = true;
@@ -32,6 +33,11 @@ export const LookerUtils = {
       reloadSample = true;
     } else if (
       hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)
+    ) {
+      reloadSample = true;
+    } else if (
+      !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
+      current.selectedLabelTags?.length !== next.selectedLabelTags?.length
     ) {
       reloadSample = true;
     }

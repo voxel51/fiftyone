@@ -5,6 +5,7 @@ import {
   BOOLEAN_FIELD,
   CLASSIFICATION,
   CLASSIFICATIONS,
+  COLOR_BY,
   DATE_FIELD,
   DATE_TIME_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
@@ -29,7 +30,13 @@ import { isEqual } from "lodash";
 import { RegularLabel } from "../../overlays/base";
 import { Classification, Regression } from "../../overlays/classifications";
 import { isValidColor, shouldShowLabelTag } from "../../overlays/util";
-import { BaseState, CustomizeColor, NONFINITE, Sample } from "../../state";
+import {
+  BaseState,
+  CustomizeColor,
+  LabelTagColor,
+  NONFINITE,
+  Sample,
+} from "../../state";
 import { BaseElement } from "../base";
 import { lookerTags } from "./tags.module.css";
 import { getAssignedColor, prettify } from "./util";
@@ -46,9 +53,9 @@ interface TagData {
 export class TagsElement<State extends BaseState> extends BaseElement<State> {
   private activePaths: string[] = [];
   private customizedColors: CustomizeColor[] = [];
-  private labelTagColors: CustomizeColor = {};
+  private labelTagColors: LabelTagColor = {};
   private colorPool: string[];
-  private colorBy: "field" | "value" | "instance";
+  private colorBy: COLOR_BY.FIELD | COLOR_BY.VALUE | COLOR_BY.INSTANCE;
   private colorSeed: number;
   private playing = false;
   private attributeVisibility: object;

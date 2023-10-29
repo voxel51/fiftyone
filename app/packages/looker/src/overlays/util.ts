@@ -198,7 +198,7 @@ export const getLabelColor = ({
   if (coloring.by === COLOR_BY.VALUE) {
     if (isTagged) {
       // if the label's tag is currently active, use the _label_tags color rules
-      // specified tag color > label tag field color > default label tag color
+      // specified tag color > color by label tag's value > label tag field color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
         label.tags.includes(pair.value)
@@ -208,7 +208,7 @@ export const getLabelColor = ({
         return tagColor;
       } else {
         return getLabelColorByField({
-          path: "_label_tags",
+          path: label.tags.length > 0 ? label.tags[0] : "_Label_tags",
           coloring,
           fieldColor: labelTagColors?.fieldColor,
         });

@@ -25,6 +25,7 @@ import {
   CustomizeColor,
   FrameChunk,
   FrameSample,
+  LabelTagColor,
   Sample,
 } from "../state";
 import { DeserializerFactory } from "./deserializer";
@@ -190,7 +191,9 @@ const processLabels = async (
   coloring: ProcessSample["coloring"],
   prefix = "",
   sources: { [key: string]: string },
-  customizeColorSetting: ProcessSample["customizeColorSetting"]
+  customizeColorSetting: ProcessSample["customizeColorSetting"],
+  labelTagColors: ProcessSample["labelTagColors"],
+  selectedLabelTags: ProcessSample["selectedLabelTags"]
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -226,7 +229,9 @@ const processLabels = async (
           coloring,
           `${prefix ? prefix : ""}${field}.`,
           sources,
-          customizeColorSetting
+          customizeColorSetting,
+          labelTagColors,
+          selectedLabelTags
         );
         buffers.push(...moreBuffers);
       }
@@ -247,7 +252,9 @@ const processLabels = async (
             prefix ? prefix + field : field,
             label,
             coloring,
-            customizeColorSetting
+            customizeColorSetting,
+            labelTagColors,
+            selectedLabelTags
           )
         );
       }
@@ -275,6 +282,8 @@ export interface ProcessSample {
   sample: Sample & FrameSample;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
   sources: { [path: string]: string };
 }
 
@@ -286,6 +295,8 @@ const processSample = ({
   coloring,
   sources,
   customizeColorSetting,
+  selectedLabelTags,
+  labelTagColors,
 }: ProcessSample) => {
   mapId(sample);
 
@@ -295,7 +306,15 @@ const processSample = ({
     process3DLabels(sample);
   } else {
     bufferPromises = [
-      processLabels(sample, coloring, null, sources, customizeColorSetting),
+      processLabels(
+        sample,
+        coloring,
+        null,
+        sources,
+        customizeColorSetting,
+        labelTagColors,
+        selectedLabelTags
+      ),
     ];
   }
 
@@ -309,7 +328,9 @@ const processSample = ({
             coloring,
             "frames.",
             sources,
-            customizeColorSetting
+            customizeColorSetting,
+            labelTagColors,
+            selectedLabelTags
           )
         )
         .flat(),
@@ -324,6 +345,8 @@ const processSample = ({
         coloring,
         uuid,
         customizeColorSetting,
+        labelTagColors,
+        selectedLabelTags,
       },
       // @ts-ignore
       buffers.flat()
@@ -342,12 +365,16 @@ interface FrameStream {
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
 }
 
 const createReader = ({
   chunkSize,
   coloring,
   customizeColorSetting,
+  labelTagColors,
+  selectedLabelTags,
   frameCount,
   frameNumber,
   sampleId,
@@ -358,6 +385,8 @@ const createReader = ({
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -400,6 +429,8 @@ const createReader = ({
               range,
               coloring,
               customizeColorSetting,
+              labelTagColors,
+              selectedLabelTags,
             });
             frameNumber = range[1] + 1;
           } catch (error) {
@@ -439,7 +470,9 @@ const getSendChunk =
             value.coloring,
             "frames.",
             {},
-            value.customizeColorSetting
+            value.customizeColorSetting,
+            value.labelTagColors,
+            value.selectedLabelTags
           )
         )
       ).then((buffers) => {
@@ -472,6 +505,8 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 interface SetStream {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -486,6 +521,8 @@ type SetStreamMethod = ReaderMethod & SetStream;
 const setStream = ({
   coloring,
   customizeColorSetting,
+  selectedLabelTags,
+  labelTagColors,
   frameCount,
   frameNumber,
   sampleId,
@@ -500,6 +537,8 @@ const setStream = ({
   stream = createReader({
     coloring,
     customizeColorSetting,
+    selectedLabelTags,
+    labelTagColors,
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,

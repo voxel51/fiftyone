@@ -1,19 +1,28 @@
-import { get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
+import { COLOR_BY, get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
-import { getHashLabel, isRgbMaskTargets } from "../overlays/util";
+import {
+  getHashLabel,
+  isRgbMaskTargets,
+  isValidColor,
+  shouldShowLabelTag,
+} from "../overlays/util";
 import {
   Coloring,
   CustomizeColor,
+  LabelTagColor,
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
+import colorString from "color-string";
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
+    customizeColorSetting: CustomizeColor[],
+    labelTagColors: LabelTagColor,
+    selectedLabelTags: string[]
   ) => {
     if (!label.mask) {
       return;
@@ -21,47 +30,82 @@ export const PainterFactory = (requestColor) => ({
 
     const setting = customizeColorSetting?.find((s) => s.path === field);
     let color;
-    if (coloring.by === "instance") {
+
+    const isTagged = shouldShowLabelTag(selectedLabelTags, label.tags);
+    if (coloring.by === COLOR_BY.INSTANCE) {
       color = await requestColor(
         coloring.pool,
         coloring.seed,
         getHashLabel(label)
       );
     }
-    if (coloring.by === "field") {
-      if (setting?.fieldColor) {
-        color = setting.fieldColor;
+    if (coloring.by === COLOR_BY.FIELD) {
+      if (isTagged) {
+        if (
+          labelTagColors.fieldColor &&
+          Boolean(colorString.get(labelTagColors.fieldColor))
+        ) {
+          color = labelTagColors.fieldColor;
+        } else {
+          color = await requestColor(
+            coloring.pool,
+            coloring.seed,
+            "_label_tags"
+          );
+        }
       } else {
-        color = await requestColor(coloring.pool, coloring.seed, field);
+        if (setting?.fieldColor) {
+          color = setting.fieldColor;
+        } else {
+          color = await requestColor(coloring.pool, coloring.seed, field);
+        }
       }
     }
-    if (coloring.by === "value") {
-      if (setting) {
-        const key = setting.colorByAttribute
-          ? setting.colorByAttribute === "index"
-            ? ["string", "number"].includes(typeof label.index)
-              ? "index"
-              : "id"
-            : setting.colorByAttribute
-          : "label";
 
-        const valueColor = setting?.valueColors?.find((l) => {
-          if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-            return typeof label[key] === "string"
-              ? l.value?.toLowerCase === label[key]
-              : !label[key];
-          }
-          if (["True", "False"].includes(l.value?.toString())) {
-            return (
-              l.value?.toString().toLowerCase() ==
-              label[key]?.toString().toLowerCase()
+    if (coloring.by === COLOR_BY.VALUE) {
+      if (setting) {
+        if (isTagged) {
+          const tagColor = labelTagColors?.valueColors?.find((pair) =>
+            label.tags.includes(pair.value)
+          )?.color;
+          if (tagColor && Boolean(colorString.get(tagColor))) {
+            color = tagColor;
+          } else {
+            color = await requestColor(
+              coloring.pool,
+              coloring.seed,
+              label.tags.length > 0 ? label.tags[0] : "_label_tags"
             );
           }
-          return l.value?.toString() == label[key]?.toString();
-        })?.color;
-        color = valueColor
-          ? valueColor
-          : await requestColor(coloring.pool, coloring.seed, label[key]);
+        } else {
+          const key = setting.colorByAttribute
+            ? setting.colorByAttribute === "index"
+              ? ["string", "number"].includes(typeof label.index)
+                ? "index"
+                : "id"
+              : setting.colorByAttribute
+            : "label";
+
+          const valueColor = setting?.valueColors?.find((l) => {
+            if (
+              ["none", "null", "undefined"].includes(l.value?.toLowerCase())
+            ) {
+              return typeof label[key] === "string"
+                ? l.value?.toLowerCase === label[key]
+                : !label[key];
+            }
+            if (["True", "False"].includes(l.value?.toString())) {
+              return (
+                l.value?.toString().toLowerCase() ==
+                label[key]?.toString().toLowerCase()
+              );
+            }
+            return l.value?.toString() == label[key]?.toString();
+          })?.color;
+          color = valueColor
+            ? valueColor
+            : await requestColor(coloring.pool, coloring.seed, label[key]);
+        }
       } else {
         color = await requestColor(coloring.pool, coloring.seed, label.label);
       }
@@ -84,14 +128,18 @@ export const PainterFactory = (requestColor) => ({
     field,
     labels,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
+    customizeColorSetting: CustomizeColor[],
+    labelTagColors: LabelTagColor,
+    selectedLabelTags: string[]
   ) => {
     const promises = labels.detections.map((label) =>
       PainterFactory(requestColor)[label._cls](
         field,
         label,
         coloring,
-        customizeColorSetting
+        customizeColorSetting,
+        labelTagColors,
+        selectedLabelTags
       )
     );
 
@@ -101,7 +149,9 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring: Coloring,
-    customizeColorSetting: CustomizeColor[]
+    customizeColorSetting: CustomizeColor[],
+    selectedLabelsTags: string[],
+    labelTagColors: LabelTagColor
   ) => {
     if (!label.map) {
       return;
@@ -174,7 +224,9 @@ export const PainterFactory = (requestColor) => ({
     field,
     label,
     coloring,
-    customizeColorSetting: CustomizeColor[]
+    customizeColorSetting: CustomizeColor[],
+    selectedLabelsTags: string[],
+    labelTagColors: LabelTagColor
   ) => {
     if (!label.mask) {
       return;
@@ -238,7 +290,13 @@ export const PainterFactory = (requestColor) => ({
       let colorKey;
       if (maskTargets && Object.keys(maskTargets).length === 1) {
         if (coloring.by === "field") {
-          colorKey = field;
+          if (shouldShowLabelTag(selectedLabelsTags, label.tags)) {
+            color =
+              isValidColor(labelTagColors?.fieldColor) ??
+              (await requestColor(coloring.pool, coloring.seed, "_label_tags"));
+          } else {
+            colorKey = field;
+          }
         } else {
           colorKey = label.id;
         }
