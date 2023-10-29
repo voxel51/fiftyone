@@ -2,7 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { REGRESSION, getColor } from "@fiftyone/utilities";
+import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import {
@@ -171,16 +171,16 @@ export const getLabelColor = ({
 }: LabelColorProps): string => {
   const field = customizeColorSetting.find((s) => s.path === path);
 
-  if (coloring.by === "instance") {
+  if (coloring.by === COLOR_BY.INSTANCE) {
     return getColor(coloring.pool, coloring.seed, getHashLabel(label));
   }
 
-  if (coloring.by === "field") {
-    // if the label is tagged, use _label_tag color rules
+  if (coloring.by === COLOR_BY.FIELD) {
+    // if the label is tagged, use _label_tags color rules
     // otherwise use color rules for the field
     if (isTagged) {
       return getLabelColorByField({
-        path: "_label_tag",
+        path: "_label_tags",
         coloring,
         fieldColor: labelTagColors?.fieldColor,
       });
@@ -193,9 +193,9 @@ export const getLabelColor = ({
     }
   }
 
-  if (coloring.by === "value") {
+  if (coloring.by === COLOR_BY.VALUE) {
     if (isTagged) {
-      // if the label's tag is currently active, use the _label_tag color rules
+      // if the label's tag is currently active, use the _label_tags color rules
       // specified tag color > label tag field color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
@@ -206,7 +206,7 @@ export const getLabelColor = ({
         return tagColor;
       } else {
         return getLabelColorByField({
-          path: "_label_tag",
+          path: "_label_tags",
           coloring,
           fieldColor: labelTagColors?.fieldColor,
         });
