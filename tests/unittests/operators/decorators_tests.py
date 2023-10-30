@@ -5,8 +5,8 @@ Unit tests for operators/decorators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import asyncio
+import os
 import shutil
 import tempfile
 import unittest

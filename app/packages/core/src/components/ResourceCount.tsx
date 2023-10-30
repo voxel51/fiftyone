@@ -1,11 +1,10 @@
-import React from "react";
-import { useRecoilValue } from "recoil";
-
 import * as fos from "@fiftyone/state";
 import {
   isGroup as isGroupAtom,
   parentMediaTypeSelector,
 } from "@fiftyone/state";
+import React from "react";
+import { useRecoilValue } from "recoil";
 import styled from "styled-components";
 import { PathEntryCounts } from "./Sidebar/Entries/EntryCounts";
 
@@ -40,7 +39,7 @@ const GroupsCount = () => {
   const elementTotal = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
-  const groupSlice = useRecoilValue(fos.groupSlice(false));
+  const groupSlice = useRecoilValue(fos.groupSlice);
 
   return (
     <RightDiv data-cy="entry-counts">
@@ -63,8 +62,9 @@ const Count = () => {
   const total = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
+
   const parent = useRecoilValue(parentMediaTypeSelector);
-  const slice = useRecoilValue(fos.groupSlice(false));
+  const slice = useRecoilValue(fos.groupSlice);
 
   const isGroup = useRecoilValue(isGroupAtom);
   if (

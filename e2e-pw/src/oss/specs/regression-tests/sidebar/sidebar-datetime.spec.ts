@@ -21,11 +21,11 @@ const test = base.extend<{
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
+  sidebar: async ({ page, eventUtils }, use) => {
+    await use(new SidebarPom(page, eventUtils));
   },
 });
 
@@ -44,25 +44,25 @@ test.describe("date field and date time field can filter visibility", () => {
     });
 
     await fiftyoneLoader.executePythonCode(`
-        import fiftyone as fo
-        from datetime import date, datetime, timedelta
+      import fiftyone as fo
+      from datetime import date, datetime, timedelta
 
-        dataset = fo.Dataset("${datasetName}")
-        dataset.persistent = True
+      dataset = fo.Dataset("${datasetName}")
+      dataset.persistent = True
 
-        t1 = datetime.strptime("2021-01-01", "%Y-%m-%d")
-        t2 = datetime.strptime("2021-01-01 18:58:00", "%Y-%m-%d %H:%M:%S")
+      t1 = datetime.strptime("2021-01-01", "%Y-%m-%d")
+      t2 = datetime.strptime("2021-01-01 18:58:00", "%Y-%m-%d %H:%M:%S")
 
-        image_sample = fo.Sample(filepath="${testImgPath}")
-        image_sample2 = fo.Sample(filepath="${testImgPath2}")
+      image_sample = fo.Sample(filepath="${testImgPath}")
+      image_sample2 = fo.Sample(filepath="${testImgPath2}")
 
-        dataset.add_samples([image_sample, image_sample2])
+      dataset.add_samples([image_sample, image_sample2])
 
-        for idx, sample in enumerate(dataset):
-            sample["dates"] = t1 - timedelta(days=idx)
-            sample["seconds"] = t2 - timedelta(seconds=idx)
-            sample.save()
-        `);
+      for idx, sample in enumerate(dataset):
+          sample["dates"] = t1 - timedelta(days=idx)
+          sample["seconds"] = t2 - timedelta(seconds=idx)
+          sample.save()
+    `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader }) => {
@@ -94,7 +94,7 @@ test.describe("date field and date time field can filter visibility", () => {
     await entryExpandPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(2);
 
-    await sidebar.changeSliderStartValue("dates");
+    await sidebar.changeSliderStartValue("dates", "2020‑12‑31", "2021‑01‑01");
 
     await gridRefreshedEventPromise;
     expect(await page.getByTestId("tag-dates").count()).toBe(1);
@@ -127,7 +127,7 @@ test.describe("date field and date time field can filter visibility", () => {
 
     expect(await page.getByTestId("tag-seconds").count()).toBe(2);
 
-    await sidebar.changeSliderStartValue("seconds");
+    await sidebar.changeSliderStartValue("seconds", "59000ms", "0000ms");
     await gridRefreshedEventPromise;
     // check screenshot
     expect(await page.getByTestId("tag-seconds").count()).toBe(1);

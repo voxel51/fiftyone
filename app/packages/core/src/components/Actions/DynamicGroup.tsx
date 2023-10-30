@@ -4,6 +4,7 @@ import {
   Selector,
   TabOption,
 } from "@fiftyone/components";
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useSetView } from "@fiftyone/state";
 import { Alert } from "@mui/material";
@@ -60,11 +61,7 @@ export default ({
       [close]
     )
   );
-  const setView = useSetView(
-    true,
-    false,
-    useCallback(() => setIsProcessing(false), [setIsProcessing])
-  );
+  const setView = useSetView();
 
   const [validationError, setValidationError] = useState<string>("");
 
@@ -97,6 +94,10 @@ export default ({
     setIsProcessing(true);
     close();
 
+    const unsubscribe = subscribe(() => {
+      setIsProcessing(false);
+      unsubscribe();
+    });
     setView((v) => [
       ...v,
       {

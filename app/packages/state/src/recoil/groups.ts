@@ -1,17 +1,25 @@
 import * as foq from "@fiftyone/relay";
 import {
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
+  graphQLSyncFragmentAtomFamily,
+  groupSliceFragment,
+  groupSliceFragment$key,
+} from "@fiftyone/relay";
+import {
   DYNAMIC_GROUP_FIELDS,
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { VariablesOf } from "react-relay";
+import { PreloadedQuery, VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
+import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { aggregateSelectorFamily } from "./aggregate";
-import { dataset } from "./atoms";
+import { dataset, mediaType } from "./atoms";
 import { ModalSample, modalSample } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
@@ -40,26 +48,49 @@ export type SliceName = string | undefined | null;
 export const isGroup = selector<boolean>({
   key: "isGroup",
   get: ({ get }) => {
-    return get(dataset)?.mediaType === "group";
+    return get(mediaType) === "group";
   },
 });
 
-export const defaultGroupSlice = selector<string>({
-  key: "defaultGroupSlice",
-  get: ({ get }) => {
-    return get(groupSlice(false)) ? get(dataset).defaultGroupSlice : null;
-  },
+export const sessionGroupSlice = sessionAtom({
+  key: "sessionGroupSlice",
+  default: null,
 });
 
-export const groupSlice = atomFamily<string | null, boolean>({
+export const groupSlice = selector<string>({
   key: "groupSlice",
+  get: ({ get }) => {
+    return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
+  },
+  set: ({ set }, slice) => set(sessionGroupSlice, slice),
+});
+
+export const defaultGroupSlice = graphQLSyncFragmentAtom<
+  groupSliceFragment$key,
+  string
+>(
+  {
+    fragments: [datasetFragment, groupSliceFragment],
+    keys: ["dataset"],
+    read: (data) => {
+      return data.defaultGroupSlice;
+    },
+    default: null,
+  },
+  {
+    key: "defaultGroupSlice",
+  }
+);
+
+export const modalGroupSlice = atom<string>({
+  key: "modalGroupSlice",
   default: null,
 });
 
 export const groupMediaTypes = selector<{ name: string; mediaType: string }[]>({
   key: "groupMediaTypes",
   get: ({ get }) => {
-    return get(groupSlice(false)) ? get(dataset).groupMediaTypes : [];
+    return get(isGroup) ? get(dataset).groupMediaTypes : [];
   },
 });
 
@@ -74,7 +105,7 @@ export const groupMediaTypesMap = selector({
 export const groupSlices = selector<string[]>({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(groupSlice(false))
+    return get(isGroup)
       ? get(groupMediaTypes)
           .map(({ name }) => name)
           .sort()
@@ -90,8 +121,7 @@ export const groupMediaTypesSet = selector<Set<string>>({
 
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) =>
-    get(isGroup) && get(groupSlice(false)) && Boolean(get(groupSlices).length),
+  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
 });
 
 export const activePcdSlices = atom<string[]>({
@@ -159,7 +189,7 @@ export const currentSlice = selectorFamily<string | null, boolean>({
     ({ get }) => {
       if (!get(isGroup)) return null;
 
-      const slice = get(groupSlice(modal));
+      const slice = get(modal ? modalGroupSlice : groupSlice);
 
       if (!slice || (modal && get(pinned3d))) {
         return get(pinned3DSampleSlice);
@@ -175,7 +205,7 @@ export const currentSlices = selectorFamily<string[] | null, boolean>({
     (modal) =>
     ({ get }) => {
       if (!get(isGroup)) return null;
-      const slice = get(groupSlice(modal));
+      const slice = get(modal ? modalGroupSlice : groupSlice);
 
       if (!slice || (modal && get(pinned3d))) {
         return get(activePcdSlices);
@@ -210,7 +240,7 @@ export const activeSliceDescriptorLabel = selector<string>({
 
 export const groupField = selector<string>({
   key: "groupField",
-  get: ({ get }) => get(dataset).groupField,
+  get: ({ get }) => get(dataset)?.groupField,
 });
 
 export const groupId = atom<string>({
@@ -242,7 +272,7 @@ export const groupSamples = graphQLSelectorFamily<
         view: get(view),
         filter: {
           group: {
-            slice: get(groupSlice(false)),
+            slice: get(groupSlice),
             id: groupIdValue,
             slices,
           },
@@ -281,8 +311,15 @@ export const groupByFieldValue = atom<string | null>({
   default: null,
 });
 
-export const nestedGroupIndex = atom<number>({
-  key: "nestedGroupIndex",
+export const dynamicGroupIndex = atom<number>({
+  key: "dynamicGroupIndex",
+  default: null,
+});
+
+export const dynamicGroupSamplesQueryRef = atom<
+  PreloadedQuery<foq.paginateSamplesQuery>
+>({
+  key: "dynamicGroupSamplesQueryRef",
   default: null,
 });
 
@@ -297,7 +334,7 @@ export const activeModalSample = selector({
   },
 });
 
-export const groupStatistics = atomFamily<"group" | "slice", boolean>({
+export const groupStatistics = atomFamily<"group" | "slice">({
   key: "groupStatistics",
   default: "slice",
 });
@@ -326,15 +363,7 @@ export const dynamicGroupFields = selector<string[]>({
           (group) => path !== `${group}.id` && path !== `${group}.name`
         )
     );
-    const counts = get(aggregateSelectorFamily({ paths: filtered })).aggregate;
 
-    return filtered.filter((_, index) => {
-      const data = counts[index];
-      if (data.__typename !== "CountResponse") {
-        throw new Error("expected a CountResponse");
-      }
-
-      return data.count > 0;
-    });
+    return filtered;
   },
 });

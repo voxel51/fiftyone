@@ -1,30 +1,56 @@
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import { KeypointSkeleton } from "@fiftyone/looker/src/state";
 import {
-  isRgbMaskTargets,
-  normalizeMaskTargetsCase,
-} from "@fiftyone/looker/src/overlays/util";
-import { KeypointSkeleton, MaskTargets } from "@fiftyone/looker/src/state";
-import { StateForm } from "@fiftyone/relay";
+  datasetAppConfigFragment,
+  datasetAppConfigFragment$data,
+  datasetAppConfigFragment$key,
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import { selectedFieldsStageState } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
-import { atomFamily, selector, selectorFamily } from "recoil";
+import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
-import { selectedSamples } from "./atoms";
 import { config } from "./config";
-import { filters, modalFilters } from "./filters";
-import { currentSlice } from "./groups";
-import { isModalActive, modalSample } from "./modal";
+import { currentModalSample, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
-import { fieldSchema } from "./schema";
 import { State } from "./types";
 import { isPatchesView } from "./view";
 
-export const datasetName = selector<string>({
-  key: "datasetName",
-  get: ({ get }) => {
-    return get(atoms.dataset)?.name;
+export const datasetName = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  string | null
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    read: (dataset) => {
+      return dataset?.name || null;
+    },
+    default: null,
+    selectorEffect: true,
   },
-});
+  {
+    key: "datasetName",
+  }
+);
+
+export const datasetId = graphQLSyncFragmentAtom<
+  datasetFragment$key,
+  string | null
+>(
+  {
+    fragments: [datasetFragment],
+    keys: ["dataset"],
+    read: ({ datasetId }) => datasetId,
+    default: null,
+  },
+  {
+    key: "datasetId",
+  }
+);
 
 export const isNotebook = selector<boolean>({
   key: "isNotebook",
@@ -70,27 +96,18 @@ export const savedViewsSelector = selector<State.SavedView[]>({
 
 export const isVideoDataset = selector({
   key: "isVideoDataset",
-  get: ({ get }) => get(mediaTypeSelector) === "video",
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  get: ({ get }) => get(atoms.mediaType) === "video",
 });
 
 export const isPointcloudDataset = selector({
   key: "isPointcloudDataset",
-  get: ({ get }) => get(mediaTypeSelector) === "point_cloud",
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
+  get: ({ get }) => get(atoms.mediaType) === "point_cloud",
 });
 
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {
     return get(config)?.timezone || "UTC";
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
   },
 });
 
@@ -108,9 +125,6 @@ export const appConfigDefault = selectorFamily<
 
       return get(config)[key];
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
@@ -120,17 +134,25 @@ export const appConfigOption = atomFamily<any, { key: string; modal: boolean }>(
   }
 );
 
-export const datasetAppConfig = selector<State.DatasetAppConfig>({
-  key: "datasetAppConfig",
-  get: ({ get }) => get(atoms.dataset)?.appConfig,
-});
+export const datasetAppConfig = graphQLSyncFragmentAtom<
+  datasetAppConfigFragment$key,
+  datasetAppConfigFragment$data
+>(
+  {
+    fragments: [datasetFragment, datasetAppConfigFragment],
+    keys: ["dataset", "appConfig"],
+    read: (data) => data,
+    default: null,
+  },
+  {
+    key: "datasetAppConfig",
+  }
+);
 
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return normalizeMaskTargetsCase(
-      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
-    );
+    return get(atoms.dataset)?.defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -140,22 +162,11 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = normalizeMaskTargetsCase(
-      (get(atoms.dataset).defaultMaskTargets || {}) as MaskTargets
-    );
+    const defaults = get(atoms.dataset)?.defaultMaskTargets || {};
     const labelTargets = get(atoms.dataset)?.maskTargets || {};
-    const labelTargetsCaseNormalized = Object.entries(labelTargets).reduce(
-      (acc, [fieldName, fieldMaskTargets]) => {
-        acc[fieldName] = normalizeMaskTargetsCase(
-          fieldMaskTargets as MaskTargets
-        );
-        return acc;
-      },
-      {}
-    );
     return {
       defaults,
-      fields: labelTargetsCaseNormalized,
+      fields: labelTargets,
     };
   },
   cachePolicy_UNSTABLE: {
@@ -218,28 +229,37 @@ export const getTarget = selector({
   },
 });
 
-export const selectedLabelIds = selector<Set<string>>({
-  key: "selectedLabelIds",
+export const selectedLabelMap = selector<State.SelectedLabelMap>({
+  key: "selectedLabelMap",
   get: ({ get }) => {
-    const labels = get(atoms.selectedLabels);
-    return new Set(Object.keys(labels));
+    return get(atoms.selectedLabels).reduce(
+      (acc, { labelId, ...label }) => ({
+        [labelId]: label,
+        ...acc,
+      }),
+      {}
+    );
   },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+  set: ({ set }, newValue) => {
+    if (newValue instanceof DefaultValue) {
+      newValue = {};
+    }
+
+    set(
+      atoms.selectedLabels,
+      Object.entries(newValue).map(([labelId, label]) => ({
+        ...label,
+        labelId,
+      }))
+    );
   },
 });
 
-export const selectedLabelList = selector<State.SelectedLabel[]>({
-  key: "selectedLabelList",
+export const selectedLabelIds = selector<Set<string>>({
+  key: "selectedLabelIds",
   get: ({ get }) => {
-    const labels = get(atoms.selectedLabels);
-    return Object.entries(labels).map(([labelId, label]) => ({
-      labelId,
-      ...label,
-    }));
-  },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
+    const labels = get(selectedLabelMap);
+    return new Set(Object.keys(labels));
   },
 });
 
@@ -363,7 +383,7 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    const methods = get(atoms.dataset).brainMethods;
+    const methods = get(atoms.dataset)?.brainMethods || [];
 
     return methods
       .filter(
@@ -447,47 +467,12 @@ export const extendedStages = selector({
   },
 });
 
-export const mediaFields = selector<string[]>({
-  key: "string",
-  get: ({ get }) => {
-    const selectedFields = Object.keys(
-      get(fieldSchema({ space: State.SPACE.SAMPLE }))
-    );
-    return (get(atoms.dataset)?.appConfig?.mediaFields || []).filter((field) =>
-      selectedFields.includes(field)
-    );
-  },
-});
-
-export const viewStateForm = selectorFamily<
-  StateForm,
-  {
-    addStages?: string;
-    modal?: boolean;
-    selectSlice?: boolean;
-    omitSelected?: boolean;
-  }
->({
-  key: "viewStateForm",
-  get:
-    ({ addStages, modal, selectSlice, omitSelected }) =>
-    ({ get }) => {
-      return {
-        filters: get(modal ? modalFilters : filters),
-        sampleIds: omitSelected ? [] : [...get(selectedSamples)],
-        labels: get(selectedLabelList),
-        extended: get(extendedStages),
-        slice: selectSlice ? get(currentSlice(modal)) : null,
-        addStages: addStages ? JSON.parse(addStages) : [],
-      };
-    },
-});
 export const selectedPatchIds = selectorFamily({
   key: "selectedPatchIds",
   get:
     (patchesField) =>
     ({ get }) => {
-      const modal = get(isModalActive);
+      const modal = get(currentModalSample);
       const isPatches = get(isPatchesView);
       const selectedSamples = get(atoms.selectedSamples);
       const selectedSampleObjects = get(atoms.selectedSampleObjects);
@@ -495,8 +480,8 @@ export const selectedPatchIds = selectorFamily({
       if (isPatches || modal) {
         return selectedSamples;
       }
-      let patchIds = [];
-      for (const sampleId of selectedSamples) {
+      let patchIds: string[] = [];
+      for (const sampleId of Array.from(selectedSamples)) {
         if (selectedSampleObjects.has(sampleId)) {
           const sample = selectedSampleObjects.get(sampleId);
           patchIds = [
@@ -521,11 +506,11 @@ export const selectedPatchSamples = selector({
     const selectedSampleObjects = get(atoms.selectedSampleObjects);
 
     if (isPatches) {
-      let sampleIds = [];
-      for (const patchId of selectedPatches) {
+      let sampleIds: string[] = [];
+      for (const patchId of Array.from(selectedPatches)) {
         if (selectedSampleObjects.has(patchId)) {
           const sample = selectedSampleObjects.get(patchId);
-          sampleIds = [...sampleIds, sample._sample_id];
+          sampleIds = [...sampleIds, sample?._sample_id as unknown as string];
         }
       }
       return new Set(sampleIds);

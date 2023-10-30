@@ -37,7 +37,7 @@ export default () => {
   const pcdSlices = useRecoilValueLoadable(fos.allPcdSlicesToSampleMap);
   const pinnedSlice = useRecoilValue(fos.pinned3DSampleSlice);
   const slices = useRecoilValue(fos.allPcdSlices);
-  const groupSlice = useRecoilValue(fos.groupSlice(true));
+  const groupSlice = useRecoilValue(fos.groupSlice);
   const modalId = useRecoilValue(fos.modalSampleId);
 
   if (pcdSlices.state === "hasError") {

@@ -212,6 +212,10 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
+    _delete_non_persistent_datasets(verbose=verbose)
+
+
+def _delete_non_persistent_datasets(verbose=False):
     conn = foo.get_db_conn()
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
@@ -223,7 +227,7 @@ def delete_non_persistent_datasets(verbose=False):
             continue
 
         if not dataset.persistent and not dataset.deleted:
-            dataset.delete()
+            dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -3932,6 +3936,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
+        self._delete()
+
+    def _delete(self):
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
@@ -6585,7 +6592,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self.save()
+        self._save()
 
 
 def _get_random_characters(n):

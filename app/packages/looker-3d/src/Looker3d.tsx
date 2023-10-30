@@ -1,7 +1,8 @@
 import { Loading, useTheme } from "@fiftyone/components";
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { getHashLabel, isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { getColor } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -63,16 +64,17 @@ export const Looker3d = () => {
     "3d",
     defaultPluginSettings
   );
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
+  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
   const pathFilter = usePathFilter();
-  const labelAlpha = useRecoilValue(fos.alpha);
   const onSelectLabel = fos.useOnSelectLabel();
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const getColor = useRecoilValue(fos.colorMap);
-  const colorScheme = useRecoilValue(fos.sessionColorScheme).fields;
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  const colorSchemeFields = colorScheme?.fields;
+  const labelAlpha = colorScheme.opacity;
+  const getFieldColor = useRecoilValue(fos.colorMap);
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
   const { coloring } = useRecoilValue(
@@ -271,8 +273,8 @@ export const Looker3d = () => {
       }
 
       const selectedLabels = get(fos.selectedLabels);
-      if (selectedLabels && Object.keys(selectedLabels).length > 0) {
-        set(fos.selectedLabels, {});
+      if (selectedLabels && selectedLabels.length > 0) {
+        set(fos.selectedLabelMap, {});
         return;
       }
 
@@ -398,19 +400,25 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           let color: string;
-          const setting = colorScheme?.find((s) => s.path === path);
+          const setting = colorSchemeFields?.find((s) => s.path === path);
+
+          if (coloring.by === "instance") {
+            color = getColor(coloring.pool, coloring.seed, getHashLabel(l));
+          }
+
           if (coloring.by === "field") {
             if (isValidColor(setting?.fieldColor ?? "")) {
               color = setting.fieldColor;
             } else {
-              color = getColor(path);
+              color = getFieldColor(path);
             }
           }
+
           if (coloring.by === "value") {
             let key;
             if (setting?.colorByAttribute) {
               if (setting.colorByAttribute === "index") {
-                if (["string", "number"].includes(l["index"])) {
+                if (["string", "number"].includes(typeof l.index)) {
                   key = l.index;
                 } else {
                   key = l._id;
@@ -438,17 +446,24 @@ export const Looker3d = () => {
               if (isValidColor(labelColor)) {
                 color = labelColor;
               } else {
-                color = getColor(key);
+                color = getFieldColor(key);
               }
             } else {
-              color = getColor(key);
+              color = getFieldColor(key);
             }
           }
 
           return { ...l, color, id: l._id };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),
-    [coloring, getColor, pathFilter, sampleMap, selectedLabels, colorScheme]
+    [
+      coloring,
+      getFieldColor,
+      pathFilter,
+      sampleMap,
+      selectedLabels,
+      colorSchemeFields,
+    ]
   );
 
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {

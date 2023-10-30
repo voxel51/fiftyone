@@ -59,22 +59,20 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         [sidebarAtoms.textFilter(true), sidebarAtoms.textFilter(false)],
 
         [groupAtoms.groupStatistics(true), groupAtoms.groupStatistics(false)],
-        [groupAtoms.groupSlice(true), groupAtoms.groupSlice(false)],
       ];
 
-      const groupSlice = await snapshot.getPromise(
-        groupAtoms.groupSlice(false)
-      );
+      const slice = await snapshot.getPromise(groupAtoms.groupSlice);
 
       let pinned3d = false;
       let activeSlices = [];
-      if (groupSlice) {
+      if (slice) {
         const map = await snapshot.getPromise(groupAtoms.groupMediaTypesMap);
-        if (map[groupSlice] === "point_cloud") {
+        if (map[slice] === "point_cloud") {
           pinned3d = true;
-          activeSlices = [groupSlice];
+          activeSlices = [slice];
         }
       }
+
       set(groupAtoms.pinned3d, pinned3d);
       set(groupAtoms.activePcdSlices, activeSlices);
 
@@ -96,8 +94,21 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
     Parameters<NonNullable<FlashlightConfig<number>["onItemClick"]>>,
     void
   >(
-    ({ snapshot }) =>
-      async (next, sampleId, itemIndexMap) => {
+    ({ snapshot, set }) =>
+      async (next, sampleId, itemIndexMap, event) => {
+        if (event.ctrlKey || event.metaKey) {
+          set(atoms.selectedSamples, (selected) => {
+            const newSelected = new Set([...selected]);
+            if (newSelected.has(sampleId)) {
+              newSelected.delete(sampleId);
+            } else {
+              newSelected.add(sampleId);
+            }
+
+            return newSelected;
+          });
+          return;
+        }
         const clickedIndex = itemIndexMap[sampleId];
         const hasGroupSlices = await snapshot.getPromise(
           groupAtoms.hasGroupSlices

@@ -26,7 +26,7 @@ const EXAMPLES = [
   },
   {
     title: "Match fields whose owner contains “foo”",
-    code: "info.owner:foo",
+    code: "owner:foo",
   },
   {
     title: 'Match fields whose description contains "foo"',
@@ -42,7 +42,7 @@ export const SchemaSearchHelp = (props: Props) => {
   const theme = useTheme();
 
   return (
-    <Box display="flex" flexDirection="column">
+    <Box display="flex" flexDirection="column" data-cy="filter-rule-container">
       {EXAMPLES.map(({ title, primaryTextColor, code }: Example) => (
         <Box
           key={title}

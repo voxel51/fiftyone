@@ -1,6 +1,7 @@
 import {
   Lookers,
   ModalSample,
+  isDynamicGroup,
   modalSample,
   modalSampleId,
   useHoveredSample,
@@ -39,10 +40,15 @@ export const SampleWrapper = ({
   }, [clear, hovering]);
   const hoveringRef = useRef(false);
   const sample = useRecoilValue(sampleAtom);
+  const isGroup = useRecoilValue(isDynamicGroup);
   const hover = useHoveredSample(sample.sample, {
     update,
     clear,
   });
+
+  if (isGroup) {
+    return <>{children}</>;
+  }
 
   return (
     <div

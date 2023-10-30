@@ -1974,6 +1974,32 @@ class SampleCollection(object):
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
         """
+        self._set_values(
+            field_name,
+            values,
+            key_field=key_field,
+            skip_none=skip_none,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            _allow_missing=_allow_missing,
+            _sample_ids=_sample_ids,
+            _frame_ids=_frame_ids,
+        )
+
+    def _set_values(
+        self,
+        field_name,
+        values,
+        key_field=None,
+        skip_none=False,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        _allow_missing=False,
+        _sample_ids=None,
+        _frame_ids=None,
+    ):
         if self._is_group_field(field_name):
             raise ValueError(
                 "This method does not support setting attached group fields "

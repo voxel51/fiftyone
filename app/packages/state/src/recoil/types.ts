@@ -1,5 +1,5 @@
+import { CustomizeColorInput } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { StrictField } from "@fiftyone/utilities";
 
 export namespace State {
   export type MediaType = "image" | "group" | "point_cloud" | "video";
@@ -17,7 +17,7 @@ export namespace State {
   export type PluginConfig = { [pluginName: string]: object };
   export interface Config {
     colorPool: string[];
-    customizedColors: CustomizeColor[];
+    customizedColors: CustomizeColorInput[];
     colorscale: string;
     gridZoom: number;
     loopVideos: boolean;
@@ -118,23 +118,19 @@ export namespace State {
     modalMediaField?: string;
     mediaFields?: string[];
     plugins?: PluginConfig;
-    sidebarGroups?: SidebarGroup[];
     sidebarMode?: "all" | "best" | "fast";
-    colorScheme?: ColorScheme;
   }
 
   /**
    * The dataset object returned by the API.
    */
   export interface Dataset {
-    stages?: Stage[];
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
+    datasetId: string;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
-    savedViews: SavedView[];
-    frameFields: StrictField[];
     lastLoadedAt: DateTime;
     maskTargets: {
       [key: string]: Targets;
@@ -143,7 +139,6 @@ export namespace State {
     mediaType: MediaType;
     parentMediaType: MediaType;
     name: string;
-    sampleFields: StrictField[];
     version: string;
     skeletons: StrictKeypointSkeleton[];
     defaultSkeleton?: KeypointSkeleton;
@@ -151,12 +146,9 @@ export namespace State {
       name: string;
       mediaType: MediaType;
     }[];
-    defaultGroupSlice?: string;
     groupField: string;
     appConfig: DatasetAppConfig;
     info: { [key: string]: string };
-    viewCls: null;
-    viewFields: StrictField[]; // sample && frame fields in the current view
   }
 
   /**
@@ -171,7 +163,7 @@ export namespace State {
   /**
    * @hidden
    */
-  type Filter = CategoricalFilter<string>;
+  export type Filter = CategoricalFilter<string>;
 
   export interface SortBySimilarityParameters {
     brainKey: string;
@@ -189,7 +181,8 @@ export namespace State {
 
   export interface Stage {
     _cls: string;
-    kwargs: [string, any][];
+    kwargs: [string, unknown][];
+    _uuid?: string;
   }
 
   export interface SelectedLabelData {
@@ -216,25 +209,5 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
-    colorScheme?: ColorScheme;
   }
-}
-
-export interface CustomizeColor {
-  path: string;
-  fieldColor?: string;
-  colorByAttribute?: string; // must be string field, int field, or boolean field
-  valueColors?: {
-    value: string;
-    color: string;
-  }[];
-}
-
-export interface ColorScheme {
-  colorPool: string[];
-  fields: CustomizeColor[];
-}
-
-export interface ColorSchemeSetting extends ColorScheme {
-  saveToApp?: boolean;
 }

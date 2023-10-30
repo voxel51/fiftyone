@@ -25,7 +25,7 @@ jobs:
           - win-amd64
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
       - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
@@ -78,7 +78,7 @@ jobs:
           cd package/db
           python setup.py bdist_wheel --plat-name linux-x86_64
       - name: Upload wheel(s)
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: wheel-${{ matrix.platform }}
           path: package/db/dist/*.whl
@@ -90,9 +90,9 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
       - name: Download fiftyone-db wheel
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: wheel-linux-x86_64
           path: downloads
@@ -113,7 +113,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/db-v')
     steps:
       - name: Download wheels
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           path: downloads
       - name: Install dependencies

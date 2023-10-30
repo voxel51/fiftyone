@@ -60,7 +60,7 @@ describe("useSearchSchemaFields ", () => {
       }
     );
 
-    expect(result.current.selectedFieldsStage).toBeUndefined();
+    expect(result.current.selectedFieldsStage).toBeNull();
 
     act(() => {
       result.current.setSelectedFieldsStage({});

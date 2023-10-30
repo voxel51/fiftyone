@@ -54,12 +54,11 @@ export class GridPom {
     return this.page.getByTestId("entry-counts").textContent();
   }
 
-  async getNthFlashlightSection(n: number) {
-    return this.page.getByTestId("flashlight-section").nth(n);
-  }
-
   async selectSlice(slice: string) {
     await this.sliceSelector.selectSlice(slice);
+  }
+  async getNthFlashlightSection(n: number) {
+    return this.page.getByTestId("flashlight-section").nth(n);
   }
 
   /**

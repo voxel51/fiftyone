@@ -9,8 +9,8 @@ const test = base.extend<{
   histogram: HistogramPom;
   panel: PanelPom;
 }>({
-  actionsRow: async ({ page }, use) => {
-    await use(new GridActionsRowPom(page));
+  actionsRow: async ({ page, eventUtils }, use) => {
+    await use(new GridActionsRowPom(page, eventUtils));
   },
   histogram: async ({ page, eventUtils }, use) => {
     await use(new HistogramPom(page, eventUtils));
@@ -46,5 +46,6 @@ test.describe("Display Options", () => {
     await panel.bringPanelToForeground("Histograms");
 
     await histogram.assert.isLoaded();
+    await panel.bringPanelToForeground("Samples");
   });
 });

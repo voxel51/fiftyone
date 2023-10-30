@@ -1,11 +1,12 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
-  constructor(page: Page) {
+  constructor(page: Page, eventUtils: EventUtils) {
     this.page = page;
     this.asserter = new SidebarAsserter(this);
 
@@ -29,7 +30,24 @@ export class SidebarPom {
   }
 
   sidebarEntryDraggableArea(fieldName: string) {
-    return this.sidebar.getByTestId(`sidebar-entry-draggable-${fieldName}`);
+    return this.sidebar
+      .getByTestId(`sidebar-entry-draggable-${fieldName}`)
+      .first();
+  }
+
+  getNumericSliderContainer(field: string) {
+    return this.sidebar.getByTestId(`numeric-slider-container-${field}`);
+  }
+
+  getSlider(field: string) {
+    return this.getNumericSliderContainer(field).getByTestId("slider");
+  }
+
+  getSliderIndicator(field: string, text: string) {
+    return this.getSlider(field)
+      .locator("span")
+      .filter({ hasText: text })
+      .nth(1);
   }
 
   async clickFieldCheckbox(field: string) {
@@ -55,22 +73,10 @@ export class SidebarPom {
     return item.getByTestId(`entry-count-all`);
   }
 
-  async changeSliderStartValue(field: string) {
-    const container = this.sidebar.getByTestId(
-      `numeric-slider-container-${field}`
-    );
-    const slider = container.getByTestId("slider");
-    const bound = await slider.boundingBox();
-    await this.page.mouse.move(
-      bound.x + bound.width / 3,
-      bound.y + bound.height / 2
-    );
-    await this.page.mouse.down();
-    await this.page.mouse.move(
-      bound.x + bound.width / 3,
-      bound.y + bound.height / 2
-    );
-    await this.page.mouse.up();
+  async changeSliderStartValue(field: string, textA: string, textB: string) {
+    const sliderPointA = this.getSliderIndicator(field, textA);
+    const sliderPointB = this.getSliderIndicator(field, textB);
+    await sliderPointA.dragTo(sliderPointB);
   }
 
   async getActiveMode() {

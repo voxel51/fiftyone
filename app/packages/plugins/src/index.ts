@@ -102,7 +102,7 @@ export async function loadPlugins() {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
       if (usingRegistry().hasScript(name)) {
-        console.log(`Plugin "${name}": already loaded`);
+        console.debug(`Plugin "${name}": already loaded`);
         continue;
       }
       try {
@@ -115,12 +115,12 @@ export async function loadPlugins() {
   }
 }
 async function loadScript(name, url) {
-  console.log(`Plugin "${name}": loading script...`);
+  console.debug(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
-      console.log(`Plugin "${name}": loaded!`);
+      console.debug(`Plugin "${name}": loaded!`);
       if (e?.type === "load") {
         resolve();
       } else {
