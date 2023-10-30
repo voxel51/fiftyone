@@ -64,6 +64,7 @@ const SchemaSettings = () => {
     isFilterRuleActive,
     setShowNestedFields,
     mergedSchema,
+    excludedPathsStripped,
   } = fos.useSchemaSettings();
   const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
 
@@ -220,13 +221,11 @@ const SchemaSettings = () => {
               disabled={applyDisabled}
               onClick={() => {
                 resetAttributeFilters();
-                const initialFieldNames = [...excludedPaths[datasetName]];
-
                 setSettingsModal({ open: false });
                 setFieldVisibilityStage({
                   cls: EXCLUDE_FIELDS_STAGE,
                   kwargs: {
-                    field_names: initialFieldNames,
+                    field_names: excludedPathsStripped,
                   },
                 });
               }}

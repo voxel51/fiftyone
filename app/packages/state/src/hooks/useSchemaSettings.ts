@@ -50,6 +50,8 @@ export default function useSchemaSettings() {
     !_.isEmpty(modalAttributeVisibility) && setModalAttributeVisibility({});
   };
 
+  const excludedPathsStripped = useRecoilValue(fos.excludedPathsStrippedState);
+
   const setViewSchema = useSetRecoilState(fos.viewSchemaState);
   const setFieldSchema = useSetRecoilState(fos.fieldSchemaState);
   const [searchTerm, setSearchTerm] = useRecoilState<string>(
@@ -368,5 +370,6 @@ export default function useSchemaSettings() {
     resetAttributeFilters,
     isFieldVisibilityActive,
     extendedExcludedPaths,
+    excludedPathsStripped,
   };
 }

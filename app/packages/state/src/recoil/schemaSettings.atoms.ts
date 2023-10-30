@@ -238,6 +238,36 @@ export const excludedPathsState = atomFamily({
   ],
 });
 
+export const excludedPathsStrippedState = selector({
+  key: "excludedPathsStrippedState",
+  get: ({ get }) => {
+    const datasetName = get(fos.datasetName);
+    const showNestedFields = get(fos.showNestedFieldsState);
+    const fields = get(excludedPathsState({}));
+    if (!datasetName || !fields[datasetName]) {
+      return [];
+    }
+
+    let finalGreenPaths = [...fields[datasetName]];
+
+    if (showNestedFields) {
+      finalGreenPaths = finalGreenPaths.filter((path) => {
+        let tmp = path;
+        while (tmp.indexOf(".") > 0) {
+          const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
+          if (fields[datasetName].has(parentPath) || path === parentPath) {
+            return false;
+          }
+          tmp = parentPath;
+        }
+        return true;
+      });
+    }
+
+    return finalGreenPaths;
+  },
+});
+
 export const fieldVisibilityStage = sessionAtom({
   key: "fieldVisibilityStage",
   default: null,
