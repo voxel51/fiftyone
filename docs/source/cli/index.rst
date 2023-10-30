@@ -1506,8 +1506,7 @@ Populates the `metadata` field of all samples in the dataset.
       -h, --help            show this help message and exit
       -o, --overwrite       whether to overwrite existing metadata
       -n NUM_WORKERS, --num-workers NUM_WORKERS
-                            the number of worker processes to use. The default
-                            is `multiprocessing.cpu_count()`
+                            a suggested number of worker processes to use
       -s, --skip-failures   whether to gracefully continue without raising an
                             error if metadata cannot be computed for a sample
 
@@ -1583,8 +1582,7 @@ Transforms the images in a dataset per the specified parameters.
       -d, --delete-originals
                             whether to delete the original images after transforming
       -n NUM_WORKERS, --num-workers NUM_WORKERS
-                            the number of worker processes to use. The default is
-                            `multiprocessing.cpu_count()`
+                            a suggested number of worker processes to use
       -s, --skip-failures   whether to gracefully continue without raising an
                             error if an image cannot be transformed
 

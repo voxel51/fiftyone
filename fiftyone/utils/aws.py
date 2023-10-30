@@ -6,7 +6,6 @@ Utilities for working with `Amazon Web Services <https://aws.amazon.com>`.
 |
 """
 import logging
-import multiprocessing
 import multiprocessing.dummy
 import os
 from urllib.parse import urlparse
@@ -50,8 +49,8 @@ def download_public_s3_files(
             the `download_dir` argument is required
         download_dir (None): the directory to store all downloaded objects.
             This is only used if `urls` is a list
-        num_workers (None): the number of processes to use when downloading
-            files. By default, ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of threads to use when
+            downloading files
         overwrite (True): whether to overwrite existing files
     """
     if not isinstance(urls, dict):
@@ -65,8 +64,7 @@ def download_public_s3_files(
     if download_dir:
         etau.ensure_dir(download_dir)
 
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     s3_client = boto3.client(
         "s3",

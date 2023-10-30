@@ -389,9 +389,15 @@ export function filterChoicesByQuery(query, all) {
   });
 }
 
+export const availableOperatorsRefreshCount = atom({
+  key: "availableOperatorsRefreshCount",
+  default: 0,
+});
+
 export const availableOperators = selector({
   key: "availableOperators",
-  get: () => {
+  get: ({ get }) => {
+    get(availableOperatorsRefreshCount); // triggers force refresh manually
     return listLocalAndRemoteOperators().allOperators.map((operator) => {
       return {
         label: operator.label,

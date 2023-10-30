@@ -86,7 +86,7 @@ export const useSortBySimilarity = (close) => {
         setLastUsedBrainKeys(
           JSON.stringify({
             ...current,
-            [dataset.id]: combinedParameters.brainKey,
+            [dataset.datasetId]: combinedParameters.brainKey,
           })
         );
         await getFetchFunction()("POST", "/sort", {
