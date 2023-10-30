@@ -82,7 +82,7 @@ class Mutation(fosm.Mutation):
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
                 loaded_at = datetime.datetime.utcnow()
-                res = await _update_view_activity(
+                await _update_view_activity(
                     result_view.name, ds, loaded_at, info
                 )
             except:

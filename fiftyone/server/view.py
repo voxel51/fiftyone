@@ -115,7 +115,7 @@ def get_view(
     else:
         view = dataset.view()
 
-    if sample_filter is not None and not view._is_patches:
+    if sample_filter is not None:
         if sample_filter.group:
             if sample_filter.group.slice:
                 view.group_slice = sample_filter.group.slice
