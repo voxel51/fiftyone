@@ -213,10 +213,10 @@ export const getLabelColor = ({
           fieldColor: labelTagColors?.fieldColor,
         });
       }
+    } else {
+      // if the field has custom color rules, use the field/value specific rules
+      return getLabelColorByValue({ field, label, coloring, is3D });
     }
-  } else {
-    // if the field has custom color rules, use the field/value specific rules
-    return getLabelColorByValue({ field, label, coloring, is3D });
   }
 
   return getColor(coloring.pool, coloring.seed, path);
