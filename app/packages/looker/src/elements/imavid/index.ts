@@ -77,6 +77,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private loop = false;
   private playbackRate = 1;
+  private frameNumber = 1;
   private posterFrame: number;
   private mediaField: string;
   private framesController: ImaVidFramesController;
@@ -295,6 +296,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       hovering,
       playing,
       bufferManager,
+      isCurrentFrameNumberAuthoritative,
       loaded,
       buffering,
       destroyed,
@@ -306,6 +308,25 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
       this.element.setAttribute("src", thumbnailSrc);
+    }
+
+    // sync two states that track frame number
+    // two states because one of the states is shared across components,
+    // and the other is only used by this component
+    // updating the state that is shared across components will trigger a re-render,
+    // and we want to keep it right here
+    if (this.frameNumber !== currentFrameNumber) {
+      // sometimes we want to update the frame number from the outside
+      if (isCurrentFrameNumberAuthoritative) {
+        this.frameNumber = currentFrameNumber;
+        this.update({
+          isCurrentFrameNumberAuthoritative: false,
+        });
+      } else {
+        this.update({
+          currentFrameNumber: this.frameNumber,
+        });
+      }
     }
 
     if (destroyed) {

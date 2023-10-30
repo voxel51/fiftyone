@@ -53,6 +53,9 @@ const LABEL_LIST_KEY = Object.fromEntries(
 );
 const LABELS_SET = new Set(LABELS);
 
+/**
+ * worker pool for processing labels
+ */
 const getLabelsWorker = (() => {
   const numWorkers =
     typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 1;
@@ -78,6 +81,7 @@ export abstract class AbstractLooker<
   S extends Sample = Sample
 > {
   private eventTarget: EventTarget;
+
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;

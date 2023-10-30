@@ -351,7 +351,7 @@ export interface ImaVidState extends BaseState {
    * current frame number is usually synced from the player's state,
    * if this flag is true, then the sync happens in the opposite direction
    */
-  isCurrentFrameNumberAuthoritative: number;
+  isCurrentFrameNumberAuthoritative: boolean;
   /**
    * total number of frames
    */

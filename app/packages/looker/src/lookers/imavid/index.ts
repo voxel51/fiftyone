@@ -111,16 +111,15 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
         ...options,
       },
       config: { ...config },
-      duration: null,
       seeking: false,
       playing: false,
       currentFrameNumber: firstFrame,
+      isCurrentFrameNumberAuthoritative: false,
+      totalFrames: config.frameStoreController.totalFrameCount ?? 1,
       buffering: false,
       bufferManager: new BufferManager([[firstFrame, firstFrame]]),
       seekBarHovering: false,
       SHORTCUTS: VIDEO_SHORTCUTS,
-      hasPoster: false,
-      waitingForVideo: false,
     };
   }
 
