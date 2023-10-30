@@ -16,8 +16,8 @@ const test = base.extend<{
   tagger: async ({ page }, use) => {
     await use(new TaggerPom(page));
   },
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
+  sidebar: async ({ page, eventUtils }, use) => {
+    await use(new SidebarPom(page, eventUtils));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));

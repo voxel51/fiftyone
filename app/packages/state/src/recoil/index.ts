@@ -10,6 +10,7 @@ export * from "./groupEntries";
 export * from "./groups";
 export * from "./internal";
 export * from "./looker";
+export * from "./mediaFields";
 export * from "./modal";
 export * from "./options";
 export * from "./pathFilters";

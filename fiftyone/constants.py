@@ -44,7 +44,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<0.23"
+COMPATIBLE_VERSIONS = ">=0.19,<0.24"
 
 # Package metadata
 _META = metadata("fiftyone")

@@ -22,6 +22,7 @@ import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -30,7 +31,6 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 

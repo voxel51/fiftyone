@@ -128,6 +128,7 @@ export namespace State {
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
+    datasetId: string;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
     lastLoadedAt: DateTime;
