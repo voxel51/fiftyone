@@ -14,13 +14,13 @@ import {
   sampleFieldsFragment$key,
 } from "@fiftyone/relay";
 import { StrictField } from "@fiftyone/utilities";
-import { AtomEffect, DefaultValue, atom, atomFamily, selector } from "recoil";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { SPACES_DEFAULT, sessionAtom } from "../session";
 import { collapseFields, transformDataset } from "../utils";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
-import { getBrowserStorageEffectForKey } from "./customEffects";
 
 export const refresher = atom<number>({
   key: "refresher",
