@@ -433,7 +433,6 @@ export const _activeFields = (() => {
   try {
     data = JSON.parse(sessionStorage.getItem("activeFields"));
   } catch {}
-  console.log(data);
 
   let { activeFields: current, datasetId } = data || {};
   let modalCurrent: string[] = null;
@@ -452,7 +451,8 @@ export const _activeFields = (() => {
           dataset?.datasetId === undefined ||
           dataset?.datasetId !== datasetId
         ) {
-          datasetId = dataset.datasetId;
+          datasetId = dataset?.datasetId;
+          sessionStorage.removeItem("activeFields");
           modalCurrent = null;
           current = null;
         }
