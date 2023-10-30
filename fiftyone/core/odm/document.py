@@ -730,6 +730,8 @@ class Document(BaseDocument, mongoengine.Document):
 
 
 def _merge_lists(dst, src, overwrite=False):
+    if overwrite:
+        dst, src = src, dst
     dst.extend(v for v in src if v not in dst)
 
 
