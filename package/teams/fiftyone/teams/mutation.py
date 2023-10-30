@@ -21,8 +21,8 @@ import typing as t
 from fiftyone.server.data import Info
 import fiftyone.core.dataset as fod
 
-import fiftyone.server.mutation as fosm
 from fiftyone.server.filters import GroupElementFilter, SampleFilter
+import fiftyone.server.mutation as fosm
 from fiftyone.server.query import Dataset
 from fiftyone.server.scalars import BSONArray
 
