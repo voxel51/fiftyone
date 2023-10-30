@@ -731,7 +731,12 @@ class Document(BaseDocument, mongoengine.Document):
 
 def _merge_lists(dst, src, overwrite=False):
     if overwrite:
+        # in cases where __eq__ has been defined such that two
+        # instances without the exact same property values returns as
+        # equal, we want to make sure we persist src properties over dst
         dst, src = src, dst
+    if not dst:
+        dst = []
     dst.extend(v for v in src if v not in dst)
 
 
