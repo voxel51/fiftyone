@@ -429,8 +429,15 @@ export const labelPath = selectorFamily<string, string>({
 });
 
 export const _activeFields = (() => {
-  let current: string[] = null;
+  let data: { activeFields: string[]; datasetId: string };
+  try {
+    data = JSON.parse(sessionStorage.getItem("activeFields"));
+  } catch {}
+  console.log(data);
+
+  let { activeFields: current, datasetId } = data || {};
   let modalCurrent: string[] = null;
+
   return graphQLSyncFragmentAtomFamily<
     datasetFragment$key,
     null | string[],
@@ -440,11 +447,16 @@ export const _activeFields = (() => {
       fragments: [datasetFragment],
       keys: ["dataset"],
       default: null,
-      read: (data, previous, { modal }) => {
-        if (data?.datasetId !== previous?.datasetId) {
+      read: (dataset, _, { modal }) => {
+        if (
+          dataset?.datasetId === undefined ||
+          dataset?.datasetId !== datasetId
+        ) {
+          datasetId = dataset.datasetId;
           modalCurrent = null;
           current = null;
         }
+
         return modal ? modalCurrent : current;
       },
     },
@@ -457,6 +469,10 @@ export const _activeFields = (() => {
               modalCurrent = newValue;
             } else {
               current = newValue;
+              sessionStorage.setItem(
+                "activeFields",
+                JSON.stringify({ datasetId, activeFields: current })
+              );
             }
           });
         },
