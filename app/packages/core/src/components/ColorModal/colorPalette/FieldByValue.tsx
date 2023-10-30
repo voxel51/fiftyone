@@ -59,7 +59,6 @@ const FieldByValue: React.FC = () => {
     <ValueColorList
       initialValue={values as ValueColorInput[]}
       values={values as ValueColorInput[]}
-      resetValue={[] as ValueColorInput[]}
       style={FieldCHILD_STYLE}
       onSyncUpdate={onSyncUpdate}
       shouldShowAddButton={shouldShowAddButton}

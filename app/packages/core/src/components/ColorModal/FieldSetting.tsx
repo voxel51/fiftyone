@@ -2,6 +2,7 @@ import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
+  COLOR_BY,
   FLOAT_FIELD,
   HEATMAP,
   NOT_VISIBLE_LIST,
@@ -175,14 +176,9 @@ const FieldSetting = ({ path }: { path: string }) => {
 
   return (
     <div>
-      {!isSegmentation && !isHeatmap && (
-        <>
-          <ModeControl />
-          <Divider />
-        </>
-      )}
-
-      {coloring.by == "field" &&
+      <ModeControl />
+      <Divider />
+      {coloring.by == COLOR_BY.FIELD &&
         isTypeFieldSupported &&
         !isHeatmap &&
         !isSegmentation && (
@@ -229,6 +225,7 @@ const FieldSetting = ({ path }: { path: string }) => {
                         onChangeComplete={(color) => {
                           onChangeFieldColor(color.hex);
                           setColors([...new Set([...colors, color.hex])]);
+                          setShowFieldPicker(false);
                         }}
                         className={colorPicker}
                         ref={pickerRef}
@@ -251,8 +248,10 @@ const FieldSetting = ({ path }: { path: string }) => {
             )}
           </div>
         )}
-
-      {coloring.by == "value" &&
+      {coloring.by == COLOR_BY.FIELD && !isTypeFieldSupported && (
+        <div>Color by field is not supported for this field type</div>
+      )}
+      {coloring.by == COLOR_BY.VALUE &&
         isTypeValueSupported &&
         !isHeatmap &&
         !isSegmentation && (
@@ -312,33 +311,16 @@ const FieldSetting = ({ path }: { path: string }) => {
                     </div>
                   </>
                 )}
-                {path === "_label_tags" ? (
-                  <LabelTagByValue />
-                ) : (
-                  <FieldByValue />
-                )}
+                <FieldByValue />
               </SectionWrapper>
             </form>
           </div>
         )}
 
-      {coloring.by == "field" &&
-        !isTypeFieldSupported &&
-        !isHeatmap &&
-        !isSegmentation && (
-          <div>Color by field is not supported for this field type</div>
-        )}
-
-      {coloring.by == "value" &&
-        !isTypeValueSupported &&
-        !isHeatmap &&
-        !isSegmentation && (
-          <div>Color by value is not supported for this field type</div>
-        )}
-
-      {coloring.by !== "instance" && isSegmentation && <MaskTargets />}
-      {/* {coloring.by !== "instance" && isHeatmap && <FieldsColorscale />} */}
-      {coloring.by == "instance" && (
+      {coloring.by == COLOR_BY.VALUE && !isTypeValueSupported && (
+        <div>Color by value is not supported for this field type</div>
+      )}
+      {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}
     </div>

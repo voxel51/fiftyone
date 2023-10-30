@@ -49,7 +49,6 @@ const LabelTagByValue: React.FC = () => {
     <ValueColorList
       initialValue={initialValue as ValueColorInput[]}
       values={values as ValueColorInput[]}
-      resetValue={values as ValueColorInput[]}
       style={FieldCHILD_STYLE}
       onSyncUpdate={onSyncUpdate}
       shouldShowAddButton={shouldShowAddButton}

@@ -2,7 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { REGRESSION, getColor } from "@fiftyone/utilities";
+import { COLOR_BY, REGRESSION, getColor } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import {
@@ -159,6 +159,7 @@ type LabelColorProps = {
   isTagged: boolean;
   labelTagColors: LabelTagColor;
   customizeColorSetting: CustomizeColor[];
+  is3D?: boolean;
 };
 
 export const getLabelColor = ({
@@ -168,19 +169,20 @@ export const getLabelColor = ({
   isTagged,
   labelTagColors,
   customizeColorSetting,
+  is3D = false,
 }: LabelColorProps): string => {
   const field = customizeColorSetting.find((s) => s.path === path);
 
-  if (coloring.by === "instance") {
+  if (coloring.by === COLOR_BY.INSTANCE) {
     return getColor(coloring.pool, coloring.seed, getHashLabel(label));
   }
 
-  if (coloring.by === "field") {
-    // if the label is tagged, use _label_tag color rules
+  if (coloring.by === COLOR_BY.FIELD) {
+    // if the label is tagged, use _label_tags color rules
     // otherwise use color rules for the field
     if (isTagged) {
       return getLabelColorByField({
-        path: "_label_tag",
+        path: "_label_tags",
         coloring,
         fieldColor: labelTagColors?.fieldColor,
       });
@@ -193,10 +195,10 @@ export const getLabelColor = ({
     }
   }
 
-  if (coloring.by === "value") {
+  if (coloring.by === COLOR_BY.VALUE) {
     if (isTagged) {
-      // if the label's tag is currently active, use the _label_tag color rules
-      // specified tag color > label tag field color > default label tag color
+      // if the label's tag is currently active, use the _label_tags color rules
+      // specified tag color > color by label tag's value > label tag field color > default label tag color
 
       const tagColor = labelTagColors?.valueColors?.find((pair) =>
         label.tags.includes(pair.value)
@@ -206,7 +208,7 @@ export const getLabelColor = ({
         return tagColor;
       } else {
         return getLabelColorByField({
-          path: "_label_tag",
+          path: label.tags.length > 0 ? label.tags[0] : "_Label_tags",
           coloring,
           fieldColor: labelTagColors?.fieldColor,
         });
@@ -214,7 +216,7 @@ export const getLabelColor = ({
     }
   } else {
     // if the field has custom color rules, use the field/value specific rules
-    return getLabelColorByValue({ field, label, coloring });
+    return getLabelColorByValue({ field, label, coloring, is3D });
   }
 
   return getColor(coloring.pool, coloring.seed, path);
@@ -235,11 +237,19 @@ const getLabelColorByField = ({
   return getColor(coloring.pool, coloring.seed, path);
 };
 
-const getLabelColorKey = (field: CustomizeColor, label: RegularLabel) => {
+const getLabelColorKey = (
+  field: CustomizeColor,
+  label: RegularLabel,
+  is3D: boolean
+) => {
   let key;
   if (field.colorByAttribute) {
     if (field.colorByAttribute === "index") {
-      key = ["string", "number"].includes(typeof label.index) ? "index" : "id";
+      key = ["string", "number"].includes(typeof label.index)
+        ? "index"
+        : is3D
+        ? "_id"
+        : "id";
     } else {
       key = field.colorByAttribute;
     }
@@ -253,19 +263,22 @@ const getLabelColorByValue = ({
   field,
   label,
   coloring,
+  is3D,
 }: {
   field?: CustomizeColor;
   label: RegularLabel;
   coloring: Coloring;
+  is3D: boolean;
 }) => {
   let key;
   if (field) {
-    key = getLabelColorKey(field, label);
+    key = getLabelColorKey(field, label, is3D);
     // use the first value as the fallback value to get color,
     // if it's a listField
-    const fallbackValue = Array.isArray(label[key])
-      ? label[key][0]
-      : label[key];
+    const fallbackValue =
+      Array.isArray(label[key]) && label[key].length > 0
+        ? label[key][0]
+        : label[key];
 
     // check if this label has a assigned color, use it if it is a valid color
     const valueColor = field?.valueColors?.find((l) => {

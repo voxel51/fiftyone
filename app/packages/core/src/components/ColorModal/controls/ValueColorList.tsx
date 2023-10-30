@@ -25,7 +25,6 @@ import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
 type ValueColorProp = {
   initialValue: ValueColorInput[];
-  resetValue: ValueColorInput[];
   values: ValueColorInput[];
   style: React.CSSProperties;
   onSyncUpdate: (input: ValueColorInput[]) => void;
@@ -34,7 +33,6 @@ type ValueColorProp = {
 
 const ValueColorList: React.FC<ValueColorProp> = ({
   initialValue,
-  resetValue,
   values,
   style,
   onSyncUpdate,
@@ -117,7 +115,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   }, [activePath]);
 
   useEffect(() => {
-    setInput(resetValue);
+    setInput(values);
   }, [values]);
 
   fos.useOutsideClick(wrapperRef, () => {

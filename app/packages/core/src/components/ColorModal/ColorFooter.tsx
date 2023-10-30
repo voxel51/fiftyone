@@ -144,6 +144,28 @@ const useUpdateDatasetColorScheme = () => {
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
             );
+
+            // get or create labelTags data
+            let labelTagsRecord =
+              colorSchemeRecord.getLinkedRecord("labelTags");
+            if (!labelTagsRecord) {
+              labelTagsRecord = store.create(uuid(), "LabelTagColor");
+              colorSchemeRecord.setLinkedRecord(labelTagsRecord, "labelTags");
+            }
+
+            labelTagsRecord.setValue(
+              colorScheme.labelTags?.fieldColor,
+              "fieldColor"
+            );
+            labelTagsRecord.setLinkedRecords(
+              setEntries(
+                store,
+                "ValueColor",
+                colorScheme.labelTags?.valueColors ?? null
+              ),
+              "valueColors"
+            );
+
             colorSchemeRecord.setLinkedRecords(
               setEntries(store, "LabelTagColor", colorScheme?.fields ?? null),
               "labelTags"

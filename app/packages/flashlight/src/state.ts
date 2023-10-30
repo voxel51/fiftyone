@@ -43,7 +43,8 @@ export type ItemIndexMap = { [key: string]: number };
 export type OnItemClick = (
   next: () => Promise<void>,
   id: string,
-  itemIndexMap: ItemIndexMap
+  itemIndexMap: ItemIndexMap,
+  event: MouseEvent
 ) => void;
 
 export type Render = (

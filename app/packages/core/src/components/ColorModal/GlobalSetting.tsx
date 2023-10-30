@@ -14,6 +14,7 @@ import {
 import ColorPalette from "./colorPalette/ColorPalette";
 import ShuffleColor from "./controls/RefreshColor";
 import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
+import React from "react";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
