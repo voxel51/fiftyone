@@ -1,5 +1,5 @@
 import { useSetRecoilState } from "recoil";
-import { selectedFieldsStageState } from "../../recoil";
+import { fieldVisibilityStage } from "../../recoil";
 
 /**
  *
@@ -7,6 +7,6 @@ import { selectedFieldsStageState } from "../../recoil";
  */
 export default function useSetSelectedFieldsStage() {
   return {
-    setViewToFields: useSetRecoilState(selectedFieldsStageState),
+    setFieldVisibilityStage: useSetRecoilState(fieldVisibilityStage),
   };
 }

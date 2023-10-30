@@ -35,7 +35,7 @@ const onSetView: RegisteredSetter =
         }
         sessionRef.current.selectedLabels = [];
         sessionRef.current.selectedSamples = new Set();
-        sessionRef.current.selectedFields = undefined;
+        sessionRef.current.fieldVisibilityStage = undefined;
         router.history.push(`${router.get().pathname}`, {
           view,
         });
