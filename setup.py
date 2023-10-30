@@ -15,6 +15,23 @@ import os
 import re
 from setuptools import setup, find_packages
 
+
+VERSION = "0.23.0"
+
+
+def get_version():
+    if "RELEASE_VERSION" in os.environ:
+        version = os.environ["RELEASE_VERSION"]
+        if not version.startswith(VERSION):
+            raise ValueError(
+                "Release version does not match version: %s and %s"
+                % (version, VERSION)
+            )
+        return version
+
+    return VERSION
+
+
 INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
@@ -111,8 +128,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.21"]}
-
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.31"]}
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

@@ -593,15 +593,20 @@ export default class Flashlight<K> {
     return state;
   }
 
-  private getOnItemClick(): (id: string) => void | null {
+  private getOnItemClick(): (id: string, event: MouseEvent) => void | null {
     if (!this.state.onItemClick) {
       return null;
     }
 
-    return (id) =>
-      this.state.onItemClick(() => this.get(), id, {
-        ...this.state.itemIndexMap,
-      });
+    return (id, event) =>
+      this.state.onItemClick(
+        () => this.get(),
+        id,
+        {
+          ...this.state.itemIndexMap,
+        },
+        event
+      );
   }
 
   private createContainer(): HTMLDivElement {

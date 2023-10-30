@@ -368,6 +368,14 @@ export const json: Control = {
   },
 };
 
+export const selectSample: Control = {
+  title: "Select or Deselect Sample",
+  shortcut: "x",
+  eventKeys: null,
+  detail: "Grid → Control + Click",
+  action: () => null,
+};
+
 export const COMMON = {
   escape,
   rotateNext,
@@ -383,6 +391,7 @@ export const COMMON = {
   json,
   wheel,
   toggleOverlays,
+  selectSample,
 };
 
 export const COMMON_SHORTCUTS = readActions(COMMON);

@@ -896,8 +896,6 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
     _tmp_field = "_" + field
 
     trajs = _get_trajectories(src_collection, field)
-    # We're using the protected function because it's a temporary field
-    #   and we promise to clean it up later in the finally block.
     src_collection._set_values(
         _tmp_field,
         trajs,
@@ -979,8 +977,6 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     src_dataset = src_collection._dataset
     _tmp_field = "_support"
 
-    # We're using the protected function because it's a temporary field
-    #   and we promise to clean it up later in the finally block.
     src_collection._set_values(
         _tmp_field,
         clips,

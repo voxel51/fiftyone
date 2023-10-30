@@ -4,7 +4,11 @@ import {
 } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useRef } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  useRecoilCallback,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 
 const Arrow = styled.span<{ isRight?: boolean }>`
@@ -43,7 +47,6 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
   if (countLoadable.state === "hasValue") {
     count.current = countLoadable.contents;
   }
-
   const index = useRecoilValue(fos.modalSampleIndex);
   const setModal = fos.useSetExpandedSample();
 
@@ -57,23 +60,38 @@ const ModalNavigation = ({ onNavigate }: { onNavigate: () => void }) => {
     setModal((i) => i - 1);
   }, [onNavigate, setModal]);
 
-  const keyboardHandler = useCallback(
-    (e: KeyboardEvent) => {
-      const active = document.activeElement;
-      if (active?.tagName === "INPUT") {
-        if ((active as HTMLInputElement).type === "text") {
-          return;
+  const keyboardHandler = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (e: KeyboardEvent) => {
+        const active = document.activeElement;
+        if (active?.tagName === "INPUT") {
+          if ((active as HTMLInputElement).type === "text") {
+            return;
+          }
         }
-      }
-      if (e.key === "ArrowLeft") {
-        navigatePrevious();
-      } else if (e.key === "ArrowRight") {
-        navigateNext();
-      } else if (e.key === "c") {
-        setIsNavigationHidden((prev) => !prev);
-      }
-      // note: don't stop event propagation here
-    },
+        if (e.key === "x") {
+          const current = await snapshot.getPromise(fos.currentModalSample);
+          set(fos.selectedSamples, (selected) => {
+            const newSelected = new Set([...selected]);
+            if (current) {
+              if (newSelected.has(current.id)) {
+                newSelected.delete(current.id);
+              } else {
+                newSelected.add(current.id);
+              }
+            }
+
+            return newSelected;
+          });
+        } else if (e.key === "ArrowLeft") {
+          navigatePrevious();
+        } else if (e.key === "ArrowRight") {
+          navigateNext();
+        } else if (e.key === "c") {
+          setIsNavigationHidden((prev) => !prev);
+        }
+        // note: don't stop event propagation here
+      },
     [navigateNext, navigatePrevious]
   );
 

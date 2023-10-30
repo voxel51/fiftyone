@@ -168,6 +168,7 @@ type DataAggregation implements Aggregation {
 
 type Dataset {
   id: ID!
+  datasetId: ID!
   name: String!
   createdAt: date
   lastLoadedAt: datetime
