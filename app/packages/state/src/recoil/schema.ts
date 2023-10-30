@@ -441,7 +441,7 @@ export const _activeFields = (() => {
       keys: ["dataset"],
       default: null,
       read: (data, previous, { modal }) => {
-        if (data.id !== previous?.id) {
+        if (data?.datasetId !== previous?.datasetId) {
           modalCurrent = null;
           current = null;
         }
