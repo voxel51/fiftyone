@@ -252,6 +252,8 @@ class MongoOrchestratorRepo(OrchestratorRepo):
 
         if paging is None:
             paging = OrchestratorPagingParams()
+        elif isinstance(paging, dict):
+            paging = OrchestratorPagingParams(**paging)
 
         if search is None:
             search = {}
