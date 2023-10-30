@@ -3,21 +3,9 @@ import {
   useInvocationRequestExecutor,
   useInvocationRequestQueue,
 } from "./state";
-import { executeStartupOperators } from "./operators";
-
-let called = false;
-async function onMount() {
-  if (called) return;
-  called = true;
-  await executeStartupOperators();
-}
 
 export default function OperatorInvocationRequestExecutor() {
   const { requests, onSuccess, onError } = useInvocationRequestQueue();
-
-  useEffect(() => {
-    onMount();
-  }, [onMount]);
 
   return (
     <>
