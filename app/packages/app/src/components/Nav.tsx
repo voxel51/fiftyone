@@ -27,6 +27,7 @@ import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
 import { NavFragment$key } from "./__generated__/NavFragment.graphql";
 import { NavGA$key } from "./__generated__/NavGA.graphql";
+import { OperatorPlacements, types } from "@fiftyone/operators";
 
 const getUseSearch = (fragment: NavDatasets$key) => {
   return (search: string) => {
@@ -170,6 +171,7 @@ const Nav: React.FC<{
           <SlackLink />
           <GitHubLink />
           <DocsLink />
+          <OperatorPlacements place={types.Places.HEADER_ACTIONS} />
         </div>
       </Header>
       {ReactDOM.createPortal(

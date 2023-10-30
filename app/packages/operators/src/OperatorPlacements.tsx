@@ -12,6 +12,7 @@ import {
 } from "./state";
 import { Placement, Places } from "./types";
 import { isPrimitiveString } from "@fiftyone/utilities";
+import { IconButton, Tooltip } from "@mui/material";
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
@@ -91,6 +92,14 @@ function ButtonPlacement(props: OperatorPlacementProps) {
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
         style={{ whiteSpace: "nowrap" }}
       />
+    );
+  }
+
+  if (place === types.Places.HEADER_ACTIONS) {
+    return (
+      <Tooltip title={label} onClick={handleClick}>
+        <IconButton sx={{ p: 0 }}>{IconComponent}</IconButton>
+      </Tooltip>
     );
   }
 

@@ -1148,6 +1148,7 @@ class Places(enum.Enum):
     MAP_ACTIONS = "map-actions"
     MAP_SECONDARY_ACTIONS = "map-secondary-actions"
     DISPLAY_OPTIONS = "display-options"
+    HEADER_ACTIONS = "header-actions"
 
     def to_json(self):
         return self.value
