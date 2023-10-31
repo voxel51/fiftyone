@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-import React, { useState } from "react";
+import { default as React, useEffect, useState } from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import Input from "../Common/Input";
@@ -12,13 +12,13 @@ import {
   SectionWrapper,
 } from "./ShareStyledDiv";
 import ColorPalette from "./colorPalette/ColorPalette";
-import ShuffleColor from "./controls/RefreshColor";
 import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
-import React from "react";
+import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
   const [state, setState] = useState({ useColorscaleName: "name" });
+
   return (
     <div>
       <Divider>General</Divider>
@@ -87,8 +87,10 @@ const GlobalSetting = () => {
       </ControlGroupWrapper>
 
       <Divider>Segmentation</Divider>
-      <ControlGroupWrapper>Default Target Masks</ControlGroupWrapper>
-      <DefaultMaskTargets />
+      <ControlGroupWrapper>
+        Default Target Masks
+        <DefaultMaskTargets />
+      </ControlGroupWrapper>
       <Divider>Colorscale</Divider>
       <ControlGroupWrapper>
         <RadioGroup

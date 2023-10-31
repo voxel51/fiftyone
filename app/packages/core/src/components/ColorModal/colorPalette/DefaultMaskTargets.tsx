@@ -1,10 +1,9 @@
-import { MaskTargetsInput, ValueColorInput } from "@fiftyone/relay";
+import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
-import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 
 const DefaultMaskTargets: React.FC = () => {
@@ -13,22 +12,28 @@ const DefaultMaskTargets: React.FC = () => {
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.defaultMaskTargetsColors ?? [];
-  const values = useMemo(() => colorScheme.defaultMaskTargetsColors, []);
+  const values = useMemo(
+    () => colorScheme.defaultMaskTargetsColors,
+    [colorScheme]
+  );
   const defaultValue = {
-    idx: null,
+    idx: 0,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
-  const shouldShowAddButton = Boolean(values?.length > 0);
+  const shouldShowAddButton = Boolean(values?.length && values?.length > 0);
 
-  const onSyncUpdate = useCallback((copy: MaskTargetsInput[]) => {
+  const onSyncUpdate = useCallback((copy: MaskColorInput[]) => {
     if (copy) {
       setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
     }
   }, []);
 
   useEffect(() => {
-    if (!values) {
-      if (!colorScheme.defaultMaskTargetsColors) {
+    if (!values || values.length == 0) {
+      if (
+        !colorScheme.defaultMaskTargetsColors ||
+        colorScheme.defaultMaskTargetsColors.length == 0
+      ) {
         setColorScheme({
           ...colorScheme,
           defaultMaskTargetsColors: [defaultValue],
@@ -39,12 +44,15 @@ const DefaultMaskTargets: React.FC = () => {
 
   return (
     <IdxColorList
-      initialValue={initialValue as MaskTargetsInput[]}
-      values={values as MaskTargetsInput[]}
-      resetValue={values as MaskTargetsInput[]}
+      initialValue={initialValue as MaskColorInput[]}
+      values={values as MaskColorInput[]}
+      resetValue={values as MaskColorInput[]}
       style={FieldCHILD_STYLE}
       onSyncUpdate={onSyncUpdate}
       shouldShowAddButton={shouldShowAddButton}
+      min={0}
+      max={255}
+      step={1}
     />
   );
 };

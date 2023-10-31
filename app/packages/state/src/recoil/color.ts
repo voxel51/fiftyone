@@ -131,6 +131,15 @@ export const ensureColorScheme = (
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {},
     defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
+    colorscale: colorScheme.colorscale ?? {
+      name: "hsv",
+      list: [
+        { color: "rgb(0, 0, 255)", value: 0.2 },
+        { color: "rgb(0, 50, 255)", value: 0.5 },
+        { color: "rgb(0, 100, 255)", value: 0.8 },
+        { color: "rgb(0, 150, 255)", value: 1 },
+      ],
+    },
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints

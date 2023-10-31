@@ -39,6 +39,8 @@ const JSONViewer: React.FC = () => {
     };
   }, [colorScheme]);
 
+  console.info(colorScheme, setting);
+
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 

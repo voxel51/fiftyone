@@ -12,6 +12,7 @@ import { RecordSourceProxy } from "relay-runtime";
 import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
+import { COLOR_BY } from "@fiftyone/utilities";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -28,7 +29,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
+  const datasetDefault = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -63,6 +64,9 @@ const ColorFooter: React.FC = () => {
               colorBy: colorScheme.colorBy ?? "field",
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
+              colorscale: colorScheme.colorscale ?? null,
+              defaultMaskTargetsColors:
+                colorScheme.defaultMaskTargetsColors ?? [],
             });
 
             setDatasetColorScheme({
@@ -72,8 +76,14 @@ const ColorFooter: React.FC = () => {
                 colorScheme: {
                   ...colorScheme,
                   fields: colorScheme.fields ?? [],
+                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+                  showSkeletons: colorScheme.showSkeletons ?? true,
+                  colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
                   labelTags: colorScheme.labelTags ?? {},
+                  colorscale: colorScheme.colorscale ?? null,
+                  defaultMaskTargetsColors:
+                    colorScheme.defaultMaskTargetsColors ?? [],
                 },
               },
             });
@@ -91,11 +101,17 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({
+              setColorScheme((cur) => ({
+                ...cur,
                 fields: [],
+                defaultMaskTargetsColors: [],
                 labelTags: {},
+                colorscale: null,
                 colorPool: configDefault.colorPool,
-              });
+                colorBy: configDefault.colorBy,
+                multicolorKeypoints: false,
+                showSkeletons: true,
+              }));
             }}
             disabled={!canEdit}
           >
@@ -166,10 +182,29 @@ const useUpdateDatasetColorScheme = () => {
               "valueColors"
             );
 
-            colorSchemeRecord.setLinkedRecords(
-              setEntries(store, "LabelTagColor", colorScheme?.fields ?? null),
-              "labelTags"
+            // colorSchemeRecord.setLinkedRecords(
+            //   setEntries(store, "LabelTagColor", colorScheme?.labelTags ?? null),
+            //   "labelTags"
+            // );
+
+            // get or create colorScale data
+            let colorscaleRecord =
+              colorSchemeRecord.getLinkedRecord("colorscale");
+            if (!colorscaleRecord) {
+              colorscaleRecord = store.create(uuid(), "Colorscale");
+              colorSchemeRecord.setLinkedRecord(colorscaleRecord, "colorscale");
+            }
+
+            colorscaleRecord.setValue(colorScheme.colorscale?.name, "name");
+            labelTagsRecord.setLinkedRecords(
+              setEntries(store, "list", colorScheme.colorscale?.list ?? null),
+              "list"
             );
+
+            // colorSchemeRecord.setLinkedRecords(
+            //   setEntries(store, "colorscale", colorScheme?.colorscale ?? null),
+            //   "colorscale"
+            // );
             colorSchemeRecord.setValue(
               colorScheme.multicolorKeypoints,
               "multicolorKeypoints"

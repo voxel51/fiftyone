@@ -101,13 +101,14 @@ export const validateLabelTags = (
 };
 
 const getValidMaskColors = (maskColors: unknown[]) => {
-  return maskColors
+  const r = maskColors
     ?.filter((x) => {
       return (
         x &&
         isObject(x) &&
-        isString(x["idx"]) &&
         typeof Number(x["idx"]) == "number" &&
+        Number(x["idx"]) >= 0 &&
+        Number(x["idx"]) <= 255 &&
         isString(x["color"])
       );
     })
@@ -115,6 +116,8 @@ const getValidMaskColors = (maskColors: unknown[]) => {
       idx: Number(y["idx"]),
       color: y.color,
     })) as MaskColorInput[];
+
+  return r.length > 0 ? r : null;
 };
 
 export const validateMaskColor = (

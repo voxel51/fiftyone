@@ -27,22 +27,28 @@ type MaskColorInput = {
   color: string;
 };
 
-type ValueColorProp = {
+type IdxColorProp = {
   initialValue: MaskColorInput[];
   resetValue: MaskColorInput[];
   values: MaskColorInput[];
   style: React.CSSProperties;
   onSyncUpdate: (input: MaskColorInput[]) => void;
   shouldShowAddButton: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
 };
 
-const IdxColorList: React.FC<ValueColorProp> = ({
+const IdxColorList: React.FC<IdxColorProp> = ({
   initialValue,
   resetValue,
   values,
   style,
   onSyncUpdate,
   shouldShowAddButton,
+  min,
+  max,
+  step,
 }) => {
   const [input, setInput] = useState<MaskColorInput[]>(initialValue);
   const [showPicker, setShowPicker] = useState(
@@ -146,6 +152,9 @@ const IdxColorList: React.FC<ValueColorProp> = ({
             }
             onBlur={() => onSyncUpdate(input)}
             style={{ width: "12rem" }}
+            min={min}
+            max={max}
+            step={step}
           />
           :
           <ColorSquare
