@@ -26,20 +26,40 @@ DARWIN_DOWNLOADS = {
 
 LINUX = "Linux"
 LINUX_DOWNLOADS = {
-    "amzn": {
-        "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2-7.0.2.tgz",
-        "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2-7.0.2.tgz",
+    "debian": {
+        "9": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
+        },
+        "10": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian10-5.0.4.tgz"
+        },
+        "11": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-5.0.4.tgz"
+        },
+    },
+    "rhel": {
+        "7": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+        },
+        "8": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-5.0.22.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-5.0.4.tgz",
+        },
+        "9": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
     },
     "ubuntu": {
-        "18.04": {
+        "18": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.4.tgz",
         },
-        "20.04": {
+        "20": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-5.0.4.tgz",
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.4.tgz",
         },
-        "22.04": {
+        "22": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
         },
@@ -62,7 +82,15 @@ def _get_linux_download():
         reader = csv.reader(stream, delimiter="=")
         d = dict(reader)
 
-    return LINUX_DOWNLOADS[d["ID"]][MACHINE]
+    try:
+        for k, v in LINUX_DOWNLOADS[d["ID"]].items():
+            if d["VERSION_ID"].startswith(k):
+                return v[MACHINE]
+
+    except:
+        pass
+
+    return LINUX_DOWNLOADS["ubuntu"]["18"][MACHINE]
 
 
 def _get_download():
