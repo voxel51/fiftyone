@@ -87,6 +87,16 @@ def plugins_cache(func):
 def dir_state(dirpath):
     if not os.path.isdir(dirpath):
         return None
-    # we only need to check top level dir, which will update if any subdirs
-    # change and in the case that files are deleted
-    return os.path.getmtime(dirpath)
+    # we need to check the top level plugins dir in case a plugin was
+    # deleted as well as each individual plugin
+    # use glob instead of os.listdir to ignore hidden files (eg .DS_STORE)
+    return max(
+        os.path.getmtime(dirpath),
+        max(
+            (
+                os.path.getmtime(f)
+                for f in glob.glob(os.path.join(dirpath, "*"))
+            ),
+            default=None,
+        ),
+    )
