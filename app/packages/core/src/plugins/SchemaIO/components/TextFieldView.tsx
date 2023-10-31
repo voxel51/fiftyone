@@ -6,7 +6,9 @@ import { getComponentProps } from "../utils";
 
 export default function TextFieldView(props) {
   const { schema, onChange, path, data } = props;
-  const { type, view = {} } = schema;
+  const { type, view = {}, min, max, multipleOf = 1 } = schema;
+
+  const { inputProps = {}, ...fieldProps } = getComponentProps(props, "field");
 
   return (
     <FieldWrapper {...props}>
@@ -22,7 +24,8 @@ export default function TextFieldView(props) {
           const value = e.target.value;
           onChange(path, type === "number" ? parseFloat(value) : value);
         }}
-        {...getComponentProps(props, "field")}
+        inputProps={{ min, max, step: multipleOf, ...inputProps }}
+        {...fieldProps}
       />
     </FieldWrapper>
   );

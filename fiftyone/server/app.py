@@ -12,6 +12,7 @@ import stat
 
 import eta.core.utils as etau
 from starlette.applications import Starlette
+from starlette.datastructures import Headers
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -19,9 +20,9 @@ from starlette.middleware.base import (
 )
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import RedirectResponse, Response
+from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
-from starlette.staticfiles import StaticFiles
+from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
 import strawberry as gql
 
@@ -39,6 +40,29 @@ etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
 class Static(StaticFiles):
+    def file_response(
+        self,
+        full_path: PathLike,
+        stat_result: os.stat_result,
+        scope: Scope,
+        status_code: int = 200,
+    ) -> Response:
+        method = scope["method"]
+        request_headers = Headers(scope=scope)
+
+        response = FileResponse(
+            full_path,
+            status_code=status_code,
+            stat_result=stat_result,
+            method=method,
+        )
+        if response.path.endswith("index.html"):
+            response.headers["cache-control"] = "no-store"
+        elif self.is_not_modified(response.headers, request_headers):
+            return NotModifiedResponse(response.headers)
+
+        return response
+
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
         if response.status_code == 404:

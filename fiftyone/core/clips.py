@@ -890,7 +890,8 @@ def _write_trajectories(dataset, src_collection, field, other_fields=None):
     _tmp_field = "_" + field
 
     trajs = _get_trajectories(src_collection, field)
-    src_collection.set_values(
+
+    src_collection._set_values(
         _tmp_field,
         trajs,
         expand_schema=False,
@@ -971,7 +972,7 @@ def _write_manual_clips(dataset, src_collection, clips, other_fields=None):
     src_dataset = src_collection._dataset
     _tmp_field = "_support"
 
-    src_collection.set_values(
+    src_collection._set_values(
         _tmp_field,
         clips,
         expand_schema=False,

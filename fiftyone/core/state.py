@@ -59,6 +59,7 @@ class StateDescription(etas.Serializable):
         color_scheme=None,
         view=None,
         view_name=None,
+        field_visibility_stage=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
@@ -73,6 +74,7 @@ class StateDescription(etas.Serializable):
         )
         self.spaces = spaces
         self.color_scheme = color_scheme or build_color_scheme()
+        self.field_visibility_stage = field_visibility_stage
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -124,6 +126,9 @@ class StateDescription(etas.Serializable):
 
             if isinstance(self.color_scheme, ColorScheme):
                 d["color_scheme"] = self.color_scheme.to_dict(True)
+
+            if self.field_visibility_stage:
+                d["field_visibility_stage"] = self.field_visibility_stage
 
             return d
 
@@ -194,6 +199,7 @@ class StateDescription(etas.Serializable):
             view=view,
             spaces=spaces,
             color_scheme=color_scheme,
+            field_visibility_stage=d.get("field_visibility_stage", None),
         )
 
 
@@ -283,6 +289,9 @@ def build_color_scheme(
 
     if color_scheme.multicolor_keypoints is None:
         color_scheme.multicolor_keypoints = app_config.multicolor_keypoints
+
+    if color_scheme.opacity is None:
+        color_scheme.opacity = 0.7
 
     if color_scheme.show_skeletons is None:
         color_scheme.show_skeletons = app_config.show_skeletons

@@ -1,7 +1,9 @@
 import { ColorSchemeInput } from "@fiftyone/relay";
-import { State, useSessionSetter } from "@fiftyone/state";
-import { toCamelCase } from "@fiftyone/utilities";
+import { State, ensureColorScheme, useSessionSetter } from "@fiftyone/state";
+import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
+import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { LocationState } from "../routing";
 import { AppReadyState } from "./registerEvent";
 
 export const appReadyState = atom<AppReadyState>({
@@ -9,34 +11,16 @@ export const appReadyState = atom<AppReadyState>({
   default: AppReadyState.CONNECTING,
 });
 
-export const ensureColorScheme = (
-  colorScheme: any,
-  defaultValue: any
-): ColorSchemeInput => {
-  colorScheme = toCamelCase(colorScheme);
-  return {
-    colorPool: colorScheme.colorPool || defaultValue.colorPool,
-    colorBy: colorScheme.colorBy || defaultValue.colorBy,
-    fields: colorScheme.fields as ColorSchemeInput["fields"],
-    multicolorKeypoints:
-      colorScheme.multicolorKeypoints || colorScheme.multicolorKeypoints,
-    opacity: colorScheme.opacity || defaultValue.opacity,
-    showSkeletons: colorScheme.showSkeletons == false ? false : true,
-  };
-};
-
 export const processState = (
   setter: ReturnType<typeof useSessionSetter>,
   state: any
-) => {
+): Partial<LocationState<DatasetPageQuery>> => {
+  if (env().VITE_NO_STATE) {
+    return { view: [], fieldVisibility: undefined };
+  }
   setter(
     "colorScheme",
-    ensureColorScheme(state.color_scheme as ColorSchemeInput, {
-      colorPool: [],
-      colorBy: "field",
-      opacity: 0.7,
-      multicolorKeypoints: false,
-    })
+    ensureColorScheme(state.color_scheme as ColorSchemeInput)
   );
   setter("sessionGroupSlice", state.group_slice);
   setter("selectedSamples", new Set(state.selected));
@@ -45,4 +29,10 @@ export const processState = (
     toCamelCase(state.selected_labels) as State.SelectedLabel[]
   );
   state.spaces && setter("sessionSpaces", state.spaces);
+  setter("fieldVisibilityStage", state.field_visibility_stage || undefined);
+
+  return {
+    view: state.view || [],
+    fieldVisibility: state.field_visibility_stage,
+  };
 };

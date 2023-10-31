@@ -55,9 +55,13 @@ const makeRoutes = () => {
           throw new Error("dataset name not provided");
         }
 
+        const view = state.view || [];
+
         return {
           ...variables,
-          extendedView: state.view.concat(state.extendedStages || []),
+          extendedView: state.fieldVisibility
+            ? [...view, state.fieldVisibility]
+            : view,
         };
       },
     },

@@ -36,7 +36,7 @@ describe("useSetShowNestedFields hook used in schema code", () => {
     vi.restoreAllMocks();
   });
 
-  test("useSetSelectedFieldsStage should set selectedFieldsStage state correctly", async () => {
+  test("useSetExcludedFieldsStage should set excludedFieldsState correctly", async () => {
     const stage = {
       _cls: "fiftyone.core.stages.ExcludeFields",
       kwargs: {
@@ -47,11 +47,11 @@ describe("useSetShowNestedFields hook used in schema code", () => {
 
     const { result } = renderHook(
       () => {
-        const { setViewToFields } = fos.useSetSelectedFieldsStage();
+        const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
 
         return {
-          setViewToFields: (stage) => setViewToFields(stage),
-          selectedFieldsStage: useRecoilValue(fos.selectedFieldsStageState),
+          setFieldVisibilityStage: (stage) => setFieldVisibilityStage(stage),
+          excludedFieldsStage: useRecoilValue(fos.excludedPathsState({})),
         };
       },
       {
@@ -60,12 +60,12 @@ describe("useSetShowNestedFields hook used in schema code", () => {
     );
 
     act(() => {
-      result.current.setViewToFields(stage);
+      result.current.setFieldVisibilityStage(stage);
     });
 
-    const resultView = result.current.selectedFieldsStage;
-
-    expect(resultView).toStrictEqual(stage);
+    const resultView = result.current.excludedFieldsStage;
+    const expectedExcludedFields = stage.kwargs.field_names;
+    expect(resultView[TEST_DS.name]).toStrictEqual(expectedExcludedFields);
   });
 
   // TODO: It would be nice to figure out how to test whether the view was set successfully

@@ -19,12 +19,6 @@ const onSetViewName: RegisteredSetter =
       throw new Error("no dataset");
     }
 
-    const params = new URLSearchParams(router.get().search);
-    const current = params.get("view");
-    if (current === slug) {
-      return;
-    }
-
     commitMutation<setViewMutation>(environment, {
       mutation: setView,
       variables: {
@@ -38,7 +32,7 @@ const onSetViewName: RegisteredSetter =
 
     sessionRef.current.selectedLabels = [];
     sessionRef.current.selectedSamples = new Set();
-    sessionRef.current.selectedFields = undefined;
+    sessionRef.current.fieldVisibilityStage = undefined;
     router.history.push(resolveURL(router, dataset, slug || undefined), {
       view: [],
     });

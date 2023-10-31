@@ -14,6 +14,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import moment from "moment";
 import { scrollable } from "@fiftyone/components";
+import { humanReadableBytes } from "@fiftyone/utilities";
 
 const Wrapper = ({ children }) => (
   <Paper
@@ -29,19 +30,6 @@ const Wrapper = ({ children }) => (
     {children}
   </Paper>
 );
-
-function humanReadableBytes(bytes: number): string {
-  if (!bytes) return "";
-
-  const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
-
-  if (bytes === 0) return "0 Byte";
-
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
-}
 
 function FileTable({
   chooseMode,

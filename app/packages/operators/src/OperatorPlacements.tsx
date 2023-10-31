@@ -11,6 +11,7 @@ import {
   usePromptOperatorInput,
 } from "./state";
 import { Placement, Places } from "./types";
+import { isPrimitiveString } from "@fiftyone/utilities";
 
 function OperatorPlacements(props: OperatorPlacementsProps) {
   const { place } = props;
@@ -44,11 +45,18 @@ function OperatorPlacement(props: OperatorPlacementProps) {
 function ButtonPlacement(props: OperatorPlacementProps) {
   const promptForInput = usePromptOperatorInput();
   const { operator, placement, place } = props;
-  const { uri } = operator;
+  const { uri, label: operatorLabel, name: operatorName } = operator;
   const { view = {} } = placement;
   const { label } = view;
   const { icon, darkIcon, lightIcon, prompt = true } = view?.options || {};
   const { execute } = useOperatorExecutor(uri);
+  const canExecute = operator?.config?.canExecute;
+
+  const showIcon =
+    isPrimitiveString(icon) ||
+    isPrimitiveString(darkIcon) ||
+    isPrimitiveString(lightIcon);
+  const title = label || operatorLabel || operatorName;
 
   const IconComponent = (
     <OperatorIcon
@@ -57,6 +65,7 @@ function ButtonPlacement(props: OperatorPlacementProps) {
       darkIcon={darkIcon}
       lightIcon={lightIcon}
       Fallback={Extension}
+      canExecute={canExecute}
     />
   );
 
@@ -76,9 +85,11 @@ function ButtonPlacement(props: OperatorPlacementProps) {
     return (
       <PillButton
         onClick={handleClick}
-        icon={IconComponent}
-        title={label}
+        icon={showIcon && IconComponent}
+        text={!showIcon && title}
+        title={title}
         highlight={place === types.Places.SAMPLES_GRID_ACTIONS}
+        style={{ whiteSpace: "nowrap" }}
       />
     );
   }

@@ -1974,6 +1974,32 @@ class SampleCollection(object):
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
         """
+        self._set_values(
+            field_name,
+            values,
+            key_field=key_field,
+            skip_none=skip_none,
+            expand_schema=expand_schema,
+            dynamic=dynamic,
+            validate=validate,
+            _allow_missing=_allow_missing,
+            _sample_ids=_sample_ids,
+            _frame_ids=_frame_ids,
+        )
+
+    def _set_values(
+        self,
+        field_name,
+        values,
+        key_field=None,
+        skip_none=False,
+        expand_schema=True,
+        dynamic=False,
+        validate=True,
+        _allow_missing=False,
+        _sample_ids=None,
+        _frame_ids=None,
+    ):
         if self._is_group_field(field_name):
             raise ValueError(
                 "This method does not support setting attached group fields "
@@ -2115,8 +2141,8 @@ class SampleCollection(object):
         .. note::
 
             This method is appropriate when you have the IDs of the labels you
-            wish to modify. See :meth`set_values` and :meth:`set_field` if your
-            updates are not keyed by label ID.
+            wish to modify. See :meth:`set_values` and :meth:`set_field` if
+            your updates are not keyed by label ID.
 
         Examples::
 
@@ -2666,8 +2692,7 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
-            num_workers (None): the number of processes to use. By default,
-                ``multiprocessing.cpu_count()`` is used
+            num_workers (None): a suggested number of processes to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
         """

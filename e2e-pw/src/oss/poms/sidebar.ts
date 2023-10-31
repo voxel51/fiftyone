@@ -1,11 +1,12 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
+import { EventUtils } from "src/shared/event-utils";
 
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
-  constructor(page: Page) {
+  constructor(page: Page, eventUtils: EventUtils) {
     this.page = page;
     this.asserter = new SidebarAsserter(this);
 
@@ -83,9 +84,10 @@ export class SidebarPom {
   }
 
   async applyFilter(label: string) {
-    const selectionDiv = this.sidebar.getByTestId(`checkbox-${label}`);
-    await selectionDiv.waitFor({ state: "visible" });
-    await selectionDiv.locator("input").check({ force: true });
+    const selectionDiv = this.sidebar
+      .getByTestId("checkbox-" + label)
+      .getByTitle(label);
+    await selectionDiv.click({ force: true });
   }
 
   // apply a filter to a field

@@ -3437,6 +3437,7 @@ class GroupBy(ViewStage):
 
         pipeline = []
 
+        # sort so that first document in each group comes from a sorted list
         if self._sort_stage is not None:
             pipeline.extend(self._sort_stage.to_mongo(sample_collection))
 
@@ -3446,6 +3447,10 @@ class GroupBy(ViewStage):
                 {"$replaceRoot": {"newRoot": "$doc"}},
             ]
         )
+
+        # add a sort stage so that we return a stable ordering of groups
+        # sort by _id to preserve insertion order
+        pipeline.append({"$sort": {"_id": 1}})
 
         return pipeline
 
@@ -7210,7 +7215,7 @@ class SortBySimilarity(ViewStage):
         results = sample_collection.load_brain_results(brain_key)
 
         with contextlib.ExitStack() as context:
-            if sample_collection != results.view:
+            if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
                 context.enter_context(results)  # pylint: disable=no-member
 

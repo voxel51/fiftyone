@@ -12,7 +12,7 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
 
   return useCallback(
     (payload: any) => {
-      processState(setter, payload.state);
+      const state = processState(setter, payload.state);
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL(
         router,
@@ -20,12 +20,10 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
         stateless ? getSavedViewName() : payload.state.saved_view_slug
       );
       if (readyStateRef.current !== AppReadyState.OPEN) {
-        router.history.replace(path, {
-          view: stateless ? [] : payload.state.view || [],
-        });
+        router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));
-      } else if (!stateless) {
-        router.history.push(path, { view: payload.state.view || [] });
+      } else {
+        router.history.push(path, state);
       }
     },
     [readyStateRef, router, setter, setReadyState]

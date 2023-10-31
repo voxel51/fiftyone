@@ -14,8 +14,8 @@ import {
   LIST_FIELD,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { VariablesOf } from "react-relay";
-import { atom, selector, selectorFamily } from "recoil";
+import { PreloadedQuery, VariablesOf } from "react-relay";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
@@ -311,8 +311,15 @@ export const groupByFieldValue = atom<string | null>({
   default: null,
 });
 
-export const nestedGroupIndex = atom<number>({
-  key: "nestedGroupIndex",
+export const dynamicGroupIndex = atom<number>({
+  key: "dynamicGroupIndex",
+  default: null,
+});
+
+export const dynamicGroupSamplesQueryRef = atom<
+  PreloadedQuery<foq.paginateSamplesQuery>
+>({
+  key: "dynamicGroupSamplesQueryRef",
   default: null,
 });
 
@@ -327,16 +334,10 @@ export const activeModalSample = selector({
   },
 });
 
-export const groupStatistics = graphQLSyncFragmentAtomFamily<
-  datasetFragment$key,
-  "group" | "slice",
-  boolean
->(
-  { fragments: [datasetFragment], keys: ["dataset"], default: "slice" },
-  {
-    key: "groupStatistics",
-  }
-);
+export const groupStatistics = atomFamily<"group" | "slice">({
+  key: "groupStatistics",
+  default: "slice",
+});
 
 export const dynamicGroupFields = selector<string[]>({
   key: "dynamicGroupFields",

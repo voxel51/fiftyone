@@ -26,7 +26,7 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
-      sessionRef.current.selectedFields = undefined;
+      sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = entry.data.dataset?.appConfig
         ?.colorScheme || {
         colorBy: entry.data.config.colorBy,

@@ -6,8 +6,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix("classification-5");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
+  sidebar: async ({ page, eventUtils }, use) => {
+    await use(new SidebarPom(page, eventUtils));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -87,14 +87,18 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
-      ["frog", "ship"],
+      ["frog"],
+      "show-samples-with-label"
+    );
+
+    await sidebar.applyLabelFromList(
+      "ground_truth.detections.label",
+      ["ship"],
       "show-samples-with-label"
     );
 
     // verify the number of samples in the result
-
     await grid.assert.isEntryCountTextEqualTo("3 of 5 samples");
-
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
       "show-frog.png",
       { animations: "allow" }

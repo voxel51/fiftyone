@@ -11,7 +11,6 @@ import csv
 from datetime import datetime
 from itertools import groupby
 import logging
-import multiprocessing
 import multiprocessing.dummy
 import os
 import random
@@ -614,9 +613,6 @@ class COCODetectionDatasetExporter(
     foud.LabeledImageDatasetExporter, foud.ExportPathsMixin
 ):
     """Exporter that writes COCO detection datasets to disk.
-
-    This class currently only supports exporting detections and instance
-    segmentations.
 
     See :ref:`this page <COCODetectionDataset-export>` for format details.
 
@@ -1485,9 +1481,8 @@ def download_coco_dataset_split(
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -1852,8 +1847,7 @@ def _get_existing_ids(images_dir, images, image_ids):
 
 
 def _download_images(images_dir, image_ids, images, num_workers):
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     tasks = []
     for image_id in image_ids:

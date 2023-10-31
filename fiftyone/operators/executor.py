@@ -50,6 +50,21 @@ class InvocationRequest(object):
         }
 
 
+class ExecutionProgress:
+    """Represents the status of an operator execution.
+
+    at least one of progress or label must be provided
+    Args:
+        progress (None): an optional float between 0 and 1 (0% to 100%)
+        label (None): an optional label to display
+    """
+
+    def __init__(self, progress: float = None, label: str = None):
+        self.progress = progress
+        self.label = label
+        self.updated_at = None
+
+
 class Executor(object):
     """Handles the execution phase of the operator lifecycle.
 
@@ -186,6 +201,7 @@ async def execute_or_delegate_operator(operator_uri, request_params):
                 operator=operator.uri,
                 context=ctx.serialize(),
                 delegation_target=operator.delegation_target,
+                label=operator.name,
             )
 
             execution = ExecutionResult(
@@ -217,14 +233,24 @@ async def execute_or_delegate_operator(operator_uri, request_params):
         return ExecutionResult(result=raw_result, executor=executor)
 
 
-async def prepare_operator_executor(operator_uri, request_params):
+async def prepare_operator_executor(
+    operator_uri,
+    request_params,
+    set_progress=None,
+    delegated_operation_id=None,
+):
     registry = OperatorRegistry()
     if registry.operator_exists(operator_uri) is False:
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
-    ctx = ExecutionContext(request_params, executor)
+    ctx = ExecutionContext(
+        request_params=request_params,
+        executor=executor,
+        set_progress=set_progress,
+        delegated_operation_id=delegated_operation_id,
+    )
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
@@ -293,9 +319,17 @@ class ExecutionContext(object):
     Args:
         request_params (None): a optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
+        set_progress (None): an optional function to set the progress of the current operation
+        delegated_operation_id (None): an optional ID of the delegated operation
     """
 
-    def __init__(self, request_params=None, executor=None):
+    def __init__(
+        self,
+        request_params=None,
+        executor=None,
+        set_progress=None,
+        delegated_operation_id=None,
+    ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
         self.executor = executor
@@ -304,6 +338,8 @@ class ExecutionContext(object):
         self._view = None
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
+        self._set_progress = set_progress
+        self._delegated_operation_id = delegated_operation_id
 
     @property
     def dataset(self):
@@ -379,7 +415,7 @@ class ExecutionContext(object):
     def delegated(self):
         """Whether the operation's execution was delegated to an orchestrator.
 
-        This property is only availble for methods that are invoked after an
+        This property is only available for methods that are invoked after an
         operator is executed, e.g. :meth:`resolve_output`.
         """
         return self.request_params.get("delegated", False)
@@ -388,7 +424,7 @@ class ExecutionContext(object):
     def results(self):
         """A ``dict`` of results for the current operation.
 
-        This property is only availble for methods that are invoked after an
+        This property is only available for methods that are invoked after an
         operator is executed, e.g. :meth:`resolve_output`.
         """
         return self.request_params.get("results", {})
@@ -468,6 +504,21 @@ class ExecutionContext(object):
         return {
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
+
+    def set_progress(self, progress: float = None, label: str = None):
+        """Sets the progress of the current operation.
+
+        Args:
+            progress (None): an optional float between 0 and 1 (0% to 100%)
+            label (None): an optional label to display
+        """
+        if self._set_progress:
+            self._set_progress(
+                self._delegated_operation_id,
+                ExecutionProgress(progress, label),
+            )
+        else:
+            self.log(f"Progress: {progress.progress} - {progress.label}")
 
 
 class ExecutionResult(object):
@@ -677,7 +728,7 @@ class ValidationContext(object):
                 property.error_message, property, path, True
             )
 
-        if property.required and value is None:
+        if not self.exists_or_non_required(property, value):
             return ValidationError("Required property", property, path)
 
         if value is not None:
@@ -731,10 +782,34 @@ class ValidationContext(object):
         if type_name == "String" and value_type != str:
             return ValidationError("Invalid value type", property, path)
 
-        if type_name == "Number" and (
-            value_type != int and value_type != float
-        ):
-            return ValidationError("Invalid value type", property, path)
+        if type_name == "Number":
+            min = property.type.min
+            min_type = type(min)
+            max = property.type.max
+            max_type = type(max)
+            if value_type != int and value_type != float:
+                return ValidationError("Invalid value type", property, path)
+            if (min_type == int or min_type == float) and value < min:
+                return ValidationError(
+                    f"Value must be greater than {min}", property, path
+                )
+            if (max_type == int or max_type == float) and value > max:
+                return ValidationError(
+                    f"Value must be less than {max}", property, path
+                )
 
         if type_name == "Boolean" and value_type != bool:
             return ValidationError("Invalid value type", property, path)
+
+    def exists_or_non_required(self, property, value):
+        if not property.required:
+            return True
+
+        type_name = property.type.__class__.__name__
+
+        if type_name == "String":
+            allow_empty = property.type.allow_empty
+            if not allow_empty and value == "":
+                return False
+
+        return value is not None

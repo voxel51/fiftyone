@@ -252,7 +252,7 @@ The formulas in this section assume the following code has been run:
     ds = foz.load_zoo_dataset("quickstart")
 
     box_width, box_height = F("bounding_box")[2], F("bounding_box")[3]
-    rel_area = box_width * box_height
+    rel_bbox_area = box_width * box_height
 
     im_width, im_height = F("$metadata.width"), F("$metadata.height")
     abs_area = rel_bbox_area * im_width * im_height
@@ -266,8 +266,8 @@ The formulas in this section assume the following code has been run:
 +---------------------------------+-------------------------------------------------------------------------+
 | Between two relative sizes      | .. code-block:: python                                                  |
 |                                 |                                                                         |
-|                                 |    good_bboxes = (rel_area > 0.25) & (rel_area < 0.75)                  |
-|                                 |    good_expr = bbox_area.let_in(good_bboxes)                            |
+|                                 |    good_bboxes = (rel_bbox_area > 0.25) & (rel_bbox_area < 0.75)        |
+|                                 |    good_expr = rel_bbox_area.let_in(good_bboxes)                        |
 |                                 |    ds.filter_labels("predictions", good_expr)                           |
 +---------------------------------+-------------------------------------------------------------------------+
 | Approximately square            | .. code-block:: python                                                  |
@@ -328,7 +328,7 @@ dataset ``ds`` with detections in its ``predictions`` field:
 +-------------------------------------------+-------------------------------------------------------------------------+
 | Predictions with confidence > 0.95        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
-|                                           |     ds.filter_labels("predictions", F("confidence") > 0.95)                |
+|                                           |     ds.filter_labels("predictions", F("confidence") > 0.95)             |
 +-------------------------------------------+-------------------------------------------------------------------------+
 | 10 most "wrong" predictions               |  .. code-block:: python                                                 |
 |                                           |                                                                         |
@@ -399,7 +399,7 @@ classification predictions that have their ``logits`` attribute set:
 | 10 most likely annotation mistakes        |  .. code-block:: python                                                 |
 |                                           |                                                                         |
 |                                           |     ds.match_tags("train").sort_by(                                     |
-|                                           |         "mistakenness", reverse=True                                     |
+|                                           |         "mistakenness", reverse=True                                    |
 |                                           |     )[:10]                                                              |
 +-------------------------------------------+-------------------------------------------------------------------------+
 

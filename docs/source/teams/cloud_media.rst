@@ -620,7 +620,7 @@ First, follow
 `these instructions <https://opencv.github.io/cvat/docs/manual/basics/attach-cloud-storage/>`_
 to attach a cloud storage bucket to CVAT. Then, simply provide the
 `cloud_manifest` parameter to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate` to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
 specify the URL of the manifest file in your cloud bucket:
 
 .. code-block:: python

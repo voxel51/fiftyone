@@ -10,6 +10,7 @@ export * from "./errors";
 export * from "./fetch";
 export * from "./paths";
 export * from "./styles";
+export * from "./type-check";
 
 interface O {
   [key: string]: O | any;
@@ -712,3 +713,16 @@ export function pluralize(
 export const env = (): ImportMetaEnv => {
   return import.meta.env;
 };
+
+export function humanReadableBytes(bytes: number): string {
+  if (!bytes) return "";
+
+  const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+  if (bytes === 0) return "0 Byte";
+
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
+}

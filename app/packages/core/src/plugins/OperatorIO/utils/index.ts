@@ -9,6 +9,8 @@ const inputComponentsByType = {
   OneOf: "OneOfView",
   Tuple: "TupleView",
   Map: "MapView",
+  File: "FileExplorerView",
+  UploadedFile: "FileView",
 };
 const outputComponentsByType = {
   Object: "ObjectView",
@@ -18,6 +20,8 @@ const outputComponentsByType = {
   List: "ListView",
   OneOf: "OneOfView",
   Tuple: "TupleView",
+  File: "FileExplorerView",
+  UploadedFile: "FileView",
 };
 const baseViews = ["View", "PromptView"];
 const viewAliases = {
@@ -41,6 +45,8 @@ const operatorTypeToJSONSchemaType = {
   OneOf: "oneOf",
   Tuple: "array",
   Map: "object",
+  File: "object",
+  UploadedFile: "object",
 };
 const unsupportedView = "UnsupportedView";
 
@@ -104,6 +110,13 @@ function getSchema(property, options = {}) {
   schema.view.component = component;
 
   const computedOptions = { ...options, readOnly: schema.view.readOnly };
+
+  if (typeName === "Number") {
+    const { min, max, float } = property.type;
+    schema.min = min;
+    schema.max = max;
+    schema.multipleOf = float ? 0.01 : 1;
+  }
 
   if (typeName === "Object") {
     schema.properties = getPropertiesSchema(property, computedOptions);

@@ -63,7 +63,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     // verify selection clears on escape
     await grid.toggleSelectFirstSample();
     await grid.assert.isSelectionCountEqualTo(1);
-    await grid.locator.press("Escape");
+    await page.press("body", "Escape");
     await grid.assert.isSelectionCountEqualTo(0);
   });
 

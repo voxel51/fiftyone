@@ -1,4 +1,5 @@
 import { Loading } from "@fiftyone/components";
+import { usePlugins } from "@fiftyone/plugins";
 import {
   setDataset,
   setDatasetMutation,
@@ -22,12 +23,19 @@ import {
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
-import { ensureColorScheme } from "./useEvents/utils";
 import useEventSource from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
 export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
+
+const Plugins = ({ children }: { children: React.ReactNode }) => {
+  const plugins = usePlugins();
+  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+  if (plugins.hasError) return <Loading>Plugin error...</Loading>;
+
+  return <>{children}</>;
+};
 
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
@@ -79,7 +87,7 @@ const Sync = ({ children }: { children?: React.ReactNode }) => {
             });
           }}
         >
-          {children}
+          <Plugins>{children}</Plugins>
         </Writer>
       )}
     </SessionContext.Provider>
@@ -107,7 +115,6 @@ const dispatchSideEffect = ({
 
   session.selectedLabels = [];
   session.selectedSamples = new Set();
-  session.selectedFields = undefined;
 
   const currentDataset: string | undefined =
     // @ts-ignore
@@ -130,16 +137,11 @@ const dispatchSideEffect = ({
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
   if (currentDataset !== nextDataset) {
+    session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionSpaces = fos.SPACES_DEFAULT;
-    session.colorScheme = ensureColorScheme(
+    session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
-      {
-        colorPool: data.config.colorPool,
-        colorBy: data.config.colorBy,
-        opacity: 0.7,
-        multicolorKeypoints: false,
-        showSkeletons: true,
-      }
+      data.config
     );
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
   }
