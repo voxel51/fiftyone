@@ -159,7 +159,7 @@ const Grid: React.FC<{}> = () => {
         }
 
         const isModalOpen = await snapshot.getPromise(fos.isModalActive);
-        isModalOpen && reset(fos.selectedSamples);
+        !isModalOpen && reset(fos.selectedSamples);
       },
     []
   );
