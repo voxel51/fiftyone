@@ -162,6 +162,8 @@ and use it to generate object detections:
     :ref:`FiftyOne Model Zoo <model-zoo-yolov5m-coco-torch>`. You should also
     check out the :ref:`Ultralytics integration <ultralytics-integration>`!
 
+.. _dinov2-example:
+
 Example: DINOv2
 ---------------
 

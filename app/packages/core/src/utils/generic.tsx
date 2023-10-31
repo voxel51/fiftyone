@@ -29,7 +29,7 @@ export const prettify = (
     );
   }
 
-  return v;
+  return result;
 };
 
 export const genSort = (a, b, asc) => {
