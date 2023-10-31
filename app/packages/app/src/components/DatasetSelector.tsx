@@ -19,15 +19,14 @@ const DatasetSelector: React.FC<{
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
   const dataset = useRecoilValue(datasetName) as string;
+
   return (
     <Selector<string>
       component={DatasetLink}
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
-      onSelect={(name) => {
-        name !== dataset && setDataset(name);
-      }}
+      onSelect={(name) => setDataset(name)}
       overflow={true}
       useSearch={useSearch}
       value={dataset}

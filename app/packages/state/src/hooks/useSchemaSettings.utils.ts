@@ -31,6 +31,7 @@ import {
   SKIP_FIELD_TYPES,
   TEMPORAL_DETECTION_DISABLED_SUB_PATHS,
   TEMPORAL_DETECTION_FIELD,
+  TEMPORAL_DETECTIONS_FIELD,
   VALID_LABEL_TYPES,
   VALID_LIST_LABEL_FIELDS,
 } from "@fiftyone/utilities";
@@ -127,7 +128,12 @@ export const skipField = (rawPath: string, schema: {}) => {
 
   if (
     parentPath &&
-    [DETECTION_FIELD, DETECTIONS_FIELD].includes(parentField.embeddedDocType) &&
+    [
+      DETECTION_FIELD,
+      DETECTIONS_FIELD,
+      TEMPORAL_DETECTIONS_FIELD,
+      TEMPORAL_DETECTION_FIELD,
+    ].includes(parentField.embeddedDocType) &&
     [".bounding_box", ".index"].includes(pathLabel)
   ) {
     return true;

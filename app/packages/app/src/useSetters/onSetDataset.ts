@@ -37,11 +37,16 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
-      sessionRef.current.selectedFields = undefined;
-      sessionRef.current.colorScheme = ensureColorScheme(
-        entry.data.dataset?.appConfig?.colorScheme,
-        entry.data.config
-      );
+      sessionRef.current.fieldVisibilityStage = undefined;
+      sessionRef.current.colorScheme = entry.data.dataset?.appConfig
+        ?.colorScheme || {
+        colorBy: entry.data.config.colorBy,
+        colorPool: entry.data.config.colorPool,
+        fields: [],
+        multicolorKeypoints: false,
+        opacity: 0.7,
+        showSkeletons: true,
+      };
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });

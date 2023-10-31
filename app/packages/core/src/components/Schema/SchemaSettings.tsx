@@ -3,7 +3,8 @@ import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
 import CloseIcon from "@mui/icons-material/Close";
 import { Box, Typography } from "@mui/material";
-import { Fragment, useCallback, useRef } from "react";
+import React, { Fragment, useCallback, useRef } from "react";
+import { useResetRecoilState } from "recoil";
 import styled from "styled-components";
 import { TabOption } from "../utils";
 import { SchemaSearch } from "./SchemaSearch";
@@ -42,6 +43,7 @@ const Container = styled.div`
 
 const FIELD_VISIBILITY_DOCUMENTATION_LINK =
   "https://docs.voxel51.com/user_guide/app.html#app-field-visibility";
+const EXCLUDE_FIELDS_STAGE = "fiftyone.core.stages.ExcludeFields";
 
 const SchemaSettings = () => {
   const theme = useTheme();
@@ -59,14 +61,10 @@ const SchemaSettings = () => {
     datasetName,
     excludedPaths,
     resetExcludedPaths,
-    setSelectedPaths,
-    setLastAppliedPaths,
-    lastAppliedPaths,
-    setExcludedPaths,
     isFilterRuleActive,
-    enabledSelectedPaths,
     setShowNestedFields,
     mergedSchema,
+    excludedPathsStripped,
   } = fos.useSchemaSettings();
   const { searchResults } = fos.useSearchSchemaFields(mergedSchema);
 
@@ -77,8 +75,10 @@ const SchemaSettings = () => {
   const { setSearchResults, searchMetaFilter } =
     fos.useSearchSchemaFields(mergedSchema);
 
-  const { setViewToFields: setSelectedFieldsStage } =
-    fos.useSetSelectedFieldsStage();
+  const { setFieldVisibilityStage } = fos.useSetSelectedFieldsStage();
+  const resetFieldVisibilityStage = useResetRecoilState(
+    fos.fieldVisibilityStage
+  );
 
   const { resetAttributeFilters } = fos.useSchemaSettings();
 
@@ -111,8 +111,6 @@ const SchemaSettings = () => {
     setSearchTerm("");
     setSearchResults([]);
     setSettingsModal({ open: false });
-    setSelectedPaths({ [datasetName]: new Set(lastAppliedPaths.selected) });
-    setExcludedPaths({ [datasetName]: new Set(lastAppliedPaths.excluded) });
   };
 
   return (
@@ -189,12 +187,6 @@ const SchemaSettings = () => {
                   onClick: () => {
                     setSelectedTab(value);
                     setShowNestedFields(false);
-                    setSelectedPaths({
-                      [datasetName]: new Set(lastAppliedPaths.selected),
-                    });
-                    setExcludedPaths({
-                      [datasetName]: new Set(lastAppliedPaths.excluded),
-                    });
                   },
                 };
               })}
@@ -229,36 +221,12 @@ const SchemaSettings = () => {
               disabled={applyDisabled}
               onClick={() => {
                 resetAttributeFilters();
-                const initialFieldNames = [...excludedPaths[datasetName]];
-                let stage;
-                if (isFilterRuleActive) {
-                  stage = {
-                    _cls: "fiftyone.core.stages.SelectFields",
-                    kwargs: {
-                      meta_filter: searchMetaFilter,
-                      _allow_missing: true,
-                    },
-                  };
-                } else {
-                  stage = {
-                    _cls: "fiftyone.core.stages.ExcludeFields",
-                    kwargs: {
-                      field_names: initialFieldNames,
-                      _allow_missing: true,
-                    },
-                  };
-                }
-
-                try {
-                  setSelectedFieldsStage(stage);
-                } catch (e) {
-                  console.error("error setting field visibility", e);
-                } finally {
-                  setSettingsModal({ open: false });
-                }
-                setLastAppliedPaths({
-                  selected: enabledSelectedPaths[datasetName],
-                  excluded: excludedPaths[datasetName],
+                setSettingsModal({ open: false });
+                setFieldVisibilityStage({
+                  cls: EXCLUDE_FIELDS_STAGE,
+                  kwargs: {
+                    field_names: excludedPathsStripped,
+                  },
                 });
               }}
             >
@@ -276,7 +244,7 @@ const SchemaSettings = () => {
               onClick={() => {
                 setSettingsModal({ open: false });
                 setSearchTerm("");
-                setSelectedFieldsStage(null);
+                resetFieldVisibilityStage();
                 resetExcludedPaths();
                 setSearchResults([]);
                 resetAttributeFilters();

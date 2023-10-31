@@ -26,7 +26,7 @@ const compilePath = (path: string): CompilePathResult => {
 export type LocationState<T extends OperationType> = {
   view?: State.Stage[];
   savedViewSlug?: string;
-  extendedStages?: State.Stage[];
+  fieldVisibility?: State.Stage;
 } & VariablesOf<T>;
 
 interface MatchPathOptions<T extends OperationType> {

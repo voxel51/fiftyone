@@ -356,6 +356,11 @@ type Mutation {
     datasetName: String!
     colorScheme: ColorSchemeInput = null
   ): Void
+  setFieldVisibilityStage(
+    subscription: String!
+    session: String
+    stage: BSON
+  ): Boolean!
   setDataset(
     subscription: String!
     session: String
