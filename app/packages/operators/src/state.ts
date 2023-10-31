@@ -83,8 +83,16 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const selectedLabels = get(fos.selectedLabels);
 
-    return { datasetName, view, extended, filters, selectedSamples };
+    return {
+      datasetName,
+      view,
+      extended,
+      filters,
+      selectedSamples,
+      selectedLabels,
+    };
   },
 });
 
@@ -635,7 +643,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
 
