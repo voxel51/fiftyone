@@ -15,6 +15,7 @@ import {
   Operator,
   OperatorConfig,
   executeOperator,
+  executeStartupOperators,
   listLocalAndRemoteOperators,
   loadOperatorsFromServer,
   registerOperator,
@@ -387,8 +388,8 @@ class RefreshColors extends Operator {
     });
   }
   async execute({ state }: ExecutionContext) {
-    const colorsSeed = await state.snapshot.getPromise(fos.colorSeed);
-    state.set(fos.colorSeed, colorsSeed + 1);
+    const colorSeed = await state.snapshot.getPromise(fos.colorSeed);
+    state.set(fos.colorSeed, colorSeed + 1);
   }
 }
 
@@ -780,9 +781,15 @@ export function registerBuiltInOperators() {
   }
 }
 
-export async function loadOperators() {
+let startupOperatorsExecuted = false;
+export async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
-  await loadOperatorsFromServer();
+  // todo: move to better spot
+  await loadOperatorsFromServer(datasetName);
+  if (!startupOperatorsExecuted) {
+    executeStartupOperators();
+    startupOperatorsExecuted = true;
+  }
 }
 
 function getLayout(layout) {

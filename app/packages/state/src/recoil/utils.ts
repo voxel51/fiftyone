@@ -8,6 +8,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   getFetchParameters,
 } from "@fiftyone/utilities";
+import { RecoilValue, useRecoilValue } from "recoil";
 import { Nullable } from "vitest";
 
 export const getSampleSrc = (url: string) => {
@@ -161,3 +162,13 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
       )
     )
     .flat();
+
+export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
+  const value = useRecoilValue(recoilValue);
+
+  if (!value) {
+    throw new Error(`${recoilValue.key} is not defined`);
+  }
+
+  return value;
+}

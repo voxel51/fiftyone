@@ -218,11 +218,16 @@ class FiftyOneConfig(EnvConfig):
         self.timezone = self.parse_string(
             d, "timezone", env_var="FIFTYONE_TIMEZONE", default=None
         )
-
         self.max_thread_pool_workers = self.parse_int(
             d,
             "max_thread_pool_workers",
             env_var="FIFTYONE_MAX_THREAD_POOL_WORKERS",
+            default=None,
+        )
+        self.max_process_pool_workers = self.parse_int(
+            d,
+            "max_process_pool_workers",
+            env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
 
@@ -449,7 +454,7 @@ class AppConfig(EnvConfig):
         return fop.get_colormap(colorscale, n=n, hex_strs=hex_strs)
 
     def _init(self):
-        supported_color_bys = {"field", "value"}
+        supported_color_bys = {"field", "instance", "value"}
         default_color_by = "field"
         if self.color_by not in supported_color_bys:
             logger.warning(

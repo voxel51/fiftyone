@@ -457,7 +457,7 @@ to:
     to the Orchestrator, either by installing them on the same machine or by
     making them available via a shared filesystem
 -   Ensure that the required environment variables are set (see below)
--   Install the
+-   Install a
     `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
 -   You're all set. Schedule those operations!
 
@@ -668,7 +668,7 @@ the appropriate values for your deployment.
     export FIFTYONE_API_KEY=...
     export API_URL=...
 
-**Add the Airflow DAG**
+**Add Airflow DAG**
 
 Check the default DAGs path by running the following command:
 
@@ -680,7 +680,7 @@ Check the default DAGs path by running the following command:
 
     The default DAG folder path is `/home/<user>/airflow/dags`.
 
-Navigate to the DAG folder and add the
+Navigate to the DAG folder and add a
 `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_.
 
 Open the Airflow interface and ensure that the DAG is visible. Any issues

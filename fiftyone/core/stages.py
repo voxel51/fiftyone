@@ -7215,7 +7215,7 @@ class SortBySimilarity(ViewStage):
         results = sample_collection.load_brain_results(brain_key)
 
         with contextlib.ExitStack() as context:
-            if sample_collection != results.view:
+            if sample_collection.view() != results.view.view():
                 results.use_view(sample_collection)
                 context.enter_context(results)  # pylint: disable=no-member
 

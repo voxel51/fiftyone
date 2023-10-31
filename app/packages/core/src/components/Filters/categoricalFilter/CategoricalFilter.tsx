@@ -78,14 +78,14 @@ const categoricalSearchResults = selectorFamily<
         };
       } else {
         data = await getFetchFunction()("POST", "/values", {
-          dataset: get(fos.dataset).name,
+          dataset: get(fos.datasetName),
           view: get(fos.view),
           path,
           search,
           selected,
           group_id: modal ? get(groupId) || null : null,
           mixed,
-          slice: get(fos.groupSlice(false)),
+          slice: get(fos.groupSlice),
           slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
           sample_id:
             modal && !get(groupId) && !mixed ? get(fos.modalSampleId) : null,

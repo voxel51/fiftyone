@@ -6,8 +6,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix("classification-5");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
-  sidebar: async ({ page }, use) => {
-    await use(new SidebarPom(page));
+  sidebar: async ({ page, eventUtils }, use) => {
+    await use(new SidebarPom(page, eventUtils));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -83,7 +83,6 @@ test.describe("classification-sidebar-filter-visibility", () => {
 
     await sidebar.clickFieldDropdown("ground_truth");
     await entryExpandPromise;
-
     await sidebar.waitForElement("checkbox-frog");
     await sidebar.waitForElement("checkbox-ship");
     await sidebar.applyLabelFromList(

@@ -7,6 +7,7 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
+import { availableOperatorsRefreshCount } from "@fiftyone/operators/src/state";
 
 declare global {
   interface Window {
@@ -93,9 +94,7 @@ class PluginDefinition {
   }
 }
 
-let _settings = null;
 export async function loadPlugins() {
-  await foo.loadOperators();
   const plugins = await fetchPluginsMetadata();
   for (const plugin of plugins) {
     usingRegistry().registerPluginDefinition(plugin);
@@ -103,7 +102,7 @@ export async function loadPlugins() {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
       if (usingRegistry().hasScript(name)) {
-        console.log(`Plugin "${name}": already loaded`);
+        console.debug(`Plugin "${name}": already loaded`);
         continue;
       }
       try {
@@ -116,12 +115,12 @@ export async function loadPlugins() {
   }
 }
 async function loadScript(name, url) {
-  console.log(`Plugin "${name}": loading script...`);
+  console.debug(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
-      console.log(`Plugin "${name}": loaded!`);
+      console.debug(`Plugin "${name}": loaded!`);
       if (e?.type === "load") {
         resolve();
       } else {
@@ -144,6 +143,11 @@ async function loadScript(name, url) {
  */
 export function usePlugins() {
   const [state, setState] = useState("loading");
+  const datasetName = recoil.useRecoilValue(fos.datasetName);
+  const setAvailableOperatorsRefreshCount = recoil.useSetRecoilState(
+    availableOperatorsRefreshCount
+  );
+
   useEffect(() => {
     loadPlugins()
       .catch(() => {
@@ -153,6 +157,15 @@ export function usePlugins() {
         setState("ready");
       });
   }, []);
+
+  useEffect(() => {
+    if (fou.isPrimitiveString(datasetName)) {
+      foo.loadOperators(datasetName).then(() => {
+        // trigger force refresh
+        setAvailableOperatorsRefreshCount((count) => count + 1);
+      });
+    }
+  }, [datasetName]);
 
   return {
     isLoading: state === "loading",

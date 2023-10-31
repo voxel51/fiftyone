@@ -17,6 +17,7 @@ from starlette.requests import Request
 
 import fiftyone.core.context as focx
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm as foo
 from fiftyone.core.session.events import (
     add_screenshot,
     CaptureNotebookCell,
@@ -26,7 +27,14 @@ from fiftyone.core.session.events import (
     dict_factory,
     EventType,
     ListenPayload,
+    Refresh,
+    SelectLabels,
+    SelectSamples,
+    SetColorScheme,
+    SetGroupSlice,
+    SetSpaces,
     StateUpdate,
+    SetFieldVisibilityStage,
 )
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
@@ -56,12 +64,36 @@ async def dispatch_event(
         subscription: the calling subscription id
         event: the event
     """
+    global _state
     if isinstance(event, CaptureNotebookCell) and focx.is_databricks_context():
         add_screenshot(event)
         return
 
-    if isinstance(event, StateUpdate):
-        global _state
+    if isinstance(event, SelectLabels):
+        _state.selected_labels = event.labels
+
+    if isinstance(event, SelectSamples):
+        _state.selected = event.sample_ids
+
+    if isinstance(event, SetColorScheme):
+        _state.color_scheme = foo.ColorScheme.from_dict(
+            asdict(event.color_scheme)
+        )
+
+    if isinstance(event, SetSpaces):
+        _state.spaces = event.spaces
+
+    if isinstance(event, SetFieldVisibilityStage):
+        _state.field_visibility_stage = event.stage
+
+    if isinstance(event, SetGroupSlice):
+        if _state.view is not None:
+            _state.view.group_slice = event.slice
+
+        elif _state.dataset is not None:
+            _state.dataset.group_slice = event.slice
+
+    if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state
 
     if isinstance(event, ReactivateNotebookCell):
@@ -118,9 +150,7 @@ async def add_event_listener(
             for _, event in events:
                 if isinstance(event, StateUpdate):
                     # we copy here as this is a shared object
-                    event = StateUpdate(
-                        state=event.state.serialize(), refresh=event.refresh
-                    )
+                    event = StateUpdate(state=event.state.serialize())
 
                 yield ServerSentEvent(
                     event=event.get_event_name(),
@@ -252,16 +282,19 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
     )
     if not isinstance(payload.initializer, fos.StateDescription):
         update = False
+        dataset_change = False
         if (
             payload.initializer.dataset
             and payload.initializer.dataset != current
         ):
             update = True
+            dataset_change = True
             try:
                 state.dataset = fod.load_dataset(payload.initializer.dataset)
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
+
             except:
                 state.dataset = None
                 state.selected = []
@@ -298,6 +331,10 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
                 pass
 
         if update:
+            if dataset_change:
+                state.color_scheme = fos.build_color_scheme(
+                    None, state.dataset, state.config
+                )
             await dispatch_event(payload.subscription, StateUpdate(state))
 
     elif not is_app:

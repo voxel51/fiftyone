@@ -6,7 +6,7 @@ Session events.
 |
 """
 import base64
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import re
 import typing as t
 
@@ -14,8 +14,11 @@ import asyncio
 from bson import json_util
 from dacite import from_dict
 
+import eta.core.serial as etas
 import eta.core.utils as etau
 
+
+import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
 from fiftyone.core.utils import run_sync_task
 
@@ -25,10 +28,17 @@ EventType = t.Union[
     "CloseSession",
     "DeactivateNotebookCell",
     "ReactivateNotebookCell",
+    "SelectSamples",
+    "SelectLabels",
+    "SetColorScheme",
+    "SetGroupSlice",
+    "SetSpaces",
     "StateUpdate",
+    "SetFieldVisibilityStage",
 ]
 
 _camel_to_snake = re.compile(r"(?<!^)(?=[A-Z])")
+_SCREENSHOTS: t.Dict[str, "Screenshot"] = {}
 
 
 @dataclass
@@ -52,10 +62,13 @@ class Event:
             "fiftyone.core.session.events",
         )
 
-        if event_cls == StateUpdate:
+        if event_cls in {Refresh, StateUpdate}:
             data["state"] = fos.StateDescription.from_dict(data["state"])
 
-        return from_dict(event_cls, data)
+        return from_dict(
+            event_cls,
+            data,
+        )
 
     @staticmethod
     async def from_data_async(
@@ -65,6 +78,20 @@ class Event:
             return Event.from_data(event_name, data)
 
         return await run_sync_task(run)
+
+
+@dataclass
+class LabelData:
+    label_id: str
+    field: str
+    sample_id: str
+    frame_number: t.Optional[int] = None
+
+
+@dataclass
+class Screenshot:
+    bytes: bytes
+    max_width: int
 
 
 @dataclass
@@ -87,6 +114,11 @@ class DeactivateNotebookCell(Event):
 
 
 @dataclass
+class Ping(Event):
+    """Ping (builtin) event"""
+
+
+@dataclass
 class ReactivateNotebookCell(Event):
     """Reactivate notebook cell event"""
 
@@ -94,16 +126,107 @@ class ReactivateNotebookCell(Event):
 
 
 @dataclass
+class Refresh(Event):
+    """Refresh event"""
+
+    state: fos.StateDescription
+
+
+@dataclass
+class SelectLabels(Event):
+    """Select labels event"""
+
+    labels: t.List[LabelData]
+
+
+@dataclass
+class SelectSamples(Event):
+    """Select samples event"""
+
+    sample_ids: t.List[str]
+
+
+@dataclass
+class ValueColor:
+    color: str
+    value: str
+
+
+@dataclass
+class CustomizeColor:
+    path: str
+    fieldColor: t.Optional[str] = None
+    colorByAttribute: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColor]] = None
+
+
+@dataclass
+class ColorScheme:
+    color_pool: t.Optional[t.List[str]] = None
+    color_by: t.Optional[str] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
+    multicolor_keypoints: t.Optional[bool] = None
+    opacity: t.Optional[float] = None
+    show_skeletons: t.Optional[bool] = None
+
+
+@dataclass
+class SetColorScheme(Event):
+    """Set color scheme event"""
+
+    color_scheme: ColorScheme
+
+    @classmethod
+    def from_odm(cls, color_scheme: foo.ColorScheme):
+        return cls(color_scheme=from_dict(ColorScheme, color_scheme.to_dict()))
+
+    def to_odm(self):
+        fields = (
+            [asdict(field) for field in self.color_scheme.fields]
+            if self.color_scheme.fields
+            else None
+        )
+        return foo.ColorScheme(
+            color_pool=self.color_scheme.color_pool,
+            color_by=self.color_scheme.color_by,
+            fields=fields,
+            multicolor_keypoints=self.color_scheme.multicolor_keypoints,
+            opacity=self.color_scheme.opacity,
+            show_skeletons=self.color_scheme.show_skeletons,
+        )
+
+
+@dataclass
+class SetDatasetColorScheme(Event):
+    """Set dataset color scheme event"""
+
+    pass
+
+
+@dataclass
+class SetSpaces(Event):
+    """Set spaces event"""
+
+    spaces: t.Dict
+
+
+@dataclass
+class SetGroupSlice(Event):
+    """Set group slice eventt"""
+
+    slice: str
+
+
+@dataclass
+class SetFieldVisibilityStage(Event):
+    stage: t.Optional[t.Dict] = None
+
+
+@dataclass
 class StateUpdate(Event):
     """State update event"""
 
     state: fos.StateDescription
-    refresh: bool = False
-
-
-@dataclass
-class Ping(Event):
-    """Ping (builtin) event"""
 
 
 @dataclass
@@ -131,26 +254,17 @@ class ListenPayload:
         return from_dict(cls, d)
 
 
-def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
-    return dict(
-        (k, v.serialize() if isinstance(v, fos.StateDescription) else v)
-        for k, v in data
-    )
-
-
-@dataclass
-class Screenshot:
-    bytes: bytes
-    max_width: int
-
-
-_SCREENSHOTS: t.Dict[str, Screenshot] = {}
-
-
 def add_screenshot(event: CaptureNotebookCell) -> None:
     data = event.src.split(",")[1].encode()
     _SCREENSHOTS[event.subscription] = Screenshot(
         base64.decodebytes(data), event.width
+    )
+
+
+def dict_factory(data: t.List[t.Tuple[str, t.Any]]) -> t.Dict[str, t.Any]:
+    return dict(
+        (k, v.serialize() if isinstance(v, etas.Serializable) else v)
+        for k, v in data
     )
 
 

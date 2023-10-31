@@ -4,7 +4,6 @@ boto3==1.17.36
 cachetools==5.2.0
 dacite==1.6.0
 Deprecated==1.2.11
-Flask==1.1.2
 ftfy==6.1.1
 httpx==0.23.0
 hypercorn==0.13.2

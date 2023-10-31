@@ -8,9 +8,11 @@ FiftyOne Server app.
 from datetime import date, datetime
 import os
 import pathlib
+import stat
 
 import eta.core.utils as etau
 from starlette.applications import Starlette
+from starlette.datastructures import Headers
 from starlette.middleware import Middleware
 from starlette.middleware.base import (
     BaseHTTPMiddleware,
@@ -18,9 +20,9 @@ from starlette.middleware.base import (
 )
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
-from starlette.staticfiles import StaticFiles
+from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
 import strawberry as gql
 
@@ -38,17 +40,44 @@ etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
 
 
 class Static(StaticFiles):
+    def file_response(
+        self,
+        full_path: PathLike,
+        stat_result: os.stat_result,
+        scope: Scope,
+        status_code: int = 200,
+    ) -> Response:
+        method = scope["method"]
+        request_headers = Headers(scope=scope)
+
+        response = FileResponse(
+            full_path,
+            status_code=status_code,
+            stat_result=stat_result,
+            method=method,
+        )
+        if response.path.endswith("index.html"):
+            response.headers["cache-control"] = "no-store"
+        elif self.is_not_modified(response.headers, request_headers):
+            return NotModifiedResponse(response.headers)
+
+        return response
+
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
-
         if response.status_code == 404:
-            path = pathlib.Path(
-                *pathlib.Path(path).parts[2:]
-            )  # strip dataset/{name}
-            response = await super().get_response(path, scope)
-            if response.status_code == 404:
-                full_path, stat_result = self.lookup_path("index.html")
-                return self.file_response(full_path, stat_result, scope)
+            parts = pathlib.Path(path).parts
+            path = pathlib.Path(*parts[1:])
+            if parts and parts[0] == "datasets":
+                full_path, stat_result = self.lookup_path(path)
+                if stat_result and stat.S_ISREG(stat_result.st_mode):
+                    return self.file_response(full_path, stat_result, scope)
+
+                if len(parts) == 2:
+                    full_path, stat_result = self.lookup_path("index.html")
+                    return self.file_response(full_path, stat_result, scope)
+
+            return RedirectResponse(url="/")
 
         return response
 
@@ -87,7 +116,7 @@ app = Starlette(
         ),
         Middleware(HeadersMiddleware),
     ],
-    debug=foc.DEV_INSTALL,
+    debug=True,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
         Route(

@@ -16,7 +16,6 @@ from pymongo.errors import CursorNotFound
 
 import eta.core.utils as etau
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof

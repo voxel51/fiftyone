@@ -38,6 +38,7 @@
         "@fiftyone/relay": "*",
         "@fiftyone/utilities": "*",
         "@microsoft/fetch-event-source": "^2.0.1",
-        "lodash": "^4.17.21"
+        "lodash": "^4.17.21",
+        "recoil-sync": "^0.2.0"
     }
 }

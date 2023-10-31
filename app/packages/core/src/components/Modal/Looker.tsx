@@ -50,7 +50,7 @@ const useClearSelectedLabels = () => {
   return useRecoilCallback(
     ({ set }) =>
       async () =>
-        set(fos.selectedLabels, {}),
+        set(fos.selectedLabels, []),
     []
   );
 };
@@ -70,7 +70,7 @@ const Looker = ({
   const [id] = useState(() => uuid());
 
   const modalSampleData = useRecoilValue(fos.modalSample);
-  const sessionColorScheme = useRecoilValue(fos.sessionColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
 
   const sampleData = useMemo(() => {
     if (propsSampleData) {
@@ -110,7 +110,7 @@ const Looker = ({
 
   useEffect(() => {
     !initialRef.current && looker.updateSample(sample);
-  }, [sample, sessionColorScheme]);
+  }, [sample, colorScheme]);
 
   useEffect(() => {
     return () => looker && looker.destroy();
@@ -186,8 +186,16 @@ const Looker = ({
     }));
   }, [hoveredSample, sample, looker]);
 
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.dispatchEvent(
+      new CustomEvent(`looker-attached`, { bubbles: true })
+    );
+  }, [ref]);
+
   return (
     <div
+      ref={ref}
       id={id}
       data-cy="modal-looker-container"
       style={{

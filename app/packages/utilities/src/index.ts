@@ -88,7 +88,7 @@ export const removeKeys = <T>(
   );
 };
 
-export interface BaseField {
+export interface Field {
   ftype: string;
   dbField: string | null;
   description: string | null;
@@ -96,14 +96,11 @@ export interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
+  path: string;
 }
 
-export interface StrictField extends BaseField {
+export interface StrictField extends Field {
   fields?: StrictField[];
-}
-
-export interface Field extends BaseField {
-  fields: Schema;
 }
 
 export interface Schema {
@@ -696,7 +693,7 @@ export const toSlug = (name: string) => {
   if (matches.length) {
     slug = matches.join("")?.replace(replace_symbols, "-");
     if (slug.length && slug !== "-") {
-      return slug.length ? trim.exec(slug)?.groups?.slug : "";
+      return slug.length ? trim.exec(slug)?.groups?.slug || "" : "";
     }
   }
   return "";
@@ -716,3 +713,16 @@ export function pluralize(
 export const env = (): ImportMetaEnv => {
   return import.meta.env;
 };
+
+export function humanReadableBytes(bytes: number): string {
+  if (!bytes) return "";
+
+  const units: string[] = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+
+  if (bytes === 0) return "0 Byte";
+
+  const k = 1024;
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
+}

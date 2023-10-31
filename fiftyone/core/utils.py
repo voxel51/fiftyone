@@ -5,7 +5,6 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import typing as t
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -1651,18 +1650,26 @@ def is_32_bit():
     return struct.calcsize("P") * 8 == 32
 
 
-def is_docker():
-    """Determines if we're currently running in a Docker container.
+def is_container():
+    """Determines if we're currently running as a container.
 
     Returns:
         True/False
     """
+    return _is_docker() or _is_podman()
+
+
+def _is_docker():
     path = "/proc/self/cgroup"
     return (
         os.path.exists("/.dockerenv")
         or os.path.isfile(path)
         and any("docker" in line for line in open(path))
     )
+
+
+def _is_podman():
+    return os.path.exists("/run/.containerenv")
 
 
 def get_multiprocessing_context():
@@ -1689,6 +1696,77 @@ def get_multiprocessing_context():
 
     # Use the default context
     return multiprocessing.get_context()
+
+
+def recommend_thread_pool_workers(num_workers=None):
+    """Recommends a number of workers for a thread pool.
+
+    If a ``fo.config.max_thread_pool_workers`` is set, this limit is applied.
+
+    Args:
+        num_workers (None): a suggested number of workers
+
+    Returns:
+        a number of workers
+    """
+    if num_workers is None:
+        num_workers = multiprocessing.cpu_count()
+
+    if fo.config.max_thread_pool_workers is not None:
+        num_workers = min(num_workers, fo.config.max_thread_pool_workers)
+
+    return num_workers
+
+
+def recommend_process_pool_workers(num_workers=None):
+    """Recommends a number of workers for a process pool.
+
+    If a ``fo.config.max_process_pool_workers`` is set, this limit is applied.
+
+    Args:
+        num_workers (None): a suggested number of workers
+
+    Returns:
+        a number of workers
+    """
+    if num_workers is None:
+        if sys.platform.startswith("win"):
+            # Windows tends to have multiprocessing issues
+            num_workers = 1
+        else:
+            num_workers = multiprocessing.cpu_count()
+
+    if fo.config.max_process_pool_workers is not None:
+        num_workers = min(num_workers, fo.config.max_process_pool_workers)
+
+    return num_workers
+
+
+sync_task_executor = None
+
+
+def _get_sync_task_executor():
+    global sync_task_executor
+
+    max_workers = fo.config.max_thread_pool_workers
+    if sync_task_executor is None and max_workers is not None:
+        sync_task_executor = ThreadPoolExecutor(max_workers=max_workers)
+
+    return sync_task_executor
+
+
+async def run_sync_task(func, *args):
+    """Run a synchronous function as an async background task.
+
+    Args:
+        func: a synchronous callable
+        *args: function arguments
+
+    Returns:
+        the function's return value(s)
+    """
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_get_sync_task_executor(), func, *args)
 
 
 def datetime_to_timestamp(dt):
@@ -1874,31 +1952,6 @@ def to_slug(name):
         )
 
     return slug
-
-
-_T = t.TypeVar("_T")
-
-sync_task_executor = None
-
-
-def get_sync_task_executor():
-    global sync_task_executor
-    max_workers = fo.config.max_thread_pool_workers
-    if sync_task_executor is None and max_workers is not None:
-        sync_task_executor = ThreadPoolExecutor(max_workers=max_workers)
-    return sync_task_executor
-
-
-async def run_sync_task(func: t.Callable[..., _T], *args: t.Any):
-    """
-    Run a synchronous function as an async background task
-
-    Args:
-        run: a synchronous callable
-    """
-    loop = asyncio.get_running_loop()
-
-    return await loop.run_in_executor(get_sync_task_executor(), func, *args)
 
 
 def validate_color(value):

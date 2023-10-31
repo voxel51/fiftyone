@@ -27,8 +27,6 @@ const Grid: React.FC<{}> = () => {
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const resize = useResize();
 
-  const setSelectedSamples = fos.useSetSelected();
-
   const isModalOpen = useRecoilValue(fos.isModalActive);
   const { page, reset } = useFlashlightPager(
     store,
@@ -109,7 +107,7 @@ const Grid: React.FC<{}> = () => {
     useRecoilValue(fos.datasetName),
     useRecoilValue(fos.cropToContent(false)),
     fos.filterView(useRecoilValue(fos.view)),
-    useRecoilValue(fos.groupSlice(false)),
+    useRecoilValue(fos.groupSlice),
     useRecoilValue(fos.refresher),
     useRecoilValue(fos.similarityParameters),
     useRecoilValue(fos.selectedMediaField(false)),
@@ -154,18 +152,16 @@ const Grid: React.FC<{}> = () => {
   const isTagging = taggingLabels || taggingSamples;
 
   const escEventHandler = useRecoilCallback(
-    ({ reset }) =>
+    ({ snapshot, reset }) =>
       async (event: KeyboardEvent) => {
         if (event.key !== "Escape") {
           return;
         }
 
-        if (!isModalOpen) {
-          reset(fos.selectedSamples);
-          setSelectedSamples([]);
-        }
+        const isModalOpen = await snapshot.getPromise(fos.isModalActive);
+        isModalOpen && reset(fos.selectedSamples);
       },
-    [setSelectedSamples, isModalOpen]
+    []
   );
 
   useEffect(() => {
@@ -181,7 +177,7 @@ const Grid: React.FC<{}> = () => {
     return () => {
       document.removeEventListener("keydown", escEventHandler);
     };
-  }, [isModalOpen]);
+  }, [isModalOpen, escEventHandler]);
 
   useEffect(() => {
     init();

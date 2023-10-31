@@ -7,7 +7,6 @@ Metadata stored in dataset samples.
 """
 import itertools
 import logging
-import multiprocessing
 import os
 import requests
 
@@ -16,6 +15,7 @@ from PIL import Image
 import eta.core.utils as etau
 import eta.core.video as etav
 
+import fiftyone as fo
 from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
@@ -240,13 +240,11 @@ def compute_metadata(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         overwrite (False): whether to overwrite existing metadata
-        num_workers (None): the number of processes to use. By default,
-            ``multiprocessing.cpu_count()`` is used
+        num_workers (None): a suggested number of processes to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
     """
-    if num_workers is None:
-        num_workers = multiprocessing.cpu_count()
+    num_workers = fou.recommend_process_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(

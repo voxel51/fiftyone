@@ -9,6 +9,7 @@ import {
   groupId,
   groupSlice,
   hasGroupSlices,
+  modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
@@ -57,6 +58,11 @@ export const currentModalSample = atom<ModalSelector | null>({
   default: null,
 });
 
+export const isModalActive = selector<boolean>({
+  key: "isModalActive",
+  get: ({ get }) => Boolean(get(currentModalSample)),
+});
+
 export type ModalNavigation = (
   index: number
 ) => Promise<{ id: string; groupId?: string; groupByFieldValue?: string }>;
@@ -92,11 +98,6 @@ export const modalSampleId = selector<string>({
   },
 });
 
-export const isModalActive = selector<boolean>({
-  key: "isModalActive",
-  get: ({ get }) => get(currentModalSample) !== null,
-});
-
 export const modalSample = graphQLSelector<
   VariablesOf<mainSampleQuery>,
   ModalSample
@@ -123,8 +124,8 @@ export const modalSample = graphQLSelector<
     const current = get(currentModalSample);
     if (current === null) return null;
 
-    const slice = get(groupSlice(false));
-    const sliceSelect = get(groupSlice(true));
+    const slice = get(groupSlice);
+    const sliceSelect = get(modalGroupSlice);
 
     if (get(hasGroupSlices) && (!slice || !sliceSelect)) {
       return null;
