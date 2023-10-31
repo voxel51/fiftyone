@@ -26,6 +26,16 @@ DARWIN_DOWNLOADS = {
 
 LINUX = "Linux"
 LINUX_DOWNLOADS = {
+    "amzn": {
+        "2": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2-7.0.2.tgz",
+        },
+        "2023": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-amazon2023-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-amazon2023-7.0.2.tgz",
+        },
+    },
     "debian": {
         "9": {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
@@ -83,8 +93,14 @@ def _get_linux_download():
         d = dict(reader)
 
     try:
-        for k, v in LINUX_DOWNLOADS[d["ID"]].items():
-            if d["VERSION_ID"].startswith(k):
+        id = d["ID"]
+        version = d["VERSION_ID"]
+
+        for k, v in LINUX_DOWNLOADS[id].items():
+            if id == "amzn":
+                if version == k:
+                    return v[MACHINE]
+            elif version.startswith(k):
                 return v[MACHINE]
 
     except:
