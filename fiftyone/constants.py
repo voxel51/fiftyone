@@ -111,8 +111,3 @@ except ImportError:
     FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
         os.path.join(FIFTYONE_DIR, "../app")
     )
-
-# Analytics
-GA4_DEV = ("hkZ3o3bEQ_aHM-6I3pN6-g", "G-7TMZEFFWB7")
-GA4_PROD = ("hekb--n4SNamzVrU1lTE6Q", "G-NT3FLN0QHF")
-GA4_ID = GA4_DEV if DEV_INSTALL or RC_INSTALL else GA4_PROD
