@@ -8,10 +8,10 @@ FiftyOne delegated operation repository.
 from datetime import datetime
 from typing import Any, List
 
+import motor
 from bson import ObjectId
 import pymongo
 from pymongo import IndexModel
-from pymongo.collection import Collection
 
 import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
@@ -109,18 +109,18 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
 
     required_props = ["operator", "delegation_target", "context", "label"]
 
-    def __init__(self, collection: Collection = None):
+    def __init__(self, collection: motor.MotorCollection = None):
         self._collection = (
             collection if collection is not None else self._get_collection()
         )
 
         self._create_indexes()
 
-    def _get_collection(self) -> Collection:
+    def _get_collection(self) -> motor.MotorCollection:
         import fiftyone.core.odm as foo
         import fiftyone as fo
 
-        db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
+        db_client: motor.MotorClient = foo.get_async_db_client()
         database = db_client[fo.config.database_name]
         return database[self.COLLECTION_NAME]
 
