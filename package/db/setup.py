@@ -125,7 +125,7 @@ def _get_download():
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
 
-VERSION = "0.5.0"
+VERSION = "0.4.1"
 
 
 def get_version():

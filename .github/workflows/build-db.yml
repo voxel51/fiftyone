@@ -32,7 +32,6 @@ jobs:
              echo "RELEASE_VERSION=$(echo "${{ github.ref }}" | sed "s/^refs\/tags\/db-v//")" >> $GITHUB_ENV
           fi
       - name: Build sdist
-        if: ${{ matrix.platform == 'sdist' }}
         run: |
           cd package/db
           python setup.py sdist
@@ -53,11 +52,11 @@ jobs:
       - name: Download fiftyone-db wheel
         uses: actions/download-artifact@v3
         with:
-          name: wheel-linux-x86_64
+          name: sdist
           path: downloads
       - name: Install fiftyone-db
         run: |
-          pip3 install downloads/fiftyone_db-*.whl
+          pip3 install downloads/fiftyone_db-*.tar.gz
       - name: Install test dependencies
         run: |
           pip3 install pytest
@@ -74,6 +73,7 @@ jobs:
       - name: Download wheels
         uses: actions/download-artifact@v3
         with:
+          name: sdist
           path: downloads
       - name: Install dependencies
         run: |
@@ -89,4 +89,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python -m twine upload downloads/sdist/*.tar.gz
+          python -m twine upload downloads/*.tar.gz
