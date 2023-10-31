@@ -90,12 +90,15 @@ const Looker = ({
   const initialRef = useRef<boolean>(true);
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
+  const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
+
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
   });
+
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [reset, createLooker]
+    [reset, createLooker, selectedMediaField]
   );
 
   useEffect(() => {

@@ -20,8 +20,9 @@ ___________
   the App
 
 * :ref:`Notebooks <notebooks>`: You are working from a
-  `Jupyter Notebook <https://jupyter.org>`_ or a
-  `Google Colab Notebook <https://colab.research.google.com>`_.
+  `Jupyter Notebook <https://jupyter.org>`_,
+  `Google Colab Notebook <https://colab.research.google.com>`_, or
+  `Databricks Notebook <https://docs.databricks.com/en/notebooks/index.html>`_
 
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
@@ -189,8 +190,9 @@ or by setting the following environment variable:
 Notebooks
 _________
 
-FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_ and
-`Google Colab Notebooks <https://colab.research.google.com>`_.
+FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_,
+`Google Colab Notebooks <https://colab.research.google.com>`_, and
+`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
