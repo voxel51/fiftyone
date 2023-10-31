@@ -3388,7 +3388,7 @@ Docs
 - Added a new :ref:`evaluation page <evaluating-models>` to the user guide that
   explains how to evaluate various types of models with FiftyOne
 - Removed legacy `--index` flags from the install instructions from the
-  :ref:`troubleshooting page <alternative-builds>` which prevented a valid
+  :ref:`troubleshooting page <troubleshooting>` which prevented a valid
   installation
 
 FiftyOne 0.7.2
