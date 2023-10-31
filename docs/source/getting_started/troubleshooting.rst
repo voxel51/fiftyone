@@ -207,8 +207,8 @@ open file limit.  MongoDB has full documentation on the issue
 Troubleshooting Linux imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`fiftyone-db` officially supports Ubuntu 18.04+, RHEL/CentOS 7+, and Debian 9+
-(x86_64 only). The correct MongoDB build is downloaded and installed while
+`fiftyone-db` officially supports Debian 9+ (x86_64 only), Ubuntu 18.04+, and
+RHEL/CentOS 7+. The correct MongoDB build is downloaded and installed while
 building the package wheel on your machine. 
 
 If a suitable MongoDB build is not available or otherwise does not
