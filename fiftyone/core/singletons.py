@@ -44,7 +44,8 @@ class DatasetSingleton(type):
                     name=name, _create=_create, *args, **kwargs
                 )
 
-        cls._instances[name] = instance
+        if not instance.deleted:
+            cls._instances[name] = instance
 
         return instance
 
