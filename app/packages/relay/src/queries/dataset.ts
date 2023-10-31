@@ -39,7 +39,10 @@ export default graphql`
           }
           colorscale {
             name
-            list
+            list {
+              color
+              value
+            }
           }
           fields {
             colorByAttribute
@@ -55,7 +58,10 @@ export default graphql`
             }
             colorscale {
               name
-              list
+              list {
+                value
+                color
+              }
             }
           }
         }

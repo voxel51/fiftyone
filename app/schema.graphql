@@ -116,8 +116,8 @@ enum ColorBy {
 }
 
 input ColorScaleInput {
-  name: String!
-  list: [[Float!]!]!
+  name: String
+  list: [[Float!]!]
 }
 
 type ColorScheme {
@@ -130,7 +130,7 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
-  colorscale: Colorscale
+  colorscale: [Colorscale!]
 }
 
 input ColorSchemeInput {
@@ -145,9 +145,14 @@ input ColorSchemeInput {
   colorscale: ColorScaleInput = null
 }
 
+type ColorTuple {
+  value: Float!
+  color: String!
+}
+
 type Colorscale {
-  name: String!
-  list: [[Float!]!]!
+  name: String
+  list: [ColorTuple!]
 }
 
 input Count {

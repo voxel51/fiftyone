@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6c00a6c2d9d54b3006ea50439400c860>>
+ * @generated SignedSource<<6b649b1e5446672b1ad84646d42eb449>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -40,8 +40,8 @@ export type LabelTagColorInput = {
   valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type ColorScaleInput = {
-  list: ReadonlyArray<ReadonlyArray<number>>;
-  name: string;
+  list?: ReadonlyArray<ReadonlyArray<number>> | null;
+  name?: string | null;
 };
 export type setDatasetColorSchemeMutation$variables = {
   colorScheme?: ColorSchemeInput | null;

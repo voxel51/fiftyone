@@ -64,7 +64,10 @@ const DatasetPageQueryNode = graphql`
             }
             colorscale {
               name
-              list
+              list {
+                value
+                color
+              }
             }
           }
           labelTags {
@@ -76,7 +79,10 @@ const DatasetPageQueryNode = graphql`
           }
           colorscale {
             name
-            list
+            list {
+              color
+              value
+            }
           }
         }
       }

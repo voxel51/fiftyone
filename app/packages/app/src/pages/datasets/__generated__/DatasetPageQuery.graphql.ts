@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<59d3f86f0b3aaf62061798fa13ccb690>>
+ * @generated SignedSource<<9a34f836eed1e070c0261061e0bb8663>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,10 +32,13 @@ export type DatasetPageQuery$data = {
       readonly colorScheme: {
         readonly colorBy: ColorBy | null;
         readonly colorPool: ReadonlyArray<string>;
-        readonly colorscale: {
-          readonly list: ReadonlyArray<ReadonlyArray<number>>;
-          readonly name: string;
-        } | null;
+        readonly colorscale: ReadonlyArray<{
+          readonly list: ReadonlyArray<{
+            readonly color: string;
+            readonly value: number;
+          }> | null;
+          readonly name: string | null;
+        }> | null;
         readonly defaultMaskTargetsColors: ReadonlyArray<{
           readonly color: string;
           readonly idx: number;
@@ -43,8 +46,11 @@ export type DatasetPageQuery$data = {
         readonly fields: ReadonlyArray<{
           readonly colorByAttribute: string | null;
           readonly colorscale: {
-            readonly list: ReadonlyArray<ReadonlyArray<number>>;
-            readonly name: string;
+            readonly list: ReadonlyArray<{
+              readonly color: string;
+              readonly value: number;
+            }> | null;
+            readonly name: string | null;
           } | null;
           readonly fieldColor: string | null;
           readonly maskTargetsColors: ReadonlyArray<{
@@ -221,36 +227,18 @@ v19 = {
   "name": "value",
   "storageKey": null
 },
-v20 = {
+v20 = [
+  (v15/*: any*/),
+  (v19/*: any*/)
+],
+v21 = {
   "alias": null,
   "args": null,
   "concreteType": "ValueColor",
   "kind": "LinkedField",
   "name": "valueColors",
   "plural": true,
-  "selections": [
-    (v15/*: any*/),
-    (v19/*: any*/)
-  ],
-  "storageKey": null
-},
-v21 = {
-  "alias": null,
-  "args": null,
-  "concreteType": "Colorscale",
-  "kind": "LinkedField",
-  "name": "colorscale",
-  "plural": false,
-  "selections": [
-    (v12/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "list",
-      "storageKey": null
-    }
-  ],
+  "selections": (v20/*: any*/),
   "storageKey": null
 },
 v22 = {
@@ -300,7 +288,7 @@ v22 = {
         },
         (v17/*: any*/),
         (v18/*: any*/),
-        (v20/*: any*/),
+        (v21/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -311,7 +299,31 @@ v22 = {
           "selections": (v16/*: any*/),
           "storageKey": null
         },
-        (v21/*: any*/)
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "Colorscale",
+          "kind": "LinkedField",
+          "name": "colorscale",
+          "plural": false,
+          "selections": [
+            (v12/*: any*/),
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "ColorTuple",
+              "kind": "LinkedField",
+              "name": "list",
+              "plural": true,
+              "selections": [
+                (v19/*: any*/),
+                (v15/*: any*/)
+              ],
+              "storageKey": null
+            }
+          ],
+          "storageKey": null
+        }
       ],
       "storageKey": null
     },
@@ -324,11 +336,32 @@ v22 = {
       "plural": false,
       "selections": [
         (v17/*: any*/),
-        (v20/*: any*/)
+        (v21/*: any*/)
       ],
       "storageKey": null
     },
-    (v21/*: any*/)
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Colorscale",
+      "kind": "LinkedField",
+      "name": "colorscale",
+      "plural": true,
+      "selections": [
+        (v12/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "ColorTuple",
+          "kind": "LinkedField",
+          "name": "list",
+          "plural": true,
+          "selections": (v20/*: any*/),
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    }
   ],
   "storageKey": null
 },
@@ -1293,16 +1326,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "3671da04358d4b89264b4cbcfd0d3504",
+    "cacheID": "c30c7c13eca545085577e2cb59755ac7",
     "id": null,
     "metadata": {},
     "name": "DatasetPageQuery",
     "operationKind": "query",
-    "text": "query DatasetPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n  $savedViewSlug: String\n  $name: String!\n  $view: BSONArray!\n  $extendedView: BSONArray\n) {\n  config {\n    colorBy\n    colorPool\n    multicolorKeypoints\n    showSkeletons\n  }\n  dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {\n    name\n    defaultGroupSlice\n    appConfig {\n      colorScheme {\n        id\n        colorBy\n        colorPool\n        multicolorKeypoints\n        opacity\n        showSkeletons\n        defaultMaskTargetsColors {\n          idx\n          color\n        }\n        fields {\n          colorByAttribute\n          fieldColor\n          path\n          valueColors {\n            color\n            value\n          }\n          maskTargetsColors {\n            idx\n            color\n          }\n          colorscale {\n            name\n            list\n          }\n        }\n        labelTags {\n          fieldColor\n          valueColors {\n            color\n            value\n          }\n        }\n        colorscale {\n          name\n          list\n        }\n      }\n    }\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...stageDefinitionsFragment\n  ...viewSchemaFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetAppConfigFragment on DatasetAppConfig {\n  gridMediaField\n  mediaFields\n  modalMediaField\n  plugins\n  sidebarMode\n  colorScheme {\n    id\n    colorBy\n    colorPool\n    multicolorKeypoints\n    opacity\n    showSkeletons\n    fields {\n      colorByAttribute\n      fieldColor\n      path\n      valueColors {\n        color\n        value\n      }\n    }\n  }\n}\n\nfragment datasetFragment on Dataset {\n  createdAt\n  datasetId\n  groupField\n  id\n  info\n  lastLoadedAt\n  mediaType\n  name\n  version\n  appConfig {\n    ...datasetAppConfigFragment\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  skeletons {\n    name\n    labels\n    edges\n  }\n  ...frameFieldsFragment\n  ...groupSliceFragment\n  ...mediaFieldsFragment\n  ...mediaTypeFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  defaultGroupSlice\n}\n\nfragment mediaFieldsFragment on Dataset {\n  name\n  appConfig {\n    gridMediaField\n    mediaFields\n  }\n  sampleFields {\n    path\n  }\n}\n\nfragment mediaTypeFragment on Dataset {\n  mediaType\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  name\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    params {\n      name\n      type\n      default\n      placeholder\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $view) {\n    fieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n    frameFieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n  }\n}\n"
+    "text": "query DatasetPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n  $savedViewSlug: String\n  $name: String!\n  $view: BSONArray!\n  $extendedView: BSONArray\n) {\n  config {\n    colorBy\n    colorPool\n    multicolorKeypoints\n    showSkeletons\n  }\n  dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {\n    name\n    defaultGroupSlice\n    appConfig {\n      colorScheme {\n        id\n        colorBy\n        colorPool\n        multicolorKeypoints\n        opacity\n        showSkeletons\n        defaultMaskTargetsColors {\n          idx\n          color\n        }\n        fields {\n          colorByAttribute\n          fieldColor\n          path\n          valueColors {\n            color\n            value\n          }\n          maskTargetsColors {\n            idx\n            color\n          }\n          colorscale {\n            name\n            list {\n              value\n              color\n            }\n          }\n        }\n        labelTags {\n          fieldColor\n          valueColors {\n            color\n            value\n          }\n        }\n        colorscale {\n          name\n          list {\n            color\n            value\n          }\n        }\n      }\n    }\n    ...datasetFragment\n    id\n  }\n  ...NavFragment\n  ...savedViewsFragment\n  ...configFragment\n  ...stageDefinitionsFragment\n  ...viewSchemaFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n\nfragment datasetAppConfigFragment on DatasetAppConfig {\n  gridMediaField\n  mediaFields\n  modalMediaField\n  plugins\n  sidebarMode\n  colorScheme {\n    id\n    colorBy\n    colorPool\n    multicolorKeypoints\n    opacity\n    showSkeletons\n    fields {\n      colorByAttribute\n      fieldColor\n      path\n      valueColors {\n        color\n        value\n      }\n    }\n  }\n}\n\nfragment datasetFragment on Dataset {\n  createdAt\n  datasetId\n  groupField\n  id\n  info\n  lastLoadedAt\n  mediaType\n  name\n  version\n  appConfig {\n    ...datasetAppConfigFragment\n  }\n  brainMethods {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      embeddingsField\n      method\n      patchesField\n      supportsPrompts\n      type\n      maxK\n      supportsLeastSimilarity\n    }\n  }\n  defaultMaskTargets {\n    target\n    value\n  }\n  defaultSkeleton {\n    labels\n    edges\n  }\n  evaluations {\n    key\n    version\n    timestamp\n    viewStages\n    config {\n      cls\n      predField\n      gtField\n    }\n  }\n  groupMediaTypes {\n    name\n    mediaType\n  }\n  maskTargets {\n    name\n    targets {\n      target\n      value\n    }\n  }\n  skeletons {\n    name\n    labels\n    edges\n  }\n  ...frameFieldsFragment\n  ...groupSliceFragment\n  ...mediaFieldsFragment\n  ...mediaTypeFragment\n  ...sampleFieldsFragment\n  ...sidebarGroupsFragment\n  ...viewFragment\n}\n\nfragment frameFieldsFragment on Dataset {\n  frameFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment groupSliceFragment on Dataset {\n  defaultGroupSlice\n}\n\nfragment mediaFieldsFragment on Dataset {\n  name\n  appConfig {\n    gridMediaField\n    mediaFields\n  }\n  sampleFields {\n    path\n  }\n}\n\nfragment mediaTypeFragment on Dataset {\n  mediaType\n}\n\nfragment sampleFieldsFragment on Dataset {\n  sampleFields {\n    ftype\n    subfield\n    embeddedDocType\n    path\n    dbField\n    description\n    info\n  }\n}\n\nfragment savedViewsFragment on Query {\n  savedViews(datasetName: $name) {\n    id\n    datasetId\n    name\n    slug\n    description\n    color\n    viewStages\n    createdAt\n    lastModifiedAt\n    lastLoadedAt\n  }\n}\n\nfragment sidebarGroupsFragment on Dataset {\n  name\n  appConfig {\n    sidebarGroups {\n      expanded\n      paths\n      name\n    }\n  }\n  ...frameFieldsFragment\n  ...sampleFieldsFragment\n}\n\nfragment stageDefinitionsFragment on Query {\n  stageDefinitions {\n    name\n    params {\n      name\n      type\n      default\n      placeholder\n    }\n  }\n}\n\nfragment viewFragment on Dataset {\n  stages(slug: $savedViewSlug, view: $view)\n  viewCls\n  viewName\n}\n\nfragment viewSchemaFragment on Query {\n  schemaForViewStages(datasetName: $name, viewStages: $view) {\n    fieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n    frameFieldSchema {\n      path\n      ftype\n      subfield\n      embeddedDocType\n      info\n      description\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "7b2166611ba91f756c716d9bd1ecbebf";
+(node as any).hash = "d132389fb08dd168c5ca4abf2ec95c15";
 
 export default node;
