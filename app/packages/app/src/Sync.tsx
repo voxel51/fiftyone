@@ -137,13 +137,13 @@ const dispatchSideEffect = ({
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
   if (currentDataset !== nextDataset) {
-    session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
-    session.sessionSpaces = fos.SPACES_DEFAULT;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
       data.config
     );
+    session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+    session.sessionSpaces = fos.SPACES_DEFAULT;
   }
 
   commitMutation<setViewMutation>(environment, {
@@ -152,7 +152,7 @@ const dispatchSideEffect = ({
       view: nextEntry.state.view,
       savedViewSlug: nextEntry.state.savedViewSlug,
       form: {},
-      datasetName: nextDataset as string,
+      datasetName: nextDataset,
       subscription,
     },
   });
