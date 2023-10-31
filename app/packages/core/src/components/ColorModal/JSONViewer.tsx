@@ -10,7 +10,12 @@ import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
-import { validateJSONSetting, validateLabelTags } from "./utils";
+import {
+  validateColorscale,
+  validateJSONSetting,
+  validateLabelTags,
+  validateMaskColor,
+} from "./utils";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -25,10 +30,15 @@ const JSONViewer: React.FC = () => {
       opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
       multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
       showSkeletons: colorScheme?.showSkeletons,
-      fields: validateJSONSetting(colorScheme.fields || []),
-      labelTags: validateLabelTags(colorScheme?.labelTags || {}),
+      fields: validateJSONSetting(colorScheme.fields ?? []),
+      labelTags: validateLabelTags(colorScheme?.labelTags ?? {}),
+      defaultMaskTargetsColors: validateMaskColor(
+        colorScheme.defaultMaskTargetsColors
+      ),
+      colorscale: validateColorscale(colorScheme.colorscale),
     };
   }, [colorScheme]);
+
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
@@ -93,6 +103,11 @@ const JSONViewer: React.FC = () => {
         })),
     };
 
+    const validatedDefaultMaskTargetsColors = validateMaskColor(
+      data.defaultMaskTargetsColors
+    );
+    const validatedColorscale = validateColorscale(data.colorscale);
+
     setData({
       colorPool: validColors,
       fields: validatedSetting,
@@ -101,7 +116,10 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
+      defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
+      colorscale: validatedColorscale,
     });
+
     setColorScheme({
       colorPool: validColors,
       colorBy: validatedColorBy,
@@ -110,6 +128,8 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
+      defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
+      colorscale: validatedColorscale,
     });
   };
 

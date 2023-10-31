@@ -1,4 +1,6 @@
-import { ColorSchemeInput } from "@fiftyone/relay";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
+import colorString from "color-string";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
@@ -59,13 +61,27 @@ export const validateJSONSetting = (
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
       : [],
+    targetMasksColors: Array.isArray(input.maskTargetsColors)
+      ? getValidMaskColors(input.maskTargetsColors)
+      : [],
+    colorscale: validateColorscale(input.colorscale),
   }));
 
   return f.filter((x) => {
     const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.colorByAttribute;
-    const hasLabelColors = x.valueColors && x.valueColors.length > 0;
-    return hasFieldSetting || hasAttributeColor || hasLabelColors;
+    const hasLabelColors = x.valueColors?.length > 0;
+    const hasColorscale =
+      (x.colorscale?.list?.length && x.colorscale?.list?.length > 0) ||
+      x.colorscale?.name;
+    const hasTargetMasks = x.targetMasksColors?.length > 0;
+    return (
+      hasFieldSetting ||
+      hasAttributeColor ||
+      hasLabelColors ||
+      hasColorscale ||
+      hasTargetMasks
+    );
   });
 };
 
@@ -84,6 +100,77 @@ export const validateLabelTags = (
   }
 };
 
+const getValidMaskColors = (maskColors: unknown[]) => {
+  return maskColors
+    ?.filter((x) => {
+      return (
+        x &&
+        isObject(x) &&
+        isString(x["idx"]) &&
+        typeof Number(x["idx"]) == "number" &&
+        isString(x["color"])
+      );
+    })
+    .map((y) => ({
+      idx: Number(y["idx"]),
+      color: y.color,
+    })) as MaskColorInput[];
+};
+
+export const validateMaskColor = (
+  arr: any
+): ColorSchemeInput["defaultMaskTargetsColors"] => {
+  return Array.isArray(arr) ? getValidMaskColors(arr) : null;
+};
+
+const getValidColorscale = (arr: any[]) => {
+  const r = arr.filter((sample) => {
+    return (
+      typeof sample === "object" &&
+      typeof Number(sample.value) === "number" &&
+      Number(sample.value) <= 1 &&
+      Number(sample.value) >= 0 &&
+      isValidColor(sample.color)
+    );
+  });
+
+  const y = r.map((x) => {
+    const converted = colorString.get.rgb(x.color) as [
+      number,
+      number,
+      number,
+      number
+    ];
+    return {
+      value: Number(x.value),
+      color: `rgb(${converted[0]}, ${converted[1]}, ${converted[2]})`,
+    };
+  });
+
+  return y;
+};
+
+export const validateColorscale = (
+  obj: any
+): ColorSchemeInput["colorscale"] => {
+  if (typeof obj !== "object") {
+    return {
+      name: null,
+      list: null,
+    };
+  }
+
+  const r = {
+    name:
+      typeof obj.name === "string" && namedColorScales.includes(obj.name)
+        ? obj.name
+        : null,
+    list: Array.isArray(obj.list) ? getValidColorscale(obj.list) : null,
+  };
+
+  return r;
+};
+
 export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   if (typeof path === "object") {
     if (path.path === "tags") {
@@ -99,3 +186,100 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
 
 export const getRandomColorFromPool = (pool: readonly string[]) =>
   pool[Math.floor(Math.random() * pool.length)];
+
+const namedColorScales = [
+  "aggrnyl",
+  "agsunset",
+  "blackbody",
+  "bluered",
+  "blues",
+  "blugrn",
+  "bluyl",
+  "brwnyl",
+  "bugn",
+  "bupu",
+  "burg",
+  "burgyl",
+  "cividis",
+  "darkmint",
+  "electric",
+  "emrld",
+  "gnbu",
+  "greens",
+  "greys",
+  "hot",
+  "inferno",
+  "jet",
+  "magenta",
+  "magma",
+  "mint",
+  "orrd",
+  "oranges",
+  "oryel",
+  "peach",
+  "pinkyl",
+  "plasma",
+  "plotly3",
+  "pubu",
+  "pubugn",
+  "purd",
+  "purp",
+  "purples",
+  "purpor",
+  "rainbow",
+  "rdbu",
+  "rdpu",
+  "redor",
+  "reds",
+  "sunset",
+  "sunsetdark",
+  "teal",
+  "tealgrn",
+  "turbo",
+  "viridis",
+  "ylgn",
+  "ylgnbu",
+  "ylorbr",
+  "ylorrd",
+  "algae",
+  "amp",
+  "deep",
+  "dense",
+  "gray",
+  "haline",
+  "ice",
+  "matter",
+  "solar",
+  "speed",
+  "tempo",
+  "thermal",
+  "turbid",
+  "armyrose",
+  "brbg",
+  "earth",
+  "fall",
+  "geyser",
+  "prgn",
+  "piyg",
+  "picnic",
+  "portland",
+  "puor",
+  "rdgy",
+  "rdylbu",
+  "rdylgn",
+  "spectral",
+  "tealrose",
+  "temps",
+  "tropic",
+  "balance",
+  "curl",
+  "delta",
+  "oxy",
+  "edge",
+  "hsv",
+  "icefire",
+  "phase",
+  "twilight",
+  "mrybm",
+  "mygbm",
+];
