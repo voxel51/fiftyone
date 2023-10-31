@@ -28,7 +28,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
+  const datasetDefault = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
 

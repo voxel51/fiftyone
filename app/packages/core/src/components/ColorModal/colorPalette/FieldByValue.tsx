@@ -41,7 +41,7 @@ const FieldByValue: React.FC = () => {
         }
       }
     },
-    [index]
+    [index, colorScheme]
   );
 
   useEffect(() => {

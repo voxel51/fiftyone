@@ -14,6 +14,7 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { DEFAULT_COLOR } from "@fiftyone/components/src/components/Selection/SelectionColors";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -121,8 +122,8 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.colorPool || appConfig?.colorPool,
-    colorBy: colorScheme.colorBy || appConfig?.colorBy,
+    colorPool: colorScheme.colorPool ?? appConfig?.colorPool,
+    colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) || [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) || {},
     multicolorKeypoints:
