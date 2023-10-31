@@ -761,13 +761,7 @@ export const groupShown = selectorFamily<
       const data = get(sidebarGroupMapping({ modal, loading }))[group];
 
       if ([null, undefined].includes(data.expanded)) {
-        if (["tags"].includes(group)) {
-          return null;
-        }
-        return (
-          !data.paths.length ||
-          !data.paths.every((path) => get(collapsedPaths).has(path))
-        );
+        return ["tags", "frame labels", "labels"].includes(group);
       }
 
       return data.expanded;
