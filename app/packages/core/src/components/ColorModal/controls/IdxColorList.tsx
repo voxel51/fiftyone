@@ -56,7 +56,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  // const activePath = useRecoilValue(activeColorPath);
+  const activePath = useRecoilValue(activeColorPath) ?? "global";
   const colorScheme = useRecoilValue(fos.colorScheme);
 
   const handleAdd = () => {
@@ -122,9 +122,9 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   );
 
   // on changing tabs, sync local state with new session values
-  // useEffect(() => {
-  //   setInput(values ?? []);
-  // }, [activePath]);
+  useEffect(() => {
+    setInput(values ?? []);
+  }, [activePath]);
 
   useEffect(() => {
     setInput(resetValue);

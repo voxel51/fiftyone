@@ -88,7 +88,6 @@ const GlobalSetting = () => {
 
       <Divider>Segmentation</Divider>
       <ControlGroupWrapper>
-        Default Target Masks
         <DefaultMaskTargets />
       </ControlGroupWrapper>
       <Divider>Colorscale</Divider>

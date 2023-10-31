@@ -43,17 +43,20 @@ const DefaultMaskTargets: React.FC = () => {
   }, [values]);
 
   return (
-    <IdxColorList
-      initialValue={initialValue as MaskColorInput[]}
-      values={values as MaskColorInput[]}
-      resetValue={values as MaskColorInput[]}
-      style={FieldCHILD_STYLE}
-      onSyncUpdate={onSyncUpdate}
-      shouldShowAddButton={shouldShowAddButton}
-      min={0}
-      max={255}
-      step={1}
-    />
+    <div>
+      <Checkbox />
+      <IdxColorList
+        initialValue={initialValue as MaskColorInput[]}
+        values={values as MaskColorInput[]}
+        resetValue={values as MaskColorInput[]}
+        style={FieldCHILD_STYLE}
+        onSyncUpdate={onSyncUpdate}
+        shouldShowAddButton={shouldShowAddButton}
+        min={0}
+        max={255}
+        step={1}
+      />
+    </div>
   );
 };
 
