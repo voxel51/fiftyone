@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<9a34f836eed1e070c0261061e0bb8663>>
+ * @generated SignedSource<<c42510a52512937f46851d472fe4eef5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,13 +32,13 @@ export type DatasetPageQuery$data = {
       readonly colorScheme: {
         readonly colorBy: ColorBy | null;
         readonly colorPool: ReadonlyArray<string>;
-        readonly colorscale: ReadonlyArray<{
+        readonly colorscale: {
           readonly list: ReadonlyArray<{
             readonly color: string;
             readonly value: number;
           }> | null;
           readonly name: string | null;
-        }> | null;
+        } | null;
         readonly defaultMaskTargetsColors: ReadonlyArray<{
           readonly color: string;
           readonly idx: number;
@@ -346,7 +346,7 @@ v22 = {
       "concreteType": "Colorscale",
       "kind": "LinkedField",
       "name": "colorscale",
-      "plural": true,
+      "plural": false,
       "selections": [
         (v12/*: any*/),
         {

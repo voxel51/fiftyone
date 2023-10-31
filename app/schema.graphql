@@ -117,7 +117,7 @@ enum ColorBy {
 
 input ColorScaleInput {
   name: String
-  list: [[Float!]!]
+  list: [ColorTupleInput!]
 }
 
 type ColorScheme {
@@ -130,7 +130,7 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
-  colorscale: [Colorscale!]
+  colorscale: Colorscale
 }
 
 input ColorSchemeInput {
@@ -146,8 +146,13 @@ input ColorSchemeInput {
 }
 
 type ColorTuple {
-  value: Float!
   color: String!
+  value: Float!
+}
+
+input ColorTupleInput {
+  color: String!
+  value: Float!
 }
 
 type Colorscale {
@@ -182,6 +187,7 @@ input CustomizeColorInput {
   colorByAttribute: String = null
   fieldColor: String = null
   maskTargetsColors: [MaskColorInput!] = null
+  colorscale: ColorScaleInput = null
 }
 
 type DataAggregation implements Aggregation {

@@ -34,8 +34,8 @@ class MaskColor:
 
 @gql.type
 class ColorTuple:
-    value: float
     color: str
+    value: float
 
 
 @gql.type
@@ -78,7 +78,7 @@ class ColorScheme:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
-    colorscale: t.Optional[t.List[Colorscale]] = None
+    colorscale: t.Optional[Colorscale] = None
 
 
 @gql.input
@@ -94,9 +94,15 @@ class MaskColorInput:
 
 
 @gql.input
+class ColorTupleInput:
+    color: str
+    value: float
+
+
+@gql.input
 class ColorScaleInput:
     name: t.Optional[str]
-    list: t.Optional[t.List[t.Tuple[float, str]]]
+    list: t.Optional[t.List[ColorTupleInput]]
 
 
 @gql.input
@@ -106,6 +112,7 @@ class CustomizeColorInput:
     colorByAttribute: t.Optional[str] = None
     fieldColor: t.Optional[str] = None
     maskTargetsColors: t.Optional[t.List[MaskColorInput]] = None
+    colorscale: t.Optional[ColorScaleInput] = None
 
 
 @gql.input

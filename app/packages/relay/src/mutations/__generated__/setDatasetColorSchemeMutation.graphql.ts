@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<6b649b1e5446672b1ad84646d42eb449>>
+ * @generated SignedSource<<c441ea9359995c06dd5b1d2700b9eedc>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -22,6 +22,7 @@ export type ColorSchemeInput = {
 };
 export type CustomizeColorInput = {
   colorByAttribute?: string | null;
+  colorscale?: ColorScaleInput | null;
   fieldColor?: string | null;
   maskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
   path: string;
@@ -35,13 +36,17 @@ export type MaskColorInput = {
   color: string;
   idx: number;
 };
+export type ColorScaleInput = {
+  list?: ReadonlyArray<ColorTupleInput> | null;
+  name?: string | null;
+};
+export type ColorTupleInput = {
+  color: string;
+  value: number;
+};
 export type LabelTagColorInput = {
   fieldColor?: string | null;
   valueColors?: ReadonlyArray<ValueColorInput> | null;
-};
-export type ColorScaleInput = {
-  list?: ReadonlyArray<ReadonlyArray<number>> | null;
-  name?: string | null;
 };
 export type setDatasetColorSchemeMutation$variables = {
   colorScheme?: ColorSchemeInput | null;
