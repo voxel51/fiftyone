@@ -141,6 +141,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
 
     await gridRefreshedEventPromise;
     await gridRefreshedEventPromise;
+
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
       "rgb(154, 205, 50)"
