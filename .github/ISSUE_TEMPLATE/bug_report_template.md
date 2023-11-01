@@ -30,22 +30,15 @@ Describe the problem clearly here. Include descriptions of the expected behavior
 
 ### Code to reproduce issue
 
-Provide a reproducible test case that is the bare minimum necessary to generate the problem.
+Provide a reproducible test case that is the bare minimum necessary to generate the problem. Include a short video or screenshot if the bug is in the app.
 
 ```
-# commands here
+# commands and/or screenshots here
 ```
 
 ### Other info/logs
 
 Include any logs or source code that would be helpful to diagnose the problem. If including tracebacks, please include the full traceback. Large logs and files should be attached. Please do not use screenshots for sharing text. Code snippets should be used instead when providing tracebacks, logs, etc.
-
-### What areas of FiftyOne does this bug affect?
-
--   [ ] `App`: FiftyOne application issue
--   [ ] `Core`: Core Python library issue
--   [ ] `Server`: FiftyOne server issue
--   [ ] `Zoo`: FiftyOne Dataset or Model Zoo issue
 
 ### Willingness to contribute
 
