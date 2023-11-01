@@ -4279,7 +4279,6 @@ __metadata:
     react: 18.1.0
     react-dom: 18.1.0
     react-error-boundary: ^3.1.4
-    react-ga: ^3.1.2
     react-ga4: ^2.1.0
     react-hotkeys: ^2.0.0
     react-input-autosize: ^3.0.0
@@ -23484,16 +23483,6 @@ __metadata:
   version: 2.1.0
   resolution: "react-ga4@npm:2.1.0"
   checksum: f7fb41141418d4ad14756f1126a1e9958db37d4d84ae6cd798043dc03a390b6dba74d69311af0349f0b9580a43bda8930138194ccc29c4100efe446e2d6eb057
-  languageName: node
-  linkType: hard
-
-"react-ga@npm:^3.1.2":
-  version: 3.3.0
-  resolution: "react-ga@npm:3.3.0"
-  peerDependencies:
-    prop-types: ^15.6.0
-    react: ^15.6.2 || ^16.0 || ^17
-  checksum: b4f5b0ed3a5d7ea781397d6a1f8dacae2284fe7f03f72dde330958dd0a64732f8766c6fa26cf0f1a8fb1303fa02aa51f23cf0b261e52981d0275262b831c7fea
   languageName: node
   linkType: hard
 
