@@ -6,6 +6,8 @@ FiftyOne delegated operations.
 |
 """
 import asyncio
+import collections
+import inspect
 import logging
 import traceback
 import types as python_types
@@ -295,14 +297,12 @@ class DelegatedOperationService(object):
                 else fou.run_sync_task(operator.execute, ctx)
             )
 
-            is_generator = isinstance(
-                raw_result, python_types.GeneratorType
-            ) or isinstance(raw_result, python_types.AsyncGeneratorType)
-
-            # if this is not a generator, return the result from execution
-            if not is_generator:
+            if inspect.isgenerator(raw_result):
+                # Fastest way to exhaust sync generator, re: itertools consume()
+                #   https://docs.python.org/3/library/itertools.html
+                collections.deque(raw_result, maxlen=0)
+            elif inspect.isasyncgen(raw_result):
+                async for _ in raw_result:
+                    pass
+            else:
                 return raw_result
-
-            # if it is a generator, exhaust it to ensure it is fully executed
-            for _ in raw_result:
-                pass
