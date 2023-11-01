@@ -384,13 +384,7 @@ export interface Point {
 
 export type NONFINITE = "-inf" | "inf" | "nan";
 
-const fun = (t: Partial<Point>) => {};
-
-fun({
-  label: "hi",
-});
-
-export type StateUpdate<State extends Partial<BaseState>> = (
+export type StateUpdate<State extends BaseState> = (
   stateOrUpdater: Partial<State> | (() => Partial<State>),
   postUpdate?: (
     state: Readonly<State>,

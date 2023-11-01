@@ -29,7 +29,6 @@ import {
   Coordinates,
   Dimensions,
   LabelData,
-  Optional,
   Sample,
   StateUpdate,
 } from "../state";
@@ -77,7 +76,7 @@ const getLabelsWorker = (() => {
 })();
 
 export abstract class AbstractLooker<
-  State extends BaseState = BaseState,
+  State extends BaseState,
   S extends Sample = Sample
 > {
   private eventTarget: EventTarget;
@@ -95,7 +94,7 @@ export abstract class AbstractLooker<
   protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
   protected state: State;
-  protected readonly updater: StateUpdate<State>;
+  protected readonly updater: StateUpdate<BaseState>;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
