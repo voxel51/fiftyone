@@ -22,11 +22,9 @@ import {
   InvocationRequestQueue,
   OperatorResult,
   executeOperatorWithContext,
-  fetchRemotePlacements,
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
-  resolveLocalPlacements,
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
@@ -83,8 +81,16 @@ const globalContextSelector = selector({
     const extended = get(fos.extendedStages);
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
+    const selectedLabels = get(fos.selectedLabels);
 
-    return { datasetName, view, extended, filters, selectedSamples };
+    return {
+      datasetName,
+      view,
+      extended,
+      filters,
+      selectedSamples,
+      selectedLabels,
+    };
   },
 });
 
@@ -635,7 +641,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [isDelegated, setIsDelegated] = useState(false);
 
   const [needsOutput, setNeedsOutput] = useState(false);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
 
@@ -760,18 +765,9 @@ export const operatorThrottledContext = atom({
   default: {},
 });
 
-export const operatorPlacementsSelector = selector({
-  key: "operatorPlacementsSelector",
-  get: async ({ get }) => {
-    const throttledContext = get(operatorThrottledContext);
-    if (!throttledContext || !throttledContext.datasetName) {
-      return [];
-    }
-    const ctx = new ExecutionContext({}, throttledContext);
-    const remotePlacements = await fetchRemotePlacements(ctx);
-    const localPlacements = await resolveLocalPlacements(ctx);
-    return [...remotePlacements, ...localPlacements];
-  },
+export const operatorPlacementsAtom = atom({
+  key: "operatorPlacementsAtom",
+  default: [],
 });
 
 export const placementsForPlaceSelector = selectorFamily({
@@ -779,7 +775,7 @@ export const placementsForPlaceSelector = selectorFamily({
   get:
     (place: Places) =>
     ({ get }) => {
-      const placements = get(operatorPlacementsSelector);
+      const placements = get(operatorPlacementsAtom);
       return placements
         .filter(
           (p) => p.placement.place === place && p.operator?.config?.canExecute
@@ -788,17 +784,23 @@ export const placementsForPlaceSelector = selectorFamily({
     },
 });
 
-export function useOperatorPlacements(place: Place) {
+export function useOperatorPlacements(place: Places) {
   const datasetName = useRecoilValue(fos.datasetName);
   const view = useRecoilValue(fos.view);
   const extendedStages = useRecoilValue(fos.extendedStages);
   const filters = useRecoilValue(fos.filters);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
+  const selectedLabels = useRecoilValue(fos.selectedLabels);
   const setContext = useSetRecoilState(operatorThrottledContext);
-  const setThrottledContext = useCallback(
-    debounce(setContext, RESOLVE_PLACEMENTS_TTL, { leading: true }),
-    []
-  );
+  const setThrottledContext = useMemo(() => {
+    return debounce(
+      (context) => {
+        setContext(context);
+      },
+      RESOLVE_PLACEMENTS_TTL,
+      { leading: true }
+    );
+  }, [setContext]);
 
   useEffect(() => {
     setThrottledContext({
@@ -807,8 +809,17 @@ export function useOperatorPlacements(place: Place) {
       extendedStages,
       filters,
       selectedSamples,
+      selectedLabels,
     });
-  }, [datasetName, view, extendedStages, filters, selectedSamples]);
+  }, [
+    setThrottledContext,
+    datasetName,
+    view,
+    extendedStages,
+    filters,
+    selectedSamples,
+    selectedLabels,
+  ]);
 
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
