@@ -254,13 +254,23 @@ def _project_pagination_paths(view: foc.SampleCollection):
         if isinstance(field, fof.DictField)
     ]
 
-    return view.select_fields(
-        [
-            path
-            for path in schema
-            if all(not path.startswith(exclude) for exclude in excluded)
-        ]
-    )
+    paths = [
+        path
+        for path in schema
+        if all(not path.startswith(exclude) for exclude in excluded)
+    ]
+
+    # workaround to include pcd detection fields not in the schema
+    for path, field in schema.items():
+        if isinstance(field, fof.EmbeddedDocumentField) and issubclass(
+            field.document_type, fol.Detection
+        ):
+            paths += [
+                f"{path}.{pcd_field}"
+                for pcd_field in ("dimensions", "location", "rotation")
+            ]
+
+    return view.select_fields(paths)
 
 
 def _make_filter_stages(
