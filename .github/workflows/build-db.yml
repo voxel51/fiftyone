@@ -42,22 +42,22 @@ jobs:
         if: ${{ matrix.platform == 'darwin-arm64' }}
         run: |
           cd package/db
-          FODB_MACHINE=Darwin FODB_SYSTEM=arm64 python setup.py bdist_wheel
+          FODB_MACHINE=arm64 FODB_SYSTEM=Darwin python setup.py bdist_wheel
       - name: Build Darwin x86_64 wheel
         if: ${{ matrix.platform == 'darwin-x86_64' }}
         run: |
           cd package/db
-          FODB_MACHINE=Darwin FODB_SYSTEM=x86_64 python setup.py bdist_wheel
+          FODB_MACHINE=x86_64 FODB_SYSTEM=Darwin python setup.py bdist_wheel
       - name: Build Windows 32 wheel
         if: ${{ matrix.platform == 'windows-32' }}
         run: |
           cd package/db
-          FODB_MACHINE=Windows FODB_SYSTEM=32 python setup.py bdist_wheel
+          FODB_MACHINE=32 FODB_SYSTEM=Windows python setup.py bdist_wheel
       - name: Build Windows x86_64 wheel
         if: ${{ matrix.platform == 'windows-x86_64' }}
         run: |
           cd package/db
-          FODB_MACHINE=Windows FODB_SYSTEM=x86_64 python setup.py bdist_wheel
+          FODB_MACHINE=x86_64 FODB_SYSTEM=Windows python setup.py bdist_wheel
       - name: Build sdist
         if: ${{ matrix.platform == 'sdist' }}
         run: |
