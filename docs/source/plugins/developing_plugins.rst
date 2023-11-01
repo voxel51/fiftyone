@@ -933,7 +933,7 @@ However, many interesting operations like model inference, embeddings
 computation, evaluation, and exports are computationally intensive and/or not
 suitable for immediate exeuction.
 
-In such cases, :ref:`Delegated Operations <delegated-operations>` come to the
+In such cases, :ref:`delegated operations <delegated-operations>` come to the
 rescue by allowing operators to schedule tasks that are executed on a connected
 workflow orchestrator like :ref:`Apache Airflow <delegated-operations-airflow>`
 or run just :ref:`run locally <delegated-operations-local>` in a separate

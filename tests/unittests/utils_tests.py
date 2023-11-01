@@ -15,7 +15,6 @@ import fiftyone.constants as foc
 import fiftyone.core.media as fom
 import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
-import fiftyone.core.uid as foui
 from fiftyone.migrations.runner import MigrationRunner
 
 from decorators import drop_datasets
@@ -294,16 +293,6 @@ class MigrationTests(unittest.TestCase):
 
         with self.assertRaises(EnvironmentError):
             MigrationRunner(future_ver, "0.1")
-
-
-class UIDTests(unittest.TestCase):
-    def test_log_import(self):
-        fo.config.do_not_track = False
-        foc.UA_ID = foc.UA_DEV
-
-        foui.log_import_if_allowed(test=True)
-        time.sleep(2)
-        self.assertTrue(foui._import_logged)
 
 
 class ConfigTests(unittest.TestCase):

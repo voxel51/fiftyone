@@ -1,7 +1,7 @@
 export default {
   app_ids: {
-    prod: "UA-141773487-6",
-    dev: "UA-141773487-7",
+    prod: "G-NT3FLN0QHF",
+    dev: "G-7TMZEFFWB7",
   },
   dimensions: {
     dev: "dimension1",
