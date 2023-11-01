@@ -58,7 +58,7 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.clickOnLooker();
+  await modal.groupLooker.click();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
@@ -66,9 +66,9 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   await modal.navigateNextSample(true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.clickOnLooker();
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.assert.verifyCarouselLength(1);
+  await modal.groupLooker.click();
+  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.navigateNextSample(true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.assert.verifyCarouselLength(1);
