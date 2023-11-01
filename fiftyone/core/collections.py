@@ -945,16 +945,6 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
-            if self.media_type == fom.POINT_CLOUD and issubclass(
-                field.document_type, fol.Detection
-            ):
-                field_names = (
-                    *field_names,
-                    "location",
-                    "dimensions",
-                    "rotation",
-                )
-
             return tuple(path + "." + f for f in field_names)
 
         field_names = self._dataset._sample_doc_cls._get_default_fields(
