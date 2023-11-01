@@ -59,6 +59,7 @@ def import_annotations(
     occluded_attr=None,
     group_id_attr=None,
     backend="cvat",
+    anno_key=None,
     **kwargs,
 ):
     """Imports annotations from the specified CVAT project or task(s) into the
@@ -124,6 +125,9 @@ def import_annotations(
         group_id_attr (None): an optional attribute name in which to store the
             group id for labels
         backend ("cvat"): the name of the CVAT backend to use
+        anno_key (None): an optional annotation key to use to store the
+            imported annotations. By default, a new key is generated of the form
+            ``"cvat_import_<project_or_task_id>"``
         **kwargs: CVAT authentication credentials to pass to
             :class:`CVATBackendConfig`
     """
@@ -229,12 +233,12 @@ def import_annotations(
         # The download implementation requires IDs for all possible frames
         dataset.select_by("filepath", task_filepaths).ensure_frames()
 
-    anno_key = "tmp_" + str(ObjectId())
-    anno_backend.register_run(dataset, anno_key, overwrite=False)
-
     # Download annotations
-    try:
-        if project_id is not None:
+    if project_id is not None:
+        try:
+            if not anno_key:
+                anno_key = "cvat_import_" + project_id
+            anno_backend.register_run(dataset, anno_key, overwrite=False)
             # CVAT projects share a label schema, so we can download all tasks
             # in one batch
             label_schema = api._get_label_schema(
@@ -253,10 +257,27 @@ def import_annotations(
                 anno_key,
                 **kwargs,
             )
-        else:
-            # Each task may have a different label schema, so we must download
-            # each task separately
-            for task_id in task_ids:
+        except:
+            # Cleanup if downloading fails and raise an error
+            anno_backend.delete_run(dataset, anno_key)
+            api.close()
+            raise RuntimeError(
+                "Failed to download annotations from CVAT for project_id = %s"
+                % project_id
+            )
+    else:
+        # Each task may have a different label schema, so we must download
+        # and save each task separately
+        if not anno_key:
+            anno_key = "cvat_import_"
+        failed_tasks = []
+        task_anno_key = None
+        for task_id in task_ids:
+            try:
+                task_anno_key = anno_key + task_id
+                anno_backend.register_run(
+                    dataset, task_anno_key, overwrite=False
+                )
                 label_schema = api._get_label_schema(
                     task_id=task_id,
                     occluded_attr=occluded_attr,
@@ -270,12 +291,23 @@ def import_annotations(
                     label_schema,
                     label_types,
                     anno_backend,
-                    anno_key,
+                    task_anno_key,
                     **kwargs,
                 )
-    finally:
-        anno_backend.delete_run(dataset, anno_key)
-        api.close()
+            except:
+                if task_anno_key:
+                    failed_tasks.append(task_anno_key)
+                    logging.error(
+                        "Failed to download annotations from CVAT for task_id = %s"
+                        % task_id
+                    )
+                continue
+        # Cleanup anno keys for failed tasks
+        if failed_tasks:
+            for task_key in failed_tasks:
+                anno_backend.delete_run(dataset, task_key)
+    # End the CVAT session regardless of whether downloading succeeded
+    api.close()
 
 
 def _parse_task_metadata(

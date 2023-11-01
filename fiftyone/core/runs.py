@@ -241,7 +241,7 @@ class Run(Configurable):
         run_info = run_info_cls(
             key, version=version, timestamp=timestamp, config=self.config
         )
-        self.save_run_info(samples, run_info)
+        self.save_run_info(samples, run_info, overwrite)
 
     def validate_run(self, samples, key, overwrite=True):
         """Validates that the collection can accept this run.
