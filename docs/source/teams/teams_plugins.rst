@@ -457,7 +457,7 @@ to:
     to the Orchestrator, either by installing them on the same machine or by
     making them available via a shared filesystem
 -   Ensure that the required environment variables are set (see below)
--   Install the
+-   Install a
     `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
 -   You're all set. Schedule those operations!
 
@@ -668,7 +668,7 @@ the appropriate values for your deployment.
     export FIFTYONE_API_KEY=...
     export API_URL=...
 
-**Add the Airflow DAG**
+**Add Airflow DAG**
 
 Check the default DAGs path by running the following command:
 
@@ -680,7 +680,7 @@ Check the default DAGs path by running the following command:
 
     The default DAG folder path is `/home/<user>/airflow/dags`.
 
-Navigate to the DAG folder and add the
+Navigate to the DAG folder and add a
 `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_.
 
 Open the Airflow interface and ensure that the DAG is visible. Any issues
@@ -699,30 +699,6 @@ still run a check and all runs should be green.
     `@voxel51/brain/compute_visualization <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
     operator, the orchestrator will need the `torch` and `torchvision` packages
     installed.
-
-**Running Delegated Parallel Operations**
-
-Considerations should be taken when running parallel delegated operations, as concurrency issues may arise. For example,
-if two operations are running on the same dataset, the results may be unpredictable.
-
-Or, if the same operator is running in multiple operations, and that operator needs to download a model or other
-artifacts to a specific location, collisions could arise.
-
-With this said, it is possible to run operations in parallel on your orchestrator, but you should ensure that,
-at the very least, the operations are not writing to the same dataset.
-
-An example Airflow DAG which runs operations in parallel, and ensures only a single dataset is written to at a time,
-exists here:
-`FiftyOne Airflow Parallel Operations DAG <https://github.com/voxel51/fiftyone-plugins/blob/main/orchestrators/airflow/run_parallel_delegated_operations.py>`_
-
-The out of the box airflow installation will use a `SequentialExecutor` by default. Information about the Sequential
-Executor can be found here: `Sequential Executor <https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/executor/sequential.html>`_
-This executor will run only one task insance at a time.
-
-To run operations in parallel, you will need to configure Airflow to use a different executor. The `CeleryExecutor` is
-a recommended executor for running production operations in parallel. Information about the Celery Executor can be found here:
-`Celery Executor <https://airflow.apache.org/docs/apache-airflow/stable/executor/celery.html>`_
-
 
 .. _teams-managing-delegated-operations:
 

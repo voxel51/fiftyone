@@ -1,5 +1,4 @@
 import { useSessionSetter } from "@fiftyone/state";
-import { env } from "@fiftyone/utilities";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { AppReadyState, EventHandlerHook } from "./registerEvent";
@@ -11,7 +10,7 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
 
   return useCallback(
     (payload: any) => {
-      processState(setter, payload.state);
+      const state = processState(setter, payload.state);
 
       const searchParams = new URLSearchParams(router.history.location.search);
 
@@ -34,12 +33,10 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
         : `/${search}`;
 
       if (readyStateRef.current !== AppReadyState.OPEN) {
-        router.history.replace(path, {
-          view: env().VITE_NO_STATE ? [] : payload.state.view || [],
-        });
+        router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));
       } else {
-        router.history.push(path, { view: payload.state.view || [] });
+        router.history.push(path, state);
       }
     },
     [readyStateRef, router, setter, setReadyState]

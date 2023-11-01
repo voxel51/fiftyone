@@ -146,9 +146,8 @@ class ActivityNet100Dataset(FiftyOneDataset):
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
             relevant when a ``source_dir`` is provided
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -326,9 +325,8 @@ class ActivityNet200Dataset(FiftyOneDataset):
         copy_files (True): whether to move (False) or create copies (True) of
             the source files when populating ``dataset_dir``. This is only
             relevant when a ``source_dir`` is provided
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -892,9 +890,8 @@ class COCO2014Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -1087,9 +1084,8 @@ class COCO2017Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -1283,9 +1279,8 @@ class SamaCOCODataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -1777,9 +1772,8 @@ class Kinetics400Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -1933,9 +1927,8 @@ class Kinetics600Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -2083,9 +2076,8 @@ class Kinetics700Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -2240,9 +2232,8 @@ class Kinetics7002020Dataset(FiftyOneDataset):
         classes (None): a string or list of strings specifying required classes
             to load. If provided, only samples containing at least one instance
             of a specified class will be loaded
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -2630,9 +2621,8 @@ class OpenImagesV6Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling
@@ -2822,9 +2812,8 @@ class OpenImagesV7Dataset(FiftyOneDataset):
             -   the path to a text (newline-separated), JSON, or CSV file
                 containing the list of image IDs to load in either of the first
                 two formats
-        num_workers (None): the number of processes to use when downloading
-            individual images. By default, ``multiprocessing.cpu_count()`` is
-            used
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
         shuffle (False): whether to randomly shuffle the order in which samples
             are chosen for partial downloads
         seed (None): a random seed to use when shuffling

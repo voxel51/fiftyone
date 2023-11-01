@@ -73,7 +73,8 @@ class OnPlotLoad(HTTPEndpoint):
 
         # Determines which points from `results` are in `view`, which are the
         # only points we want to display in the embeddings plot
-        results.use_view(view, allow_missing=True)
+        if view.view() != results.view.view():
+            results.use_view(view, allow_missing=True)
 
         # The total number of embeddings in `results`
         index_size = results.total_index_size
@@ -175,7 +176,7 @@ class EmbeddingsSelection(HTTPEndpoint):
             stages=stages,
             sample_filter=get_sample_filter(slices),
         )
-        if results.view != view:
+        if view.view() != results.view.view():
             results.use_view(view, allow_missing=True)
 
         patches_field = results.config.patches_field

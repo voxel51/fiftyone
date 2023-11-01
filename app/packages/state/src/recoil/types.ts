@@ -128,6 +128,7 @@ export namespace State {
     id: string;
     brainMethods: BrainRun[];
     createdAt: DateTime;
+    datasetId: string;
     defaultMaskTargets: Targets;
     evaluations: EvaluationRun[];
     lastLoadedAt: DateTime;
@@ -198,6 +199,13 @@ export namespace State {
     labelId: string;
   }
 
+  export interface FieldVisibilityStage {
+    cls: string;
+    kwargs: {
+      field_names: string[];
+    };
+  }
+
   export interface Description {
     dataset: string;
     selected: string[];
@@ -208,5 +216,6 @@ export namespace State {
     savedViewSlug: string | null;
     savedViews: SavedView[];
     spaces?: SpaceNodeJSON;
+    fieldVisibilityStage?: FieldVisibilityStage;
   }
 }
