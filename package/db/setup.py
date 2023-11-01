@@ -142,10 +142,6 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "win_amd64"
         elif is_platform("Windows", "32"):
             self.plat_name = "win32"
-        else:
-            raise ValueError(
-                "Unsupported target platform: %r" % self.plat_name
-            )
 
     def get_tag(self):
         impl = "py3"
