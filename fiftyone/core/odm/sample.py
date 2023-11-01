@@ -46,6 +46,7 @@ type :class:`NoDatasetSampleDocument` to type ``dataset._sample_doc_cls``::
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from collections import OrderedDict
 import random
 
@@ -85,6 +86,8 @@ class DatasetSampleDocument(DatasetMixin, Document):
     filepath = fof.StringField(required=True)
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
+    created_at = fof.DateTimeField()
+    last_updated_at = fof.DateTimeField()
 
     _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
@@ -119,12 +122,16 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         kwargs["_media_type"] = fomm.get_media_type(filepath)
         kwargs["_dataset_id"] = None
 
+        now = datetime.datetime.utcnow()
+        kwargs["created_at"] = kwargs.get("created_at", now)
+        kwargs["last_updated_at"] = kwargs.get("last_updated_at", now)
+
         self._data = OrderedDict()
 
         for field_name in self.default_fields_ordered:
             value = kwargs.pop(field_name, None)
 
-            if value is None and field_name not in ("id", "_dataset_id"):
+            if value is None and field_name not in ("id", "_dataset_id", "created_at", "last_updated_at"):
                 value = self._get_default(self.default_fields[field_name])
 
             self._data[field_name] = value
