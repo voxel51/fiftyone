@@ -21,13 +21,6 @@ Thank you for submitting an issue. Please refer to our [issue policy](https://ww
 
 Describe the problem clearly here. Include descriptions of the expected behavior and the actual behavior.
 
-### System information
-
--   **OS Platform and Distribution** (e.g., Linux Ubuntu 16.04):
--   **Python version** (`python --version`):
--   **FiftyOne version** (`fiftyone --version`):
--   **FiftyOne installed from** (pip or source):
-
 ### Code to reproduce issue
 
 Provide a reproducible test case that is the bare minimum necessary to generate the problem. Include a short video or screenshot if the bug is in the app.
@@ -35,6 +28,13 @@ Provide a reproducible test case that is the bare minimum necessary to generate 
 ```
 # commands and/or screenshots here
 ```
+
+### System information
+
+-   **OS Platform and Distribution** (e.g., Linux Ubuntu 16.04):
+-   **Python version** (`python --version`):
+-   **FiftyOne version** (`fiftyone --version`):
+-   **FiftyOne installed from** (pip or source):
 
 ### Other info/logs
 
