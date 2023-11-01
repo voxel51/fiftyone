@@ -7378,12 +7378,6 @@ def _clone_extras(src_dataset, dst_dataset):
     dst_doc.save()
 
 
-def _clone_view_doc(view_doc):
-    _view_doc = view_doc.copy()
-    _view_doc.id = ObjectId()
-    return _view_doc
-
-
 def _clone_run(run_doc):
     _run_doc = run_doc.copy()
     _run_doc.id = ObjectId()
@@ -7397,6 +7391,24 @@ def _clone_run(run_doc):
         _run_doc.results.put(results_bytes, content_type="application/json")
 
     return _run_doc
+
+
+def _clone_view_doc(view_doc):
+    _view_doc = view_doc.copy()
+    _view_doc.id = ObjectId()
+    _reset_stage_states(view_doc)
+
+    return _view_doc
+
+
+def _reset_stage_states(view_doc):
+    stages = [json_util.loads(stage) for stage in view_doc.view_stages]
+    for stage in stages:
+        for i, kwarg in enumerate(stage.get("kwargs", [])):
+            if kwarg[0] == "_state":
+                stage["kwargs"][i][1] = None
+
+    view_doc.view_stages = [json_util.dumps(stages) for s in stages]
 
 
 def _ensure_index(dataset, db_field, unique=False):
