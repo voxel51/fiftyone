@@ -72,8 +72,8 @@ WINDOWS_DOWNLOADS = {
 }
 
 
-MACHINE = platform.machine()
-SYSTEM = platform.system()
+MACHINE = os.environ.get("FODB_MACHINE", platform.machine())
+SYSTEM = os.environ.get("FODB_SYSTEM", platform.system())
 
 
 def _get_linux_download():
@@ -82,28 +82,23 @@ def _get_linux_download():
         reader = csv.reader(stream, delimiter="=")
         d = dict(reader)
 
-    try:
-        for k, v in LINUX_DOWNLOADS[d["ID"]].items():
-            if d["VERSION_ID"].startswith(k):
-                return v[MACHINE]
-
-    except:
-        pass
-
-    return LINUX_DOWNLOADS["ubuntu"]["18"][MACHINE]
+    for k, v in LINUX_DOWNLOADS[d["ID"]].items():
+        if d["VERSION_ID"].startswith(k):
+            return v[MACHINE]
 
 
 def _get_download():
-    if SYSTEM == DARWIN:
-        return DARWIN_DOWNLOADS[MACHINE]
+    try:
+        if SYSTEM == DARWIN:
+            return DARWIN_DOWNLOADS[MACHINE]
 
-    if SYSTEM == WINDOWS:
-        return WINDOWS_DOWNLOADS[MACHINE]
+        if SYSTEM == WINDOWS:
+            return WINDOWS_DOWNLOADS[MACHINE]
 
-    if SYSTEM == LINUX:
-        return _get_linux_download()
-
-    raise RuntimeError(f"Unexpected system '{SYSTEM}'")
+        if SYSTEM == LINUX:
+            return _get_linux_download()
+    except:
+        pass
 
 
 # mongodb binaries to distribute
@@ -143,7 +138,7 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_11_0_arm64"
         elif is_platform("Darwin", "x86_64"):
             self.plat_name = "macosx_10_13_x86_64"
-        elif is_platform("Windows", "amd64"):
+        elif is_platform("Windows", "x86_64"):
             self.plat_name = "win_amd64"
         elif is_platform("Windows", "32"):
             self.plat_name = "win32"
