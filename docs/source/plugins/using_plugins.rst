@@ -592,7 +592,7 @@ operator's input form in the App:
 Delegated operations
 ____________________
 
-Delegated Operations are a powerful feature of FiftyOne's plugin framework that
+Delegated operations are a powerful feature of FiftyOne's plugin framework that
 allows you to schedule tasks from within the App that are executed on a
 connected workflow orchestrator like
 :ref:`Apache Airflow <delegated-operations-airflow>` or run just
@@ -612,7 +612,7 @@ plugin and proceed with other work while the execution happens in the background
 .. image:: /images/plugins/operators/examples/embeddings.gif
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
-enables you to organize and compute on your data. With Delegated Operations,
+enables you to organize and compute on your data. With delegated operations,
 FiftyOne becomes both a dataset management/visualization tool and a workflow
 automation tool that defines how your data-centric workflows like ingestion,
 curation, and evaluation are performed.
