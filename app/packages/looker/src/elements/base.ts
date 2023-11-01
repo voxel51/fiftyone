@@ -27,6 +27,7 @@ export abstract class BaseElement<
 > {
   children: BaseElement<State>[] = [];
   element: Element;
+  imageSource: CanvasImageSource;
   protected readonly events: LoadedEvents = {};
 
   boot(

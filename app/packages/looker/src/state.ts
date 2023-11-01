@@ -376,10 +376,6 @@ export interface PcdState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<PcdState>>;
 }
 
-export type Optional<T> = {
-  [P in keyof T]?: Optional<T[P]>;
-};
-
 export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
@@ -388,10 +384,14 @@ export interface Point {
 
 export type NONFINITE = "-inf" | "inf" | "nan";
 
-export type StateUpdate<State extends BaseState> = (
-  stateOrUpdater:
-    | Optional<State>
-    | ((state: Readonly<State>) => Optional<State>),
+const fun = (t: Partial<Point>) => {};
+
+fun({
+  label: "hi",
+});
+
+export type StateUpdate<State extends Partial<BaseState>> = (
+  stateOrUpdater: Partial<State> | (() => Partial<State>),
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
@@ -401,6 +401,7 @@ export type StateUpdate<State extends BaseState> = (
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
   highlight: false,
+  isPointcloudDataset: false,
   activePaths: [],
   selectedLabels: [],
   selectedLabelTags: undefined,
@@ -408,6 +409,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showControls: true,
   showIndex: false,
   showJSON: false,
+  showHelp: false,
   showLabel: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,

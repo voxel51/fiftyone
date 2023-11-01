@@ -97,10 +97,13 @@ export abstract class AbstractLooker<
   protected state: State;
   protected readonly updater: StateUpdate<State>;
 
+  private batchMergedUpdates: Partial<State> = {};
+  private isBatching = false;
+
   constructor(
     sample: S,
     config: State["config"],
-    options: Optional<State["options"]> = {}
+    options: Partial<State["options"]> = {}
   ) {
     this.eventTarget = new EventTarget();
     this.updater = this.makeUpdate();
@@ -121,6 +124,7 @@ export abstract class AbstractLooker<
         this.updater({
           windowBBox: box,
         });
+      this.updater({});
     });
 
     this.rootEvents = {};
@@ -196,6 +200,21 @@ export abstract class AbstractLooker<
     };
   }
 
+  /**
+   * () => {
+   *  // code
+   *  // update({})
+   *  // code
+   *  // update({})
+   * }
+   */
+  private batchUpdater(cb: () => unknown) {
+    this.isBatching = true;
+    cb();
+    this.isBatching = false;
+    this.updater(this.batchMergedUpdates);
+  }
+
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
       try {
@@ -210,8 +229,18 @@ export abstract class AbstractLooker<
           return;
         }
 
+        if (this.isBatching) {
+          this.batchMergedUpdates = mergeUpdates(
+            this.batchMergedUpdates,
+            updates
+          );
+          return;
+        }
+
+        const mergedUpdates = mergeUpdates(this.state, updates);
+
         this.previousState = this.state;
-        this.state = mergeUpdates(this.state, updates);
+        this.state = mergedUpdates as State;
 
         // Need this because when user reset attributeVisibility, it resets
         // to empty object, which gets overwritten in mergeUpdates
@@ -425,7 +454,7 @@ export abstract class AbstractLooker<
       );
   }
 
-  abstract updateOptions(options: Optional<State["options"]>): void;
+  abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
     this.loadSample(sample);
@@ -493,7 +522,7 @@ export abstract class AbstractLooker<
 
   protected abstract getInitialState(
     config: State["config"],
-    options: Optional<State["options"]>
+    options: Partial<State["options"]>
   ): State;
 
   protected getImageSource(): CanvasImageSource {

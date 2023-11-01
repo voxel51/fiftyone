@@ -14,7 +14,6 @@ import {
   CustomizeColor,
   Dimensions,
   DispatchEvent,
-  Optional,
 } from "./state";
 
 import {
@@ -398,9 +397,9 @@ export const clampScale = (
 };
 
 export const mergeUpdates = <State extends BaseState>(
-  state: State,
-  updates: Optional<State>
-): State => {
+  state: Partial<State>,
+  updates: Partial<State>
+): Partial<State> => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
       return n;

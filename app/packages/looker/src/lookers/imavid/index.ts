@@ -4,13 +4,10 @@ import { ClassificationsOverlay } from "../../overlays";
 import { Overlay } from "../../overlays/base";
 import processOverlays from "../../processOverlays";
 import {
-  Buffers,
   DEFAULT_VIDEO_OPTIONS,
   ImaVidState,
   LabelData,
-  Optional,
   Sample,
-  VideoSample,
   VideoState,
 } from "../../state";
 
@@ -182,7 +179,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Optional<ImaVidState["options"]>) {
+  updateOptions(options: Partial<ImaVidState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
 
     if (reload) {

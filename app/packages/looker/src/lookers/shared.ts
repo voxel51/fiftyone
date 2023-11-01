@@ -21,7 +21,7 @@ import { hasColorChanged } from "../util";
 export const LookerUtils = {
   shouldReloadSample: (
     current: Readonly<BaseState["options"]>,
-    next: Readonly<Optional<BaseState["options"]>>
+    next: Readonly<Partial<BaseState["options"]>>
   ): boolean => {
     let reloadSample = false;
 

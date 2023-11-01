@@ -5,7 +5,7 @@
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
-import { ImaVidState, Optional, StateUpdate } from "../../state";
+import { ImaVidState, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 import { PlaybackRateBarElement } from "./playback-rate-bar";
@@ -52,7 +52,7 @@ export function withVideoLookerEvents(): () => Events<ImaVidState> {
 const seekFn = (
   { seeking, duration, config: { frameRate } }: Readonly<ImaVidState>,
   event: MouseEvent
-): Optional<ImaVidState> => {
+): Partial<ImaVidState> => {
   if (duration && seeking) {
     const element = event.currentTarget as HTMLDivElement;
     const { width, left } = element.getBoundingClientRect();
@@ -336,6 +336,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     this.ensureBuffers(state);
+
+    /**
+     *
+     * batchUpdate(() => {
+     *  // code
+     *
+     *  update({})
+     *
+     *  // code
+     *
+     *  update({})
+     *
+     * })
+     */
 
     /**
      * - can play even if buffering

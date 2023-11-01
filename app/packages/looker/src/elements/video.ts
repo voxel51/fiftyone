@@ -2,7 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { Optional, StateUpdate, VideoState } from "../state";
+import { StateUpdate, VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {
   muteUnmute,
@@ -782,7 +782,7 @@ const seekFn = (
     lockedToSupport,
   }: Readonly<VideoState>,
   event: MouseEvent
-): Optional<VideoState> => {
+): Partial<VideoState> => {
   if (duration && seeking) {
     const element = event.currentTarget as HTMLDivElement;
     const { width, left } = element.getBoundingClientRect();
