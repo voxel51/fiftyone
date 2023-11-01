@@ -21,7 +21,6 @@ export default function useSearchSchemaFields(mergedSchema: {
   const datasetName = dataset?.name;
 
   const setExcludedPaths = useSetRecoilState(fos.excludedPathsState({}));
-  const setSelectedPaths = useSetRecoilState(fos.selectedPathsState({}));
 
   const [searchMetaFilter, setSearchMetaFilter] = useRecoilState(
     fos.searchMetaFilterState
@@ -65,16 +64,6 @@ export default function useSearchSchemaFields(mergedSchema: {
                 return !childPathsInSearchResults.length;
               });
             setExcludedPaths({ [datasetName]: shouldExcludePaths });
-
-            const shouldSelectPaths = Object.keys(mergedSchema)
-              .filter((path) => searchSelectFields?.includes(path))
-              .filter((path) => {
-                const childPathsInSearchResults = searchSelectFields.filter(
-                  (pp) => pp.startsWith(`${path}.`)
-                );
-                return !childPathsInSearchResults.length;
-              });
-            setSelectedPaths({ [datasetName]: new Set(shouldSelectPaths) });
           }
         },
         onError: (e) => {
@@ -89,7 +78,6 @@ export default function useSearchSchemaFields(mergedSchema: {
       setExcludedPaths,
       setSearchMetaFilter,
       setSearchResults,
-      setSelectedPaths,
     ]
   );
 

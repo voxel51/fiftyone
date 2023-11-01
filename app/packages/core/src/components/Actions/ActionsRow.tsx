@@ -9,11 +9,7 @@ import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
 import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import {
-  affectedPathCountState,
-  useEventHandler,
-  useOutsideClick,
-} from "@fiftyone/state";
+import { useEventHandler, useOutsideClick } from "@fiftyone/state";
 import {
   ArrowDownward,
   Bookmark,
@@ -63,7 +59,12 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
-    const affectedPathCount = get(affectedPathCountState);
+    const excludedFields = get(fos.excludedPathsState({}));
+    const datasetName = get(fos.datasetName);
+    const affectedPathCount = datasetName
+      ? excludedFields?.[datasetName]?.size
+      : 0;
+
     const isAttributeVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =
@@ -359,6 +360,7 @@ const SaveFilters = () => {
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         const selected = await snapshot.getPromise(fos.selectedSamples);
+        const fvStage = await snapshot.getPromise(fos.fieldVisibilityStage);
 
         if (loading) {
           return;
@@ -386,6 +388,17 @@ const SaveFilters = () => {
           ]);
         } else {
           set(fos.view, (v) => v);
+        }
+
+        const fvFieldNames = fvStage?.kwargs?.field_names;
+        if (fvFieldNames) {
+          set(fos.view, (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.ExcludeFields",
+              kwargs: [["field_names", [...fvFieldNames]]],
+            } as fos.State.Stage,
+          ]);
         }
       },
     []
