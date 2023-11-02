@@ -34,7 +34,7 @@ export type ValueColorInput = {
 };
 export type MaskColorInput = {
   color: string;
-  idx: number;
+  idx: number | null;
 };
 export type ColorScaleInput = {
   list?: ReadonlyArray<ColorTupleInput> | null;

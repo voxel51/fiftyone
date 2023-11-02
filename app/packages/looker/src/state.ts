@@ -15,12 +15,19 @@ export interface Coloring {
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
+  defaultMaskTargetsColors: MaskColorInput[];
   maskTargets: {
     [field: string]: MaskTargets;
   };
   points: boolean;
   targets: string[];
 }
+
+export type MaskColorInput = {
+  idx: number;
+  color: string;
+};
+
 export interface LabelTagColor {
   fieldColor?: string;
   valueColors?: {
@@ -32,6 +39,7 @@ export interface LabelTagColor {
 export interface CustomizeColor extends LabelTagColor {
   path: string;
   colorByAttribute?: string;
+  maskTargetsColors?: MaskColorInput[];
 }
 
 export type OrthogrpahicProjectionMetadata = {

@@ -1,6 +1,10 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  MaskColorInput,
+  datasetQuery$data,
+} from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -14,17 +18,13 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { State } from "./types";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
-    const defaultMaskTargets = get(selectors.defaultTargets); // {key: string}
-    const converted = combineTargetsAndColors(
-      defaultMaskTargets,
-      colorScheme.defaultMaskTargetsColors
-    );
 
     return {
       seed,
@@ -33,6 +33,7 @@ export const coloring = selector<Coloring>({
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
+      defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors,
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
@@ -152,16 +153,4 @@ export const ensureColorScheme = (
         ? colorScheme.showSkeletons
         : appConfig?.showSkeletons,
   };
-};
-
-const combineTargetsAndColors = (targets, colors) => {
-  let is2D = typeof Number(Object.keys(targets)[0]) === "number";
-
-  // if 2D mask type, apply applicable colors based on index value
-  if (is2D) {
-    Object.entries(targets).forEach(([key, _]) => {
-      targets[key]["color"] = colors[Number(key)];
-    });
-  }
-  return targets;
 };

@@ -1,4 +1,5 @@
 import { COLOR_BY, get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
+import colorString from "color-string";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import {
   getHashLabel,
@@ -13,7 +14,6 @@ import {
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
-import colorString from "color-string";
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
@@ -150,7 +150,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    selectedLabelsTags: string[],
+    selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
     if (!label.map) {
@@ -234,7 +234,7 @@ export const PainterFactory = (requestColor) => ({
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+
     // each field may have its own target map
     let maskTargets: MaskTargets = coloring.maskTargets[field];
 
@@ -286,26 +286,19 @@ export const PainterFactory = (requestColor) => ({
       maskData.buffer = maskData.buffer.slice(0, overlay.length);
     } else {
       const cache = {};
-      let color;
-      let colorKey;
-      if (maskTargets && Object.keys(maskTargets).length === 1) {
-        if (coloring.by === "field") {
-          if (shouldShowLabelTag(selectedLabelsTags, label.tags)) {
-            color =
-              isValidColor(labelTagColors?.fieldColor) ??
-              (await requestColor(coloring.pool, coloring.seed, "_label_tags"));
-          } else {
-            colorKey = field;
-          }
-        } else {
-          colorKey = label.id;
-        }
 
-        const requestedColor =
-          coloring.by === "field" && setting?.fieldColor
-            ? setting?.fieldColor
-            : await requestColor(coloring.pool, coloring.seed, colorKey);
-        color = get32BitColor(requestedColor);
+      let color;
+
+      if (
+        coloring.by === COLOR_BY.FIELD ||
+        (maskTargets && Object.keys(maskTargets).length === 1)
+      ) {
+        const fieldcolor = await requestColor(
+          coloring.pool,
+          coloring.seed,
+          field
+        );
+        color = get32BitColor(fieldcolor);
       }
 
       const getColor = (i) => {
@@ -328,6 +321,26 @@ export const PainterFactory = (requestColor) => ({
           ) {
             targets[i] = 0;
           } else {
+            if (coloring.by !== COLOR_BY.FIELD) {
+              // Attempt to find a color in the fields mask target color settings
+              let colorSetting = customizeColorSetting.find(
+                (x) => x.path === field
+              )?.maskTargetsColors;
+              let colorInfo = colorSetting?.find((x) => x.idx === targets[i]);
+
+              // If not found, attempt to find a color in the default mask target colors.
+              if (!colorInfo) {
+                colorInfo = coloring.defaultMaskTargetsColors?.find(
+                  (x) => x.idx === targets[i]
+                );
+              }
+
+              // If a customized color setting is found, get the 32-bit color representation.
+              if (colorInfo) {
+                color = get32BitColor(colorInfo.color);
+              }
+            }
+
             overlay[i] = color ? color : getColor(targets[i]);
           }
         }
