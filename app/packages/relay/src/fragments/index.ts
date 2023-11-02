@@ -2,6 +2,7 @@ export * from "./__generated__/colorSchemeFragment.graphql";
 export * from "./__generated__/configFragment.graphql";
 export * from "./__generated__/datasetAppConfigFragment.graphql";
 export * from "./__generated__/datasetFragment.graphql";
+export * from "./__generated__/estimatedCountsFragment.graphql";
 export * from "./__generated__/frameFieldsFragment.graphql";
 export * from "./__generated__/groupSliceFragment.graphql";
 export * from "./__generated__/mediaFieldsFragment.graphql";
