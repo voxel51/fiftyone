@@ -19,6 +19,8 @@ import textwrap
 
 import argcomplete
 from bson import ObjectId
+import humanize
+import pytz
 from tabulate import tabulate
 import webbrowser
 
@@ -559,7 +561,15 @@ def _format_cell(cell):
         return "???"
 
     if isinstance(cell, datetime):
+        # display as "2023-11-02 02:54:47"
         return cell.replace(microsecond=0)
+
+        """
+        # display as "12 minutes ago"
+        if cell.tzinfo is None:
+            cell = cell.replace(tzinfo=pytz.utc).astimezone()
+        return humanize.naturaltime(cell)
+        """
 
     if etau.is_container(cell):
         return ",".join(cell)
@@ -2887,6 +2897,8 @@ class DelegatedCommand(Command):
         _register_command(subparsers, "launch", DelegatedLaunchCommand)
         _register_command(subparsers, "list", DelegatedListCommand)
         _register_command(subparsers, "info", DelegatedInfoCommand)
+        _register_command(subparsers, "fail", DelegatedFailCommand)
+        _register_command(subparsers, "delete", DelegatedDeleteCommand)
         _register_command(subparsers, "cleanup", DelegatedCleanupCommand)
 
     @staticmethod
@@ -2986,7 +2998,7 @@ class DelegatedListCommand(Command):
         )
         parser.add_argument(
             "--sort-by",
-            default="queued_at",
+            default="QUEUED_AT",
             help=(
                 "how to sort the operations. Supported values are "
                 "('QUEUED_AT', 'STARTED_AT', COMPLETED_AT', 'FAILED_AT', 'OPERATOR')"
@@ -2995,7 +3007,7 @@ class DelegatedListCommand(Command):
         parser.add_argument(
             "--reverse",
             action="store_true",
-            default=None,
+            default=False,
             help="whether to sort in reverse order",
         )
         parser.add_argument(
@@ -3052,9 +3064,6 @@ def _parse_sort_by(sort_by):
 def _parse_reverse(reverse):
     from fiftyone.factory import SortDirection
 
-    if reverse is None:
-        return None
-
     return SortDirection.ASCENDING if reverse else SortDirection.DESCENDING
 
 
@@ -3105,6 +3114,86 @@ class DelegatedInfoCommand(Command):
         dos = food.DelegatedOperationService()
         op = dos.get(ObjectId(args.id))
         fo.pprint(op._doc)
+
+
+class DelegatedFailCommand(Command):
+    """Manually mark delegated operations as failed.
+
+    Examples::
+
+        # Manually mark the specified operation(s) as FAILED
+        fiftyone delegated fail <id1> <id2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+            help="an operation ID or list of operation IDs",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if op.run_state in (
+                fooe.ExecutionRunState.QUEUED,
+                fooe.ExecutionRunState.RUNNING,
+            ):
+                print(
+                    "Marking operation %s in state %s as failed"
+                    % (id, op.run_state.upper())
+                )
+                dos.set_failed(ObjectId(id))
+            else:
+                print(
+                    "Cannot mark operation %s in state %s as failed"
+                    % (id, op.run_state.upper())
+                )
+
+
+class DelegatedDeleteCommand(Command):
+    """Delete delegated operations.
+
+    Examples::
+
+        # Delete the specified operation(s)
+        fiftyone delegated delete <id1> <id2> ...
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "ids",
+            nargs="*",
+            default=None,
+            metavar="IDS",
+            help="an operation ID or list of operation IDs",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if not args.ids:
+            return
+
+        dos = food.DelegatedOperationService()
+        for id in args.ids:
+            op = dos.get(ObjectId(id))
+            if op.run_state != fooe.ExecutionRunState.RUNNING:
+                print("Deleting operation %s" % id)
+                dos.delete_operation(ObjectId(id))
+            else:
+                print(
+                    "Cannot delete operation %s in state %s"
+                    % (id, op.run_state.upper())
+                )
 
 
 class DelegatedCleanupCommand(Command):
@@ -3385,11 +3474,8 @@ class PluginsDownloadCommand(Command):
         # Download plugins by specifying the GitHub repository details
         fiftyone plugins download <user>/<repo>[/<ref>]
 
-        # Download specific plugins from a URL with a custom search depth
-        fiftyone plugins download \\
-            <url> \\
-            --plugin-names <name1> <name2> <name3> \\
-            --max-depth 2  # search nested directories for plugins
+        # Download specific plugins from a URL
+        fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
     """
 
     @staticmethod
@@ -3408,14 +3494,6 @@ class PluginsDownloadCommand(Command):
             help="a plugin name or list of plugin names to download",
         )
         parser.add_argument(
-            "-d",
-            "--max-depth",
-            type=int,
-            default=3,
-            metavar="MAX_DEPTH",
-            help="a maximum depth to search for plugins",
-        )
-        parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
@@ -3427,7 +3505,6 @@ class PluginsDownloadCommand(Command):
         fop.download_plugin(
             args.url_or_gh_repo,
             plugin_names=args.plugin_names,
-            max_depth=args.max_depth,
             overwrite=args.overwrite,
         )
 
