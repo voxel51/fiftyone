@@ -27,6 +27,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "ftfy",
     "jsonlines",
+    "humanize",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",

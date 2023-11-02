@@ -17,18 +17,10 @@ from fiftyone.operators.decorators import coroutine_timeout, dir_state
 
 
 class DirStateTests(unittest.TestCase):
-    @patch("os.path.isdir")
-    @patch("os.path.getmtime")
-    def test_dir_state_non_existing_dir(self, mock_getmtime, mock_isdir):
-        mock_isdir.return_value = False
+    def test_dir_state_non_existing_dir(self):
         dirpath = "/non/existing/dir"
-        try:
-            result = dir_state(dirpath)
-        except Exception as e:
-            self.fail(e)
-        mock_isdir.assert_called_once_with(dirpath)
+        result = dir_state(dirpath)
         self.assertIsNone(result)
-        mock_getmtime.assert_not_called()
 
     @patch("os.path.isdir")
     @patch("os.path.getmtime")
@@ -36,11 +28,7 @@ class DirStateTests(unittest.TestCase):
         mock_isdir.return_value = True
         dirpath = "/existing/empty/dir"
         mock_getmtime.return_value = 1000
-
-        try:
-            result = dir_state(dirpath)
-        except Exception as e:
-            self.fail(e)
+        result = dir_state(dirpath)
         mock_isdir.assert_called_once_with(dirpath)
         mock_getmtime.assert_called_once_with(dirpath)
         self.assertEqual(result, 1000)
@@ -64,11 +52,11 @@ class DirStateTests(unittest.TestCase):
             self.assertGreater(dir_state(tmpdirname), 0)
 
     def test_rgrs_dir_state_change_with_delete(self):
-        plugin_paths = ["plugin1/file1.txt", "plugin2/file2.txt"]
+        plugin_paths = ["@org1/plugin1/file1.txt", "@org2/plugin2/file2.txt"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
-                time.sleep(1)
+                time.sleep(0.01)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # verify that max time is greater after adding files
@@ -77,24 +65,24 @@ class DirStateTests(unittest.TestCase):
 
             # verify that max time is greater after deleting files
             shutil.rmtree(
-                os.path.join(tmpdirname, plugin_paths[0].split("/")[0])
+                os.path.join(tmpdirname, plugin_paths[0].rsplit("/", 1)[0])
             )
             dir_state2 = dir_state(tmpdirname)
             self.assertGreaterEqual(dir_state2, dir_state1)
-            time.sleep(1)
+            time.sleep(0.01)
 
             shutil.rmtree(
-                os.path.join(tmpdirname, plugin_paths[1].split("/")[0])
+                os.path.join(tmpdirname, plugin_paths[1].rsplit("/", 1)[0])
             )
             dir_state3 = dir_state(tmpdirname)
             self.assertGreaterEqual(dir_state3, dir_state2)
 
     def test_rgrs_dir_state_change_with_rename(self):
-        plugin_paths = ["plugin1/file1.txt", "plugin2/file2.txt"]
+        plugin_paths = ["@org1/plugin1/file1.txt", "@org2/plugin2/file2.txt"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
-                time.sleep(1)
+                time.sleep(0.01)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # verify that max time is greater after adding files
@@ -103,9 +91,9 @@ class DirStateTests(unittest.TestCase):
 
             # verify that max time is greater after renaming plugin dir
             os.rename(
-                os.path.join(tmpdirname, plugin_paths[0].split("/")[0]),
+                os.path.join(tmpdirname, plugin_paths[0].rsplit("/", 1)[0]),
                 os.path.join(
-                    tmpdirname, plugin_paths[0].split("/")[0] + "renamed"
+                    tmpdirname, plugin_paths[0].rsplit("/", 1)[0] + "renamed"
                 ),
             )
             dir_state2 = dir_state(tmpdirname)
@@ -117,7 +105,7 @@ async def dummy_coroutine_fn(duration):
     return "Success"
 
 
-@coroutine_timeout(seconds=2)
+@coroutine_timeout(seconds=0.2)
 async def timeout_dummy_coroutine_fn(duration):
     return await dummy_coroutine_fn(duration)
 
@@ -128,14 +116,14 @@ def non_coroutine_fn():
 
 class TestCoroutineTimeoutDecorator(unittest.TestCase):
     def test_successful_execution(self):
-        result = asyncio.run(timeout_dummy_coroutine_fn(1))
+        result = asyncio.run(timeout_dummy_coroutine_fn(0.1))
         self.assertEqual(result, "Success")
 
     def test_timeout_exception(self):
         with self.assertRaises(TimeoutError):
-            asyncio.run(timeout_dummy_coroutine_fn(3))
+            asyncio.run(timeout_dummy_coroutine_fn(0.3))
 
     def test_non_coroutine_function(self):
-        decorated_function = coroutine_timeout(2)(non_coroutine_fn)
+        decorated_function = coroutine_timeout(0.2)(non_coroutine_fn)
         with self.assertRaises(TypeError):
             asyncio.run(decorated_function())
