@@ -66,6 +66,7 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
+          name: dist-${{ matrix.platform }}
           path: package/db/dist/*
 
   test:
@@ -79,6 +80,7 @@ jobs:
       - name: Download fiftyone-db
         uses: actions/download-artifact@v2
         with:
+          name: dist-sdist
           path: downloads
       - name: Install fiftyone-db
         run: |
@@ -114,4 +116,4 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_NON_INTERACTIVE: 1
         run: |
-          python -m twine upload downloads/*
+          python -m twine upload downloads/dist-*/*
