@@ -166,10 +166,6 @@ const useUpdateDatasetColorScheme = () => {
               "valueColors"
             );
 
-            colorSchemeRecord.setLinkedRecords(
-              setEntries(store, "LabelTagColor", colorScheme?.fields ?? null),
-              "labelTags"
-            );
             colorSchemeRecord.setValue(
               colorScheme.multicolorKeypoints,
               "multicolorKeypoints"
