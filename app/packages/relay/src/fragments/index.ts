@@ -17,6 +17,7 @@ export { default as colorSchemeFragment } from "./colorSchemeFragment";
 export { default as configFragment } from "./configFragment";
 export { default as datasetAppConfigFragment } from "./datasetAppConfigFragment";
 export { default as datasetFragment } from "./datasetFragment";
+export { default as estimatedCounts } from "./estimatedCountsFragment";
 export { default as frameFieldsFragment } from "./frameFieldsFragment";
 export { default as groupSliceFragment } from "./groupSliceFragment";
 export { default as mediaFieldsFragment } from "./mediaFieldsFragment";
