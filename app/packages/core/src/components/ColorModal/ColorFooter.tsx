@@ -59,7 +59,9 @@ const ColorFooter: React.FC = () => {
             updateDatasetColorScheme({
               ...colorScheme,
               fields: colorScheme.fields ?? [],
-              colorPool: colorScheme.colorPool ?? [],
+              labelTags: colorScheme.labelTags ?? {},
+              colorPool:
+                colorScheme.colorPool ?? fos.appConfigDefault.colorPool ?? [],
               colorBy: colorScheme.colorBy ?? "field",
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
@@ -74,6 +76,8 @@ const ColorFooter: React.FC = () => {
                   fields: colorScheme.fields ?? [],
                   colorPool: colorScheme.colorPool ?? [],
                   labelTags: colorScheme.labelTags ?? {},
+                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+                  showSkeletons: colorScheme.showSkeletons ?? true,
                 },
               },
             });
@@ -91,11 +95,12 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({
+              setColorScheme((cur) => ({
+                ...cur,
                 fields: [],
                 labelTags: {},
                 colorPool: configDefault.colorPool,
-              });
+              }));
             }}
             disabled={!canEdit}
           >
@@ -160,7 +165,7 @@ const useUpdateDatasetColorScheme = () => {
             labelTagsRecord.setLinkedRecords(
               setEntries(
                 store,
-                "ValueColor",
+                "ValueColors",
                 colorScheme.labelTags?.valueColors ?? null
               ),
               "valueColors"
