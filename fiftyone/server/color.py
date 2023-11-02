@@ -33,12 +33,6 @@ class MaskColor:
 
 
 @gql.type
-class ColorTuple:
-    color: str
-    value: float
-
-
-@gql.type
 class CustomizeColor:
     path: str
     valueColors: t.Optional[t.List[ValueColor]] = None
@@ -83,12 +77,6 @@ class ValueColorInput:
 class MaskColorInput:
     color: str
     intTarget: t.Optional[int]
-
-
-@gql.input
-class ColorTupleInput:
-    color: str
-    value: float
 
 
 @gql.input

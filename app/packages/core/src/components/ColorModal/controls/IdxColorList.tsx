@@ -156,8 +156,6 @@ const IdxColorList: React.FC<IdxColorProp> = ({
     setShowPicker(Array(values?.length ?? 0).fill(false));
   });
 
-  console.info(input, values);
-
   if (!values) return null;
 
   return (
