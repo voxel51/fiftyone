@@ -1,7 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import { selector } from "recoil";
 
-export const estimatedCounts =
+const estimatedCounts =
   foq.graphQLSyncFragmentAtom<foq.estimatedCountsFragment$key>(
     {
       keys: ["dataset"],
@@ -13,6 +13,11 @@ export const estimatedCounts =
   );
 
 export const datasetSampleCount = selector({
-  key: "datasetCount",
+  key: "datasetSampleCount",
   get: ({ get }) => get(estimatedCounts).estimatedSampleCount,
+});
+
+export const datasetFrameCount = selector({
+  key: "datasetFrameCount",
+  get: ({ get }) => get(estimatedCounts).estimatedFrameCount,
 });
