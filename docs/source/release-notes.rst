@@ -33,8 +33,6 @@ Core
 
 App
 
-- Fixed operator modal positioning relative to the sample modal
-  `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
 - Fixed rendering of :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
   in the expanded sample view
   `#3720 <https://github.com/voxel51/fiftyone/pull/3720>`_
@@ -45,7 +43,7 @@ App
 - Fixed sidebar reordering edge case
   `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
 - Fixed the :ref:`Operator <using-operators>` browser in the expanded sample
-  view
+  view `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
 - Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
   `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
 
