@@ -40,7 +40,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 }) => {
   const [input, setInput] = useState<ValueColorInput[]>(initialValue);
   const [showPicker, setShowPicker] = useState(
-    Array(values?.length ?? 0).fill(false)
+    Array(input?.length > 0 ? input.length : 1).fill(false)
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -126,19 +126,20 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 
   return (
     <div style={style}>
-      {input?.map((v, index) => (
+      {input?.map((value, index) => (
         <RowContainer key={index}>
           <Input
             placeholder="Value (e.g. 'car')"
             value={input[index].value ?? ""}
-            setter={(v) =>
+            setter={(v) => {
               setInput((p) => {
                 const copy = cloneDeep(p);
                 copy[index].value = v;
                 return copy;
-              })
-            }
+              });
+            }}
             onBlur={() => onSyncUpdate(input)}
+            onEnter={() => onSyncUpdate(input)}
             style={{ width: "12rem" }}
           />
           :

@@ -15,9 +15,7 @@ type EventContext = {
   readyStateRef: MutableRefObject<AppReadyState>;
 };
 
-export type EventHandlerHook = (
-  ctx: EventContext
-) => (payload: unknown) => void;
+export type EventHandlerHook = (ctx: EventContext) => (payload) => void;
 
 export const EVENTS: {
   [event: string]: EventHandlerHook;

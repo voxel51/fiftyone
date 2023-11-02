@@ -188,29 +188,6 @@ const useUpdateDatasetColorScheme = () => {
               "valueColors"
             );
 
-            // colorSchemeRecord.setLinkedRecords(
-            //   setEntries(store, "LabelTagColor", colorScheme?.labelTags ?? null),
-            //   "labelTags"
-            // );
-
-            // get or create colorScale data
-            // let colorscaleRecord =
-            //   colorSchemeRecord.getLinkedRecord("colorscale");
-            // if (!colorscaleRecord) {
-            //   colorscaleRecord = store.create(uuid(), "Colorscale");
-            //   colorSchemeRecord.setLinkedRecord(colorscaleRecord, "colorscale");
-            // }
-
-            // colorscaleRecord.setValue(colorScheme.colorscale?.name, "name");
-            // labelTagsRecord.setLinkedRecords(
-            //   setEntries(store, "list", colorScheme.colorscale?.list ?? null),
-            //   "list"
-            // );
-
-            // colorSchemeRecord.setLinkedRecords(
-            //   setEntries(store, "colorscale", colorScheme?.colorscale ?? null),
-            //   "colorscale"
-            // );
             colorSchemeRecord.setValue(
               colorScheme.multicolorKeypoints,
               "multicolorKeypoints"

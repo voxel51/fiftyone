@@ -1,7 +1,6 @@
 export * from "./hooks-utils";
 export { default as useSearchSchemaFields } from "./schema/useSearchSchemaFields";
 export { default as useSetSelectedFieldsStage } from "./schema/useSetSelectedFieldsStage";
-export { default as useSetShowNestedFields } from "./schema/useSetShowNestedFields";
 export { default as useSimilarityType } from "./similaritySearch/useSimilarityType";
 export {
   BeforeScreenshotContext,
