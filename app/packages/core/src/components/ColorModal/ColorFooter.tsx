@@ -60,14 +60,15 @@ const ColorFooter: React.FC = () => {
             updateDatasetColorScheme({
               ...colorScheme,
               fields: colorScheme.fields ?? [],
-              colorPool: colorScheme.colorPool ?? [],
+              labelTags: colorScheme.labelTags ?? {},
+              colorPool:
+                colorScheme.colorPool ?? fos.appConfigDefault.colorPool ?? [],
               colorBy: colorScheme.colorBy ?? "field",
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
               defaultMaskTargetsColors:
                 colorScheme.defaultMaskTargetsColors ?? [],
             });
-
             setDatasetColorScheme({
               variables: {
                 subscription,
@@ -106,7 +107,7 @@ const ColorFooter: React.FC = () => {
                 labelTags: {},
                 colorscale: null,
                 colorPool: configDefault.colorPool,
-                colorBy: configDefault.colorBy,
+                colorBy: configDefault.colorBy ?? "field",
                 multicolorKeypoints: false,
                 showSkeletons: true,
               }));
