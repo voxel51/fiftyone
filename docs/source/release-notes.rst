@@ -32,6 +32,8 @@ Core
 - Optimized
   :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
   `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
+- Fixed default ``fiftyone-db`` installs on Ubuntu 22.04, Debian, and RHEL
+  `#3675 <https://github.com/voxel51/fiftyone/pull/3675>`_
 
 App
 
