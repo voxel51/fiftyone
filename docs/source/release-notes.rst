@@ -3,13 +3,13 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-teams-v1.4.3:
+.. _release-notes-teams-v1.4.4:
 
-FiftyOne Teams 1.4.3
+FiftyOne Teams 1.4.4
 --------------------
 *Released November 3, 2023*
 
-Includes all updates from :ref:`FiftyOne 0.22.2 <release-notes-v0.22.3>`, plus:
+Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
 
 SDK
 
@@ -24,7 +24,6 @@ App
 FiftyOne 0.22.3
 ---------------
 *Released November 3, 2023*
-
 
 Core
 
