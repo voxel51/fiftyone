@@ -21,18 +21,18 @@ async function loadOperators(datasetName: string) {
  * Load built-in and installed JavaScript and Python operators and queue all
  *  start-up operators for execution.
  */
-export function useOperators() {
+export function useOperators(datasetLess?: boolean) {
   const datasetName = useRecoilValue(datasetNameAtom);
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
     availableOperatorsRefreshCount
   );
 
   useEffect(() => {
-    if (isPrimitiveString(datasetName)) {
+    if (isPrimitiveString(datasetName) || datasetLess) {
       loadOperators(datasetName).then(() => {
         // trigger force refresh
         setAvailableOperatorsRefreshCount((count) => count + 1);
       });
     }
-  }, [datasetName, setAvailableOperatorsRefreshCount]);
+  }, [datasetLess, datasetName, setAvailableOperatorsRefreshCount]);
 }
