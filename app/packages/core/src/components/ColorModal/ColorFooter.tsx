@@ -66,7 +66,6 @@ const ColorFooter: React.FC = () => {
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
             });
-
             setDatasetColorScheme({
               variables: {
                 subscription,
