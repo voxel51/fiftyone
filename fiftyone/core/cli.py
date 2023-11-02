@@ -558,11 +558,15 @@ def _format_cell(cell):
         return "???"
 
     if isinstance(cell, datetime):
-        # return cell.replace(microsecond=0)
+        # display as "2023-11-02 02:54:47"
+        return cell.replace(microsecond=0)
 
+        """
+        # display as "12 minutes ago"
         if cell.tzinfo is None:
             cell = cell.replace(tzinfo=pytz.utc).astimezone()
         return humanize.naturaltime(cell)
+        """
 
     if etau.is_container(cell):
         return ",".join(cell)
