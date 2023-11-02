@@ -253,6 +253,9 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
+
     @gql.field
     def stages(
         self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
@@ -630,6 +633,19 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
+        _assign_estimated_counts(data, dataset)
+
         return data
 
     return await run_sync_task(run)
+
+
+def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
+    dataset.estimated_sample_count = (
+        fo_dataset._sample_collection.estimated_document_count()
+    )
+
+    if fo_dataset._has_frame_fields():
+        dataset.estimated_frame_count = (
+            fo_dataset._frame_collection.estimated_document_count()
+        )
