@@ -42,8 +42,8 @@ App
   sample view `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
 - Fixed sidebar reordering edge case
   `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
-- Fixed the :ref:`Operator <using-operators>` browser in the expanded sample
-  view `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
+- Fixed the :ref:`Operator <using-operators>` browser in the sample modal
+  `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
 - Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
   `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
 
