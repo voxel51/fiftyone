@@ -11,11 +11,11 @@ FiftyOne Teams 1.4.4
 
 Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
 
-SDK
+General
 
 - Optimized iterator operations such as export
 
-App
+Bugs
 
 - Fixed clips, frames, and patches views for grouped datasets
 
@@ -42,7 +42,24 @@ App
   sample view `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
 - Fixed sidebar reordering edge case
   `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
+- Fixed the :ref:`Operator <using-operators>` browser in the expanded sample
+  view
+- Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
+  `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
 
+
+Brain
+
+- Optimizes all similarity backends to avoid unnecessary filter expressions when
+  performing KNN queries against their entire indexes
+- Fixed performing similarity queries on filtered views in the
+  :ref:`LanceDB integration <lancedb-integration>`
+- Fixed calling
+  :meth:`remove_from_index() fiftyone.brain.SimilarityIndex.remove_from_index>`
+  on an index that uses the ``embeddings_field`` parameter
+- Fixed
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  when ``skip_existing=True`` is provided
 
 Plugins
 
@@ -55,6 +72,9 @@ Plugins
 - Fixed ``async`` generator results in
   :ref:`delegated operations <fiftyone-plugins>`
   `#3754 <https://github.com/voxel51/fiftyone/pull/3754>`_
+- Fixed ``ctx.secrets`` in
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+  `#3759 <https://github.com/voxel51/fiftyone/pull/3759>`_
 
 CLI
 
