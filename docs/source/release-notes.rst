@@ -33,6 +33,8 @@ Core
 
 App
 
+- Fixed operator modal positioning relative to the sample modal
+  `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
 - Fixed rendering of :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
   in the expanded sample view
   `#3720 <https://github.com/voxel51/fiftyone/pull/3720>`_
