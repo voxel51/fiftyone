@@ -38,15 +38,15 @@ Core
 App
 
 - Fixed rendering of :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
-  in the expanded sample view
+  in the sample modal
   `#3720 <https://github.com/voxel51/fiftyone/pull/3720>`_
 - Optimized the :ref:`Embeddings panel <app-embeddings-panel>`
   `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
-- Fixed :ref:`media field <app-multiple-media-fields>` changes in the expanded
-  sample view `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
+- Fixed :ref:`media field <app-multiple-media-fields>` changes in the sample modal
+  `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
 - Fixed sidebar reordering edge case
   `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
-- Fixed the :ref:`Operator <using-operators>` browser in the sample modal
+- Fixed the :ref:`Operator browser <using-operators>` in the sample modal
   `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
 - Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
   `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
@@ -54,12 +54,12 @@ App
 
 Brain
 
-- Optimizes all similarity backends to avoid unnecessary filter expressions when
-  performing KNN queries against their entire indexes
+- Optimized similarity backends when performing KNN queries against their
+  entire indexes
 - Fixed performing similarity queries on filtered views in the
   :ref:`LanceDB integration <lancedb-integration>`
 - Fixed calling
-  :meth:`remove_from_index() fiftyone.brain.SimilarityIndex.remove_from_index>`
+  :meth:`remove_from_index() <fiftyone.brain.SimilarityIndex.remove_from_index>`
   on an index that uses the ``embeddings_field`` parameter
 - Fixed
   :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
@@ -67,7 +67,7 @@ Brain
 
 Plugins
 
-- Fixed ``on_startup`` operator execution
+- Fixed ``on_startup`` :ref:`Operator execution <using-operators>`
   `#3731 <https://github.com/voxel51/fiftyone/pull/3731>`_
 - Fixed ``selected_labels`` in :ref:`Operator contexts <using-operators>`
   `#3740 <https://github.com/voxel51/fiftyone/pull/3740>`_
