@@ -14,10 +14,12 @@ Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
 General
 
 - Optimized iterator operations such as export
+- Improved plugin upload reliability
 
 Bugs
 
 - Fixed clips, frames, and patches views for grouped datasets
+- Fixed cloud credential initialization during deployment restarts
 
 .. _release-notes-v0.22.3:
 
@@ -75,6 +77,7 @@ Plugins
 - Fixed ``ctx.secrets`` in
   :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
   `#3759 <https://github.com/voxel51/fiftyone/pull/3759>`_
+- 
 
 CLI
 
