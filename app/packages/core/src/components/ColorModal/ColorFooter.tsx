@@ -64,7 +64,6 @@ const ColorFooter: React.FC = () => {
               colorBy: colorScheme.colorBy ?? "field",
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
-              colorscale: colorScheme.colorscale ?? null,
               defaultMaskTargetsColors:
                 colorScheme.defaultMaskTargetsColors ?? [],
             });
@@ -81,7 +80,6 @@ const ColorFooter: React.FC = () => {
                   colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
                   labelTags: colorScheme.labelTags ?? {},
-                  colorscale: colorScheme.colorscale ?? null,
                   defaultMaskTargetsColors:
                     colorScheme.defaultMaskTargetsColors ?? [],
                 },
@@ -160,6 +158,14 @@ const useUpdateDatasetColorScheme = () => {
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
             );
+            colorSchemeRecord.setLinkedRecords(
+              setEntries(
+                store,
+                "DefaultMaskTargetsColors",
+                colorScheme?.defaultMaskTargetsColors ?? null
+              ),
+              "defaultMaskTargetsColors"
+            );
 
             // get or create labelTags data
             let labelTagsRecord =
@@ -188,18 +194,18 @@ const useUpdateDatasetColorScheme = () => {
             // );
 
             // get or create colorScale data
-            let colorscaleRecord =
-              colorSchemeRecord.getLinkedRecord("colorscale");
-            if (!colorscaleRecord) {
-              colorscaleRecord = store.create(uuid(), "Colorscale");
-              colorSchemeRecord.setLinkedRecord(colorscaleRecord, "colorscale");
-            }
+            // let colorscaleRecord =
+            //   colorSchemeRecord.getLinkedRecord("colorscale");
+            // if (!colorscaleRecord) {
+            //   colorscaleRecord = store.create(uuid(), "Colorscale");
+            //   colorSchemeRecord.setLinkedRecord(colorscaleRecord, "colorscale");
+            // }
 
-            colorscaleRecord.setValue(colorScheme.colorscale?.name, "name");
-            labelTagsRecord.setLinkedRecords(
-              setEntries(store, "list", colorScheme.colorscale?.list ?? null),
-              "list"
-            );
+            // colorscaleRecord.setValue(colorScheme.colorscale?.name, "name");
+            // labelTagsRecord.setLinkedRecords(
+            //   setEntries(store, "list", colorScheme.colorscale?.list ?? null),
+            //   "list"
+            // );
 
             // colorSchemeRecord.setLinkedRecords(
             //   setEntries(store, "colorscale", colorScheme?.colorscale ?? null),
