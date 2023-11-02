@@ -12,7 +12,6 @@ import { RecordSourceProxy } from "relay-runtime";
 import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
-import { COLOR_BY } from "@fiftyone/utilities";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);

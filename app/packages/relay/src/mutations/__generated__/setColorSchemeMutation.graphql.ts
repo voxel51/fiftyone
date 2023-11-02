@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c3cdcf69424f0ce8b164ced058fb8e27>>
+ * @generated SignedSource<<d9aad400e82b705382d76cf40826beac>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -32,7 +32,7 @@ export type ValueColorInput = {
 };
 export type MaskColorInput = {
   color: string;
-  idx?: number | null;
+  intTarget?: number | null;
 };
 export type LabelTagColorInput = {
   fieldColor?: string | null;

@@ -29,7 +29,7 @@ class ValueColor:
 @gql.type
 class MaskColor:
     color: str
-    idx: t.Optional[int]
+    intTarget: t.Optional[int]
 
 
 @gql.type
@@ -82,7 +82,7 @@ class ValueColorInput:
 @gql.input
 class MaskColorInput:
     color: str
-    idx: t.Optional[int]
+    intTarget: t.Optional[int]
 
 
 @gql.input

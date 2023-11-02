@@ -14,7 +14,6 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
-import { DEFAULT_COLOR } from "@fiftyone/components/src/components/Selection/SelectionColors";
 
 export const coloring = selector<Coloring>({
   key: "coloring",

@@ -21,10 +21,9 @@ import {
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
-import { validate } from "uuid";
 
 type MaskColorInput = {
-  idx: number;
+  intTarget: number;
   color: string;
 };
 
@@ -62,7 +61,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
 
   const handleAdd = () => {
     const newValue = {
-      idx: undefined,
+      intTarget: undefined,
       color: getRandomColorFromPool(colorScheme.colorPool),
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
@@ -100,12 +99,12 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       } else {
         const warning = cloneDeep(values);
         if (!warning) return;
-        warning[index].idx = null;
+        warning[index].intTarget = null;
         setInput(warning);
         setTimeout(() => {
           setInput(() => {
             const prev = cloneDeep(values);
-            prev[index].idx = values[index].idx;
+            prev[index].intTarget = values[index].intTarget;
             return prev;
           });
         }, 1000);
@@ -157,6 +156,8 @@ const IdxColorList: React.FC<IdxColorProp> = ({
     setShowPicker(Array(values?.length ?? 0).fill(false));
   });
 
+  console.info(input, values);
+
   if (!values) return null;
 
   return (
@@ -165,15 +166,15 @@ const IdxColorList: React.FC<IdxColorProp> = ({
         <RowContainer key={index}>
           <NumberInput
             placeholder="integer (1 to 255)"
-            value={input[index].idx}
+            value={input[index].intTarget}
             setter={(v) =>
               setInput((p) => {
                 const copy = cloneDeep(p);
-                copy[index].idx = v;
+                copy[index].intTarget = v;
                 return copy;
               })
             }
-            onBlur={() => onSyncIdx(input[index].idx, index)}
+            onBlur={() => onSyncIdx(input[index].intTarget, index)}
             style={{ width: "12rem" }}
             min={min}
             max={max}

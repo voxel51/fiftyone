@@ -1,3 +1,4 @@
+import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -8,14 +9,11 @@ import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool, validateIntMask } from "../utils";
-
-type MaskTargetInput = {
-  idx: number;
-  color: string;
-};
+import { MaskColorInput } from "@fiftyone/relay";
 
 const FieldsMaskTargets: React.FC = () => {
-  const isRGBMask = false; // TODO: add condition check;
+  const maskTargets = useRecoilValue(fos.targets).fields;
+  const isRGBMask = isRgbMaskTargets(maskTargets);
 
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
@@ -25,7 +23,7 @@ const FieldsMaskTargets: React.FC = () => {
   const values = useMemo(() => setting?.maskTargetsColors ?? [], [setting]);
 
   const defaultValue = {
-    idx: null,
+    intTarget: null,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
 
@@ -47,14 +45,18 @@ const FieldsMaskTargets: React.FC = () => {
   );
 
   const onSyncUpdate = useCallback(
-    (copy: MaskTargetInput[]) => {
+    (copy: MaskColorInput[]) => {
+      console.info("update", copy);
       if (copy) {
+        debugger;
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-        if (idx && idx > -1) {
+        if (idx !== undefined && idx > -1) {
+          console.info("add");
           newSetting[idx].maskTargetsColors = copy;
           setColorScheme({ ...colorScheme, fields: newSetting });
         } else {
+          console.info("create new");
           setColorScheme((cur) => ({
             ...cur,
             fields: [
@@ -65,7 +67,7 @@ const FieldsMaskTargets: React.FC = () => {
         }
       }
     },
-    [index]
+    [index, setColorScheme, colorScheme, activePath]
   );
 
   useEffect(() => {

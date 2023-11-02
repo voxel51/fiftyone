@@ -155,7 +155,7 @@ class ValueColor:
 @dataclass
 class MaskColor:
     color: str
-    idx: t.Optional[int]
+    intTarget: t.Optional[int]
 
 
 @dataclass

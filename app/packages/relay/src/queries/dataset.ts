@@ -27,7 +27,7 @@ export default graphql`
           opacity
           showSkeletons
           defaultMaskTargetsColors {
-            idx
+            intTarget
             color
           }
           labelTags {
@@ -42,7 +42,7 @@ export default graphql`
             fieldColor
             path
             maskTargetsColors {
-              idx
+              intTarget
               color
             }
             valueColors {

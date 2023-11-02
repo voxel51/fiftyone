@@ -47,7 +47,7 @@ const DatasetPageQueryNode = graphql`
           opacity
           showSkeletons
           defaultMaskTargetsColors {
-            idx
+            intTarget
             color
           }
           fields {
@@ -59,7 +59,7 @@ const DatasetPageQueryNode = graphql`
               value
             }
             maskTargetsColors {
-              idx
+              intTarget
               color
             }
           }

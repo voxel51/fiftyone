@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<829bc0891c97b2693172a807d51ea2ce>>
+ * @generated SignedSource<<bf1398a260867643ec57ecd4b4c1d3c3>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -16,9 +16,17 @@ export type datasetAppConfigFragment$data = {
   readonly colorScheme: {
     readonly colorBy: ColorBy | null;
     readonly colorPool: ReadonlyArray<string>;
+    readonly defaultMaskTargetsColors: ReadonlyArray<{
+      readonly color: string;
+      readonly intTarget: number | null;
+    }> | null;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: string | null;
       readonly fieldColor: string | null;
+      readonly maskTargetsColors: ReadonlyArray<{
+        readonly color: string;
+        readonly intTarget: number | null;
+      }> | null;
       readonly path: string;
       readonly valueColors: ReadonlyArray<{
         readonly color: string;
@@ -60,18 +68,19 @@ var v0 = {
 v1 = {
   "alias": null,
   "args": null,
+  "kind": "ScalarField",
+  "name": "color",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
   "concreteType": "ValueColor",
   "kind": "LinkedField",
   "name": "valueColors",
   "plural": true,
   "selections": [
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "color",
-      "storageKey": null
-    },
+    (v1/*: any*/),
     {
       "alias": null,
       "args": null,
@@ -81,7 +90,17 @@ v1 = {
     }
   ],
   "storageKey": null
-};
+},
+v3 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "intTarget",
+    "storageKey": null
+  },
+  (v1/*: any*/)
+];
 return {
   "argumentDefinitions": [],
   "kind": "Fragment",
@@ -182,8 +201,18 @@ return {
           "plural": false,
           "selections": [
             (v0/*: any*/),
-            (v1/*: any*/)
+            (v2/*: any*/)
           ],
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "MaskColor",
+          "kind": "LinkedField",
+          "name": "defaultMaskTargetsColors",
+          "plural": true,
+          "selections": (v3/*: any*/),
           "storageKey": null
         },
         {
@@ -209,7 +238,17 @@ return {
               "name": "path",
               "storageKey": null
             },
-            (v1/*: any*/)
+            (v2/*: any*/),
+            {
+              "alias": null,
+              "args": null,
+              "concreteType": "MaskColor",
+              "kind": "LinkedField",
+              "name": "maskTargetsColors",
+              "plural": true,
+              "selections": (v3/*: any*/),
+              "storageKey": null
+            }
           ],
           "storageKey": null
         }
@@ -222,6 +261,6 @@ return {
 };
 })();
 
-(node as any).hash = "c2ead1ff889d8cda848718e50da79568";
+(node as any).hash = "2d9298338224526d2c650756b0d077c0";
 
 export default node;

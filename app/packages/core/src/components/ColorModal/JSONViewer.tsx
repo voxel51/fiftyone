@@ -11,7 +11,6 @@ import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import {
-  validateColorscale,
   validateJSONSetting,
   validateLabelTags,
   validateMaskColor,

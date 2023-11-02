@@ -179,7 +179,7 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
-                    "maskTargetsColors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
+                    "maskTargetsColors": [{"intTarget": 2, "color": "#ff0000"}, {"intTarget": 12, "color": "#99ff00"}],
                 }
             ],
             label_tags={
@@ -192,7 +192,7 @@ class ColorScheme(EmbeddedDocument):
             multicolor_keypoints=False,
             opacity=0.5,
             show_skeletons=True,
-            default_mask_targets_colors=[{idx: 1, color: "#FEC0AA" }, {idx: 2, color: "#EC4E20"}],
+            default_mask_targets_colors=[{"intTarget": 1, "color": "#FEC0AA" }, {"intTarget": 2, "color": "#EC4E20"}],
         )
         dataset.save()
 

@@ -1,6 +1,4 @@
-import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
-import colorString from "color-string";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
@@ -64,23 +62,16 @@ export const validateJSONSetting = (
     targetMasksColors: Array.isArray(input.maskTargetsColors)
       ? getValidMaskColors(input.maskTargetsColors)
       : [],
-    colorscale: validateColorscale(input.colorscale),
   }));
 
   return f.filter((x) => {
     const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.colorByAttribute;
     const hasLabelColors = x.valueColors?.length > 0;
-    const hasColorscale =
-      (x.colorscale?.list?.length && x.colorscale?.list?.length > 0) ||
-      x.colorscale?.name;
-    const hasTargetMasks = x.targetMasksColors?.length > 0;
+    const hasTargetMasks =
+      x.targetMasksColors && x.targetMasksColors?.length > 0;
     return (
-      hasFieldSetting ||
-      hasAttributeColor ||
-      hasLabelColors ||
-      hasColorscale ||
-      hasTargetMasks
+      hasFieldSetting || hasAttributeColor || hasLabelColors || hasTargetMasks
     );
   });
 };
@@ -106,15 +97,15 @@ const getValidMaskColors = (maskColors: unknown[]) => {
       return (
         x &&
         isObject(x) &&
-        typeof Number(x["idx"]) == "number" &&
-        Number(x["idx"]) >= 0 &&
-        Number(x["idx"]) <= 255 &&
+        typeof Number(x["intTarget"]) == "number" &&
+        Number(x["intTarget"]) >= 0 &&
+        Number(x["intTarget"]) <= 255 &&
         isString(x["color"])
       );
     })
-    .map((y) => ({
-      idx: Number(y["idx"]),
-      color: y.color,
+    .map((y: unknown) => ({
+      intTarget: Number(y?.intTarget),
+      color: y?.color,
     })) as MaskColorInput[];
 
   return r.length > 0 ? r : null;
@@ -124,54 +115,6 @@ export const validateMaskColor = (
   arr: any
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
-};
-
-const getValidColorscale = (arr: any[]) => {
-  const r = arr.filter((sample) => {
-    return (
-      typeof sample === "object" &&
-      typeof Number(sample.value) === "number" &&
-      Number(sample.value) <= 1 &&
-      Number(sample.value) >= 0 &&
-      isValidColor(sample.color)
-    );
-  });
-
-  const y = r.map((x) => {
-    const converted = colorString.get.rgb(x.color) as [
-      number,
-      number,
-      number,
-      number
-    ];
-    return {
-      value: Number(x.value),
-      color: `rgb(${converted[0]}, ${converted[1]}, ${converted[2]})`,
-    };
-  });
-
-  return y;
-};
-
-export const validateColorscale = (
-  obj: any
-): ColorSchemeInput["colorscale"] => {
-  if (typeof obj !== "object") {
-    return {
-      name: null,
-      list: null,
-    };
-  }
-
-  const r = {
-    name:
-      typeof obj.name === "string" && namedColorScales.includes(obj.name)
-        ? obj.name
-        : null,
-    list: Array.isArray(obj.list) ? getValidColorscale(obj.list) : null,
-  };
-
-  return r;
 };
 
 export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {

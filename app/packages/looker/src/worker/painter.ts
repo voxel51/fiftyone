@@ -323,12 +323,14 @@ export const PainterFactory = (requestColor) => ({
             if (coloring.by !== COLOR_BY.FIELD) {
               // Attempt to find a color in the fields mask target color settings
               let colorSetting = setting?.maskTargetsColors;
-              let colorInfo = colorSetting?.find((x) => x.idx === targets[i]);
+              let colorInfo = colorSetting?.find(
+                (x) => x.intTarget === targets[i]
+              );
 
               // If not found, attempt to find a color in the default mask target colors.
               if (!colorInfo) {
                 colorInfo = coloring.defaultMaskTargetsColors?.find(
-                  (x) => x.idx === targets[i]
+                  (x) => x.intTarget === targets[i]
                 );
               }
 

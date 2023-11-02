@@ -24,7 +24,7 @@ export interface Coloring {
 }
 
 export type MaskColorInput = {
-  idx: number;
+  intTarget: number;
   color: string;
 };
 

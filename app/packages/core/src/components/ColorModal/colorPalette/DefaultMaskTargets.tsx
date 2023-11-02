@@ -17,7 +17,7 @@ const DefaultMaskTargets: React.FC = () => {
     [colorScheme]
   );
   const defaultValue = {
-    idx: null,
+    intTarget: null,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
   const shouldShowAddButton = Boolean(values?.length && values?.length > 0);

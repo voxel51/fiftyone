@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { SettingsBackupRestore } from "@mui/icons-material";
 import { Divider, Slider, Typography } from "@mui/material";
-import { default as React, useEffect, useState } from "react";
+import { default as React } from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
@@ -16,7 +16,6 @@ import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
-  const [state, setState] = useState({ useColorscaleName: "name" });
 
   return (
     <div>
