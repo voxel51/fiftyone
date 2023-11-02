@@ -60,9 +60,8 @@ dir_cache = {"state": None}
 
 
 def plugins_cache(func):
-    """Decorator that returns cached function results as long as no
-    subdirectories of ``fo.config.plugins_dir`` have been modified since last
-    time.
+    """Decorator that returns cached function results as long as no plugins
+    have been modified since last time.
     """
 
     @wraps(func)
