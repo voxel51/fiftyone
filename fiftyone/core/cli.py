@@ -3249,11 +3249,8 @@ class PluginsDownloadCommand(Command):
         # Download plugins by specifying the GitHub repository details
         fiftyone plugins download <user>/<repo>[/<ref>]
 
-        # Download specific plugins from a URL with a custom search depth
-        fiftyone plugins download \\
-            <url> \\
-            --plugin-names <name1> <name2> <name3> \\
-            --max-depth 2  # search nested directories for plugins
+        # Download specific plugins from a URL
+        fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
     """
 
     @staticmethod
@@ -3272,14 +3269,6 @@ class PluginsDownloadCommand(Command):
             help="a plugin name or list of plugin names to download",
         )
         parser.add_argument(
-            "-d",
-            "--max-depth",
-            type=int,
-            default=3,
-            metavar="MAX_DEPTH",
-            help="a maximum depth to search for plugins",
-        )
-        parser.add_argument(
             "-o",
             "--overwrite",
             action="store_true",
@@ -3291,7 +3280,6 @@ class PluginsDownloadCommand(Command):
         fop.download_plugin(
             args.url_or_gh_repo,
             plugin_names=args.plugin_names,
-            max_depth=args.max_depth,
             overwrite=args.overwrite,
         )
 
