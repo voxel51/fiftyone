@@ -20,6 +20,7 @@ Bugs
 
 - Fixed clips, frames, and patches views for grouped datasets in the App
 - Fixed cloud credential initialization during deployment restarts
+- Further improved dataset listing queries
 
 .. _release-notes-v0.22.3:
 
