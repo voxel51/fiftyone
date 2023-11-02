@@ -62,24 +62,10 @@ const DatasetPageQueryNode = graphql`
               idx
               color
             }
-            colorscale {
-              name
-              list {
-                value
-                color
-              }
-            }
           }
           labelTags {
             fieldColor
             valueColors {
-              color
-              value
-            }
-          }
-          colorscale {
-            name
-            list {
               color
               value
             }

@@ -288,17 +288,16 @@ export const PainterFactory = (requestColor) => ({
       const cache = {};
 
       let color;
-
+      const setting = customizeColorSetting.find((x) => x.path === field);
       if (
         coloring.by === COLOR_BY.FIELD ||
         (maskTargets && Object.keys(maskTargets).length === 1)
       ) {
-        const fieldcolor = await requestColor(
-          coloring.pool,
-          coloring.seed,
-          field
-        );
-        color = get32BitColor(fieldcolor);
+        let fieldColor;
+        fieldColor =
+          setting?.fieldColor ??
+          (await requestColor(coloring.pool, coloring.seed, field));
+        color = get32BitColor(fieldColor);
       }
 
       const getColor = (i) => {
@@ -323,9 +322,7 @@ export const PainterFactory = (requestColor) => ({
           } else {
             if (coloring.by !== COLOR_BY.FIELD) {
               // Attempt to find a color in the fields mask target color settings
-              let colorSetting = customizeColorSetting.find(
-                (x) => x.path === field
-              )?.maskTargetsColors;
+              let colorSetting = setting?.maskTargetsColors;
               let colorInfo = colorSetting?.find((x) => x.idx === targets[i]);
 
               // If not found, attempt to find a color in the default mask target colors.

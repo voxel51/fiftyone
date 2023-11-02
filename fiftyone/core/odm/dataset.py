@@ -180,17 +180,6 @@ class ColorScheme(EmbeddedDocument):
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                     "maskTargetsColors": [{"index": 1, "color": "#ff0000"}, {"index": 2, "color": "#99ff00"}],
-                    "colorscale": {
-                          "name": null,
-                          "list": [
-                            {value: 0.00, color: "rgb(166,206,227)"},
-                            {value: 0.25, color: "rgb(31,120,180)"},
-                            {value: 0.45, color: "rgb(178,223,138)"},
-                            {value: 0.65, color: "rgb(51,160,44)"},
-                            {value: 0.85, color: "rgb(251,154,153)"},
-                            {value: 1.00, color: "rgb(227,26,28)"}
-                          ]
-                    }
                 }
             ],
             label_tags={
@@ -204,7 +193,6 @@ class ColorScheme(EmbeddedDocument):
             opacity=0.5,
             show_skeletons=True,
             default_mask_targets_colors=[{idx: 1, color: "#FEC0AA" }, {idx: 2, color: "#EC4E20"}],
-            colorscale={ "name": "RdBu", "list": null}
         )
         dataset.save()
 
@@ -231,23 +219,6 @@ class ColorScheme(EmbeddedDocument):
                 use for individual values of this field
             -   `maskTargetsColors` (optional): a list of dicts specifying index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
-        colorscale (None): a dict of ``colorscale`` with either name or list provided.
-        If both are provided, we will use the name
-            -   `name` (optional): the string name of any colorscale recognized by plotly. See
-                https://plotly.com/python/colorscales for possible options
-            -   `list` (optional): a manually-defined colorscale like the following::
-                    [
-                        [0.000, "rgb(165,0,38)"],
-                        [0.111, "rgb(215,48,39)"],
-                        [0.222, "rgb(244,109,67)"],
-                        [0.333, "rgb(253,174,97)"],
-                        [0.444, "rgb(254,224,144)"],
-                        [0.555, "rgb(224,243,248)"],
-                        [0.666, "rgb(171,217,233)"],
-                        [0.777, "rgb(116,173,209)"],
-                        [0.888, "rgb(69,117,180)"],
-                        [1.000, "rgb(49,54,149)"],
-                    ]
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags
@@ -267,7 +238,6 @@ class ColorScheme(EmbeddedDocument):
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
     default_mask_targets_colors = ListField(DictField(), null=True)
-    colorscale = ListField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

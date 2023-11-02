@@ -115,11 +115,6 @@ enum ColorBy {
   value
 }
 
-input ColorScaleInput {
-  name: String
-  list: [ColorTupleInput!]
-}
-
 type ColorScheme {
   id: ID!
   colorPool: [String!]!
@@ -130,7 +125,6 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
-  colorscale: Colorscale
 }
 
 input ColorSchemeInput {
@@ -142,22 +136,6 @@ input ColorSchemeInput {
   opacity: Float = null
   showSkeletons: Boolean = null
   defaultMaskTargetsColors: [MaskColorInput!] = null
-  colorscale: ColorScaleInput = null
-}
-
-type ColorTuple {
-  color: String!
-  value: Float!
-}
-
-input ColorTupleInput {
-  color: String!
-  value: Float!
-}
-
-type Colorscale {
-  name: String
-  list: [ColorTuple!]
 }
 
 input Count {
@@ -178,7 +156,6 @@ type CustomizeColor {
   colorByAttribute: String
   fieldColor: String
   maskTargetsColors: [MaskColor!]
-  colorscale: Colorscale
 }
 
 input CustomizeColorInput {
@@ -187,7 +164,6 @@ input CustomizeColorInput {
   colorByAttribute: String = null
   fieldColor: String = null
   maskTargetsColors: [MaskColorInput!] = null
-  colorscale: ColorScaleInput = null
 }
 
 type DataAggregation implements Aggregation {
@@ -364,12 +340,12 @@ input LabelTagColorInput {
 
 type MaskColor {
   color: String!
-  idx: Int!
+  idx: Int
 }
 
 input MaskColorInput {
   color: String!
-  idx: Int!
+  idx: Int
 }
 
 enum MediaType {

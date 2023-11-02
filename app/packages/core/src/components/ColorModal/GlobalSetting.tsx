@@ -4,7 +4,6 @@ import { Divider, Slider, Typography } from "@mui/material";
 import { default as React, useEffect, useState } from "react";
 import { useRecoilState } from "recoil";
 import Checkbox from "../Common/Checkbox";
-import Input from "../Common/Input";
 import RadioGroup from "../Common/RadioGroup";
 import {
   ControlGroupWrapper,
@@ -85,35 +84,9 @@ const GlobalSetting = () => {
           setValue={(v) => setColorScheme({ ...colorScheme, showSkeletons: v })}
         />
       </ControlGroupWrapper>
-
       <Divider>Segmentation</Divider>
       <ControlGroupWrapper>
         <DefaultMaskTargets />
-      </ControlGroupWrapper>
-      <Divider>Colorscale</Divider>
-      <ControlGroupWrapper>
-        <RadioGroup
-          choices={["name", "list"]}
-          value={state.useColorscaleName}
-          setValue={(mode) =>
-            setState((s) => ({ ...s, useColorscaleName: mode }))
-          }
-          horizontal
-        />
-        {state.useColorscaleName === "name" && (
-          <div>
-            Use a named plotly colorscale:
-            {/* input can be null/undefined/valid plotly colorscale name */}
-            {/* // should use select and auto complete */}
-            {/* <Input /> */}
-          </div>
-        )}
-        {state.useColorscaleName === "list" && (
-          <div>
-            Define a custom colorscale:
-            {/* // when list is active, colorscale.name must be reset to null */}
-          </div>
-        )}
       </ControlGroupWrapper>
     </div>
   );

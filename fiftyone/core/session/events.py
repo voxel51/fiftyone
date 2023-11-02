@@ -154,13 +154,7 @@ class ValueColor:
 @dataclass
 class MaskColor:
     color: str
-    idx: int
-
-
-@dataclass
-class ColorScale:
-    name: str
-    list: t.List[t.Tuple]
+    idx: t.Optional[int]
 
 
 @dataclass
@@ -170,7 +164,6 @@ class CustomizeColor:
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
     maskTargetsColors: t.Optional[t.List[MaskColor]] = None
-    colorscale: t.Optional[ColorScale] = None
 
 
 @dataclass
@@ -191,7 +184,6 @@ class ColorScheme:
     fields: t.Optional[t.List[CustomizeColor]] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
     label_tags: t.Optional[LabelTagsColors] = None
-    colorscale: t.Optional[ColorScale] = None
 
 
 @dataclass
@@ -223,11 +215,6 @@ class SetColorScheme(Event):
             if self.color_scheme.label_tags
             else None
         )
-        colorscale = (
-            asdict(self.color_scheme.colorscale)
-            if self.color_scheme.colorscale
-            else None
-        )
 
         return foo.ColorScheme(
             color_pool=self.color_scheme.color_pool,
@@ -235,7 +222,6 @@ class SetColorScheme(Event):
             fields=fields,
             default_mask_targets=default_mask_targets_colors,
             label_tags=label_tags,
-            colorscale=colorscale,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,

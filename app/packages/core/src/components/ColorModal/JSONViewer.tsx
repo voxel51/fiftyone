@@ -35,11 +35,8 @@ const JSONViewer: React.FC = () => {
       defaultMaskTargetsColors: validateMaskColor(
         colorScheme.defaultMaskTargetsColors
       ),
-      colorscale: validateColorscale(colorScheme.colorscale),
     };
   }, [colorScheme]);
-
-  console.info(colorScheme, setting);
 
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
@@ -108,7 +105,6 @@ const JSONViewer: React.FC = () => {
     const validatedDefaultMaskTargetsColors = validateMaskColor(
       data.defaultMaskTargetsColors
     );
-    const validatedColorscale = validateColorscale(data.colorscale);
 
     setData({
       colorPool: validColors,
@@ -119,7 +115,6 @@ const JSONViewer: React.FC = () => {
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
       defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
-      colorscale: validatedColorscale,
     });
 
     setColorScheme({
@@ -131,7 +126,6 @@ const JSONViewer: React.FC = () => {
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
       defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
-      colorscale: validatedColorscale,
     });
   };
 

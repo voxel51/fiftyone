@@ -1,10 +1,6 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import {
-  ColorSchemeInput,
-  MaskColorInput,
-  datasetQuery$data,
-} from "@fiftyone/relay";
+import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -18,7 +14,6 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
-import { State } from "./types";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -133,15 +128,6 @@ export const ensureColorScheme = (
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {},
     defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
-    colorscale: colorScheme.colorscale ?? {
-      name: "hsv",
-      list: [
-        { color: "rgb(0, 0, 255)", value: 0.2 },
-        { color: "rgb(0, 50, 255)", value: 0.5 },
-        { color: "rgb(0, 100, 255)", value: 0.8 },
-        { color: "rgb(0, 150, 255)", value: 1 },
-      ],
-    },
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints

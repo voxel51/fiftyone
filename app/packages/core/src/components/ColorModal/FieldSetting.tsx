@@ -103,7 +103,7 @@ const FieldSetting = ({ path }: { path: string }) => {
       useLabelColors: Boolean(
         setting?.valueColors && setting.valueColors.length > 0
       ),
-      useFieldColor: Boolean(setting),
+      useFieldColor: Boolean(setting && setting.fieldColor),
     }),
     [setting]
   );
@@ -177,77 +177,74 @@ const FieldSetting = ({ path }: { path: string }) => {
     <div>
       <ModeControl />
       <Divider />
-      {coloring.by == COLOR_BY.FIELD &&
-        isTypeFieldSupported &&
-        !isHeatmap &&
-        !isSegmentation && (
-          <div style={{ margin: "1rem", width: "100%" }}>
-            <Checkbox
-              name={`Use custom color for ${path} field`}
-              value={state.useFieldColor}
-              setValue={(v: boolean) => {
-                setSetting((cur) => ({
-                  ...cur,
-                  fieldColor: v ? colorMap(path) : undefined,
-                  valueColors: setting?.valueColors,
-                  colorByAttribute: setting?.colorByAttribute,
-                }));
-                setInput(colorMap(path));
+      {coloring.by == COLOR_BY.FIELD && isTypeFieldSupported && (
+        <div style={{ margin: "1rem", width: "100%" }}>
+          <Checkbox
+            name={`Use custom color for ${path} field`}
+            value={state.useFieldColor}
+            setValue={(v: boolean) => {
+              setSetting((cur) => ({
+                ...cur,
+                fieldColor: v ? colorMap(path) : undefined,
+                valueColors: setting?.valueColors,
+                colorByAttribute: setting?.colorByAttribute,
+              }));
+              setInput(colorMap(path));
+            }}
+          />
+          {state?.useFieldColor && input && (
+            <div
+              data-cy="field-color-div"
+              style={{
+                margin: "1rem",
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "end",
               }}
-            />
-            {state?.useFieldColor && input && (
-              <div
-                data-cy="field-color-div"
-                style={{
-                  margin: "1rem",
-                  display: "flex",
-                  flexDirection: "row",
-                  alignItems: "end",
-                }}
+            >
+              <FieldColorSquare
+                color={setting?.fieldColor || colorMap(path)}
+                onClick={toggleColorPicker}
+                id="color-square"
               >
-                <FieldColorSquare
-                  color={setting?.fieldColor || colorMap(path)}
-                  onClick={toggleColorPicker}
-                  id="color-square"
-                >
-                  {showFieldPicker && (
-                    <PickerWrapper
-                      id="twitter-color-container"
-                      onBlur={hideFieldColorPicker}
-                      visible={showFieldPicker}
-                      tabIndex={0}
-                      ref={wrapperRef}
-                    >
-                      <TwitterPicker
-                        color={input ?? (setting?.fieldColor as string)}
-                        colors={[...colors]}
-                        onChange={(color) => setInput(color.hex)}
-                        onChangeComplete={(color) => {
-                          onChangeFieldColor(color.hex);
-                          setColors([...new Set([...colors, color.hex])]);
-                          setShowFieldPicker(false);
-                        }}
-                        className={colorPicker}
-                        ref={pickerRef}
-                      />
-                    </PickerWrapper>
-                  )}
-                </FieldColorSquare>
-                <Input
-                  value={input}
-                  setter={(v) => setInput(v)}
-                  onBlur={() => onValidateColor(input)}
-                  onEnter={() => onValidateColor(input)}
-                  style={{
-                    width: 120,
-                    display: "inline-block",
-                    margin: 3,
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        )}
+                {showFieldPicker && (
+                  <PickerWrapper
+                    id="twitter-color-container"
+                    onBlur={hideFieldColorPicker}
+                    visible={showFieldPicker}
+                    tabIndex={0}
+                    ref={wrapperRef}
+                  >
+                    <TwitterPicker
+                      color={input ?? (setting?.fieldColor as string)}
+                      colors={[...colors]}
+                      onChange={(color) => setInput(color.hex)}
+                      onChangeComplete={(color) => {
+                        onChangeFieldColor(color.hex);
+                        setColors([...new Set([...colors, color.hex])]);
+                        setShowFieldPicker(false);
+                      }}
+                      className={colorPicker}
+                      ref={pickerRef}
+                    />
+                  </PickerWrapper>
+                )}
+              </FieldColorSquare>
+              <Input
+                value={input}
+                setter={(v) => setInput(v)}
+                onBlur={() => onValidateColor(input)}
+                onEnter={() => onValidateColor(input)}
+                style={{
+                  width: 120,
+                  display: "inline-block",
+                  margin: 3,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
       {coloring.by == COLOR_BY.FIELD && !isTypeFieldSupported && (
         <div>Color by field is not supported for this field type</div>
       )}
@@ -316,9 +313,7 @@ const FieldSetting = ({ path }: { path: string }) => {
             </form>
           </div>
         )}
-      {coloring.by !== COLOR_BY.INSTANCE && isSegmentation && (
-        <FieldsMaskTargets />
-      )}
+      {coloring.by == COLOR_BY.VALUE && isSegmentation && <FieldsMaskTargets />}
       {coloring.by == COLOR_BY.VALUE &&
         !isTypeValueSupported &&
         !isHeatmap &&

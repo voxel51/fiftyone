@@ -59,7 +59,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activePath = useRecoilValue(activeColorPath) ?? "global";
   const colorScheme = useRecoilValue(fos.colorScheme);
-  console.info("input", input);
+
   const handleAdd = () => {
     const newValue = {
       idx: undefined,
