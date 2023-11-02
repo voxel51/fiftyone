@@ -68,6 +68,8 @@ const DatasetPageQueryNode = graphql`
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
   const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
+  const count = useRecoilValue(fos.datasetSampleCount);
+  console.log("COUNT! ", count);
 
   useEffect(() => {
     document
