@@ -28,12 +28,11 @@ import {
 } from "./ShareStyledDiv";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import FieldByValue from "./colorPalette/FieldByValue";
-import MaskTargets from "./colorPalette/FieldsMaskTarget";
-import LabelTagByValue from "./colorPalette/LabelTagByValue";
+import FieldsMaskTargets from "./colorPalette/FieldsMaskTarget";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
-const fieldColorSetting = selectorFamily<
+export const fieldColorSetting = selectorFamily<
   Omit<CustomizeColorInput, "path"> | undefined,
   string
 >({
@@ -187,11 +186,12 @@ const FieldSetting = ({ path }: { path: string }) => {
               name={`Use custom color for ${path} field`}
               value={state.useFieldColor}
               setValue={(v: boolean) => {
-                setSetting({
+                setSetting((cur) => ({
+                  ...cur,
                   fieldColor: v ? colorMap(path) : undefined,
                   valueColors: setting?.valueColors,
                   colorByAttribute: setting?.colorByAttribute,
-                });
+                }));
                 setInput(colorMap(path));
               }}
             />
@@ -316,10 +316,15 @@ const FieldSetting = ({ path }: { path: string }) => {
             </form>
           </div>
         )}
-
-      {coloring.by == COLOR_BY.VALUE && !isTypeValueSupported && (
-        <div>Color by value is not supported for this field type</div>
+      {coloring.by !== COLOR_BY.INSTANCE && isSegmentation && (
+        <FieldsMaskTargets />
       )}
+      {coloring.by == COLOR_BY.VALUE &&
+        !isTypeValueSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>Color by value is not supported for this field type</div>
+        )}
       {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}

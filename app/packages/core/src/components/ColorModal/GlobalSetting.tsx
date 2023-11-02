@@ -105,7 +105,7 @@ const GlobalSetting = () => {
             Use a named plotly colorscale:
             {/* input can be null/undefined/valid plotly colorscale name */}
             {/* // should use select and auto complete */}
-            <Input />
+            {/* <Input /> */}
           </div>
         )}
         {state.useColorscaleName === "list" && (

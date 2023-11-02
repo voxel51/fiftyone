@@ -20,8 +20,9 @@ export const coloring = selector<Coloring>({
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
-    const defaultMaskTargetsWithColors = combineTargetsAndColors(
-      get(selectors.defaultTargets),
+    const defaultMaskTargets = get(selectors.defaultTargets); // {key: string}
+    const converted = combineTargetsAndColors(
+      defaultMaskTargets,
       colorScheme.defaultMaskTargetsColors
     );
 
@@ -31,7 +32,7 @@ export const coloring = selector<Coloring>({
       scale: [],
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
-      defaultMaskTargets: defaultMaskTargetsWithColors,
+      defaultMaskTargets: get(selectors.defaultTargets),
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)

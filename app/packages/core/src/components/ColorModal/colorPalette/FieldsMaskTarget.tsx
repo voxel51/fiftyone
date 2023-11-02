@@ -1,11 +1,13 @@
 import * as fos from "@fiftyone/state";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
+import Checkbox from "../../Common/Checkbox";
+import { fieldColorSetting } from "../FieldSetting";
 import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
 import { activeColorPath } from "../state";
-import { getRandomColorFromPool } from "../utils";
+import { getRandomColorFromPool, validateIntMask } from "../utils";
 
 type MaskTargetInput = {
   idx: number;
@@ -13,26 +15,35 @@ type MaskTargetInput = {
 };
 
 const FieldsMaskTargets: React.FC = () => {
-  const is2DMask = true; // TODO: add condition check;
+  const isRGBMask = false; // TODO: add condition check;
+
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
   const setColorScheme = fos.useSetSessionColorScheme();
+  const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
 
-  const setting = useMemo(
-    () => colorScheme.fields?.find((s) => s.path == activePath),
-    [activePath, colorScheme.fields]
-  );
   const values = useMemo(() => setting?.maskTargetsColors ?? [], [setting]);
+
   const defaultValue = {
     idx: null,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
+
   const index = useMemo(
     () => colorScheme.fields?.findIndex((s) => s.path == activePath),
     [activePath]
   );
+
   const shouldShowAddButton = Boolean(
     setting?.maskTargetsColors && setting.maskTargetsColors.length > 0
+  );
+
+  const useFieldMaskColors = useMemo(
+    () =>
+      Boolean(
+        setting?.maskTargetsColors && setting.maskTargetsColors.length > 0
+      ),
+    [setting?.maskTargetsColors]
   );
 
   const onSyncUpdate = useCallback(
@@ -40,9 +51,17 @@ const FieldsMaskTargets: React.FC = () => {
       if (copy) {
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-        if (idx > -1) {
+        if (idx && idx > -1) {
           newSetting[idx].maskTargetsColors = copy;
           setColorScheme({ ...colorScheme, fields: newSetting });
+        } else {
+          setColorScheme((cur) => ({
+            ...cur,
+            fields: [
+              ...newSetting,
+              { path: activePath, maskTargetsColors: copy },
+            ],
+          }));
         }
       }
     },
@@ -53,25 +72,57 @@ const FieldsMaskTargets: React.FC = () => {
     if (!values) {
       const copy = cloneDeep(colorScheme.fields);
       const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-      if (idx > -1) {
-        copy[idx].maskTargetsColors = [defaultValue];
-        setColorScheme({ ...colorScheme, fields: copy });
+      if (copy) {
+        if (idx && idx > -1) {
+          copy[idx].maskTargetsColors = [defaultValue];
+          setColorScheme({ ...colorScheme, fields: copy });
+        } else {
+          setColorScheme({
+            ...colorScheme,
+            fields: [
+              ...copy,
+              { path: activePath, maskTargetsColors: [defaultValue] },
+            ],
+          });
+        }
       }
     }
   }, [values]);
 
+  if (isRGBMask) return null;
+
   return (
     <SectionWrapper>
-      {is2DMask && (
+      <Checkbox
+        name={`Use custom colors for mask targets for ${activePath}`}
+        value={useFieldMaskColors}
+        setValue={(v: boolean) => {
+          setSetting((cur) => {
+            if (!cur) {
+              cur = { maskTargetsColors: [] };
+            }
+
+            if (v) {
+              cur = { ...cur, maskTargetsColors: [defaultValue] };
+            } else if (!v) {
+              cur = { ...cur, maskTargetsColors: [] };
+            }
+            return cur;
+          });
+        }}
+      />
+      {useFieldMaskColors && (
         <>
-          <div style={FieldCHILD_STYLE}>Set colors for mask targets:</div>
           <IdxColorList
             initialValue={values as MaskTargetInput[]}
             values={values as MaskTargetInput[]}
-            resetValue={values as MaskTargetInput[]}
             style={FieldCHILD_STYLE}
+            onValidate={validateIntMask}
             onSyncUpdate={onSyncUpdate}
             shouldShowAddButton={shouldShowAddButton}
+            min={1}
+            max={255}
+            step={1}
           />
         </>
       )}

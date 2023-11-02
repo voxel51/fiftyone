@@ -187,8 +187,15 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   return path;
 };
 
-export const getRandomColorFromPool = (pool: readonly string[]) =>
+export const getRandomColorFromPool = (pool: readonly string[]): string =>
   pool[Math.floor(Math.random() * pool.length)];
+
+export const validateIntMask = (value: number) => {
+  if (!value || value > 255 || value < 1 || !Number.isInteger(value)) {
+    return false;
+  }
+  return true;
+};
 
 const namedColorScales = [
   "aggrnyl",

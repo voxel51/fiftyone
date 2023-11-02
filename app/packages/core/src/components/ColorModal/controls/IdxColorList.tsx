@@ -21,6 +21,7 @@ import {
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
+import { validate } from "uuid";
 
 type MaskColorInput = {
   idx: number;
@@ -29,9 +30,9 @@ type MaskColorInput = {
 
 type IdxColorProp = {
   initialValue: MaskColorInput[];
-  resetValue: MaskColorInput[];
   values: MaskColorInput[];
   style: React.CSSProperties;
+  onValidate?: (value: number) => boolean;
   onSyncUpdate: (input: MaskColorInput[]) => void;
   shouldShowAddButton: boolean;
   min?: number;
@@ -41,16 +42,16 @@ type IdxColorProp = {
 
 const IdxColorList: React.FC<IdxColorProp> = ({
   initialValue,
-  resetValue,
   values,
   style,
+  onValidate,
   onSyncUpdate,
   shouldShowAddButton,
   min,
   max,
   step,
 }) => {
-  const [input, setInput] = useState<MaskColorInput[]>(initialValue);
+  const [input, setInput] = useState<MaskColorInput[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
@@ -58,7 +59,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activePath = useRecoilValue(activeColorPath) ?? "global";
   const colorScheme = useRecoilValue(fos.colorScheme);
-
+  console.info("input", input);
   const handleAdd = () => {
     const newValue = {
       idx: undefined,
@@ -89,6 +90,28 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       onSyncUpdate(copy);
     },
     [input, onSyncUpdate]
+  );
+
+  // onBlue and onEnter in numberfield to validate certain rules
+  const onSyncIdx = useCallback(
+    (intValue: number, index: number) => {
+      if ((onValidate && onValidate(intValue)) || !onValidate) {
+        onSyncUpdate(input);
+      } else {
+        const warning = cloneDeep(values);
+        if (!warning) return;
+        warning[index].idx = null;
+        setInput(warning);
+        setTimeout(() => {
+          setInput(() => {
+            const prev = cloneDeep(values);
+            prev[index].idx = values[index].idx;
+            return prev;
+          });
+        }, 1000);
+      }
+    },
+    [input, values, onSyncUpdate, onValidate]
   );
 
   // onBlur and onEnter in textfield to validate color and sync with atoms
@@ -127,7 +150,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   }, [activePath]);
 
   useEffect(() => {
-    setInput(resetValue);
+    setInput(initialValue);
   }, [values]);
 
   fos.useOutsideClick(wrapperRef, () => {
@@ -141,7 +164,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       {input?.map((v, index) => (
         <RowContainer key={index}>
           <NumberInput
-            placeholder="integer (0 to 255)"
+            placeholder="integer (1 to 255)"
             value={input[index].idx}
             setter={(v) =>
               setInput((p) => {
@@ -150,7 +173,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
                 return copy;
               })
             }
-            onBlur={() => onSyncUpdate(input)}
+            onBlur={() => onSyncIdx(input[index].idx, index)}
             style={{ width: "12rem" }}
             min={min}
             max={max}
