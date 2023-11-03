@@ -1,4 +1,4 @@
-import { Dataset } from "@fiftyone/core";
+import { Dataset, Snackbar } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -7,7 +7,6 @@ import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
-import { Snackbar } from "@material-ui/core";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
