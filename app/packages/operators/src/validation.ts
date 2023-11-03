@@ -1,4 +1,4 @@
-import { pluralize } from "@fiftyone/utilities";
+import { isNullish, pluralize } from "@fiftyone/utilities";
 import { Enum, List, Object, Boolean, String, Number } from "./types";
 
 export class ValidationError {
@@ -167,10 +167,6 @@ function existsOrNonRequired(property, value) {
 
 function getPath(prefix, path) {
   return prefix ? prefix + "." + path : path;
-}
-
-function isNullish(value) {
-  return value === undefined || value === null;
 }
 
 function isNumber(value) {
