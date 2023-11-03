@@ -238,16 +238,13 @@ def establish_db_conn(config):
                 _connection_kwargs["port"] = port
                 os.environ["FIFTYONE_PRIVATE_DATABASE_PORT"] = str(port)
 
-            except fos.ServiceExecutableNotFound as error:
-                if fou.is_32_bit():
-                    raise FiftyOneConfigError(
-                        "MongoDB is not supported on 32-bit systems. Please "
-                        "define a `database_uri` in your "
-                        "`fiftyone.core.config.FiftyOneConfig` to define a "
-                        "connection to your own MongoDB instance or cluster "
-                    )
-
-                raise error
+            except fos.ServiceExecutableNotFound:
+                raise FiftyOneConfigError(
+                    "MongoDB is not supported on your system. Please "
+                    "define a `database_uri` in your "
+                    "`fiftyone.core.config.FiftyOneConfig` to connect to your"
+                    "own MongoDB instance or cluster"
+                )
 
     _client = _mongo_client_cls(**_connection_kwargs)
     if _mongo_client_cls is fomongo.MongoClient:
