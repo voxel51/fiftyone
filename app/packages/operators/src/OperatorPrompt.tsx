@@ -15,7 +15,7 @@ import {
   PaletteContentContainer,
 } from "./styled-components";
 import OperatorPalette, { OperatorPaletteProps } from "./OperatorPalette";
-import { stringifyError } from "./utils";
+import { formatValidationErrors, stringifyError } from "./utils";
 import { types } from ".";
 
 export default function OperatorPrompt() {
@@ -61,6 +61,9 @@ function ActualOperatorPrompt() {
   const title = getPromptTitle(operatorPrompt);
   const hasValidationErrors = operatorPrompt.validationErrors?.length > 0;
   const { resolving, pendingResolve } = operatorPrompt;
+  const validationErrorsStr = formatValidationErrors(
+    operatorPrompt.validationErrors
+  );
 
   return createPortal(
     <OperatorPalette
@@ -71,7 +74,8 @@ function ActualOperatorPrompt() {
       disableSubmit={hasValidationErrors || resolving || pendingResolve}
       disabledReason={
         hasValidationErrors
-          ? "Cannot execute operator with validation errors"
+          ? "Cannot execute operator with validation errors\n\n" +
+            validationErrorsStr
           : "Cannot execute operator while validating form"
       }
       loading={resolving || pendingResolve}
