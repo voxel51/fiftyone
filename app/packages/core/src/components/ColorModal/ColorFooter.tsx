@@ -59,7 +59,7 @@ const ColorFooter: React.FC = () => {
             updateDatasetColorScheme({
               ...colorScheme,
               fields: colorScheme.fields ?? [],
-              labelTags: colorScheme.labelTags ?? {},
+              labelTags: checkLabelTagsDefault(colorScheme.labelTags ?? {}),
               colorPool:
                 colorScheme.colorPool ?? fos.appConfigDefault.colorPool ?? [],
               colorBy: colorScheme.colorBy ?? "field",
@@ -184,6 +184,13 @@ const useUpdateDatasetColorScheme = () => {
     [environment]
   );
 };
+
+// do not send null or {} or {fieldColor: null, valueColors: null}
+// updateDatasetColorScheme expect valueColors to be an array
+const checkLabelTagsDefault = (obj: foq.LabelTagColorInput) => ({
+  fieldColor: obj.fieldColor,
+  valueColors: obj.valueColors ?? [],
+});
 
 const setEntries = (
   store: RecordSourceProxy,

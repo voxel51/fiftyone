@@ -1,4 +1,4 @@
-import { ColorSchemeInput } from "@fiftyone/relay";
+import { ColorSchemeInput, LabelTagColorInput } from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
