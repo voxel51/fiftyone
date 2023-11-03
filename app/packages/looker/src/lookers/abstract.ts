@@ -45,6 +45,7 @@ import {
 import { Events } from "../elements/base";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
+import { cloneDeep, isEmpty } from "lodash";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -98,6 +99,7 @@ export abstract class AbstractLooker<
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
+  private isCommittingBatchUpdates = false;
 
   constructor(
     sample: S,
@@ -203,7 +205,18 @@ export abstract class AbstractLooker<
     this.isBatching = true;
     cb();
     this.isBatching = false;
-    this.updater(this.batchMergedUpdates);
+
+    if (this.isCommittingBatchUpdates || isEmpty(this.batchMergedUpdates)) {
+      return;
+    }
+
+    if (!this.isCommittingBatchUpdates) {
+      this.isCommittingBatchUpdates = true;
+      this.updater(this.batchMergedUpdates);
+      this.batchMergedUpdates = {};
+    }
+
+    console.log("flushed", this.batchMergedUpdates);
   }
 
   private makeUpdate(): StateUpdate<State> {
@@ -225,6 +238,7 @@ export abstract class AbstractLooker<
             this.batchMergedUpdates,
             updates
           );
+          console.log("batched, new merged is", this.batchMergedUpdates);
           return;
         }
 

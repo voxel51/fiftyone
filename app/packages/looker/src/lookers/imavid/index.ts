@@ -94,9 +94,9 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   getElements(config) {
     return getImaVidElements(
       config,
-      this.updater,
+      this.updater.bind(this),
       this.getDispatchEvent(),
-      this.batchUpdater
+      this.batchUpdater.bind(this)
     );
   }
 

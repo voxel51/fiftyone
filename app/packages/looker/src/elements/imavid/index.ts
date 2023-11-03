@@ -5,7 +5,7 @@
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
-import { ImaVidState, StateUpdate } from "../../state";
+import { DispatchEvent, ImaVidState, StateUpdate } from "../../state";
 import { BaseElement, Events } from "../base";
 import { getFrameNumber } from "../util";
 import { PlaybackRateBarElement } from "./playback-rate-bar";
@@ -127,7 +127,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * - if thumbnail, it is canvas for grid view, html video otherwise (modal)
    * - thumbnailer:
    */
-  createHTMLElement(dispatchEvent, _config) {
+  createHTMLElement(dispatchEvent: DispatchEvent) {
     // not really doing an update, just updating refs
     this.update(
       ({
@@ -312,19 +312,30 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // and the other is only used by this component
       // updating the state that is shared across components will trigger a re-render,
       // and we want to keep it right here
-      if (this.frameNumber !== currentFrameNumber) {
-        // sometimes we want to update the frame number from the outside
-        if (isCurrentFrameNumberAuthoritative) {
-          this.frameNumber = currentFrameNumber;
-          this.update({
-            isCurrentFrameNumberAuthoritative: false,
-          });
-        } else {
-          this.update({
-            currentFrameNumber: this.frameNumber,
-          });
-        }
+      // if (this.frameNumber !== currentFrameNumber) {
+      //   // sometimes we want to update the frame number from the outside
+      //   if (isCurrentFrameNumberAuthoritative) {
+      //     this.frameNumber = currentFrameNumber;
+      //     this.update({
+      //       isCurrentFrameNumberAuthoritative: false,
+      //     });
+      //   } else {
+      //     this.update({
+      //       currentFrameNumber: this.frameNumber,
+      //     });
+      //   }
+      // }
+      console.log("Is authoritative before", isCurrentFrameNumberAuthoritative);
+      if (!isCurrentFrameNumberAuthoritative) {
+        console.log(
+          "Changing isAutho to true",
+          isCurrentFrameNumberAuthoritative
+        );
+        this.update({
+          isCurrentFrameNumberAuthoritative: true,
+        });
       }
+      console.log("Is authoritative after", isCurrentFrameNumberAuthoritative);
 
       if (destroyed) {
         console.log("destroyed");
@@ -334,6 +345,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
       this.ensureBuffers(state);
 
+      if (!seeking)
+        this.update({
+          seeking: true,
+        });
+
+      return null;
       /**
        *
        * batchUpdate(() => {

@@ -28,7 +28,17 @@ export abstract class BaseElement<
   children: BaseElement<State>[] = [];
   element: Element;
 
+  /**
+   * Update state.
+   * This triggers a re-render of this node as well as all its children.
+   */
   update: StateUpdate<State>;
+
+  /**
+   * All calls to `update` are batched together and applied after the callback is executed.
+   * This minimizes the number of re-renders.
+   * Note: Updates are merged in the order they are called.
+   */
   batchUpdate: (cb: () => unknown) => void;
 
   protected readonly events: LoadedEvents = {};
@@ -81,7 +91,7 @@ export abstract class BaseElement<
   }
 
   abstract createHTMLElement(
-    dispatchEvent: (eventType: string, details?: any) => void,
+    dispatchEvent: DispatchEvent,
     config: Readonly<State["config"]>
   ): Element | null;
 
