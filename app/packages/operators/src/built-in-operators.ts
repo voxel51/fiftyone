@@ -15,6 +15,7 @@ import {
   Operator,
   OperatorConfig,
   executeOperator,
+  executeStartupOperators,
   listLocalAndRemoteOperators,
   loadOperatorsFromServer,
   registerOperator,
@@ -780,9 +781,15 @@ export function registerBuiltInOperators() {
   }
 }
 
+let startupOperatorsExecuted = false;
 export async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
+  // todo: move to better spot
   await loadOperatorsFromServer(datasetName);
+  if (!startupOperatorsExecuted) {
+    executeStartupOperators();
+    startupOperatorsExecuted = true;
+  }
 }
 
 function getLayout(layout) {

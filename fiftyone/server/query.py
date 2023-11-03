@@ -465,8 +465,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def uid(self) -> str:
-        uid, _ = fou.get_user_id()
-        return uid
+        return fou.get_user_id()
 
     @gql.field
     def version(self) -> str:

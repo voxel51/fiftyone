@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.22.2"
+VERSION = "0.22.3"
 
 
 def get_version():
@@ -42,6 +42,7 @@ INSTALL_REQUIRES = [
     "dacite>=1.6.0,<1.8.0",
     "Deprecated",
     "ftfy",
+    "humanize",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
@@ -113,7 +114,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.31"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.32"]}
 
 
 with open("README.md", "r") as fh:
