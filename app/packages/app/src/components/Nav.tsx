@@ -21,6 +21,7 @@ import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
+import gaConfig from "../ga";
 import DatasetSelector from "./DatasetSelector";
 import Teams from "./Teams";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
