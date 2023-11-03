@@ -3,6 +3,91 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.4:
+
+FiftyOne Teams 1.4.4
+--------------------
+*Released November 3, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
+
+General
+
+- Optimized iterator operations such as export
+- Improved plugin upload reliability
+
+Bugs
+
+- Fixed clips, frames, and patches views for grouped datasets in the App
+- Fixed cloud credential initialization during deployment restarts
+- Further improved dataset listing queries
+
+.. _release-notes-v0.22.3:
+
+FiftyOne 0.22.3
+---------------
+*Released November 3, 2023*
+
+Core
+
+- Optimized
+  :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+  `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
+- Fixed default ``fiftyone-db`` installs on Ubuntu 22.04, Debian, and RHEL
+  `#3675 <https://github.com/voxel51/fiftyone/pull/3675>`_
+
+App
+
+- Fixed rendering of :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
+  in the sample modal
+  `#3720 <https://github.com/voxel51/fiftyone/pull/3720>`_
+- Optimized the :ref:`Embeddings panel <app-embeddings-panel>`
+  `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
+- Fixed :ref:`media field <app-multiple-media-fields>` changes in the sample modal
+  `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
+- Fixed sidebar reordering edge case
+  `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
+- Fixed the :ref:`Operator browser <using-operators>` in the sample modal
+  `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
+- Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
+  `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
+
+
+Brain
+
+- Optimized similarity backends when performing KNN queries against their
+  entire indexes
+- Fixed performing similarity queries on filtered views in the
+  :ref:`LanceDB integration <lancedb-integration>`
+- Fixed calling
+  :meth:`remove_from_index() <fiftyone.brain.SimilarityIndex.remove_from_index>`
+  on an index that uses the ``embeddings_field`` parameter
+- Fixed
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  when ``skip_existing=True`` is provided
+
+Plugins
+
+- Fixed ``on_startup`` :ref:`Operator execution <using-operators>`
+  `#3731 <https://github.com/voxel51/fiftyone/pull/3731>`_
+- Fixed ``selected_labels`` in :ref:`Operator contexts <using-operators>`
+  `#3740 <https://github.com/voxel51/fiftyone/pull/3740>`_
+- Improved :ref:`Operator placements <using-operators>`
+  `#3742 <https://github.com/voxel51/fiftyone/pull/3742>`_
+- Fixed ``async`` generator results in
+  :ref:`delegated operations <fiftyone-plugins>`
+  `#3754 <https://github.com/voxel51/fiftyone/pull/3754>`_
+- Fixed ``ctx.secrets`` in
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+  `#3759 <https://github.com/voxel51/fiftyone/pull/3759>`_
+- 
+
+CLI
+
+- Added :ref:`delegated fail <cli-fiftyone-delegated-fail>` and
+  :ref:`delegated delete <cli-fiftyone-delegated-delete>` commands
+  `#3721 <https://github.com/voxel51/fiftyone/pull/3721>`_
+
 .. _release-notes-teams-v1.4.3:
 
 FiftyOne Teams 1.4.3
@@ -35,7 +120,7 @@ Core
   :ref:`FiftyOne config <configuring-fiftyone>`
   `#3654 <https://github.com/voxel51/fiftyone/pull/3654>`_
 - Added support for directly calling
-  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on 
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on
   :ref:`patches views <object-patches-views>` to export image patches
   `#3651 <https://github.com/voxel51/fiftyone/pull/3651>`_
 - Fixed an `issue <https://github.com/voxel51/fiftyone/issues/3688>`_ where
@@ -103,7 +188,7 @@ Includes all updates from :ref:`FiftyOne 0.22.1 <release-notes-v0.22.1>`, plus:
 General
 
 - Error messages now clearly indicate when attempting to use a duplicate
-  key on datasets a user does not have access to 
+  key on datasets a user does not have access to
 - Fixed issue with setting default access permissions for new datasets
 - Deleting a dataset now deletes all dataset-related references
 - Default fields now populate properly when creating a new dataset regardless
@@ -3477,7 +3562,7 @@ Docs
 - Added a new :ref:`evaluation page <evaluating-models>` to the user guide that
   explains how to evaluate various types of models with FiftyOne
 - Removed legacy `--index` flags from the install instructions from the
-  :ref:`troubleshooting page <alternative-builds>` which prevented a valid
+  :ref:`troubleshooting page <troubleshooting>` which prevented a valid
   installation
 
 FiftyOne 0.7.2

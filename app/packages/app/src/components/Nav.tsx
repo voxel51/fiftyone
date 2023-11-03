@@ -10,6 +10,11 @@ import {
 import { ViewBar } from "@fiftyone/core";
 import * as fos from "@fiftyone/state";
 import { useRefresh } from "@fiftyone/state";
+import { Route, RouterContext, getDatasetName } from "@fiftyone/state";
+import { RootDatasets_query$key } from "./__generated__/RootDatasets_query.graphql";
+import { RootGA_query$key } from "./__generated__/RootGA_query.graphql";
+import { RootNav_query$key } from "./__generated__/RootNav_query.graphql";
+import { RootQuery } from "./__generated__/RootQuery.graphql";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
@@ -87,24 +92,21 @@ export const useGA = (fragment: NavGA$key) => {
     }
     const dev = info.dev;
     const buildType = dev ? "dev" : "prod";
-
-    ReactGA.initialize(ga.app_ids[buildType], {
-      debug: false,
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      testMode: false,
       gaOptions: {
         storage: "none",
         cookieDomain: "none",
         clientId: info.uid,
+        page_location: "omitted",
+        page_path: "omitted",
+        kind: isElectron() ? "Desktop" : "Web",
+        version: info.version,
+        context: info.context,
+        checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-    ReactGA.set({
-      userId: info.uid,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [ga.dimensions.dev]: buildType,
-      [ga.dimensions.version]: `${info.version}`,
-      [ga.dimensions.context]: info.context + (isElectron() ? "-DESKTOP" : ""),
-    });
-    ReactGA.pageview("/");
-  }, [info]);
+  }, []);
 };
 
 const Nav: React.FC<{

@@ -24,21 +24,21 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
     samples = []
     for i in range(1, 101):
         group = fo.Group()
-    
+
         if i % 2:
             samples.append(
                 fo.Sample(
                     filepath=f"ego-{i}.pcd", group=group.element("ego"), dynamic=i % 10
                 )
             )
-    
+
         if i % 3:
             samples.append(
                 fo.Sample(
                     filepath=f"left-{i}.png", group=group.element("left"), dynamic=i % 10
                 )
             )
-    
+
         if i % 5:
             samples.append(
                 fo.Sample(
@@ -58,7 +58,7 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.clickOnLooker();
+  await modal.groupLooker.click();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.navigateSlice("group.name", "right", true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
@@ -66,11 +66,10 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
   const promise = modal.getLookerAttachedEvent();
   await modal.navigateNextSample(true);
-  await promise;
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
-  await modal.clickOnLooker();
-  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.assert.verifyCarouselLength(1);
+  await modal.sidebar.assert.verifySidebarEntryText("group.name", "ego");
+  await modal.groupLooker.click();
+  await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.navigateNextSample(true);
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.assert.verifyCarouselLength(1);
