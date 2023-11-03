@@ -14,7 +14,6 @@ export class TimeElement extends BaseElement<ImaVidState> {
 
   renderSelf({
     currentFrameNumber: frameNumber,
-    duration,
     config,
     options: { useFrameNumber },
   }: Readonly<ImaVidState>) {

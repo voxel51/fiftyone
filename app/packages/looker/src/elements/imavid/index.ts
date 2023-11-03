@@ -84,7 +84,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private thumbnailSrc: string;
-  private update: StateUpdate<ImaVidState>;
   // private dispatchEvent:
   private waitingToPause = false;
   private waitingToPlay = false;
@@ -128,9 +127,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * - if thumbnail, it is canvas for grid view, html video otherwise (modal)
    * - thumbnailer:
    */
-  createHTMLElement(update: StateUpdate<ImaVidState>, dispatchEvent) {
-    this.update = update;
-
+  createHTMLElement(dispatchEvent, _config) {
     // not really doing an update, just updating refs
     this.update(
       ({
@@ -301,7 +298,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       buffering,
       destroyed,
     } = state;
-
     console.log("renderSelf", { currentFrameNumber, playing });
 
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
@@ -310,111 +306,116 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.element.setAttribute("src", thumbnailSrc);
     }
 
-    // sync two states that track frame number
-    // two states because one of the states is shared across components,
-    // and the other is only used by this component
-    // updating the state that is shared across components will trigger a re-render,
-    // and we want to keep it right here
-    if (this.frameNumber !== currentFrameNumber) {
-      // sometimes we want to update the frame number from the outside
-      if (isCurrentFrameNumberAuthoritative) {
-        this.frameNumber = currentFrameNumber;
-        this.update({
-          isCurrentFrameNumberAuthoritative: false,
-        });
-      } else {
-        this.update({
-          currentFrameNumber: this.frameNumber,
-        });
+    this.batchUpdate(() => {
+      // sync two states that track frame number
+      // two states because one of the states is shared across components,
+      // and the other is only used by this component
+      // updating the state that is shared across components will trigger a re-render,
+      // and we want to keep it right here
+      if (this.frameNumber !== currentFrameNumber) {
+        // sometimes we want to update the frame number from the outside
+        if (isCurrentFrameNumberAuthoritative) {
+          this.frameNumber = currentFrameNumber;
+          this.update({
+            isCurrentFrameNumberAuthoritative: false,
+          });
+        } else {
+          this.update({
+            currentFrameNumber: this.frameNumber,
+          });
+        }
       }
-    }
 
-    if (destroyed) {
-      console.log("destroyed");
-      // triggered when, for example, grid is reset, do nothing
-      this.framesController.cleanup();
-    }
-
-    this.ensureBuffers(state);
-
-    /**
-     *
-     * batchUpdate(() => {
-     *  // code
-     *
-     *  update({})
-     *
-     *  // code
-     *
-     *  update({})
-     *
-     * })
-     */
-
-    /**
-     * - can play even if buffering
-     * - need a flag inside drawFrame to know when to pause
-     */
-
-    // now that we know we have some frames, we can begin streaming
-
-    const isPlayable = this.getCurrentFrameSample(currentFrameNumber) !== null;
-
-    if (!isPlayable) {
-      return null;
-    }
-
-    if (thumbnail && !hovering) {
-      this.framesController.cleanup();
-      this.waitingToPlay = false;
-    } else if (thumbnail && hovering && playing) {
-      this.play(state);
-    }
-    // if (loaded && playing && !seeking && !buffering) {
-    //   this.play();
-    //   return null;
-    // }
-
-    return null;
-
-    this.imageSource = this.canvas;
-    // if (hasPoster && frameNumber === this.posterFrame) {
-    //   console.log("setting canvas as source");
-    //   this.imageSource = this.canvas;
-    // } else {
-    //   console.log("setting element as source");
-    //   this.imageSource = this.element;
-    // }
-
-    if (!this.element) {
-      return null;
-    }
-
-    // if (loaded && playing && !seeking && !buffering && this.element.paused) {
-    //   this.waitingToPlay = true;
-    //   this.element.play().then(() => {
-    //     this.waitingToPlay = false;
-    //     this.waitingToPause && this.element && this.element.pause();
-    //     this.waitingToPause = false;
-
-    //     if (this.waitingToRelease) {
-    //       this.releaseVideo();
-    //       return null;
-    //     }
-    //   });
-    // }
-    if (loaded && (!playing || seeking || buffering)) {
-      if (!this.waitingToPlay) {
-        this.pause();
-      } else {
-        this.waitingToPause = true;
+      if (destroyed) {
+        console.log("destroyed");
+        // triggered when, for example, grid is reset, do nothing
+        this.framesController.cleanup();
       }
-    }
 
-    if (this.loop !== loop) {
-      // this.element.loop = loop;
-      this.loop = loop;
-    }
+      this.ensureBuffers(state);
+
+      /**
+       *
+       * batchUpdate(() => {
+       *  // code
+       *
+       *  update({})
+       *
+       *  // code
+       *
+       *  update({})
+       *
+       * })
+       */
+
+      /**
+       * - can play even if buffering
+       * - need a flag inside drawFrame to know when to pause
+       */
+
+      // now that we know we have some frames, we can begin streaming
+
+      const isPlayable =
+        this.getCurrentFrameSample(currentFrameNumber) !== null;
+
+      if (!isPlayable) {
+        return null;
+      }
+
+      if (thumbnail && !hovering) {
+        this.framesController.cleanup();
+        this.waitingToPlay = false;
+      } else if (thumbnail && hovering && playing) {
+        this.play(state);
+      }
+      // if (loaded && playing && !seeking && !buffering) {
+      //   this.play();
+      //   return null;
+      // }
+
+      return null;
+
+      this.imageSource = this.canvas;
+      // if (hasPoster && frameNumber === this.posterFrame) {
+      //   console.log("setting canvas as source");
+      //   this.imageSource = this.canvas;
+      // } else {
+      //   console.log("setting element as source");
+      //   this.imageSource = this.element;
+      // }
+
+      if (!this.element) {
+        return null;
+      }
+
+      // if (loaded && playing && !seeking && !buffering && this.element.paused) {
+      //   this.waitingToPlay = true;
+      //   this.element.play().then(() => {
+      //     this.waitingToPlay = false;
+      //     this.waitingToPause && this.element && this.element.pause();
+      //     this.waitingToPause = false;
+
+      //     if (this.waitingToRelease) {
+      //       this.releaseVideo();
+      //       return null;
+      //     }
+      //   });
+      // }
+      if (loaded && (!playing || seeking || buffering)) {
+        if (!this.waitingToPlay) {
+          this.pause();
+        } else {
+          this.waitingToPause = true;
+        }
+      }
+
+      if (this.loop !== loop) {
+        // this.element.loop = loop;
+        this.loop = loop;
+      }
+
+      return null;
+    });
 
     return null;
   }

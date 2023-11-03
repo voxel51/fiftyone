@@ -399,7 +399,6 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
-  private update: StateUpdate<VideoState>;
   private volume: number;
   private waitingToPause = false;
   private waitingToPlay = false;
@@ -525,10 +524,9 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
     };
   }
 
-  createHTMLElement(update: StateUpdate<VideoState>) {
-    this.update = update;
+  createHTMLElement() {
     this.element = null;
-    update(({ config: { thumbnail, src, frameRate, support } }) => {
+    this.update(({ config: { thumbnail, src, frameRate, support } }) => {
       this.src = src;
       this.posterFrame = support ? support[0] : 1;
       if (thumbnail) {
@@ -539,7 +537,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             video.removeEventListener("error", error);
             video.removeEventListener("seeked", seeked);
             release();
-            update({ error: true, loaded: true, dimensions: [512, 512] });
+            this.update({ error: true, loaded: true, dimensions: [512, 512] });
           };
 
           const seeked = () => {
@@ -570,7 +568,7 @@ export class VideoElement extends BaseElement<VideoState, HTMLVideoElement> {
             this.canvas.width = video.videoWidth;
             this.canvas.height = video.videoHeight;
 
-            update({ dimensions: [video.videoWidth, video.videoHeight] });
+            this.update({ dimensions: [video.videoWidth, video.videoHeight] });
           };
 
           video.src = src;

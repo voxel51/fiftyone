@@ -21,7 +21,8 @@ import * as imavid from "./imavid";
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void
+  dispatchEvent: (eventType: string, details?: any) => void,
+  batchUpdate?: (cb: () => unknown) => void | undefined
 ) => common.LookerElement<State>;
 
 export const getFrameElements: GetElements<FrameState> = (
@@ -206,7 +207,8 @@ export const getVideoElements: GetElements<VideoState> = (
 export const getImaVidElements: GetElements<ImaVidState> = (
   config,
   update,
-  dispatchEvent
+  dispatchEvent,
+  batchUpdate
 ) => {
   const elements = {
     node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
@@ -263,7 +265,8 @@ export const getImaVidElements: GetElements<ImaVidState> = (
     config,
     elements,
     update,
-    dispatchEvent
+    dispatchEvent,
+    batchUpdate
   );
 };
 

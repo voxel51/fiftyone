@@ -35,11 +35,11 @@ export class FrameNumberElement extends BaseElement<FrameState> {
 export class FrameElement extends BaseElement<FrameState, null> {
   imageSource: HTMLCanvasElement;
 
-  createHTMLElement(update: StateUpdate<FrameState>) {
+  createHTMLElement() {
     this.imageSource = document.createElement("canvas");
     this.imageSource.style.imageRendering = "pixelated";
 
-    update(({ config: { thumbnail, src, frameRate, frameNumber } }) => {
+    this.update(({ config: { thumbnail, src, frameRate, frameNumber } }) => {
       this.src = src;
 
       const acquirer = thumbnail ? acquireThumbnailer : acquirePlayer;
@@ -54,7 +54,7 @@ export class FrameElement extends BaseElement<FrameState, null> {
                 ctx.drawImage(video, 0, 0);
                 release();
                 video.removeEventListener("seeked", seeked);
-                update({
+                this.update({
                   loaded: true,
                   duration: video.duration,
                 });
@@ -76,17 +76,17 @@ export class FrameElement extends BaseElement<FrameState, null> {
           }
           video.removeEventListener("error", error);
           release();
-          update({ error: true, loaded: true, dimensions: [512, 512] });
+          this.update({ error: true, loaded: true, dimensions: [512, 512] });
         };
 
         const loaded = () => {
           video.currentTime = getTime(frameNumber, frameRate);
-          update({ duration: video.duration });
+          this.update({ duration: video.duration });
           video.removeEventListener("error", error);
           video.removeEventListener("loadedmetadata", loaded);
           this.imageSource.width = video.videoWidth;
           this.imageSource.height = video.videoHeight;
-          update({ dimensions: [video.videoWidth, video.videoHeight] });
+          this.update({ dimensions: [video.videoWidth, video.videoHeight] });
         };
 
         video.src = src;

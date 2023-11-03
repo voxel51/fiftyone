@@ -199,15 +199,7 @@ export abstract class AbstractLooker<
     };
   }
 
-  /**
-   * () => {
-   *  // code
-   *  // update({})
-   *  // code
-   *  // update({})
-   * }
-   */
-  private batchUpdater(cb: () => unknown) {
+  public batchUpdater(cb: () => unknown) {
     this.isBatching = true;
     cb();
     this.isBatching = false;

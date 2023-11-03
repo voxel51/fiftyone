@@ -27,18 +27,26 @@ export abstract class BaseElement<
 > {
   children: BaseElement<State>[] = [];
   element: Element;
+
+  update: StateUpdate<State>;
+  batchUpdate: (cb: () => unknown) => void;
+
   protected readonly events: LoadedEvents = {};
 
   boot(
     config: Readonly<State["config"]>,
     update: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
+    dispatchEvent: (eventType: string, details?: any) => void,
+    batchUpdate?: (cb: () => unknown) => void
   ) {
     if (!this.isShown(config)) {
       return;
     }
 
-    this.element = this.createHTMLElement(update, dispatchEvent, config);
+    this.update = update;
+    this.batchUpdate = batchUpdate;
+
+    this.element = this.createHTMLElement(dispatchEvent, config);
 
     for (const [eventType, handler] of Object.entries(this.getEvents())) {
       this.events[eventType] = (event) =>
@@ -73,7 +81,6 @@ export abstract class BaseElement<
   }
 
   abstract createHTMLElement(
-    update: StateUpdate<State>,
     dispatchEvent: (eventType: string, details?: any) => void,
     config: Readonly<State["config"]>
   ): Element | null;

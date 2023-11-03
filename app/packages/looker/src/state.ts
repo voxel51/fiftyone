@@ -385,7 +385,9 @@ export interface Point {
 export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
-  stateOrUpdater: Partial<State> | (() => Partial<State>),
+  stateOrUpdater:
+    | Partial<State>
+    | ((previousState: Partial<State>) => Partial<State>),
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
