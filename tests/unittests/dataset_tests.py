@@ -5,8 +5,9 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy, copy
-from datetime import date, datetime
+import tempfile
+from copy import copy, deepcopy
+from datetime import date, datetime, timedelta
 import gc
 import os
 import random
@@ -2908,6 +2909,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
+        self.assertNotIn("created_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2917,6 +2919,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_media_type", d)
         self.assertIn("_rand", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("created_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2952,6 +2955,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
+        self.assertNotIn("created_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -2960,6 +2964,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_id", d)
         self.assertIn("_sample_id", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("created_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -3182,6 +3187,22 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(dataset5.distinct("dataset_id"), [dataset_id5])
 
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            dataset_id6 = str(dataset6._doc.id)
+            self.assertListEqual(
+                dataset6.distinct("dataset_id"), [dataset_id6]
+            )
+
     @drop_datasets
     def test_video_dataset_id(self):
         sample1 = fo.Sample(filepath="video1.mp4")
@@ -3268,6 +3289,279 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(
             dataset5.distinct("frames.dataset_id"), [dataset_id5]
+        )
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            dataset_id6 = str(dataset6._doc.id)
+            self.assertListEqual(
+                dataset6.distinct("frames.dataset_id"), [dataset_id6]
+            )
+
+
+class SampleCreatedAtTests(unittest.TestCase):
+    EQUAL_DELTA = timedelta(milliseconds=1)
+    CLOSE_DELTA = timedelta(seconds=1)
+
+    def _assert_created_at(self, previous_created_ats, dataset, now):
+        new_created_ats = dataset.values("created_at")
+
+        for original_ca, new_ca in zip(previous_created_ats, new_created_ats):
+            self.assertGreater(new_ca, original_ca)
+            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
+
+        return new_created_ats
+
+    def _assert_frames_created_at(self, previous_created_ats, dataset, now):
+        new_created_ats = dataset.values("frames.created_at", unwind=True)
+
+        for original_ca, new_ca in zip(previous_created_ats, new_created_ats):
+            self.assertGreater(new_ca, original_ca)
+            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
+
+        return new_created_ats
+
+    @drop_datasets
+    def test_created_at(self):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.jpg"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+        ]
+
+        # created at is None when not inside a dataset
+        all_none = not any(s.created_at for s in samples)
+        self.assertTrue(all_none)
+
+        # Add samples to dataset
+        dataset = fo.Dataset()
+        now = datetime.utcnow()
+        dataset.add_samples(samples)
+
+        # In schema
+        schema = dataset.get_field_schema()
+        self.assertIn("created_at", schema)
+
+        # Time pushed to sample objects, and more or less equal to "now"
+        original_created_ats = created_ats = dataset.values("created_at")
+        for sample, new_ca in zip(samples, created_ats):
+            self.assertAlmostEqual(
+                sample.created_at, new_ca, delta=self.EQUAL_DELTA
+            )
+            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
+
+        sample = dataset.first()
+        self.assertAlmostEqual(
+            sample.created_at, samples[0].created_at, delta=self.EQUAL_DELTA
+        )
+
+        # Shouldn't be changed on updates
+        dataset.set_values("foo", [4] * len(samples))
+        self.assertEqual(created_ats, dataset.values("created_at"))
+
+        # view schema
+        view = dataset.select_fields()
+        schema = view.get_field_schema()
+        self.assertIn("created_at", schema)
+
+        # View values
+        view_created_ats = view.values("created_at")
+        for view_ca, original_ca in zip(view_created_ats, created_ats):
+            self.assertAlmostEqual(
+                view_ca, original_ca, delta=self.EQUAL_DELTA
+            )
+
+        sample = view.first()
+        self.assertAlmostEqual(
+            sample.created_at, samples[0].created_at, delta=self.EQUAL_DELTA
+        )
+
+        # add_collection()
+
+        now = datetime.utcnow()
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset, new_ids=True)
+
+        created_ats = self._assert_created_at(created_ats, dataset2, now)
+
+        # clone()
+
+        now = datetime.utcnow()
+        dataset3 = dataset.clone()
+
+        created_ats = self._assert_created_at(created_ats, dataset3, now)
+
+        # add_samples()
+
+        now = datetime.utcnow()
+
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(dataset)
+
+        created_ats = self._assert_created_at(created_ats, dataset4, now)
+
+        # merge_samples()
+
+        now = datetime.utcnow()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(dataset)
+
+        created_ats = self._assert_created_at(created_ats, dataset5, now)
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            created_ats = self._assert_created_at(created_ats, dataset6, now)
+
+        # merge existing samples
+        dataset.merge_samples(samples, skip_existing=False)
+        self.assertEqual(original_created_ats, dataset.values("created_at"))
+
+    @drop_datasets
+    def test_video_created_at(self):
+        samples = [
+            fo.Sample("video1.mp4"),
+            fo.Sample("video2.mp4"),
+            fo.Sample("video3.mp4"),
+        ]
+
+        frames = []
+        for samp in samples:
+            samp.frames[1] = fo.Frame()
+            frames.append(samp.frames[1])
+
+        # created at is None when not inside a dataset
+        all_none = not any(
+            f.created_at for s in samples for f in s.frames.values()
+        )
+        self.assertTrue(all_none)
+
+        # Create dataset
+        now = datetime.utcnow()
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        # created_at in schema
+        schema = dataset.get_frame_field_schema(include_private=True)
+        self.assertIn("created_at", schema)
+
+        # Values of created_at in frames are close to now
+        original_created_ats = created_ats = dataset.values(
+            "frames.created_at", unwind=True
+        )
+        for ca in created_ats:
+            self.assertIsNotNone(ca)
+            self.assertAlmostEqual(ca, now, delta=self.CLOSE_DELTA)
+
+        # Local frames and values should be really close, within rounding.
+        for local_frame, db_created_at in zip(frames, created_ats):
+            self.assertAlmostEqual(
+                local_frame.created_at, db_created_at, delta=self.EQUAL_DELTA
+            )
+
+        # Local frames from above and through sample-frame iteration should be
+        #   equal.
+        self.assertListEqual(
+            [f.created_at for f in frames],
+            [f.created_at for s in dataset for f in s.frames.values()],
+        )
+
+        # Shouldn't be changed on updates
+        dataset.set_values("frames.foo", [[4]] * len(frames))
+        self.assertEqual(
+            original_created_ats,
+            dataset.values("frames.created_at", unwind=True),
+        )
+
+        # View
+        view = dataset.select_fields()
+
+        schema = view.get_frame_field_schema(include_private=True)
+        self.assertIn("created_at", schema)
+
+        values = view.values("frames.created_at", unwind=True)
+        self.assertListEqual(values, created_ats)
+
+        frame = view.first().frames.first()
+        self.assertEqual(frame.created_at, values[0])
+
+        # add_collection()
+
+        now = datetime.utcnow()
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset, new_ids=True)
+
+        created_ats = self._assert_frames_created_at(
+            created_ats, dataset2, now
+        )
+
+        # clone()
+
+        now = datetime.utcnow()
+        dataset3 = dataset.clone()
+
+        created_ats = self._assert_frames_created_at(
+            created_ats, dataset3, now
+        )
+
+        # add_samples()
+
+        now = datetime.utcnow()
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(dataset)
+
+        created_ats = self._assert_frames_created_at(
+            created_ats, dataset4, now
+        )
+
+        # merge_samples()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(dataset)
+
+        created_ats = self._assert_frames_created_at(
+            created_ats, dataset5, now
+        )
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            created_ats = self._assert_frames_created_at(
+                created_ats, dataset6, now
+            )
+
+        # merge existing samples, created_at should not change.
+        dataset.merge_samples(samples, skip_existing=False)
+        self.assertEqual(
+            original_created_ats,
+            dataset.values("frames.created_at", unwind=True),
         )
 
 

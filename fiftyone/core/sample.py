@@ -50,6 +50,9 @@ class _SampleMixin(object):
             self.set_field("frames", value)
             return
 
+        # if name == "created_at":
+        #    raise AttributeError("can't set attribute 'created_at'")
+
         self._secure_media(name, value)
         super().__setattr__(name, value)
 
@@ -72,6 +75,15 @@ class _SampleMixin(object):
             return iter(self._frames)
 
         raise ValueError("Image samples are not iterable")
+
+    @property
+    def created_at(self):
+        """Creation time of the sample, or ``None`` if unknown.
+
+        Samples only get a creation
+
+        """
+        return self._doc.created_at
 
     @property
     def dataset_id(self):
@@ -606,6 +618,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             a :class:`Sample`
         """
         d.pop("_dataset_id", None)
+        d.pop("created_at", None)
 
         media_type = d.pop("_media_type", None)
         if media_type is None:

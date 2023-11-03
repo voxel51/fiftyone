@@ -5,6 +5,7 @@ Video frame views.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from collections import defaultdict
 from copy import deepcopy
 import logging
@@ -691,12 +692,17 @@ def make_frames_dataset(
 
     pipeline.extend(
         [
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dataset._doc.id,
+                    "created_at": datetime.datetime.utcnow(),
+                }
+            },
             {
                 "$merge": {
                     "into": dataset._sample_collection_name,
                     "on": ["_sample_id", "frame_number"],
-                    "whenMatched": "merge",
+                    "whenMatched": "merge",  # TODO STW what do when existing is merge with created_at
                     "whenNotMatched": "discard",
                 }
             },
@@ -870,6 +876,7 @@ def _init_frames(
             missing_docs = None
             missing_fps = None
 
+        now = datetime.datetime.utcnow()
         # Create necessary frame documents
         for fn in doc_frame_numbers:
             if is_clips:
@@ -899,6 +906,7 @@ def _init_frames(
                 "tags": tags,
                 "metadata": None,
                 "frame_number": fn,
+                "created_at": now,
                 "_media_type": "image",
                 "_rand": _rand,
                 "_sample_id": _sample_id,

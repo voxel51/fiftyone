@@ -2637,7 +2637,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # because None and missing are equivalent in our data model
         d = {k: v for k, v in d.items() if v is not None}
 
+        now = datetime.utcnow()
         d["_dataset_id"] = self._doc.id
+        d["created_at"] = now
 
         return d
 
@@ -3900,6 +3902,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         sample_collection.compute_metadata()
+        now = datetime.utcnow()
         sample_collection._aggregate(
             post_pipeline=[
                 {
@@ -3907,6 +3910,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "_id": False,
                         "_sample_id": "$_id",
                         "_dataset_id": self._doc.id,
+                        "created_at": now,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6983,14 +6987,17 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$addFields": {"_dataset_id": _id}})
+    now = datetime.utcnow()
+    pipeline.append({"$addFields": {"_dataset_id": _id, "created_at": now}})
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$addFields": {"_dataset_id": _id}})
+        pipeline.append(
+            {"$addFields": {"_dataset_id": _id, "created_at": now}}
+        )
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -7488,7 +7495,8 @@ def _add_collection_with_new_ids(
     else:
         num_ids = len(src_samples)
 
-    add_fields = {"_dataset_id": dataset._doc.id}
+    now = datetime.utcnow()
+    add_fields = {"_dataset_id": dataset._doc.id, "created_at": now}
 
     if contains_groups:
         id_field = sample_collection.group_field + "._id"
@@ -7545,7 +7553,12 @@ def _add_collection_with_new_ids(
                 }
             },
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dataset._doc.id,
+                    "created_at": now,
+                }
+            },
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7823,6 +7836,9 @@ def _merge_samples_pipeline(
                     f for f in default_fields if f in omit_fields
                 )
 
+        # Delete created_at field so it isn't overwritten
+        delete_fields.add("created_at")
+
         when_matched = _merge_docs(
             src_collection,
             merge_lists=merge_lists,
@@ -7840,7 +7856,16 @@ def _merge_samples_pipeline(
 
     sample_pipeline.extend(
         [
-            {"$addFields": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dst_dataset._doc.id,
+                    # We can safely add this field here. Either doc is
+                    #   new then we insert or discard, either is fine. Or,
+                    #   doc exists and we keepExisting OR created_at should
+                    #   be a deleted_field in the whenMatch pipeline
+                    "created_at": datetime.utcnow(),
+                }
+            },
             {
                 "$merge": {
                     "into": dst_dataset._sample_collection_name,
@@ -7918,11 +7943,14 @@ def _merge_samples_pipeline(
         if skip_existing:
             when_frame_matched = "keepExisting"
         else:
+            # Delete created_at field so it isn't overwritten
+            delete_fields = {"created_at"}
             when_frame_matched = _merge_docs(
                 src_collection,
                 merge_lists=merge_lists,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
+                delete_fields=delete_fields,
                 overwrite=overwrite,
                 frames=True,
             )
@@ -7933,6 +7961,11 @@ def _merge_samples_pipeline(
                     "$addFields": {
                         "_dataset_id": dst_dataset._doc.id,
                         "_sample_id": "$" + frame_key_field,
+                        # We can safely add this field here. Either doc is
+                        #   new then we insert. Or, doc exists and we
+                        #   keepExisting OR created_at should
+                        #   be a deleted_field in the whenMatch pipeline
+                        "created_at": datetime.utcnow(),
                     }
                 },
                 {

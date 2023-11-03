@@ -7,8 +7,6 @@ Backing document classes for :class:`fiftyone.core.frame.Frame` instances.
 """
 from collections import OrderedDict
 
-from bson import ObjectId
-
 import fiftyone.core.fields as fof
 
 from .document import Document, SerializableDocument
@@ -16,20 +14,19 @@ from .mixins import DatasetMixin, get_default_fields, NoDatasetMixin
 
 
 class DatasetFrameDocument(DatasetMixin, Document):
-
     meta = {"abstract": True}
 
     _is_frames_doc = True
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
+    created_at = fof.DateTimeField(null=True)
 
     _sample_id = fof.ObjectIdField(required=True)
     _dataset_id = fof.ObjectIdField()
 
 
 class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
-
     _is_frames_doc = True
 
     # pylint: disable=no-member
@@ -47,6 +44,7 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
             [
                 ("id", None),
                 ("frame_number", None),
+                ("created_at", None),
                 ("_sample_id", sample_id),
                 ("_dataset_id", None),
             ]
