@@ -576,6 +576,7 @@ export const ModalActionsRow = ({
       <Tag modal={true} lookerRef={lookerRef} />
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <BrowseOperations />
       <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>
