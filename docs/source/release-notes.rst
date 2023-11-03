@@ -3,6 +3,91 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.4:
+
+FiftyOne Teams 1.4.4
+--------------------
+*Released November 3, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.22.3 <release-notes-v0.22.3>`, plus:
+
+General
+
+- Optimized iterator operations such as export
+- Improved plugin upload reliability
+
+Bugs
+
+- Fixed clips, frames, and patches views for grouped datasets in the App
+- Fixed cloud credential initialization during deployment restarts
+- Further improved dataset listing queries
+
+.. _release-notes-v0.22.3:
+
+FiftyOne 0.22.3
+---------------
+*Released November 3, 2023*
+
+Core
+
+- Optimized
+  :meth:`sort_by_similarity() <fiftyone.core.collections.SampleCollection.sort_by_similarity>`
+  `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
+- Fixed default ``fiftyone-db`` installs on Ubuntu 22.04, Debian, and RHEL
+  `#3675 <https://github.com/voxel51/fiftyone/pull/3675>`_
+
+App
+
+- Fixed rendering of :class:`BooleanFields <fiftyone.core.fields.BooleanField>`
+  in the sample modal
+  `#3720 <https://github.com/voxel51/fiftyone/pull/3720>`_
+- Optimized the :ref:`Embeddings panel <app-embeddings-panel>`
+  `#3733 <https://github.com/voxel51/fiftyone/pull/3733>`_
+- Fixed :ref:`media field <app-multiple-media-fields>` changes in the sample modal
+  `#3735 <https://github.com/voxel51/fiftyone/pull/3735>`_
+- Fixed sidebar reordering edge case
+  `#3753 <https://github.com/voxel51/fiftyone/pull/3753>`_
+- Fixed the :ref:`Operator browser <using-operators>` in the sample modal
+  `#3764 <https://github.com/voxel51/fiftyone/pull/3764>`_
+- Fixed :ref:`3D detections <3D app-3d-orthographic-projections>` in the grid
+  `#3761 <https://github.com/voxel51/fiftyone/pull/3761>`_
+
+
+Brain
+
+- Optimized similarity backends when performing KNN queries against their
+  entire indexes
+- Fixed performing similarity queries on filtered views in the
+  :ref:`LanceDB integration <lancedb-integration>`
+- Fixed calling
+  :meth:`remove_from_index() <fiftyone.brain.SimilarityIndex.remove_from_index>`
+  on an index that uses the ``embeddings_field`` parameter
+- Fixed
+  :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+  when ``skip_existing=True`` is provided
+
+Plugins
+
+- Fixed ``on_startup`` :ref:`Operator execution <using-operators>`
+  `#3731 <https://github.com/voxel51/fiftyone/pull/3731>`_
+- Fixed ``selected_labels`` in :ref:`Operator contexts <using-operators>`
+  `#3740 <https://github.com/voxel51/fiftyone/pull/3740>`_
+- Improved :ref:`Operator placements <using-operators>`
+  `#3742 <https://github.com/voxel51/fiftyone/pull/3742>`_
+- Fixed ``async`` generator results in
+  :ref:`delegated operations <fiftyone-plugins>`
+  `#3754 <https://github.com/voxel51/fiftyone/pull/3754>`_
+- Fixed ``ctx.secrets`` in
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+  `#3759 <https://github.com/voxel51/fiftyone/pull/3759>`_
+- 
+
+CLI
+
+- Added :ref:`delegated fail <cli-fiftyone-delegated-fail>` and
+  :ref:`delegated delete <cli-fiftyone-delegated-delete>` commands
+  `#3721 <https://github.com/voxel51/fiftyone/pull/3721>`_
+
 .. _release-notes-teams-v1.4.3:
 
 FiftyOne Teams 1.4.3
@@ -15,7 +100,8 @@ General
 
 - Improved dataset listing queries
 - Improved error handling when listing datasets
-- Fixed issues with offline access and auth errors requiring cookies to be cleared manually
+- Fixed issues with offline access and auth errors requiring cookies to be
+  cleared manually
 - Reduced max export size of datasets to 100MB
 - Users will now only *see an operator* if their role meets the required role
 
@@ -27,16 +113,18 @@ FiftyOne 0.22.2
 
 Core
 
-- Added a `fiftyone_max_thread_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+- Added a `fiftyone_max_thread_pool_workers` option to the
+  :ref:`FiftyOne config <configuring-fiftyone>`
   `#3654 <https://github.com/voxel51/fiftyone/pull/3654>`_
-- Added a `fiftyone_max_process_pool_workers` option to the :ref:`FiftyOne config <configuring-fiftyone>`
+- Added a `fiftyone_max_process_pool_workers` option to the
+  :ref:`FiftyOne config <configuring-fiftyone>`
   `#3654 <https://github.com/voxel51/fiftyone/pull/3654>`_
 - Added support for directly calling
-  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on 
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` on
   :ref:`patches views <object-patches-views>` to export image patches
   `#3651 <https://github.com/voxel51/fiftyone/pull/3651>`_
-- Fixed an `issue <https://github.com/voxel51/fiftyone/issues/3688>`_ where CVAT import fails when
-  ``insert_new`` is ``False``
+- Fixed an `issue <https://github.com/voxel51/fiftyone/issues/3688>`_ where
+  CVAT import fails when ``insert_new`` is ``False``
   `#3691 <https://github.com/voxel51/fiftyone/pull/3691>`_
 
 App
@@ -45,25 +133,29 @@ App
   `#3655 <https://github.com/voxel51/fiftyone/pull/3655>`_
 - Fixed the :attr:`Session.url <fiftyone.core.session.session.Session>`
   property in Colab `#3645 <https://github.com/voxel51/fiftyone/pull/3645>`_
-- Fixed converting to patches in :ref:`grouped datasets <groups>` when sidebar filters are present
-  `#3666 <https://github.com/voxel51/fiftyone/pull/3666>`_
-- Fixed browser cache issues when upgrading `#3683 <https://github.com/voxel51/fiftyone/pull/3683>`_
+- Fixed converting to patches in :ref:`grouped datasets <groups>` when sidebar
+  filters are present `#3666 <https://github.com/voxel51/fiftyone/pull/3666>`_
+- Fixed browser cache issues when upgrading
+  `#3683 <https://github.com/voxel51/fiftyone/pull/3683>`_
 
 Plugins
 
 - Use a fallback icon when an operator cannot be executed
   `#3661 <https://github.com/voxel51/fiftyone/pull/3661>`_
-- :class:`fiftyone.operators.types.FileView` now captures content as well as filename and type of the
-  :class:`fiftyone.operators.types.UploadedFile`
+- :class:`fiftyone.operators.types.FileView` now captures content as well as
+  filename and type of the :class:`fiftyone.operators.types.UploadedFile`
   `#3679 <https://github.com/voxel51/fiftyone/pull/3679>`_
-- Fixed issue where the ``fiftyone delegated launch`` CLI command would print confusing errors
+- Fixed issue where the ``fiftyone delegated launch`` CLI command would
+  print confusing errors
   `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
-- Added a utility for :func:`listing operators <fiftyone.operators.list_operators>`
+- Added a utility for
+  :func:`listing operators <fiftyone.operators.list_operators>`
   `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
-- Added a utility for :func:`checking if an operator exists <fiftyone.operators.operator_exists>`
+- Added a utility for
+  :func:`checking if an operator exists <fiftyone.operators.operator_exists>`
   `#3694 <https://github.com/voxel51/fiftyone/pull/3694>`_
-- :ref:`Number properties <fiftyone.operators.types.Number>` now support ``min`` and ``max`` options
-  in various views and validation.
+- :ref:`Number properties <fiftyone.operators.types.Number>` now support
+  ``min`` and ``max`` options in various views and validation.
   `#3684 <https://github.com/voxel51/fiftyone/pull/3684>`_
 - Improved validation of primitive types in operators
   `#3685 <https://github.com/voxel51/fiftyone/pull/3685>`_
@@ -71,14 +163,14 @@ Plugins
   `#3701 <https://github.com/voxel51/fiftyone/pull/3701>`_
 - Fixed an issue where plugin cache was not cleared when a plugin was deleted
   `#3700 <https://github.com/voxel51/fiftyone/pull/3700>`_
-- :ref:`types.File <fiftyone.operators.types.File>` now uses :ref:`types.FileExplorerView <fiftyone.operators.types.FileExplorerView>`
-  by default
-  `#3656 <https://github.com/voxel51/fiftyone/pull/3656>`_
+- :ref:`types.File <fiftyone.operators.types.File>` now uses
+  :ref:`types.FileExplorerView <fiftyone.operators.types.FileExplorerView>`
+  by default `#3656 <https://github.com/voxel51/fiftyone/pull/3656>`_
 
 Zoo
 
-- Fixed issue preventing :ref:`DINOv2 <dinov2-example>` models from being loaded
-  `#3660 <https://github.com/voxel51/fiftyone/pull/3690>`_
+- Fixed issue preventing :ref:`DINOv2 <dinov2-example>` models from being
+  loaded `#3660 <https://github.com/voxel51/fiftyone/pull/3690>`_
 
 .. _release-notes-teams-v1.4.2:
 
