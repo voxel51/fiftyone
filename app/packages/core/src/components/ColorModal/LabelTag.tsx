@@ -24,10 +24,7 @@ const labelTagSetting = selector<LabelTagColorInput>({
   set: ({ set }, newSetting) => {
     set(fos.colorScheme, (current) => {
       if (!newSetting || newSetting instanceof DefaultValue) {
-        return {
-          ...current,
-          labelTags: current.labelTags,
-        };
+        throw new Error("not implemented");
       }
 
       return {

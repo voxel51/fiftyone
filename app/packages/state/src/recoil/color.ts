@@ -5,6 +5,7 @@ import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
   createColorGenerator,
+  default_app_color,
   getColor,
   hexToRgb,
   toCamelCase,
@@ -123,7 +124,8 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    colorPool: colorScheme.colorPool ?? appConfig?.colorPool,
+    colorPool:
+      colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {},
