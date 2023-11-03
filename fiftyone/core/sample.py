@@ -50,9 +50,6 @@ class _SampleMixin(object):
             self.set_field("frames", value)
             return
 
-        # if name == "created_at":
-        #    raise AttributeError("can't set attribute 'created_at'")
-
         self._secure_media(name, value)
         super().__setattr__(name, value)
 
@@ -80,8 +77,7 @@ class _SampleMixin(object):
     def created_at(self):
         """Creation time of the sample, or ``None`` if unknown.
 
-        Samples only get a creation
-
+        Samples only get a creation time when they're added to a dataset.
         """
         return self._doc.created_at
 
