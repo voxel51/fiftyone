@@ -15,9 +15,7 @@ from wheel.bdist_wheel import bdist_wheel
 import os
 import shutil
 
-
-VERSION = "0.21.0"
-
+VERSION = "0.22.0"
 
 def get_version():
     if "RELEASE_VERSION" in os.environ:

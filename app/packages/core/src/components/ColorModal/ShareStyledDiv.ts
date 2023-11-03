@@ -6,7 +6,7 @@ export const ModalWrapper = styled.div`
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 100000000 !important;
+  z-index: 1000; // do not set more than 1300 (operator panel)
   align-items: center;
   display: flex;
   justify-content: center;

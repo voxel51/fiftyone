@@ -68,6 +68,8 @@ class CloudCredentialsManager(object):
         creds_dir = str(pathlib.Path(foc.locate_config()).parent.absolute())
         fernet = Fernet(self._encryption_key)
 
+        # make that path if it's not there
+        os.makedirs(pathlib.Path(creds_dir), exist_ok=True)
         for provider in ("AWS", "GCP", "AZURE", "MINIO"):
             try:
                 creds = _parse_credentials(

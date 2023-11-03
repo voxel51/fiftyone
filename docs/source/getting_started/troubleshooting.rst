@@ -207,11 +207,12 @@ open file limit.  MongoDB has full documentation on the issue
 Troubleshooting Linux imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On Linux machines in particular, the MongoDB build works for Ubuntu
-18.04+ and several other modern distributions.
+`fiftyone-db` officially supports Debian 9+ (x86_64 only), Ubuntu 18.04+, and
+RHEL/CentOS 7+ Linux distributions. The correct MongoDB build is downloaded
+and installed while building the package wheel on your machine. 
 
-However, if a suitable MongoDB build is not available or otherwise does not
-work in your environment, you may encounter a `ServerSelectionTimeoutError`.
+If a suitable MongoDB build is not available or otherwise does not
+work in your environment, you may encounter a `FiftyOneConfigError`.
 
 If you have output similar to the below, you may just need to install
 `libssl` packages.
@@ -232,49 +233,6 @@ If you still face issues with imports, you can follow
 :ref:`these instructions <configuring-mongodb-connection>` to configure
 FiftyOne to use a MongoDB instance that you have installed yourself.
 
-On Linux, alternative :ref:`fiftyone-db builds <alternative-builds>` are
-available as well.
-
-.. _alternative-builds:
-
-Alternative Linux builds
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Alternative builds of MongoDB are available as pip packages for the Linux
-distributions listed below, and can be installed by running the corresponding
-command.
-
-Note that these packages must be installed *after* installing the `fiftyone`
-package; if you (re)install `fiftyone` afterwards, you can fix your MongoDB
-installation by adding `--force-reinstall` to the commands below.
-
-.. tabs::
-
-  .. tab:: Ubuntu 22.04
-
-    .. code-block:: shell
-
-      pip install fiftyone-db-ubuntu2204 
-
-  .. tab:: Ubuntu 20.04
-
-    .. code-block:: shell
-
-      # be sure you have libcurl4 installed
-      # apt install libcurl4
-      pip install fiftyone-db-ubuntu2004
-
-  .. tab:: Debian 9
-
-    .. code-block:: shell
-
-      pip install fiftyone-db-debian9
-
-  .. tab:: RHEL 7
-
-    .. code-block:: shell
-
-      pip install fiftyone-db-rhel7
 
 .. _troubleshooting-mongodb-windows:
 

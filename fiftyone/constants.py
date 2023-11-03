@@ -49,7 +49,7 @@ COMPATIBLE_VERSIONS = ">=0.19,<0.23"
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.22.2"  # open source compatibility version
+VERSION = "0.22.3"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
@@ -114,8 +114,3 @@ except ImportError:
     FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
         os.path.join(FIFTYONE_DIR, "../app")
     )
-
-# Analytics
-UA_DEV = "UA-141773487-10"
-UA_PROD = "UA-141773487-9"
-UA_ID = UA_DEV if DEV_INSTALL or RC_INSTALL else UA_PROD

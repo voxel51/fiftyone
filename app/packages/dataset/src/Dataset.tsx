@@ -12,22 +12,21 @@ import {
   DatasetNodeQuery,
   DatasetQuery,
   DatasetQueryRef,
-  usePreLoadedDataset,
   ViewBar,
+  usePreLoadedDataset,
 } from "@fiftyone/core";
+import { OperatorCore } from "@fiftyone/operators";
 import { usePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import React, { Suspense, useContext, useEffect, useState } from "react";
-import { PreloadedQuery, useQueryLoader, usePreloadedQuery } from "react-relay";
-import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
-import { RecoilRelayEnvironmentProvider } from "recoil-relay";
+import React, { Suspense, useContext } from "react";
+import { PreloadedQuery, usePreloadedQuery, useQueryLoader } from "react-relay";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
-import { OperatorCore } from "@fiftyone/operators";
 
 // built-in plugins
+import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
-import "@fiftyone/embeddings";
 
 const Container = styled.div`
   width: 100%;
@@ -78,6 +77,7 @@ export const Dataset: React.FC<DatasetProps> = ({
   const setCanChangeCustomColors = useSetRecoilState(fos.canEditCustomColors);
   const setCompactLayout = useSetRecoilState(fos.compactLayout);
   const setReadOnly = useSetRecoilState(fos.readOnly);
+  const proxy = useRecoilValue(fos.stateProxy);
 
   React.useLayoutEffect(() => {
     setCompactLayout(compactLayout);
@@ -95,7 +95,11 @@ export const Dataset: React.FC<DatasetProps> = ({
     [context]
   );
   React.useEffect(() => {
-    loadQuery({ name: dataset, savedViewSlug: savedViewSlug });
+    loadQuery({
+      name: dataset,
+      savedViewSlug: savedViewSlug,
+      view: savedViewSlug ? null : proxy?.view,
+    });
   }, [dataset, savedViewSlug]);
   React.useEffect(() => {
     setCanChangeSavedViews(canEditSavedViews);

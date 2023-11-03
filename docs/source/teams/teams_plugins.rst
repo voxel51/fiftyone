@@ -352,7 +352,7 @@ method from the Management SDK:
 Delegated operations
 ____________________
 
-:ref:`Delegated Operations <delegated-operations>` are a powerful feature of
+:ref:`Delegated operations <delegated-operations>` are a powerful feature of
 FiftyOne's plugin framework that allows users to schedule tasks from within the
 App that are executed on a connected workflow orchestrator like Apache Airflow.
 
@@ -362,14 +362,14 @@ users can execute from the Teams App, all of which run against a central
 orchestrator :ref:`configured by <teams-delegated-orchestrator>` your admins.
 
 Why is this awesome? Your AI stack needs a flexible data-centric component that
-enables you to organize and compute on your data. With Delegated Operations,
+enables you to organize and compute on your data. With delegated operations,
 FiftyOne Teams becomes both a dataset management/visualization tool and a
 workflow automation tool that defines how your data-centric workflows like
 ingestion, curation, and evaluation are performed. In short, think of FiftyOne
 Teams as the single source of truth on which you co-develop your data and
 models together.
 
-What can Delegated Operations do for you? Get started by installing any of
+What can delegated operations do for you? Get started by installing any of
 these plugins available in the
 `FiftyOne Plugins <https://github.com/voxel51/fiftyone-plugins>`_ repository:
 
@@ -706,7 +706,7 @@ Managing delegated operations
 _____________________________
 
 Every Teams dataset has a Runs page that allows users to monitor and explore
-delegated operator runs scheduled against that dataset.
+delegated operations scheduled against that dataset.
 
 .. note::
 

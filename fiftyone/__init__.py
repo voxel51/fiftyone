@@ -34,4 +34,3 @@ _fos.init_storage()
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _fom.migrate_database_if_necessary()
-    _fou.log_import_if_allowed()
