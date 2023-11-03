@@ -136,9 +136,14 @@ class DatasetMixin(object):
                 raise ValueError(
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
-        elif value is not None:
+        else:
+            field = self._fields[field_name]
+            if field.readonly:
+                raise ValueError(
+                    f"Readonly field '{field_name}' cannot be edited"
+                )
             if validate:
-                self._fields[field_name].validate(value)
+                field.validate(value)
 
             if dynamic:
                 self.add_implied_field(
@@ -594,6 +599,9 @@ class DatasetMixin(object):
                 raise AttributeError(
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
+
+            if field is not None and field.readonly:
+                raise ValueError(f"Readonly field '{path}' cannot be cleared")
 
             if is_dataset and is_root_field:
                 simple_paths.append(path)
@@ -1257,6 +1265,7 @@ class DatasetMixin(object):
             prev._set_dataset(None, None)
             field.required = prev.required
             field.null = prev.null
+            field._readonly = prev.readonly
 
         field._set_dataset(dataset, path)
         cls._fields[field_name] = field

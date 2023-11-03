@@ -3564,6 +3564,76 @@ class SampleCreatedAtTests(unittest.TestCase):
             dataset.values("frames.created_at", unwind=True),
         )
 
+        # Can add a new frame to sample and it gets creation time on save()
+        samples[0].frames[2] = fo.Frame(frame_number=2)
+        self.assertIsNone(samples[0].frames[2].created_at)
+        samples[0].frames.save()
+        self.assertGreater(
+            samples[0].frames[2].created_at, samples[0].frames[1].created_at
+        )
+        self.assertEqual(
+            samples[0].frames[1].created_at, original_created_ats[0]
+        )
+
+    @drop_datasets
+    def test_readonly_created_at(self):
+        # Setup
+        created_at = "created_at"
+        sample = fo.Sample("blah.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+        now = datetime.utcnow()
+
+        # Sample and SampleView checks
+        for obj in (sample, sample_view, frame, frame_view):
+            self.assertRaises(ValueError, obj.__setattr__, created_at, now)
+            self.assertRaises(ValueError, obj.__setitem__, created_at, now)
+            self.assertRaises(ValueError, obj.set_field, created_at, now)
+            self.assertRaises(ValueError, obj.clear_field, created_at)
+            self.assertRaises(ValueError, obj.update_fields, {created_at: now})
+
+        # Dataset only
+        self.assertRaises(
+            ValueError,
+            dataset.rename_sample_field,
+            created_at,
+            "blah",
+        )
+        self.assertRaises(
+            ValueError,
+            dataset.rename_frame_field,
+            created_at,
+            "blah",
+        )
+        self.assertRaises(ValueError, dataset.delete_sample_field, created_at)
+        self.assertRaises(ValueError, dataset.delete_frame_field, created_at)
+
+        # Common collection calls
+        for collection in (dataset, view):
+            self.assertRaises(
+                ValueError, collection.set_values, created_at, [now]
+            )
+            self.assertRaises(
+                ValueError, collection.set_values, "frames.created_at", [[now]]
+            )
+            self.assertRaises(
+                ValueError, collection.clear_sample_field, created_at
+            )
+            self.assertRaises(
+                ValueError, collection.clear_frame_field, created_at
+            )
+            self.assertRaises(
+                ValueError, collection.set_field, created_at, now
+            )
+            self.assertRaises(
+                ValueError, collection.set_field, "frames.created_at", now
+            )
+
 
 class DatasetDeletionTests(unittest.TestCase):
     @drop_datasets

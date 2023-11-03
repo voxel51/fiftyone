@@ -2021,6 +2021,10 @@ class SampleCollection(object):
                 self, _sample_ids, values
             )
 
+        _field = self.get_field(field_name)
+        if _field is not None and _field.readonly:
+            raise ValueError(f"Readonly field '{field_name}' cannot be edited")
+
         if expand_schema:
             field, new_group_field = self._expand_schema_from_values(
                 field_name,

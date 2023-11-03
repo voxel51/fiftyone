@@ -20,7 +20,7 @@ class DatasetFrameDocument(DatasetMixin, Document):
 
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
-    created_at = fof.DateTimeField(null=True)
+    created_at = fof.DateTimeField(null=True, readonly=True)
 
     _sample_id = fof.ObjectIdField(required=True)
     _dataset_id = fof.ObjectIdField()

@@ -296,6 +296,8 @@ class Frames(object):
             doc = self._dataset._frame_dict_to_doc(d)
 
             for field, value in _frame.iter_fields():
+                if field in {"created_at"}:
+                    continue
                 doc.set_field(
                     field,
                     value,

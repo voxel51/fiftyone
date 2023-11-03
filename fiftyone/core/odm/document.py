@@ -342,10 +342,18 @@ class MongoEngineBaseDocument(SerializableDocument):
             doc = self.get_field(chunks[0])
             return doc.set_field(chunks[1], value, create=create)
 
-        if not create and not self.has_field(field_name):
-            raise ValueError(
-                "%s has no field '%s'" % (self.__class__.__name__, field_name)
-            )
+        try:
+            field = self._get_field(field_name)
+            if field.readonly:
+                raise ValueError(
+                    f"Readonly field '{field_name}' cannot be edited"
+                )
+        except (KeyError, AttributeError):
+            if not create:
+                raise ValueError(
+                    "%s has no field '%s'"
+                    % (self.__class__.__name__, field_name)
+                )
 
         setattr(self, field_name, value)
 
