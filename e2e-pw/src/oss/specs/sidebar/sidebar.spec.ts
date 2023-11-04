@@ -6,8 +6,8 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
 const test = base.extend<{ sidebar: SidebarPom; grid: GridPom }>({
-  sidebar: async ({ page, eventUtils }, use) => {
-    await use(new SidebarPom(page, eventUtils));
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
