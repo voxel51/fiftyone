@@ -10,7 +10,7 @@ import logging
 import os
 import requests
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -283,7 +283,7 @@ def get_image_info(f):
     Returns:
         ``(width, height, num_channels)``
     """
-    img = Image.open(f)
+    img = ImageOps.exif_transpose(Image.open(f))
     return (img.width, img.height, len(img.getbands()))
 
 
