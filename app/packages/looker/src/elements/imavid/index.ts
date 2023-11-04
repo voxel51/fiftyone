@@ -12,7 +12,7 @@ import { PlaybackRateBarElement } from "./playback-rate-bar";
 import { PlaybackRateContainerElement } from "./playback-rate-container";
 import { PlaybackRateIconElement } from "./playback-rate-icon";
 
-export function withVideoLookerEvents(): () => Events<ImaVidState> {
+export function withImaVidLookerEvents(): () => Events<ImaVidState> {
   return function () {
     return {
       mouseenter: ({ update }) => {
@@ -183,7 +183,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return sample;
   }
 
-  async drawFrame(currentFrameNumber: number) {
+  async drawFrame(currentFrameNumber: number, animate = true) {
     if (this.waitingToPause) {
       console.log("waiting to pause in drawframe");
       return;
@@ -212,9 +212,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       const ctx = this.canvas.getContext("2d");
       ctx.drawImage(image, 0, 0);
       this.update({ currentFrameNumber: currentFrameNumber + 1 });
-      this.animationId = requestAnimationFrame(
-        this.drawFrame.bind(this, currentFrameNumber + 1)
-      );
+
+      if (animate) {
+        this.animationId = requestAnimationFrame(
+          this.drawFrame.bind(this, currentFrameNumber + 1)
+        );
+      }
     });
     image.src = src;
   }
@@ -336,7 +339,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       if (thumbnail && !hovering) {
         this.framesController.cleanup();
         this.waitingToPlay = false;
+
+        if (!playing && !this.waitingToPause) {
+          this.drawFrame(1, false);
+          this.waitingToPause = true;
+        }
       } else if (thumbnail && hovering && playing) {
+        this.waitingToPause = false;
         this.play(currentFrameNumber);
       }
       // if (loaded && playing && !seeking && !buffering) {

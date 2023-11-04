@@ -211,7 +211,7 @@ export const getImaVidElements: GetElements<ImaVidState> = (
   batchUpdate
 ) => {
   const elements = {
-    node: withEvents(common.LookerElement, video.withVideoLookerEvents()),
+    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
     children: [
       {
         node: imavid.ImaVidElement,
