@@ -49,7 +49,6 @@ export class ImaVidFramesController {
       return;
     }
 
-    // todo: might want to use setTimeout
     this.timeoutId = window.setTimeout(
       this.executeFetch.bind(this),
       BUFFERS_REFRESH_TIMEOUT_YIELD

@@ -50,26 +50,26 @@ export function withVideoLookerEvents(): () => Events<ImaVidState> {
 }
 
 const seekFn = (
-  { seeking, duration, config: { frameRate } }: Readonly<ImaVidState>,
+  { seeking, config: { frameRate } }: Readonly<ImaVidState>,
   event: MouseEvent
 ): Partial<ImaVidState> => {
-  if (duration && seeking) {
-    const element = event.currentTarget as HTMLDivElement;
-    const { width, left } = element.getBoundingClientRect();
-    const frameCount = getFrameNumber(duration, duration, frameRate);
+  // if (duration && seeking) {
+  //   const element = event.currentTarget as HTMLDivElement;
+  //   const { width, left } = element.getBoundingClientRect();
+  //   const frameCount = getFrameNumber(duration, duration, frameRate);
 
-    const frameNumber = Math.min(
-      Math.max(
-        1,
-        Math.round(((event.clientX + 6 - left) / width) * frameCount)
-      ),
-      frameCount
-    );
+  //   const frameNumber = Math.min(
+  //     Math.max(
+  //       1,
+  //       Math.round(((event.clientX + 6 - left) / width) * frameCount)
+  //     ),
+  //     frameCount
+  //   );
 
-    return {
-      currentFrameNumber: frameNumber,
-    };
-  }
+  //   return {
+  //     currentFrameNumber: frameNumber,
+  //   };
+  // }
   return {};
 };
 
@@ -78,6 +78,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private loop = false;
   private playbackRate = 1;
   private frameNumber = 1;
+  private animationId = -1;
   private posterFrame: number;
   private mediaField: string;
   private framesController: ImaVidFramesController;
@@ -182,23 +183,23 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return sample;
   }
 
-  async drawFrame(state: Readonly<ImaVidState>) {
+  async drawFrame(currentFrameNumber: number) {
     if (this.waitingToPause) {
       console.log("waiting to pause in drawframe");
       return;
     }
 
-    console.log(
-      "getting current frame sample for frame number",
-      state.currentFrameNumber
-    );
-    const currentFrameSample = this.getCurrentFrameSample(
-      state.currentFrameNumber
-    );
+    const currentFrameSample = this.getCurrentFrameSample(currentFrameNumber);
     // TODO: CACHE EVERYTHING INSIDE HERE
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
+    console.log("Trying to play frame", currentFrameNumber);
     if (!currentFrameSample) {
+      console.log(
+        "Couldn't play frame",
+        currentFrameNumber,
+        "because not available"
+      );
       return;
     }
 
@@ -210,8 +211,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     image.addEventListener("load", () => {
       const ctx = this.canvas.getContext("2d");
       ctx.drawImage(image, 0, 0);
-      this.update({ currentFrameNumber: state.currentFrameNumber + 1 });
-      requestAnimationFrame(this.drawFrame.bind(this, state));
+      this.update({ currentFrameNumber: currentFrameNumber + 1 });
+      this.animationId = requestAnimationFrame(
+        this.drawFrame.bind(this, currentFrameNumber + 1)
+      );
     });
     image.src = src;
   }
@@ -220,6 +223,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     console.log("pausing");
     this.waitingToPause = true;
     this.update({ playing: false });
+    cancelAnimationFrame(this.animationId);
     this.waitingToPause = false;
     this.waitingToPlay = false;
   }
@@ -229,30 +233,38 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * 1. Check if we have next 100 frames from current framestamp in store
    * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
    */
-  async play(state: Readonly<ImaVidState>) {
+  async play(currentFrameNumber: number) {
     if (this.waitingToPlay || this.waitingToPause) {
       return;
     }
 
     console.log("invoking drawFrame");
 
-    requestAnimationFrame(this.drawFrame.bind(this, state));
+    this.animationId = requestAnimationFrame(
+      this.drawFrame.bind(this, currentFrameNumber)
+    );
   }
 
-  private getNecessaryFrameRange(state: Readonly<ImaVidState>) {
+  private getNecessaryFrameRange(currentFrameNumber: number) {
     const frameRangeMax =
-      state.currentFrameNumber +
+      currentFrameNumber +
       LOOK_AHEAD_TIME_SECONDS * this.framesController.currentFrameRate;
-    return [state.currentFrameNumber, frameRangeMax] as const;
+    return [currentFrameNumber, frameRangeMax] as const;
   }
 
+  /**
+   * Queue up frames to be fetched if necessary.
+   * This method is not blocking, it merely enqueues a fetch job.
+   */
   private ensureBuffers(state: Readonly<ImaVidState>) {
     if (this.framesController.isFetching) {
       return;
     }
 
     let shouldBuffer = false;
-    const necessaryFrameRange = this.getNecessaryFrameRange(state);
+    const necessaryFrameRange = this.getNecessaryFrameRange(
+      state.currentFrameNumber
+    );
     const rangeAvailable =
       this.framesController.storeBufferManager.containsRange(
         necessaryFrameRange
@@ -307,70 +319,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     this.batchUpdate(() => {
-      // sync two states that track frame number
-      // two states because one of the states is shared across components,
-      // and the other is only used by this component
-      // updating the state that is shared across components will trigger a re-render,
-      // and we want to keep it right here
-      // if (this.frameNumber !== currentFrameNumber) {
-      //   // sometimes we want to update the frame number from the outside
-      //   if (isCurrentFrameNumberAuthoritative) {
-      //     this.frameNumber = currentFrameNumber;
-      //     this.update({
-      //       isCurrentFrameNumberAuthoritative: false,
-      //     });
-      //   } else {
-      //     this.update({
-      //       currentFrameNumber: this.frameNumber,
-      //     });
-      //   }
-      // }
-      console.log("Is authoritative before", isCurrentFrameNumberAuthoritative);
-      if (!isCurrentFrameNumberAuthoritative) {
-        console.log(
-          "Changing isAutho to true",
-          isCurrentFrameNumberAuthoritative
-        );
-        this.update({
-          isCurrentFrameNumberAuthoritative: true,
-        });
-      }
-      console.log("Is authoritative after", isCurrentFrameNumberAuthoritative);
-
+      // `destroyed` is called when looker is reset
       if (destroyed) {
-        console.log("destroyed");
-        // triggered when, for example, grid is reset, do nothing
         this.framesController.cleanup();
       }
 
       this.ensureBuffers(state);
-
-      if (!seeking)
-        this.update({
-          seeking: true,
-        });
-
-      return null;
-      /**
-       *
-       * batchUpdate(() => {
-       *  // code
-       *
-       *  update({})
-       *
-       *  // code
-       *
-       *  update({})
-       *
-       * })
-       */
-
-      /**
-       * - can play even if buffering
-       * - need a flag inside drawFrame to know when to pause
-       */
-
-      // now that we know we have some frames, we can begin streaming
 
       const isPlayable =
         this.getCurrentFrameSample(currentFrameNumber) !== null;
@@ -383,7 +337,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.framesController.cleanup();
         this.waitingToPlay = false;
       } else if (thumbnail && hovering && playing) {
-        this.play(state);
+        this.play(currentFrameNumber);
       }
       // if (loaded && playing && !seeking && !buffering) {
       //   this.play();
