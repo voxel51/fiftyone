@@ -111,7 +111,7 @@ const SidebarList: React.FC = () => {
                     <ListItemButton
                       sx={{
                         pl: 4,
-                        margin: "-0.25rem",
+                        padding: "-0.25rem",
                         "&.Mui-selected": {
                           backgroundColor: theme.primary.main,
                         },
@@ -130,11 +130,11 @@ const SidebarList: React.FC = () => {
                             : false
                           : false
                       }
+                      onClick={() => onSelectField(entry)}
                       disableRipple
                     >
                       <ListItemText
                         primary={getDisplayName(entry)}
-                        onClick={() => onSelectField(entry)}
                         sx={{ fontFamily: "palanquin, sans-serif" }}
                       />
                     </ListItemButton>
