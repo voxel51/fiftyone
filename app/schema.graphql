@@ -125,6 +125,7 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
+  colorscale: [Colorscale!]
 }
 
 input ColorSchemeInput {
@@ -136,6 +137,31 @@ input ColorSchemeInput {
   opacity: Float = null
   showSkeletons: Boolean = null
   defaultMaskTargetsColors: [MaskColorInput!] = null
+  colorscale: [ColorscaleInput!] = null
+}
+
+type Colorscale {
+  path: String!
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input ColorscaleInput {
+  path: String!
+  name: String = null
+  list: ColorscaleListInput = null
+  rgb: [[Int!]!] = null
+}
+
+type ColorscaleList {
+  color: String!
+  value: Float
+}
+
+input ColorscaleListInput {
+  color: String!
+  value: Float
 }
 
 input Count {

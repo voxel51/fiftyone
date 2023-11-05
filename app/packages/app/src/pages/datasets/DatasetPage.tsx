@@ -51,6 +51,15 @@ const DatasetPageQueryNode = graphql`
             intTarget
             color
           }
+          colorscale {
+            path
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
           fields {
             colorByAttribute
             fieldColor

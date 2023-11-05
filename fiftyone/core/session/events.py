@@ -168,6 +168,20 @@ class CustomizeColor:
 
 
 @dataclass
+class ColorscaleList:
+    value: float
+    color: str
+
+
+@dataclass
+class Colorscale:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+    rgb: t.Optional[t.List[t.List[int]]] = None
+
+
+@dataclass
 class LabelTagsColors:
     fieldColor: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
@@ -177,13 +191,12 @@ class LabelTagsColors:
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
-    label_tags: t.Optional[LabelTagsColors] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    colorscale: t.Optional[t.List[Colorscale]] = None
     label_tags: t.Optional[LabelTagsColors] = None
 
 
@@ -201,6 +214,11 @@ class SetColorScheme(Event):
         fields = (
             [asdict(field) for field in self.color_scheme.fields]
             if self.color_scheme.fields
+            else None
+        )
+        colorscale = (
+            [asdict(colorscale) for colorscale in self.color_scheme.colorscale]
+            if self.color_scheme.colorscale
             else None
         )
         default_mask_targets_colors = (

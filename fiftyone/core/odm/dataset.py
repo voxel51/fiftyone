@@ -189,6 +189,16 @@ class ColorScheme(EmbeddedDocument):
                     {"value": "mistake", "color": "#00ff00"},
                 ]
             },
+            colorscale = [
+                {
+                    "path": "global",
+                    "name": "hsv",
+                },
+                {
+                    "path": "heatmap1",
+                    "list": [{value: 0.5, color: 'rgb(0, 0, 255)'}, {value: 1, color: 'rgb(0, 255, 255)'}],
+                },
+            ],
             multicolor_keypoints=False,
             opacity=0.5,
             show_skeletons=True,
@@ -224,8 +234,8 @@ class ColorScheme(EmbeddedDocument):
             -   `path` (required): the fully-qualified path to the field you're
                 customizing. use "dataset" if you are setting the default colorscale for dataset
             -   `name` (optional): a named colorscale plotly recognizes
-            -   `value` (optional): a list of dicts of manually defined colorscale
-            -   `rgb` (optional): a list of rgb color tuples
+            -   `list` (optional): a list of dicts of manually defined colorscale
+            -   `rgb` (optional): a list of rgb color tuples generated based on provided name or list.
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags

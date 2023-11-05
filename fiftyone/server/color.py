@@ -19,6 +19,8 @@ import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event, get_state
 
+fop = fou.lazy_import("fiftyone.core.plots.plotly")
+
 
 @gql.type
 class ValueColor:
@@ -47,6 +49,20 @@ class LabelTagColor:
     valueColors: t.Optional[t.List[ValueColor]] = None
 
 
+@gql.type
+class ColorscaleList:
+    color: str
+    value: t.Optional[float]
+
+
+@gql.type
+class Colorscale:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+    rgb: t.Optional[t.List[t.List[int]]] = None
+
+
 @gql.enum
 class ColorBy(Enum):
     field = "field"
@@ -65,6 +81,7 @@ class ColorScheme:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    colorscale: t.Optional[t.List[Colorscale]] = None
 
 
 @gql.input
@@ -77,6 +94,20 @@ class ValueColorInput:
 class MaskColorInput:
     color: str
     intTarget: t.Optional[int]
+
+
+@gql.input
+class ColorscaleListInput:
+    color: str
+    value: t.Optional[float]
+
+
+@gql.input
+class ColorscaleInput:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[ColorscaleListInput] = None
+    rgb: t.Optional[t.List[t.List[int]]] = None
 
 
 @gql.input
@@ -104,6 +135,7 @@ class ColorSchemeInput:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColorInput]] = None
+    colorscale: t.Optional[t.List[ColorscaleInput]] = None
 
 
 @gql.type
@@ -141,6 +173,17 @@ class SetColorScheme:
 
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
+
+    for colorscale in color_scheme.colorscale:
+        if colorscale.list is not None or colorscale.name is not None:
+            # Get the rgb tuples
+            colormap_tuples = fop._get_colormap(
+                colorscale.name
+                if colorscale.name is not None
+                else colorscale.list
+            )
+            colorscale.rgb = colormap_tuples
+
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
         color_by=color_scheme.color_by,
@@ -154,6 +197,9 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         else [],
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
+        else [],
+        colorscale=[asdict(f) for f in color_scheme.colorscale]
+        if color_scheme.colorscale
         else [],
         label_tags=asdict(color_scheme.label_tags)
         if color_scheme.label_tags
