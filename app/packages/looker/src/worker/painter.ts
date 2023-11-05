@@ -174,55 +174,34 @@ export const PainterFactory = (requestColor) => ({
     let color;
     const fieldSetting = customizeColorSetting?.find((x) => field === x.path);
 
-    if (mapData.channels > 2) {
-      // rgb map
-      for (let i = 0; i < overlay.length; i++) {
-        let v = getRgbFromMaskData(targets, mapData.channels, i)[0];
+    // these for loops must be fast. no "in" or "of" syntax
+    for (let i = 0; i < overlay.length; i++) {
+      let value;
+      if (mapData.channels > 2) {
+        // rgb mask
+        value = getRgbFromMaskData(targets, mapData.channels, i)[0];
+      } else {
+        value = targets[i];
+      }
 
+      // 0 is background image
+      if (value !== 0) {
         let r;
         if (coloring.by === COLOR_BY.FIELD) {
           color =
             fieldSetting?.fieldColor ??
             (await requestColor(coloring.pool, coloring.seed, field));
-          const alpha = Math.min(max, Math.abs(v)) / max;
 
-          r = get32BitColor(color, alpha);
+          r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
           const index = Math.round(
-            (Math.max(v - start, 0) / (stop - start)) *
+            (Math.max(value - start, 0) / (stop - start)) *
               (coloring.scale.length - 1)
           );
           r = get32BitColor(coloring.scale[index]);
         }
-        overlay[i] = r;
-      }
-    } else {
-      // these for loops must be fast. no "in" or "of" syntax
-      for (let i = 0; i < overlay.length; i++) {
-        if (targets[i] !== 0) {
-          let r;
-          if (coloring.by === COLOR_BY.FIELD) {
-            color =
-              fieldSetting.fieldColor ??
-              (await requestColor(coloring.pool, coloring.seed, field));
-            const alpha = Math.min(max, Math.abs(targets[i])) / max;
-            if (targets[i] % 2 == 0) {
-              console.info(color, alpha);
-            }
-            r = get32BitColor(color, alpha);
-          } else {
-            const index = Math.round(
-              (Math.max(targets[i] - start, 0) / (stop - start)) *
-                (coloring.scale.length - 1)
-            );
-            if (targets[i] % 2 == 0) {
-              console.info(targets[i], index, coloring.scale[index]);
-            }
-            r = get32BitColor(coloring.scale[index]);
-          }
 
-          overlay[i] = r;
-        }
+        overlay[i] = r;
       }
     }
   },
