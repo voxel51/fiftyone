@@ -4,7 +4,6 @@ import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import {
   getHashLabel,
   isRgbMaskTargets,
-  isValidColor,
   shouldShowLabelTag,
 } from "../overlays/util";
 import {
@@ -170,52 +169,59 @@ export const PainterFactory = (requestColor) => ({
       : isFloatArray(targets)
       ? [0, 1]
       : [0, 255];
+    const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+    let color;
+    const fieldSetting = customizeColorSetting?.find((x) => field === x.path);
 
-    const color =
-      setting?.fieldColor ??
-      (await requestColor(coloring.pool, coloring.seed, field));
+    if (mapData.channels > 2) {
+      // rgb map
+      for (let i = 0; i < overlay.length; i++) {
+        let v = getRgbFromMaskData(targets, mapData.channels, i)[0];
 
-    const getColor =
-      coloring.by === "value"
-        ? (value) => {
-            if (value === 0) {
-              return 0;
+        let r;
+        if (coloring.by === COLOR_BY.FIELD) {
+          color =
+            fieldSetting?.fieldColor ??
+            (await requestColor(coloring.pool, coloring.seed, field));
+          const alpha = Math.min(max, Math.abs(v)) / max;
+
+          r = get32BitColor(color, alpha);
+        } else {
+          const index = Math.round(
+            (Math.max(v - start, 0) / (stop - start)) *
+              (coloring.scale.length - 1)
+          );
+          r = get32BitColor(coloring.scale[index]);
+        }
+        overlay[i] = r;
+      }
+    } else {
+      // these for loops must be fast. no "in" or "of" syntax
+      for (let i = 0; i < overlay.length; i++) {
+        if (targets[i] !== 0) {
+          let r;
+          if (coloring.by === COLOR_BY.FIELD) {
+            color =
+              fieldSetting.fieldColor ??
+              (await requestColor(coloring.pool, coloring.seed, field));
+            const alpha = Math.min(max, Math.abs(targets[i])) / max;
+            if (targets[i] % 2 == 0) {
+              console.info(color, alpha);
             }
-
+            r = get32BitColor(color, alpha);
+          } else {
             const index = Math.round(
-              (Math.max(value - start, 0) / (stop - start)) *
+              (Math.max(targets[i] - start, 0) / (stop - start)) *
                 (coloring.scale.length - 1)
             );
-
-            return get32BitColor(coloring.scale[index]);
-          }
-        : (value) => {
-            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
-            const absMax = Math.max(Math.abs(start), Math.abs(stop));
-
-            // clip value
-            if (value < start) {
-              value = start;
-            } else if (value > stop) {
-              value = stop;
+            if (targets[i] % 2 == 0) {
+              console.info(targets[i], index, coloring.scale[index]);
             }
+            r = get32BitColor(coloring.scale[index]);
+          }
 
-            const alpha = Math.abs(value) / absMax;
-
-            return get32BitColor(color, alpha);
-          };
-
-    // these for loops must be fast. no "in" or "of" syntax
-    for (let i = 0; i < overlay.length; i++) {
-      if (targets[i] !== 0) {
-        if (mapData.channels > 2) {
-          overlay[i] = getColor(
-            getRgbFromMaskData(targets, mapData.channels, i)[0]
-          );
-        } else {
-          overlay[i] = getColor(targets[i]);
+          overlay[i] = r;
         }
       }
     }

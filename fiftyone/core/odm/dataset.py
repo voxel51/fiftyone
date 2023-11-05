@@ -219,12 +219,18 @@ class ColorScheme(EmbeddedDocument):
                 use for individual values of this field
             -   `maskTargetsColors` (optional): a list of dicts specifying index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
+        colorscale (None): an optional list of per-field custom colorscale for heatmaps. Each
+            element should be a dict with the following keys:
+            -   `path` (required): the fully-qualified path to the field you're
+                customizing. use "dataset" if you are setting the default colorscale for dataset
+            -   `name` (optional): a named colorscale plotly recognizes
+            -   `value` (optional): a list of dicts of manually defined colorscale
+            -   `rgb` (optional): a list of rgb color tuples
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags
             -    `valueColors` (optional): a list of dicts specifying colors to
             specific label tags
-
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -238,6 +244,7 @@ class ColorScheme(EmbeddedDocument):
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
     default_mask_targets_colors = ListField(DictField(), null=True)
+    colorscale = ListField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):

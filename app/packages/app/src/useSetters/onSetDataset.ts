@@ -39,10 +39,15 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = entry.data.dataset?.appConfig
-        ?.colorScheme || {
+        ?.colorScheme ?? {
         colorBy: entry.data.config.colorBy,
         colorPool: entry.data.config.colorPool,
         fields: [],
+        labelTags: {
+          fieldColor: null,
+          valueColors: [],
+        },
+        defaultMaskTargetsColors: [],
         multicolorKeypoints: false,
         opacity: 0.7,
         showSkeletons: true,

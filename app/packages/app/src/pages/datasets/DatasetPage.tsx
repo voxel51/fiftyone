@@ -31,10 +31,11 @@ const DatasetPageQueryNode = graphql`
     config {
       colorBy
       colorPool
+      colorscale
       multicolorKeypoints
       showSkeletons
     }
-
+    colorscale
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice

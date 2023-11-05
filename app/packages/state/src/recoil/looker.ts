@@ -65,6 +65,8 @@ export const lookerOptions = selectorFamily<
       const activeVisibility = get(attributeVisibility);
       const isLabelTagActive = activePaths.includes("_label_tags");
 
+      console.info(get(colorAtoms.coloring).scale);
+
       return {
         showJSON: panels.json.isOpen,
         showHelp: panels.help.isOpen,

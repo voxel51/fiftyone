@@ -12,6 +12,7 @@ const IndexPageQueryNode = graphql`
     config {
       colorBy
       colorPool
+      colorscale
       multicolorKeypoints
       showSkeletons
     }

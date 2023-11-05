@@ -15,6 +15,7 @@ import * as atoms from "./atoms";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { configData } from "./config";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -22,10 +23,11 @@ export const coloring = selector<Coloring>({
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
 
+    // scale: embeddingsPlot expects RGB[] for colorscale
     return {
       seed,
       pool: colorScheme.colorPool,
-      scale: [],
+      scale: get(configData).colorscale as RGB[],
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
