@@ -177,11 +177,14 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
     for colorscale in color_scheme.colorscale:
         if colorscale.list is not None or colorscale.name is not None:
             # Get the rgb tuples
-            colormap_tuples = fop._get_colormap(
-                colorscale.name
-                if colorscale.name is not None
-                else colorscale.list
-            )
+
+            input
+            if colorscale.name:
+                input = colorscale.name
+            elif colorscale.list:
+                input = [[item.value, item.color] for item in colorscale.list]
+
+            colormap_tuples = fop._get_colormap(input)
             colorscale.rgb = colormap_tuples
 
     return foo.ColorScheme(
