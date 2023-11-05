@@ -24,7 +24,6 @@ __version__ = _foc.VERSION
 
 from fiftyone.__public__ import *
 
-import fiftyone.core.uid as _fou
 import fiftyone.core.logging as _fol
 import fiftyone.migrations as _fom
 
@@ -32,4 +31,3 @@ _fol.init_logging()
 
 if _os.environ.get("FIFTYONE_DISABLE_SERVICES", "0") != "1":
     _fom.migrate_database_if_necessary()
-    _fou.log_import_if_allowed()
