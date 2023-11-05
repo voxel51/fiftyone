@@ -104,7 +104,6 @@ const ColorFooter: React.FC = () => {
                 fields: [],
                 defaultMaskTargetsColors: [],
                 labelTags: {},
-                colorscale: null,
                 colorPool: configDefault.colorPool,
                 colorBy: configDefault.colorBy ?? "field",
                 multicolorKeypoints: false,

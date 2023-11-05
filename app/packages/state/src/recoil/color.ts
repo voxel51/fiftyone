@@ -139,6 +139,6 @@ export const ensureColorScheme = (
     showSkeletons:
       typeof colorScheme.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig?.showSkeletons,
+        : appConfig?.showSkeletons ?? true,
   };
 };

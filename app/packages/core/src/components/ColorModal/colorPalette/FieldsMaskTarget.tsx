@@ -1,4 +1,5 @@
 import { isRgbMaskTargets } from "@fiftyone/looker/src/overlays/util";
+import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -9,7 +10,6 @@ import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool, validateIntMask } from "../utils";
-import { MaskColorInput } from "@fiftyone/relay";
 
 const FieldsMaskTargets: React.FC = () => {
   const maskTargets = useRecoilValue(fos.targets).fields;
@@ -46,17 +46,13 @@ const FieldsMaskTargets: React.FC = () => {
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
-      console.info("update", copy);
       if (copy) {
-        debugger;
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
         if (idx !== undefined && idx > -1) {
-          console.info("add");
           newSetting[idx].maskTargetsColors = copy;
           setColorScheme({ ...colorScheme, fields: newSetting });
         } else {
-          console.info("create new");
           setColorScheme((cur) => ({
             ...cur,
             fields: [
@@ -67,7 +63,7 @@ const FieldsMaskTargets: React.FC = () => {
         }
       }
     },
-    [index, setColorScheme, colorScheme, activePath]
+    [index, setColorScheme, activePath]
   );
 
   useEffect(() => {
