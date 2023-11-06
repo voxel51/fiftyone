@@ -241,13 +241,20 @@ def _connect():
         connect(fo.config.database_name, **_connection_kwargs)
 
 
-def _async_connect():
+def _async_connect(use_global=False):
     global _async_client
-    if _async_client is None:
+    if not use_global or _async_client is None:
         global _connection_kwargs
-        _async_client = mtr.AsyncIOMotorClient(
+        client = mtr.AsyncIOMotorClient(
             **_connection_kwargs, appname=foc.DATABASE_APPNAME
         )
+
+        if use_global:
+            _async_client = client
+    else:
+        client = _async_client
+
+    return client
 
 
 def _delete_non_persistent_datasets_if_allowed():
@@ -388,14 +395,16 @@ def get_db_conn():
     return _apply_options(db)
 
 
-def get_async_db_client():
+def get_async_db_client(use_global=False):
     """Returns an async database client.
+
+    Args:
+        reuse: whether to use the global client singleton
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
-    _async_connect()
-    return _async_client
+    return _async_connect(use_global)
 
 
 def get_async_db_conn():
