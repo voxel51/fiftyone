@@ -149,7 +149,7 @@ const useUpdateDatasetColorScheme = () => {
               "fields"
             );
 
-            // get or create labelTags data
+            // get or create labelTags data {fieldcolor: null, valueColors: []}
             let labelTagsRecord =
               colorSchemeRecord.getLinkedRecord("labelTags");
             if (!labelTagsRecord) {
