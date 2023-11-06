@@ -726,7 +726,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project = self._client.create_project(
             name=project_name,
             media_type=media_type,
-            queue_mode=lb.QueueMode.Batch,
         )
         project.create_batch(
             name=str(uuid4()),
