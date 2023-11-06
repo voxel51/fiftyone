@@ -127,7 +127,7 @@ Why isn't the App loading in my cloud notebook?
 
 Except for `Google Colab <https://colab.research.google.com>`_ and
 `Databricks <https://docs.databricks.com/en/notebooks/index.html>` which have
-built-in App configuration, when running notebook in the cloud a
+built-in App configuration, when working in a cloud notebook a
 `proxy_url <configuring-proxy-url>` should be set in your
 `FiftyOne App config <configuring-fiftyone-app>`.
 
@@ -197,7 +197,8 @@ What operating systems does FiftyOne support?
 ---------------------------------------------
 
 FiftyOne officially supports the latest versions of MacOS and Windows, as well
-as Debian 9+ (x86_64 only), Ubuntu 18.04+, and RHEL/CentOS 7+.
+as Amazon Linux 2 and 2023, Debian 9+ (x86_64 only), Ubuntu 18.04+, and
+RHEL/CentOS 7+.
 
 .. _faq-image-types:
 
