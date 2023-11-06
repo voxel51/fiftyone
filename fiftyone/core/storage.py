@@ -2309,9 +2309,12 @@ def _load_s3_credentials():
     credentials_path = _get_managed_credentials("AWS")
     profile = None
 
-    if not credentials_path:
+    if credentials_path:
+        logger.debug("Loaded S3 creds from Teams DB")
+    else:
         credentials_path = fo.media_cache_config.aws_config_file
         profile = fo.media_cache_config.aws_profile
+        logger.debug("Loaded S3 creds from ENV")
 
     credentials, _ = S3StorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
@@ -2323,8 +2326,11 @@ def _load_s3_credentials():
 def _load_gcs_credentials():
     credentials_path = _get_managed_credentials("GCP")
 
-    if not credentials_path:
+    if credentials_path:
+        logger.debug("Loaded GCP creds from Teams DB")
+    else:
         credentials_path = fo.media_cache_config.google_application_credentials
+        logger.debug("Loaded GCP creds from ENV")
 
     credentials, _ = GoogleCloudStorageClient.load_credentials(
         credentials_path=credentials_path
@@ -2337,9 +2343,12 @@ def _load_azure_credentials():
     credentials_path = _get_managed_credentials("AZURE")
     profile = None
 
-    if not credentials_path:
+    if credentials_path:
+        logger.debug("Loaded AZURE creds from Teams DB")
+    else:
         credentials_path = fo.media_cache_config.azure_credentials_file
         profile = fo.media_cache_config.azure_profile
+        logger.debug("Loaded AZURE creds from ENV")
 
     credentials, _ = AzureStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
@@ -2352,9 +2361,12 @@ def _load_minio_credentials():
     credentials_path = _get_managed_credentials("MINIO")
     profile = None
 
-    if not credentials_path:
+    if credentials_path:
+        logger.debug("Loaded MINIO creds from Teams DB")
+    else:
         credentials_path = fo.media_cache_config.minio_config_file
         profile = fo.media_cache_config.minio_profile
+        logger.debug("Loaded MINIO creds from ENV")
 
     credentials, _ = MinIOStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile

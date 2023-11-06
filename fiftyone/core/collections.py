@@ -1093,6 +1093,15 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
+            # These fields are currently not declared by default on point cloud
+            # datasets/slices, but they should be considered as default
+            if issubclass(
+                field.document_type, fol.Detection
+            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+                field_names = tuple(
+                    set(field_names) | {"location", "dimensions", "rotation"}
+                )
+
             return tuple(path + "." + f for f in field_names)
 
         field_names = self._dataset._sample_doc_cls._get_default_fields(
@@ -1138,6 +1147,15 @@ class SampleCollection(object):
                 include_private=include_private,
                 use_db_fields=use_db_fields,
             )
+
+            # These fields are currently not declared by default on point cloud
+            # datasets/slices, but they should be considered as default
+            if issubclass(
+                field.document_type, fol.Detection
+            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+                field_names = tuple(
+                    set(field_names) | {"location", "dimensions", "rotation"}
+                )
 
             return tuple(path + "." + f for f in field_names)
 
@@ -9791,31 +9809,35 @@ class SampleCollection(object):
     def _get_group_media_types(self):
         return self._dataset._doc.group_media_types
 
-    def _contains_videos(self, any_slice=False):
-        if self.media_type == fom.VIDEO:
+    def _contains_media_type(self, media_type, any_slice=False):
+        if self.media_type == media_type:
             return True
 
         if self.media_type == fom.GROUP:
             if self.group_media_types is None:
-                return self._dataset.media_type == fom.VIDEO
+                return self._dataset.media_type == media_type
 
             if any_slice:
                 return any(
-                    slice_media_type == fom.VIDEO
+                    slice_media_type == media_type
                     for slice_media_type in self.group_media_types.values()
                 )
 
             return (
-                self.group_media_types.get(self.group_slice, None) == fom.VIDEO
+                self.group_media_types.get(self.group_slice, None)
+                == media_type
             )
 
         if self.media_type == fom.MIXED:
             return any(
-                slice_media_type == fom.VIDEO
+                slice_media_type == media_type
                 for slice_media_type in self._get_group_media_types().values()
             )
 
         return False
+
+    def _contains_videos(self, any_slice=False):
+        return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
 
     def _has_frame_fields(self):
         return self._contains_videos(any_slice=True)

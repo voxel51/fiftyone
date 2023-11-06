@@ -450,12 +450,11 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def uid(self) -> str:
-        uid, _ = fou.get_user_id()
-        return uid
+        return fou.get_user_id()
 
     @gql.field
     def version(self) -> str:
-        return foc.VERSION
+        return f"teams{foc.TEAMS_VERSION}"
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:

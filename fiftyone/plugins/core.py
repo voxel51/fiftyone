@@ -153,12 +153,7 @@ def find_plugin(name):
     return plugin.path
 
 
-def download_plugin(
-    url_or_gh_repo,
-    plugin_names=None,
-    max_depth=3,
-    overwrite=False,
-):
+def download_plugin(url_or_gh_repo, plugin_names=None, overwrite=False):
     """Downloads the plugin(s) from the given location to your local plugins
     directory (``fo.config.plugins_dir``).
 
@@ -180,14 +175,6 @@ def download_plugin(
 
         plugin_names (None): a plugin name or iterable of plugin names to
             download. By default, all found plugins are downloaded
-        max_depth (3): the maximum depth within the downloaded archive to
-            search for plugins:
-
-            - ``max_depth=1``: only search the top-level downloaded directory
-            - ``max_depth=2``: also search immediate subdirectories
-            - ``max_depth=3``: search two levels deep
-            - etc
-
         overwrite (False): whether to overwrite an existing plugin with the
             same name if it already exists
 
@@ -220,14 +207,9 @@ def download_plugin(
             logger.info(f"Downloading {url}...")
             _download_archive(url, tmpdir)
 
-        metadata_paths = _find_plugin_metadata_files(
-            os.path.join(tmpdir, "*"),
-            max_depth=max_depth + 1,
-        )
+        metadata_paths = list(_iter_plugin_metadata_files(root_dir=tmpdir))
         if not metadata_paths:
-            logger.info(
-                f"No {PLUGIN_METADATA_FILENAMES} files found in {url} (max_depth={max_depth})"
-            )
+            logger.info(f"No {PLUGIN_METADATA_FILENAMES} files found in {url}")
 
         for metadata_path in metadata_paths:
             try:
@@ -540,20 +522,14 @@ def _list_plugins_by_name(enabled=None, check_for_duplicates=True):
     return plugin_names
 
 
-def _find_plugin_metadata_files(root_dir, max_depth=1):
-    return fou.find_files(
-        root_dir,
-        PLUGIN_METADATA_FILENAMES,
-        max_depth=max_depth,
-    )
+def _iter_plugin_metadata_files(root_dir=None):
+    if root_dir is None:
+        root_dir = fo.config.plugins_dir
 
-
-def _iter_plugin_metadata_files():
-    plugins_dir = fo.config.plugins_dir
-    if not plugins_dir or not os.path.isdir(plugins_dir):
+    if not root_dir or not os.path.isdir(root_dir):
         return
 
-    for root, dirs, files in os.walk(plugins_dir, followlinks=True):
+    for root, dirs, files in os.walk(root_dir, followlinks=True):
         # Ignore hidden directories
         dirs[:] = [d for d in dirs if not d.startswith(".")]
         for file in files:
