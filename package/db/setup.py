@@ -7,11 +7,13 @@ Installs the ``fiftyone-db`` package.
 |
 """
 import csv
+import json
 import os
 import pathlib
 import platform
 import shutil
 import tarfile
+import traceback
 import zipfile
 
 from setuptools import setup
@@ -28,13 +30,13 @@ LINUX = "Linux"
 LINUX_DOWNLOADS = {
     "debian": {
         "9": {
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.22.tgz",
         },
         "10": {
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian10-5.0.4.tgz"
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian10-5.0.22.tgz"
         },
         "11": {
-            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-5.0.4.tgz"
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-5.0.22.tgz"
         },
         "12": {
             "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
@@ -108,7 +110,7 @@ def _get_download():
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
 
-VERSION = "0.4.2"
+VERSION = "0.4.3"
 
 
 def get_version():
@@ -162,20 +164,36 @@ class CustomBdistWheel(bdist_wheel):
 
         mongo_zip_url = _get_download()
         if mongo_zip_url is None:
-            print("no binary available for %s" % self.plat_name)
             return
 
         mongo_zip_filename = os.path.basename(mongo_zip_url)
+
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             mongo_zip_filename,
         )
 
-        if not os.path.exists(mongo_zip_dest):
-            with urlopen(mongo_zip_url) as conn, open(
-                mongo_zip_dest, "wb"
-            ) as dest:
-                shutil.copyfileobj(conn, dest)
+        try:
+            if not os.path.exists(mongo_zip_dest):
+                with urlopen(mongo_zip_url) as conn, open(
+                    mongo_zip_dest, "wb"
+                ) as dest:
+                    shutil.copyfileobj(conn, dest)
+        except:
+            json_dest = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "download.json",
+            )
+            with open(json_dest, "w", encoding="utf-8") as f:
+                json.dump(
+                    {
+                        "url": mongo_zip_url,
+                        "exception": traceback.format_exc(),
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=4,
+                )
 
         if mongo_zip_dest.endswith(".zip"):
             # Windows
@@ -192,7 +210,6 @@ class CustomBdistWheel(bdist_wheel):
                     raise IOError(
                         "Could not find %r in MongoDB archive" % filename
                     )
-                print("copying %r" % zip_entry.filename)
                 # strip the leading directories (zipfile doesn't have an
                 # equivalent of tarfile.extractfile to support this)
                 zip_entry.filename = os.path.basename(zip_entry.filename)
