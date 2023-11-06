@@ -6,7 +6,6 @@ FiftyOne operator execution.
 |
 """
 import asyncio
-from collections.abc import KeysView
 import traceback
 import types as python_types
 
@@ -431,9 +430,9 @@ class ExecutionContext(object):
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> KeysView[str]:
+    def secrets(self) -> list[str]:
         """The dict of secrets available to the operation (if any)."""
-        return self._secrets.keys()
+        return [k for k, v in self._secrets if v is not None]
 
     def secret(self, key, **kwargs):
         """Retrieves the secret with the given key from the context. If not
