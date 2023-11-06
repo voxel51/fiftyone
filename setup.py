@@ -76,7 +76,7 @@ INSTALL_REQUIRES = [
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
     "fiftyone-brain~=0.13.2",
-    "fiftyone-db~=0.4",
+    "fiftyone-db~=0.5",
     "voxel51-eta~=0.12",
 ]
 
