@@ -40,7 +40,7 @@ const onSetDataset: RegisteredSetter =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });
 
-    router.history.push(resolveURL(router, datasetName), {
+    router.history.push(resolveURL(router, datasetName || null), {
       view: [],
     });
   };

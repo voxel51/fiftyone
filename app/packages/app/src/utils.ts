@@ -31,14 +31,18 @@ export const getSavedViewName = (search?: string) => {
 export function resolveURL(router: Router): string;
 export function resolveURL(
   router: Router,
-  dataset: string,
+  dataset: string | null,
   view?: string
 ): string;
 export function resolveURL(
   router: Router,
-  dataset?: string,
+  dataset?: string | null,
   view?: string
 ): string {
+  if (dataset == undefined && view == undefined) {
+    return `${window.location.pathname}${window.location.search}`;
+  }
+
   const params = new URLSearchParams(router.history.location.search);
   view ? params.set("view", encodeURIComponent(view)) : params.delete("view");
   let search = params.toString();
@@ -56,5 +60,5 @@ export function resolveURL(
     return `${path}/datasets/${encodeURIComponent(dataset)}${search}`;
   }
 
-  return `${path}/${search}`;
+  return `${path}${search}`;
 }
