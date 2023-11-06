@@ -2910,6 +2910,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
         self.assertNotIn("created_at", d)
+        self.assertNotIn("last_updated_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2920,6 +2921,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_rand", d)
         self.assertIn("_dataset_id", d)
         self.assertIn("created_at", d)
+        self.assertIn("last_updated_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2956,6 +2958,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
         self.assertNotIn("created_at", d)
+        self.assertNotIn("last_updated_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -2965,6 +2968,7 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_sample_id", d)
         self.assertIn("_dataset_id", d)
         self.assertIn("created_at", d)
+        self.assertIn("last_updated_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -3308,30 +3312,21 @@ class DatasetIdTests(unittest.TestCase):
             )
 
 
-class SampleCreatedAtTests(unittest.TestCase):
+class SampleCreatedUpdatedAtTests(unittest.TestCase):
     EQUAL_DELTA = timedelta(milliseconds=1)
     CLOSE_DELTA = timedelta(seconds=1)
 
-    def _assert_created_at(self, previous_created_ats, dataset, now):
-        new_created_ats = dataset.values("created_at")
+    def _assert_creation_times(self, time_field, previous_times, dataset, now):
+        unwind = time_field.startswith("frames.")
+        new_times = dataset.values(time_field, unwind=unwind)
 
-        for original_ca, new_ca in zip(previous_created_ats, new_created_ats):
-            self.assertGreater(new_ca, original_ca)
-            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
+        for original_t, new_t in zip(previous_times, new_times):
+            self.assertGreater(new_t, original_t)
+            self.assertAlmostEqual(new_t, now, delta=self.CLOSE_DELTA)
 
-        return new_created_ats
+        return new_times
 
-    def _assert_frames_created_at(self, previous_created_ats, dataset, now):
-        new_created_ats = dataset.values("frames.created_at", unwind=True)
-
-        for original_ca, new_ca in zip(previous_created_ats, new_created_ats):
-            self.assertGreater(new_ca, original_ca)
-            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
-
-        return new_created_ats
-
-    @drop_datasets
-    def test_created_at(self):
+    def _test_creation_time(self, time_field, is_update):
         samples = [
             fo.Sample(filepath="image1.jpg"),
             fo.Sample(filepath="image2.jpg"),
@@ -3340,7 +3335,7 @@ class SampleCreatedAtTests(unittest.TestCase):
         ]
 
         # created at is None when not inside a dataset
-        all_none = not any(s.created_at for s in samples)
+        all_none = not any(s[time_field] for s in samples)
         self.assertTrue(all_none)
 
         # Add samples to dataset
@@ -3350,40 +3345,38 @@ class SampleCreatedAtTests(unittest.TestCase):
 
         # In schema
         schema = dataset.get_field_schema()
-        self.assertIn("created_at", schema)
+        self.assertIn(time_field, schema)
 
         # Time pushed to sample objects, and more or less equal to "now"
-        original_created_ats = created_ats = dataset.values("created_at")
-        for sample, new_ca in zip(samples, created_ats):
+        original_times = times = dataset.values(time_field)
+        for sample, new_t in zip(samples, times):
             self.assertAlmostEqual(
-                sample.created_at, new_ca, delta=self.EQUAL_DELTA
+                sample[time_field], new_t, delta=self.EQUAL_DELTA
             )
-            self.assertAlmostEqual(new_ca, now, delta=self.CLOSE_DELTA)
+            self.assertAlmostEqual(new_t, now, delta=self.CLOSE_DELTA)
 
         sample = dataset.first()
         self.assertAlmostEqual(
-            sample.created_at, samples[0].created_at, delta=self.EQUAL_DELTA
+            sample[time_field], samples[0][time_field], delta=self.EQUAL_DELTA
         )
 
         # Shouldn't be changed on updates
         dataset.set_values("foo", [4] * len(samples))
-        self.assertEqual(created_ats, dataset.values("created_at"))
+        self.assertEqual(times, dataset.values(time_field))
 
         # view schema
         view = dataset.select_fields()
         schema = view.get_field_schema()
-        self.assertIn("created_at", schema)
+        self.assertIn(time_field, schema)
 
         # View values
-        view_created_ats = view.values("created_at")
-        for view_ca, original_ca in zip(view_created_ats, created_ats):
-            self.assertAlmostEqual(
-                view_ca, original_ca, delta=self.EQUAL_DELTA
-            )
+        view_times = view.values(time_field)
+        for view_t, original_t in zip(view_times, times):
+            self.assertAlmostEqual(view_t, original_t, delta=self.EQUAL_DELTA)
 
         sample = view.first()
         self.assertAlmostEqual(
-            sample.created_at, samples[0].created_at, delta=self.EQUAL_DELTA
+            sample[time_field], samples[0][time_field], delta=self.EQUAL_DELTA
         )
 
         # add_collection()
@@ -3392,14 +3385,14 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset2 = fo.Dataset()
         dataset2.add_collection(dataset, new_ids=True)
 
-        created_ats = self._assert_created_at(created_ats, dataset2, now)
+        times = self._assert_creation_times(time_field, times, dataset2, now)
 
         # clone()
 
         now = datetime.utcnow()
         dataset3 = dataset.clone()
 
-        created_ats = self._assert_created_at(created_ats, dataset3, now)
+        times = self._assert_creation_times(time_field, times, dataset3, now)
 
         # add_samples()
 
@@ -3408,7 +3401,7 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset4 = fo.Dataset()
         dataset4.add_samples(dataset)
 
-        created_ats = self._assert_created_at(created_ats, dataset4, now)
+        times = self._assert_creation_times(time_field, times, dataset4, now)
 
         # merge_samples()
 
@@ -3417,7 +3410,7 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset5 = fo.Dataset()
         dataset5.merge_samples(dataset)
 
-        created_ats = self._assert_created_at(created_ats, dataset5, now)
+        times = self._assert_creation_times(time_field, times, dataset5, now)
 
         # import samples with from_dir
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -3430,14 +3423,30 @@ class SampleCreatedAtTests(unittest.TestCase):
             dataset6 = fo.Dataset.from_dir(
                 dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
             )
-            created_ats = self._assert_created_at(created_ats, dataset6, now)
+            times = self._assert_creation_times(
+                time_field, times, dataset6, now
+            )
 
         # merge existing samples
         dataset.merge_samples(samples, skip_existing=False)
-        self.assertEqual(original_created_ats, dataset.values("created_at"))
+        if is_update:
+            for original_t, new_t in zip(
+                original_times, dataset.values(time_field)
+            ):
+                self.assertGreater(new_t, original_t)
+        else:
+            self.assertEqual(original_times, dataset.values(time_field))
 
     @drop_datasets
-    def test_video_created_at(self):
+    def test_created_at(self):
+        self._test_creation_time("created_at", False)
+
+    @drop_datasets
+    def test_last_updated_at(self):
+        self._test_creation_time("last_updated_at", True)
+
+    def _test_video_creation_time(self, time_field, is_update):
+        frame_time_field = f"frames.{time_field}"
         samples = [
             fo.Sample("video1.mp4"),
             fo.Sample("video2.mp4"),
@@ -3451,7 +3460,7 @@ class SampleCreatedAtTests(unittest.TestCase):
 
         # created at is None when not inside a dataset
         all_none = not any(
-            f.created_at for s in samples for f in s.frames.values()
+            f[time_field] for s in samples for f in s.frames.values()
         )
         self.assertTrue(all_none)
 
@@ -3460,49 +3469,47 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset = fo.Dataset()
         dataset.add_samples(samples)
 
-        # created_at in schema
+        # time field in schema
         schema = dataset.get_frame_field_schema(include_private=True)
-        self.assertIn("created_at", schema)
+        self.assertIn(time_field, schema)
 
-        # Values of created_at in frames are close to now
-        original_created_ats = created_ats = dataset.values(
-            "frames.created_at", unwind=True
-        )
-        for ca in created_ats:
-            self.assertIsNotNone(ca)
-            self.assertAlmostEqual(ca, now, delta=self.CLOSE_DELTA)
+        # Values of time field in frames are close to now
+        original_times = times = dataset.values(frame_time_field, unwind=True)
+        for t in times:
+            self.assertIsNotNone(t)
+            self.assertAlmostEqual(t, now, delta=self.CLOSE_DELTA)
 
         # Local frames and values should be really close, within rounding.
-        for local_frame, db_created_at in zip(frames, created_ats):
+        for local_frame, db_frame_t in zip(frames, times):
             self.assertAlmostEqual(
-                local_frame.created_at, db_created_at, delta=self.EQUAL_DELTA
+                local_frame[time_field], db_frame_t, delta=self.EQUAL_DELTA
             )
 
         # Local frames from above and through sample-frame iteration should be
         #   equal.
         self.assertListEqual(
-            [f.created_at for f in frames],
-            [f.created_at for s in dataset for f in s.frames.values()],
+            [f[time_field] for f in frames],
+            [f[time_field] for s in dataset for f in s.frames.values()],
         )
 
         # Shouldn't be changed on updates
         dataset.set_values("frames.foo", [[4]] * len(frames))
         self.assertEqual(
-            original_created_ats,
-            dataset.values("frames.created_at", unwind=True),
+            original_times,
+            dataset.values(frame_time_field, unwind=True),
         )
 
         # View
         view = dataset.select_fields()
 
         schema = view.get_frame_field_schema(include_private=True)
-        self.assertIn("created_at", schema)
+        self.assertIn(time_field, schema)
 
-        values = view.values("frames.created_at", unwind=True)
-        self.assertListEqual(values, created_ats)
+        values = view.values(f"frames.{time_field}", unwind=True)
+        self.assertListEqual(values, times)
 
         frame = view.first().frames.first()
-        self.assertEqual(frame.created_at, values[0])
+        self.assertEqual(frame[time_field], values[0])
 
         # add_collection()
 
@@ -3510,8 +3517,8 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset2 = fo.Dataset()
         dataset2.add_collection(dataset, new_ids=True)
 
-        created_ats = self._assert_frames_created_at(
-            created_ats, dataset2, now
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset2, now
         )
 
         # clone()
@@ -3519,8 +3526,8 @@ class SampleCreatedAtTests(unittest.TestCase):
         now = datetime.utcnow()
         dataset3 = dataset.clone()
 
-        created_ats = self._assert_frames_created_at(
-            created_ats, dataset3, now
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset3, now
         )
 
         # add_samples()
@@ -3529,8 +3536,8 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset4 = fo.Dataset()
         dataset4.add_samples(dataset)
 
-        created_ats = self._assert_frames_created_at(
-            created_ats, dataset4, now
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset4, now
         )
 
         # merge_samples()
@@ -3538,8 +3545,8 @@ class SampleCreatedAtTests(unittest.TestCase):
         dataset5 = fo.Dataset()
         dataset5.merge_samples(dataset)
 
-        created_ats = self._assert_frames_created_at(
-            created_ats, dataset5, now
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset5, now
         )
 
         # import samples with from_dir
@@ -3553,32 +3560,46 @@ class SampleCreatedAtTests(unittest.TestCase):
             dataset6 = fo.Dataset.from_dir(
                 dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
             )
-            created_ats = self._assert_frames_created_at(
-                created_ats, dataset6, now
+            times = self._assert_creation_times(
+                frame_time_field, times, dataset6, now
             )
 
-        # merge existing samples, created_at should not change.
+        # merge existing samples, time should not change.
         dataset.merge_samples(samples, skip_existing=False)
-        self.assertEqual(
-            original_created_ats,
-            dataset.values("frames.created_at", unwind=True),
-        )
+        if is_update:
+            for original_t, new_t in zip(
+                original_times, dataset.values(frame_time_field, unwind=True)
+            ):
+                self.assertGreater(new_t, original_t)
+        else:
+            self.assertEqual(
+                original_times,
+                dataset.values(frame_time_field, unwind=True),
+            )
 
         # Can add a new frame to sample and it gets creation time on save()
         samples[0].frames[2] = fo.Frame(frame_number=2)
-        self.assertIsNone(samples[0].frames[2].created_at)
+        self.assertIsNone(samples[0].frames[2][time_field])
         samples[0].frames.save()
         self.assertGreater(
-            samples[0].frames[2].created_at, samples[0].frames[1].created_at
+            samples[0].frames[2][time_field], samples[0].frames[1][time_field]
         )
-        self.assertEqual(
-            samples[0].frames[1].created_at, original_created_ats[0]
-        )
+        if not is_update:
+            self.assertEqual(
+                samples[0].frames[1][time_field], original_times[0]
+            )
 
     @drop_datasets
-    def test_readonly_created_at(self):
+    def test_video_created_at(self):
+        self._test_video_creation_time("created_at", False)
+
+    @drop_datasets
+    def test_video_last_updated_at(self):
+        self._test_video_creation_time("last_updated_at", True)
+
+    @drop_datasets
+    def _test_readonly_creation_time(self, time_field):
         # Setup
-        created_at = "created_at"
         sample = fo.Sample("blah.mp4")
         frame = fo.Frame()
         sample.frames[1] = frame
@@ -3591,48 +3612,59 @@ class SampleCreatedAtTests(unittest.TestCase):
 
         # Sample and SampleView checks
         for obj in (sample, sample_view, frame, frame_view):
-            self.assertRaises(ValueError, obj.__setattr__, created_at, now)
-            self.assertRaises(ValueError, obj.__setitem__, created_at, now)
-            self.assertRaises(ValueError, obj.set_field, created_at, now)
-            self.assertRaises(ValueError, obj.clear_field, created_at)
-            self.assertRaises(ValueError, obj.update_fields, {created_at: now})
+            self.assertRaises(ValueError, obj.__setattr__, time_field, now)
+            self.assertRaises(ValueError, obj.__setitem__, time_field, now)
+            self.assertRaises(ValueError, obj.set_field, time_field, now)
+            self.assertRaises(ValueError, obj.clear_field, time_field)
+            self.assertRaises(ValueError, obj.update_fields, {time_field: now})
 
         # Dataset only
         self.assertRaises(
             ValueError,
             dataset.rename_sample_field,
-            created_at,
+            time_field,
             "blah",
         )
         self.assertRaises(
             ValueError,
             dataset.rename_frame_field,
-            created_at,
+            time_field,
             "blah",
         )
-        self.assertRaises(ValueError, dataset.delete_sample_field, created_at)
-        self.assertRaises(ValueError, dataset.delete_frame_field, created_at)
+        self.assertRaises(ValueError, dataset.delete_sample_field, time_field)
+        self.assertRaises(ValueError, dataset.delete_frame_field, time_field)
 
         # Common collection calls
         for collection in (dataset, view):
             self.assertRaises(
-                ValueError, collection.set_values, created_at, [now]
+                ValueError, collection.set_values, time_field, [now]
             )
             self.assertRaises(
-                ValueError, collection.set_values, "frames.created_at", [[now]]
+                ValueError,
+                collection.set_values,
+                f"frames.{time_field}",
+                [[now]],
             )
             self.assertRaises(
-                ValueError, collection.clear_sample_field, created_at
+                ValueError, collection.clear_sample_field, time_field
             )
             self.assertRaises(
-                ValueError, collection.clear_frame_field, created_at
+                ValueError, collection.clear_frame_field, time_field
             )
             self.assertRaises(
-                ValueError, collection.set_field, created_at, now
+                ValueError, collection.set_field, time_field, now
             )
             self.assertRaises(
-                ValueError, collection.set_field, "frames.created_at", now
+                ValueError, collection.set_field, f"frames.{time_field}", now
             )
+
+    @drop_datasets
+    def test_readonly_created_at(self):
+        self._test_readonly_creation_time("created_at")
+
+    @drop_datasets
+    def test_readonly_last_updated_at(self):
+        self._test_readonly_creation_time("last_updated_at")
 
 
 class DatasetDeletionTests(unittest.TestCase):

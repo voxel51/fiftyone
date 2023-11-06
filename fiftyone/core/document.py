@@ -452,7 +452,8 @@ class _Document(object):
             fields = {
                 f: f
                 for f in self.field_names
-                if f not in ("id", "_dataset_id", "created_at")
+                if f
+                not in ("id", "_dataset_id", "created_at", "last_updated_at")
             }
         elif etau.is_str(fields):
             fields = {fields: fields}

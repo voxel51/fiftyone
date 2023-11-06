@@ -21,6 +21,7 @@ class DatasetFrameDocument(DatasetMixin, Document):
     id = fof.ObjectIdField(required=True, primary_key=True, db_field="_id")
     frame_number = fof.FrameNumberField(required=True)
     created_at = fof.DateTimeField(null=True, readonly=True)
+    last_updated_at = fof.DateTimeField(null=True, readonly=True)
 
     _sample_id = fof.ObjectIdField(required=True)
     _dataset_id = fof.ObjectIdField()
@@ -45,6 +46,7 @@ class NoDatasetFrameDocument(NoDatasetMixin, SerializableDocument):
                 ("id", None),
                 ("frame_number", None),
                 ("created_at", None),
+                ("last_updated_at", None),
                 ("_sample_id", sample_id),
                 ("_dataset_id", None),
             ]

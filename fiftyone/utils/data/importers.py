@@ -1859,6 +1859,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
 
             sd["_dataset_id"] = dataset_id
             sd["created_at"] = now
+            sd["last_updated_at"] = now
             return sd
 
         sample_ids = foo.insert_documents(
@@ -1888,6 +1889,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             def _parse_frame(fd):
                 fd["_dataset_id"] = dataset_id
                 fd["created_at"] = now
+                fd["last_updated_at"] = now
                 return fd
 
             foo.insert_documents(

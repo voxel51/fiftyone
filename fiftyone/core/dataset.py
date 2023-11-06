@@ -2639,7 +2639,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         now = datetime.utcnow()
         d["_dataset_id"] = self._doc.id
-        d["created_at"] = now
+        d["created_at"] = d["last_updated_at"] = now
 
         return d
 
@@ -3911,6 +3911,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "_sample_id": "$_id",
                         "_dataset_id": self._doc.id,
                         "created_at": now,
+                        "last_updated_at": now,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6988,7 +6989,15 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
     now = datetime.utcnow()
-    pipeline.append({"$addFields": {"_dataset_id": _id, "created_at": now}})
+    pipeline.append(
+        {
+            "$addFields": {
+                "_dataset_id": _id,
+                "created_at": now,
+                "last_updated_at": now,
+            }
+        }
+    )
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
@@ -6996,7 +7005,13 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
         pipeline.append(
-            {"$addFields": {"_dataset_id": _id, "created_at": now}}
+            {
+                "$addFields": {
+                    "_dataset_id": _id,
+                    "created_at": now,
+                    "last_updated_at": now,
+                }
+            }
         )
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
@@ -7496,7 +7511,11 @@ def _add_collection_with_new_ids(
         num_ids = len(src_samples)
 
     now = datetime.utcnow()
-    add_fields = {"_dataset_id": dataset._doc.id, "created_at": now}
+    add_fields = {
+        "_dataset_id": dataset._doc.id,
+        "created_at": now,
+        "last_updated_at": now,
+    }
 
     if contains_groups:
         id_field = sample_collection.group_field + "._id"
@@ -7557,6 +7576,7 @@ def _add_collection_with_new_ids(
                 "$addFields": {
                     "_dataset_id": dataset._doc.id,
                     "created_at": now,
+                    "last_updated_at": now,
                 }
             },
             {
@@ -7854,6 +7874,7 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
+    now = datetime.utcnow()
     sample_pipeline.extend(
         [
             {
@@ -7863,7 +7884,8 @@ def _merge_samples_pipeline(
                     #   new then we insert or discard, either is fine. Or,
                     #   doc exists and we keepExisting OR created_at should
                     #   be a deleted_field in the whenMatch pipeline
-                    "created_at": datetime.utcnow(),
+                    "created_at": now,
+                    "last_updated_at": now,
                 }
             },
             {
@@ -7965,7 +7987,8 @@ def _merge_samples_pipeline(
                         #   new then we insert. Or, doc exists and we
                         #   keepExisting OR created_at should
                         #   be a deleted_field in the whenMatch pipeline
-                        "created_at": datetime.utcnow(),
+                        "created_at": now,
+                        "last_updated_at": now,
                     }
                 },
                 {

@@ -690,12 +690,14 @@ def make_frames_dataset(
     if sample_frames == "dynamic":
         pipeline.append({"$project": {"filepath": False}})
 
+    now = datetime.datetime.utcnow()
     pipeline.extend(
         [
             {
                 "$addFields": {
                     "_dataset_id": dataset._doc.id,
-                    "created_at": datetime.datetime.utcnow(),
+                    "created_at": now,
+                    "last_updated_at": now,
                 }
             },
             {
@@ -907,6 +909,7 @@ def _init_frames(
                 "metadata": None,
                 "frame_number": fn,
                 "created_at": now,
+                "last_updated_at": now,
                 "_media_type": "image",
                 "_rand": _rand,
                 "_sample_id": _sample_id,

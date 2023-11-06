@@ -296,7 +296,7 @@ class Frames(object):
             doc = self._dataset._frame_dict_to_doc(d)
 
             for field, value in _frame.iter_fields():
-                if field in {"created_at"}:
+                if field in {"created_at", "last_updated_at"}:
                     continue
                 doc.set_field(
                     field,
@@ -654,7 +654,9 @@ class Frames(object):
 
         d["_sample_id"] = self._sample_id
         d["_dataset_id"] = self._dataset._doc.id
-        d["created_at"] = datetime.datetime.utcnow()
+        now = datetime.datetime.utcnow()
+        d["created_at"] = now
+        d["last_updated_at"] = now
 
         return d
 
@@ -1139,7 +1141,19 @@ class FrameView(DocumentView):
 
     @property
     def created_at(self):
+        """Creation time of the frame, or ``None`` if unknown.
+
+        Frames only get a creation time when they're in a sample in a dataset.
+        """
         return self._doc.created_at
+
+    @property
+    def last_updated_at(self):
+        """Latest update time of the frame, or ``None`` if unknown.
+
+        Frames only get an update time when they're in a sample in a dataset.
+        """
+        return self._doc.last_updated_at
 
     @property
     def dataset_id(self):

@@ -86,6 +86,7 @@ class DatasetSampleDocument(DatasetMixin, Document):
     tags = fof.ListField(fof.StringField())
     metadata = fof.EmbeddedDocumentField(fom.Metadata, null=True)
     created_at = fof.DateTimeField(null=True, readonly=True)
+    last_updated_at = fof.DateTimeField(null=True, readonly=True)
 
     _media_type = fof.StringField()
     _rand = fof.FloatField(default=_generate_rand)
@@ -120,6 +121,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
         kwargs["_media_type"] = fomm.get_media_type(filepath)
         kwargs["_dataset_id"] = None
         kwargs["created_at"] = None
+        kwargs["last_updated_at"] = None
 
         self._data = OrderedDict()
 
@@ -130,6 +132,7 @@ class NoDatasetSampleDocument(NoDatasetMixin, SerializableDocument):
                 "id",
                 "_dataset_id",
                 "created_at",
+                "last_updated_at",
             }:
                 value = self._get_default(self.default_fields[field_name])
 

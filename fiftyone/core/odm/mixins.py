@@ -1639,7 +1639,7 @@ class NoDatasetMixin(object):
 
             if k == "_id":
                 k = "id"
-            elif k in {"_dataset_id", "created_at"}:
+            elif k in {"_dataset_id", "created_at", "last_updated_at"}:
                 continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]
