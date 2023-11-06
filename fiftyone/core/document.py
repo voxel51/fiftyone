@@ -103,6 +103,22 @@ class _Document(object):
         return self._dataset
 
     @property
+    def created_at(self):
+        """Creation time of the document, or ``None`` if unknown.
+
+        Documents only get a creation time when they're attached to a dataset.
+        """
+        return self._doc.created_at
+
+    @property
+    def last_updated_at(self):
+        """Latest update time of the document, or ``None`` if unknown.
+
+        Documents only get an update time when they're attached to a dataset.
+        """
+        return self._doc.last_updated_at
+
+    @property
     def _collection(self):
         """The :class:`fiftyone.core.collections.SampleCollection` from which
         this document was taken, or ``None`` if it is not in a dataset.

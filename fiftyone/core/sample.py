@@ -74,22 +74,6 @@ class _SampleMixin(object):
         raise ValueError("Image samples are not iterable")
 
     @property
-    def created_at(self):
-        """Creation time of the sample, or ``None`` if unknown.
-
-        Samples only get a creation time when they're added to a dataset.
-        """
-        return self._doc.created_at
-
-    @property
-    def last_updated_at(self):
-        """Latest update time of the sample, or ``None`` if unknown.
-
-        Samples only get an update time when they're in a dataset.
-        """
-        return self._doc.last_updated_at
-
-    @property
     def dataset_id(self):
         return self._doc._dataset_id
 
