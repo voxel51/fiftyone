@@ -46,6 +46,10 @@ LINUX_DOWNLOADS = {
         "11": {
             "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-5.0.4.tgz"
         },
+        "12": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
+        },
     },
     "rhel": {
         "7": {
@@ -82,8 +86,8 @@ WINDOWS_DOWNLOADS = {
 }
 
 
-MACHINE = platform.machine()
-SYSTEM = platform.system()
+MACHINE = os.environ.get("FODB_MACHINE", platform.machine())
+SYSTEM = os.environ.get("FODB_SYSTEM", platform.system())
 
 
 def _get_linux_download():
@@ -92,40 +96,30 @@ def _get_linux_download():
         reader = csv.reader(stream, delimiter="=")
         d = dict(reader)
 
-    try:
-        id = d["ID"]
-        version = d["VERSION_ID"]
-
-        for k, v in LINUX_DOWNLOADS[id].items():
-            if id == "amzn":
-                if version == k:
-                    return v[MACHINE]
-            elif version.startswith(k):
-                return v[MACHINE]
-
-    except:
-        pass
-
-    return LINUX_DOWNLOADS["ubuntu"]["18"][MACHINE]
+    for k, v in LINUX_DOWNLOADS[d["ID"]].items():
+        if d["VERSION_ID"].startswith(k):
+            return v[MACHINE]
 
 
 def _get_download():
-    if SYSTEM == DARWIN:
-        return DARWIN_DOWNLOADS[MACHINE]
+    try:
+        if SYSTEM == DARWIN:
+            return DARWIN_DOWNLOADS[MACHINE]
 
-    if SYSTEM == WINDOWS:
-        return WINDOWS_DOWNLOADS[MACHINE]
+        if SYSTEM == WINDOWS:
+            return WINDOWS_DOWNLOADS[MACHINE]
 
-    if SYSTEM == LINUX:
-        return _get_linux_download()
-
-    raise RuntimeError(f"Unexpected system '{SYSTEM}'")
+        if SYSTEM == LINUX:
+            return _get_linux_download()
+    except:
+        pass
 
 
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
 
-VERSION = "0.4.1"
+
+VERSION = "0.4.2"
 
 
 def get_version():
@@ -159,14 +153,10 @@ class CustomBdistWheel(bdist_wheel):
             self.plat_name = "macosx_11_0_arm64"
         elif is_platform("Darwin", "x86_64"):
             self.plat_name = "macosx_10_13_x86_64"
-        elif is_platform("Windows", "amd64"):
+        elif is_platform("Windows", "x86_64"):
             self.plat_name = "win_amd64"
         elif is_platform("Windows", "32"):
             self.plat_name = "win32"
-        else:
-            raise ValueError(
-                "Unsupported target platform: %r" % self.plat_name
-            )
 
     def get_tag(self):
         impl = "py3"

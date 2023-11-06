@@ -208,11 +208,11 @@ Troubleshooting Linux imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 `fiftyone-db` officially supports Debian 9+ (x86_64 only), Ubuntu 18.04+, and
-RHEL/CentOS 7+. The correct MongoDB build is downloaded and installed while
-building the package wheel on your machine. 
+RHEL/CentOS 7+ Linux distributions. The correct MongoDB build is downloaded
+and installed while building the package wheel on your machine. 
 
 If a suitable MongoDB build is not available or otherwise does not
-work in your environment, you may encounter a `ServerSelectionTimeoutError`.
+work in your environment, you may encounter a `FiftyOneConfigError`.
 
 If you have output similar to the below, you may just need to install
 `libssl` packages.
