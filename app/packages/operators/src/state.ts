@@ -411,6 +411,7 @@ export const availableOperators = selector({
         icon: operator.config.icon,
         darkIcon: operator.config.darkIcon,
         lightIcon: operator.config.lightIcon,
+        datasetless: operator.config.datasetless,
       };
     });
   },
@@ -425,7 +426,7 @@ export const operatorBrowserQueryState = atom({
   default: "",
 });
 
-function sortResults(results, recentlyUsedOperators) {
+function sortResults(results, recentlyUsedOperators, datasetless) {
   return results
     .map((result) => {
       let score = (result.description || result.label).charCodeAt(0);
@@ -433,7 +434,7 @@ function sortResults(results, recentlyUsedOperators) {
         const recentIdx = recentlyUsedOperators.indexOf(result.label);
         score = recentIdx * -1;
       }
-      if (result.canExecute === false) {
+      if (result.canExecute === false || (datasetless && !result.datasetless)) {
         score += results.length;
       }
       return {
@@ -457,12 +458,14 @@ export const operatorBrowserChoices = selector({
   get: ({ get }) => {
     const allChoices = get(availableOperators);
     const query = get(operatorBrowserQueryState);
+    const datasetName = get(fos.datasetName);
+    const datasetless = datasetName === null;
     let results = [...allChoices];
     results = results.filter(({ unlisted }) => !unlisted);
     if (query && query.length > 0) {
       results = filterChoicesByQuery(query, results);
     }
-    return sortResults(results, get(recentlyUsedOperatorsState));
+    return sortResults(results, get(recentlyUsedOperatorsState), datasetless);
   },
 });
 export const operatorDefaultChoice = selector({

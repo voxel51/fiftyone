@@ -32,6 +32,7 @@ class OperatorConfig(object):
             when app is in the light mode
         dark_icon (None): icon to show for the operator in the Operator Browser
             when app is in the dark mode
+        datasetless (False): whether the operator can be executed without dataset
     """
 
     def __init__(
@@ -48,6 +49,8 @@ class OperatorConfig(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
+        datasetless=False,
+        **kwargs
     ):
         self.name = name
         self.label = label or name
@@ -61,6 +64,8 @@ class OperatorConfig(object):
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.datasetless = datasetless
+        self._kwargs = kwargs
 
     def to_json(self):
         return {
@@ -76,6 +81,8 @@ class OperatorConfig(object):
             "icon": self.icon,
             "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "datasetless": self.datasetless,
+            **self._kwargs,
         }
 
 

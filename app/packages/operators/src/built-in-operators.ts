@@ -562,6 +562,7 @@ class ConsoleLog extends Operator {
       name: "console_log",
       label: "Console Log",
       unlisted: true,
+      datasetless: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -584,6 +585,7 @@ class ShowOutput extends Operator {
       name: "show_output",
       label: "Show Output",
       unlisted: true,
+      datasetless: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -619,6 +621,7 @@ class SetProgress extends Operator {
       name: "set_progress",
       label: "Set Progress",
       unlisted: true,
+      datasetless: true,
     });
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
@@ -661,6 +664,7 @@ class TestOperator extends Operator {
       name: "test_operator",
       label: "Test an Operator",
       dynamic: true,
+      datasetless: true,
     });
   }
   parseParams(rawParams: string) {

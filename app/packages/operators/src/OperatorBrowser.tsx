@@ -12,6 +12,9 @@ import ErrorView from "../../core/src/plugins/SchemaIO/components/ErrorView";
 import OperatorIcon, { CustomIconPropsType } from "./OperatorIcon";
 import OperatorPalette from "./OperatorPalette";
 import { PaletteContentContainer } from "./styled-components";
+import { datasetName as datasetNameAtom } from "@fiftyone/state";
+import { useRecoilValue } from "recoil";
+import { noop } from "lodash";
 
 const QueryInput = styled.input`
   width: 100%;
@@ -27,7 +30,7 @@ const ChoiceContainer = styled.div<{ disabled: boolean; selected?: boolean }>`
   padding: 0 1rem;
   :hover {
     background: ${({ theme }) => theme.background.level1};
-    cursor: pointer;
+    cursor: ${({ disabled }) => (disabled ? "not-allowed" : "pointer")};
   }
   opacity: ${({ disabled }) => (disabled ? 0.5 : 1)};
   background: ${({ selected, theme }) => selected && theme.primary.plainColor};
@@ -55,9 +58,10 @@ const ChoiceIcon = styled.div`
 
 const Choice = (props: ChoicePropsType) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { onClick, choice, selected } = props;
+  const { datasetless, onClick, choice, selected } = props;
   const { label, name, canExecute } = choice;
-  const disabled = canExecute === false;
+  const datasetlessDisabled = datasetless && !choice.datasetless;
+  const disabled = canExecute === false || datasetlessDisabled;
 
   useEffect(() => {
     const containerElem = containerRef.current;
@@ -69,9 +73,14 @@ const Choice = (props: ChoicePropsType) => {
   return (
     <ChoiceContainer
       disabled={disabled}
-      onClick={onClick}
+      onClick={disabled ? noop : onClick}
       selected={selected}
       ref={containerRef}
+      title={
+        datasetlessDisabled
+          ? "Can not execute this operator without dataset"
+          : undefined
+      }
     >
       <ChoiceIcon>
         <OperatorIcon {...choice} Fallback={disabled ? Lock : Extension} />
@@ -124,6 +133,8 @@ export default function OperatorBrowser() {
   const theme = useTheme();
   const browser = useOperatorBrowser();
   const queryInputRef = useRef();
+  const datasetName = useRecoilValue(datasetNameAtom);
+  const datasetless = datasetName === null;
 
   useEffect(() => {
     const { current } = queryInputRef;
@@ -180,13 +191,12 @@ export default function OperatorBrowser() {
             key={choice.value}
             choice={choice}
             selected={choice.value === browser.selectedValue}
+            datasetless={datasetless}
           />
         ))}
         {browser.choices.length === 0 && (
           <Choice
-            onClick={() => {
-              // noop
-            }}
+            onClick={noop}
             key={"no-operator"}
             choice={{ label: "No matching operators" }}
             selected={false}
@@ -202,10 +212,12 @@ type ChoiceType = CustomIconPropsType & {
   label: string;
   name?: string;
   canExecute?: boolean;
+  datasetless?: boolean;
 };
 
 type ChoicePropsType = {
   onClick: () => void;
   choice: ChoiceType;
   selected?: boolean;
+  datasetless?: boolean;
 };

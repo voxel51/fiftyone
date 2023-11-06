@@ -275,6 +275,7 @@ class PrintStdout(foo.Operator):
             name="print_stdout",
             label="Print to stdout",
             unlisted=True,
+            datasetless=True,
         )
 
     def resolve_input(self, ctx):
@@ -294,6 +295,7 @@ class ListFiles(foo.Operator):
             name="list_files",
             label="List Files",
             unlisted=True,
+            datasetless=True,
         )
 
     def execute(self, ctx):

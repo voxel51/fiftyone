@@ -114,6 +114,7 @@ export type OperatorConfigOptions = {
   icon?: string;
   darkIcon?: string;
   lightIcon?: string;
+  datasetless?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -128,6 +129,7 @@ export class OperatorConfig {
   public icon = null;
   public darkIcon = null;
   public lightIcon = null;
+  public datasetless = false;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -142,6 +144,7 @@ export class OperatorConfig {
     this.icon = options.icon;
     this.darkIcon = options.darkIcon;
     this.lightIcon = options.lightIcon;
+    this.datasetless = options.datasetless;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -157,6 +160,7 @@ export class OperatorConfig {
       icon: json.icon,
       darkIcon: json.dark_icon,
       lightIcon: json.light_icon,
+      datasetless: json.datasetless,
     });
   }
 }
