@@ -101,7 +101,6 @@ jobs:
       - name: Download
         uses: actions/download-artifact@v3
         with:
-          name: sdist
           path: downloads
       - name: Install dependencies
         run: |
