@@ -24,6 +24,7 @@ import {
   ServerError,
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker/index.ts?worker&inline";
+import { BufferManager } from "./lookers/imavid/buffer-manager";
 
 /**
  * Shallow data-object comparison for equality
@@ -415,6 +416,9 @@ export const mergeUpdates = <State extends BaseState>(
     }
     if (n === null || o === null) {
       return n;
+    }
+    if (o.constructor.name !== "Object" || n.constructor.name !== "Object") {
+      return n ?? o;
     }
     return mergeWith(merger, o, n);
   };

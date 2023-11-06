@@ -40,6 +40,8 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
       return this.element;
     }
 
+    return null;
+
     if (duration !== null) {
       const frameCount = getFrameNumber(duration, duration, frameRate);
       const start = 0;

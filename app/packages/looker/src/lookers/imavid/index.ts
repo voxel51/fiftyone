@@ -1,14 +1,11 @@
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
-import { ClassificationsOverlay } from "../../overlays";
 import { Overlay } from "../../overlays/base";
-import processOverlays from "../../processOverlays";
 import {
   DEFAULT_VIDEO_OPTIONS,
   ImaVidState,
   LabelData,
   Sample,
-  VideoState,
 } from "../../state";
 
 import { AbstractLooker } from "../abstract";
@@ -49,8 +46,8 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   dispatchImpliedEvents(
-    previousState: Readonly<VideoState>,
-    state: Readonly<VideoState>
+    previousState: Readonly<ImaVidState>,
+    state: Readonly<ImaVidState>
   ): void {
     super.dispatchImpliedEvents(previousState, state);
     const previousPlaying = previousState.playing && !previousState.buffering;
@@ -65,28 +62,28 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   getCurrentFrameLabels(): LabelData[] {
     const frame = this.frames.get(this.frameNumber).deref();
     const labels: LabelData[] = [];
-    if (frame) {
-      processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
-        if (overlay instanceof ClassificationsOverlay) {
-          overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
-            labels.push({
-              field: field,
-              labelId: label.id,
-              frameNumber: this.frameNumber,
-              sampleId: this.sample.id,
-            });
-          });
-        } else {
-          const { id: labelId, field } = overlay.getSelectData(this.state);
-          labels.push({
-            labelId,
-            field,
-            sampleId: this.sample.id,
-            frameNumber: this.frameNumber,
-          });
-        }
-      });
-    }
+    // if (frame) {
+    //   processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
+    //     if (overlay instanceof ClassificationsOverlay) {
+    //       overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
+    //         labels.push({
+    //           field: field,
+    //           labelId: label.id,
+    //           frameNumber: this.frameNumber,
+    //           sampleId: this.sample.id,
+    //         });
+    //       });
+    //     } else {
+    //       const { id: labelId, field } = overlay.getSelectData(this.state);
+    //       labels.push({
+    //         labelId,
+    //         field,
+    //         sampleId: this.sample.id,
+    //         frameNumber: this.frameNumber,
+    //       });
+    //     }
+    //   });
+    // }
 
     return labels;
   }
@@ -125,7 +122,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     };
   }
 
-  hasDefaultZoom(state: VideoState): boolean {
+  hasDefaultZoom(state: ImaVidState): boolean {
     let pan = [0, 0];
     let scale = 1;
 
@@ -159,27 +156,27 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   postProcess() {
-    if (this.state.seeking) {
-      this.state.disableOverlays = true;
-    } else if (!this.state.playing && !this.state.buffering) {
-      this.state.disableOverlays = false;
-    }
-    if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized();
-    }
+    // if (this.state.seeking) {
+    //   this.state.disableOverlays = true;
+    // } else if (!this.state.playing && !this.state.buffering) {
+    //   this.state.disableOverlays = false;
+    // }
+    // if (!this.state.setZoom) {
+    //   this.state.setZoom = this.hasResized();
+    // }
 
-    if (!this.state.setZoom) {
-      this.state.setZoom = this.hasResized();
-    }
+    // if (!this.state.setZoom) {
+    //   this.state.setZoom = this.hasResized();
+    // }
 
-    if (this.state.zoomToContent) {
-      LookerUtils.toggleZoom(this.state, this.currentOverlays);
-    } else if (this.state.setZoom) {
-      this.state.pan = [0, 0];
-      this.state.scale = 1;
+    // if (this.state.zoomToContent) {
+    //   LookerUtils.toggleZoom(this.state, this.currentOverlays);
+    // } else if (this.state.setZoom) {
+    //   this.state.pan = [0, 0];
+    //   this.state.scale = 1;
 
-      this.state.setZoom = false;
-    }
+    //   this.state.setZoom = false;
+    // }
 
     return super.postProcess();
   }
@@ -187,18 +184,18 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   updateOptions(options: Partial<ImaVidState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
 
-    if (reload) {
-      this.updater({ options, reloading: this.state.disabled });
-      this.updateSample(this.sample);
-    } else {
-      this.updater({ options, disabled: false });
-    }
+    // if (reload) {
+    //   this.updater({ options, reloading: this.state.disabled });
+    //   this.updateSample(this.sample);
+    // } else {
+    //   this.updater({ options, disabled: false });
+    // }
   }
 
   updateSample(sample: Sample) {
-    this.state.bufferManager = [[1, 1]];
-    this.frames.clear();
-    super.updateSample(sample);
+    // this.state.bufferManager = [[1, 1]];
+    // this.frames.clear();
+    // super.updateSample(sample);
   }
 
   private hasFrame(frameNumber: number) {

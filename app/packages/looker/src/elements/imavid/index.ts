@@ -5,9 +5,8 @@
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
-import { DispatchEvent, ImaVidState, StateUpdate } from "../../state";
+import { DispatchEvent, ImaVidState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { getFrameNumber } from "../util";
 import { PlaybackRateBarElement } from "./playback-rate-bar";
 import { PlaybackRateContainerElement } from "./playback-rate-container";
 import { PlaybackRateIconElement } from "./playback-rate-icon";
@@ -75,6 +74,7 @@ const seekFn = (
 
 export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
+  private ctx: CanvasRenderingContext2D;
   private loop = false;
   private playbackRate = 1;
   private frameNumber = 1;
@@ -101,9 +101,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.canvas.width = this.element.naturalWidth;
         this.canvas.height = this.element.naturalHeight;
 
-        const ctx = this.canvas.getContext("2d");
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(this.element, 0, 0);
+        this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
+        this.ctx.drawImage(this.element, 0, 0);
 
         this.imageSource = this.canvas;
 
@@ -193,13 +193,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // TODO: CACHE EVERYTHING INSIDE HERE
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
-    console.log("Trying to play frame", currentFrameNumber);
     if (!currentFrameSample) {
-      console.log(
-        "Couldn't play frame",
-        currentFrameNumber,
-        "because not available"
-      );
       return;
     }
 
@@ -209,11 +203,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
     image.addEventListener("load", () => {
-      const ctx = this.canvas.getContext("2d");
-      ctx.drawImage(image, 0, 0);
-      this.update({ currentFrameNumber: currentFrameNumber + 1 });
+      this.ctx.drawImage(image, 0, 0);
 
       if (animate) {
+        this.update({ currentFrameNumber: currentFrameNumber + 1 });
+
         this.animationId = requestAnimationFrame(
           this.drawFrame.bind(this, currentFrameNumber + 1)
         );
@@ -313,8 +307,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       buffering,
       destroyed,
     } = state;
-    console.log("renderSelf", { currentFrameNumber, playing });
-
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
