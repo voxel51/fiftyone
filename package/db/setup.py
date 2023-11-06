@@ -179,21 +179,15 @@ class CustomBdistWheel(bdist_wheel):
                     mongo_zip_dest, "wb"
                 ) as dest:
                     shutil.copyfileobj(conn, dest)
+
         except:
-            json_dest = os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "download.json",
+            exc_dest = os.path.join(
+                bin_dir,
+                "exception.txt",
             )
-            with open(json_dest, "w", encoding="utf-8") as f:
-                json.dump(
-                    {
-                        "url": mongo_zip_url,
-                        "exception": traceback.format_exc(),
-                    },
-                    f,
-                    ensure_ascii=False,
-                    indent=4,
-                )
+            with open(exc_dest, "w", encoding="utf-8") as f:
+                f.write(traceback.format_exc())
+            return
 
         if mongo_zip_dest.endswith(".zip"):
             # Windows
