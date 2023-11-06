@@ -6,6 +6,8 @@ FiftyOne operator execution.
 |
 """
 import asyncio
+import logging
+import os
 import traceback
 import types as python_types
 
@@ -445,10 +447,15 @@ class ExecutionContext(object):
         Returns:
             the secret value
         """
-        try:
-            return self._secrets[key]
-        except KeyError:
-            return self.resolve_secret_values([key], **kwargs)
+        if key not in self._secrets:
+            try:
+                self._resolve_secret_from_env(key)
+            except KeyError:
+                logging.debug(f"Failed to resolve value for secret `{key}`")
+        return self._secrets.get(key, None)
+
+    def _resolve_secret_from_env(self, key):
+        self._secrets[key] = os.environ[key]
 
     async def resolve_secret_values(self, keys, **kwargs):
         """Resolves the values of the given secrets keys.
