@@ -13,13 +13,13 @@ import { useRefresh } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode, Lock } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
-import { default as React, useEffect, useMemo } from "react";
-import ReactGA from "react-ga";
+import React, { useEffect, useMemo } from "react";
+import ReactGA from "react-ga4";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { graphql } from "relay-runtime";
-import ga from "../ga";
+import gaConfig from "../ga";
 import { datasetHeadName, datasetSnapshotName } from "../versionSelectors";
 import DatasetSelector from "./DatasetSelector";
 import { NavDatasets$key } from "./__generated__/NavDatasets.graphql";
@@ -83,25 +83,23 @@ export const useGA = (fragment: NavGA$key) => {
     if (info.doNotTrack) {
       return;
     }
+
     const dev = info.dev;
     const buildType = dev ? "dev" : "prod";
-
-    ReactGA.initialize(ga.app_ids[buildType], {
-      debug: false,
+    ReactGA.initialize(gaConfig.app_ids[buildType], {
+      testMode: false,
       gaOptions: {
         storage: "none",
         cookieDomain: "none",
         clientId: info.uid,
+        page_location: "omitted",
+        page_path: "omitted",
+        kind: isElectron() ? "Desktop" : "Web",
+        version: info.version,
+        context: info.context,
+        checkProtocolTask: null, // disable check, allow file:// URLs
       },
     });
-    ReactGA.set({
-      userId: info.uid,
-      checkProtocolTask: null, // disable check, allow file:// URLs
-      [ga.dimensions.dev]: buildType,
-      [ga.dimensions.version]: `${info.version}`,
-      [ga.dimensions.context]: info.context + (isElectron() ? "-DESKTOP" : ""),
-    });
-    ReactGA.pageview("/");
   }, [info]);
 };
 

@@ -530,6 +530,10 @@ const InteractiveSidebar = ({
       entry.kind !== fos.EntryKind.INPUT
     );
 
+    if (after === undefined) {
+      return lastOrder.current;
+    }
+
     if (after === null) {
       return [
         ...section,

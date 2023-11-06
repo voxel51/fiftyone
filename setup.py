@@ -28,6 +28,7 @@ INSTALL_REQUIRES = [
     "Deprecated",
     "ftfy",
     "jsonlines",
+    "humanize",
     "hypercorn>=0.13.2",
     "importlib-metadata; python_version<'3.8'",
     "Jinja2>=3",
@@ -112,7 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.21"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.22"]}
 
 
 with open("README.md", "r") as fh:
