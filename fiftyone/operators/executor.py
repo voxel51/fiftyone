@@ -431,7 +431,7 @@ class ExecutionContext(object):
 
     @property
     def secrets(self) -> list[str]:
-        """The dict of secrets available to the operation (if any)."""
+        """The list of secrets that have been resolved (if any)."""
         return [k for k, v in self._secrets if v is not None]
 
     def secret(self, key, **kwargs):
