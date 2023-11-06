@@ -150,7 +150,7 @@ type Colorscale {
 input ColorscaleInput {
   path: String!
   name: String = null
-  list: ColorscaleListInput = null
+  list: [ColorscaleListInput!] = null
   rgb: [[Int!]!] = null
 }
 

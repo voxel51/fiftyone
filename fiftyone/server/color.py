@@ -106,7 +106,7 @@ class ColorscaleListInput:
 class ColorscaleInput:
     path: str
     name: t.Optional[str] = None
-    list: t.Optional[ColorscaleListInput] = None
+    list: t.Optional[t.List[ColorscaleListInput]] = None
     rgb: t.Optional[t.List[t.List[int]]] = None
 
 

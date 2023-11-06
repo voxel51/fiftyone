@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c00ad452e976766f322c0ca6078cc04c>>
+ * @generated SignedSource<<03cb81019467de1243f0eaf908c45d2a>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -40,7 +40,7 @@ export type LabelTagColorInput = {
   valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type ColorscaleInput = {
-  list?: ColorscaleListInput | null;
+  list?: ReadonlyArray<ColorscaleListInput> | null;
   name?: string | null;
   path: string;
   rgb?: ReadonlyArray<ReadonlyArray<number>> | null;
