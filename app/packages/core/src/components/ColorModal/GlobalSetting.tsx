@@ -13,6 +13,7 @@ import {
 import ColorPalette from "./colorPalette/ColorPalette";
 import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
 import ShuffleColor from "./controls/RefreshColor";
+import Colorscale from "./colorPalette/Colorscale";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);
@@ -86,6 +87,10 @@ const GlobalSetting = () => {
       <Divider>Segmentation</Divider>
       <ControlGroupWrapper>
         <DefaultMaskTargets />
+      </ControlGroupWrapper>
+      <Divider>Colorscale</Divider>
+      <ControlGroupWrapper>
+        <Colorscale />
       </ControlGroupWrapper>
     </div>
   );

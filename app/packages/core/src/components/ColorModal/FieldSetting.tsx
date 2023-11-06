@@ -56,7 +56,7 @@ export const fieldColorSetting = selectorFamily<
         if (!newSetting || newSetting instanceof DefaultValue) {
           return {
             ...current,
-            fields: current.fields.filter((field) => field.path !== path),
+            fields: current?.fields?.filter((field) => field.path !== path),
           };
         }
 
