@@ -1,12 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { EventUtils } from "src/shared/event-utils";
 
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
-  constructor(page: Page, eventUtils: EventUtils) {
+  constructor(page: Page) {
     this.page = page;
     this.asserter = new SidebarAsserter(this);
 

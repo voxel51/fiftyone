@@ -20,8 +20,8 @@ const test = base.extend<{
   modal: async ({ page, eventUtils }, use) => {
     await use(new ModalPom(page, eventUtils));
   },
-  sidebar: async ({ page, eventUtils }, use) => {
-    await use(new SidebarPom(page, eventUtils));
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
 });
 

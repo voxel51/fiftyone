@@ -6,7 +6,6 @@ FiftyOne operator decorators.
 |
 """
 import asyncio
-import glob
 
 from cachetools.keys import hashkey
 from contextlib import contextmanager
@@ -15,6 +14,7 @@ import signal
 import os
 
 import fiftyone as fo
+from fiftyone.plugins.core import _iter_plugin_metadata_files
 
 
 def coroutine_timeout(seconds):
@@ -60,9 +60,8 @@ dir_cache = {"state": None}
 
 
 def plugins_cache(func):
-    """Decorator that returns cached function results as long as no
-    subdirectories of ``fo.config.plugins_dir`` have been modified since last
-    time.
+    """Decorator that returns cached function results as long as no plugins
+    have been modified since last time.
     """
 
     @wraps(func)
@@ -85,8 +84,12 @@ def plugins_cache(func):
 
 
 def dir_state(dirpath):
-    if not os.path.isdir(dirpath):
+    try:
+        state = hash(os.path.getmtime(dirpath))
+    except:
         return None
-    # we only need to check top level dir, which will update if any subdirs
-    # change and in the case that files are deleted
-    return os.path.getmtime(dirpath)
+
+    for p in _iter_plugin_metadata_files(root_dir=dirpath):
+        state ^= hash(os.path.getmtime(os.path.dirname(p)))
+
+    return state
