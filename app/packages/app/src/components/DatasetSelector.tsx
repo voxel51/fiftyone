@@ -19,15 +19,7 @@ const DatasetSelector: React.FC<{
   useSearch: UseSearch<string>;
 }> = ({ useSearch }) => {
   const setDataset = useSetDataset();
-  const dataset = useRecoilValue(datasetName);
-  const datasetHead = useRecoilValue(datasetHeadName);
-  const datasetSnapshot = useRecoilValue(datasetSnapshotName);
-
-  const nameWithSnapshot = useMemo(() => {
-    if (datasetHead && datasetSnapshot) {
-      return `${datasetHead} (${datasetSnapshot})`;
-    }
-  }, [datasetHead, datasetSnapshot]);
+  const dataset = useRecoilValue(datasetName) as string;
 
   return (
     <Selector<string>
@@ -35,9 +27,7 @@ const DatasetSelector: React.FC<{
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
-      onSelect={(name) => {
-        name !== dataset && setDataset(name);
-      }}
+      onSelect={(name) => setDataset(name)}
       overflow={true}
       useSearch={useSearch}
       value={nameWithSnapshot || dataset || ""}
