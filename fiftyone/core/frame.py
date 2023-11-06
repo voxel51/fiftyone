@@ -1139,6 +1139,10 @@ class FrameView(DocumentView):
 
     @property
     def created_at(self):
+        """Creation time of the frame, or ``None`` if unknown.
+
+        Frames only get a creation time when they're in a sample in a dataset.
+        """
         return self._doc.created_at
 
     @property
