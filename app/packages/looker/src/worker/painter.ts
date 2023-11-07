@@ -293,10 +293,14 @@ export const PainterFactory = (requestColor) => ({
         (maskTargets && Object.keys(maskTargets).length === 1)
       ) {
         let fieldColor;
-        fieldColor =
-          setting?.fieldColor ??
-          (await requestColor(coloring.pool, coloring.seed, field));
-        color = get32BitColor(fieldColor);
+
+        // if field color has valid custom settings, use the custom field color
+        // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
+        fieldColor = setting?.fieldColor
+          ? setting.fieldColor
+          : await requestColor(coloring.pool, coloring.seed, field);
+        const hexColor = colorString.to.hex(colorString.get.rgb(fieldColor));
+        color = get32BitColor(hexColor);
       }
 
       const getColor = (i) => {
@@ -338,7 +342,6 @@ export const PainterFactory = (requestColor) => ({
                 color = get32BitColor(colorInfo.color);
               }
             }
-
             overlay[i] = color ? color : getColor(targets[i]);
           }
         }

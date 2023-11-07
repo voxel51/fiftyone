@@ -62,13 +62,13 @@ const JSONViewer: React.FC = () => {
       !data?.fields
     )
       return;
-    const { colorPool, fields } = data;
-    const validColors = colorPool
+    const validColors = data.colorPool
       ?.filter((c) => isValidColor(c))
-      .map((c) => colorString.to.hex(colorString.get(c)!.value));
+      .map((c) => colorString.to.hex(colorString.get.rgb(c)!));
     const validatedSetting = validateJSONSetting(
-      fields as ColorSchemeInput["fields"]
+      data.fields as ColorSchemeInput["fields"]
     );
+
     const validatedColorBy = ["field", "label"].includes(data?.colorBy)
       ? data?.colorBy
       : colorScheme.colorBy ?? "field";
