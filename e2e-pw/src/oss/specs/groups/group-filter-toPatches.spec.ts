@@ -13,8 +13,8 @@ const test = base.extend<{
   grid: async ({ eventUtils, page }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  sidebar: async ({ page, eventUtils }, use) => {
-    await use(new SidebarPom(page, eventUtils));
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
   gridActionsRow: async ({ eventUtils, page }, use) => {
     await use(new GridActionsRowPom(page, eventUtils));

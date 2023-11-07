@@ -4090,6 +4090,87 @@ class ViewStageTests(unittest.TestCase):
 
         self._select_field_teardown()
 
+    def test_select_fields_point_clouds(self):
+        group = fo.Group()
+
+        sample1 = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(label="cat", bounding_box=[0, 0, 1, 1])
+                ]
+            ),
+            group=group.element("image"),
+        )
+
+        sample2 = fo.Sample(
+            filepath="point-cloud.pcd",
+            ground_truth=fo.Detections(
+                detections=[
+                    fo.Detection(
+                        label="dog",
+                        location=[0, 0, 0],
+                        dimensions=[1, 1, 1],
+                        rotation=[0, 0, 0],
+                    )
+                ]
+            ),
+            group=group.element("pcd"),
+        )
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2])
+
+        # This should treat `location`, `dimensions`, and `rotation` as default
+        view = dataset.select_fields("ground_truth.detections.label")
+
+        view.group_slice = "image"
+        sample = view.first()
+
+        self.assertEqual(
+            len(sample.ground_truth.detections[0].bounding_box), 4
+        )
+
+        view.group_slice = "pcd"
+        sample = view.first()
+
+        self.assertEqual(len(sample.ground_truth.detections[0].location), 3)
+        self.assertEqual(len(sample.ground_truth.detections[0].dimensions), 3)
+        self.assertEqual(len(sample.ground_truth.detections[0].rotation), 3)
+
+        dataset.add_sample_field(
+            "ground_truth.detections.location",
+            fo.ListField,
+            subfield=fo.FloatField,
+        )
+        dataset.add_sample_field(
+            "ground_truth.detections.dimensions",
+            fo.ListField,
+            subfield=fo.FloatField,
+        )
+        dataset.add_sample_field(
+            "ground_truth.detections.rotation",
+            fo.ListField,
+            subfield=fo.FloatField,
+        )
+
+        # This should treat `location`, `dimensions`, and `rotation` as default
+        # And they should exist in the view's schema
+        view = dataset.select_fields("ground_truth.detections.label")
+
+        view.group_slice = "pcd"
+        schema = view.get_field_schema(flat=True)
+
+        self.assertIn("ground_truth.detections.location", schema)
+        self.assertIn("ground_truth.detections.dimensions", schema)
+        self.assertIn("ground_truth.detections.rotation", schema)
+
+        sample = view.first()
+
+        self.assertEqual(len(sample.ground_truth.detections[0].location), 3)
+        self.assertEqual(len(sample.ground_truth.detections[0].dimensions), 3)
+        self.assertEqual(len(sample.ground_truth.detections[0].rotation), 3)
+
     def test_skip(self):
         result = list(self.dataset.sort_by("filepath").skip(1))
         self.assertIs(len(result), 1)

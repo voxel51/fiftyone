@@ -166,7 +166,7 @@ const useUpdateDatasetColorScheme = () => {
               "defaultMaskTargetsColors"
             );
 
-            // get or create labelTags data
+            // get or create labelTags data {fieldcolor: null, valueColors: []}
             let labelTagsRecord =
               colorSchemeRecord.getLinkedRecord("labelTags");
             if (!labelTagsRecord) {
@@ -181,7 +181,7 @@ const useUpdateDatasetColorScheme = () => {
             labelTagsRecord.setLinkedRecords(
               setEntries(
                 store,
-                "ValueColors",
+                "ValueColor",
                 colorScheme.labelTags?.valueColors ?? null
               ),
               "valueColors"
@@ -216,11 +216,14 @@ const setEntries = (
 ) =>
   entries?.map((entry) => {
     const record = store.create(uuid(), name);
-    Object.entries(entry).forEach((key, value) => {
-      // @ts-ignore
-      record.setValue(value, key);
-    });
+    Object.entries(entry).forEach(([key, value]) => {
+      if (key !== "valueColors") {
+        record.setValue(value, key);
+        return;
+      }
 
+      record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+    });
     return record;
   });
 
