@@ -161,10 +161,17 @@ class CustomizeColor:
 
 
 @dataclass
+class LabelTagsColors:
+    fieldColor: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColor]] = None
+
+
+@dataclass
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
+    label_tags: t.Optional[LabelTagsColors] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
@@ -186,10 +193,17 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
+        label_tags = (
+            asdict(self.color_scheme.label_tags)
+            if self.color_scheme.label_tags
+            else None
+        )
+
         return foo.ColorScheme(
             color_pool=self.color_scheme.color_pool,
             color_by=self.color_scheme.color_by,
             fields=fields,
+            label_tags=label_tags,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,

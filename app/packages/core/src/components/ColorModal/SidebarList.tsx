@@ -26,7 +26,7 @@ const SidebarList: React.FC = () => {
   const [width, setWidth] = useState(WIDTH);
   const stableGroup = [
     { paths: [ACTIVE_FIELD.GLOBAL, ACTIVE_FIELD.JSON], name: "general" },
-    { paths: [{ path: "tags" }], name: "tags" },
+    { paths: [{ path: "tags" }, { path: "_label_tags" }], name: "tags" },
   ];
   const fieldGroups = useRecoilValue(
     fos.sidebarGroups({ modal: false, loading: false })
@@ -111,7 +111,7 @@ const SidebarList: React.FC = () => {
                     <ListItemButton
                       sx={{
                         pl: 4,
-                        margin: "-0.25rem",
+                        padding: "-0.25rem",
                         "&.Mui-selected": {
                           backgroundColor: theme.primary.main,
                         },
@@ -130,11 +130,11 @@ const SidebarList: React.FC = () => {
                             : false
                           : false
                       }
+                      onClick={() => onSelectField(entry)}
                       disableRipple
                     >
                       <ListItemText
                         primary={getDisplayName(entry)}
-                        onClick={() => onSelectField(entry)}
                         sx={{ fontFamily: "palanquin, sans-serif" }}
                       />
                     </ListItemButton>

@@ -10,7 +10,7 @@ import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
-import { validateJSONSetting } from "./utils";
+import { validateJSONSetting, validateLabelTags } from "./utils";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -26,6 +26,7 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
       showSkeletons: colorScheme?.showSkeletons,
       fields: validateJSONSetting(colorScheme.fields || []),
+      labelTags: validateLabelTags(colorScheme?.labelTags || {}),
     };
   }, [colorScheme]);
   const setColorScheme = fos.useSetSessionColorScheme();
@@ -78,10 +79,24 @@ const JSONViewer: React.FC = () => {
         ? data?.showSkeletons
         : colorScheme?.showSkeletons
     );
+    const validatedLabelTags = {
+      fieldColor: isValidColor(data?.labelTags?.fieldColor)
+        ? colorString.to.hex(
+            colorString.get(data?.labelTags?.fieldColor as string)!.value
+          )
+        : undefined,
+      valueColors: data?.labelTags?.valueColors
+        ?.filter((pair) => isValidColor(pair.color))
+        .map((pair) => ({
+          color: colorString.to.hex(colorString.get(pair.color)!.value),
+          value: pair.value,
+        })),
+    };
 
     setData({
       colorPool: validColors,
       fields: validatedSetting,
+      labelTags: validatedLabelTags,
       colorBy: validatedColorBy,
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
@@ -91,6 +106,7 @@ const JSONViewer: React.FC = () => {
       colorPool: validColors,
       colorBy: validatedColorBy,
       fields: validatedSetting,
+      labelTags: validatedLabelTags,
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,

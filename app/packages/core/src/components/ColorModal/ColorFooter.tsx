@@ -8,6 +8,7 @@ import {
   useRelayEnvironment,
 } from "react-relay";
 import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
+import { RecordSourceProxy } from "relay-runtime";
 import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
@@ -27,7 +28,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetDefault = useRecoilValue(fos.datasetAppConfig).colorScheme;
+  const datasetDefault = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
   const updateDatasetColorScheme = useUpdateDatasetColorScheme();
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -43,16 +44,7 @@ const ColorFooter: React.FC = () => {
         <Button
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(
-              datasetDefault || {
-                fields: [],
-                colorPool: configDefault.colorPool,
-                colorBy: configDefault.colorBy,
-                multicolorKeypoints: false,
-                opacity: fos.DEFAULT_ALPHA,
-                showSkeletons: true,
-              }
-            );
+            setColorScheme(fos.ensureColorScheme(datasetDefault));
           }}
         >
           Reset
@@ -65,17 +57,26 @@ const ColorFooter: React.FC = () => {
           }
           onClick={() => {
             updateDatasetColorScheme({
-              fields: colorScheme.fields || [],
-              colorPool: colorScheme.colorPool || [],
+              ...colorScheme,
+              fields: colorScheme.fields ?? [],
+              labelTags: checkLabelTagsDefault(colorScheme.labelTags ?? {}),
+              colorPool:
+                colorScheme.colorPool ?? fos.appConfigDefault.colorPool ?? [],
+              colorBy: colorScheme.colorBy ?? "field",
+              multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+              showSkeletons: colorScheme.showSkeletons ?? true,
             });
-
             setDatasetColorScheme({
               variables: {
                 subscription,
                 datasetName,
                 colorScheme: {
-                  fields: colorScheme.fields || [],
-                  colorPool: colorScheme.colorPool || [],
+                  ...colorScheme,
+                  fields: colorScheme.fields ?? [],
+                  colorPool: colorScheme.colorPool ?? [],
+                  labelTags: colorScheme.labelTags ?? {},
+                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+                  showSkeletons: colorScheme.showSkeletons ?? true,
                 },
               },
             });
@@ -93,10 +94,12 @@ const ColorFooter: React.FC = () => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
               });
-              setColorScheme({
+              setColorScheme((cur) => ({
+                ...cur,
                 fields: [],
+                labelTags: {},
                 colorPool: configDefault.colorPool,
-              });
+              }));
             }}
             disabled={!canEdit}
           >
@@ -136,22 +139,37 @@ const useUpdateDatasetColorScheme = () => {
               colorSchemeRecord = store.create(uuid(), "ColorScheme");
               appConfigRecord.setLinkedRecord(colorSchemeRecord, "colorScheme");
             }
-            const fields = colorScheme?.fields?.map((field) => {
-              const record = store.create(uuid(), "CustomizeColor");
-              Object.entries(field).forEach((key, value) => {
-                // @ts-ignore
-                record.setValue(value, key);
-              });
-
-              return record;
-            });
-
             colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
             colorSchemeRecord.setValue(
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
-            colorSchemeRecord.setLinkedRecords(fields, "fields");
+            colorSchemeRecord.setLinkedRecords(
+              setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
+              "fields"
+            );
+
+            // get or create labelTags data {fieldcolor: null, valueColors: []}
+            let labelTagsRecord =
+              colorSchemeRecord.getLinkedRecord("labelTags");
+            if (!labelTagsRecord) {
+              labelTagsRecord = store.create(uuid(), "LabelTagColor");
+              colorSchemeRecord.setLinkedRecord(labelTagsRecord, "labelTags");
+            }
+
+            labelTagsRecord.setValue(
+              colorScheme.labelTags?.fieldColor,
+              "fieldColor"
+            );
+            labelTagsRecord.setLinkedRecords(
+              setEntries(
+                store,
+                "ValueColor",
+                colorScheme.labelTags?.valueColors ?? null
+              ),
+              "valueColors"
+            );
+
             colorSchemeRecord.setValue(
               colorScheme.multicolorKeypoints,
               "multicolorKeypoints"
@@ -166,5 +184,30 @@ const useUpdateDatasetColorScheme = () => {
     [environment]
   );
 };
+
+// do not send null or {} or {fieldColor: null, valueColors: null}
+// updateDatasetColorScheme expect valueColors to be an array
+const checkLabelTagsDefault = (obj: foq.LabelTagColorInput) => ({
+  fieldColor: obj.fieldColor,
+  valueColors: obj.valueColors ?? [],
+});
+
+const setEntries = (
+  store: RecordSourceProxy,
+  name: string,
+  entries: readonly object[] | null
+) =>
+  entries?.map((entry) => {
+    const record = store.create(uuid(), name);
+    Object.entries(entry).forEach(([key, value]) => {
+      if (key !== "valueColors") {
+        record.setValue(value, key);
+        return;
+      }
+
+      record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+    });
+    return record;
+  });
 
 export default ColorFooter;

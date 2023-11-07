@@ -45,6 +45,7 @@ export const SESSION_DEFAULT: Session = {
     colorPool: [],
     colorBy: "field",
     fields: [],
+    labelTags: {},
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,

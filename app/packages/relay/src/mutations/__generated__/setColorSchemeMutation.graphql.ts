@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<4d167e4ba9f83f37ce281eb1b36eb8ba>>
+ * @generated SignedSource<<29fc0d6fa3ef42dbf89424fb62117722>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -13,6 +13,7 @@ export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
+  labelTags?: LabelTagColorInput | null;
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;
   showSkeletons?: boolean | null;
@@ -26,6 +27,10 @@ export type CustomizeColorInput = {
 export type ValueColorInput = {
   color: string;
   value: string;
+};
+export type LabelTagColorInput = {
+  fieldColor?: string | null;
+  valueColors?: ReadonlyArray<ValueColorInput> | null;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

@@ -237,7 +237,7 @@ export const hexToRgb = (hex: string): RGB => {
     : null;
 };
 
-const default_app_color = [
+export const default_app_color = [
   "#ee0000",
   "#ee6600",
   "#993300",
