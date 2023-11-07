@@ -11,6 +11,7 @@ import {
 } from "./ShareStyledDiv";
 import ColorPalette from "./colorPalette/ColorPalette";
 import ShuffleColor from "./controls/RefreshColor";
+import React from "react";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);

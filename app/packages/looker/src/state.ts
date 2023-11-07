@@ -21,14 +21,17 @@ export interface Coloring {
   points: boolean;
   targets: string[];
 }
-export interface CustomizeColor {
-  path: string;
+export interface LabelTagColor {
   fieldColor?: string;
-  colorByAttribute?: string;
   valueColors?: {
     value: string;
     color: string;
   }[];
+}
+
+export interface CustomizeColor extends LabelTagColor {
+  path: string;
+  colorByAttribute?: string;
 }
 
 export type OrthogrpahicProjectionMetadata = {
@@ -130,7 +133,9 @@ interface BaseOptions {
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: CustomizeColor;
   selectedLabels: string[];
+  selectedLabelTags?: string[];
   attributeVisibility: object;
   showConfidence: boolean;
   showControls: boolean;
@@ -327,6 +332,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   highlight: false,
   activePaths: [],
   selectedLabels: [],
+  selectedLabelTags: undefined,
   showConfidence: false,
   showControls: true,
   showIndex: false,
@@ -359,6 +365,9 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showSkeletons: true,
   showOverlays: true,
   pointFilter: (path: string, point: Point) => true,
+  attributeVisibility: {},
+  showHelp: null,
+  isPointcloudDataset: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

@@ -3,7 +3,11 @@ import {
   setDatasetMutation,
   subscribeBefore,
 } from "@fiftyone/relay";
-import { SPACES_DEFAULT, stateSubscription } from "@fiftyone/state";
+import {
+  SPACES_DEFAULT,
+  ensureColorScheme,
+  stateSubscription,
+} from "@fiftyone/state";
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
