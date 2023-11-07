@@ -330,7 +330,6 @@ def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):
 
     if is_frame_field:
         path = "frames"
-        keys = keys[1:]
 
     for key in keys:
         path = ".".join([path, key]) if path else key
