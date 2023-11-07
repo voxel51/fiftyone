@@ -108,7 +108,7 @@ export function sessionAtom<K extends keyof Session>(
         if (trigger === "get" && !isTest) {
           assertValue();
           setSelf(
-            isTest || sessionRef[options.key] === undefined
+            sessionRef[options.key] === undefined
               ? options.default
               : sessionRef[options.key]
           );
