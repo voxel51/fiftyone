@@ -190,23 +190,17 @@ class Mutation(SetColorScheme):
         result_view = None
         ds = fod.load_dataset(dataset_name)
         state.dataset = ds
-        if saved_view_slug is not None:
-            try:
-                doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
-            except:
-                pass
 
-        # Load saved views
+        # Create the view using the saved view doc if loading a saved view
         if saved_view_slug is not None:
             try:
-                ds = fod.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
             except:
                 pass
 
+        # Otherwise, build the view using the params
         if result_view is None:
-            # Update current view with form parameters
             result_view = get_view(
                 dataset_name,
                 stages=view if view else None,
@@ -220,8 +214,6 @@ class Mutation(SetColorScheme):
                 if form.slice
                 else None,
             )
-
-        result_view = _build_result_view(result_view, form)
 
         # Set view state
         slug = (
@@ -238,11 +230,7 @@ class Mutation(SetColorScheme):
             StateUpdate(state=state),
         )
 
-        final_view = []
-        if state and state.view:
-            final_view = state.view._serialize()
-
-        return final_view
+        return result_view._serialize()
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
