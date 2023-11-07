@@ -116,8 +116,9 @@ class StateDescription(etas.Serializable):
                     )
                 ]
 
-                if self.view.group_slice:
-                    d["group_slice"] = self.view.group_slice
+                view = self.view if self.view is not None else self.dataset
+                if view.group_slice:
+                    d["group_slice"] = view.group_slice
 
             d["config"]["timezone"] = fo.config.timezone
 
