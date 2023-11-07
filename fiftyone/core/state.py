@@ -116,6 +116,9 @@ class StateDescription(etas.Serializable):
                     )
                 ]
 
+                if self.view.group_slice:
+                    d["group_slice"] = self.view.group_slice
+
             d["config"]["timezone"] = fo.config.timezone
 
             if self.config.colorscale:
