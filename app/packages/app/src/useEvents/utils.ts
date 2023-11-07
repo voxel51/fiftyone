@@ -15,11 +15,11 @@ export const processState = (
   session: Session,
   state: any
 ): Partial<LocationState<DatasetPageQuery>> => {
-  if (env().VITE_NO_STATE) {
-    return { view: [], fieldVisibility: undefined };
-  }
-
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
+    if (env().VITE_NO_STATE) {
+      session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+      return;
+    }
     session.colorScheme = ensureColorScheme(
       state.color_scheme as ColorSchemeInput
     );
@@ -34,6 +34,10 @@ export const processState = (
 
     unsubscribe();
   });
+
+  if (env().VITE_NO_STATE) {
+    return { view: [], fieldVisibility: undefined };
+  }
 
   return {
     view: state.view || [],
