@@ -4,7 +4,6 @@ import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import {
   getHashLabel,
   isRgbMaskTargets,
-  isValidColor,
   shouldShowLabelTag,
 } from "../overlays/util";
 import {
