@@ -40,14 +40,12 @@ const Plugins = ({ children }: { children: React.ReactNode }) => {
 const Sync = ({ children }: { children?: React.ReactNode }) => {
   const environment = useRelayEnvironment();
   const subscription = useRecoilValue(stateSubscription);
-
   const router = useRouterContext();
-  const readyState = useEventSource(router);
-
   const sessionRef = useRef<Session>(SESSION_DEFAULT);
   const setters = useSetters(environment, router, sessionRef);
   useWriters(subscription, environment, router, sessionRef);
 
+  const readyState = useEventSource(router, sessionRef);
   useEffect(
     () =>
       subscribe((_, { reset }) => {

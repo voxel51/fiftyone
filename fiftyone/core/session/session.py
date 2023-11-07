@@ -659,6 +659,9 @@ class Session(object):
     def _set_dataset(self, dataset):
         if dataset is not None:
             dataset._reload()
+            self._state.group_slice = dataset.group_slice
+        else:
+            self._state.group_slice = None
 
         self._state.dataset = dataset
         self._state.view = None
@@ -696,12 +699,14 @@ class Session(object):
 
     def _set_view(self, view):
         if view is None:
+            self._state.group_slice = None
             self._state.view = None
             self._state.view_name = None
         else:
             if view._root_dataset != self.dataset:
                 self._set_dataset(view._root_dataset)
 
+            self._state.group_slice = view.group_slice
             self._state.view = view
             self._state.view_name = view.name
 

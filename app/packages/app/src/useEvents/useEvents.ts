@@ -1,3 +1,4 @@
+import { Session } from "@fiftyone/state";
 import { snakeCase } from "lodash";
 import { MutableRefObject, useCallback, useMemo } from "react";
 import { Queries } from "../makeRoutes";
@@ -7,16 +8,17 @@ import { AppReadyState, EVENTS } from "./registerEvent";
 const HANDLERS = {};
 
 const useEvents = (
-  router: RoutingContext<Queries>,
   controller: AbortController,
-  readyStateRef: MutableRefObject<AppReadyState>
+  router: RoutingContext<Queries>,
+  readyStateRef: MutableRefObject<AppReadyState>,
+  session: MutableRefObject<Session>
 ) => {
   const eventNames = useMemo(() => Object.keys(EVENTS), []);
   const subscriptions = useMemo(() => eventNames.map(snakeCase), [eventNames]);
 
   const ctx = useMemo(
-    () => ({ router, controller, readyStateRef }),
-    [router, controller, readyStateRef]
+    () => ({ controller, router, readyStateRef, session }),
+    [controller, router, readyStateRef, session]
   );
   for (let index = 0; index < eventNames.length; index++) {
     HANDLERS[eventNames[index]] = EVENTS[eventNames[index]](ctx);

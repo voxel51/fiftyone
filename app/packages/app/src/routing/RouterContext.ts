@@ -114,7 +114,7 @@ export const createRouter = <T extends OperationType>(
     history,
 
     load(hard = false) {
-      const runUpdate = currentEntryResource && hard;
+      const runUpdate = !currentEntryResource || hard;
       if (!currentEntryResource || hard) {
         currentEntryResource = getEntryResource(
           environment,
