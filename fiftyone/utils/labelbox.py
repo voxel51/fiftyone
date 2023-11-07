@@ -430,32 +430,49 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """
         return self._client.get_project(project_id)
 
-    def delete_project(self, project_id, delete_datasets=True):
+    def delete_project(
+        self, project_id, delete_batches=False, delete_ontologies=True
+    ):
         """Deletes the given project from the Labelbox server.
 
         Args:
             project_id: the project ID
-            delete_datasets: whether to delete the attached datasets as well
+            delete_batches (False): whether to delete the attached batches as
+                well
+            delete_ontologies (True): whether to delete the attached
+                ontologies as well
         """
         project = self._client.get_project(project_id)
 
         logger.info("Deleting project '%s'...", project_id)
 
-        if delete_datasets:
-            for dataset in project.datasets():
-                dataset.delete()
+        if delete_batches:
+            for batch in project.batches():
+                batch.delete_labels()
+                lb.DataRow.bulk_delete(
+                    data_rows=list(
+                        batch.export_data_rows(include_metadata=False)
+                    )
+                )
+                batch.delete()
+
+        ontology = project.ontology()
 
         project.delete()
 
-    def delete_projects(self, project_ids, delete_datasets=True):
+        if delete_ontologies:
+            self._client.delete_unused_ontology(ontology.uid)
+
+    def delete_projects(self, project_ids, delete_batches=False):
         """Deletes the given projects from the Labelbox server.
 
         Args:
             project_ids: an iterable of project IDs
-            delete_datasets: whether to delete the attached datasets as well
+            delete_batches (False): whether to delete the attached batches as
+                well
         """
         for project_id in project_ids:
-            self.delete_project(project_id, delete_datasets=delete_datasets)
+            self.delete_project(project_id, delete_batches=delete_batches)
 
     def delete_unused_ontologies(self):
         """Deletes unused ontologies from the Labelbox server."""
@@ -709,7 +726,6 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project = self._client.create_project(
             name=project_name,
             media_type=media_type,
-            queue_mode=lb.QueueMode.Batch,
         )
         project.create_batch(
             name=str(uuid4()),
@@ -1332,7 +1348,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """
         if self.project_id is not None:
             api = self.connect_to_api()
-            api.delete_project(self.project_id)
+            api.delete_project(self.project_id, delete_batches=True)
 
         # @todo save updated results to DB?
         self.project_id = None
