@@ -48,6 +48,7 @@ class OperatorConfig(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
+        **kwargs
     ):
         self.name = name
         self.label = label or name
@@ -61,6 +62,7 @@ class OperatorConfig(object):
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
         return {
