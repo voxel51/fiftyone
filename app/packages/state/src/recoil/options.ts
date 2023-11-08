@@ -5,8 +5,8 @@ import {
   mediaFieldsFragment$key,
 } from "@fiftyone/relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
-import { aggregationQuery } from "./aggregations";
 import { getBrowserStorageEffectForKey } from "./customEffects";
+import { estimatedCounts } from "./lightning";
 import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
@@ -103,28 +103,8 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return mode;
       }
 
-      const root = get(
-        aggregationQuery({
-          paths: [""],
-          root: true,
-          modal: false,
-          extended: false,
-        })
-      ).aggregations[0];
-
-      if (root.__typename !== "RootAggregation") {
-        throw new Error("unexpected type");
-      }
-
-      if (root.count >= 10000) {
-        return "fast";
-      }
-
-      if (root.count >= 1000 && root.expandedFieldCount >= 15) {
-        return "fast";
-      }
-
-      if (root.frameLabelFieldCount >= 1) {
+      const count = get(estimatedCounts);
+      if (count.estimatedSampleCount >= 10000) {
         return "fast";
       }
 
@@ -140,15 +120,6 @@ export const isLargeVideo = selector<boolean>({
       return false;
     }
 
-    const data = get(
-      aggregationQuery({
-        extended: false,
-        root: true,
-        paths: [""],
-        modal: false,
-      })
-    );
-
-    return data.aggregations[0].count >= 1000;
+    return get(estimatedCounts).estimatedSampleCount >= 1000;
   },
 });

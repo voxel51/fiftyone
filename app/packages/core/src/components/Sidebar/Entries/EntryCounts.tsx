@@ -1,11 +1,7 @@
-import { useCallback } from "react";
-import { selectorFamily, useRecoilValueLoadable } from "recoil";
-
 import * as fos from "@fiftyone/state";
-
+import React, { useCallback } from "react";
+import { selector, selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
-
-import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { pathIsExpanded } from "./utils";
 
 interface PathEntryCountsProps {
@@ -38,6 +34,11 @@ const showEntryCounts = selectorFamily<
     },
 });
 
+const count = selector({
+  key: "countTmp",
+  get: ({ get }) => get(fos.estimatedCounts)?.estimatedSampleCount || 0,
+});
+
 export const PathEntryCounts = ({
   modal,
   path,
@@ -54,19 +55,15 @@ export const PathEntryCounts = ({
     [modal, path]
   );
 
-  const shown = useRecoilValueLoadable(
+  const shown = useRecoilValue(
     showEntryCounts({ path, modal, always: ignoreSidebarMode })
   );
-  if (shown.state === "hasError") {
-    throw shown.contents;
-  }
+  const f = useRecoilValue(fos.hasFilters(false));
 
-  return shown.state === "loading" ? (
-    <LoadingDots text="" />
-  ) : shown.contents ? (
+  return shown ? (
     <SuspenseEntryCounts
-      countAtom={getAtom(false)}
-      subcountAtom={getAtom(true)}
+      countAtom={path === "" ? count : getAtom(false)}
+      subcountAtom={f ? getAtom(true) : count}
     />
   ) : null;
 };

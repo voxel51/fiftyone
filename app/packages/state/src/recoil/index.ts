@@ -9,6 +9,7 @@ export * from "./filters";
 export * from "./groupEntries";
 export * from "./groups";
 export * from "./internal";
+export * from "./labels";
 export * from "./lightning";
 export * from "./looker";
 export * from "./modal";

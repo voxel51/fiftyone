@@ -46,10 +46,9 @@ export const aggregationQuery = graphQLSelectorFamily<
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
-      if (paths.includes("uniqueness")) {
-        throw new Error("E");
-      }
+
       if (!dataset) return null;
+
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const aggForm = {
         index: get(refresher),

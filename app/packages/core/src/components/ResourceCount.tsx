@@ -32,9 +32,8 @@ const ResourceCount = ({ isGroup }: Props) => {
 
 const GroupsCount = () => {
   const element = useRecoilValue(fos.elementNames);
-  const total = useRecoilValue(
-    fos.count({ path: "_", extended: false, modal: false })
-  );
+  const d = useRecoilValue(fos.estimatedCounts);
+  const total = d?.estimatedSampleCount;
 
   const elementTotal = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
@@ -59,9 +58,8 @@ const GroupsCount = () => {
 const Count = () => {
   let element = useRecoilValue(fos.elementNames);
   const isDynamicGroupViewStageActive = useRecoilValue(fos.isDynamicGroup);
-  const total = useRecoilValue(
-    fos.count({ path: "", extended: false, modal: false })
-  );
+  const d = useRecoilValue(fos.estimatedCounts);
+  const total = d?.estimatedSampleCount;
 
   const parent = useRecoilValue(parentMediaTypeSelector);
   const slice = useRecoilValue(fos.groupSlice);

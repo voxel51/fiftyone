@@ -67,12 +67,13 @@ const Hidden = ({ path }: { path: string }) => {
 
 const createTitleTemplate =
   ({
+    color,
     disabled,
     expandedPath,
+    lightning,
     modal,
     path,
     showCounts,
-    lightning,
   }: {
     disabled: boolean;
     expandedPath: string;
@@ -80,29 +81,32 @@ const createTitleTemplate =
     path: string;
     showCounts: boolean;
     lightning: boolean;
+    color: string;
   }) =>
   ({ hoverHandlers, hoverTarget, container }) => {
     return (
-      <NameAndCountContainer
-        ref={container}
-        data-cy={`sidebar-field-container-${path}`}
-      >
-        <span key="path" data-cy={`sidebar-field-${path}`}>
-          <span ref={hoverTarget} {...hoverHandlers}>
-            {PATH_OVERRIDES[path] || path}
+      <>
+        <NameAndCountContainer
+          ref={container}
+          data-cy={`sidebar-field-container-${path}`}
+        >
+          <span key="path" data-cy={`sidebar-field-${path}`}>
+            <span ref={hoverTarget} {...hoverHandlers}>
+              {PATH_OVERRIDES[path] || path}
+            </span>
           </span>
-        </span>
-        {lightning && <Bolt />}
-        {modal && (
-          <Suspense>
-            <Hidden path={path} />
-          </Suspense>
-        )}
-        {showCounts && !lightning && (
-          <PathEntryCounts key="count" modal={modal} path={expandedPath} />
-        )}
-        <Icon disabled={disabled} modal={modal} path={path} />
-      </NameAndCountContainer>
+          {modal && (
+            <Suspense>
+              <Hidden path={path} />
+            </Suspense>
+          )}
+          {lightning && <Bolt style={{ color }} />}
+          {showCounts && !lightning && (
+            <PathEntryCounts key="count" modal={modal} path={expandedPath} />
+          )}
+          <Icon disabled={disabled} modal={modal} path={path} />
+        </NameAndCountContainer>
+      </>
     );
   };
 

@@ -21,6 +21,7 @@ interface WrapperProps {
   modal: boolean;
   path: string;
   selectedCounts: MutableRefObject<Map<V["value"], number | null>>;
+  lightning: boolean;
 }
 
 const Wrapper = ({
@@ -32,6 +33,7 @@ const Wrapper = ({
   modal,
   path,
   selectedCounts,
+  lightning,
 }: WrapperProps) => {
   const name = path.split(".").slice(-1)[0];
   const schema = useRecoilValue(fos.field(path));
@@ -84,7 +86,7 @@ const Wrapper = ({
   };
 
   if (!allValues.length && neverShowExpansion) {
-    return (
+    return lightning ? null : (
       <Checkbox
         key={"No results"}
         color={color}

@@ -10,7 +10,7 @@ import * as filterAtoms from "../filters";
 import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
 import * as schemaAtoms from "../schema";
-import { asDefaultRange } from "../utils";
+import { asDefaultRange, Range } from "../utils";
 
 export interface NumericFilter {
   range: Range;
@@ -21,7 +21,6 @@ export interface NumericFilter {
   exclude: boolean;
   isMatching: boolean;
 }
-export type Range = [number | null | undefined, number | null | undefined];
 
 const getFilter = (
   get: GetRecoilValue,

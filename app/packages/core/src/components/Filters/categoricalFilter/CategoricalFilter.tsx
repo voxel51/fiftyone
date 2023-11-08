@@ -227,18 +227,20 @@ const CategoricalFilter = <T extends V = V>({
   const theme = useTheme();
   const field = useRecoilValue(fos.field(path));
   const resultsLoadable = useRecoilValueLoadable(resultsAtom);
-  const lightning = useRecoilValue(fos.lightning);
+  const light = useRecoilValue(fos.lightning);
+  const lightning = useRecoilValue(fos.isLightningPath(path)) && light;
 
   // id fields should always use filter mode
   const neverShowExpansion = field?.ftype?.includes("ObjectIdField");
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
   if (resultsLoadable.state !== "hasValue") return null;
 
-  if (named && !resultsLoadable.contents) {
+  if (named && !resultsLoadable.contents && !lightning) {
     return null;
   }
 
   const showSelector =
+    lightning ||
     neverShowExpansion ||
     !resultsLoadable.contents?.results ||
     resultsLoadable.contents?.results.length > CHECKBOX_LIMIT;
@@ -265,6 +267,7 @@ const CategoricalFilter = <T extends V = V>({
       >
         {showSelector && !skeleton && (
           <Selector
+            clear
             useSearch={useSearch}
             placeholder={`+ ${
               isFilterMode ? "filter" : "set visibility"
@@ -290,6 +293,7 @@ const CategoricalFilter = <T extends V = V>({
           isMatchingAtom={isMatchingAtom}
           modal={modal}
           selectedCounts={selectedCounts}
+          lightning={lightning}
         />
       </CategoricalFilterContainer>
     </NamedCategoricalFilterContainer>

@@ -72,6 +72,7 @@ export interface SelectorProps<T> {
   resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
   overflowContainer?: boolean;
+  clear?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
 }
@@ -80,6 +81,7 @@ function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
     value,
+    clear = false,
     onSelect,
     placeholder,
     useSearch,
@@ -105,10 +107,10 @@ function Selector<T>(props: SelectorProps<T>) {
   const onSelectWrapper = useMemo(() => {
     return (value: T) => {
       onSelect(value);
-      local.current = toKey(value);
+      local.current = clear ? "" : toKey(value);
       setEditing(false);
     };
-  }, [onSelect, toKey]);
+  }, [clear, onSelect, toKey]);
 
   useEffect(() => {
     setSearch(value || "");
@@ -235,9 +237,7 @@ function Selector<T>(props: SelectorProps<T>) {
                   active={active}
                   search={search}
                   useSearch={useSearch}
-                  onSelect={(value) => {
-                    onSelectWrapper(value);
-                  }}
+                  onSelect={(value) => onSelectWrapper(value)}
                   component={component}
                   onResults={onResults}
                   toKey={toKey}

@@ -149,6 +149,9 @@ const NumericFieldFilter = ({
   const bounds = useRecoilValue(fos.boundsAtom({ path, defaultRange }));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = useRecoilValue(fos.field(path));
+  if (!field) {
+    throw new Error("E");
+  }
   const hasBounds = bounds.every((b) => b !== null);
 
   const nonfinites = useNonfinites({
@@ -199,11 +202,9 @@ const NumericFieldFilter = ({
     setExcluded && setExcluded(false);
     isFilterMode && setIsMatching && setIsMatching(!nestedField);
   };
+  const lightning = useRecoilValue(fos.lightning);
 
-  // we do not want to show nestedfield's index field
-  // if confidence only has none value, we do not want to show it
-  // but we want to show 'no results' fields with empty intfield/floatfield
-  if (!field || (!hasBounds && !hasNonfinites && hasNone)) {
+  if (!lightning && !hasBounds && !hasNonfinites && hasNone) {
     return null;
   }
 

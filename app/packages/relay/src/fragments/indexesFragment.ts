@@ -11,6 +11,10 @@ export default r(graphql`
         field
         type
       }
+      wildcardProjection {
+        fields
+        inclusion
+      }
     }
     sampleIndexes {
       name
@@ -18,6 +22,10 @@ export default r(graphql`
       key {
         field
         type
+      }
+      wildcardProjection {
+        fields
+        inclusion
       }
     }
   }

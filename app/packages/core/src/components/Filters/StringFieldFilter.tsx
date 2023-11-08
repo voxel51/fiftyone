@@ -5,6 +5,7 @@ import {
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
 import React from "react";
+import { constSelector } from "recoil";
 import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
 
 const StringFieldFilter = ({
@@ -29,7 +30,7 @@ const StringFieldFilter = ({
       isMatchingAtom={isMatchingAtom({ modal, path })}
       resultsAtom={
         lightning
-          ? fos.lightningStringResults({ path })
+          ? constSelector({ count: null, results: [] })
           : fos.stringCountResults({
               modal,
               path,

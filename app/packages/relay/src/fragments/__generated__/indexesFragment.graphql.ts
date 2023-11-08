@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<03c8815e06282d9400a510c40412d53e>>
+ * @generated SignedSource<<39713965fa461d36cfb4e87942cc977d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,7 +9,7 @@
 // @ts-nocheck
 
 import { Fragment, ReaderFragment } from 'relay-runtime';
-export type IndexType = "asc" | "desc" | "sphere" | "text" | "%future added value";
+export type IndexType = "asc" | "desc" | "%future added value";
 import { FragmentRefs } from "relay-runtime";
 export type indexesFragment$data = {
   readonly frameIndexes: ReadonlyArray<{
@@ -19,6 +19,10 @@ export type indexesFragment$data = {
     }>;
     readonly name: string;
     readonly unique: boolean | null;
+    readonly wildcardProjection: {
+      readonly fields: ReadonlyArray<string>;
+      readonly inclusion: boolean;
+    } | null;
   }> | null;
   readonly sampleIndexes: ReadonlyArray<{
     readonly key: ReadonlyArray<{
@@ -27,6 +31,10 @@ export type indexesFragment$data = {
     }>;
     readonly name: string;
     readonly unique: boolean | null;
+    readonly wildcardProjection: {
+      readonly fields: ReadonlyArray<string>;
+      readonly inclusion: boolean;
+    } | null;
   }> | null;
   readonly " $fragmentType": "indexesFragment";
 };
@@ -75,6 +83,31 @@ var v0 = [
       }
     ],
     "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "concreteType": "WildcardProjection",
+    "kind": "LinkedField",
+    "name": "wildcardProjection",
+    "plural": false,
+    "selections": [
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "fields",
+        "storageKey": null
+      },
+      {
+        "alias": null,
+        "args": null,
+        "kind": "ScalarField",
+        "name": "inclusion",
+        "storageKey": null
+      }
+    ],
+    "storageKey": null
   }
 ];
 return {
@@ -109,6 +142,6 @@ return {
 };
 })();
 
-(node as any).hash = "a35e50e6357ed1613baf3a20a3385fe3";
+(node as any).hash = "f1359b235ae62c969aa612e1c62bc1bf";
 
 export default node;
