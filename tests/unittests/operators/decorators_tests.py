@@ -85,6 +85,7 @@ class DirStateTests(unittest.TestCase):
                 time.sleep(0.01)
                 os.makedirs(os.path.join(tmpdirname, p))
 
+            time.sleep(0.01)
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
             self.assertGreater(dir_state1, initial_dir_state)
