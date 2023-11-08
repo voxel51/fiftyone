@@ -34,10 +34,11 @@ const ColorFooter: React.FC = () => {
 
   if (!activeColorModalField) return null;
 
+  console.info("datasetd", datasetDefault?.fields);
+
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
@@ -153,10 +154,12 @@ const useUpdateDatasetColorScheme = () => {
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
+            debugger;
             colorSchemeRecord.setLinkedRecords(
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
             );
+
             colorSchemeRecord.setLinkedRecords(
               setEntries(
                 store,
@@ -216,14 +219,20 @@ const setEntries = (
 ) =>
   entries?.map((entry) => {
     const record = store.create(uuid(), name);
+
     Object.entries(entry).forEach(([key, value]) => {
-      if (key !== "valueColors") {
+      if (!["valueColors", "maskTargetsColors"].includes(key)) {
         record.setValue(value, key);
         return;
       }
-
-      record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+      if (value === "valueColors") {
+        record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+      }
+      if (value === "maskTargetsColors") {
+        record.setLinkedRecords(setEntries(store, "TargetColor", value), key);
+      }
     });
+
     return record;
   });
 
