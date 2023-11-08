@@ -208,6 +208,7 @@ which you can see by inspecting the parameters of a backend's associated
 The relevant classes for the builtin annotation backends are:
 
 -   `"cvat"`: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+-   `"labelstudio"`: :class:`fiftyone.utils.labelstudio.LabelStudioBackendConfig`
 -   `"labelbox"`: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
 You can configure an annotation backend's parameters for a specific run by
