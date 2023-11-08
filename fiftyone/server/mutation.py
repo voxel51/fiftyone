@@ -195,7 +195,7 @@ class Mutation(SetColorScheme):
         if saved_view_slug is not None:
             try:
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
-                result_view = ds._load_saved_view_from_doc(doc)
+                result_view = ds.load_saved_view(doc.name)
             except:
                 pass
 
@@ -233,7 +233,7 @@ class Mutation(SetColorScheme):
             StateUpdate(state=state),
         )
 
-        return result_view._serialize()
+        return result_view._serialize() if result_view else []
 
     @gql.mutation
     async def store_teams_submission(self) -> bool:
