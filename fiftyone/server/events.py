@@ -87,11 +87,7 @@ async def dispatch_event(
         _state.field_visibility_stage = event.stage
 
     if isinstance(event, SetGroupSlice):
-        if _state.view is not None:
-            _state.view.group_slice = event.slice
-
-        elif _state.dataset is not None:
-            _state.dataset.group_slice = event.slice
+        _state.group_slice = event.slice
 
     if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state

@@ -2,7 +2,7 @@ import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import { EventHandlerHook } from "./registerEvent";
 
-const useSelectLabels: EventHandlerHook = () => {
+const useSetGroupSlice: EventHandlerHook = () => {
   const setter = useSessionSetter();
 
   return useCallback(
@@ -13,4 +13,4 @@ const useSelectLabels: EventHandlerHook = () => {
   );
 };
 
-export default useSelectLabels;
+export default useSetGroupSlice;
