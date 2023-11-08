@@ -12,6 +12,7 @@ COPY .build /e2e/fiftyone
 RUN python -m venv /e2e/venv \
     && . /e2e/venv/bin/activate \
     && cd /e2e/fiftyone \
+    && pip install --upgrade pip \
     && pip install -r requirements/github.txt \
     && pip install -e .
 

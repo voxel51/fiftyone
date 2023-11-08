@@ -6,52 +6,105 @@ Installs the ``fiftyone-db`` package.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
+import csv
 import os
+import pathlib
+import platform
 import shutil
 import tarfile
 import zipfile
 
 from setuptools import setup
+from urllib.request import urlopen
 from wheel.bdist_wheel import bdist_wheel
 
-try:
-    # Python 3
-    from urllib.request import urlopen
-except ImportError:
-    # Python 2
-    from urllib2 import urlopen
+DARWIN = "Darwin"
+DARWIN_DOWNLOADS = {
+    "arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.2.tgz",
+    "x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.4.tgz",
+}
 
-
-MONGODB_DOWNLOAD_URLS = {
-    "linux-aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
-    "linux-i686": None,
-    "linux-x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.4.tgz",
-    "mac-arm64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.2.tgz",
-    "mac-x86_64": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-5.0.4.tgz",
-    "win-32": None,
-    "win-amd64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip",
-    "debian9": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
+LINUX = "Linux"
+LINUX_DOWNLOADS = {
+    "debian": {
+        "9": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian92-5.0.4.tgz",
+        },
+        "10": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian10-5.0.4.tgz"
+        },
+        "11": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-debian11-5.0.4.tgz"
+        },
     },
-    "rhel7": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+    "rhel": {
+        "7": {
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel70-5.0.4.tgz",
+        },
+        "8": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel82-5.0.22.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel80-5.0.4.tgz",
+        },
+        "9": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-rhel90-7.0.2.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-rhel90-7.0.2.tgz",
+        },
     },
-    "ubuntu2004": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.4.tgz",
-        "manylinux2014_aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-5.0.4.tgz",
-    },
-    "ubuntu2204": {
-        "manylinux1_x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
-        "manylinux2014_aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
+    "ubuntu": {
+        "18": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu1804-5.0.4.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-5.0.4.tgz",
+        },
+        "20": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2004-5.0.4.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2004-5.0.4.tgz",
+        },
+        "22": {
+            "aarch64": "https://fastdl.mongodb.org/linux/mongodb-linux-aarch64-ubuntu2204-6.0.5.tgz",
+            "x86_64": "https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu2204-6.0.5.tgz",
+        },
     },
 }
 
+WINDOWS = "Windows"
+WINDOWS_DOWNLOADS = {
+    "x86_64": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.4.zip"
+}
+
+
+MACHINE = os.environ.get("FODB_MACHINE", platform.machine())
+SYSTEM = os.environ.get("FODB_SYSTEM", platform.system())
+
+
+def _get_linux_download():
+    path = pathlib.Path("/etc/os-release")
+    with open(path) as stream:
+        reader = csv.reader(stream, delimiter="=")
+        d = dict(reader)
+
+    for k, v in LINUX_DOWNLOADS[d["ID"]].items():
+        if d["VERSION_ID"].startswith(k):
+            return v[MACHINE]
+
+
+def _get_download():
+    try:
+        if SYSTEM == DARWIN:
+            return DARWIN_DOWNLOADS[MACHINE]
+
+        if SYSTEM == WINDOWS:
+            return WINDOWS_DOWNLOADS[MACHINE]
+
+        if SYSTEM == LINUX:
+            return _get_linux_download()
+    except:
+        pass
+
+
 # mongodb binaries to distribute
 MONGODB_BINARIES = ["mongod"]
-LINUX_DISTRO = os.environ.get("FIFTYONE_DB_BUILD_LINUX_DISTRO")
 
-VERSION = "0.4.0"
+VERSION = "0.4.1"
 
 
 def get_version():
@@ -70,33 +123,25 @@ def get_version():
 class CustomBdistWheel(bdist_wheel):
     def finalize_options(self):
         bdist_wheel.finalize_options(self)
-
         self.root_is_pure = False
-        self._plat_name = self.plat_name
-
-        platform = self.plat_name
-        is_platform = lambda os, isa=None: platform.startswith(os) and (
-            not isa or platform.endswith(isa)
+        is_platform = lambda sys, isa=None: sys == SYSTEM and (
+            not isa or isa == MACHINE
         )
 
-        if is_platform("linux", "i686"):
+        if is_platform("Linux", "i686"):
             self.plat_name = "manylinux1_i686"
-        elif is_platform("linux", "aarch64"):
+        elif is_platform("Linux", "aarch64"):
             self.plat_name = "manylinux2014_aarch64"
-        elif is_platform("linux", "x86_64"):
+        elif is_platform("Linux", "x86_64"):
             self.plat_name = "manylinux1_x86_64"
-        elif is_platform("mac", "arm64"):
+        elif is_platform("Darwin", "arm64"):
             self.plat_name = "macosx_11_0_arm64"
-        elif is_platform("mac", "x86_64"):
+        elif is_platform("Darwin", "x86_64"):
             self.plat_name = "macosx_10_13_x86_64"
-        elif is_platform("win", "amd64"):
+        elif is_platform("Windows", "x86_64"):
             self.plat_name = "win_amd64"
-        elif is_platform("win", "32"):
+        elif is_platform("Windows", "32"):
             self.plat_name = "win32"
-        else:
-            raise ValueError(
-                "Unsupported target platform: %r" % self.plat_name
-            )
 
     def get_tag(self):
         impl = "py3"
@@ -110,45 +155,24 @@ class CustomBdistWheel(bdist_wheel):
         )
         if not os.path.isdir(bin_dir):
             os.mkdir(bin_dir)
-        mongo_zip_url = next(
-            v
-            for k, v in MONGODB_DOWNLOAD_URLS.items()
-            if self._plat_name.startswith(k)
-        )
 
+        mongo_zip_url = _get_download()
         if mongo_zip_url is None:
-            print(
-                "Hollow wheel, no binaries available for %s" % self.plat_name
-            )
+            print("no binary available for %s" % self.plat_name)
             return
-
-        if LINUX_DISTRO:
-            if not self.plat_name.startswith("manylinux"):
-                raise ValueError(
-                    "Cannot build for distro %r on platform %r"
-                    % (LINUX_DISTRO, self.plat_name)
-                )
-
-            if LINUX_DISTRO not in MONGODB_DOWNLOAD_URLS:
-                raise ValueError("Unrecognized distro: %r" % LINUX_DISTRO)
-
-            mongo_zip_url = MONGODB_DOWNLOAD_URLS[LINUX_DISTRO][self.plat_name]
 
         mongo_zip_filename = os.path.basename(mongo_zip_url)
         mongo_zip_dest = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "cache",
             mongo_zip_filename,
         )
 
         if not os.path.exists(mongo_zip_dest):
-            print("downloading MongoDB from %s" % mongo_zip_url)
             with urlopen(mongo_zip_url) as conn, open(
                 mongo_zip_dest, "wb"
             ) as dest:
                 shutil.copyfileobj(conn, dest)
 
-        print("using MongoDB from %s" % mongo_zip_dest)
         if mongo_zip_dest.endswith(".zip"):
             # Windows
             mongo_zip = zipfile.ZipFile(mongo_zip_dest)
@@ -185,7 +209,6 @@ class CustomBdistWheel(bdist_wheel):
                     )
 
                 tar_entry = mongo_tar.getmember(tar_entry_name)
-                print("copying %r" % tar_entry_name)
                 dest_path = os.path.join(bin_dir, filename)
                 with mongo_tar.extractfile(tar_entry) as src, open(
                     dest_path, "wb"
@@ -198,15 +221,11 @@ cmdclass = {
     "bdist_wheel": CustomBdistWheel,
 }
 
-name_suffix = ""
-if LINUX_DISTRO:
-    name_suffix = "_" + LINUX_DISTRO
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
-    name="fiftyone_db" + name_suffix,
+    name="fiftyone_db",
     version=get_version(),
     description="FiftyOne DB",
     author="Voxel51, Inc.",

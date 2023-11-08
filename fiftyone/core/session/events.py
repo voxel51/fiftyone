@@ -239,7 +239,7 @@ class SetColorScheme(Event):
             color_pool=self.color_scheme.color_pool,
             color_by=self.color_scheme.color_by,
             fields=fields,
-            default_mask_targets=default_mask_targets_colors,
+            default_mask_targets_colors=default_mask_targets_colors,
             label_tags=label_tags,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,

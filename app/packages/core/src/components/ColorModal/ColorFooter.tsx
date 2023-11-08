@@ -34,10 +34,11 @@ const ColorFooter: React.FC = () => {
 
   if (!activeColorModalField) return null;
 
+  console.info("datasetd", datasetDefault?.fields);
+
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
@@ -153,10 +154,12 @@ const useUpdateDatasetColorScheme = () => {
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
+            debugger;
             colorSchemeRecord.setLinkedRecords(
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
             );
+
             colorSchemeRecord.setLinkedRecords(
               setEntries(
                 store,
@@ -166,7 +169,7 @@ const useUpdateDatasetColorScheme = () => {
               "defaultMaskTargetsColors"
             );
 
-            // get or create labelTags data
+            // get or create labelTags data {fieldcolor: null, valueColors: []}
             let labelTagsRecord =
               colorSchemeRecord.getLinkedRecord("labelTags");
             if (!labelTagsRecord) {
@@ -181,7 +184,7 @@ const useUpdateDatasetColorScheme = () => {
             labelTagsRecord.setLinkedRecords(
               setEntries(
                 store,
-                "ValueColors",
+                "ValueColor",
                 colorScheme.labelTags?.valueColors ?? null
               ),
               "valueColors"
@@ -216,9 +219,18 @@ const setEntries = (
 ) =>
   entries?.map((entry) => {
     const record = store.create(uuid(), name);
-    Object.entries(entry).forEach((key, value) => {
-      // @ts-ignore
-      record.setValue(value, key);
+
+    Object.entries(entry).forEach(([key, value]) => {
+      if (!["valueColors", "maskTargetsColors"].includes(key)) {
+        record.setValue(value, key);
+        return;
+      }
+      if (value === "valueColors") {
+        record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+      }
+      if (value === "maskTargetsColors") {
+        record.setLinkedRecords(setEntries(store, "TargetColor", value), key);
+      }
     });
 
     return record;

@@ -1,4 +1,5 @@
 import { Loading } from "@fiftyone/components";
+import { Snackbar } from "@fiftyone/core";
 import React from "react";
 import { usePreloadedQuery } from "react-relay";
 import { graphql } from "relay-runtime";
@@ -31,6 +32,7 @@ const IndexPage: Route<IndexPageQuery> = ({ prepared }) => {
       <div className={style.page} data-cy="no-dataset">
         <Loading>No dataset selected</Loading>
       </div>
+      <Snackbar />
     </>
   );
 };

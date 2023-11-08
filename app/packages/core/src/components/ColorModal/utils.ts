@@ -1,3 +1,4 @@
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 import colorString from "color-string";
@@ -61,7 +62,7 @@ export const validateJSONSetting = (
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
       : [],
-    targetMasksColors: Array.isArray(input.maskTargetsColors)
+    maskTargetsColors: Array.isArray(input["maskTargetsColors"])
       ? getValidMaskColors(input.maskTargetsColors)
       : [],
   }));
@@ -71,7 +72,8 @@ export const validateJSONSetting = (
     const hasAttributeColor = x.colorByAttribute;
     const hasLabelColors = x.valueColors?.length > 0;
     const hasTargetMasks =
-      x.targetMasksColors && x.targetMasksColors?.length > 0;
+      x.maskTargetsColors && x.maskTargetsColors?.length > 0;
+
     return (
       hasFieldSetting || hasAttributeColor || hasLabelColors || hasTargetMasks
     );
@@ -102,7 +104,8 @@ const getValidMaskColors = (maskColors: unknown[]) => {
         typeof Number(x["intTarget"]) == "number" &&
         Number(x["intTarget"]) >= 0 &&
         Number(x["intTarget"]) <= 255 &&
-        isString(x["color"])
+        isString(x["color"]) &&
+        isValidColor(x?.color)
       );
     })
     .map((y: unknown) => ({
