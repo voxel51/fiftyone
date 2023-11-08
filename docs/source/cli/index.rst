@@ -1864,7 +1864,7 @@ Launch the FiftyOne App.
 
 .. code-block:: text
 
-    fiftyone app launch [-h] [-p PORT] [-A ADDRESS] [-r] [-a] [-w WAIT] [NAME]
+    fiftyone app launch [-h] [-p PORT] [-A ADDRESS] [-b BROWSER] [-r] [-a] [-w WAIT] [NAME]
 
 **Arguments**
 
@@ -1880,6 +1880,8 @@ Launch the FiftyOne App.
                             the address (server name) to use
       -r, --remote          whether to launch a remote App session
       -a, --desktop         whether to launch a desktop App instance
+      -b BROWSER, --browser BROWSER
+                            the browser to use to open the App
       -w WAIT, --wait WAIT  the number of seconds to wait for a new App
                             connection before returning if all connections are
                             lost. If negative, the process will wait forever,
@@ -1906,6 +1908,11 @@ Launch the FiftyOne App.
 
     # Launch a desktop App session
     fiftyone app launch ... --desktop
+
+.. code-block:: shell
+
+    # Launch a desktop App session
+    fiftyone app launch ... --browser <name>
 
 .. _cli-fiftyone-app-view:
 

@@ -91,6 +91,7 @@ class Mutation(SetColorScheme):
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
+        state.group_slice = state.dataset.group_slice
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -101,8 +102,6 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         slice: str,
     ) -> bool:
-        state = get_state()
-        state.dataset.group_slice = slice
         await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
         return True
 
@@ -185,6 +184,7 @@ class Mutation(SetColorScheme):
             state.dataset = None
             state.view = None
             state.spaces = default_spaces
+            state.group_slice = None
             await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None

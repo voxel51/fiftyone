@@ -1170,6 +1170,9 @@ class AppLaunchCommand(Command):
 
         # Launch a desktop App session
         fiftyone app launch ... --desktop
+
+        # Launch the App in the non-default browser
+        fiftyone app launch ... --browser firefox
     """
 
     @staticmethod
@@ -1209,6 +1212,14 @@ class AppLaunchCommand(Command):
             help="whether to launch a desktop App instance",
         )
         parser.add_argument(
+            "-b",
+            "--browser",
+            metavar="BROWSER",
+            default=None,
+            type=str,
+            help="the browser to use to open the App",
+        )
+        parser.add_argument(
             "-w",
             "--wait",
             metavar="WAIT",
@@ -1237,6 +1248,7 @@ class AppLaunchCommand(Command):
             address=args.address,
             remote=args.remote,
             desktop=desktop,
+            browser=args.browser,
         )
 
         _watch_session(session, args.wait)
