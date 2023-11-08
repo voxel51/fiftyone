@@ -48,6 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
+  lightningThreshold: Int!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -90,14 +91,6 @@ type BooleanLightningResult implements LightningResult {
   false: Boolean!
   true: Boolean!
 }
-
-union BooleanLightningResultDateLightningResultDateTimeLightningResultFloatLightningResultIntLightningResultStringLightningResult =
-    BooleanLightningResult
-  | DateLightningResult
-  | DateTimeLightningResult
-  | FloatLightningResult
-  | IntLightningResult
-  | StringLightningResult
 
 type BrainRun implements Run {
   key: String!
@@ -206,6 +199,8 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
+  estimatedFrameCount: Int
+  estimatedSampleCount: Int
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
@@ -332,6 +327,7 @@ type Index {
   name: String!
   key: [IndexFields!]!
   unique: Boolean
+  wildcardProjection: WildcardProjection
 }
 
 type IndexFields {
@@ -342,8 +338,6 @@ type IndexFields {
 enum IndexType {
   asc
   desc
-  sphere
-  text
 }
 
 type IntAggregation implements Aggregation {
@@ -390,13 +384,21 @@ input LightningInput {
 input LightningPathInput {
   path: String!
   exclude: [String!] = null
-  first: Int = 25
+  first: Int = null
   search: String = null
 }
 
 interface LightningResult {
   path: String!
 }
+
+union LightningResults =
+    BooleanLightningResult
+  | DateLightningResult
+  | DateTimeLightningResult
+  | FloatLightningResult
+  | IntLightningResult
+  | StringLightningResult
 
 enum MediaType {
   image
@@ -517,9 +519,7 @@ type Query {
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
-  lightning(
-    input: LightningInput!
-  ): [BooleanLightningResultDateLightningResultDateTimeLightningResultFloatLightningResultIntLightningResultStringLightningResult!]!
+  lightning(input: LightningInput!): [LightningResults!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -747,6 +747,11 @@ type VideoSample implements Sample {
 Represents NULL values
 """
 scalar Void
+
+type WildcardProjection {
+  fields: [String!]!
+  inclusion: Boolean!
+}
 
 scalar date
 

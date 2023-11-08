@@ -92,19 +92,22 @@ INT_CLS = {
     fof.IntField: IntLightningResult,
 }
 
-
-async def lightning_resolver(
-    input: LightningInput, info: Info
-) -> t.List[
-    t.Union[
+LightningResults = gql.union(
+    "LightningResults",
+    (
         BooleanLightningResult,
         DateLightningResult,
         DateTimeLightningResult,
         FloatLightningResult,
         IntLightningResult,
         StringLightningResult,
-    ],
-]:
+    ),
+)
+
+
+async def lightning_resolver(
+    input: LightningInput, info: Info
+) -> t.List[LightningResults]:
     dataset: fo.Dataset = fo.load_dataset(input.dataset)
     collections, queries, resolvers = zip(
         *[
