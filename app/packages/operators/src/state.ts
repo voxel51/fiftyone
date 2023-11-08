@@ -354,6 +354,17 @@ const operatorIOState = atom({
   default: { visible: false },
 });
 
+export const operatorPaletteOpened = selector({
+  key: "operatorPaletteOpened",
+  get: ({ get }) => {
+    return (
+      get(showOperatorPromptSelector) ||
+      get(operatorBrowserVisibleState) ||
+      get(operatorIOState).visible
+    );
+  },
+});
+
 export function useShowOperatorIO() {
   const [state, setState] = useRecoilState(operatorIOState);
   return {
@@ -501,6 +512,7 @@ export function useOperatorBrowser() {
   const defaultSelected = useRecoilValue(operatorDefaultChoice);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
+  const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -562,6 +574,7 @@ export function useOperatorBrowser() {
   const onKeyDown = useCallback(
     (e) => {
       if (e.key !== "`" && !isVisible) return;
+      if (e.key === "`" && isOperatorPaletteOpened) return;
       if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
@@ -571,6 +584,7 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
+          if (isOperatorPaletteOpened) break;
           if (isVisible) {
             close();
           } else {
@@ -585,7 +599,15 @@ export function useOperatorBrowser() {
           break;
       }
     },
-    [selectNext, selectPrevious, isVisible, onSubmit, close, setIsVisible]
+    [
+      selectNext,
+      selectPrevious,
+      isVisible,
+      onSubmit,
+      close,
+      setIsVisible,
+      isOperatorPaletteOpened,
+    ]
   );
 
   const toggle = useCallback(() => {
