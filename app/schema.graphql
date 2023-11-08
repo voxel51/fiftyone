@@ -127,6 +127,7 @@ type ColorScheme {
   colorPool: [String!]!
   colorBy: ColorBy
   fields: [CustomizeColor!]
+  labelTags: LabelTagColor
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
@@ -136,6 +137,7 @@ input ColorSchemeInput {
   colorPool: [String!]!
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
+  labelTags: LabelTagColorInput = null
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
@@ -175,6 +177,7 @@ type DataAggregation implements Aggregation {
 
 type Dataset {
   id: ID!
+  datasetId: ID!
   name: String!
   createdAt: date
   lastLoadedAt: datetime
@@ -376,6 +379,16 @@ type KeypointSkeleton {
   edges: [[Int!]!]!
 }
 
+type LabelTagColor {
+  fieldColor: String
+  valueColors: [ValueColor!]
+}
+
+input LabelTagColorInput {
+  fieldColor: String = null
+  valueColors: [ValueColorInput!] = null
+}
+
 input LightningInput {
   dataset: String!
   paths: [LightningPathInput!]!
@@ -422,6 +435,11 @@ type Mutation {
     datasetName: String!
     colorScheme: ColorSchemeInput = null
   ): Void
+  setFieldVisibilityStage(
+    subscription: String!
+    session: String
+    stage: BSON
+  ): Boolean!
   setDataset(
     subscription: String!
     session: String

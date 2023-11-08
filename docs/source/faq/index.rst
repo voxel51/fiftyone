@@ -109,8 +109,9 @@ See :ref:`this section <creating-an-app-session>` for more details.
 Can I use FiftyOne in a notebook?
 ---------------------------------
 
-Yes! FiftyOne supports both `Jupyter Notebooks <https://jupyter.org>`_ and
-`Google Colab Notebooks <https://colab.research.google.com>`_.
+Yes! FiftyOne supports `Jupyter Notebooks <https://jupyter.org>`_,
+`Google Colab Notebooks <https://colab.research.google.com>`_, and
+`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
 
 All the usual FiftyOne commands can be run in notebook environments, and the
 App will launch/update in the output of your notebook cells!
@@ -183,12 +184,8 @@ Check out :ref:`this page <cloud-storage>` for more details.
 What operating systems does FiftyOne support?
 ---------------------------------------------
 
-FiftyOne is guaranteed to support the latest versions of MacOS, Windows, and
-popular Linux distributions. FiftyOne will generally also support any version
-of these popular operating systems from the past few years.
-
-We also provide :ref:`custom install instructions <alternative-builds>` to use
-FiftyOne on old-but-popular setups like Ubuntu 16.04 and Debian 9.
+FiftyOne officially supports the latest versions of MacOS and Windows, as well
+as Debian 9+ (x86_64 only), Ubuntu 18.04+, and RHEL/CentOS 7+.
 
 .. _faq-image-types:
 

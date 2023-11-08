@@ -908,7 +908,7 @@ Tools for working with FiftyOne delegated operations.
 
 .. code-block:: text
 
-    fiftyone delegated [-h] [--all-help] {launch,list,info,cleanup} ...
+    fiftyone delegated [-h] [--all-help] {launch,list,info,fail,delete,cleanup} ...
 
 **Arguments**
 
@@ -919,10 +919,12 @@ Tools for working with FiftyOne delegated operations.
       --all-help   show help recursively and exit
 
     available commands:
-      {launch,list,info,cleanup}
+      {launch,list,info,fail,delete,cleanup}
         launch              Launches a service for running delegated operations.
         list                List delegated operations.
         info                Prints information about a delegated operation.
+        fail                Manually mark delegated as failed.
+        delete              Delete delegated operations.
         cleanup             Cleanup delegated operations.
 
 .. _cli-fiftyone-delegated-launch:
@@ -1031,6 +1033,62 @@ Prints information about a delegated operation.
 
     # Print information about a delegated operation
     fiftyone delegated info <id>
+
+.. _cli-fiftyone-delegated-fail:
+
+Mark delegated operations as failed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Manually mark delegated operations as failed.
+
+.. code-block:: text
+
+    fiftyone delegated fail [-h] [IDS ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      IDS         an operation ID or list of operation IDs
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Manually mark the specified operation(s) as FAILED
+    fiftyone delegated fail <id1> <id2> ...
+
+.. _cli-fiftyone-delegated-delete:
+
+Delete delegated operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Delete delegated operations.
+
+.. code-block:: text
+
+    fiftyone delegated delete [-h] [IDS ...]
+
+**Arguments**
+
+.. code-block:: text
+
+    positional arguments:
+      IDS         an operation ID or list of operation IDs
+
+    optional arguments:
+      -h, --help  show this help message and exit
+
+**Examples**
+
+.. code-block:: shell
+
+    # Delete the specified operation(s)
+    fiftyone delegated delete <id1> <id2> ...
 
 .. _cli-fiftyone-delegated-cleanup:
 
@@ -1202,11 +1260,7 @@ formats:
 
 .. code-block:: text
 
-    fiftyone plugins download [-h]
-                              [-n [PLUGIN_NAMES ...]]
-                              [-d MAX_DEPTH]
-                              [-o]
-                              URL_OR_GH_REPO
+    fiftyone plugins download [-h] [-n [PLUGIN_NAMES ...]] [-o] URL_OR_GH_REPO
 
 **Arguments**
 
@@ -1219,8 +1273,6 @@ formats:
       -h, --help            show this help message and exit
       -n [PLUGIN_NAMES ...], --plugin-names [PLUGIN_NAMES ...]
                             a plugin name or list of plugin names to download
-      -d MAX_DEPTH, --max-depth MAX_DEPTH
-                            a maximum depth to search for plugins
       -o, --overwrite       whether to overwrite existing plugins
 
 **Examples**
@@ -1237,11 +1289,8 @@ formats:
 
 .. code-block:: shell
 
-    # Download specific plugins from a URL with a custom search depth
-    fiftyone plugins download \
-        <url> \
-        --plugin-names <name1> <name2> <name3> \
-        --max-depth 2  # search nested directories for plugins
+    # Download specific plugins from a URL
+    fiftyone plugins download <url> --plugin-names <name1> <name2> <name3>
 
 .. _cli-fiftyone-plugins-requirements:
 
@@ -1506,8 +1555,7 @@ Populates the `metadata` field of all samples in the dataset.
       -h, --help            show this help message and exit
       -o, --overwrite       whether to overwrite existing metadata
       -n NUM_WORKERS, --num-workers NUM_WORKERS
-                            the number of worker processes to use. The default
-                            is `multiprocessing.cpu_count()`
+                            a suggested number of worker processes to use
       -s, --skip-failures   whether to gracefully continue without raising an
                             error if metadata cannot be computed for a sample
 
@@ -1583,8 +1631,7 @@ Transforms the images in a dataset per the specified parameters.
       -d, --delete-originals
                             whether to delete the original images after transforming
       -n NUM_WORKERS, --num-workers NUM_WORKERS
-                            the number of worker processes to use. The default is
-                            `multiprocessing.cpu_count()`
+                            a suggested number of worker processes to use
       -s, --skip-failures   whether to gracefully continue without raising an
                             error if an image cannot be transformed
 

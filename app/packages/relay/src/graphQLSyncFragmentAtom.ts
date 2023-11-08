@@ -18,7 +18,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   fragments: GraphQLTaggedNode[];
   keys?: string[];
   read?: (data: KeyTypeData<T>, previous: KeyTypeData<T> | null) => K;
-  default: K;
+  default?: K;
   selectorEffect?:
     | "write"
     | boolean

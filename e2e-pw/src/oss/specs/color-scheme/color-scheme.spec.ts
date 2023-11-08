@@ -65,7 +65,6 @@ test.describe("color scheme basic functionality with quickstart", () => {
     grid,
     gridActionsRow,
     colorModal,
-    page,
     eventUtils,
   }) => {
     // update color scheme to color blind friendly palette
@@ -141,6 +140,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
 
     await gridRefreshedEventPromise;
     await gridRefreshedEventPromise;
+
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
       "rgb(154, 205, 50)"

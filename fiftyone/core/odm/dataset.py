@@ -181,6 +181,13 @@ class ColorScheme(EmbeddedDocument):
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                 }
             ],
+            label_tags={
+                "fieldColor": "#00ffff",
+                "valueColors": [
+                    {"value": "correct", "color": "#ff00ff"},
+                    {"value": "mistake", "color": "#00ff00"},
+                ]
+            }
             multicolor_keypoints = False,
             opacity = 0.5,
             show_skeletons = True
@@ -204,6 +211,11 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+        label_tags (None): an optional dict specifying custom colors for label tags
+            with the following keys:
+            -    `fieldColor` (optional): a color to assign to all label tags
+            -    `valueColors` (optional): a list of dicts specifying colors to
+            specific label tags
         multicolor_keypoints (None): whether to use multiple colors for
             keypoints
         opacity (None): transparency of the annotation, between 0 and 1
@@ -216,6 +228,7 @@ class ColorScheme(EmbeddedDocument):
     color_pool = ListField(ColorField(), null=True)
     color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
+    label_tags = DictField(null=True)
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)

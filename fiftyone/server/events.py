@@ -34,6 +34,7 @@ from fiftyone.core.session.events import (
     SetGroupSlice,
     SetSpaces,
     StateUpdate,
+    SetFieldVisibilityStage,
 )
 import fiftyone.core.state as fos
 import fiftyone.core.utils as fou
@@ -82,12 +83,11 @@ async def dispatch_event(
     if isinstance(event, SetSpaces):
         _state.spaces = event.spaces
 
-    if isinstance(event, SetGroupSlice):
-        if _state.view is not None:
-            _state.view.group_slice = event.slice
+    if isinstance(event, SetFieldVisibilityStage):
+        _state.field_visibility_stage = event.stage
 
-        elif _state.dataset is not None:
-            _state.dataset.group_slice = event.slice
+    if isinstance(event, SetGroupSlice):
+        _state.group_slice = event.slice
 
     if isinstance(event, (StateUpdate, Refresh)):
         _state = event.state

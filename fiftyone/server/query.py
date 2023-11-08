@@ -229,6 +229,7 @@ class DatasetAppConfig:
 @gql.type
 class Dataset:
     id: gql.ID
+    dataset_id: gql.ID
     name: str
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
@@ -273,6 +274,7 @@ class Dataset:
     @staticmethod
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
+        doc["dataset_id"] = doc["id"]
         doc["default_mask_targets"] = _convert_targets(
             doc.get("default_mask_targets", {})
         )
@@ -450,8 +452,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def uid(self) -> str:
-        uid, _ = fou.get_user_id()
-        return uid
+        return fou.get_user_id()
 
     @gql.field
     def version(self) -> str:

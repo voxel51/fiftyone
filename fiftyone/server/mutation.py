@@ -22,6 +22,7 @@ import fiftyone.core.stages as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 
+from fiftyone.server.aggregations import GroupElementFilter, SampleFilter
 from fiftyone.server.color import SetColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.events import get_state, dispatch_event
@@ -30,7 +31,7 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
 from fiftyone.server.view import get_view
 
 
@@ -59,6 +60,19 @@ class SavedViewInfo:
 @gql.type
 class Mutation(SetColorScheme):
     @gql.mutation
+    async def set_field_visibility_stage(
+        self,
+        subscription: str,
+        session: t.Optional[str],
+        stage: t.Optional[BSON],
+    ) -> bool:
+        await dispatch_event(
+            subscription,
+            fose.SetFieldVisibilityStage(stage=stage),
+        )
+        return True
+
+    @gql.mutation
     async def set_dataset(
         self,
         subscription: str,
@@ -77,6 +91,7 @@ class Mutation(SetColorScheme):
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
+        state.group_slice = state.dataset.group_slice
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 
@@ -87,8 +102,6 @@ class Mutation(SetColorScheme):
         session: t.Optional[str],
         slice: str,
     ) -> bool:
-        state = get_state()
-        state.dataset.group_slice = slice
         await dispatch_event(subscription, fose.SetGroupSlice(slice=slice))
         return True
 
@@ -171,6 +184,7 @@ class Mutation(SetColorScheme):
             state.dataset = None
             state.view = None
             state.spaces = default_spaces
+            state.group_slice = None
             await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None
@@ -198,6 +212,13 @@ class Mutation(SetColorScheme):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None,
             )
 
         result_view = _build_result_view(result_view, form)
@@ -258,6 +279,11 @@ class Mutation(SetColorScheme):
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
+            sample_filter=SampleFilter(
+                group=GroupElementFilter(slice=form.slice, slices=[form.slice])
+            )
+            if form.slice
+            else None,
         )
 
         result_view = _build_result_view(dataset_view, form)
@@ -421,9 +447,6 @@ class Mutation(SetColorScheme):
 
 
 def _build_result_view(view, form):
-    if form.slice:
-        view = view.select_group_slices([form.slice])
-
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 

@@ -7,10 +7,6 @@ FiftyOne Basics
 
 This page provides a brief overview of FiftyOne's basic concepts.
 
-.. image:: /images/datasets-hero.png
-   :alt: datasets-hero
-   :align: center
-
 .. _basics-datasets:
 
 Datasets

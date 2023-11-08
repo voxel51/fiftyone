@@ -1,4 +1,4 @@
-import { ColorSchemeInput } from "@fiftyone/relay";
+import { ColorSchemeInput, LabelTagColorInput } from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
@@ -19,7 +19,7 @@ export const colorBlindFriendlyPalette = [
 export enum ACTIVE_FIELD {
   JSON = "JSON editor",
   GLOBAL = "Global settings",
-  LABEL_TAGS = "label tags",
+  LABEL_TAGS = "label_tags",
 }
 
 // disregard the order
@@ -69,13 +69,33 @@ export const validateJSONSetting = (
   });
 };
 
+export const validateLabelTags = (
+  obj: ColorSchemeInput["labelTags"]
+): ColorSchemeInput["labelTags"] => {
+  if (typeof obj === "object" && obj !== null) {
+    const f = {
+      fieldColor: obj["fieldColor"] ?? null,
+      valueColors: Array.isArray(obj["valueColors"])
+        ? getValidLabelColors(obj["valueColors"])
+        : [],
+    };
+
+    return f.fieldColor || f.valueColors?.length > 0 ? f : null;
+  }
+};
+
 export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   if (typeof path === "object") {
     if (path.path === "tags") {
       return "sample tags";
     }
+    if (path.path === "_label_tags") {
+      return "label tags";
+    }
     return path.path;
   }
-
   return path;
 };
+
+export const getRandomColorFromPool = (pool: readonly string[]) =>
+  pool[Math.floor(Math.random() * pool.length)];

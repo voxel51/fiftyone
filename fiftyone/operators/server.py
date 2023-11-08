@@ -25,9 +25,11 @@ from .permissions import PermissionedOperatorRegistry
 
 class ListOperators(HTTPEndpoint):
     @route
-    async def get(self, request: Request, data: dict):
+    async def post(self, request: Request, data: dict):
+        dataset_name = data.get("dataset_name", None)
+        dataset_ids = [dataset_name]
         registry = await PermissionedOperatorRegistry.from_list_request(
-            request
+            request, dataset_ids=dataset_ids
         )
         ctx = ExecutionContext()
         operators_as_json = [

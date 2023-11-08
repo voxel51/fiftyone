@@ -1,3 +1,4 @@
+import { Session } from "@fiftyone/state";
 import { snakeCase } from "lodash";
 import { MutableRefObject } from "react";
 import { Queries } from "../makeRoutes";
@@ -10,14 +11,13 @@ export enum AppReadyState {
 }
 
 type EventContext = {
-  router: RoutingContext<Queries>;
   controller: AbortController;
+  router: RoutingContext<Queries>;
   readyStateRef: MutableRefObject<AppReadyState>;
+  session: MutableRefObject<Session>;
 };
 
-export type EventHandlerHook = (
-  ctx: EventContext
-) => (payload: unknown) => void;
+export type EventHandlerHook = (ctx: EventContext) => (payload) => void;
 
 export const EVENTS: {
   [event: string]: EventHandlerHook;

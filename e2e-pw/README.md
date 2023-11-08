@@ -96,6 +96,10 @@ yarn build-linux-screenshot-docker-image
 docker run --rm --network host -v $(pwd):/work/ -w /work/ -it screenshot /bin/bash
 
 # inside the docker container, run:
+# if playwright version was updated,
+npx playwright install chromium
+
+. /e2e/venv/bin/activate
 npx playwright test --update-snapshots -g "description of my test"
 ```
 

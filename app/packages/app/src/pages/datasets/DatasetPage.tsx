@@ -1,4 +1,4 @@
-import { Dataset } from "@fiftyone/core";
+import { Dataset, Snackbar } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -9,14 +9,12 @@ import { datasetQueryContext } from "@fiftyone/state";
 import { NotFoundError } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { graphql } from "relay-runtime";
 import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { Snackbar } from "@material-ui/core";
-import MuiAlert, { AlertProps } from "@mui/material/Alert";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -55,6 +53,13 @@ const DatasetPageQueryNode = graphql`
               value
             }
           }
+          labelTags {
+            fieldColor
+            valueColors {
+              color
+              value
+            }
+          }
         }
       }
       ...datasetFragment
@@ -67,19 +72,9 @@ const DatasetPageQueryNode = graphql`
   }
 `;
 
-const Alert = React.forwardRef<HTMLDivElement, AlertProps>(function Alert(
-  props,
-  ref
-) {
-  return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
-});
-
-const SNACK_VISIBLE_DURATION = 5000;
-
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
   const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
-  const [snackErrors, setSnackErrors] = useRecoilState(fos.snackbarErrors);
 
   useEffect(() => {
     document
@@ -100,23 +95,7 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
           <Dataset />
         </datasetQueryContext.Provider>
       </div>
-      <Snackbar
-        open={!!snackErrors.length}
-        autoHideDuration={SNACK_VISIBLE_DURATION}
-        onClose={() => {
-          setSnackErrors([]);
-        }}
-      >
-        <Alert
-          onClose={() => {
-            setSnackErrors([]);
-          }}
-          severity="error"
-          sx={{ width: "100%" }}
-        >
-          {snackErrors}
-        </Alert>
-      </Snackbar>
+      <Snackbar />
     </>
   );
 };
