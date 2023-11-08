@@ -14,14 +14,13 @@ from fiftyone.core.collections import SampleCollection
 
 
 _FRAMES_SLICE = len(SampleCollection._FRAMES_PREFIX)
+_WILDCARD_PROJECTION = "wildcardProjection"
 
 
 @gql.enum
 class IndexType(Enum):
     asc = "asc"
     desc = "desc"
-    sphere = "2dsphere"
-    text = "text"
 
 
 @gql.type
@@ -31,10 +30,17 @@ class IndexFields:
 
 
 @gql.type
+class WildcardProjection:
+    fields: t.List[str]
+    inclusion: bool
+
+
+@gql.type
 class Index:
     name: str
     key: t.List[IndexFields]
     unique: t.Optional[bool] = False
+    wildcard_projection: t.Optional[WildcardProjection] = None
 
 
 def from_dict(d: t.Dict[str, t.Dict[str, t.Any]]):
@@ -53,8 +59,23 @@ def _from_dict(d: t.Dict[str, t.Dict[str, t.Any]]):
     indexes: t.List[Index] = []
     for name, index in d.items():
         key = [_index_key_from_dict(*field) for field in index["key"]]
+        if None in key:
+            continue
+
+        wildcard_projection = None
+        if _WILDCARD_PROJECTION in index:
+            wildcard_projection = WildcardProjection(
+                fields=sorted([f for f in index[_WILDCARD_PROJECTION]]),
+                inclusion=set(index[_WILDCARD_PROJECTION].values()).pop() > 0,
+            )
+
         indexes.append(
-            Index(name=name, unique=index.get("unique", False), key=key)
+            Index(
+                name=name,
+                unique=index.get("unique", False),
+                key=key,
+                wildcard_projection=wildcard_projection,
+            )
         )
 
     return indexes
@@ -70,5 +91,8 @@ def _index_key_from_dict(
         type_ = "asc"
     elif type_ == -1:
         type_ = "desc"
+    else:
+        # ignore 2dsphere/text keys
+        return None
 
     return IndexFields(field=field, type=type_)
