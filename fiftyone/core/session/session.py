@@ -146,6 +146,7 @@ def launch_app(
     address: str = None,
     remote: bool = False,
     desktop: bool = None,
+    browser: str = None,
     height: int = None,
     auto: bool = True,
     config: AppConfig = None,
@@ -177,6 +178,9 @@ def launch_app(
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
         height (None): an optional height, in pixels, at which to render App
             instances in notebook cells. Only applicable in notebook contexts
         auto (True): whether to automatically show a new App window
@@ -199,6 +203,7 @@ def launch_app(
         address=address,
         remote=remote,
         desktop=desktop,
+        browser=browser,
         height=height,
         auto=auto,
         config=config,
@@ -319,6 +324,9 @@ class Session(object):
         desktop (None): whether to launch the App in the browser (False) or as
             a desktop App (True). If None, ``fiftyone.config.desktop_app`` is
             used. Not applicable to notebook contexts (e.g., Jupyter and Colab)
+        browser (None): an optional browser to use to open the App. If None,
+            the default browser will be used. Refer to list of supported
+            browsers at https://docs.python.org/3/library/webbrowser.html
         height (None): an optional height, in pixels, at which to render App
             instances in notebook cells. Only applicable in notebook contexts
         auto (True): whether to automatically show a new App window
@@ -340,6 +348,7 @@ class Session(object):
         address: str = None,
         remote: bool = False,
         desktop: bool = None,
+        browser: str = None,
         height: int = None,
         auto: bool = True,
         config: AppConfig = None,
@@ -423,6 +432,8 @@ class Session(object):
 
         if self.auto and focx.is_notebook_context():
             self.show(height=config.notebook_height)
+
+        self.browser = browser
 
         if self.remote:
             if focx.is_notebook_context():
@@ -1006,7 +1017,11 @@ class Session(object):
             )
             return
 
-        webbrowser.open(self.url, new=2)
+        if self.browser is None:
+            webbrowser.open(self.url, new=2)
+        else:
+            # open in a specified browser
+            webbrowser.get(self.browser).open(self.url, new=2)
 
     @update_state()
     def show(self, height: int = None) -> None:
