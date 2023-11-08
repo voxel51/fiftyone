@@ -199,7 +199,7 @@ class Mutation(SetColorScheme):
             except:
                 pass
 
-        # Otherwise, build the view using the params
+        # # Otherwise, build the view using the params
         if result_view is None:
             result_view = get_view(
                 dataset_name,
@@ -213,7 +213,10 @@ class Mutation(SetColorScheme):
                 )
                 if form.slice
                 else None,
+                # sample_ids=form.sample_ids if form else None
             )
+
+            result_view = _build_result_view(result_view, form)
 
         # Set view state
         slug = (
