@@ -299,15 +299,14 @@ export const PainterFactory = (requestColor) => ({
         fieldColor = setting?.fieldColor
           ? setting.fieldColor
           : await requestColor(coloring.pool, coloring.seed, field);
-        const hexColor = colorString.to.hex(colorString.get.rgb(fieldColor));
-        color = get32BitColor(hexColor);
+        color = get32BitColor(convertToHex(fieldColor));
       }
 
       const getColor = (i) => {
         i = Math.round(Math.abs(i)) % coloring.targets.length;
 
         if (!(i in cache)) {
-          cache[i] = get32BitColor(coloring.targets[i]);
+          cache[i] = get32BitColor(convertToHex(coloring.targets[i]));
         }
 
         return cache[i];
@@ -339,7 +338,7 @@ export const PainterFactory = (requestColor) => ({
 
               // If a customized color setting is found, get the 32-bit color representation.
               if (colorInfo) {
-                color = get32BitColor(colorInfo.color);
+                color = get32BitColor(convertToHex(colorInfo.color));
               }
             }
             overlay[i] = color ? color : getColor(targets[i]);
@@ -364,3 +363,6 @@ const getRgbFromMaskData = (
 
   return [r, g, b] as [number, number, number];
 };
+
+export const convertToHex = (color: string) =>
+  colorString.to.hex(colorString.get.rgb(color));
