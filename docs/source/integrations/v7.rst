@@ -12,6 +12,13 @@ FiftyOne to V7 for labeling.
 You can create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
 these :ref:`simple setup instructions <v7-setup>` to get up and running.
 
+.. note::
+
+    Did you know? You can request, manage, and import annotations from within
+    the FiftyOne App by installing the
+    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
+    plugin!
+
 FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using V7, all programmatically in Python. All of the
 following label types are supported, for both image and video datasets:
