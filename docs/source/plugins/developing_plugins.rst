@@ -805,7 +805,7 @@ contains the following properties:
 -   `ctx.dataset_name`:  the name of the current dataset
 -   `ctx.dataset` - the current |Dataset| instance
 -   `ctx.view` - the current |DatasetView| instance
--   `ctx.current_sample` - id of the sample chosen in the App's Grid
+-   `ctx.current_sample` - the ID of the active sample in the App modal, if any
 -   `ctx.selected` - the list of currently selected samples in the App, if any
 -   `ctx.selected_labels` - the list of currently selected labels in the App,
     if any

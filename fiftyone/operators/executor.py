@@ -342,14 +342,6 @@ class ExecutionContext(object):
         self._delegated_operation_id = delegated_operation_id
 
     @property
-    def current_sample(self):
-        """The id of the current sample being processed (if any).
-
-        When executed via the FiftyOne App, this is set when the user opens a sample in the modal.
-        """
-        return self.request_params.get("current_sample", None)
-
-    @property
     def dataset(self):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
@@ -418,6 +410,15 @@ class ExecutionContext(object):
             applicable to video samples)
         """
         return self.request_params.get("selected_labels", [])
+
+    @property
+    def current_sample(self):
+        """The ID of the current sample being processed (if any).
+
+        When executed via the FiftyOne App, this is set when the user opens a
+        sample in the modal.
+        """
+        return self.request_params.get("current_sample", None)
 
     @property
     def delegated(self):
