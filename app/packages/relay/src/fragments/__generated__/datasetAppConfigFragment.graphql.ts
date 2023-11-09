@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bf1398a260867643ec57ecd4b4c1d3c3>>
+ * @generated SignedSource<<647d7408d1e90698e34c8d17df0fde13>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -18,14 +18,14 @@ export type datasetAppConfigFragment$data = {
     readonly colorPool: ReadonlyArray<string>;
     readonly defaultMaskTargetsColors: ReadonlyArray<{
       readonly color: string;
-      readonly intTarget: number | null;
+      readonly intTarget: number;
     }> | null;
     readonly fields: ReadonlyArray<{
       readonly colorByAttribute: string | null;
       readonly fieldColor: string | null;
       readonly maskTargetsColors: ReadonlyArray<{
         readonly color: string;
-        readonly intTarget: number | null;
+        readonly intTarget: number;
       }> | null;
       readonly path: string;
       readonly valueColors: ReadonlyArray<{

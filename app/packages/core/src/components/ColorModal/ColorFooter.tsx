@@ -154,7 +154,7 @@ const useUpdateDatasetColorScheme = () => {
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
-            debugger;
+
             colorSchemeRecord.setLinkedRecords(
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
@@ -163,7 +163,7 @@ const useUpdateDatasetColorScheme = () => {
             colorSchemeRecord.setLinkedRecords(
               setEntries(
                 store,
-                "DefaultMaskTargetsColors",
+                "MaskColor",
                 colorScheme?.defaultMaskTargetsColors ?? null
               ),
               "defaultMaskTargetsColors"
@@ -221,15 +221,12 @@ const setEntries = (
     const record = store.create(uuid(), name);
 
     Object.entries(entry).forEach(([key, value]) => {
-      if (!["valueColors", "maskTargetsColors"].includes(key)) {
+      if (key !== "valueColors") {
         record.setValue(value, key);
         return;
       }
       if (value === "valueColors") {
         record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
-      }
-      if (value === "maskTargetsColors") {
-        record.setLinkedRecords(setEntries(store, "TargetColor", value), key);
       }
     });
 

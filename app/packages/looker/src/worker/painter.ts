@@ -10,6 +10,7 @@ import {
   Coloring,
   CustomizeColor,
   LabelTagColor,
+  MaskColorInput,
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
@@ -298,6 +299,14 @@ export const PainterFactory = (requestColor) => ({
         return cache[i];
       };
 
+      // convert the defaultMaskTargetsColors and fields maskTargetsColors into objects to improve performance
+      const defaultSetting = convertMaskColorsToObject(
+        coloring.defaultMaskTargetsColors
+      );
+      const fieldSetting = convertMaskColorsToObject(
+        setting?.maskTargetsColors
+      );
+
       // these for loops must be fast. no "in" or "of" syntax
       for (let i = 0; i < overlay.length; i++) {
         if (targets[i] !== 0) {
@@ -308,23 +317,16 @@ export const PainterFactory = (requestColor) => ({
           ) {
             targets[i] = 0;
           } else {
-            if (coloring.by !== COLOR_BY.FIELD) {
+            if (coloring.by == COLOR_BY.VALUE) {
               // Attempt to find a color in the fields mask target color settings
-              let colorSetting = setting?.maskTargetsColors;
-              let colorInfo = colorSetting?.find(
-                (x) => x.intTarget === targets[i]
-              );
-
               // If not found, attempt to find a color in the default mask target colors.
-              if (!colorInfo) {
-                colorInfo = coloring.defaultMaskTargetsColors?.find(
-                  (x) => x.intTarget === targets[i]
-                );
-              }
+              const customColor =
+                fieldSetting?.[targets[i].toString()] ??
+                defaultSetting?.[targets[i].toString()];
 
               // If a customized color setting is found, get the 32-bit color representation.
-              if (colorInfo) {
-                color = get32BitColor(convertToHex(colorInfo.color));
+              if (customColor) {
+                color = get32BitColor(convertToHex(customColor));
               }
             }
             overlay[i] = color ? color : getColor(targets[i]);
@@ -352,3 +354,12 @@ const getRgbFromMaskData = (
 
 export const convertToHex = (color: string) =>
   colorString.to.hex(colorString.get.rgb(color));
+
+const convertMaskColorsToObject = (array: MaskColorInput[]) => {
+  const result = {};
+  if (!array) return {};
+  array.forEach((item) => {
+    result[item.intTarget.toString()] = item.color;
+  });
+  return result;
+};

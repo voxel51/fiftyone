@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<27467f222b83f2b188875dd5160f1256>>
+ * @generated SignedSource<<a0c7d1a36367412a11e4a7227e9e7165>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -45,14 +45,14 @@ export type DatasetPageQuery$data = {
         }> | null;
         readonly defaultMaskTargetsColors: ReadonlyArray<{
           readonly color: string;
-          readonly intTarget: number | null;
+          readonly intTarget: number;
         }> | null;
         readonly fields: ReadonlyArray<{
           readonly colorByAttribute: string | null;
           readonly fieldColor: string | null;
           readonly maskTargetsColors: ReadonlyArray<{
             readonly color: string;
-            readonly intTarget: number | null;
+            readonly intTarget: number;
           }> | null;
           readonly path: string;
           readonly valueColors: ReadonlyArray<{

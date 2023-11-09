@@ -366,12 +366,12 @@ input LabelTagColorInput {
 
 type MaskColor {
   color: String!
-  intTarget: Int
+  intTarget: Int!
 }
 
 input MaskColorInput {
   color: String!
-  intTarget: Int
+  intTarget: Int!
 }
 
 enum MediaType {

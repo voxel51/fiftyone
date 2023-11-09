@@ -27,6 +27,11 @@ type MaskColorInput = {
   color: string;
 };
 
+type Input = {
+  intTarget?: number;
+  color: string;
+};
+
 type IdxColorProp = {
   initialValue: MaskColorInput[];
   values: MaskColorInput[];
@@ -50,7 +55,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   max,
   step,
 }) => {
-  const [input, setInput] = useState<MaskColorInput[]>(initialValue ?? []);
+  const [input, setInput] = useState<Input[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
     Array(values?.length ?? 0).fill(false)
   );
@@ -67,7 +72,10 @@ const IdxColorList: React.FC<IdxColorProp> = ({
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
     setInput(newInput);
     setShowPicker([...showPicker, false]);
-    onSyncUpdate(newInput);
+    /* does not sync update the session colorscheme here
+    because intTarget is not valid
+    it would sync to session when the user adds an valid intTarget input
+     */
   };
 
   const handleDelete = (colorIdx: number) => {
@@ -76,7 +84,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       ...input.slice(colorIdx + 1),
     ];
     setInput(valueColors);
-    onSyncUpdate(valueColors);
+    onSyncUpdate(valueColors as MaskColorInput[]);
   };
 
   // color picker selection and sync with session
@@ -86,7 +94,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = color?.hex;
       setInput(copy);
-      onSyncUpdate(copy);
+      onSyncUpdate(copy as MaskColorInput[]);
     },
     [input, onSyncUpdate]
   );
@@ -95,11 +103,11 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   const onSyncIdx = useCallback(
     (intValue: number, index: number) => {
       if ((onValidate && onValidate(intValue)) || !onValidate) {
-        onSyncUpdate(input);
+        onSyncUpdate(input as MaskColorInput[]);
       } else {
-        const warning = cloneDeep(values);
+        const warning = cloneDeep(values) as Input[];
         if (!warning) return;
-        warning[index].intTarget = null;
+        warning[index].intTarget = undefined;
         setInput(warning);
         setTimeout(() => {
           setInput(() => {
@@ -137,7 +145,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
         const copy = cloneDeep(input);
         copy[changeIdx].color = hexColor;
         setInput(copy);
-        onSyncUpdate(copy);
+        onSyncUpdate(copy as MaskColorInput[]);
       }
     },
     [input, values, onSyncUpdate]
@@ -172,7 +180,11 @@ const IdxColorList: React.FC<IdxColorProp> = ({
                 return copy;
               })
             }
-            onBlur={() => onSyncIdx(input[index].intTarget, index)}
+            onBlur={() => {
+              if (input[index].intTarget !== undefined) {
+                onSyncIdx(input[index].intTarget!, index);
+              }
+            }}
             style={{ width: "12rem" }}
             min={min}
             max={max}
