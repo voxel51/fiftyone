@@ -426,9 +426,10 @@ details:
 |br|
 In addition, the following V7-specific parameters can also be provided:
 
-.. note::
-
-    TODO add any parameters here
+-   **dataset_name** (*None*): a name of a dataset to use or create in Darwin
+-   **external_storage** (*None*): the sluggified name of a Darwin external
+    storage to use. If provided, indicates that all files should be treated as
+    external storage
 
 .. _v7-label-schema:
 
