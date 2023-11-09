@@ -9,11 +9,12 @@ FiftyOne provides a powerful annotation API that makes it easy to add or edit
 labels on your :ref:`datasets <using-datasets>` or specific
 :ref:`views <using-views>` into them.
 
-By default, all annotation is performend via a native
-:ref:`CVAT integration <cvat-integration>` that uses `app.cvat.ai <https://app.cvat.ai>`_, but
-you can use a :ref:`self-hosted CVAT server <cvat-setup>`, switch to the
-:ref:`Labelbox backend <labelbox-integration>`, or even use a
-:ref:`custom annotation backend <custom-annotation-backend>`.
+.. note::
+
+    Did you know? You can request, manage, and import annotations from within
+    the FiftyOne App by installing the
+    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
+    plugin!
 
 .. note::
 

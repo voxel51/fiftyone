@@ -254,13 +254,10 @@ _________________
 Core Concepts
 _____________
 
-The FiftyOne tool has three components: the Python library, the App, and the
-Brain.
-
 .. _fiftyone-library:
 
-:doc:`FiftyOne Library <user_guide/basics>`
--------------------------------------------
+FiftyOne Library
+----------------
 
 FiftyOne's core library provides a structured yet dynamic representation to
 explore your datasets. You can efficiently query and manipulate your dataset by
@@ -298,8 +295,8 @@ adding custom tags, model predictions and more.
     Check out :doc:`loading datasets <user_guide/dataset_creation/index>` to see
     how to load your data into FiftyOne.
 
-:doc:`FiftyOne App <user_guide/app>`
-------------------------------------
+FiftyOne App
+------------
 
 The FiftyOne App is a graphical user interface that makes it easy to explore
 and rapidly gain intuition into your datasets. You can visualize labels like
@@ -314,8 +311,8 @@ slice your dataset into any subset of interest; and more.
    :alt: fiftyone-app
    :align: center
 
-:doc:`FiftyOne Brain <user_guide/brain>`
-----------------------------------------
+FiftyOne Brain
+--------------
 
 The FiftyOne Brain is a library of powerful machine learning-powered
 capabilities that provide insights into your datasets and recommend ways to
@@ -333,6 +330,25 @@ models.
 
    fob.compute_uniqueness(dataset)
    rank_view = dataset.sort_by("uniqueness")
+
+FiftyOne Plugins
+----------------
+
+FiftyOne provides a powerful plugin framework that allows for extending and
+customizing the functionality of the tool to suit your specific needs.
+
+With plugins, you can add new functionality to the FiftyOne App, create
+integrations with other tools and APIs, render custom panels, and add custom
+buttons to menus. You can even schedule long running tasks from within the App
+that execute on a connected workflow orchestration tool like Apache Airflow.
+
+.. custombutton::
+    :button_text: Install some plugins!
+    :button_link: plugins/index.html
+
+.. image:: images/plugins/operators/examples/embeddings.gif
+   :alt: fiftyone-plugins
+   :align: center
 
 What's Next?
 ____________

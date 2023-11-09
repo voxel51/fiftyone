@@ -10,6 +10,13 @@ variety of :ref:`common formats <supported-export-formats>`, and it can be
 easily extended to export datasets in
 :ref:`custom formats <custom-dataset-exporter>`.
 
+.. note::
+
+    Did you know? You can export media and/or labels from within the FiftyOne
+    App by installing the
+    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/io>`_
+    plugin!
+
 Basic recipe
 ------------
 
