@@ -5,6 +5,7 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import os
 import asyncio
 import collections
 import inspect
@@ -110,6 +111,7 @@ class Executor(object):
         }
 
 
+# TODO: add request_delegation and delegation_target
 def execute_operator(operator_uri, ctx, params=None):
     """Executes the operator with the given name.
 
@@ -203,14 +205,19 @@ async def execute_or_delegate_operator(
     else:
         operator, executor, ctx = prepared
 
-    if operator.resolve_delegation(ctx):
+    execution_options = operator.resolve_execution_options(ctx)
+    resolved_delegation = operator.resolve_delegation(ctx)
+    should_delegate = (
+        ctx.requesting_delegated_execution or resolved_delegation
+    ) and execution_options.allow_delegated_execution
+    if should_delegate:
         try:
             from .delegated import DelegatedOperationService
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
-                delegation_target=operator.delegation_target,
+                delegation_target=ctx.delegation_target,
                 label=operator.name,
             )
 
@@ -257,7 +264,10 @@ async def prepare_operator_executor(
         delegated_operation_id=delegated_operation_id,
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
+        delegation_target=request_params.get("delegation_target", None),
+        request_delegation=request_params.get("request_delegation", False),
     )
+
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
@@ -319,6 +329,34 @@ def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
+def resolve_execution_options(registry, operator_uri, request_params):
+    """Resolves the execution options of the operator with the given name.
+
+    Args:
+        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
+        operator_uri: the URI of the operator
+        request_params: a dictionary of request parameters
+
+    Returns:
+        the type of the inputs :class:`fiftyone.operators.executor.ExecutionOptions` of
+        the operator, or None
+    """
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
+
+    operator = registry.get_operator(operator_uri)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
+    try:
+        return operator.resolve_execution_options(ctx)
+
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
+
+
 def resolve_placement(operator, request_params):
     """Resolves the placement of the operator with the given name.
 
@@ -366,6 +404,8 @@ class ExecutionContext(object):
         delegated_operation_id=None,
         operator_uri=None,
         required_secrets: typing.List[str] = None,
+        delegation_target=None,
+        request_delegation=False,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -385,6 +425,8 @@ class ExecutionContext(object):
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
             )
+        self._delegation_target = delegation_target
+        self._request_delegation = request_delegation
 
     @property
     def dataset(self):
@@ -412,6 +454,13 @@ class ExecutionContext(object):
         on.
         """
         return self.request_params.get("dataset_id", None)
+
+    @property
+    def delegation_target(self):
+        """The ID of the Orchestrator being used to delegate the operation."""
+        return self.request_params.get(
+            "delegation_target", self._delegation_target
+        )
 
     @property
     def view(self):
@@ -492,6 +541,11 @@ class ExecutionContext(object):
             resolver_fn=self._secrets_client.get_secret_sync,
             required_keys=self._required_secret_keys,
         )
+
+    @property
+    def requesting_delegated_execution(self):
+        """Whether the invocation requested delegated execution."""
+        return self._request_delegation
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -895,3 +949,64 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+class ExecutionOptions(object):
+    """Represents the execution options of an operator.
+
+    Args:
+        allow_immediate_execution (True): whether the operator can be executed
+            immediately
+        allow_delegated_execution (True): whether the operator can be delegated
+            to an orchestrator
+        default_choice_to_delegated (True): when True the default option is to delegate
+    """
+
+    def __init__(
+        self,
+        allow_immediate_execution=True,
+        allow_delegated_execution=True,
+        default_choice_to_delegated=True,
+    ):
+        self._allow_immediate_execution = allow_immediate_execution
+        self._allow_delegated_execution = allow_delegated_execution
+        self._available_orchestrators = []
+        self._default_choice_to_delegated = default_choice_to_delegated
+        if not allow_delegated_execution and not allow_immediate_execution:
+            self._allow_immediate_execution = True
+
+    @property
+    def allow_delegated_execution(self):
+        return self._allow_delegated_execution
+
+    @property
+    def allow_immediate_execution(self):
+        return self._allow_immediate_execution
+
+    @property
+    def available_orchestrators(self):
+        return self._available_orchestrators or []
+
+    @property
+    def orchestrator_registration_enabled(self):
+        return bool(
+            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
+        )
+
+    @property
+    def default_choice_to_delegated(self):
+        return self._default_choice_to_delegated
+
+    def update(self, available_orchestrators=None):
+        self._available_orchestrators = available_orchestrators
+
+    def to_dict(self):
+        return {
+            "allow_immediate_execution": self._allow_immediate_execution,
+            "allow_delegated_execution": self._allow_delegated_execution,
+            "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
+            "available_orchestrators": [
+                x.__dict__ for x in self.available_orchestrators
+            ],
+            "default_choice_to_delegated": self._default_choice_to_delegated,
+        }
