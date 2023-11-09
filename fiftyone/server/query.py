@@ -607,9 +607,8 @@ async def serialize_dataset(
                 data.media_type = d["media_type"]
                 data.view_cls = etau.get_class_name(view)
 
-            if view.media_type != data.media_type:
-                data.parent_media_type = view._parent_media_type
-                data.media_type = view.media_type
+            data.parent_media_type = view._parent_media_type
+            data.media_type = view.media_type
 
             collection = view
 

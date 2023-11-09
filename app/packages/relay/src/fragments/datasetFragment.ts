@@ -10,6 +10,7 @@ export default graphql`
     lastLoadedAt
     mediaType
     name
+    parentMediaType
     version
     appConfig {
       ...datasetAppConfigFragment

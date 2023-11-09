@@ -26,7 +26,7 @@ import { ModalSample, modalLooker, modalSample } from "./modal";
 import { nonNestedDynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
-import { datasetName } from "./selectors";
+import { datasetName, parentMediaTypeSelector } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import { GROUP_BY_VIEW_STAGE, dynamicGroupViewQuery, view } from "./view";
@@ -156,14 +156,15 @@ export const groupMediaTypesMap = selector({
     ),
 });
 
-export const groupSlices = selector<string[]>({
+export const groupSlices = selector({
   key: "groupSlices",
   get: ({ get }) => {
-    return get(isGroup)
-      ? get(groupMediaTypes)
-          .map(({ name }) => name)
-          .sort()
-      : [];
+    if (get(hasGroupSlices)) {
+      return get(groupMediaTypes)
+        .map(({ name }) => name)
+        .sort();
+    }
+    return [];
   },
 });
 
@@ -175,7 +176,12 @@ export const groupMediaTypesSet = selector<Set<string>>({
 
 export const hasGroupSlices = selector<boolean>({
   key: "hasGroupSlices",
-  get: ({ get }) => get(isGroup) && Boolean(get(groupSlices).length),
+  get: ({ get }) => {
+    return (
+      get(isGroup) &&
+      (!get(isDynamicGroup) || get(parentMediaTypeSelector) === "group")
+    );
+  },
 });
 
 export const activePcdSlices = atom<string[]>({
@@ -407,7 +413,7 @@ export const isDynamicGroup = selector<boolean>({
 export const isNonNestedDynamicGroup = selector<boolean>({
   key: "isNonNestedDynamicGroup",
   get: ({ get }) => {
-    return get(isDynamicGroup) && get(groupField) === null;
+    return get(isDynamicGroup) && get(parentMediaTypeSelector) !== "group";
   },
 });
 
