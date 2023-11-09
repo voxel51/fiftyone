@@ -78,6 +78,11 @@ export const SearchBox = ({
         onKeyUp={(e) => {
           e.stopPropagation();
         }}
+        onClick={(e) => {
+          if (!disabled) {
+            (e.target as HTMLInputElement).focus();
+          }
+        }}
       />
       {searchValue && (
         <Close

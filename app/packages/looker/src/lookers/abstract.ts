@@ -627,6 +627,8 @@ export abstract class AbstractLooker<
       method: "processSample",
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
+      labelTagColors: this.state.options.labelTagColors,
+      selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,
       uuid: messageUUID,
     } as ProcessSample);

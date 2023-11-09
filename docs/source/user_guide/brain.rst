@@ -984,13 +984,8 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
     When using the default ``sklearn`` backend, you must manually call
     :meth:`save() <fiftyone.brain.similarity.SimilarityIndex.save>` after
     adding or removing embeddings from an index in order to save the index to
-    the database.
-
-    This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>`,
-    :ref:`Pinecone <pinecone-integration>`,
-    :ref:`Milvus <milvus-integration>`, and
-    :ref:`LanceDB <lancedb-integration>`
+    the database. This is not required when using external vector databases
+    like :ref:`Qdrant <qdrant-integration>`.
 
 .. note::
 
@@ -1097,17 +1092,13 @@ to delete embeddings from an index by their ID:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>`,
-    :ref:`Pinecone <pinecone-integration>`,
-    :ref:`Milvus <milvus-integration>`, and
-    :ref:`LanceDB <lancedb-integration>`
+    :ref:`Qdrant <qdrant-integration>`.
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
 
-When working with backends like :ref:`Qdrant <qdrant-integration>`,
-:ref:`Pinecone <pinecone-integration>`, and :ref:`Milvus <milvus-integration>`
-that leverage external vector databases, you can call
+When working with backends like :ref:`Qdrant <qdrant-integration>` that
+leverage external vector databases, you can call
 :meth:`cleanup() <fiftyone.brain.similarity.SimilarityIndex.cleanup>` to delete
 the external index/collection:
 

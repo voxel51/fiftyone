@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5cc0b0cb8184b43666128eae767a86f3>>
+ * @generated SignedSource<<829bc0891c97b2693172a807d51ea2ce>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -26,6 +26,13 @@ export type datasetAppConfigFragment$data = {
       }> | null;
     }> | null;
     readonly id: string;
+    readonly labelTags: {
+      readonly fieldColor: string | null;
+      readonly valueColors: ReadonlyArray<{
+        readonly color: string;
+        readonly value: string;
+      }> | null;
+    } | null;
     readonly multicolorKeypoints: boolean | null;
     readonly opacity: number | null;
     readonly showSkeletons: boolean | null;
@@ -42,7 +49,40 @@ export type datasetAppConfigFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"datasetAppConfigFragment">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "fieldColor",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ValueColor",
+  "kind": "LinkedField",
+  "name": "valueColors",
+  "plural": true,
+  "selections": [
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "color",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "value",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
@@ -136,6 +176,19 @@ const node: ReaderFragment = {
         {
           "alias": null,
           "args": null,
+          "concreteType": "LabelTagColor",
+          "kind": "LinkedField",
+          "name": "labelTags",
+          "plural": false,
+          "selections": [
+            (v0/*: any*/),
+            (v1/*: any*/)
+          ],
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
           "concreteType": "CustomizeColor",
           "kind": "LinkedField",
           "name": "fields",
@@ -148,13 +201,7 @@ const node: ReaderFragment = {
               "name": "colorByAttribute",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "fieldColor",
-              "storageKey": null
-            },
+            (v0/*: any*/),
             {
               "alias": null,
               "args": null,
@@ -162,31 +209,7 @@ const node: ReaderFragment = {
               "name": "path",
               "storageKey": null
             },
-            {
-              "alias": null,
-              "args": null,
-              "concreteType": "ValueColor",
-              "kind": "LinkedField",
-              "name": "valueColors",
-              "plural": true,
-              "selections": [
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "color",
-                  "storageKey": null
-                },
-                {
-                  "alias": null,
-                  "args": null,
-                  "kind": "ScalarField",
-                  "name": "value",
-                  "storageKey": null
-                }
-              ],
-              "storageKey": null
-            }
+            (v1/*: any*/)
           ],
           "storageKey": null
         }
@@ -197,7 +220,8 @@ const node: ReaderFragment = {
   "type": "DatasetAppConfig",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "e4da6ba620276ce79b8429c97980919b";
+(node as any).hash = "c2ead1ff889d8cda848718e50da79568";
 
 export default node;
