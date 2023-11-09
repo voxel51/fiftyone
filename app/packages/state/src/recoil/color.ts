@@ -130,6 +130,8 @@ export const ensureColorScheme = (
       colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
+    colorscale:
+      (colorScheme.colorscale as ColorSchemeInput["colorscale"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
@@ -138,7 +140,7 @@ export const ensureColorScheme = (
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
-        : appConfig?.multicolorKeypoints,
+        : appConfig?.multicolorKeypoints ?? false,
     opacity:
       typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:

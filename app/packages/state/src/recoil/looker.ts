@@ -64,8 +64,7 @@ export const lookerOptions = selectorFamily<
         : {};
       const activeVisibility = get(attributeVisibility);
       const isLabelTagActive = activePaths.includes("_label_tags");
-
-      console.info(get(colorAtoms.coloring).scale);
+      console.info("colorscale", get(atoms.colorScheme).colorscale);
 
       return {
         showJSON: panels.json.isOpen,
@@ -82,6 +81,7 @@ export const lookerOptions = selectorFamily<
         coloring: get(colorAtoms.coloring),
         customizeColorSetting: get(atoms.colorScheme).fields ?? [],
         labelTagColors: get(atoms.colorScheme).labelTags ?? {},
+        colorscale: get(atoms.colorScheme).colorscale ?? [],
         attributeVisibility: activeVisibility,
         ...get(atoms.savedLookerOptions),
         selectedLabels: [...get(selectors.selectedLabelIds)],

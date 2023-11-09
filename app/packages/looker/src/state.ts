@@ -23,6 +23,13 @@ export interface Coloring {
   targets: string[];
 }
 
+export type Colorscale = {
+  path: string;
+  name?: string;
+  list?: [];
+  rgb?: [RGB[]];
+};
+
 export type MaskColorInput = {
   intTarget: number;
   color: string;
@@ -141,6 +148,7 @@ interface BaseOptions {
   filter: (path: string, value: unknown) => boolean;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale[];
   labelTagColors: CustomizeColor;
   selectedLabels: string[];
   selectedLabelTags?: string[];

@@ -1,5 +1,9 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  ColorscaleListInput,
+  MaskColorInput,
+} from "@fiftyone/relay";
 import { isEmpty, xor } from "lodash";
 import colorString from "color-string";
 import { RGB } from "@fiftyone/utilities";
@@ -252,6 +256,16 @@ export const isValidMaskInput = (input: MaskColorInput[]) => {
   let result = true;
   input.forEach((item: MaskColorInput) => {
     if (!item || [null, undefined].includes(item.intTarget)) {
+      result = false;
+    }
+  });
+  return result;
+};
+
+export const isValidFloatInput = (input: ColorscaleListInput[]) => {
+  let result = true;
+  input.forEach((item) => {
+    if (!item || [null, undefined].includes(item.value)) {
       result = false;
     }
   });

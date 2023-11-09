@@ -31,6 +31,7 @@ import FieldByValue from "./colorPalette/FieldByValue";
 import FieldsMaskTargets from "./colorPalette/FieldsMaskTarget";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
+import Colorscale from "./colorPalette/Colorscale";
 
 export const fieldColorSetting = selectorFamily<
   Omit<CustomizeColorInput, "path"> | undefined,
@@ -314,6 +315,7 @@ const FieldSetting = ({ path }: { path: string }) => {
           </div>
         )}
       {coloring.by == COLOR_BY.VALUE && isSegmentation && <FieldsMaskTargets />}
+      {coloring.by == COLOR_BY.VALUE && isHeatmap && <Colorscale />}
       {coloring.by == COLOR_BY.VALUE &&
         !isTypeValueSupported &&
         !isHeatmap &&

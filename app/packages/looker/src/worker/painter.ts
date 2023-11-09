@@ -8,6 +8,7 @@ import {
 } from "../overlays/util";
 import {
   Coloring,
+  Colorscale,
   CustomizeColor,
   LabelTagColor,
   MaskColorInput,
@@ -21,6 +22,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale[],
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -129,6 +131,7 @@ export const PainterFactory = (requestColor) => ({
     labels,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale[],
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -150,6 +153,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale[],
     selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
@@ -175,6 +179,17 @@ export const PainterFactory = (requestColor) => ({
     let color;
     const fieldSetting = customizeColorSetting?.find((x) => field === x.path);
 
+    // when colorscale is null or doe
+    let scale;
+    console.log(colorscale);
+    if (colorscale?.find((x) => x.path === field).rgb) {
+      scale = colorscale?.find((x) => x.path === field).rgb;
+    } else if (colorscale?.find((x) => x.path === "Global settings").rgb) {
+      scale = colorscale?.find((x) => x.path === "Global settings").rgb;
+    } else {
+      scale = coloring.scale;
+    }
+
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       let value;
@@ -196,10 +211,9 @@ export const PainterFactory = (requestColor) => ({
           r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
           const index = Math.round(
-            (Math.max(value - start, 0) / (stop - start)) *
-              (coloring.scale.length - 1)
+            (Math.max(value - start, 0) / (stop - start)) * (scale.length - 1)
           );
-          r = get32BitColor(coloring.scale[index]);
+          r = get32BitColor(scale[index]);
         }
 
         overlay[i] = r;
@@ -211,6 +225,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale[],
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {

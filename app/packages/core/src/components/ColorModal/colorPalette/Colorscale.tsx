@@ -1,4 +1,8 @@
-import { ColorscaleInput, MaskColorInput } from "@fiftyone/relay";
+import {
+  ColorscaleInput,
+  ColorscaleListInput,
+  MaskColorInput,
+} from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
@@ -11,8 +15,14 @@ import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
 import { activeColorPath } from "../state";
-import { getRGBColorFromPool, namedColorScales } from "../utils";
-import { ControlGroupWrapper } from "../ShareStyledDiv";
+import {
+  getRGBColorFromPool,
+  isValidFloatInput,
+  namedColorScales,
+} from "../utils";
+import { ControlGroupWrapper, FieldCHILD_STYLE } from "../ShareStyledDiv";
+import ManualColorScaleList from "../controls/ManualColorScaleList";
+import { cloneDeep } from "lodash";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -55,7 +65,7 @@ const colorscaleSetting = selectorFamily<
         } else {
           colorscale[index] = setting;
         }
-
+        console.info("set colorscale", colorscale);
         return {
           ...current,
           colorscale,
@@ -70,6 +80,7 @@ const Colorscale: React.FC = () => {
   const activePath = useRecoilValue(activeColorPath);
   const [setting, setSetting] = useRecoilState(colorscaleSetting(activePath));
 
+  console.info("setting", setting);
   const colorscaleValues = useMemo(
     () =>
       colorScheme.colorscale?.find((item) => item.path === activePath) ?? {
@@ -80,14 +91,17 @@ const Colorscale: React.FC = () => {
       },
     [colorScheme, activePath]
   );
+
   const [input, setInput] = React.useState(colorscaleValues?.name ?? "");
   const [tab, setTab] = React.useState(
-    Boolean(colorscaleValues?.name && colorscaleValues?.name !== "")
-      ? "name"
-      : "list"
+    Boolean(
+      (setting?.name || setting?.name !== "") &&
+        setting?.list &&
+        setting?.list.length > 0
+    )
+      ? "list"
+      : "name"
   );
-
-  const initialListValue = colorscaleValues?.list ?? [];
 
   const defaultValue = {
     value: null,
@@ -114,13 +128,30 @@ const Colorscale: React.FC = () => {
       colorscaleValues?.list?.length > 0
   );
 
+  const index = useMemo(
+    () => colorScheme.colorscale?.findIndex((s) => s.path == activePath),
+    [activePath]
+  );
+
   const onSyncUpdate = useCallback(
-    (copy: MaskColorInput[]) => {
-      if (copy) {
-        setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
+    (copy: ColorscaleListInput[]) => {
+      if (copy && isValidFloatInput(copy)) {
+        const newSetting = cloneDeep(colorScheme.colorscale ?? []);
+        const idx = colorScheme.colorscale?.findIndex(
+          (s) => s.path == activePath
+        );
+        if (idx !== undefined && idx > -1) {
+          newSetting[idx].list = copy;
+          setColorScheme({ ...colorScheme, colorscale: newSetting });
+        } else {
+          setColorScheme((cur) => ({
+            ...cur,
+            colorscale: [...newSetting, { path: activePath, list: copy }],
+          }));
+        }
       }
     },
-    [setColorScheme, colorScheme]
+    [index, setColorScheme, activePath]
   );
 
   useEffect(() => {
@@ -135,30 +166,24 @@ const Colorscale: React.FC = () => {
     setInput(colorscaleValues?.name ?? "");
   }, [colorscaleValues.name]);
 
+  useEffect(() => {
+    if (!setting) {
+      if (!colorScheme.colorscale || colorScheme.colorscale.length == 0) {
+        setColorScheme({
+          ...colorScheme,
+          colorscale: [
+            {
+              path: activePath,
+              name: "",
+              list: [defaultValue],
+            },
+          ],
+        });
+      }
+    }
+  }, [setting]);
+
   console.info(colorscaleValues);
-
-  //   useEffect(() => {
-  //     if (!values) {
-  //       if (
-  //         !colorScheme.defaultMaskTargetsColors ||
-  //         colorScheme.defaultMaskTargetsColors.length == 0
-  //       ) {
-  //         setColorScheme({
-  //           ...colorScheme,
-  //           defaultMaskTargetsColors: [defaultValue],
-  //         });
-  //       }
-  //     }
-  //   }, [values]);
-
-  const state = useMemo(
-    () => ({
-      useColorscale: Boolean(
-        colorscaleValues?.list && colorscaleValues.list.length > 0
-      ),
-    }),
-    [colorScheme.defaultMaskTargetsColors]
-  );
 
   return (
     <div>
@@ -186,9 +211,31 @@ const Colorscale: React.FC = () => {
           />
         </div>
       )}
-      {tab === "list" && <div>Define a custom colorscale:</div>}
+      {tab === "list" && (
+        <div>
+          Define a custom colorscale:
+          <ManualColorScaleList
+            initialValue={
+              setting?.list && setting?.list.length > 0
+                ? setting.list
+                : ([defaultValue] as ColorscaleListInput[])
+            }
+            values={setting?.list as ColorscaleListInput[]}
+            style={FieldCHILD_STYLE}
+            onValidate={validateFloat}
+            onSyncUpdate={onSyncUpdate}
+            shouldShowAddButton={shouldShowAddButton}
+            step={0.01}
+          />
+        </div>
+      )}
     </div>
   );
 };
 
 export default Colorscale;
+
+const validateFloat = (n: number) => {
+  // 1 and 1.0 should both pass
+  return Number.isFinite(n);
+};
