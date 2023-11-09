@@ -1968,3 +1968,480 @@ You can also view frame-level evaluation results as
     View stages:
         1. ToFrames(config=None)
         2. ToEvaluationPatches(eval_key='eval', config=None)
+
+.. _custom-evaluation-backends:
+
+Custom evaluation backends
+__________________________
+
+If you would like to use an evaluation protocol that is not natively supported
+by FiftyOne, you can follow the instructions below to implement an interface
+for your protocol and then configure your environment so that FiftyOne's
+evaluation methods will use it.
+
+.. tabs::
+
+  .. group-tab:: Regression
+
+    You can define custom regression evaluation backends that can be used by
+    passing the `method` parameter to
+    :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`:
+
+    .. code:: python
+        :linenos:
+
+        view.evaluate_regressions(..., method="<backend>", ...)
+
+    Regression evaluation backends are defined by writing subclasses of the
+    following two classes:
+
+    -   :class:`RegressionEvaluation <fiftyone.utils.eval.regression.RegressionEvaluation>`:
+        this class implements the evaluation protocol itself. Specifically you
+        should implement
+        :meth:`evaluate_samples() <fiftyone.utils.eval.regression.RegressionEvaluation.evaluate_samples>`,
+        which accepts a sample collection to evaluate as input and returns a
+        :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
+        instance that contains the results of the evaluation
+
+    -   :class:`RegressionEvaluationConfig <fiftyone.utils.eval.regression.RegressionEvaluationConfig>`:
+        this class defines the available parameters that users can pass as
+        keyword arguments to
+        :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`
+        to customize the behavior of the evaluation run
+
+    If desired, you can also implement and return a custom
+    :class:`RegressionResults <fiftyone.utils.eval.regression.RegressionResults>`
+    subclass. This is useful if you want to expose custom methods that users
+    can call to view and/or interact with the evaluation results
+    programmatically.
+
+    The recommended way to expose a custom regression evaluation method is to
+    add it to your :ref:`evaluation config <evaluation-config>` at
+    `~/.fiftyone/evaluation_config.json` as follows:
+
+    .. code-block:: text
+
+        {
+            "default_regression_backend": "<backend>",
+            "regression_backends": {
+                "<backend>": {
+                    "config_cls": "your.custom.RegressionEvaluationConfig"
+                }
+            },
+            ...
+        }
+
+    In the above, `<backend>` defines the name of your custom backend, which
+    you can henceforward pass as the `method` parameter to
+    :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`,
+    and the `config_cls` parameter specifies the fully-qualified name of the
+    :class:`RegressionEvaluationConfig <fiftyone.utils.eval.regression.RegressionEvaluationConfig>`
+    subclass for your evaluation backend.
+
+    With the optional `default_regression_backend` parameter set to your custom
+    backend as shown above, calling
+    :meth:`evaluate_regressions() <fiftyone.core.collections.SampleCollection.evaluate_regressions>`
+    will automatically use your backend.
+
+  .. group-tab:: Classification
+
+    You can define custom classification evaluation backends that can be used
+    by passing the `method` parameter to
+    :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`:
+
+    .. code:: python
+        :linenos:
+
+        view.evaluate_classifications(..., method="<backend>", ...)
+
+    Classification evaluation backends are defined by writing subclasses of the
+    following two classes:
+
+    -   :class:`ClassificationEvaluation <fiftyone.utils.eval.classification.ClassificationEvaluation>`:
+        this class implements the evaluation protocol itself. Specifically you
+        should implement
+        :meth:`evaluate_samples() <fiftyone.utils.eval.classification.ClassificationEvaluation.evaluate_samples>`,
+        which accepts a sample collection to evaluate as input and returns a
+        :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
+        instance that contains the results of the evaluation
+
+    -   :class:`ClassificationEvaluationConfig <fiftyone.utils.eval.classification.ClassificationEvaluationConfig>`:
+        this class defines the available parameters that users can pass as
+        keyword arguments to
+        :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+        to customize the behavior of the evaluation run
+
+    If desired, you can also implement and return a custom
+    :class:`ClassificationResults <fiftyone.utils.eval.classification.ClassificationResults>`
+    subclass. This is useful if you want to expose custom methods that users
+    can call to view and/or interact with the evaluation results
+    programmatically.
+
+    The recommended way to expose a custom classification evaluation method is
+    to add it to your :ref:`evaluation config <evaluation-config>` at
+    `~/.fiftyone/evaluation_config.json` as follows:
+
+    .. code-block:: text
+
+        {
+            "default_classification_backend": "<backend>",
+            "classification_backends": {
+                "<backend>": {
+                    "config_cls": "your.custom.ClassificationEvaluationConfig"
+                }
+            },
+            ...
+        }
+
+    In the above, `<backend>` defines the name of your custom backend, which
+    you can henceforward pass as the `method` parameter to
+    :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`,
+    and the `config_cls` parameter specifies the fully-qualified name of the
+    :class:`ClassificationEvaluationConfig <fiftyone.utils.eval.classification.ClassificationEvaluationConfig>`
+    subclass for your evaluation backend.
+
+    With the optional `default_classification_backend` parameter set to your
+    custom backend as shown above, calling
+    :meth:`evaluate_classifications() <fiftyone.core.collections.SampleCollection.evaluate_classifications>`
+    will automatically use your backend.
+
+  .. group-tab:: Detection
+
+    You can define custom detection evaluation backends that can be used by
+    passing the `method` parameter to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`:
+
+    .. code:: python
+        :linenos:
+
+        view.evaluate_detections(..., method="<backend>", ...)
+
+    Detection evaluation backends are defined by writing subclasses of the
+    following two classes:
+
+    -   :class:`DetectionEvaluation <fiftyone.utils.eval.detection.DetectionEvaluation>`:
+        this class implements the evaluation protocol itself. Specifically you
+        should implement
+        :meth:`evaluate() <fiftyone.utils.eval.detection.DetectionEvaluation.evaluate>`,
+        which accepts a sample to evaluate as input and returns a list of
+        matched ground truth/predicted object pairs, and you can optionally
+        implement
+        :meth:`generate_results() <fiftyone.utils.eval.detection.DetectionEvaluation.generate_results>`,
+        to compute aggregate evaluation results (e.g., mAP or PR curves) for
+        the sample collection and return them in a
+        :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
+        instance
+
+    -   :class:`DetectionEvaluationConfig <fiftyone.utils.eval.detection.DetectionEvaluationConfig>`:
+        this class defines the available parameters that users can pass as
+        keyword arguments to
+        :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+        to customize the behavior of the evaluation run
+
+    If desired, you can also implement and return a custom
+    :class:`DetectionResults <fiftyone.utils.eval.detection.DetectionResults>`
+    subclass. This is useful if you want to expose custom methods that users
+    can call to view and/or interact with the evaluation results
+    programmatically.
+
+    The recommended way to expose a custom detection evaluation method is to
+    add it to your :ref:`evaluation config <evaluation-config>` at
+    `~/.fiftyone/evaluation_config.json` as follows:
+
+    .. code-block:: text
+
+        {
+            "default_detection_backend": "<backend>",
+            "detection_backends": {
+                "<backend>": {
+                    "config_cls": "your.custom.DetectionEvaluationConfig"
+                }
+            },
+            ...
+        }
+
+    In the above, `<backend>` defines the name of your custom backend, which
+    you can henceforward pass as the `method` parameter to
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`,
+    and the `config_cls` parameter specifies the fully-qualified name of the
+    :class:`DetectionEvaluationConfig <fiftyone.utils.eval.detection.DetectionEvaluationConfig>`
+    subclass for your evaluation backend.
+
+    With the optional `default_detection_backend` parameter set to your
+    custom backend as shown above, calling
+    :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+    will automatically use your backend.
+
+  .. group-tab:: Segmentation
+
+    You can define custom segmentation evaluation backends that can be used by
+    passing the `method` parameter to
+    :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`:
+
+    .. code:: python
+        :linenos:
+
+        view.evaluate_segmentations(..., method="<backend>", ...)
+
+    Segmentation evaluation backends are defined by writing subclasses of the
+    following two classes:
+
+    -   :class:`SegmentationEvaluation <fiftyone.utils.eval.segmentation.SegmentationEvaluation>`:
+        this class implements the evaluation protocol itself. Specifically you
+        should implement
+        :meth:`evaluate_samples() <fiftyone.utils.eval.segmentation.SegmentationEvaluation.evaluate_samples>`,
+        which accepts a sample collection to evaluate as input and returns a
+        :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
+        instance that contains the results of the evaluation
+
+    -   :class:`SegmentationEvaluationConfig <fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig>`:
+        this class defines the available parameters that users can pass as
+        keyword arguments to
+        :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+        to customize the behavior of the evaluation run
+
+    If desired, you can also implement and return a custom
+    :class:`SegmentationResults <fiftyone.utils.eval.segmentation.SegmentationResults>`
+    subclass. This is useful if you want to expose custom methods that users
+    can call to view and/or interact with the evaluation results
+    programmatically.
+
+    The recommended way to expose a custom segmentation evaluation method is to
+    add it to your :ref:`evaluation config <evaluation-config>` at
+    `~/.fiftyone/evaluation_config.json` as follows:
+
+    .. code-block:: text
+
+        {
+            "default_segmentation_backend": "<backend>",
+            "segmentation_backends": {
+                "<backend>": {
+                    "config_cls": "your.custom.SegmentationEvaluationConfig"
+                }
+            },
+            ...
+        }
+
+    In the above, `<backend>` defines the name of your custom backend, which
+    you can henceforward pass as the `method` parameter to
+    :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`,
+    and the `config_cls` parameter specifies the fully-qualified name of the
+    :class:`SegmentationEvaluationConfig <fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig>`
+    subclass for your evaluation backend.
+
+    With the optional `default_segmentation_backend` parameter set to your
+    custom backend as shown above, calling
+    :meth:`evaluate_segmentations() <fiftyone.core.collections.SampleCollection.evaluate_segmentations>`
+    will automatically use your backend.
+
+.. _evaluation-config:
+
+Evaluation config
+_________________
+
+FiftyOne provides an evaluation config that you can use to either temporarily
+or permanently configure the behavior of the evaluation API.
+
+Viewing your config
+-------------------
+
+You can print your current evaluation config at any time via the Python library
+and the CLI:
+
+.. tabs::
+
+  .. tab:: Python
+
+    .. code-block:: python
+
+        import fiftyone as fo
+
+        # Print your current evaluation config
+        print(fo.evaluation_config)
+
+    .. code-block:: text
+
+        {
+            "default_regresion_backend": "simple",
+            "default_classification_backend": "simple",
+            "default_detection_backend": "coco",
+            "default_segmentation_backend": "simple",
+            "regression_backends": {
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.regression.SimpleEvaluationConfig"
+                }
+            },
+            "classification_backends": {
+                "binary": {
+                    "config_cls": "fiftyone.utils.eval.classification.BinaryEvaluationConfig"
+                },
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.classification.SimpleEvaluationConfig"
+                },
+                "top-k": {
+                    "config_cls": "fiftyone.utils.eval.classification.TopKEvaluationConfig"
+                }
+            },
+            "detection_backends": {
+                "activitynet": {
+                    "config_cls": "fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig"
+                },
+                "coco": {
+                    "config_cls": "fiftyone.utils.eval.coco.COCOEvaluationConfig"
+                },
+                "open-images": {
+                    "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig"
+                }
+            },
+            "segmentation_backends": {
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.segmentation.SimpleEvaluationConfig"
+                }
+            }
+        }
+
+  .. tab:: CLI
+
+    .. code-block:: shell
+
+        # Print your current evaluation config
+        fiftyone evaluation config
+
+    .. code-block:: text
+
+        {
+            "default_regresion_backend": "simple",
+            "default_classification_backend": "simple",
+            "default_detection_backend": "coco",
+            "default_segmentation_backend": "simple",
+            "regression_backends": {
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.regression.SimpleEvaluationConfig"
+                }
+            },
+            "classification_backends": {
+                "binary": {
+                    "config_cls": "fiftyone.utils.eval.classification.BinaryEvaluationConfig"
+                },
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.classification.SimpleEvaluationConfig"
+                },
+                "top-k": {
+                    "config_cls": "fiftyone.utils.eval.classification.TopKEvaluationConfig"
+                }
+            },
+            "detection_backends": {
+                "activitynet": {
+                    "config_cls": "fiftyone.utils.eval.activitynet.ActivityNetEvaluationConfig"
+                },
+                "coco": {
+                    "config_cls": "fiftyone.utils.eval.coco.COCOEvaluationConfig"
+                },
+                "open-images": {
+                    "config_cls": "fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig"
+                }
+            },
+            "segmentation_backends": {
+                "simple": {
+                    "config_cls": "fiftyone.utils.eval.segmentation.SimpleEvaluationConfig"
+                }
+            }
+        }
+
+.. note::
+
+    If you have customized your evaluation config via any of the methods
+    described below, printing your config is a convenient way to ensure that
+    the changes you made have taken effect as you expected.
+
+Modifying your config
+---------------------
+
+You can modify your evaluation config in a variety of ways. The following
+sections describe these options in detail.
+
+Order of precedence
+~~~~~~~~~~~~~~~~~~~
+
+The following order of precedence is used to assign values to your evaluation
+config settings as runtime:
+
+1. Config settings applied at runtime by directly editing
+   `fiftyone.evaluation_config`
+2. `FIFTYONE_XXX` environment variables
+3. Settings in your JSON config (`~/.fiftyone/evaluation_config.json`)
+4. The default config values
+
+Editing your JSON config
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can permanently customize your evaluation config by creating a
+`~/.fiftyone/evaluation_config.json` file on your machine. The JSON file may
+contain any desired subset of config fields that you wish to customize.
+
+For example, the following config JSON file declares a new `custom` detection
+evaluation backend without changing any other default config settings:
+
+.. code-block:: json
+
+    {
+        "default_detection_backend": "custom",
+        "detection_backends": {
+            "custom": {
+                "config_cls": "path.to.your.CustomDetectionEvaluationConfig"
+            }
+        }
+    }
+
+When `fiftyone` is imported, any options from your JSON config are merged into
+the default config, as per the order of precendence described above.
+
+.. note::
+
+    You can customize the location from which your JSON config is read by
+    setting the `FIFTYONE_EVALUATION_CONFIG_PATH` environment variable.
+
+Setting environment variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Evaluation config settings may be customized on a per-session basis by setting
+the `FIFTYONE_<TYPE>_XXX` environment variable(s) for the desired config
+settings, where `<TYPE>` can be `REGRESSION`, `CLASSIFICATION`, `DETECTION`, or
+`SEGMENTATION`.
+
+The `FIFTYONE_DEFAULT_<TYPE>_BACKEND` environment variables allows you to
+configure your default backend, and `FIFTYONE_<TYPE>_BACKENDS` can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind.
+
+You can declare parameters for specific evaluation backends by setting
+environment variables of the form `FIFTYONE_<TYPE>_<BACKEND>_<PARAMETER>`. Any
+settings that you declare in this way will be passed as keyword arguments to
+methods like
+:meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
+whenever the corresponding backend is in use.
+
+For example, you can add a new `custom` detection backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_DETECTION_BACKENDS=custom,coco,open-images,activitynet
+    export FIFTYONE_DETECTION_CUSTOM_CONFIG_CLS=path.to.your.CustomDetectionEvaluationConfig
+
+Modifying your config in code
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can dynamically modify your evaluation config at runtime by directly
+editing the `fiftyone.evaluation_config` object.
+
+Any changes to your evaluation config applied via this manner will immediately
+take effect in all subsequent calls to `fiftyone.evaluation_config` during your
+current session.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    fo.evaluation_config.default_detection_backend = "custom"
