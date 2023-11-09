@@ -1386,7 +1386,7 @@ class LabelboxAnnotationResults(foua.AnnotationResults):
         """
         if self.project_id is not None:
             api = self.connect_to_api()
-            api.delete_project(self.project_id, delete_batches=True)
+            api.delete_project(self.project_id)
 
         # @todo save updated results to DB?
         self.project_id = None
