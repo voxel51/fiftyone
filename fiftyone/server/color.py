@@ -52,7 +52,7 @@ class LabelTagColor:
 @gql.type
 class ColorscaleList:
     color: str
-    value: t.Optional[float]
+    value: float
 
 
 @gql.type
@@ -61,6 +61,14 @@ class Colorscale:
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
     rgb: t.Optional[t.List[t.List[int]]] = None
+
+    # @gql.field
+    # def rgb(self) -> t.Optional[t.List[t.List[int]]]:
+    #     if self.name or self.list:
+    #         rgb = fop.get_colormap(self.name or [[item.value, item.color] for item in self.list])
+    #         return rgb
+
+    #     return None
 
 
 @gql.enum
@@ -178,13 +186,13 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         if colorscale.list is not None or colorscale.name is not None:
             # Get the rgb tuples
 
-            input
+            input = None
             if colorscale.name:
                 input = colorscale.name
             elif colorscale.list:
                 input = [[item.value, item.color] for item in colorscale.list]
 
-            colormap_tuples = fop._get_colormap(input)
+            colormap_tuples = fop.get_colormap(input)
             colorscale.rgb = colormap_tuples
 
     return foo.ColorScheme(
