@@ -6,7 +6,7 @@ import {
 } from "@fiftyone/relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { getBrowserStorageEffectForKey } from "./customEffects";
-import { estimatedCounts } from "./lightning";
+import { datasetSampleCount } from "./dataset";
 import { fieldPaths } from "./schema";
 import {
   appConfigDefault,
@@ -103,8 +103,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
         return mode;
       }
 
-      const count = get(estimatedCounts);
-      if (count.estimatedSampleCount >= 10000) {
+      if (get(datasetSampleCount) >= 10000) {
         return "fast";
       }
 
@@ -120,6 +119,6 @@ export const isLargeVideo = selector<boolean>({
       return false;
     }
 
-    return get(estimatedCounts).estimatedSampleCount >= 1000;
+    return get(datasetSampleCount) >= 1000;
   },
 });

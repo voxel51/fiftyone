@@ -100,8 +100,8 @@ const createTitleTemplate =
               <Hidden path={path} />
             </Suspense>
           )}
-          {lightning && <Bolt style={{ color }} />}
-          {showCounts && !lightning && (
+          {lightning && !modal && <Bolt style={{ color }} />}
+          {showCounts && (!lightning || modal) && (
             <PathEntryCounts key="count" modal={modal} path={expandedPath} />
           )}
           <Icon disabled={disabled} modal={modal} path={path} />

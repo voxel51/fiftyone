@@ -80,12 +80,13 @@ const Results = <T extends unknown>({
       new CustomEvent(`selector-results-${cy}`, { bubbles: true })
     );
   }, [cy, ref]);
+  console.log(total);
 
   return (
     <div className={style.container}>
       <div
         className={style.scrollContainer}
-        style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
+        style={{ paddingBottom: total || !results.length ? 26.5 : undefined }}
         data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
         ref={ref}
       >
@@ -99,16 +100,14 @@ const Results = <T extends unknown>({
           />
         ))}
       </div>
-      {total !== undefined && (
-        <div className={style.footer}>
-          {Boolean(total) && (
-            <>
-              {results.length} of {total.toLocaleString()}
-            </>
-          )}
-          {!total && <>No results</>}
-        </div>
-      )}
+      <div className={style.footer}>
+        {total && results.length && (
+          <>
+            {results.length} of {total.toLocaleString()}
+          </>
+        )}
+        {!results.length && <>No results</>}
+      </div>
     </div>
   );
 };

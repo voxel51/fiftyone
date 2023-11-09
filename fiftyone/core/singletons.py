@@ -36,7 +36,13 @@ class DatasetSingleton(type):
             instance.__init__(name=name, _create=_create, *args, **kwargs)
             name = instance.name  # `__init__` may have changed `name`
         else:
-            instance._update_last_loaded_at()
+            try:
+                instance._update_last_loaded_at()
+            except ValueError:
+                instance._deleted = True
+                return cls.__call__(
+                    name=name, _create=_create, *args, **kwargs
+                )
 
         cls._instances[name] = instance
 

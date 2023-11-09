@@ -6,12 +6,13 @@ FiftyOne plugin utilities.
 |
 """
 import logging
-import multiprocessing
+import multiprocessing.dummy
 import os
 
 from bs4 import BeautifulSoup
 import yaml
 
+import fiftyone.core.utils as fou
 from fiftyone.utils.github import GitHubRepository
 from fiftyone.plugins.core import PLUGIN_METADATA_FILENAMES
 
@@ -196,8 +197,10 @@ def _get_all_plugin_info(tasks):
     if num_tasks == 1:
         return [_do_get_plugin_info(tasks[0])]
 
+    num_workers = fou.recommend_thread_pool_workers(min(num_tasks, 4))
+
     info = []
-    with multiprocessing.dummy.Pool(processes=min(num_tasks, 4)) as pool:
+    with multiprocessing.dummy.Pool(processes=num_workers) as pool:
         for d in pool.imap_unordered(_do_get_plugin_info, tasks):
             info.append(d)
 

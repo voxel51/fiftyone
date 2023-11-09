@@ -74,9 +74,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.13.1,<0.14",
-    "fiftyone-db>=0.4,<0.5",
-    "voxel51-eta>=0.12,<0.13",
+    "fiftyone-brain~=0.13.2",
+    "fiftyone-db~=0.4",
+    "voxel51-eta~=0.12",
 ]
 
 
@@ -113,8 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop>=0.31,<0.32"]}
-
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.32"]}
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

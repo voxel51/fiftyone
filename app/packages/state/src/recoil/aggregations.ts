@@ -5,8 +5,10 @@ import { GetRecoilValue, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
+import { datasetSampleCount } from "./dataset";
 import * as filterAtoms from "./filters";
 import { currentSlices, groupId, groupSlice, groupStatistics } from "./groups";
+import { lightningThreshold } from "./lightning";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
@@ -48,6 +50,15 @@ export const aggregationQuery = graphQLSelectorFamily<
       const dataset = get(selectors.datasetName);
 
       if (!dataset) return null;
+      if (!modal) {
+        if (
+          !get(filterAtoms.hasFilters(false)) &&
+          extended &&
+          paths[0] === "" &&
+          paths.length === 1
+        )
+          throw new Error("E");
+      }
 
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const aggForm = {
@@ -324,6 +335,11 @@ export const count = selectorFamily({
         return get(aggregation({ ...params, path: "" })).slice;
       }
 
+      if (!params.modal && params.path === "" && !get(viewAtoms.view).length) {
+        if (!get(filterAtoms.hasFilters(false)) || !params.extended)
+          return get(datasetSampleCount);
+      }
+
       const exists =
         Boolean(get(schemaAtoms.field(params.path))) || !params.path;
 
@@ -520,4 +536,11 @@ export const cumulativePaths = selectorFamily<
         )
       ).sort();
     },
+});
+
+export const lightningUnlocked = selector({
+  key: "lightningUnlocked",
+  get: ({ get }) =>
+    get(count({ path: "", extended: true, modal: false })) <
+    get(lightningThreshold),
 });

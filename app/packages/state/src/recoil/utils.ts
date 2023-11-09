@@ -8,6 +8,7 @@ import {
   VALID_PRIMITIVE_TYPES,
   getFetchParameters,
 } from "@fiftyone/utilities";
+import { RecoilValue, useRecoilValue } from "recoil";
 import { Nullable } from "vitest";
 
 export const getSampleSrc = (url: string) => {
@@ -178,3 +179,13 @@ export const asDefaultRange = (
     minMax > range[1] ? minMax : range[1],
   ];
 };
+
+export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
+  const value = useRecoilValue(recoilValue);
+
+  if (!value) {
+    throw new Error(`${recoilValue.key} is not defined`);
+  }
+
+  return value;
+}

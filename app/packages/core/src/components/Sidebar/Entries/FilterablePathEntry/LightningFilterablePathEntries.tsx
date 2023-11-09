@@ -1,4 +1,4 @@
-import { count, lightningPaths } from "@fiftyone/state";
+import { count, lightningPaths, lightningThreshold } from "@fiftyone/state";
 import React from "react";
 import { atomFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import Arrow from "./Arrow";
@@ -28,7 +28,9 @@ const LightningFilterablePathEntries = ({
   const extended = useRecoilValueLoadable(
     count({ path: "", extended: true, modal: false })
   );
-  const unlocked = extended.state === "hasValue" && extended.contents < 300000;
+  const threshold = useRecoilValue(lightningThreshold);
+  const unlocked =
+    extended.state === "hasValue" && extended.contents < threshold;
   const granularOpen = useRecoilValue(granularExpanded(path));
 
   const granular = removed.length;

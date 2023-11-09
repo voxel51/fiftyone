@@ -1,9 +1,7 @@
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
-  datasetFragment$key,
   graphQLSyncFragmentAtom,
-  graphQLSyncFragmentAtomFamily,
   groupSliceFragment,
   groupSliceFragment$key,
 } from "@fiftyone/relay";
@@ -15,7 +13,7 @@ import {
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { PreloadedQuery, VariablesOf } from "react-relay";
-import { atom, selector, selectorFamily } from "recoil";
+import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
@@ -334,16 +332,10 @@ export const activeModalSample = selector({
   },
 });
 
-export const groupStatistics = graphQLSyncFragmentAtomFamily<
-  datasetFragment$key,
-  "group" | "slice",
-  boolean
->(
-  { fragments: [datasetFragment], keys: ["dataset"], default: "slice" },
-  {
-    key: "groupStatistics",
-  }
-);
+export const groupStatistics = atomFamily<"group" | "slice", boolean>({
+  key: "groupStatistics",
+  default: "slice",
+});
 
 export const dynamicGroupFields = selector<string[]>({
   key: "dynamicGroupFields",

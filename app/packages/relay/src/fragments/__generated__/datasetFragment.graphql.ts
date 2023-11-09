@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b4e2fa3b027051c16e11455b4fab4d8c>>
+ * @generated SignedSource<<aa8f33fcbf01653dc5062c25e748de3f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,7 @@ export type datasetFragment$data = {
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
   readonly createdAt: number | null;
+  readonly datasetId: string;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
     readonly value: string;
@@ -174,6 +175,13 @@ return {
       "args": null,
       "kind": "ScalarField",
       "name": "createdAt",
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "datasetId",
       "storageKey": null
     },
     {
@@ -463,6 +471,6 @@ return {
 };
 })();
 
-(node as any).hash = "05f523b0299c6a9dc4ff1a7167db0cb1";
+(node as any).hash = "d5b86e8b0d16b8727f4fa858b8a62735";
 
 export default node;

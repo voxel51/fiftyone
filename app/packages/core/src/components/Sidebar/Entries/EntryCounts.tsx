@@ -45,25 +45,23 @@ export const PathEntryCounts = ({
   ignoreSidebarMode,
 }: PathEntryCountsProps) => {
   const getAtom = useCallback(
-    (extended: boolean) => {
-      return fos.count({
+    (extended: boolean) =>
+      fos.count({
         extended,
         modal,
         path,
-      });
-    },
+      }),
     [modal, path]
   );
 
   const shown = useRecoilValue(
     showEntryCounts({ path, modal, always: ignoreSidebarMode })
   );
-  const f = useRecoilValue(fos.hasFilters(false));
 
   return shown ? (
     <SuspenseEntryCounts
-      countAtom={path === "" ? count : getAtom(false)}
-      subcountAtom={f ? getAtom(true) : count}
+      countAtom={getAtom(false)}
+      subcountAtom={getAtom(true)}
     />
   ) : null;
 };

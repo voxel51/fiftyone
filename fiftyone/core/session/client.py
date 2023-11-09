@@ -116,7 +116,7 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
-                    if logger.level == logging.DEBUG:
+                    if logger.level == logging.DEBUG or foc.DEV_INSTALL:
                         raise e
 
                 if self._closed.is_set():

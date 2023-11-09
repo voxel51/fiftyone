@@ -9,11 +9,13 @@ import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
+import { datasetFrameCount, datasetSampleCount } from "./dataset";
 import { isLabelPath } from "./labels";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
+import { view } from "./view";
 
 export const lightningQuery = graphQLSelectorFamily<
   foq.lightningQuery$variables,
@@ -194,30 +196,23 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
-const lightningThreshold = selector({
+export const lightningThreshold = selector({
   key: "lightningThreshold",
   get: ({ get }) => get(config).lightningThreshold,
 });
 
-export const estimatedCounts =
-  foq.graphQLSyncFragmentAtom<foq.estimatedCountsFragment$key>(
-    {
-      keys: ["dataset"],
-      fragments: [foq.datasetFragment, foq.estimatedCounts],
-    },
-    {
-      key: "estimatedCounts",
-    }
-  );
-
 export const lightning = selector({
   key: "lightning",
   get: ({ get }) => {
-    const { estimatedFrameCount, estimatedSampleCount } = get(estimatedCounts);
+    if (get(view).length) {
+      return false;
+    }
+
     const threshold = get(lightningThreshold);
 
     return (
-      estimatedFrameCount >= threshold || estimatedSampleCount >= threshold
+      get(datasetSampleCount) >= threshold ||
+      get(datasetFrameCount) >= threshold
     );
   },
 });

@@ -229,6 +229,7 @@ class DatasetAppConfig:
 @gql.type
 class Dataset:
     id: gql.ID
+    dataset_id: gql.ID
     name: str
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
@@ -259,6 +260,9 @@ class Dataset:
     frame_indexes: t.Optional[t.List[Index]]
     sample_indexes: t.Optional[t.List[Index]]
 
+    frame_collection_name: gql.Private[t.Optional[str]]
+    sample_collection_name: gql.Private[t.Optional[str]]
+
     @gql.field
     def stages(
         self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
@@ -270,9 +274,25 @@ class Dataset:
 
         return view or []
 
+    @gql.field
+    async def estimated_sample_count(self, info: Info = None) -> int:
+        return await info.context.db[
+            self.sample_collection_name
+        ].estimated_document_count()
+
+    @gql.field
+    async def estimated_frame_count(
+        self, info: Info = None
+    ) -> t.Optional[int]:
+        if self.frame_collection_name:
+            return await info.context.db[
+                self.frame_collection_name
+            ].estimated_document_count()
+
     @staticmethod
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
+        doc["dataset_id"] = doc["id"]
         doc["default_mask_targets"] = _convert_targets(
             doc.get("default_mask_targets", {})
         )
@@ -296,6 +316,7 @@ class Dataset:
             for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
+
         return doc
 
     @classmethod
@@ -637,6 +658,7 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
+        _assign_estimated_counts(data, dataset)
         _assign_lightning_info(data, dataset)
 
         return data
@@ -644,16 +666,22 @@ async def serialize_dataset(
     return await run_sync_task(run)
 
 
-def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
-    dataset.estimated_sample_count = (
-        fo_dataset._sample_collection.estimated_document_count()
+def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
+    setattr(
+        dataset,
+        "estimated_sample_count",
+        fo_dataset._sample_collection.estimated_document_count(),
     )
 
-    if fo_dataset._has_frame_fields():
-        dataset.estimated_frame_count = (
-            fo_dataset._frame_collection.estimated_document_count()
+    if fo_dataset._frame_collection_name:
+        setattr(
+            dataset,
+            "estimated_frame_count",
+            fo_dataset._frame_collection.estimated_document_count(),
         )
 
+
+def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
     dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
         fo_dataset.get_index_information()
     )

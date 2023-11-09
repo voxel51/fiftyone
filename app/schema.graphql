@@ -175,6 +175,7 @@ type DataAggregation implements Aggregation {
 
 type Dataset {
   id: ID!
+  datasetId: ID!
   name: String!
   createdAt: date
   lastLoadedAt: datetime
@@ -204,6 +205,8 @@ type Dataset {
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  estimatedSampleCount: Int!
+  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {
@@ -422,6 +425,11 @@ type Mutation {
     datasetName: String!
     colorScheme: ColorSchemeInput = null
   ): Void
+  setFieldVisibilityStage(
+    subscription: String!
+    session: String
+    stage: BSON
+  ): Boolean!
   setDataset(
     subscription: String!
     session: String

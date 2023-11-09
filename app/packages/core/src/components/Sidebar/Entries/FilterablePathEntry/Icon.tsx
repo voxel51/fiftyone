@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import { pathIsExpanded } from "../utils";
 import Arrow from "./Arrow";
 import Lock from "./Lock";
@@ -19,14 +19,12 @@ const Locked = ({ path }: { path: string }) => {
   return !lightning ? <Lock /> : <Icon modal={false} path={path} />;
 };
 
-const LightningCheck = ({
-  children,
-  path,
-}: React.PropsWithChildren<{ path: string }>) => {
-  const lightning = true;
-  if (!lightning) {
-    return <>{children}</>;
+const LightningCheck = ({ path }: { path: string }) => {
+  const unlocked = useRecoilValueLoadable(fos.lightningUnlocked);
+  if (unlocked.state === "hasValue" && unlocked.contents) {
+    return <Icon modal={false} path={path} />;
   }
+
   return <Locked path={path} />;
 };
 
@@ -43,13 +41,11 @@ const IconWrapper = ({
     return null;
   }
 
-  const icon = <Icon modal={modal} path={path} />;
-
   if (!modal) {
-    return <LightningCheck path={path}>{icon}</LightningCheck>;
+    return <LightningCheck path={path} />;
   }
 
-  return icon;
+  return <Icon modal={modal} path={path} />;
 };
 
 export default React.memo(IconWrapper);

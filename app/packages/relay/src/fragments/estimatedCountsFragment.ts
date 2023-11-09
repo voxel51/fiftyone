@@ -1,10 +1,8 @@
 import { graphql } from "react-relay";
 
-import r from "../resolve";
-
-export default r(graphql`
+export default graphql`
   fragment estimatedCountsFragment on Dataset {
     estimatedFrameCount
     estimatedSampleCount
   }
-`);
+`;

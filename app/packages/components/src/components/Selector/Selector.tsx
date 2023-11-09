@@ -232,7 +232,11 @@ function Selector<T>(props: SelectorProps<T>) {
                 minWidth: triggerBounds?.width,
               }}
             >
-              <Suspense fallback={<LoadingDots text="Loading" />}>
+              <Suspense
+                fallback={
+                  <LoadingDots style={{ float: "right" }} text="Loading" />
+                }
+              >
                 <SelectorResults
                   active={active}
                   search={search}
