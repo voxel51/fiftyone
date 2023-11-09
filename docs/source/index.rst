@@ -152,6 +152,11 @@ learn how:
     :image_title: Label Studio
 
 .. customimagelink::
+    :image_link: integrations/v7.html
+    :image_src: https://voxel51.com/images/integrations/v7-128.png
+    :image_title: V7
+
+.. customimagelink::
     :image_link: integrations/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
