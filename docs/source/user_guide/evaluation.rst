@@ -9,6 +9,13 @@ FiftyOne provides a variety of builtin methods for evaluating your model
 predictions, including regressions, classifications, detections, polygons,
 instance and semantic segmentations, on both image and video datasets.
 
+.. note::
+
+    Did you know? You can evaluate models from within the FiftyOne App by
+    installing the
+    `@voxel51/evaluation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/evaluation>`_
+    plugin!
+
 When you evaluate a model in FiftyOne, you get access to the standard aggregate
 metrics such as classification reports, confusion matrices, and PR curves
 for your model. In addition, FiftyOne can also record fine-grained statistics
