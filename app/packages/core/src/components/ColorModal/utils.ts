@@ -142,3 +142,13 @@ export const validateIntMask = (value: number) => {
   }
   return true;
 };
+
+export const isValidMaskInput = (input: MaskColorInput[]) => {
+  let result = true;
+  input.forEach((item: MaskColorInput) => {
+    if (!item || [null, undefined].includes(item.intTarget)) {
+      result = false;
+    }
+  });
+  return result;
+};

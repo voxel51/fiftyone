@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<bb6c2980caa81db95eb089373c23f26d>>
+ * @generated SignedSource<<f93223804b1d3baa0210dd8f2516b9c8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -31,14 +31,14 @@ export type datasetQuery$data = {
         readonly colorPool: ReadonlyArray<string>;
         readonly defaultMaskTargetsColors: ReadonlyArray<{
           readonly color: string;
-          readonly intTarget: number | null;
+          readonly intTarget: number;
         }> | null;
         readonly fields: ReadonlyArray<{
           readonly colorByAttribute: string | null;
           readonly fieldColor: string | null;
           readonly maskTargetsColors: ReadonlyArray<{
             readonly color: string;
-            readonly intTarget: number | null;
+            readonly intTarget: number;
           }> | null;
           readonly path: string;
           readonly valueColors: ReadonlyArray<{

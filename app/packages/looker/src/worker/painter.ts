@@ -335,8 +335,8 @@ export const PainterFactory = (requestColor) => ({
               // Attempt to find a color in the fields mask target color settings
               // If not found, attempt to find a color in the default mask target colors.
               const customColor =
-                fieldSetting[targets[i].toString()] ??
-                defaultSetting[targets[i].toString()];
+                fieldSetting?.[targets[i].toString()] ??
+                defaultSetting?.[targets[i].toString()];
 
               // If a customized color setting is found, get the 32-bit color representation.
               if (customColor) {
@@ -371,6 +371,7 @@ export const convertToHex = (color: string) =>
 
 const convertMaskColorsToObject = (array: MaskColorInput[]) => {
   const result = {};
+  if (!array) return {};
   array.forEach((item) => {
     result[item.intTarget.toString()] = item.color;
   });

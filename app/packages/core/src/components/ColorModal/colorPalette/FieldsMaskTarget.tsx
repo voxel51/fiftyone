@@ -9,7 +9,11 @@ import { fieldColorSetting } from "../FieldSetting";
 import { FieldCHILD_STYLE, SectionWrapper } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
 import { activeColorPath } from "../state";
-import { getRandomColorFromPool, validateIntMask } from "../utils";
+import {
+  getRandomColorFromPool,
+  isValidMaskInput,
+  validateIntMask,
+} from "../utils";
 
 const FieldsMaskTargets: React.FC = () => {
   const maskTargets = useRecoilValue(fos.targets).fields;
@@ -23,7 +27,7 @@ const FieldsMaskTargets: React.FC = () => {
   const values = useMemo(() => setting?.maskTargetsColors ?? [], [setting]);
 
   const defaultValue = {
-    intTarget: null,
+    intTarget: 1,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
 
@@ -46,7 +50,7 @@ const FieldsMaskTargets: React.FC = () => {
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
-      if (copy) {
+      if (copy && isValidMaskInput(copy)) {
         const newSetting = cloneDeep(colorScheme.fields ?? []);
         const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
         if (idx !== undefined && idx > -1) {
@@ -112,8 +116,8 @@ const FieldsMaskTargets: React.FC = () => {
       {useFieldMaskColors && (
         <>
           <IdxColorList
-            initialValue={values as MaskTargetInput[]}
-            values={values as MaskTargetInput[]}
+            initialValue={values as MaskColorInput[]}
+            values={values as MaskColorInput[]}
             style={FieldCHILD_STYLE}
             onValidate={validateIntMask}
             onSyncUpdate={onSyncUpdate}

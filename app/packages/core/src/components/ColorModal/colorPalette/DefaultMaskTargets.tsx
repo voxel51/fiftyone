@@ -5,7 +5,11 @@ import { useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import { FieldCHILD_STYLE } from "../ShareStyledDiv";
 import IdxColorList from "../controls/IdxColorList";
-import { getRandomColorFromPool, validateIntMask } from "../utils";
+import {
+  getRandomColorFromPool,
+  isValidMaskInput,
+  validateIntMask,
+} from "../utils";
 
 const DefaultMaskTargets: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -17,14 +21,14 @@ const DefaultMaskTargets: React.FC = () => {
     [colorScheme]
   );
   const defaultValue = {
-    intTarget: null,
+    intTarget: 1,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
   const shouldShowAddButton = Boolean(values?.length && values?.length > 0);
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
-      if (copy) {
+      if (copy && isValidMaskInput(copy)) {
         setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
       }
     },
