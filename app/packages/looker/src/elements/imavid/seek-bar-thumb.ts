@@ -38,20 +38,22 @@ export class SeekBarThumbElement extends BaseElement<
   renderSelf({
     seeking,
     seekBarHovering,
-    frameNumber,
-    duration,
-    config: { frameRate },
-  }) {
-    if (duration !== null) {
-      const frameCount = getFrameNumber(duration, duration, frameRate);
-      const value = ((frameNumber - 1) / (frameCount - 1)) * 100;
-      this.element.style.setProperty(
-        "--progress",
-        `${Math.max(0, value - 0.5)}%`
-      );
-      //@ts-ignore
-      this.element.value = value;
+    currentFrameNumber,
+    config: { frameStoreController },
+  }: Readonly<ImaVidState>) {
+    const totalFrames = frameStoreController.totalFrameCount;
+
+    if (totalFrames === 0) {
+      return this.element;
     }
+
+    const value = ((currentFrameNumber - 1) / (totalFrames - 1)) * 100;
+    this.element.style.setProperty(
+      "--progress",
+      `${Math.max(0, value - 0.5)}%`
+    );
+    //@ts-ignore
+    this.element.value = value;
 
     const active = seeking || seekBarHovering;
     if (active !== this.active) {

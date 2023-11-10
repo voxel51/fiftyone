@@ -41,37 +41,38 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
           };
         });
       },
-      // mousemove: ({ event, update }) => {
-      //   update((state) => seekFn(state, event));
-      // },
-      // mouseup: ({ event, update }) => {
-      //   update((state) => ({ ...seekFn(state, event), seeking: false }));
-      // },
+      mousemove: ({ event, update }) => {
+        update((state) => seekFn(state, event));
+      },
+      mouseup: ({ event, update }) => {
+        update((state) => ({ ...seekFn(state, event), seeking: false }));
+      },
     };
   };
 }
 
 const seekFn = (
-  { seeking, config: { frameRate } }: Readonly<ImaVidState>,
+  { seeking, config: { frameStoreController } }: Readonly<ImaVidState>,
   event: MouseEvent
 ): Partial<ImaVidState> => {
-  // if (duration && seeking) {
-  //   const element = event.currentTarget as HTMLDivElement;
-  //   const { width, left } = element.getBoundingClientRect();
-  //   const frameCount = getFrameNumber(duration, duration, frameRate);
+  const totalFramesCount = frameStoreController.totalFrameCount;
 
-  //   const frameNumber = Math.min(
-  //     Math.max(
-  //       1,
-  //       Math.round(((event.clientX + 6 - left) / width) * frameCount)
-  //     ),
-  //     frameCount
-  //   );
+  if (totalFramesCount > 0 && seeking) {
+    const element = event.currentTarget as HTMLDivElement;
+    const { width, left } = element.getBoundingClientRect();
 
-  //   return {
-  //     currentFrameNumber: frameNumber,
-  //   };
-  // }
+    const frameNumber = Math.min(
+      Math.max(
+        1,
+        Math.round(((event.clientX + 6 - left) / width) * totalFramesCount)
+      ),
+      totalFramesCount
+    );
+
+    return {
+      currentFrameNumber: frameNumber,
+    };
+  }
   return {};
 };
 
@@ -335,7 +336,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       "playing",
       playing,
       "buffering",
-      buffering
+      buffering,
+      "seeking",
+      seeking
     );
 
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
@@ -374,12 +377,21 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         }
       }
 
+      if (!playing && this.animationId !== ANIMATION_CANCELED_ID) {
+        this.waitingToPause = true;
+      }
+
       if (playing && !seeking && !buffering) {
         this.play(currentFrameNumber);
       }
 
-      if (!playing && this.animationId !== ANIMATION_CANCELED_ID) {
-        this.waitingToPause = true;
+      if (playing && seeking) {
+        this.pause();
+        this.drawFrame(currentFrameNumber, false);
+      }
+
+      if (!playing && seeking) {
+        this.drawFrame(currentFrameNumber, false);
       }
 
       return null;
