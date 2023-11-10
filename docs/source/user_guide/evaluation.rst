@@ -2417,24 +2417,40 @@ settings, where `<TYPE>` can be `REGRESSION`, `CLASSIFICATION`, `DETECTION`, or
 `SEGMENTATION`.
 
 The `FIFTYONE_DEFAULT_<TYPE>_BACKEND` environment variables allows you to
-configure your default backend, and `FIFTYONE_<TYPE>_BACKENDS` can be set to a
-`list,of,backends` that you want to expose in your session, which may exclude
-native backends and/or declare additional custom backends whose parameters are
-defined via additional config modifications of any kind.
+configure your default backend:
+
+.. code-block:: shell
+
+    export FIFTYONE_DEFAULT_DETECTION_BACKEND=coco
 
 You can declare parameters for specific evaluation backends by setting
 environment variables of the form `FIFTYONE_<TYPE>_<BACKEND>_<PARAMETER>`. Any
 settings that you declare in this way will be passed as keyword arguments to
 methods like
 :meth:`evaluate_detections() <fiftyone.core.collections.SampleCollection.evaluate_detections>`
-whenever the corresponding backend is in use.
-
-For example, you can add a new `custom` detection backend as follows:
+whenever the corresponding backend is in use:
 
 .. code-block:: shell
 
-    export FIFTYONE_DETECTION_BACKENDS=custom,coco,open-images,activitynet
-    export FIFTYONE_DETECTION_CUSTOM_CONFIG_CLS=path.to.your.CustomDetectionEvaluationConfig
+    export FIFTYONE_DETECTION_COCO_ISCROWD=is_crowd
+
+The `FIFTYONE_<TYPE>_BACKENDS` environment variables can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_DETECTION_BACKENDS=custom,coco,open-images
+
+When declaring new backends, you can include `*` to append new backend(s)
+without omitting or explicitly enumerating the builtin backends. For example,
+you can add a `custom` detection evaluation backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_DETECTION_BACKENDS=*,custom
+    export FIFTYONE_DETECTION_CUSTOM_CONFIG_CLS=your.custom.DetectionEvaluationConfig
 
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

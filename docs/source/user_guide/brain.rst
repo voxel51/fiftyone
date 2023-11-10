@@ -1820,25 +1820,41 @@ Brain config settings may be customized on a per-session basis by setting the
 `FIFTYONE_BRAIN_XXX` environment variable(s) for the desired config settings.
 
 The `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment variable allows you
-to configure your default similarity backend, and
-`FIFTYONE_BRAIN_SIMILARITY_BACKENDS` can be set to a `list,of,backends` that
-you want to expose in your session, which may exclude native backends and/or
-declare additional custom backends whose parameters are defined via additional
-config modifications of any kind.
+to configure your default similarity backend:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND=qdrant
 
 You can declare parameters for specific similarity backends by setting
 environment variables of the form
 `FIFTYONE_BRAIN_SIMILARITY_<BACKEND>_<PARAMETER>`. Any settings that you
 declare in this way will be passed as keyword arguments to methods like
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` whenever the
-corresponding backend is in use.
-
-For example, you can configure the URL of your
+corresponding backend is in use. For example, you can configure the URL of your
 :ref:`Qdrant server <qdrant-integration>` as follows:
 
 .. code-block:: shell
 
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL=http://localhost:8080
+
+The `FIFTYONE_BRAIN_SIMILARITY_BACKENDS` environment variable can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=custom,sklearn,qdrant
+
+When declaring new backends, you can include `*` to append new backend(s)
+without omitting or explicitly enumerating the builtin backends. For example,
+you can add a `custom` similarity backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=*,custom
+    export FIFTYONE_BRAIN_SIMILARITY_CUSTOM_CONFIG_CLS=your.custom.SimilarityConfig
 
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

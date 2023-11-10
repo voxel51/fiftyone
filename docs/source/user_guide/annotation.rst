@@ -345,26 +345,43 @@ Annotation config settings may be customized on a per-session basis by setting
 the `FIFTYONE_XXX` environment variable(s) for the desired config settings.
 
 The `FIFTYONE_ANNOTATION_DEFAULT_BACKEND` environment variable allows you to
-configure your default backend, and `FIFTYONE_ANNOTATION_BACKENDS` can be set
-to a `list,of,backends` that you want to expose in your session, which may
-exclude native backends and/or declare additional custom backends whose
-parameters are defined via additional config modifications of any kind.
+configure your default backend:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_DEFAULT_BACKEND=labelbox
 
 You can declare parameters for specific annotation backends by setting
 environment variables of the form `FIFTYONE_<BACKEND>_<PARAMETER>`. Any
 settings that you declare in this way will be passed as keyword arguments to
 methods like
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
-whenever the corresponding backend is in use.
-
-For example, you can configure the URL, username, and password of your CVAT
-server as follows:
+whenever the corresponding backend is in use. For example, you can configure
+the URL, username, and password of your CVAT server as follows:
 
 .. code-block:: shell
 
     export FIFTYONE_CVAT_URL=http://localhost:8080
     export FIFTYONE_CVAT_USERNAME=...
     export FIFTYONE_CVAT_PASSWORD=...
+
+The `FIFTYONE_ANNOTATION_BACKENDS` environment variable can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_BACKENDS=custom,cvat,labelbox
+
+When declaring new backends, you can include `*` to append new backend(s)
+without omitting or explicitly enumerating the builtin backends. For example,
+you can add a `custom` annotation backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_BACKENDS=*,custom
+    export FIFTYONE_CUSTOM_CONFIG_CLS=your.custom.AnnotationConfig
 
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1058,10 +1075,8 @@ The recommended way to expose a custom backend is to add it to your
         "default_backend": "<backend>",
         "backends": {
             "<backend>": {
-                "config_cls": "your.custom.AnnotationBackendConfig",
-
+                "config_cls": "your.custom.AnnotationConfig",
                 # custom parameters here
-                ...
             }
         }
     }
