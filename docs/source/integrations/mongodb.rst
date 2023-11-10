@@ -372,7 +372,9 @@ possibilities:
     )
 
     # Option 4: Pass precomputed embeddings by field name
-    dataset.compute_embeddings(model, embeddings_field="embeddings")
+    # Note that MongoDB vector indexes require list fields
+    embeddings = dataset.compute_embeddings(model)
+    dataset.set_values("embeddings", embeddings.tolist())
     fob.compute_similarity(
         dataset,
         embeddings="embeddings",
@@ -646,8 +648,10 @@ First add embeddings to your dataset:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Store embeddings in the `embeddings` field of the dataset
+    # Note that MongoDB vector indexes require list fields
     model = foz.load_zoo_model("clip-vit-base32-torch")
-    dataset.compute_embeddings(model, embeddings_field="embeddings")
+    embeddings = dataset.compute_embeddings(model)
+    dataset.set_values("embeddings", embeddings.tolist())
 
 Now create a
 `vector search index <https://www.mongodb.com/docs/atlas/atlas-search/field-types/knn-vector>`_
