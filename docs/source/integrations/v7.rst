@@ -173,9 +173,9 @@ FiftyOne:
 Setup
 _____
 
-You can get started with V7 by creating a free account at
-`https://www.v7labs.com/sign-up <https://www.v7labs.com/sign-up>`_ and then
-downloading an API key.
+You can get started with V7 by
+`creating an account <https://www.v7labs.com/sign-up>`_ and downloading an
+API key.
 
 Installing the V7 backend
 -------------------------
@@ -187,9 +187,18 @@ package:
 
     pip install fiftyone_darwin
 
-and add the ``darwin`` backend to your
+and register the ``darwin`` backend with FiftyOne, which you can do either by
+setting the following environment variables:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_BACKENDS=*,darwin
+    export FIFTYONE_DARWIN_CONFIG_CLS=darwin_fiftyone.DarwinBackendConfig
+    export FIFTYONE_DARWIN_API_KEY=XXXXXXXXX
+
+or by adding the following parameters to your
 :ref:`annotation config <annotation-config>` located at
-`~/.fiftyone/annotation_config.json` as follows:
+`~/.fiftyone/annotation_config.json`:
 
 .. code-block:: text
 
