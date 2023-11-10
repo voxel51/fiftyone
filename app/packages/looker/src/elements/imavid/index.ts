@@ -183,23 +183,28 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return sample;
   }
 
+  resetWaitingFlags() {
+    this.waitingToPause = false;
+    this.waitingToPlay = false;
+    this.waitingToRelease = false;
+  }
+
   cancelAnimation() {
     cancelAnimationFrame(this.animationId);
     this.animationId = ANIMATION_CANCELED_ID;
+    this.resetWaitingFlags();
   }
 
   pause(shouldUpdatePlaying = true) {
     console.log("pausing");
     this.waitingToPause = true;
 
-    // "yield" and run again
+    // "yield" so that requestAnimation gets to react to waitingToPause
     setTimeout(() => {
       this.cancelAnimation();
       if (shouldUpdatePlaying) {
         this.update({ playing: false });
       }
-      this.waitingToPause = false;
-      this.waitingToPlay = false;
     }, 0);
   }
 
@@ -209,7 +214,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   async drawFrame(currentFrameNumber: number, animate = true) {
     if (this.waitingToPause) {
-      this.cancelAnimation();
+      this.pause(false);
       return;
     }
 
@@ -373,15 +378,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.play(currentFrameNumber);
       }
 
-      return null;
-
-      if (loaded && (!playing || seeking || buffering)) {
-        if (!this.waitingToPlay) {
-          this.pause();
-        } else {
-          this.waitingToPause = true;
-        }
+      if (!playing && this.animationId !== ANIMATION_CANCELED_ID) {
+        this.waitingToPause = true;
       }
+
+      return null;
 
       if (this.loop !== loop) {
         // this.element.loop = loop;

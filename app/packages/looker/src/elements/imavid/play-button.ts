@@ -25,8 +25,11 @@ export const playPause: Control<ImaVidState> = {
         dispatchEvent("options", { showJSON: false });
 
         return {
-          playing: !playing && start !== end,
-          frameNumber: end === currentFrameNumber ? 1 : currentFrameNumber,
+          playing: !playing,
+          frameNumber:
+            currentFrameNumber === frameStoreController.totalFrameCount
+              ? 1
+              : currentFrameNumber,
           options: { showJSON: false },
         };
       }
