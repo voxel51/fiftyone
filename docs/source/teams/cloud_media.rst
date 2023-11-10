@@ -610,7 +610,7 @@ Annotating cloud-backed datasets with CVAT
 __________________________________________
 
 When using FiftyOne to
-`annotate data with CVAT <https://voxel51.com/docs/fiftyone/integrations/cvat.html>`_,
+:ref:`annotate data with CVAT <cvat-integration>`,
 you can optionally follow the instructions below to instruct CVAT to load media
 directly from S3, GCS, or
 `MinIO <https://github.com/openvinotoolkit/cvat/pull/4353>`_ buckets rather
@@ -651,6 +651,41 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
 
     The cloud manifest file must contain all media files in the sample
     collection being annotated.
+
+.. _teams-annotating-cloud-media-labelbox:
+
+Annotating cloud-backed datasets with Labelbox
+______________________________________________
+
+When using FiftyOne to
+:ref:`annotate data with Labelbox <labelbox-integration>`,
+you can optionally follow the instructions below to instruct Labelbox to load media
+directly from S3 rather than the default behavior of uploading copies of the
+media.
+
+This assumes that you have configured the
+`S3 integration for Labelbox <https://docs.labelbox.com/docs/import-aws-s3-data>`_.
+If so, then you can provide the `upload_media=False` keyword argument to
+the :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+method to pass URLs for your S3-backed media when creating Labelbox data rows.
+
+.. code-block:: python
+    :linenos:
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        label_type="detections",
+        classes=["dog", "cat"],
+        backend="labelbox",
+        upload_media=False,
+    )
+
+.. note::
+
+    Google Cloud and Azure blob support will be added in the future. Currently,
+    any Google Cloud, Azure, or local media will still be uploaded to Labelbox
+    as usual.
 
 .. _teams-cloud-functions:
 
