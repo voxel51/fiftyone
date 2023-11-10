@@ -408,7 +408,7 @@ def get_image_info(f):
     return (img.width, img.height, len(img.getbands()))
 
 
-def _compute_metadata(sample_collection, overwrite=False):
+def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -431,11 +431,18 @@ def _compute_metadata(sample_collection, overwrite=False):
             for args in pb(inputs):
                 sample_id, metadata = _do_compute_metadata(args)
                 values[sample_id] = metadata
+                if len(values) >= batch_size:
+                    sample_collection.set_values(
+                        "metadata", values, key_field="id"
+                    )
+                    values.clear()
     finally:
         sample_collection.set_values("metadata", values, key_field="id")
 
 
-def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
+def _compute_metadata_multi(
+    sample_collection, num_workers, overwrite=False, batch_size=1000
+):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -460,6 +467,11 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
                     pool.imap_unordered(_do_compute_metadata, inputs)
                 ):
                     values[sample_id] = metadata
+                    if len(values) >= batch_size:
+                        sample_collection.set_values(
+                            "metadata", values, key_field="id"
+                        )
+                        values.clear()
     finally:
         sample_collection.set_values("metadata", values, key_field="id")
 
