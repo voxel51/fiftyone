@@ -782,8 +782,9 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
-    Specifically, it will delete the project, data rows, and ontology
-    associated with this annotation run.
+    Specifically, it will delete the project and ontology
+    associated with this annotation run. Data rows are not deleted since they
+    can be reused by other annotation runs.
 
 You can use the optional `dest_field` parameter to override the task's
 label schema and instead load annotations into different field name(s) of your
