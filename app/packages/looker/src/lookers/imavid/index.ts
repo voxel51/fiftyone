@@ -1,12 +1,7 @@
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
 import { Overlay } from "../../overlays/base";
-import {
-  DEFAULT_VIDEO_OPTIONS,
-  ImaVidState,
-  LabelData,
-  Sample,
-} from "../../state";
+import { ImaVidOptions, ImaVidState, LabelData, Sample } from "../../state";
 
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
@@ -134,7 +129,10 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   getDefaultOptions() {
-    return DEFAULT_VIDEO_OPTIONS;
+    return {
+      loop: false,
+      playbackRate: 1,
+    } as ImaVidOptions;
   }
 
   play(): void {

@@ -25,6 +25,7 @@ import {
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker/index.ts?worker&inline";
 import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 
 /**
  * Shallow data-object comparison for equality
@@ -252,6 +253,14 @@ export const ensureCanvasSize = (
 ): void => {
   canvas.width = dimensions[0];
   canvas.height = dimensions[1];
+};
+
+export const getMillisecondsFromPlaybackRate = (
+  playbackRate: number
+): number => {
+  const normalizedPlaybackRate =
+    playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
+  return 1000 / (DEFAULT_FRAME_RATE * normalizedPlaybackRate);
 };
 
 /**

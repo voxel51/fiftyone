@@ -5,14 +5,13 @@
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import {
   ANIMATION_CANCELED_ID,
+  DEFAULT_FRAME_RATE,
   LOOK_AHEAD_TIME_SECONDS,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { DispatchEvent, ImaVidState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { PlaybackRateBarElement } from "./playback-rate-bar";
-import { PlaybackRateContainerElement } from "./playback-rate-container";
-import { PlaybackRateIconElement } from "./playback-rate-icon";
+import { getMillisecondsFromPlaybackRate } from "../../util";
 
 export function withImaVidLookerEvents(): () => Events<ImaVidState> {
   return function () {
@@ -80,7 +79,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private loop = false;
-  private playbackRate = 1;
+  private playBackRate = 1;
+  // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
+  private setTimeoutDelay = getMillisecondsFromPlaybackRate(1.5);
   private frameNumber = 1;
   private animationId = ANIMATION_CANCELED_ID;
   private posterFrame: number;
@@ -244,7 +245,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           this.animationId = requestAnimationFrame(
             this.drawFrame.bind(this, currentFrameNumber + 1)
           );
-        }, 10);
+        }, this.setTimeoutDelay);
       }
     });
     image.src = src;
@@ -319,8 +320,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   renderSelf(state: Readonly<ImaVidState>) {
     const {
-      options: { loop },
-      config: { frameRate, thumbnail, src: thumbnailSrc },
+      options: { loop, playbackRate },
+      config: { thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
       hovering,
@@ -345,6 +346,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
       this.element.setAttribute("src", thumbnailSrc);
+    }
+
+    if (this.playBackRate !== playbackRate) {
+      this.playBackRate = playbackRate;
+      this.setTimeoutDelay = getMillisecondsFromPlaybackRate(playbackRate);
+      const a = this.setTimeoutDelay;
+      console.log("delay is ", a);
     }
 
     this.batchUpdate(() => {
@@ -408,19 +416,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 }
 
-export const PLAYBACK_RATE = {
-  node: PlaybackRateContainerElement,
-  children: [
-    { node: PlaybackRateIconElement },
-    { node: PlaybackRateBarElement },
-  ],
-};
-
 export * from "./loader-bar";
 export * from "./play-button";
-export * from "./playback-rate-bar";
-export * from "./playback-rate-container";
-export * from "./playback-rate-icon";
+export * from "./playback-rate";
 export * from "./seek-bar";
 export * from "./seek-bar-thumb";
-export * from "./time";
+export * from "./frame-count";

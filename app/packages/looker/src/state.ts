@@ -238,6 +238,7 @@ export interface VideoOptions extends BaseOptions {
 
 export interface ImaVidOptions extends BaseOptions {
   loop: boolean;
+  playbackRate: number;
 }
 
 export type PcdOptions = BaseOptions;

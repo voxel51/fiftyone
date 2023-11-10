@@ -1,8 +1,8 @@
 import { ImaVidState } from "../../state";
-import { BaseElement } from "..//base";
+import { BaseElement } from "../base";
 import { lookerTime } from "../common/controls.module.css";
 
-export class TimeElement extends BaseElement<ImaVidState> {
+export class FrameCountElement extends BaseElement<ImaVidState> {
   createHTMLElement() {
     const element = document.createElement("div");
     element.setAttribute("data-cy", "looker-video-time");
