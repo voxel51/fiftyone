@@ -10,8 +10,10 @@ import React, {
   useState,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
+import useSetGroupSample from "./Group/useSetGroupSample";
+import { ImaVidLooker } from "@fiftyone/looker";
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -101,6 +103,42 @@ const Looker = ({
     () => createLooker.current(sampleData),
     [reset, createLooker, selectedMediaField, shouldRenderImaVidLooker]
   );
+
+  const store = fos.useLookerStore();
+  const currentModalSample = useRecoilValue(fos.currentModalSample);
+
+  const setCurrentModalSample = useSetRecoilState(fos.currentModalSample);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      if (looker && shouldRenderImaVidLooker) {
+        const state = (looker as ImaVidLooker).DANGEROUS_state;
+        const currentFrameNumber = state.currentFrameNumber;
+        const frameSample =
+          state.config.frameStoreController.store?.samples[currentFrameNumber];
+
+        if (!frameSample) {
+          return;
+        }
+
+        const frameSampleId = frameSample.sample._id;
+
+        const index =
+          state.config.frameStoreController.store?.reverseFrameIndex.get(
+            frameSampleId
+          );
+
+        if (index && !store.samples.has(frameSampleId)) {
+          store.samples.set(frameSampleId, frameSample);
+          store.indices.set(index, frameSampleId);
+        }
+
+        if (currentModalSample?.id !== frameSampleId) {
+          setCurrentModalSample({ index, id: sample.id });
+        }
+      }
+    });
+  });
 
   useEffect(() => {
     if (looker) {

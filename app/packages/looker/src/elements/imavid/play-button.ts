@@ -18,12 +18,15 @@ export const playPause: Control<ImaVidState> = {
           return {};
         }
 
-        const start = 1;
-        const end = frameStoreController.totalFrameCount;
-
-        console.log("end is ", end, "current frame is ", currentFrameNumber);
+        console.log(
+          "end is ",
+          frameStoreController.totalFrameCount,
+          "current frame is ",
+          currentFrameNumber
+        );
         dispatchEvent("options", { showJSON: false });
 
+        // todo: setting frame number to 1 doesn't restart playback because of drawFrame
         return {
           playing: !playing,
           frameNumber:

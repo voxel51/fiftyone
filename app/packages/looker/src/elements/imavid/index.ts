@@ -79,14 +79,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private loop = false;
-  private playBackRate = 1.1;
+  private playBackRate = 1.3;
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
   private animationId = ANIMATION_CANCELED_ID;
   private posterFrame: number;
   private mediaField: string;
-  private framesController: ImaVidFramesController;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private thumbnailSrc: string;
@@ -94,6 +93,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private waitingToPause = false;
   private waitingToPlay = false;
   private waitingToRelease = false;
+
+  public framesController: ImaVidFramesController;
 
   imageSource: HTMLCanvasElement | HTMLImageElement;
 
@@ -236,10 +237,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
     image.addEventListener("load", () => {
+      // thisSampleOverlayPrepared.then((overlay) => {
       this.ctx.drawImage(image, 0, 0);
 
       if (animate) {
-        this.update({ currentFrameNumber: currentFrameNumber + 1 });
+        if (currentFrameNumber <= this.framesController.totalFrameCount) {
+          this.update({ currentFrameNumber: currentFrameNumber + 1 });
+        }
 
         setTimeout(() => {
           this.animationId = requestAnimationFrame(
@@ -247,6 +251,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           );
         }, this.setTimeoutDelay);
       }
+      // });
     });
     image.src = src;
   }
@@ -373,9 +378,16 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
       if (thumbnail) {
         if (!hovering) {
-          if (currentFrameNumber === 1 || !playing) {
-            this.pause(false);
+          if (!playing) {
+            this.cancelAnimation();
             this.resetCanvas();
+
+            if (
+              this.animationId === ANIMATION_CANCELED_ID &&
+              currentFrameNumber !== 1
+            ) {
+              this.update({ currentFrameNumber: 1 });
+            }
           }
 
           this.framesController.cleanup();
@@ -388,6 +400,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
       if (!playing && this.animationId !== ANIMATION_CANCELED_ID) {
         this.waitingToPause = true;
+      }
+
+      if (thumbnail) {
+        return;
       }
 
       if (playing && !seeking && !buffering) {

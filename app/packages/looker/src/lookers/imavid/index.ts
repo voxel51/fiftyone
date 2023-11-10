@@ -1,5 +1,6 @@
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
+import { ImaVidElement } from "../../elements/imavid";
 import { Overlay } from "../../overlays/base";
 import { ImaVidOptions, ImaVidState, LabelData, Sample } from "../../state";
 
@@ -23,6 +24,8 @@ interface ImaVidFrame {
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private frames: Map<number, WeakRef<ImaVidFrame>> = new Map();
 
+  private elements: ReturnType<typeof getImaVidElements>;
+
   get firstSample() {
     return this.sample;
   }
@@ -31,8 +34,16 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return this.state.currentFrameNumber;
   }
 
+  get DANGEROUS_state() {
+    return this.state;
+  }
+
   get playing() {
     return this.state.playing;
+  }
+
+  get element() {
+    return this.elements.children[0] as ImaVidElement;
   }
 
   destroy() {
@@ -84,12 +95,14 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   getElements(config) {
-    return getImaVidElements(
+    const elements = getImaVidElements(
       config,
       this.updater.bind(this),
       this.getDispatchEvent(),
       this.batchUpdater.bind(this)
     );
+    this.elements = elements;
+    return elements;
   }
 
   getInitialState(
@@ -191,9 +204,9 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   updateSample(sample: Sample) {
-    // this.state.bufferManager = [[1, 1]];
-    // this.frames.clear();
-    super.updateSample(sample);
+    // this.state.bufferManager = new BufferManager();
+    // this.state.config.frameStoreController.cleanup();
+    // super.updateSample(sample);
   }
 
   private hasFrame(frameNumber: number) {
