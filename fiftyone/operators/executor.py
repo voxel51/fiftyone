@@ -271,7 +271,6 @@ async def prepare_operator_executor(
     await ctx.resolve_secret_values(
         operator._plugin_secrets, request_token=request_token
     )
-    await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
