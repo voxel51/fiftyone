@@ -79,9 +79,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private loop = false;
-  private playBackRate = 1;
+  private playBackRate = 1.1;
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
-  private setTimeoutDelay = getMillisecondsFromPlaybackRate(1.5);
+  private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
   private animationId = ANIMATION_CANCELED_ID;
   private posterFrame: number;
@@ -194,7 +194,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   cancelAnimation() {
     cancelAnimationFrame(this.animationId);
     this.animationId = ANIMATION_CANCELED_ID;
-    this.resetWaitingFlags();
   }
 
   pause(shouldUpdatePlaying = true) {
@@ -208,6 +207,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.update({ playing: false });
       }
     }, 0);
+    this.resetWaitingFlags();
   }
 
   async resetCanvas() {
@@ -216,7 +216,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   async drawFrame(currentFrameNumber: number, animate = true) {
     if (this.waitingToPause) {
-      this.pause(false);
+      this.cancelAnimation();
       return;
     }
 
