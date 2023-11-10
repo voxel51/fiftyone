@@ -542,6 +542,10 @@ class AnnotationConfig(EnvConfig):
         )
 
         self.backends = self._parse_backends(d)
+        if self.default_backend not in self.backends:
+            self.default_backend = next(
+                iter(sorted(self.backends.keys())), None
+            )
 
     def _parse_backends(self, d):
         d = d.get("backends", {})
@@ -556,13 +560,14 @@ class AnnotationConfig(EnvConfig):
         if "FIFTYONE_ANNOTATION_BACKENDS" in env_vars:
             backends = env_vars["FIFTYONE_ANNOTATION_BACKENDS"].split(",")
 
-            # Declare new backends and omit any others not in `backends`
+            # Special syntax to append rather than override default backends
+            if "*" in backends:
+                backends = set(b for b in backends if b != "*")
+                backends |= set(self._BUILTIN_BACKENDS.keys())
+
             d = {backend: d.get(backend, {}) for backend in backends}
         else:
-            backends = sorted(self._BUILTIN_BACKENDS.keys())
-
-            # Declare builtin backends if necessary
-            for backend in backends:
+            for backend in self._BUILTIN_BACKENDS.keys():
                 if backend not in d:
                     d[backend] = {}
 
@@ -571,13 +576,13 @@ class AnnotationConfig(EnvConfig):
         # `FIFTYONE_<BACKEND>_<PARAMETER>`
         #
 
-        for backend, parameters in d.items():
+        for backend, d_backend in d.items():
             prefix = "FIFTYONE_%s_" % backend.upper()
             for env_name, env_value in env_vars.items():
                 if env_name.startswith(prefix):
                     name = env_name[len(prefix) :].lower()
                     value = _parse_env_value(env_value)
-                    parameters[name] = value
+                    d_backend[name] = value
 
         #
         # Set default parameters for builtin annotation backends
@@ -663,11 +668,33 @@ class EvaluationConfig(EnvConfig):
         )
 
         self.regression_backends = self._parse_backends(d, "regression")
+        if self.default_regression_backend not in self.regression_backends:
+            self.default_regression_backend = next(
+                iter(sorted(self.regression_backends.keys())), None
+            )
+
         self.classification_backends = self._parse_backends(
             d, "classification"
         )
+        if (
+            self.default_classification_backend
+            not in self.classification_backends
+        ):
+            self.default_classification_backend = next(
+                iter(sorted(self.classification_backends.keys())), None
+            )
+
         self.detection_backends = self._parse_backends(d, "detection")
+        if self.default_detection_backend not in self.detection_backends:
+            self.default_detection_backend = next(
+                iter(sorted(self.detection_backends.keys())), None
+            )
+
         self.segmentation_backends = self._parse_backends(d, "segmentation")
+        if self.default_segmentation_backend not in self.segmentation_backends:
+            self.default_segmentation_backend = next(
+                iter(sorted(self.segmentation_backends.keys())), None
+            )
 
     def _parse_backends(self, d, type):
         TYPE = type.upper()
@@ -684,13 +711,14 @@ class EvaluationConfig(EnvConfig):
         if f"FIFTYONE_{TYPE}_BACKENDS" in env_vars:
             backends = env_vars[f"FIFTYONE_{TYPE}_BACKENDS"].split(",")
 
-            # Declare new backends and omit any others not in `backends`
+            # Special syntax to append rather than override default backends
+            if "*" in backends:
+                backends = set(b for b in backends if b != "*")
+                backends |= set(self._BUILTIN_BACKENDS[type].keys())
+
             d = {backend: d.get(backend, {}) for backend in backends}
         else:
-            backends = sorted(self._BUILTIN_BACKENDS[type].keys())
-
-            # Declare builtin backends if necessary
-            for backend in backends:
+            for backend in self._BUILTIN_BACKENDS[type].keys():
                 if backend not in d:
                     d[backend] = {}
 
@@ -699,14 +727,14 @@ class EvaluationConfig(EnvConfig):
         # `FIFTYONE_{TYPE}_{BACKEND}_{PARAMETER}`
         #
 
-        for backend, parameters in d.items():
+        for backend, d_backend in d.items():
             BACKEND = backend.upper()
             prefix = f"FIFTYONE_{TYPE}_{BACKEND}_"
             for env_name, env_value in env_vars.items():
                 if env_name.startswith(prefix):
-                    type = env_name[len(prefix) :].lower()
+                    name = env_name[len(prefix) :].lower()
                     value = _parse_env_value(env_value)
-                    parameters[type] = value
+                    d_backend[name] = value
 
         #
         # Set default parameters for builtin similarity backends
@@ -717,9 +745,9 @@ class EvaluationConfig(EnvConfig):
                 continue
 
             d_backend = d[backend]
-            for type, value in defaults.items():
-                if type not in d_backend:
-                    d_backend[type] = value
+            for name, value in defaults.items():
+                if name not in d_backend:
+                    d_backend[name] = value
 
         return d
 
