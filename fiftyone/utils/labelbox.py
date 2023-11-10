@@ -63,6 +63,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             level of the editor (False) or whether to show the label field at
             the top level and annotate the class as a required attribute of
             each object (True)
+        upload_media (True): whether to download cloud media to your local
+            cache and upload it to Labelbox (True) or to just pass the cloud
+            paths directly (False)
     """
 
     def __init__(
@@ -75,6 +78,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         members=None,
         classes_as_attrs=True,
+        upload_media=True,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -83,6 +87,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.members = members
         self.classes_as_attrs = classes_as_attrs
+        self.upload_media = upload_media
 
         # store privately so these aren't serialized
         self._api_key = api_key
@@ -482,7 +487,43 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         webbrowser.open(url, new=2)
 
-    def upload_data(self, samples, lb_dataset, media_field="filepath"):
+    def _convert_s3_path(self, path):
+        client = fos.get_client(path=path)
+        region = client._session.region_name
+
+        _, path = fos.split_prefix(path)
+        bucket, key = path.split("/", 1)
+        return "https://%s.s3.%s.amazonaws.com/%s" % (bucket, region, key)
+
+    def _convert_cloud_paths(self, paths):
+        converted_paths = []
+        paths_to_download = []
+        unsupported_fs = set()
+        for path in paths:
+            fs = fos.get_file_system(path)
+            if fs == fos.FileSystem.S3:
+                path = self._convert_s3_path(path)
+            elif fs != fos.FileSystem.LOCAL:
+                paths_to_download.append(path)
+                path = foc.media_cache.get_local_path(path, download=False)
+                unsupported_fs.add(fs)
+
+            converted_paths.append(path)
+
+        if paths_to_download:
+            _ = foc.media_cache.get_local_paths(paths_to_download)
+            logger.warning(
+                "Only S3 media can be uploaded directly with "
+                "upload_media=False, but found %s media as well. These files "
+                "will be downloaded to the local media cache and uploaded"
+                % unsupported_fs
+            )
+
+        return converted_paths
+
+    def upload_data(
+        self, samples, lb_dataset, media_field="filepath", upload_media=True
+    ):
         """Uploads the media for the given samples to Labelbox.
 
         This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
@@ -496,15 +537,26 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 add the media
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
+            upload_media (True): whether to download cloud media to your local
+                cache and upload it to Labelbox (True) or to just pass the
+                cloud paths directly (False)
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
-        media_paths = foc.media_cache.get_local_paths(media_paths)
+        if upload_media:
+            # Ensure all media exists locally, this downloads cloud media
+            media_paths = foc.media_cache.get_local_paths(media_paths)
+        else:
+            media_paths = self._convert_cloud_paths(media_paths)
 
         upload_info = []
 
         with fou.ProgressBar(iters_str="samples") as pb:
             for media_path, sample_id in pb(zip(media_paths, sample_ids)):
-                item_url = self._client.upload_file(media_path)
+                if fos.is_local(media_path):
+                    item_url = self._client.upload_file(media_path)
+                else:
+                    item_url = media_path
+
                 upload_info.append(
                     {
                         lb.DataRow.row_data: item_url,
@@ -530,6 +582,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         media_field = config.media_field
+        upload_media = config.upload_media
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
@@ -548,7 +601,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_name = "FiftyOne_%s" % _dataset_name
 
         dataset = self._client.create_dataset(name=project_name)
-        self.upload_data(samples, dataset, media_field=media_field)
+        self.upload_data(
+            samples,
+            dataset,
+            media_field=media_field,
+            upload_media=upload_media,
+        )
 
         project = self._setup_project(
             project_name, dataset, label_schema, classes_as_attrs, is_video
