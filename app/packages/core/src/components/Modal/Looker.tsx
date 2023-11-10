@@ -91,6 +91,7 @@ const Looker = ({
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
 
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
@@ -98,7 +99,7 @@ const Looker = ({
 
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [reset, createLooker, selectedMediaField]
+    [reset, createLooker, selectedMediaField, shouldRenderImaVidLooker]
   );
 
   useEffect(() => {
@@ -177,8 +178,6 @@ const Looker = ({
   useEventHandler(looker, "clear", useClearSelectedLabels());
 
   const hoveredSample = useRecoilValue(fos.hoveredSample);
-
-  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
 
   useEffect(() => {
     const hoveredSampleId = hoveredSample && hoveredSample._id;
