@@ -322,6 +322,9 @@ def compute_metadata(
         warn_failures (False): whether to log a warning if metadata cannot
             be computed for a sample
     """
+    if num_workers is None:
+        num_workers = fo.media_cache_config.num_workers
+
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
