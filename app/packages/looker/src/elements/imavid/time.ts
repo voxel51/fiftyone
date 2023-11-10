@@ -2,7 +2,6 @@ import { ImaVidState } from "../../state";
 import { BaseElement } from "..//base";
 import { lookerTime } from "../common/controls.module.css";
 
-// controls element: not shown in grid (thumbnail = off)
 export class TimeElement extends BaseElement<ImaVidState> {
   createHTMLElement() {
     const element = document.createElement("div");
@@ -12,21 +11,8 @@ export class TimeElement extends BaseElement<ImaVidState> {
     return element;
   }
 
-  renderSelf({
-    currentFrameNumber: frameNumber,
-    config,
-    options: { useFrameNumber },
-  }: Readonly<ImaVidState>) {
-    if (typeof duration !== "number") {
-      this.element.innerHTML = "";
-      return this.element;
-    }
-
-    // const timestamp = useFrameNumber
-    //   ? getFrameString(frameNumber, duration, frameRate)
-    //   : getFullTimeString(frameNumber, frameRate, duration);
-    // this.element.innerHTML = timestamp;
-    this.element.innerText = "timestamp";
+  renderSelf({ currentFrameNumber, config }: Readonly<ImaVidState>) {
+    this.element.innerHTML = `${currentFrameNumber} / ${config.frameStoreController.totalFrameCount}`;
     return this.element;
   }
 }

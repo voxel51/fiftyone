@@ -268,6 +268,7 @@ export interface BaseState {
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
+  shouldHandleKeyEvents: boolean;
   scale: number;
   pan: Coordinates;
   panning: boolean;

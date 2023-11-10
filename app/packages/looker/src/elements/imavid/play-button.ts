@@ -1,8 +1,38 @@
-import { ImaVidState } from "../../state";
+import { Control, ImaVidState } from "../../state";
 import { BaseElement, Events } from "../base";
 import { bufferingCircle, bufferingPath } from "../video.module.css";
 
-// controls element: not shown in grid (thumbnail = off)
+export const playPause: Control<ImaVidState> = {
+  title: "Play / pause",
+  shortcut: "Space",
+  eventKeys: " ",
+  detail: "Play or pause the video",
+  action: (update, dispatchEvent) => {
+    update(
+      ({
+        currentFrameNumber,
+        playing,
+        config: { frameStoreController, thumbnail },
+      }) => {
+        if (thumbnail) {
+          return {};
+        }
+
+        const start = 1;
+        const end = frameStoreController.totalFrameCount;
+
+        console.log("end is ", end, "current frame is ", currentFrameNumber);
+        dispatchEvent("options", { showJSON: false });
+
+        return {
+          playing: !playing && start !== end,
+          frameNumber: end === currentFrameNumber ? 1 : currentFrameNumber,
+          options: { showJSON: false },
+        };
+      }
+    );
+  },
+};
 export class PlayButtonElement extends BaseElement<
   ImaVidState,
   HTMLDivElement
@@ -82,21 +112,16 @@ export class PlayButtonElement extends BaseElement<
     return element;
   }
 
-  renderSelf({
-    playing,
-    buffering,
-    loaded,
-    duration,
-    config: { thumbnail },
-  }: Readonly<ImaVidState>) {
-    let updatePlay = false;
+  renderSelf({ playing, buffering, loaded }: Readonly<ImaVidState>) {
+    console.log("playing", playing, "buffering", buffering, "loaded", loaded);
+
     if (
       playing !== this.isPlaying ||
       this.isBuffering !== buffering ||
       !loaded
     ) {
       this.element.innerHTML = "";
-      if (buffering || !loaded) {
+      if (!loaded) {
         this.element.appendChild(this.buffering);
         this.element.title = "Loading";
         this.element.style.cursor = "default";
@@ -111,20 +136,9 @@ export class PlayButtonElement extends BaseElement<
         this.element.setAttribute("data-cy", "looker-video-play-button");
       }
       this.isPlaying = playing;
-      this.isBuffering = buffering || !loaded;
+      this.isBuffering = !loaded;
     }
 
-    if (updatePlay) {
-      const path = this.play.children[0];
-      path.setAttribute(
-        "fill",
-        this.singleFrame
-          ? "var(--fo-palette-text-tertiary)"
-          : "var(--fo-palette-text-secondary)"
-      );
-      this.element.style.cursor = this.singleFrame ? "unset" : "pointer";
-      this.element.title = this.singleFrame ? "Only one frame" : "Play (space)";
-    }
     return this.element;
   }
 }

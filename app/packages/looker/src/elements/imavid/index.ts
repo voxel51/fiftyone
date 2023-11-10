@@ -3,7 +3,10 @@
  */
 
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
-import { LOOK_AHEAD_TIME_SECONDS } from "../../lookers/imavid/constants";
+import {
+  ANIMATION_CANCELED_ID,
+  LOOK_AHEAD_TIME_SECONDS,
+} from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { DispatchEvent, ImaVidState } from "../../state";
 import { BaseElement, Events } from "../base";
@@ -38,12 +41,12 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
           };
         });
       },
-      mousemove: ({ event, update }) => {
-        update((state) => seekFn(state, event));
-      },
-      mouseup: ({ event, update }) => {
-        update((state) => ({ ...seekFn(state, event), seeking: false }));
-      },
+      // mousemove: ({ event, update }) => {
+      //   update((state) => seekFn(state, event));
+      // },
+      // mouseup: ({ event, update }) => {
+      //   update((state) => ({ ...seekFn(state, event), seeking: false }));
+      // },
     };
   };
 }
@@ -78,7 +81,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private loop = false;
   private playbackRate = 1;
   private frameNumber = 1;
-  private animationId = -1;
+  private animationId = ANIMATION_CANCELED_ID;
   private posterFrame: number;
   private mediaField: string;
   private framesController: ImaVidFramesController;
@@ -108,7 +111,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.imageSource = this.canvas;
 
         this.update({
+          // todo: this loaded doesn't have much meaning, remove it
           loaded: true,
+          // note: working assumption =  all images in this "video" are of the same width and height
+          // this might be an incorrect assumption for certain use cases
           dimensions: [this.element.naturalWidth, this.element.naturalHeight],
         });
       },
@@ -156,12 +162,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       dispatchEvent("load");
     });
 
-    // this.requestCallback = (callback: (time: number) => void) => {
-    //   requestAnimationFrame(() => {
-    //     this.element && callback(this.frameNumber);
-    //   });
-    // };
-
     return this.element;
   }
 
@@ -183,9 +183,33 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     return sample;
   }
 
+  cancelAnimation() {
+    cancelAnimationFrame(this.animationId);
+    this.animationId = ANIMATION_CANCELED_ID;
+  }
+
+  pause(shouldUpdatePlaying = true) {
+    console.log("pausing");
+    this.waitingToPause = true;
+
+    // "yield" and run again
+    setTimeout(() => {
+      this.cancelAnimation();
+      if (shouldUpdatePlaying) {
+        this.update({ playing: false });
+      }
+      this.waitingToPause = false;
+      this.waitingToPlay = false;
+    }, 0);
+  }
+
+  async resetCanvas() {
+    setTimeout(() => this.ctx.drawImage(this.element, 0, 0), 0);
+  }
+
   async drawFrame(currentFrameNumber: number, animate = true) {
     if (this.waitingToPause) {
-      console.log("waiting to pause in drawframe");
+      this.cancelAnimation();
       return;
     }
 
@@ -194,6 +218,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
     if (!currentFrameSample) {
+      console.log("no current sample, ", currentFrameNumber);
+      this.pause();
       return;
     }
 
@@ -208,21 +234,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       if (animate) {
         this.update({ currentFrameNumber: currentFrameNumber + 1 });
 
-        this.animationId = requestAnimationFrame(
-          this.drawFrame.bind(this, currentFrameNumber + 1)
-        );
+        setTimeout(() => {
+          this.animationId = requestAnimationFrame(
+            this.drawFrame.bind(this, currentFrameNumber + 1)
+          );
+        }, 10);
       }
     });
     image.src = src;
-  }
-
-  pause() {
-    console.log("pausing");
-    this.waitingToPause = true;
-    this.update({ playing: false });
-    cancelAnimationFrame(this.animationId);
-    this.waitingToPause = false;
-    this.waitingToPlay = false;
   }
 
   /**
@@ -231,11 +250,10 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
    */
   async play(currentFrameNumber: number) {
-    if (this.waitingToPlay || this.waitingToPause) {
+    if (this.animationId !== ANIMATION_CANCELED_ID) {
+      // animation is active, return
       return;
     }
-
-    console.log("invoking drawFrame");
 
     this.animationId = requestAnimationFrame(
       this.drawFrame.bind(this, currentFrameNumber)
@@ -302,11 +320,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       hovering,
       playing,
       bufferManager,
-      isCurrentFrameNumberAuthoritative,
       loaded,
       buffering,
       destroyed,
     } = state;
+    console.log(
+      "render self",
+      currentFrameNumber,
+      "playing",
+      playing,
+      "buffering",
+      buffering
+    );
+
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
@@ -325,54 +351,30 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.getCurrentFrameSample(currentFrameNumber) !== null;
 
       if (!isPlayable) {
-        return null;
+        return;
       }
 
-      if (thumbnail && !hovering) {
-        this.framesController.cleanup();
-        this.waitingToPlay = false;
+      if (thumbnail) {
+        if (!hovering) {
+          if (currentFrameNumber === 1 || !playing) {
+            this.pause(false);
+            this.resetCanvas();
+          }
 
-        if (!playing && !this.waitingToPause) {
-          this.drawFrame(1, false);
-          this.waitingToPause = true;
+          this.framesController.cleanup();
+        } else if (hovering && playing) {
+          this.waitingToPause = false;
+          this.waitingToPlay = true;
+          this.play(currentFrameNumber);
         }
-      } else if (thumbnail && hovering && playing) {
-        this.waitingToPause = false;
+      }
+
+      if (playing && !seeking && !buffering) {
         this.play(currentFrameNumber);
       }
-      // if (loaded && playing && !seeking && !buffering) {
-      //   this.play();
-      //   return null;
-      // }
 
       return null;
 
-      this.imageSource = this.canvas;
-      // if (hasPoster && frameNumber === this.posterFrame) {
-      //   console.log("setting canvas as source");
-      //   this.imageSource = this.canvas;
-      // } else {
-      //   console.log("setting element as source");
-      //   this.imageSource = this.element;
-      // }
-
-      if (!this.element) {
-        return null;
-      }
-
-      // if (loaded && playing && !seeking && !buffering && this.element.paused) {
-      //   this.waitingToPlay = true;
-      //   this.element.play().then(() => {
-      //     this.waitingToPlay = false;
-      //     this.waitingToPause && this.element && this.element.pause();
-      //     this.waitingToPause = false;
-
-      //     if (this.waitingToRelease) {
-      //       this.releaseVideo();
-      //       return null;
-      //     }
-      //   });
-      // }
       if (loaded && (!playing || seeking || buffering)) {
         if (!this.waitingToPlay) {
           this.pause();

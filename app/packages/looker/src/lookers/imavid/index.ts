@@ -184,18 +184,18 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   updateOptions(options: Partial<ImaVidState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
 
-    // if (reload) {
-    //   this.updater({ options, reloading: this.state.disabled });
-    //   this.updateSample(this.sample);
-    // } else {
-    //   this.updater({ options, disabled: false });
-    // }
+    if (reload) {
+      this.updater({ options, reloading: this.state.disabled });
+      this.updateSample(this.sample);
+    } else {
+      this.updater({ options, disabled: false });
+    }
   }
 
   updateSample(sample: Sample) {
     // this.state.bufferManager = [[1, 1]];
     // this.frames.clear();
-    // super.updateSample(sample);
+    super.updateSample(sample);
   }
 
   private hasFrame(frameNumber: number) {

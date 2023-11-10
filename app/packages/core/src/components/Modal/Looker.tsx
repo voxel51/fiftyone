@@ -178,16 +178,20 @@ const Looker = ({
 
   const hoveredSample = useRecoilValue(fos.hoveredSample);
 
+  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+
   useEffect(() => {
     const hoveredSampleId = hoveredSample && hoveredSample._id;
     looker.updater((state) => ({
       ...state,
-      shouldHandleKeyEvents: hoveredSampleId === sample._id,
+      // todo: `|| shouldRenderImaVidLooker` is a hack until hoveredSample works for imavid looker
+      shouldHandleKeyEvents:
+        hoveredSampleId === sample._id || shouldRenderImaVidLooker,
       options: {
         ...state.options,
       },
     }));
-  }, [hoveredSample, sample, looker]);
+  }, [hoveredSample, sample, looker, shouldRenderImaVidLooker]);
 
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {

@@ -233,6 +233,8 @@ export abstract class AbstractLooker<
           return;
         }
 
+        console.log("new update: ", updates);
+
         if (this.isBatching) {
           this.batchMergedUpdates = mergeUpdates(
             this.batchMergedUpdates,
@@ -442,7 +444,7 @@ export abstract class AbstractLooker<
       disabled: false,
     });
     element.appendChild(this.lookerElement.element);
-    // !dimensions && this.resizeObserver.observe(element);
+    !dimensions && this.resizeObserver.observe(element);
   }
 
   resize(dimensions: Dimensions): void {
