@@ -10456,6 +10456,9 @@ def _get_matching_label_field(label_schema, label_type_or_types):
 
 
 def _parse_values_dict(sample_collection, key_field, values):
+    if not values:
+        return [], []
+
     if key_field == "id":
         return zip(*values.items())
 
