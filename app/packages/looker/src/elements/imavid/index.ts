@@ -216,7 +216,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   async drawFrame(currentFrameNumber: number, animate = true) {
     if (this.waitingToPause) {
-      this.cancelAnimation();
+      this.pause();
       return;
     }
 
@@ -259,6 +259,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   async play(currentFrameNumber: number) {
     if (this.animationId !== ANIMATION_CANCELED_ID) {
       // animation is active, return
+      console.log("animation is active, returning");
       return;
     }
 
