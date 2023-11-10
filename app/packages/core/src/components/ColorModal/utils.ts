@@ -155,6 +155,12 @@ export const getRGBColorFromPool = (pool: readonly string[]): string => {
   return colorString.to.rgb(rgb);
 };
 
+export const convertToRGB = (color: string) => {
+  if (!isValidColor(color)) return "";
+  const rgb = colorString.get.rgb(color).slice(0, 3);
+  return colorString.to.rgb(rgb);
+};
+
 export const namedColorScales = [
   "aggrnyl",
   "agsunset",

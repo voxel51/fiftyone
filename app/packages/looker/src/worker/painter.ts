@@ -182,9 +182,9 @@ export const PainterFactory = (requestColor) => ({
     // when colorscale is null or doe
     let scale;
     console.log(colorscale);
-    if (colorscale?.find((x) => x.path === field).rgb) {
+    if (colorscale?.find((x) => x.path === field)?.rgb) {
       scale = colorscale?.find((x) => x.path === field).rgb;
-    } else if (colorscale?.find((x) => x.path === "Global settings").rgb) {
+    } else if (colorscale?.find((x) => x.path === "Global settings")?.rgb) {
       scale = colorscale?.find((x) => x.path === "Global settings").rgb;
     } else {
       scale = coloring.scale;

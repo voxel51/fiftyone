@@ -4,7 +4,6 @@ In color by value mode, fields and label tags use this component
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import * as fos from "@fiftyone/state";
-import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
@@ -19,7 +18,7 @@ import {
   RowContainer,
 } from "../ShareStyledDiv";
 import { activeColorPath } from "../state";
-import { getRGBColorFromPool, getRandomColorFromPool } from "../utils";
+import { convertToRGB, getRGBColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
 type ColorscaleListInput = {
@@ -92,7 +91,7 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
     (color: any, colorIdx: number) => {
       setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
       const copy = input ? [...cloneDeep(input)] : [];
-      copy[colorIdx].color = color?.hex;
+      copy[colorIdx].color = convertToRGB(color.hex);
       setInput(copy);
       onSyncUpdate(copy as ColorscaleListInput[]);
     },
@@ -139,11 +138,9 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
         }, 1000);
       } else {
         // convert to hex code
-        const hexColor = colorString.to.hex(
-          colorString.get(color)?.value ?? []
-        );
+        const rgb = convertToRGB(color);
         const copy = cloneDeep(input);
-        copy[changeIdx].color = hexColor;
+        copy[changeIdx].color = rgb;
         setInput(copy);
         onSyncUpdate(copy as ColorscaleListInput[]);
       }
@@ -207,7 +204,7 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
                   onChange={(color) =>
                     setInput((prev) => {
                       const copy = cloneDeep(prev);
-                      copy[index].color = color.hex;
+                      copy[index].color = convertToRGB(color.hex);
                       return copy;
                     })
                   }
@@ -225,7 +222,7 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
             )}
           </ColorSquare>
           <Input
-            placeholder="#009900"
+            placeholder="rgb(255, 0, 0)"
             value={input[index].color ?? ""}
             setter={(v) =>
               setInput((prev) => {

@@ -158,7 +158,11 @@ const Colorscale: React.FC = () => {
     if (tab === "list") {
       // when list is active, set name to null
       // we use colorscale.name ?? colorscale.list to generate colorscale rgb list
-      setSetting({ ...colorscaleValues, name: null });
+      setSetting((prev) => ({
+        ...prev,
+        name: null,
+        list: prev?.list ?? [defaultValue],
+      }));
     }
   }, [tab]);
 
