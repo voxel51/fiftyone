@@ -571,16 +571,25 @@ class ExecutionResult(object):
             self.result
         )
 
+    def raise_exceptions(self):
+        """Raises an :class:`ExecutionError` (only) if the operation failed."""
+        exception = self.to_exception()
+        if exception is not None:
+            raise exception
+
     def to_exception(self):
         """Returns an :class:`ExecutionError` representing a failed execution
         result.
 
         Returns:
-            a :class:`ExecutionError`
+            a :class:`ExecutionError`, or None if the execution did not fail
         """
+        if not self.error:
+            return None
+
         msg = self.error
 
-        if self.validation_ctx.invalid:
+        if self.validation_ctx and self.validation_ctx.invalid:
             val_error = self.validation_ctx.errors[0]
             path = val_error.path.lstrip(".")
             reason = val_error.reason
