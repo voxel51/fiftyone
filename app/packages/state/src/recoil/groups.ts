@@ -432,23 +432,26 @@ export const activeModalSample = selector({
   },
 });
 
-export const sidebarSample = selector({
-  key: "sidebarSample",
+export const activeModalSidebarSample = selector({
+  key: "activeModalSidebarSample",
   get: ({ get }) => {
     if (get(shouldRenderImaVidLooker)) {
-      const currentFrameNumber = window["_fo_current_frame_number"];
+      const currentFrameNumber = get(currentFrameNumberImaVid);
 
-      console.log("currentFrame number is ", currentFrameNumber);
       if (!currentFrameNumber) {
         return get(activeModalSample);
       }
 
-      const sampleId = ImaVidStore.get(
-        "6421c8b0f4756d1549095aa3"
-      ).frameIndex.get(currentFrameNumber);
-      const sample = ImaVidStore.get("6421c8b0f4756d1549095aa3").samples.get(
-        sampleId
-      );
+      const currentModalLooker = get(modalLooker) as ImaVidLooker;
+
+      const sampleId =
+        currentModalLooker._UNSAFE_state.config.frameStoreController.store.frameIndex.get(
+          currentFrameNumber
+        );
+      const sample =
+        currentModalLooker._UNSAFE_state.config.frameStoreController.store.samples.get(
+          sampleId
+        );
       return sample.sample;
     }
 
