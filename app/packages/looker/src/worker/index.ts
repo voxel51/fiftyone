@@ -290,7 +290,7 @@ export interface ProcessSample {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
-  colorscale: Colorscale[];
+  colorscale: Colorscale;
   selectedLabelTags: string[];
   sources: { [path: string]: string };
 }

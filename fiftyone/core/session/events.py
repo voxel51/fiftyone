@@ -178,7 +178,12 @@ class Colorscale:
     path: str
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
-    # rgb: t.Optional[t.List[t.List[int]]] = None
+
+
+@dataclass
+class DefaultColorscale:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
 
 
 @dataclass
@@ -197,7 +202,7 @@ class ColorScheme:
     fields: t.Optional[t.List[CustomizeColor]] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
     colorscales: t.Optional[t.List[Colorscale]] = None
-    default_colorscale: t.Optional[Colorscale] = None
+    default_colorscale: t.Optional[DefaultColorscale] = None
     label_tags: t.Optional[LabelTagsColors] = None
 
 

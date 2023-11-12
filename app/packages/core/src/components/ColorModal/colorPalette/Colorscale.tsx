@@ -32,7 +32,7 @@ const colorscaleSetting = selectorFamily<
   get:
     (path) =>
     ({ get }) => {
-      const field = get(fos.colorScheme).colorscale?.find(
+      const field = get(fos.colorScheme).colorscales?.find(
         (field) => path === field.path
       );
       if (field) {
@@ -48,27 +48,27 @@ const colorscaleSetting = selectorFamily<
         if (!newSetting || newSetting instanceof DefaultValue) {
           return {
             ...current,
-            colorscale: current?.colorscale?.filter(
+            colorscales: current?.colorscales?.filter(
               (item) => item.path !== path
             ),
           };
         }
 
         const setting = { ...newSetting, path };
-        const colorscale = [...(current.colorscale || [])];
+        const colorscales = [...(current.colorscales || [])];
 
-        let index = colorscale.findIndex((item) => item.path === path);
+        let index = colorscales.findIndex((item) => item.path === path);
 
         if (index < 0) {
           index = 0;
-          colorscale.push(setting);
+          colorscales.push(setting);
         } else {
-          colorscale[index] = setting;
+          colorscales[index] = setting;
         }
-        console.info("set colorscale", colorscale);
+        console.info("set colorscales in component", colorscales);
         return {
           ...current,
-          colorscale,
+          colorscales,
         };
       });
     },
@@ -83,11 +83,10 @@ const Colorscale: React.FC = () => {
   console.info("setting", setting);
   const colorscaleValues = useMemo(
     () =>
-      colorScheme.colorscale?.find((item) => item.path === activePath) ?? {
+      colorScheme.colorscales?.find((item) => item.path === activePath) ?? {
         path: activePath,
         name: null,
         list: null,
-        rgb: null,
       },
     [colorScheme, activePath]
   );
@@ -104,7 +103,7 @@ const Colorscale: React.FC = () => {
   );
 
   const defaultValue = {
-    value: null,
+    value: 0,
     color: getRGBColorFromPool(colorScheme.colorPool),
   };
 
@@ -129,24 +128,24 @@ const Colorscale: React.FC = () => {
   );
 
   const index = useMemo(
-    () => colorScheme.colorscale?.findIndex((s) => s.path == activePath),
+    () => colorScheme.colorscales?.findIndex((s) => s.path == activePath),
     [activePath]
   );
 
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
-        const newSetting = cloneDeep(colorScheme.colorscale ?? []);
-        const idx = colorScheme.colorscale?.findIndex(
+        const newSetting = cloneDeep(colorScheme.colorscales ?? []);
+        const idx = colorScheme.colorscales?.findIndex(
           (s) => s.path == activePath
         );
         if (idx !== undefined && idx > -1) {
           newSetting[idx].list = copy;
-          setColorScheme({ ...colorScheme, colorscale: newSetting });
+          setColorScheme({ ...colorScheme, colorscales: newSetting });
         } else {
           setColorScheme((cur) => ({
             ...cur,
-            colorscale: [...newSetting, { path: activePath, list: copy }],
+            colorscales: [...newSetting, { path: activePath, list: copy }],
           }));
         }
       }
@@ -172,10 +171,10 @@ const Colorscale: React.FC = () => {
 
   useEffect(() => {
     if (!setting) {
-      if (!colorScheme.colorscale || colorScheme.colorscale.length == 0) {
+      if (!colorScheme.colorscales || colorScheme.colorscales.length == 0) {
         setColorScheme({
           ...colorScheme,
-          colorscale: [
+          colorscales: [
             {
               path: activePath,
               name: "",
@@ -186,8 +185,6 @@ const Colorscale: React.FC = () => {
       }
     }
   }, [setting]);
-
-  console.info(colorscaleValues);
 
   return (
     <div>

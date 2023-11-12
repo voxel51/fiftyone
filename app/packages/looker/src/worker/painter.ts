@@ -22,7 +22,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -131,7 +131,7 @@ export const PainterFactory = (requestColor) => ({
     labels,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -153,7 +153,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale[],
+    colorscale: Colorscale,
     selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
@@ -182,14 +182,15 @@ export const PainterFactory = (requestColor) => ({
     // when colorscale is null or doe
     let scale;
     console.log(colorscale);
-    if (colorscale?.find((x) => x.path === field)?.rgb) {
-      scale = colorscale?.find((x) => x.path === field).rgb;
-    } else if (colorscale?.find((x) => x.path === "Global settings")?.rgb) {
-      scale = colorscale?.find((x) => x.path === "Global settings").rgb;
+
+    if (colorscale?.fields?.find((x) => x.path === field)?.rgb) {
+      scale = colorscale?.fields?.find((x) => x.path === field).rgb;
+    } else if (colorscale?.default?.rgb) {
+      scale = colorscale.default.rgb;
     } else {
       scale = coloring.scale;
     }
-
+    console.info("scale", scale);
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
       let value;
@@ -225,7 +226,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring,
     customizeColorSetting: CustomizeColor[],
-    colorscale: Colorscale[],
+    colorscale: Colorscale,
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {

@@ -130,13 +130,17 @@ export const ensureColorScheme = (
       colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
-    colorscale:
-      (colorScheme.colorscale as ColorSchemeInput["colorscale"]) ?? [],
+    colorscales:
+      (colorScheme.colorscales as ColorSchemeInput["colorscales"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
     },
     defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
+    defaultColorscale: colorScheme.defaultColorscale ?? {
+      name: "viridis",
+      list: null,
+    },
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints

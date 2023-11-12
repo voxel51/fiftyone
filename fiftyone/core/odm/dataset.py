@@ -263,7 +263,7 @@ class ColorScheme(EmbeddedDocument):
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
     default_mask_targets_colors = ListField(DictField(), null=True)
-    colorscale = ListField(DictField(), null=True)
+    colorscales = ListField(DictField(), null=True)
     default_colorscale = DictField(null=True)
 
 

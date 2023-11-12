@@ -65,7 +65,7 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
 
   const handleAdd = () => {
     const newValue = {
-      value: undefined,
+      value: 1,
       color: getRGBColorFromPool(colorScheme.colorPool),
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
@@ -168,7 +168,7 @@ const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
       {input?.map((v, index) => (
         <RowContainer key={index}>
           <NumberInput
-            placeholder="float"
+            placeholder="float (0 to 1)"
             value={input[index].value}
             setter={(v) =>
               setInput((p) => {

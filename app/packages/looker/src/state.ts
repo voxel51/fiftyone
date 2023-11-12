@@ -23,11 +23,16 @@ export interface Coloring {
   targets: string[];
 }
 
-export type Colorscale = {
-  path: string;
+export type ColorscaleInput = {
+  path?: string;
   name?: string;
   list?: [];
   rgb?: [RGB[]];
+};
+
+export type Colorscale = {
+  fields: ColorscaleInput[];
+  default: ColorscaleInput;
 };
 
 export type MaskColorInput = {
