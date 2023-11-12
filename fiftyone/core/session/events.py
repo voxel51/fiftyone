@@ -178,7 +178,7 @@ class Colorscale:
     path: str
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
-    rgb: t.Optional[t.List[t.List[int]]] = None
+    # rgb: t.Optional[t.List[t.List[int]]] = None
 
 
 @dataclass
@@ -196,7 +196,8 @@ class ColorScheme:
     show_skeletons: t.Optional[bool] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
-    colorscale: t.Optional[t.List[Colorscale]] = None
+    colorscales: t.Optional[t.List[Colorscale]] = None
+    default_colorscale: t.Optional[Colorscale] = None
     label_tags: t.Optional[LabelTagsColors] = None
 
 
@@ -216,9 +217,12 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
-        colorscale = (
-            [asdict(colorscale) for colorscale in self.color_scheme.colorscale]
-            if self.color_scheme.colorscale
+        colorscales = (
+            [
+                asdict(colorscales)
+                for colorscales in self.color_scheme.colorscales
+            ]
+            if self.color_scheme.colorscales
             else None
         )
         default_mask_targets_colors = (
@@ -227,6 +231,11 @@ class SetColorScheme(Event):
                 for target in self.color_scheme.default_mask_targets_colors
             ]
             if self.color_scheme.default_mask_targets_colors
+            else None
+        )
+        default_colorscale = (
+            asdict(self.color_scheme.default_colorscale)
+            if self.color_scheme.default_colorscale
             else None
         )
         label_tags = (
@@ -241,6 +250,8 @@ class SetColorScheme(Event):
             fields=fields,
             default_mask_targets_colors=default_mask_targets_colors,
             label_tags=label_tags,
+            colorscales=colorscales,
+            default_colorscale=default_colorscale,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,

@@ -125,7 +125,8 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
-  colorscale: [Colorscale!]
+  colorscales: [Colorscale!]
+  defaultColorscale: Colorscale
 }
 
 input ColorSchemeInput {
@@ -137,26 +138,26 @@ input ColorSchemeInput {
   opacity: Float = null
   showSkeletons: Boolean = null
   defaultMaskTargetsColors: [MaskColorInput!] = null
-  colorscale: [ColorscaleInput!] = null
+  colorscales: [ColorscaleInput!] = null
+  defaultColorscale: DefaultColorscaleInput = null
 }
 
 type Colorscale {
-  path: String!
   name: String
   list: [ColorscaleList!]
   rgb: [[Int!]!]
+  path: String!
 }
 
 input ColorscaleInput {
   path: String!
   name: String = null
   list: [ColorscaleListInput!] = null
-  rgb: [[Int!]!] = null
 }
 
 type ColorscaleList {
   color: String!
-  value: Float
+  value: Float!
 }
 
 input ColorscaleListInput {
@@ -261,6 +262,11 @@ type DatetimeHistogramValuesResponse {
   counts: [Int!]!
   edges: [datetime!]!
   other: Int!
+}
+
+input DefaultColorscaleInput {
+  name: String = null
+  list: [ColorscaleListInput!] = null
 }
 
 type EvaluationRun implements Run {

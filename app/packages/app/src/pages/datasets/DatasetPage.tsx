@@ -49,7 +49,15 @@ const DatasetPageQueryNode = graphql`
             intTarget
             color
           }
-          colorscale {
+          defaultColorscale {
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
+          colorscales {
             path
             name
             list {

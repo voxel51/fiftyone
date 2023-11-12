@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ade8c222d03a9313c75a919b6b55843b>>
+ * @generated SignedSource<<cb1859098b0c6684c0a3c499389add1d>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -12,7 +12,8 @@ import { ConcreteRequest, Mutation } from 'relay-runtime';
 export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
-  colorscale?: ReadonlyArray<ColorscaleInput> | null;
+  colorscales?: ReadonlyArray<ColorscaleInput> | null;
+  defaultColorscale?: DefaultColorscaleInput | null;
   defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
   labelTags?: LabelTagColorInput | null;
@@ -43,11 +44,14 @@ export type ColorscaleInput = {
   list?: ReadonlyArray<ColorscaleListInput> | null;
   name?: string | null;
   path: string;
-  rgb?: ReadonlyArray<ReadonlyArray<number>> | null;
 };
 export type ColorscaleListInput = {
   color: string;
   value?: number | null;
+};
+export type DefaultColorscaleInput = {
+  list?: ReadonlyArray<ColorscaleListInput> | null;
+  name?: string | null;
 };
 export type setColorSchemeMutation$variables = {
   colorScheme: ColorSchemeInput;

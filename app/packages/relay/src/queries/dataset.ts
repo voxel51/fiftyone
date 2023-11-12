@@ -30,6 +30,23 @@ export default graphql`
             intTarget
             color
           }
+          defaultColorscale {
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
+          colorscales {
+            path
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
           labelTags {
             fieldColor
             valueColors {

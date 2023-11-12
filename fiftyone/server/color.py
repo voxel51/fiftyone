@@ -56,19 +56,31 @@ class ColorscaleList:
 
 
 @gql.type
-class Colorscale:
-    path: str
+class ColorscaleBase:
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
-    rgb: t.Optional[t.List[t.List[int]]] = None
 
-    # @gql.field
-    # def rgb(self) -> t.Optional[t.List[t.List[int]]]:
-    #     if self.name or self.list:
-    #         rgb = fop.get_colormap(self.name or [[item.value, item.color] for item in self.list])
-    #         return rgb
+    def _calculate_rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        if self.name or self.list:
+            rgb = fop.get_colormap(
+                self.name or [[item.value, item.color] for item in self.list]
+            )
+            return rgb
+        return None
 
-    #     return None
+    @gql.field
+    def rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        return self._calculate_rgb()
+
+
+@gql.type
+class Colorscale(ColorscaleBase):
+    path: str
+
+
+@gql.type
+class DefaultColorscale(ColorscaleBase):
+    pass
 
 
 @gql.enum
@@ -89,7 +101,8 @@ class ColorScheme:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
-    colorscale: t.Optional[t.List[Colorscale]] = None
+    colorscales: t.Optional[t.List[Colorscale]] = None
+    default_colorscale: t.Optional[Colorscale] = None
 
 
 @gql.input
@@ -115,7 +128,12 @@ class ColorscaleInput:
     path: str
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleListInput]] = None
-    rgb: t.Optional[t.List[t.List[int]]] = None
+
+
+@gql.input
+class DefaultColorscaleInput:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleListInput]] = None
 
 
 @gql.input
@@ -143,7 +161,8 @@ class ColorSchemeInput:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColorInput]] = None
-    colorscale: t.Optional[t.List[ColorscaleInput]] = None
+    colorscales: t.Optional[t.List[ColorscaleInput]] = None
+    default_colorscale: t.Optional[DefaultColorscaleInput] = None
 
 
 @gql.type
@@ -182,18 +201,18 @@ class SetColorScheme:
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
 
-    for colorscale in color_scheme.colorscale:
-        if colorscale.list is not None or colorscale.name is not None:
-            # Get the rgb tuples
+    # for colorscale in color_scheme.colorscale:
+    #     if colorscale.list is not None or colorscale.name is not None:
+    #         # Get the rgb tuples
 
-            input = None
-            if colorscale.name:
-                input = colorscale.name
-            elif colorscale.list:
-                input = [[item.value, item.color] for item in colorscale.list]
+    #         input = None
+    #         if colorscale.name:
+    #             input = colorscale.name
+    #         elif colorscale.list:
+    #             input = [[item.value, item.color] for item in colorscale.list]
 
-            colormap_tuples = fop.get_colormap(input)
-            colorscale.rgb = colormap_tuples
+    #         colormap_tuples = fop.get_colormap(input)
+    #         colorscale.rgb = colormap_tuples
 
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
@@ -209,10 +228,13 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],
-        colorscale=[asdict(f) for f in color_scheme.colorscale]
-        if color_scheme.colorscale
+        colorscales=[asdict(f) for f in color_scheme.colorscales]
+        if color_scheme.colorscales
         else [],
         label_tags=asdict(color_scheme.label_tags)
         if color_scheme.label_tags
+        else {},
+        default_colorscale=asdict(color_scheme.default_colorscale)
+        if color_scheme.default_colorscale
         else {},
     )

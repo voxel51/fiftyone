@@ -189,20 +189,22 @@ class ColorScheme(EmbeddedDocument):
                     {"value": "mistake", "color": "#00ff00"},
                 ]
             },
-            colorscale = [
-                {
-                    "path": "global",
-                    "name": "hsv",
-                },
+            colorscales = [
+
                 {
                     "path": "heatmap1",
-                    "list": [{value: 0.5, color: 'rgb(0, 0, 255)'}, {value: 1, color: 'rgb(0, 255, 255)'}],
+                    "list": [{value: 0, color: 'rgb(0, 0, 255)'}, {value: 1, color: 'rgb(0, 255, 255)'}],
+                },
+                {
+                    "path": "heatmap2",
+                    "name": "hsv",
                 },
             ],
             multicolor_keypoints=False,
             opacity=0.5,
             show_skeletons=True,
             default_mask_targets_colors=[{"intTarget": 1, "color": "#FEC0AA" }, {"intTarget": 2, "color": "#EC4E20"}],
+            default_colorscale={name: "sunset", list: null}
         )
         dataset.save()
 
@@ -228,14 +230,21 @@ class ColorScheme(EmbeddedDocument):
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
             -   `maskTargetsColors` (optional): a list of dicts specifying index and color for 2D masks
-        default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
-        colorscale (None): an optional list of per-field custom colorscale for heatmaps. Each
+        default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks
+            of the dataset
+        default_colorscale (None):
+            -   `name` (optional): a named plotly colorscale
+            -   `list` (optional): a list of dicts of manually defined colorscale
+                    - `value`: a float number between 0 and 1
+                    - `color`: a rgb color string
+        colorscales (None): an optional list of per-field custom colorscale for heatmaps. Each
             element should be a dict with the following keys:
             -   `path` (required): the fully-qualified path to the field you're
                 customizing. use "dataset" if you are setting the default colorscale for dataset
             -   `name` (optional): a named colorscale plotly recognizes
             -   `list` (optional): a list of dicts of manually defined colorscale
-            -   `rgb` (optional): a list of rgb color tuples generated based on provided name or list.
+                    - `value`: a float number between 0 and 1
+                    - `color`: a rgb color string
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags
@@ -255,6 +264,7 @@ class ColorScheme(EmbeddedDocument):
     show_skeletons = BooleanField(null=True)
     default_mask_targets_colors = ListField(DictField(), null=True)
     colorscale = ListField(DictField(), null=True)
+    default_colorscale = DictField(null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):
