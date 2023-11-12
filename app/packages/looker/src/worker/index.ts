@@ -104,7 +104,7 @@ const imputeOverlayFromPath = async (
   label: Record<string, any>,
   coloring: Coloring,
   customizeColorSetting: CustomizeColor[],
-  colorscale: Colorscale[],
+  colorscale: Colorscale,
   buffers: ArrayBuffer[],
   sources: { [path: string]: string }
 ) => {
@@ -213,6 +213,8 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(label._cls)) {
+        console.info(colorscale);
+        debugger;
         await imputeOverlayFromPath(
           field,
           label,
@@ -377,7 +379,7 @@ interface FrameStream {
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
-  colorscale: Colorscale[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
 }
@@ -399,7 +401,7 @@ const createReader = ({
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
-  colorscale: Colorscale[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
   frameCount: number;
@@ -522,7 +524,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 interface SetStream {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
-  colorscale: Colorscale[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
   frameCount: number;
