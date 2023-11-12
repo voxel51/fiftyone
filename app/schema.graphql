@@ -126,7 +126,7 @@ type ColorScheme {
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
   colorscales: [Colorscale!]
-  defaultColorscale: Colorscale
+  defaultColorscale: DefaultColorscale
 }
 
 input ColorSchemeInput {
@@ -262,6 +262,12 @@ type DatetimeHistogramValuesResponse {
   counts: [Int!]!
   edges: [datetime!]!
   other: Int!
+}
+
+type DefaultColorscale {
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
 }
 
 input DefaultColorscaleInput {

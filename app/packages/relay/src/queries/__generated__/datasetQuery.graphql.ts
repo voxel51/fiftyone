@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ca270ed413b7b9fa129395c4e255c4e8>>
+ * @generated SignedSource<<58c8b9343968d5feb702e47eaddb94aa>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -274,7 +274,7 @@ v21 = {
     {
       "alias": null,
       "args": null,
-      "concreteType": "Colorscale",
+      "concreteType": "DefaultColorscale",
       "kind": "LinkedField",
       "name": "defaultColorscale",
       "plural": false,

@@ -102,7 +102,7 @@ class ColorScheme:
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
     colorscales: t.Optional[t.List[Colorscale]] = None
-    default_colorscale: t.Optional[Colorscale] = None
+    default_colorscale: t.Optional[DefaultColorscale] = None
 
 
 @gql.input
