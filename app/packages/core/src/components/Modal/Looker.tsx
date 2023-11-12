@@ -1,4 +1,6 @@
 import { useTheme } from "@fiftyone/components";
+import { AbstractLooker } from "@fiftyone/looker";
+import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
@@ -12,8 +14,6 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
-import useSetGroupSample from "./Group/useSetGroupSample";
-import { ImaVidLooker } from "@fiftyone/looker";
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -94,6 +94,14 @@ const Looker = ({
   const [reset, setReset] = useState(false);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const setModalLooker = useSetRecoilState(fos.modalLooker);
+
+  // note: resetRecoilState is not triggering `onSet` in effect,
+  // see https://github.com/facebookexperimental/Recoil/issues/2183
+  // replace with `useResetRecoileState` when fixed
+  const setCurrentFrameNumberImaVid = useSetRecoilState(
+    fos.currentFrameNumberImaVid
+  );
 
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
@@ -102,43 +110,18 @@ const Looker = ({
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
     [reset, createLooker, selectedMediaField, shouldRenderImaVidLooker]
-  );
-
-  const store = fos.useLookerStore();
-  const currentModalSample = useRecoilValue(fos.currentModalSample);
-
-  const setCurrentModalSample = useSetRecoilState(fos.currentModalSample);
+  ) as AbstractLooker<BaseState>;
 
   useEffect(() => {
-    requestAnimationFrame(() => {
-      if (looker && shouldRenderImaVidLooker) {
-        const state = (looker as ImaVidLooker).DANGEROUS_state;
-        const currentFrameNumber = state.currentFrameNumber;
-        const frameSample =
-          state.config.frameStoreController.store?.samples[currentFrameNumber];
-
-        if (!frameSample) {
-          return;
-        }
-
-        const frameSampleId = frameSample.sample._id;
-
-        const index =
-          state.config.frameStoreController.store?.reverseFrameIndex.get(
-            frameSampleId
-          );
-
-        if (index && !store.samples.has(frameSampleId)) {
-          store.samples.set(frameSampleId, frameSample);
-          store.indices.set(index, frameSampleId);
-        }
-
-        if (currentModalSample?.id !== frameSampleId) {
-          setCurrentModalSample({ index, id: sample.id });
-        }
-      }
-    });
-  });
+    if (looker) {
+      setModalLooker(looker);
+      setTimeout(() => {
+        // this setter is to trigger onSet effect that kicks-off the subscription to frame number
+        // the supplied value (1) is placeholder
+        setCurrentFrameNumberImaVid(1);
+      }, 0);
+    }
+  }, [looker]);
 
   useEffect(() => {
     if (looker) {

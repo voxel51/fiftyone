@@ -42,10 +42,10 @@ import {
   snapBox,
 } from "../util";
 
+import { isEmpty } from "lodash";
 import { Events } from "../elements/base";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
-import { cloneDeep, isEmpty } from "lodash";
 
 const LABEL_LISTS_PATH = new Set(withPath(LABELS_PATH, LABEL_LISTS));
 const LABEL_LIST_KEY = Object.fromEntries(
@@ -80,6 +80,9 @@ export abstract class AbstractLooker<
   State extends BaseState,
   S extends Sample = Sample
 > {
+  public readonly subscriptions: {
+    [fieldName: string]: ((newValue: any) => void)[];
+  };
   private eventTarget: EventTarget;
 
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -107,6 +110,7 @@ export abstract class AbstractLooker<
     options: Partial<State["options"]> = {}
   ) {
     this.eventTarget = new EventTarget();
+    this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
     this.loadSample(sample);
@@ -151,6 +155,26 @@ export abstract class AbstractLooker<
         ),
       3500
     );
+  }
+
+  public subscribeToState(
+    field: string,
+    callback: (value: any) => void
+  ): () => void {
+    if (!(field in this.subscriptions)) {
+      this.subscriptions[field] = [];
+    }
+
+    this.subscriptions[field].push(callback);
+
+    console.log("Subscribed to changes in ", field);
+
+    // return unsubscribe function
+    return () => {
+      this.subscriptions[field] = this.subscriptions[field].filter(
+        (cb) => cb !== callback
+      );
+    };
   }
 
   loadOverlays(sample: Sample): void {
@@ -248,6 +272,13 @@ export abstract class AbstractLooker<
 
         this.previousState = this.state;
         this.state = mergedUpdates as State;
+
+        // check subscriptions
+        for (const field in updates) {
+          if (this.subscriptions[field]) {
+            this.subscriptions[field].forEach((cb) => cb(updates[field]));
+          }
+        }
 
         // Need this because when user reset attributeVisibility, it resets
         // to empty object, which gets overwritten in mergeUpdates

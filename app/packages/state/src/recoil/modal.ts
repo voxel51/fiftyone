@@ -1,4 +1,6 @@
-import type { Sample } from "@fiftyone/looker";
+import { AbstractLooker, type Sample } from "@fiftyone/looker";
+import { ImaVidStore } from "@fiftyone/looker/src/lookers/imavid/store";
+import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
@@ -13,15 +15,39 @@ import {
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
+  shouldRenderImaVidLooker,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
+export const modalLooker = atom<AbstractLooker<BaseState> | null>({
+  key: "modalLooker",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const currentFrameNumber = window["_fo_current_frame_number"];
+
+      console.log("currentFrame number is ", currentFrameNumber);
+      if (!currentFrameNumber) {
+        return get(modalSampleId);
+      }
+
+      const sampleId = ImaVidStore.get(
+        "6421c8b0f4756d1549095aa3"
+      ).frameIndex.get(currentFrameNumber);
+      const sample = ImaVidStore.get("6421c8b0f4756d1549095aa3").samples.get(
+        sampleId
+      );
+      return sample.sample._id;
+    }
+
     const override = get(pinned3DSampleSlice);
 
     return get(pinned3d) && override

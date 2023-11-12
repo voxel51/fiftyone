@@ -34,7 +34,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return this.state.currentFrameNumber;
   }
 
-  get DANGEROUS_state() {
+  get _UNSAFE_state() {
     return this.state;
   }
 
@@ -201,12 +201,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     } else {
       this.updater({ options, disabled: false });
     }
-  }
-
-  updateSample(sample: Sample) {
-    // this.state.bufferManager = new BufferManager();
-    // this.state.config.frameStoreController.cleanup();
-    // super.updateSample(sample);
   }
 
   private hasFrame(frameNumber: number) {

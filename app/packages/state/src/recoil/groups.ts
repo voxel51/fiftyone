@@ -1,3 +1,4 @@
+import { ImaVidLooker } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
@@ -19,7 +20,7 @@ import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import { dataset, mediaType } from "./atoms";
-import { ModalSample, modalSample } from "./modal";
+import { ModalSample, modalLooker, modalSample } from "./modal";
 import { nonNestedDynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
@@ -429,6 +430,69 @@ export const activeModalSample = selector({
 
     return get(modalSample).sample;
   },
+});
+
+export const sidebarSample = selector({
+  key: "sidebarSample",
+  get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const currentFrameNumber = window["_fo_current_frame_number"];
+
+      console.log("currentFrame number is ", currentFrameNumber);
+      if (!currentFrameNumber) {
+        return get(activeModalSample);
+      }
+
+      const sampleId = ImaVidStore.get(
+        "6421c8b0f4756d1549095aa3"
+      ).frameIndex.get(currentFrameNumber);
+      const sample = ImaVidStore.get("6421c8b0f4756d1549095aa3").samples.get(
+        sampleId
+      );
+      return sample.sample;
+    }
+
+    return get(activeModalSample);
+  },
+});
+
+export const currentFrameNumberImaVid = atom<number>({
+  key: "currentFrameNumberImaVid",
+  default: null,
+  effects: [
+    ({ setSelf, getPromise, onSet }) => {
+      let unsubscribe;
+
+      onSet((_newValue, _oldValue, isReset) => {
+        // note: resetRecoilState is not triggering `onSet` in effect,
+        // see https://github.com/facebookexperimental/Recoil/issues/2183
+        // replace with `useResetRecoileState` when fixed
+
+        // if (!isReset) {
+        //   throw new Error("cannot set currentFrameNumberImaVid directly");
+        // }
+
+        getPromise(modalLooker)
+          .then((looker: ImaVidLooker) => {
+            if (looker) {
+              unsubscribe = looker.subscribeToState(
+                "currentFrameNumber",
+                (frameNumber) => {
+                  setSelf(frameNumber);
+                }
+              );
+            }
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    },
+  ],
 });
 
 export const groupStatistics = atomFamily<"group" | "slice">({
