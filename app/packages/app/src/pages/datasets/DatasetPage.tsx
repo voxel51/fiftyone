@@ -15,6 +15,7 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
+import Starter from "@fiftyone/core/src/components/Starter";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -75,6 +76,8 @@ const DatasetPageQueryNode = graphql`
 const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
   const data = usePreloadedQuery(DatasetPageQueryNode, prepared);
   const isModalActive = Boolean(useRecoilValue(fos.isModalActive));
+  const count = useRecoilValue(fos.datasetSampleCount);
+  const isEmpty = count === 0;
 
   useEffect(() => {
     document
@@ -88,14 +91,20 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
 
   return (
     <>
-      <OperatorCore />
-      <Nav fragment={data} hasDataset={true} />
-      <div className={style.page}>
-        <datasetQueryContext.Provider value={data}>
-          <Dataset />
-        </datasetQueryContext.Provider>
-      </div>
-      <Snackbar />
+      <Nav fragment={data} hasDataset={!isEmpty} />
+      {isEmpty ? (
+        <Starter mode="ADD_SAMPLE" />
+      ) : (
+        <>
+          <OperatorCore />
+          <div className={style.page}>
+            <datasetQueryContext.Provider value={data}>
+              <Dataset />
+            </datasetQueryContext.Provider>
+          </div>
+          <Snackbar />
+        </>
+      )}
     </>
   );
 };
