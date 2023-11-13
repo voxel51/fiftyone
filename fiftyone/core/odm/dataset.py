@@ -34,6 +34,7 @@ from .database import (
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
+    patch_runs,
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
@@ -181,6 +182,13 @@ class ColorScheme(EmbeddedDocument):
                     "valueColors": [{"value": "dog", "color": "yellow"}],
                 }
             ],
+            label_tags={
+                "fieldColor": "#00ffff",
+                "valueColors": [
+                    {"value": "correct", "color": "#ff00ff"},
+                    {"value": "mistake", "color": "#00ff00"},
+                ]
+            }
             multicolor_keypoints = False,
             opacity = 0.5,
             show_skeletons = True
@@ -204,6 +212,11 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+        label_tags (None): an optional dict specifying custom colors for label tags
+            with the following keys:
+            -    `fieldColor` (optional): a color to assign to all label tags
+            -    `valueColors` (optional): a list of dicts specifying colors to
+            specific label tags
         multicolor_keypoints (None): whether to use multiple colors for
             keypoints
         opacity (None): transparency of the annotation, between 0 and 1
@@ -216,6 +229,7 @@ class ColorScheme(EmbeddedDocument):
     color_pool = ListField(ColorField(), null=True)
     color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
+    label_tags = DictField(null=True)
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
@@ -540,6 +554,7 @@ class DatasetDocument(Document):
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
+    runs = DictField(ReferenceField(RunDocument))
 
     def get_saved_views(self):
         saved_views = []
@@ -601,6 +616,21 @@ class DatasetDocument(Document):
 
         return evaluations
 
+    def get_runs(self):
+        runs = {}
+        for key, run_doc in self.runs.items():
+            if not isinstance(run_doc, DBRef):
+                runs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_runs),
+                    self.name,
+                )
+
+        return runs
+
     def to_dict(self, *args, no_dereference=False, **kwargs):
         d = super().to_dict(*args, **kwargs)
 
@@ -617,5 +647,6 @@ class DatasetDocument(Document):
             d["evaluations"] = {
                 k: v.to_dict() for k, v in self.get_evaluations().items()
             }
+            d["runs"] = {k: v.to_dict() for k, v in self.get_runs().items()}
 
         return d

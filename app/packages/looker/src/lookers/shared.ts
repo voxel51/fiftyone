@@ -34,6 +34,13 @@ export const LookerUtils = {
       hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)
     ) {
       reloadSample = true;
+    } else if (
+      !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
+      current.selectedLabelTags?.length !== next.selectedLabelTags?.length
+    ) {
+      reloadSample = true;
+    } else if (_.isEqual(next.labelTagColors, current.labelTagColors)) {
+      reloadSample = true;
     }
 
     return reloadSample;

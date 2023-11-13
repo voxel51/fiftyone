@@ -156,7 +156,7 @@ export class SavedViewsPom {
   }
 
   colorInput(c: Color = "Gray") {
-    return this.dialogLocator.getByRole("button", { name: c });
+    return this.dialogLocator.getByRole("combobox").getByText(c);
   }
 
   colorOption(c: Color = "Purple") {
@@ -213,7 +213,7 @@ class SavedViewAsserter {
   }
 
   async verifyDefaultColor(color: Color = "Gray") {
-    await expect(this.svp.colorInput(color).first()).toBeInViewport();
+    await expect(this.svp.colorInput(color)).toBeVisible();
   }
 
   async verifyInputIsDefault() {

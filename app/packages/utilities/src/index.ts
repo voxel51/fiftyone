@@ -726,3 +726,9 @@ export function humanReadableBytes(bytes: number): string {
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
 }
+
+export enum COLOR_BY {
+  "VALUE" = "value",
+  "INSTANCE" = "instance",
+  "FIELD" = "field",
+}

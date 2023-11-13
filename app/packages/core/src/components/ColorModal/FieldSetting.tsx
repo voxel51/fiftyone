@@ -2,9 +2,9 @@ import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { CustomizeColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import {
+  COLOR_BY,
   FLOAT_FIELD,
   NOT_VISIBLE_LIST,
-  SEGMENTATION,
   VALID_MASK_TYPES,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
@@ -25,8 +25,8 @@ import {
   PickerWrapper,
   SectionWrapper,
 } from "./ShareStyledDiv";
-import AttributeColorSetting from "./colorPalette/AttributeColorSetting";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import FieldByValue from "./colorPalette/FieldByValue";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
@@ -95,6 +95,7 @@ const FieldSetting = ({ path }: { path: string }) => {
   const [showFieldPicker, setShowFieldPicker] = useState(false);
   const [input, setInput] = useState(setting?.fieldColor);
   const [colors, setColors] = useState(colorPool || []);
+
   const state = useMemo(
     () => ({
       useLabelColors: Boolean(
@@ -173,19 +174,17 @@ const FieldSetting = ({ path }: { path: string }) => {
     <div>
       <ModeControl />
       <Divider />
-      {coloring.by == "field" && isTypeFieldSupported && (
+      {coloring.by == COLOR_BY.FIELD && isTypeFieldSupported && (
         <div style={{ margin: "1rem", width: "100%" }}>
           <Checkbox
             name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting(
-                v
-                  ? {
-                      fieldColor: colorMap(path),
-                    }
-                  : undefined
-              );
+              setSetting({
+                fieldColor: v ? colorMap(path) : undefined,
+                valueColors: setting?.valueColors,
+                colorByAttribute: setting?.colorByAttribute,
+              });
               setInput(colorMap(path));
             }}
           />
@@ -219,6 +218,7 @@ const FieldSetting = ({ path }: { path: string }) => {
                       onChangeComplete={(color) => {
                         onChangeFieldColor(color.hex);
                         setColors([...new Set([...colors, color.hex])]);
+                        setShowFieldPicker(false);
                       }}
                       className={colorPicker}
                       ref={pickerRef}
@@ -241,10 +241,10 @@ const FieldSetting = ({ path }: { path: string }) => {
           )}
         </div>
       )}
-      {coloring.by == "field" && !isTypeFieldSupported && (
+      {coloring.by == COLOR_BY.FIELD && !isTypeFieldSupported && (
         <div>Color by field is not supported for this field type</div>
       )}
-      {coloring.by == "value" && isTypeValueSupported && (
+      {coloring.by == COLOR_BY.VALUE && isTypeValueSupported && (
         <div>
           <form
             style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
@@ -295,20 +295,16 @@ const FieldSetting = ({ path }: { path: string }) => {
                   </div>
                 </>
               )}
-
-              <AttributeColorSetting
-                style={FieldCHILD_STYLE}
-                useLabelColors={state.useLabelColors}
-              />
+              <FieldByValue />
             </SectionWrapper>
           </form>
         </div>
       )}
 
-      {coloring.by == "value" && !isTypeValueSupported && (
+      {coloring.by == COLOR_BY.VALUE && !isTypeValueSupported && (
         <div>Color by value is not supported for this field type</div>
       )}
-      {coloring.by == "instance" && (
+      {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}
     </div>
