@@ -402,12 +402,12 @@ type Mutation {
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!
-  ): Boolean!
+  ): ColorScheme!
   setDatasetColorScheme(
     subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
-  ): Void
+  ): ColorScheme!
   setFieldVisibilityStage(
     subscription: String!
     session: String
@@ -727,11 +727,6 @@ type VideoSample implements Sample {
   frameNumber: Int!
   frameRate: Float!
 }
-
-"""
-Represents NULL values
-"""
-scalar Void
 
 scalar date
 

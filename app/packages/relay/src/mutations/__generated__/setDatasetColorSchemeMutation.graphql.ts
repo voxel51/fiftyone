@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<cdacf9e8d7a3448ecefc29c10dd2ac2a>>
+ * @generated SignedSource<<a5e247e27c661ba25f93284c85e15115>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -9,6 +9,7 @@
 // @ts-nocheck
 
 import { ConcreteRequest, Mutation } from 'relay-runtime';
+import { FragmentRefs } from "relay-runtime";
 export type ColorSchemeInput = {
   colorBy?: string | null;
   colorPool: ReadonlyArray<string>;
@@ -59,7 +60,9 @@ export type setDatasetColorSchemeMutation$variables = {
   subscription: string;
 };
 export type setDatasetColorSchemeMutation$data = {
-  readonly setDatasetColorScheme: any | null;
+  readonly setDatasetColorScheme: {
+    readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
+  };
 };
 export type setDatasetColorSchemeMutation = {
   response: setDatasetColorSchemeMutation$data;
@@ -84,28 +87,63 @@ v2 = {
 },
 v3 = [
   {
-    "alias": null,
-    "args": [
-      {
-        "kind": "Variable",
-        "name": "colorScheme",
-        "variableName": "colorScheme"
-      },
-      {
-        "kind": "Variable",
-        "name": "datasetName",
-        "variableName": "datasetName"
-      },
-      {
-        "kind": "Variable",
-        "name": "subscription",
-        "variableName": "subscription"
-      }
-    ],
-    "kind": "ScalarField",
-    "name": "setDatasetColorScheme",
-    "storageKey": null
+    "kind": "Variable",
+    "name": "colorScheme",
+    "variableName": "colorScheme"
+  },
+  {
+    "kind": "Variable",
+    "name": "datasetName",
+    "variableName": "datasetName"
+  },
+  {
+    "kind": "Variable",
+    "name": "subscription",
+    "variableName": "subscription"
   }
+],
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "fieldColor",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "color",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ValueColor",
+  "kind": "LinkedField",
+  "name": "valueColors",
+  "plural": true,
+  "selections": [
+    (v5/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "value",
+      "storageKey": null
+    }
+  ],
+  "storageKey": null
+},
+v7 = [
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "intTarget",
+    "storageKey": null
+  },
+  (v5/*: any*/)
 ];
 return {
   "fragment": {
@@ -117,7 +155,24 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "setDatasetColorSchemeMutation",
-    "selections": (v3/*: any*/),
+    "selections": [
+      {
+        "alias": null,
+        "args": (v3/*: any*/),
+        "concreteType": "ColorScheme",
+        "kind": "LinkedField",
+        "name": "setDatasetColorScheme",
+        "plural": false,
+        "selections": [
+          {
+            "args": null,
+            "kind": "FragmentSpread",
+            "name": "colorSchemeFragment"
+          }
+        ],
+        "storageKey": null
+      }
+    ],
     "type": "Mutation",
     "abstractKey": null
   },
@@ -130,19 +185,133 @@ return {
     ],
     "kind": "Operation",
     "name": "setDatasetColorSchemeMutation",
-    "selections": (v3/*: any*/)
+    "selections": [
+      {
+        "alias": null,
+        "args": (v3/*: any*/),
+        "concreteType": "ColorScheme",
+        "kind": "LinkedField",
+        "name": "setDatasetColorScheme",
+        "plural": false,
+        "selections": [
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "id",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "colorBy",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "colorPool",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "multicolorKeypoints",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "opacity",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "kind": "ScalarField",
+            "name": "showSkeletons",
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "LabelTagColor",
+            "kind": "LinkedField",
+            "name": "labelTags",
+            "plural": false,
+            "selections": [
+              (v4/*: any*/),
+              (v6/*: any*/)
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "MaskColor",
+            "kind": "LinkedField",
+            "name": "defaultMaskTargetsColors",
+            "plural": true,
+            "selections": (v7/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "CustomizeColor",
+            "kind": "LinkedField",
+            "name": "fields",
+            "plural": true,
+            "selections": [
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "colorByAttribute",
+                "storageKey": null
+              },
+              (v4/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "kind": "ScalarField",
+                "name": "path",
+                "storageKey": null
+              },
+              (v6/*: any*/),
+              {
+                "alias": null,
+                "args": null,
+                "concreteType": "MaskColor",
+                "kind": "LinkedField",
+                "name": "maskTargetsColors",
+                "plural": true,
+                "selections": (v7/*: any*/),
+                "storageKey": null
+              }
+            ],
+            "storageKey": null
+          }
+        ],
+        "storageKey": null
+      }
+    ]
   },
   "params": {
-    "cacheID": "29b9e740886b717bb79fd9d0607dd577",
+    "cacheID": "8fa2698e3189b3e6c0ce4c1dbdc9a01e",
     "id": null,
     "metadata": {},
     "name": "setDatasetColorSchemeMutation",
     "operationKind": "mutation",
-    "text": "mutation setDatasetColorSchemeMutation(\n  $subscription: String!\n  $datasetName: String!\n  $colorScheme: ColorSchemeInput\n) {\n  setDatasetColorScheme(subscription: $subscription, datasetName: $datasetName, colorScheme: $colorScheme)\n}\n"
+    "text": "mutation setDatasetColorSchemeMutation(\n  $subscription: String!\n  $datasetName: String!\n  $colorScheme: ColorSchemeInput\n) {\n  setDatasetColorScheme(subscription: $subscription, datasetName: $datasetName, colorScheme: $colorScheme) {\n    ...colorSchemeFragment\n    id\n  }\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "94e7b8a19aa593d4538989f2d25d91cb";
+(node as any).hash = "34bbc63c5f6ffb1a739e5c2930e790f9";
 
 export default node;

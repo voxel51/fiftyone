@@ -188,13 +188,11 @@ class SetColorScheme:
         subscription: str,
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
-    ) -> None:
+    ) -> ColorScheme:
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
-                prune_rgb_color_scheme(_to_odm_color_scheme(color_scheme))
-                if color_scheme
-                else None
+                _to_odm_color_scheme(color_scheme) if color_scheme else None
             )
             dataset.save()
 
@@ -203,7 +201,6 @@ class SetColorScheme:
 
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
-
     for colorscale in color_scheme.colorscales:
         if colorscale.list is not None or colorscale.name is not None:
             # Get the rgb tuples
