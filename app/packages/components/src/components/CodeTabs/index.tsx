@@ -53,7 +53,7 @@ export default function CodeTabs(props: CodeTabsProps) {
           ))}
         </Tabs>
       </Box>
-      <Box mt={1} sx={{ cursor: "pointer" }}>
+      <Box mt={1} sx={{ cursor: "pointer", minWidth: 720 }}>
         <CodeBlock {...tabProps} text={tabProps.code} />
       </Box>
     </Box>
