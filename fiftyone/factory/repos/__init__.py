@@ -8,3 +8,5 @@ FiftyOne repository factory.
 from fiftyone.factory.repos.delegated_operation_doc import (
     DelegatedOperationDocument,
 )
+
+from fiftyone.factory.repos.orchestrator_doc import OrchestratorDocument
