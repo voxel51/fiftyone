@@ -213,8 +213,6 @@ const processLabels = async (
       }
 
       if (DENSE_LABELS.has(label._cls)) {
-        console.info(colorscale);
-        debugger;
         await imputeOverlayFromPath(
           field,
           label,

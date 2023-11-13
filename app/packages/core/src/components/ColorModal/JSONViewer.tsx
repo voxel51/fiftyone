@@ -34,6 +34,8 @@ const JSONViewer: React.FC = () => {
       defaultMaskTargetsColors: validateMaskColor(
         colorScheme.defaultMaskTargetsColors
       ),
+      colorscales: colorScheme?.colorscales ?? [],
+      defaultColorscale: colorScheme?.defaultColorscale ?? {},
     };
   }, [colorScheme]);
 
