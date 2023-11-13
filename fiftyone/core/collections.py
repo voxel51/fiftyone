@@ -5,6 +5,7 @@ Interface for sample collections.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from collections import defaultdict
 from copy import copy
 import fnmatch
@@ -1503,6 +1504,8 @@ class SampleCollection(object):
 
     def _edit_sample_tags(self, update):
         ops = []
+        now = datetime.datetime.utcnow()
+        update.update({"$set": {"last_updated_at": now}})
         for ids in fou.iter_batches(self.values("_id"), 100000):
             ops.append(UpdateMany({"_id": {"$in": ids}}, update))
 
@@ -1618,11 +1621,13 @@ class SampleCollection(object):
             tags_path = _root + ".tags"
             update = update_fcn(tags_path)
 
-            if label_ids is None:
+            if ids is None or label_ids is None:
                 if is_frame_field:
-                    label_ids = self.values(id_path, unwind=True)
+                    ids, label_ids = self.values(
+                        ["frames._id", id_path], unwind=True
+                    )
                 else:
-                    label_ids = self.values(id_path)
+                    ids, label_ids = self.values(["_id", id_path])
 
             for _label_ids in fou.iter_batches(label_ids, 100000):
                 _label_ids = [_id for _id in _label_ids if _id is not None]
@@ -1634,6 +1639,14 @@ class SampleCollection(object):
                 )
 
         if ops:
+            now = datetime.datetime.utcnow()
+            id_field = "frames._id" if is_frame_field else "_id"
+            ops.append(
+                UpdateMany(
+                    {id_field: {"$in": ids}},
+                    {"$set": {"last_updated_at": now}},
+                )
+            )
             self._dataset._bulk_write(ops, frames=is_frame_field)
 
         return ids, label_ids
@@ -2529,6 +2542,7 @@ class SampleCollection(object):
         frames=False,
     ):
         ops = []
+        now = datetime.datetime.utcnow()
         for _id, value in zip(ids, values):
             if value is None and skip_none:
                 continue
@@ -2541,7 +2555,12 @@ class SampleCollection(object):
                     field_name, field, value, validate=validate
                 )
 
-            ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    {"$set": {field_name: value, "last_updated_at": now}},
+                )
+            )
 
         self._dataset._bulk_write(ops, frames=frames)
 
@@ -2597,6 +2616,12 @@ class SampleCollection(object):
                     )
                 )
 
+        now = datetime.datetime.utcnow()
+        ops.append(
+            UpdateMany(
+                {"_id": {"$in": ids}}, {"$set": {"last_updated_at": now}}
+            )
+        )
         self._dataset._bulk_write(ops, frames=frames)
 
     def _set_label_list_values(
@@ -2633,6 +2658,13 @@ class SampleCollection(object):
             )
 
         if ops:
+            now = datetime.datetime.utcnow()
+            ops.append(
+                UpdateMany(
+                    {"_id": {"$in": list(id_map.values())}},
+                    {"$set": {"last_updated_at": now}},
+                )
+            )
             self._dataset._bulk_write(ops, frames=frames)
 
     def _set_labels(self, field_name, sample_ids, label_docs):

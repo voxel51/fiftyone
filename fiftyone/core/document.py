@@ -5,6 +5,7 @@ Base classes for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from copy import deepcopy
 
 from bson import ObjectId
@@ -460,6 +461,8 @@ class _Document(object):
             raise ValueError(
                 "Cannot save a document that has not been added to a dataset"
             )
+
+        self._doc.last_updated_at = datetime.datetime.utcnow()
 
         return self._doc._save(deferred=deferred)
 

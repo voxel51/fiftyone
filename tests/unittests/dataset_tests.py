@@ -3312,6 +3312,148 @@ class DatasetIdTests(unittest.TestCase):
             )
 
 
+class SampleLastUpdatedAtTests(unittest.TestCase):
+    def check_updated(
+        self, sample, creation_time, prev_updated_time, reload=False
+    ):
+        if reload:
+            sample.reload()
+        dataset = sample._dataset
+        self.assertEqual(sample.created_at, creation_time)
+        self.assertGreater(sample.last_updated_at, prev_updated_time)
+        self.assertEqual(sample.last_updated_at, dataset.last_updated_at)
+        return sample.last_updated_at
+
+    @drop_datasets
+    def test_update_times(self):
+        now = datetime.utcnow()
+        delta = timedelta(milliseconds=1000)
+
+        # Create sample and test initial times
+        dataset = fo.Dataset()
+        sample = fo.Sample("s1.jpg")
+
+        dataset.add_sample(sample)
+        sample.reload()
+        creation_time = sample.created_at
+        updated_time = sample.last_updated_at
+
+        self.assertEqual(creation_time, updated_time)
+        self.assertAlmostEqual(now, creation_time, delta=delta)
+
+        # Adding sample field should not update modify time because we update
+        #   the schema not each sample
+        dataset.add_sample_field(
+            "class_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "detect_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        self.assertEqual(sample.created_at, creation_time)
+        self.assertEqual(sample.last_updated_at, updated_time)
+
+        # Make single field edit and check update time
+        dataset.set_values("foo", ["bar"])
+        sample.reload()
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Make sample level edit with save and check time
+        sample.class_field = fo.Classification(label="cow", other="snother")
+        sample.detect_field = fo.Detections(
+            detections=[
+                fo.Detection(label="cow", other="snother"),
+                fo.Detection(label="moo", other="snother"),
+            ]
+        )
+        sample.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        sample["foo"] = "bar"
+        sample.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # tag_samples
+        dataset.tag_samples("blah")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # untag_samples
+        dataset.untag_samples("blah")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # tag_labels
+        dataset.tag_labels("blah", "class_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+        dataset.tag_labels("blah", "detect_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # untag_labels
+        dataset.untag_labels("blah", "class_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+        dataset.untag_labels("blah", "detect_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Set label values
+        class_id = dataset.values("class_field.id")[0]
+        dataset.set_label_values("class_field.other", {class_id: "change"})
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        detect_ids = dataset.values("detect_field.detections.id", unwind=True)
+        dataset.set_label_values(
+            "detect_field.detections.other",
+            {detect_id: "change" for detect_id in detect_ids},
+        )
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # View is saved - first field only then entire view.
+        view = dataset.set_field("foo", "spam")
+        view.save("foo")
+        sample.reload()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        view = dataset.set_field("foo", "eggs")
+        view.save()
+        sample.reload()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # Clone fields
+        dataset.clone_sample_field("foo", "food")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        dataset.clone_sample_field("class_field.other", "class_field.snothers")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Rename fields
+        dataset.rename_sample_field(
+            "class_field.snothers", "class_field.smores"
+        )
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Clear fields
+        dataset.clear_sample_field("class_field.smores")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Delete fields
+        dataset.delete_sample_field("class_field.smores")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Create new dataset
+        # dataset2 = fo.Dataset()
+        # dataset2.add_sample(dataset.first())
+
+
 class SampleCreatedUpdatedAtTests(unittest.TestCase):
     EQUAL_DELTA = timedelta(milliseconds=1)
     CLOSE_DELTA = timedelta(seconds=1)
@@ -3361,8 +3503,9 @@ class SampleCreatedUpdatedAtTests(unittest.TestCase):
         )
 
         # Shouldn't be changed on updates
-        dataset.set_values("foo", [4] * len(samples))
-        self.assertEqual(times, dataset.values(time_field))
+        if not is_update:
+            dataset.set_values("foo", [4] * len(samples))
+            self.assertEqual(times, dataset.values(time_field))
 
         # view schema
         view = dataset.select_fields()
@@ -3493,11 +3636,12 @@ class SampleCreatedUpdatedAtTests(unittest.TestCase):
         )
 
         # Shouldn't be changed on updates
-        dataset.set_values("frames.foo", [[4]] * len(frames))
-        self.assertEqual(
-            original_times,
-            dataset.values(frame_time_field, unwind=True),
-        )
+        if not is_update:
+            dataset.set_values("frames.foo", [[4]] * len(frames))
+            self.assertEqual(
+                original_times,
+                dataset.values(frame_time_field, unwind=True),
+            )
 
         # View
         view = dataset.select_fields()

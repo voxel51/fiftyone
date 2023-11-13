@@ -5,6 +5,7 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from collections import OrderedDict
 
 from bson import ObjectId
@@ -841,6 +842,7 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
+        set_expr.update(last_updated_at=datetime.datetime.utcnow())
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$set": set_expr}])
@@ -926,7 +928,10 @@ class DatasetMixin(object):
         _paths = cls._handle_db_fields(paths)
 
         coll = get_db_conn()[cls.__name__]
-        coll.update_many({}, [{"$unset": _paths}])
+        now = datetime.datetime.utcnow()
+        coll.update_many(
+            {}, [{"$unset": _paths}, {"$set": {"last_updated_at": now}}]
+        )
 
     @classmethod
     def _handle_db_field(cls, path, new_path=None):

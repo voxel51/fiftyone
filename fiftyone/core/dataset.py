@@ -2551,7 +2551,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
-        dicts = [self._make_dict(sample) for sample in samples]
+        now = datetime.utcnow()
+        dicts = [self._make_dict(sample, now) for sample in samples]
 
         try:
             # adds `_id` to each dict
@@ -2610,8 +2611,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         dicts = []
         ops = []
+        now = datetime.utcnow()
         for sample in samples:
-            d = self._make_dict(sample, include_id=True)
+            d = self._make_dict(sample, now, include_id=True)
             dicts.append(d)
 
             if sample.id:
@@ -2629,7 +2631,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
-    def _make_dict(self, sample, include_id=False):
+    def _make_dict(self, sample, now_time, include_id=False):
         d = sample.to_mongo_dict(include_id=include_id)
 
         # We omit None here to allow samples with None-valued new fields to
@@ -2637,9 +2639,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # because None and missing are equivalent in our data model
         d = {k: v for k, v in d.items() if v is not None}
 
-        now = datetime.utcnow()
+        # Add created and updated times to sample
         d["_dataset_id"] = self._doc.id
-        d["created_at"] = d["last_updated_at"] = now
+        d["last_updated_at"] = now_time
+        if sample.created_at:
+            d["created_at"] = now_time
 
         return d
 
@@ -7118,11 +7122,15 @@ def _save_view(view, fields=None):
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
 
+    now = datetime.utcnow()
     if sample_fields:
-        pipeline.append({"$project": {f: True for f in sample_fields}})
+        field_project = {f: True for f in sample_fields}
+        field_project.update(last_updated_at=now)
+        pipeline.append({"$project": field_project})
         pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
     elif save_samples:
+        pipeline.append({"$set": {"last_updated_at": now}})
         pipeline.append(
             {
                 "$merge": {
@@ -7153,10 +7161,13 @@ def _save_view(view, fields=None):
             )
 
         if frame_fields:
-            pipeline.append({"$project": {f: True for f in frame_fields}})
+            field_project = {f: True for f in frame_fields}
+            field_project.update(last_updated_at=now)
+            pipeline.append({"$project": field_project})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
         else:
+            pipeline.append({"$project": {"last_updated_at": now}})
             pipeline.append(
                 {
                     "$merge": {
