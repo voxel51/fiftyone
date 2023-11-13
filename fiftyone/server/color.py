@@ -172,14 +172,15 @@ class SetColorScheme:
         self,
         subscription: str,
         color_scheme: ColorSchemeInput,
-    ) -> bool:
+    ) -> ColorScheme:
         state = get_state()
         state.color_scheme = _to_odm_color_scheme(color_scheme)
 
         await dispatch_event(
             subscription, fose.SetColorScheme(color_scheme=color_scheme)
         )
-        return True
+        # return updated colorscheme (add a unique id to the colorscheme) with colorscale
+        return _to_odm_color_scheme(color_scheme)
 
     @gql.field
     async def set_dataset_color_scheme(
@@ -191,7 +192,9 @@ class SetColorScheme:
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
-                _to_odm_color_scheme(color_scheme) if color_scheme else None
+                prune_rgb_color_scheme(_to_odm_color_scheme(color_scheme))
+                if color_scheme
+                else None
             )
             dataset.save()
 
@@ -201,18 +204,18 @@ class SetColorScheme:
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
 
-    # for colorscale in color_scheme.colorscale:
-    #     if colorscale.list is not None or colorscale.name is not None:
-    #         # Get the rgb tuples
+    for colorscale in color_scheme.colorscales:
+        if colorscale.list is not None or colorscale.name is not None:
+            # Get the rgb tuples
 
-    #         input = None
-    #         if colorscale.name:
-    #             input = colorscale.name
-    #         elif colorscale.list:
-    #             input = [[item.value, item.color] for item in colorscale.list]
+            input = None
+            if colorscale.name:
+                input = colorscale.name
+            elif colorscale.list:
+                input = [[item.value, item.color] for item in colorscale.list]
 
-    #         colormap_tuples = fop.get_colormap(input)
-    #         colorscale.rgb = colormap_tuples
+            colormap_tuples = fop.get_colormap(input)
+            colorscale.rgb = colormap_tuples
 
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
@@ -238,3 +241,25 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         if color_scheme.default_colorscale
         else {},
     )
+
+
+def prune_rgb_color_scheme(data: ColorScheme):
+    # Clone the input dictionary to avoid mutating the original object
+    cloned_data = data.copy()
+
+    # Process the 'colorscales' list
+    if "colorscales" in cloned_data and isinstance(
+        cloned_data["colorscales"], list
+    ):
+        cloned_data["colorscales"] = [
+            {key: value for key, value in item.items() if key != "rgb"}
+            for item in cloned_data["colorscales"]
+        ]
+
+    # Process the 'defaultColorscale' dictionary
+    if "defaultColorscale" in cloned_data and isinstance(
+        cloned_data["defaultColorscale"], dict
+    ):
+        cloned_data["defaultColorscale"].pop("rgb", None)
+
+    return cloned_data
