@@ -36,6 +36,7 @@ import fiftyone.core.media as fom
 import fiftyone.core.metadata as fomt
 import fiftyone.core.models as fomo
 import fiftyone.core.odm as foo
+import fiftyone.core.runs as fors
 import fiftyone.core.sample as fosa
 import fiftyone.core.storage as fost
 import fiftyone.core.utils as fou
@@ -945,6 +946,15 @@ class SampleCollection(object):
                 use_db_fields=use_db_fields,
             )
 
+            # These fields are currently not declared by default on point cloud
+            # datasets/slices, but they should be considered as default
+            if issubclass(
+                field.document_type, fol.Detection
+            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+                field_names = tuple(
+                    set(field_names) | {"location", "dimensions", "rotation"}
+                )
+
             return tuple(path + "." + f for f in field_names)
 
         field_names = self._dataset._sample_doc_cls._get_default_fields(
@@ -990,6 +1000,15 @@ class SampleCollection(object):
                 include_private=include_private,
                 use_db_fields=use_db_fields,
             )
+
+            # These fields are currently not declared by default on point cloud
+            # datasets/slices, but they should be considered as default
+            if issubclass(
+                field.document_type, fol.Detection
+            ) and self._contains_media_type(fom.POINT_CLOUD, any_slice=True):
+                field_names = tuple(
+                    set(field_names) | {"location", "dimensions", "rotation"}
+                )
 
             return tuple(path + "." + f for f in field_names)
 
@@ -2957,7 +2976,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         missing=None,
-        method="simple",
+        method=None,
         **kwargs,
     ):
         """Evaluates the regression predictions in this collection with respect
@@ -2966,7 +2985,8 @@ class SampleCollection(object):
         You can customize the evaluation method by passing additional
         parameters for the method's config class as ``kwargs``.
 
-        The supported ``method`` values and their associated configs are:
+        The natively provided ``method`` values and their associated configs
+        are:
 
         -   ``"simple"``: :class:`fiftyone.utils.eval.regression.SimpleEvaluationConfig`
 
@@ -2991,8 +3011,10 @@ class SampleCollection(object):
             eval_key (None): a string key to use to refer to this evaluation
             missing (None): a missing value. Any None-valued regressions are
                 given this value for results purposes
-            method ("simple"): a string specifying the evaluation method to use.
-                Supported values are ``("simple")``
+            method (None): a string specifying the evaluation method to use.
+                The supported values are
+                ``fo.evaluation_config.regression_backends.keys()`` and the
+                default is ``fo.evaluation_config.regression_default_backend``
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
                 being used
@@ -3017,7 +3039,7 @@ class SampleCollection(object):
         eval_key=None,
         classes=None,
         missing=None,
-        method="simple",
+        method=None,
         **kwargs,
     ):
         """Evaluates the classification predictions in this collection with
@@ -3030,7 +3052,8 @@ class SampleCollection(object):
         You can customize the evaluation method by passing additional
         parameters for the method's config class as ``kwargs``.
 
-        The supported ``method`` values and their associated configs are:
+        The natively provided ``method`` values and their associated configs
+        are:
 
         -   ``"simple"``: :class:`fiftyone.utils.eval.classification.SimpleEvaluationConfig`
         -   ``"top-k"``: :class:`fiftyone.utils.eval.classification.TopKEvaluationConfig`
@@ -3060,8 +3083,10 @@ class SampleCollection(object):
                 the observed ground truth/predicted labels are used
             missing (None): a missing label string. Any None-valued labels
                 are given this label for results purposes
-            method ("simple"): a string specifying the evaluation method to use.
-                Supported values are ``("simple", "binary", "top-k")``
+            method (None): a string specifying the evaluation method to use.
+                The supported values are
+                ``fo.evaluation_config.classification_backends.keys()`` and the
+                default is ``fo.evaluation_config.classification_default_backend``
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -3121,7 +3146,8 @@ class SampleCollection(object):
         you can optionally customize the method by passing additional
         parameters for the method's config class as ``kwargs``.
 
-        The supported ``method`` values and their associated configs are:
+        The natively provided ``method`` values and their associated configs
+        are:
 
         -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
         -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
@@ -3170,10 +3196,9 @@ class SampleCollection(object):
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
             method (None): a string specifying the evaluation method to use.
-                For spatial object detection, the supported values are
-                ``("coco", "open-images")`` and the default is ``"coco"``. For
-                temporal detection, the supported values are
-                ``("activitynet")`` and the default is ``"activitynet"``
+                The supported values are
+                ``fo.evaluation_config.detection_backends.keys()`` and the
+                default is ``fo.evaluation_config.detection_default_backend``
             iou (0.50): the IoU threshold to use to determine matches
             use_masks (False): whether to compute IoUs using the instances
                 masks in the ``mask`` attribute of the provided objects, which
@@ -3214,7 +3239,7 @@ class SampleCollection(object):
         gt_field="ground_truth",
         eval_key=None,
         mask_targets=None,
-        method="simple",
+        method=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3228,7 +3253,8 @@ class SampleCollection(object):
         be configured by passing additional parameters for the method's
         config class as ``kwargs``.
 
-        The supported ``method`` values and their associated configs are:
+        The natively provided ``method`` values and their associated configs
+        are:
 
         -   ``"simple"``: :class:`fiftyone.utils.eval.segmentation.SimpleEvaluationConfig`
 
@@ -3263,8 +3289,10 @@ class SampleCollection(object):
             mask_targets (None): a dict mapping pixel values or RGB hex strings
                 to labels. If not provided, the observed values are used as
                 labels
-            method ("simple"): a string specifying the evaluation method to
-                use. Supported values are ``("simple")``
+            method (None): a string specifying the evaluation method to use.
+                The supported values are
+                ``fo.evaluation_config.segmentation_backends.keys()`` and the
+                default is ``fo.evaluation_config.segmentation_default_backend``
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3298,19 +3326,28 @@ class SampleCollection(object):
         """
         return eval_key in self.list_evaluations()
 
-    def list_evaluations(self, type=None, **kwargs):
-        """Returns a list of all evaluation keys on this collection.
+    def list_evaluations(self, type=None, method=None, **kwargs):
+        """Returns a list of evaluation keys on this collection.
 
         Args:
-            type (None): an :class:`fiftyone.core.evaluations.EvaluationMethod`
-                type. If provided, only runs that are a subclass of this type
-                are included
+            type (None): a specific evaluation type to match, which can be:
+
+                -   a string
+                    :attr:`fiftyone.core.evaluations.EvaluationMethodConfig.type`
+                -   a :class:`fiftyone.core.evaluations.EvaluationMethod` class
+                    or its fully-qualified class name string
+
+            method (None): a specific
+                :attr:`fiftyone.core.evaluations.EvaluationMethodConfig.method`
+                string to match
             **kwargs: optional config paramters to match
 
         Returns:
             a list of evaluation keys
         """
-        return foev.EvaluationMethod.list_runs(self, type=type, **kwargs)
+        return foev.EvaluationMethod.list_runs(
+            self, type=type, method=method, **kwargs
+        )
 
     def rename_evaluation(self, eval_key, new_eval_key):
         """Replaces the key for the given evaluation with a new key.
@@ -3398,19 +3435,27 @@ class SampleCollection(object):
         """
         return brain_key in self.list_brain_runs()
 
-    def list_brain_runs(self, type=None, **kwargs):
-        """Returns a list of all brain keys on this collection.
+    def list_brain_runs(self, type=None, method=None, **kwargs):
+        """Returns a list of brain keys on this collection.
 
         Args:
-            type (None): a :class:`fiftyone.core.brain.BrainMethod` type. If
-                provided, only runs that are a subclass of this type are
-                included
+            type (None): a specific brain run type to match, which can be:
+
+                -   a string :attr:`fiftyone.core.brain.BrainMethodConfig.type`
+                -   a :class:`fiftyone.core.brain.BrainMethod` class or its
+                    fully-qualified class name string
+
+            method (None): a specific
+                :attr:`fiftyone.core.brain.BrainMethodConfig.method` string to
+                match
             **kwargs: optional config paramters to match
 
         Returns:
             a list of brain keys
         """
-        return fob.BrainMethod.list_runs(self, type=type, **kwargs)
+        return fob.BrainMethod.list_runs(
+            self, type=type, method=method, **kwargs
+        )
 
     def rename_brain_run(self, brain_key, new_brain_key):
         """Replaces the key for the given brain run with a new key.
@@ -3483,6 +3528,190 @@ class SampleCollection(object):
     def delete_brain_runs(self):
         """Deletes all brain method runs from this collection."""
         fob.BrainMethod.delete_runs(self)
+
+    @property
+    def has_runs(self):
+        """Whether this colection has any runs."""
+        return bool(self.list_runs())
+
+    def has_run(self, run_key):
+        """Whether this collection has a run with the given key.
+
+        Args:
+            run_key: a run key
+
+        Returns:
+            True/False
+        """
+        return run_key in self.list_runs()
+
+    def list_runs(self, **kwargs):
+        """Returns a list of run keys on this collection.
+
+        Args:
+            **kwargs: optional config paramters to match
+
+        Returns:
+            a list of run keys
+        """
+        return fors.Run.list_runs(self, **kwargs)
+
+    def init_run(self):
+        """Initializes a config instance for a new run.
+
+        Returns:
+            a :class:`fiftyone.core.runs.RunConfig`
+        """
+        return fors.RunConfig()
+
+    def register_run(
+        self, run_key, config, results=None, overwrite=False, cache=True
+    ):
+        """Registers a run under the given key on this collection.
+
+        Args:
+            run_key: a run key
+            config: a :class:`fiftyone.core.runs.RunConfig`
+            results (None): an optional :class:`fiftyone.core.runs.RunResults`
+            overwrite (False): whether to allow overwriting an existing run of
+                the same type
+            cache (True): whether to cache the results on the collection
+        """
+        if not isinstance(config, fors.RunConfig):
+            raise ValueError(
+                "Expected config of type %s; found %s"
+                % (fors.RunConfig, type(config))
+            )
+
+        run = config.build()
+        run.ensure_requirements()
+
+        run.register_run(self, run_key, overwrite=overwrite)
+
+        if results is not None:
+            if not isinstance(results, fors.RunResults):
+                raise ValueError(
+                    "Expected results of type %s; found %s"
+                    % (fors.RunResults, type(results))
+                )
+
+            run.save_run_results(
+                self, run_key, results, overwrite=overwrite, cache=cache
+            )
+
+    def rename_run(self, run_key, new_run_key):
+        """Replaces the key for the given run with a new key.
+
+        Args:
+            run_key: a run key
+            new_run_key: a new run key
+        """
+        return fors.Run.update_run_key(self, run_key, new_run_key)
+
+    def get_run_info(self, run_key):
+        """Returns information about the run with the given key on this
+        collection.
+
+        Args:
+            run_key: a run key
+
+        Returns:
+            a :class:`fiftyone.core.runs.RunInfo`
+        """
+        return fors.Run.get_run_info(self, run_key)
+
+    def update_run_config(self, run_key, config):
+        """Updates the run config for the run with the given key.
+
+        Args:
+            run_key: a run key
+            config: a :class:`fiftyone.core.runs.RunConfig`
+        """
+        if not isinstance(config, fors.RunConfig):
+            raise ValueError(
+                "Expected config of type %s; found %s"
+                % (fors.RunConfig, type(config))
+            )
+
+        fors.Run.update_run_config(self, run_key, config)
+
+    def init_run_results(self, run_key):
+        """Initializes a results instance for the run with the given key.
+
+        Args:
+            run_key: a run key
+
+        Returns:
+            a :class:`fiftyone.core.runs.RunResults`
+        """
+        info = fors.Run.get_run_info(self, run_key)
+        return fors.RunResults(self, info.config, run_key)
+
+    def save_run_results(self, run_key, results, overwrite=True, cache=True):
+        """Saves run results for the run with the given key.
+
+        Args:
+            run_key: a run key
+            results: a :class:`fiftyone.core.runs.RunResults`
+            overwrite (True): whether to overwrite an existing result with the
+                same key
+            cache (True): whether to cache the results on the collection
+        """
+        if not isinstance(results, fors.RunResults):
+            raise ValueError(
+                "Expected results of type %s; found %s"
+                % (fors.RunResults, type(results))
+            )
+
+        fors.Run.save_run_results(
+            self, run_key, results, overwrite=overwrite, cache=cache
+        )
+
+    def load_run_results(self, run_key, cache=True, load_view=True, **kwargs):
+        """Loads the results for the run with the given key on this collection.
+
+        Args:
+            run_key: a run key
+            cache (True): whether to cache the results on the collection
+            load_view (True): whether to load the view on which the results
+                were computed (True) or the full dataset (False)
+            **kwargs: keyword arguments for the run's
+                :meth:`fiftyone.core.runs.RunConfig.load_credentials` method
+
+        Returns:
+            a :class:`fiftyone.core.runs.RunResults`
+        """
+        return fors.Run.load_run_results(
+            self, run_key, cache=cache, load_view=load_view, **kwargs
+        )
+
+    def load_run_view(self, run_key, select_fields=False):
+        """Loads the :class:`fiftyone.core.view.DatasetView` on which the
+        specified run was performed on this collection.
+
+        Args:
+            run_key: a run key
+            select_fields (False): whether to exclude fields involved in other
+                runs
+
+        Returns:
+            a :class:`fiftyone.core.view.DatasetView`
+        """
+        return fors.Run.load_run_view(
+            self, run_key, select_fields=select_fields
+        )
+
+    def delete_run(self, run_key):
+        """Deletes the run with the given key from this collection.
+
+        Args:
+            run_key: a run key
+        """
+        fors.Run.delete_run(self, run_key)
+
+    def delete_runs(self):
+        """Deletes all runs from this collection."""
+        fors.Run.delete_runs(self)
 
     @classmethod
     def list_view_stages(cls):
@@ -8205,6 +8434,7 @@ class SampleCollection(object):
         The natively provided backends and their associated config classes are:
 
         -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+        -   ``"labelstudio"``: :class:`fiftyone.utils.labelstudio.LabelStudioBackendConfig`
         -   ``"labelbox"``: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
         See :ref:`this page <requesting-annotations>` for more information
@@ -8340,19 +8570,28 @@ class SampleCollection(object):
         """
         return anno_key in self.list_annotation_runs()
 
-    def list_annotation_runs(self, type=None, **kwargs):
-        """Returns a list of all annotation keys on this collection.
+    def list_annotation_runs(self, type=None, method=None, **kwargs):
+        """Returns a list of annotation keys on this collection.
 
         Args:
-            type (None): a :class:`fiftyone.core.annotations.AnnotationMethod`
-                type. If provided, only runs that are a subclass of this type
-                are included
+            type (None): a specific annotation run type to match, which can be:
+
+                -   a string
+                    :attr:`fiftyone.core.annotations.AnnotationMethodConfig.type`
+                -   a :class:`fiftyone.core.annotations.AnnotationMethod` class
+                    or its fully-qualified class name string
+
+            method (None): a specific
+                :attr:`fiftyone.core.annotations.AnnotationMethodConfig.method`
+                string to match
             **kwargs: optional config paramters to match
 
         Returns:
             a list of annotation keys
         """
-        return foan.AnnotationMethod.list_runs(self, type=type, **kwargs)
+        return foan.AnnotationMethod.list_runs(
+            self, type=type, method=method, **kwargs
+        )
 
     def rename_annotation_run(self, anno_key, new_anno_key):
         """Replaces the key for the given annotation run with a new key.
@@ -9481,31 +9720,35 @@ class SampleCollection(object):
     def _get_group_media_types(self):
         return self._dataset._doc.group_media_types
 
-    def _contains_videos(self, any_slice=False):
-        if self.media_type == fom.VIDEO:
+    def _contains_media_type(self, media_type, any_slice=False):
+        if self.media_type == media_type:
             return True
 
         if self.media_type == fom.GROUP:
             if self.group_media_types is None:
-                return self._dataset.media_type == fom.VIDEO
+                return self._dataset.media_type == media_type
 
             if any_slice:
                 return any(
-                    slice_media_type == fom.VIDEO
+                    slice_media_type == media_type
                     for slice_media_type in self.group_media_types.values()
                 )
 
             return (
-                self.group_media_types.get(self.group_slice, None) == fom.VIDEO
+                self.group_media_types.get(self.group_slice, None)
+                == media_type
             )
 
         if self.media_type == fom.MIXED:
             return any(
-                slice_media_type == fom.VIDEO
+                slice_media_type == media_type
                 for slice_media_type in self._get_group_media_types().values()
             )
 
         return False
+
+    def _contains_videos(self, any_slice=False):
+        return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
 
     def _has_frame_fields(self):
         return self._contains_videos(any_slice=True)

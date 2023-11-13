@@ -13,8 +13,8 @@ const test = base.extend<{
   colorModal: ColorModalPom;
   gridActionsRow: GridActionsRowPom;
 }>({
-  sidebar: async ({ page, eventUtils }, use) => {
-    await use(new SidebarPom(page, eventUtils));
+  sidebar: async ({ page }, use) => {
+    await use(new SidebarPom(page));
   },
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
@@ -65,7 +65,6 @@ test.describe("color scheme basic functionality with quickstart", () => {
     grid,
     gridActionsRow,
     colorModal,
-    page,
     eventUtils,
   }) => {
     // update color scheme to color blind friendly palette
@@ -141,6 +140,7 @@ test.describe("color scheme basic functionality with quickstart", () => {
 
     await gridRefreshedEventPromise;
     await gridRefreshedEventPromise;
+
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
       "rgb(154, 205, 50)"

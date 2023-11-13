@@ -31,5 +31,4 @@ sse-starlette>=0.10.3
 starlette==0.27.0
 strawberry-graphql==0.138.1
 tabulate==0.8.10
-universal-analytics-python3==1.0.1
 xmltodict==0.12.0

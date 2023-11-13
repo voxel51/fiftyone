@@ -18,6 +18,7 @@ import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";
 import JSONViewer from "./JSONViewer";
+import LabelTag from "./LabelTag";
 import {
   Container,
   Display,
@@ -142,12 +143,16 @@ const ColorModal = () => {
                   <Display className={`${scrollable} ${scrollableSm}`}>
                     {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
                     {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
-                    {typeof activeEntry === "object" && activeEntry?.path && (
-                      <FieldSetting
-                        key={activeEntry.path}
-                        path={activeEntry.path}
-                      />
-                    )}
+                    {typeof activeEntry === "object" &&
+                      activeEntry?.path === "_label_tags" && <LabelTag />}
+                    {typeof activeEntry === "object" &&
+                      activeEntry?.path &&
+                      activeEntry.path !== "_label_tags" && (
+                        <FieldSetting
+                          key={activeEntry.path}
+                          path={activeEntry.path}
+                        />
+                      )}
                   </Display>
                 </DraggableContent>
                 <ColorFooter />

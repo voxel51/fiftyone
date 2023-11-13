@@ -24,6 +24,9 @@ FIFTYONE_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "config.json")
 FIFTYONE_ANNOTATION_CONFIG_PATH = os.path.join(
     FIFTYONE_CONFIG_DIR, "annotation_config.json"
 )
+FIFTYONE_EVALUATION_CONFIG_PATH = os.path.join(
+    FIFTYONE_CONFIG_DIR, "evaluation_config.json"
+)
 FIFTYONE_APP_CONFIG_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "app_config.json")
 BASE_DIR = os.path.dirname(FIFTYONE_DIR)
 TEAMS_PATH = os.path.join(FIFTYONE_CONFIG_DIR, "var", "teams.json")
@@ -82,6 +85,7 @@ DEFAULT_APP_COLOR_POOL = [
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
     "fields": [],
+    "label_tags": {},
 }
 
 # MongoDB setup
@@ -111,8 +115,3 @@ except ImportError:
     FIFTYONE_DESKTOP_APP_DIR = os.path.normpath(
         os.path.join(FIFTYONE_DIR, "../app")
     )
-
-# Analytics
-UA_DEV = "UA-141773487-10"
-UA_PROD = "UA-141773487-9"
-UA_ID = UA_DEV if DEV_INSTALL or RC_INSTALL else UA_PROD

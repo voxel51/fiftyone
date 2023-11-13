@@ -1883,3 +1883,191 @@ When an operation is delegated, the following happens:
 
 2.  The :ref:`connected orchestrator <delegated-orchestrator>` picks up the
     task and executes it when resources are available
+
+.. _plugin-advanced-usage:
+
+Advanced usage
+______________
+
+Storing custom runs
+-------------------
+
+When users execute builtin methods like
+:ref:`annotation <fiftyone-annotation>`,
+:ref:`evaluation <evaluating-models>`, and
+:ref:`brain methods <fiftyone-brain>` on their datasets, certain configuration
+and results information is stored on the dataset that can be accessed later;
+for example, see :ref:`managing brain runs <brain-managing-runs>`.
+
+FiftyOne also provides the ability to store *custom runs* on datasets, which
+can be used by plugin developers to persist arbitrary application-specific
+information that can be accessed later by users and/or plugins.
+
+The interface for creating custom runs is simple:
+
+.. code-block:: py
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset("custom-runs-example")
+    dataset.persistent = True
+
+    config = dataset.init_run()
+    config.foo = "bar"  # add as many key-value pairs as you need
+
+    # Also possible
+    # config = fo.RunConfig(foo="bar")
+
+    dataset.register_run("custom", config)
+
+    results = dataset.init_run_results("custom")
+    results.spam = "eggs"  # add as many key-value pairs as you need
+
+    # Also possible
+    # results = fo.RunResults(dataset, config, "custom", spam="eggs")
+
+    dataset.save_run_results("custom", results)
+
+.. note::
+
+    :class:`RunConfig <fiftyone.core.runs.RunConfig>` and
+    :class:`RunResults <fiftyone.core.runs.RunResults>` can store any JSON
+    serializable values.
+
+    :class:`RunConfig <fiftyone.core.runs.RunConfig>` documents must be less
+    than 16MB, although they are generally far smaller as they are intended to
+    store only a handful of simple parameters.
+
+    :class:`RunResults <fiftyone.core.runs.RunResults>` instances are stored in
+    `GridFS <https://www.mongodb.com/docs/manual/core/gridfs>`_ and may exceed
+    16MB. They are only loaded when specifically accessed by a user.
+
+You can access custom runs at any time as follows:
+
+.. code-block:: py
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.load_dataset("custom-runs-example")
+
+    info = dataset.get_run_info("custom")
+    print(info)
+
+    results = dataset.load_run_results("custom")
+    print(results)
+
+.. code-block:: text
+
+    {
+        "key": "custom",
+        "version": "0.22.3",
+        "timestamp": "2023-10-26T13:29:20.837595",
+        "config": {
+            "type": "run",
+            "method": null,
+            "cls": "fiftyone.core.runs.RunConfig",
+            "foo": "bar"
+        }
+    }
+
+.. code-block:: text
+
+    {
+        "cls": "fiftyone.core.runs.RunResults",
+        "spam": "eggs"
+    }
+
+.. _managing-custom-runs:
+
+Managing custom runs
+--------------------
+
+FiftyOne provides a variety of methods that you can use to manage custom runs
+stored on datasets.
+
+Call
+:meth:`list_runs() <fiftyone.core.collections.SampleCollection.list_runs>`
+to see the available custom run keys on a dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.list_runs()
+
+Use
+:meth:`get_run_info() <fiftyone.core.collections.SampleCollection.get_run_info>`
+to retrieve information about the configuration of a custom run:
+
+.. code:: python
+    :linenos:
+
+    info = dataset.get_run_info(run_key)
+    print(info)
+
+Use :meth:`init_run() <fiftyone.core.collections.SampleCollection.init_run>`
+and
+:meth:`register_run() <fiftyone.core.collections.SampleCollection.register_run>`
+to create a new custom run on a dataset:
+
+.. code:: python
+    :linenos:
+
+    config = dataset.init_run(run_key)
+    config.foo = "bar"  # add as many key-value pairs as you need
+
+    dataset.register_run(run_key, config)
+
+Use
+:meth:`update_run_config() <fiftyone.core.collections.SampleCollection.update_run_config>`
+to update the run config associated with an existing custom run:
+
+.. code:: python
+    :linenos:
+
+    dataset.update_run_config(run_key, config)
+
+Use
+:meth:`init_run_results() <fiftyone.core.collections.SampleCollection.init_run_results>`
+and
+:meth:`save_run_results() <fiftyone.core.collections.SampleCollection.save_run_results>`
+to store run results for a custom run:
+
+.. code:: python
+    :linenos:
+
+    results = dataset.init_run_results(run_key)
+    results.spam = "eggs"  # add as many key-value pairs as you need
+
+    dataset.save_run_results(run_key, results)
+
+    # update existing results
+    dataset.save_run_results(run_key, results, overwrite=True)
+
+Use
+:meth:`load_run_results() <fiftyone.core.collections.SampleCollection.load_run_results>`
+to load the results for a custom run:
+
+.. code:: python
+    :linenos:
+
+    results = dataset.load_run_results(run_key)
+
+Use
+:meth:`rename_run() <fiftyone.core.collections.SampleCollection.rename_run>`
+to rename the run key associated with an existing custom run:
+
+.. code:: python
+    :linenos:
+
+    dataset.rename_run(run_key, new_run_key)
+
+Use
+:meth:`delete_run() <fiftyone.core.collections.SampleCollection.delete_run>`
+to delete the record of a custom run from a dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.delete_run(run_key)

@@ -17,6 +17,13 @@ your data.
 
 .. note::
 
+    Did you know? You can import media and/or labels from within the FiftyOne
+    App by installing the
+    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/io>`_
+    plugin!
+
+.. note::
+
     When you create a |Dataset|, its samples and all of their fields (metadata,
     labels, custom fields, etc.) are written to FiftyOne's backing database.
 

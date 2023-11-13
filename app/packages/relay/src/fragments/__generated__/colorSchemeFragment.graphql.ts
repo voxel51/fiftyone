@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<8dacb614e6a757b9006853a4e1eb9004>>
+ * @generated SignedSource<<c30221a82ab854e70ebea0579d4e5415>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -23,6 +23,13 @@ export type colorSchemeFragment$data = {
       readonly value: string;
     }> | null;
   }> | null;
+  readonly labelTags: {
+    readonly fieldColor: string | null;
+    readonly valueColors: ReadonlyArray<{
+      readonly color: string;
+      readonly value: string;
+    }> | null;
+  } | null;
   readonly multicolorKeypoints: boolean | null;
   readonly opacity: number | null;
   readonly showSkeletons: boolean | null;
@@ -33,7 +40,29 @@ export type colorSchemeFragment$key = {
   readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
 };
 
-const node: ReaderFragment = {
+const node: ReaderFragment = (function(){
+var v0 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "fieldColor",
+  "storageKey": null
+},
+v1 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "color",
+  "storageKey": null
+},
+v2 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "value",
+  "storageKey": null
+};
+return {
   "argumentDefinitions": [],
   "kind": "Fragment",
   "metadata": null,
@@ -89,13 +118,7 @@ const node: ReaderFragment = {
           "name": "colorByAttribute",
           "storageKey": null
         },
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "fieldColor",
-          "storageKey": null
-        },
+        (v0/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -111,20 +134,33 @@ const node: ReaderFragment = {
           "name": "valueColors",
           "plural": true,
           "selections": [
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "color",
-              "storageKey": null
-            },
-            {
-              "alias": null,
-              "args": null,
-              "kind": "ScalarField",
-              "name": "value",
-              "storageKey": null
-            }
+            (v1/*: any*/),
+            (v2/*: any*/)
+          ],
+          "storageKey": null
+        }
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "LabelTagColor",
+      "kind": "LinkedField",
+      "name": "labelTags",
+      "plural": false,
+      "selections": [
+        (v0/*: any*/),
+        {
+          "alias": null,
+          "args": null,
+          "concreteType": "ValueColor",
+          "kind": "LinkedField",
+          "name": "valueColors",
+          "plural": true,
+          "selections": [
+            (v2/*: any*/),
+            (v1/*: any*/)
           ],
           "storageKey": null
         }
@@ -135,7 +171,8 @@ const node: ReaderFragment = {
   "type": "ColorScheme",
   "abstractKey": null
 };
+})();
 
-(node as any).hash = "0df00003de521a6296d8a5d56956247b";
+(node as any).hash = "29217c42c48b886de4eea10f26116f80";
 
 export default node;

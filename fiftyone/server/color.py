@@ -34,6 +34,12 @@ class CustomizeColor:
     fieldColor: t.Optional[str] = None
 
 
+@gql.type
+class LabelTagColor:
+    fieldColor: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColor]] = None
+
+
 @gql.enum
 class ColorBy(Enum):
     field = "field"
@@ -47,6 +53,7 @@ class ColorScheme:
     color_pool: t.List[str]
     color_by: t.Optional[ColorBy] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
+    label_tags: t.Optional[LabelTagColor] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
@@ -67,10 +74,17 @@ class CustomizeColorInput:
 
 
 @gql.input
+class LabelTagColorInput:
+    fieldColor: t.Optional[str] = None
+    valueColors: t.Optional[t.List[ValueColorInput]] = None
+
+
+@gql.input
 class ColorSchemeInput:
     color_pool: t.List[str]
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
+    label_tags: t.Optional[LabelTagColorInput] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
@@ -120,4 +134,7 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],
+        label_tags=asdict(color_scheme.label_tags)
+        if color_scheme.label_tags
+        else {},
     )
