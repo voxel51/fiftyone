@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { executeStartupOperators, loadOperatorsFromServer } from "./operators";
 import { isPrimitiveString } from "@fiftyone/utilities";
@@ -21,18 +21,22 @@ async function loadOperators(datasetName: string) {
  * Load built-in and installed JavaScript and Python operators and queue all
  *  start-up operators for execution.
  */
-export function useOperators() {
+export function useOperators(datasetLess?: boolean) {
+  const [ready, setReady] = useState(false);
   const datasetName = useRecoilValue(datasetNameAtom);
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
     availableOperatorsRefreshCount
   );
 
   useEffect(() => {
-    if (isPrimitiveString(datasetName)) {
+    if (isPrimitiveString(datasetName) || datasetLess) {
       loadOperators(datasetName).then(() => {
         // trigger force refresh
         setAvailableOperatorsRefreshCount((count) => count + 1);
+        setReady(true);
       });
     }
-  }, [datasetName, setAvailableOperatorsRefreshCount]);
+  }, [datasetLess, datasetName, setAvailableOperatorsRefreshCount]);
+
+  return ready;
 }
