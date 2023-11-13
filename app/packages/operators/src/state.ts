@@ -14,7 +14,6 @@ import {
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
-  RESOLVE_PLACEMENTS_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
@@ -36,16 +35,14 @@ export const promptingOperatorState = atom({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get:
-    () =>
-    ({ get }) => {
-      const promptingOperator = get(promptingOperatorState);
-      if (!promptingOperator) {
-        return {};
-      }
-      const { params } = promptingOperator;
-      return params;
-    },
+  get: () => ({ get }) => {
+    const promptingOperator = get(promptingOperatorState);
+    if (!promptingOperator) {
+      return {};
+    }
+    const { params } = promptingOperator;
+    return params;
+  },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -98,16 +95,14 @@ const globalContextSelector = selector({
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get:
-    (operatorName) =>
-    ({ get }) => {
-      const globalContext = get(globalContextSelector);
-      const params = get(currentOperatorParamsSelector(operatorName));
-      return {
-        ...globalContext,
-        params,
-      };
-    },
+  get: (operatorName) => ({ get }) => {
+    const globalContext = get(globalContextSelector);
+    const params = get(currentOperatorParamsSelector(operatorName));
+    return {
+      ...globalContext,
+      params,
+    };
+  },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
@@ -248,17 +243,16 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) =>
-      (fieldName, value) => {
-        const state = get(promptingOperatorState);
-        set(promptingOperatorState, {
-          ...state,
-          params: {
-            ...state.params,
-            [fieldName]: value,
-          },
-        });
-      }
+    ({ get, set }) => (fieldName, value) => {
+      const state = get(promptingOperatorState);
+      set(promptingOperatorState, {
+        ...state,
+        params: {
+          ...state.params,
+          [fieldName]: value,
+        },
+      });
+    }
   );
   const execute = useCallback(async () => {
     const resolved = await operator.resolveInput(ctx);
@@ -317,10 +311,10 @@ export const useOperatorPrompt = () => {
     notify,
   ]);
 
-  const pendingResolve = useMemo(
-    () => ctx.params != resolvedCtx?.params,
-    [ctx.params, resolvedCtx?.params]
-  );
+  const pendingResolve = useMemo(() => ctx.params != resolvedCtx?.params, [
+    ctx.params,
+    resolvedCtx?.params,
+  ]);
 
   if (!promptingOperator) return null;
 
@@ -413,6 +407,11 @@ export function filterChoicesByQuery(query, all) {
 export const availableOperatorsRefreshCount = atom({
   key: "availableOperatorsRefreshCount",
   default: 0,
+});
+
+export const operatorsInitializedAtom = atom({
+  key: "operatorsInitializedAtom",
+  default: false,
 });
 
 export const availableOperators = selector({
@@ -798,58 +797,17 @@ export const operatorPlacementsAtom = atom({
 
 export const placementsForPlaceSelector = selectorFamily({
   key: "operatorsForPlaceSelector",
-  get:
-    (place: Places) =>
-    ({ get }) => {
-      const placements = get(operatorPlacementsAtom);
-      return placements
-        .filter(
-          (p) => p.placement.place === place && p.operator?.config?.canExecute
-        )
-        .map(({ placement, operator }) => ({ placement, operator }));
-    },
+  get: (place: Places) => ({ get }) => {
+    const placements = get(operatorPlacementsAtom);
+    return placements
+      .filter(
+        (p) => p.placement.place === place && p.operator?.config?.canExecute
+      )
+      .map(({ placement, operator }) => ({ placement, operator }));
+  },
 });
 
 export function useOperatorPlacements(place: Places) {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const currentSample = useRecoilValue(fos.currentSampleId);
-  const setContext = useSetRecoilState(operatorThrottledContext);
-  const setThrottledContext = useMemo(() => {
-    return debounce(
-      (context) => {
-        setContext(context);
-      },
-      RESOLVE_PLACEMENTS_TTL,
-      { leading: true }
-    );
-  }, [setContext]);
-
-  useEffect(() => {
-    setThrottledContext({
-      datasetName,
-      view,
-      extendedStages,
-      filters,
-      selectedSamples,
-      selectedLabels,
-      currentSample,
-    });
-  }, [
-    setThrottledContext,
-    datasetName,
-    view,
-    extendedStages,
-    filters,
-    selectedSamples,
-    selectedLabels,
-    currentSample,
-  ]);
-
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
   return { placements };
