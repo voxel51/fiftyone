@@ -142,6 +142,43 @@ export class BufferManager {
   }
 
   /**
+   * Searches the `value` in the first range that contains it and removes it.
+   * If the value is in the middle of the range, the range is split into two.
+   */
+  public removeBufferValue(value: number) {
+    if (this.buffers.length === 0) {
+      return;
+    }
+
+    const rangeIndex = this.getRangeIndexForFrame(value);
+
+    if (rangeIndex === -1) {
+      return;
+    }
+
+    const range = this.buffers[rangeIndex];
+
+    if (range[0] === range[1]) {
+      this.removeRangeAtIndex(rangeIndex);
+      return;
+    }
+
+    const newRanges: BufferRange[] = [];
+
+    if (range[0] === value) {
+      newRanges.push([value + 1, range[1]]);
+    } else if (range[1] === value) {
+      newRanges.push([range[0], value - 1]);
+    } else {
+      newRanges.push([value + 1, range[1]]);
+      newRanges.push([range[0], value - 1]);
+    }
+
+    this.removeRangeAtIndex(rangeIndex);
+    newRanges.forEach((newRange) => this.addNewRange(newRange));
+  }
+
+  /**
    * Resets the buffer.
    */
   public reset() {

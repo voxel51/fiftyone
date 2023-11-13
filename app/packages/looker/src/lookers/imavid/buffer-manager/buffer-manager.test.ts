@@ -153,6 +153,53 @@ describe("BufferManager class tests", () => {
     expect(bufferManager.buffers.length).toBe(0);
   });
 
+  test("removeBufferValue method", async () => {
+    bufferManager.addNewRange([2, 10]);
+    bufferManager.addNewRange([12, 25]);
+
+    bufferManager.removeBufferValue(5);
+
+    /**
+     * new buffer ranges should be:
+     * [[2, 4], [6, 10], [12, 25]]
+     */
+    expect(bufferManager.buffers.length).toBe(3);
+    expect(bufferManager.buffers[0][0]).toBe(2);
+    expect(bufferManager.buffers[0][1]).toBe(4);
+    expect(bufferManager.buffers[1][0]).toBe(6);
+    expect(bufferManager.buffers[1][1]).toBe(10);
+    expect(bufferManager.buffers[2][0]).toBe(12);
+    expect(bufferManager.buffers[2][1]).toBe(25);
+
+    bufferManager.removeBufferValue(12);
+
+    /**
+     * new buffer ranges should be:
+     * [[2, 4], [6, 10], [13, 25]]
+     */
+    expect(bufferManager.buffers.length).toBe(3);
+    expect(bufferManager.buffers[0][0]).toBe(2);
+    expect(bufferManager.buffers[0][1]).toBe(4);
+    expect(bufferManager.buffers[1][0]).toBe(6);
+    expect(bufferManager.buffers[1][1]).toBe(10);
+    expect(bufferManager.buffers[2][0]).toBe(13);
+    expect(bufferManager.buffers[2][1]).toBe(25);
+
+    bufferManager.removeBufferValue(10);
+
+    /**
+     * new buffer ranges should be:
+     * [[2, 4], [6, 9], [13, 25]]
+     */
+    expect(bufferManager.buffers.length).toBe(3);
+    expect(bufferManager.buffers[0][0]).toBe(2);
+    expect(bufferManager.buffers[0][1]).toBe(4);
+    expect(bufferManager.buffers[1][0]).toBe(6);
+    expect(bufferManager.buffers[1][1]).toBe(9);
+    expect(bufferManager.buffers[2][0]).toBe(13);
+    expect(bufferManager.buffers[2][1]).toBe(25);
+  });
+
   test("getUnprocessedBufferRange method", async () => {
     bufferManager.addNewRange([2, 10]);
     bufferManager.addNewRange([12, 25]);
