@@ -660,6 +660,22 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.last_loaded_at
 
     @property
+    def last_updated_at(self):
+        """The datetime that any element of the dataset was last updated."""
+        conn = foo.get_db_conn()
+        sample_collection = self._sample_collection_name
+        docs = list(
+            conn[sample_collection]
+            .find({}, {"last_updated_at"})
+            .sort("last_updated_at", -1)
+            .limit(1)
+        )
+        if docs:
+            return docs[0]["last_updated_at"]
+        else:
+            return None
+
+    @property
     def persistent(self):
         """Whether the dataset persists in the database after a session is
         terminated.
@@ -2642,8 +2658,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # Add created and updated times to sample
         d["_dataset_id"] = self._doc.id
         d["last_updated_at"] = now_time
-        if sample.created_at:
-            d["created_at"] = now_time
+        d["created_at"] = sample.created_at or now_time
 
         return d
 
@@ -6726,6 +6741,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     if sample_collection_name is not None:
         sample_collection = conn[sample_collection_name]
         sample_collection.create_index("filepath")
+        sample_collection.create_index("last_updated_at")
 
     if frame_collection_name is not None:
         frame_collection = conn[frame_collection_name]
