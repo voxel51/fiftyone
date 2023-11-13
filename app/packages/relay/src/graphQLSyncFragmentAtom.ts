@@ -32,7 +32,7 @@ const isTest = typeof process !== "undefined" && process.env.MODE === "test";
  * If the fragment path cannot be read from given the parent fragment keys and
  * the optional final read function, the atom's default value will be used
  */
-export function graphQLSyncFragmentAtom<T extends KeyType, K>(
+export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
   fragmentOptions: GraphQLSyncFragmentSyncAtomOptions<T, K>,
   options: GraphQLSyncFragmentAtomOptions<K>
 ) {

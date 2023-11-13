@@ -253,6 +253,9 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    frame_collection_name: gql.Private[t.Optional[str]]
+    sample_collection_name: gql.Private[t.Optional[str]]
+
     @gql.field
     def stages(
         self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
@@ -263,6 +266,21 @@ class Dataset:
                     return view.stage_dicts()
 
         return view or []
+
+    @gql.field
+    async def estimated_sample_count(self, info: Info = None) -> int:
+        return await info.context.db[
+            self.sample_collection_name
+        ].estimated_document_count()
+
+    @gql.field
+    async def estimated_frame_count(
+        self, info: Info = None
+    ) -> t.Optional[int]:
+        if self.frame_collection_name:
+            return await info.context.db[
+                self.frame_collection_name
+            ].estimated_document_count()
 
     @staticmethod
     def modifier(doc: dict) -> dict:
@@ -291,6 +309,7 @@ class Dataset:
             for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
+
         return doc
 
     @classmethod
@@ -629,6 +648,23 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
+        _assign_estimated_counts(data, dataset)
+
         return data
 
     return await run_sync_task(run)
+
+
+def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
+    setattr(
+        dataset,
+        "estimated_sample_count",
+        fo_dataset._sample_collection.estimated_document_count(),
+    )
+
+    if fo_dataset._frame_collection_name:
+        setattr(
+            dataset,
+            "estimated_frame_count",
+            fo_dataset._frame_collection.estimated_document_count(),
+        )

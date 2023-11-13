@@ -196,6 +196,8 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  estimatedSampleCount: Int!
+  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {

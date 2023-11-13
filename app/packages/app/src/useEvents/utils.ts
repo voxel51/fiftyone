@@ -16,13 +16,15 @@ export const processState = (
   state: any
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
+    session.colorScheme = ensureColorScheme(
+      state.color_scheme as ColorSchemeInput
+    );
+
     if (env().VITE_NO_STATE) {
       session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
       return;
     }
-    session.colorScheme = ensureColorScheme(
-      state.color_scheme as ColorSchemeInput
-    );
+
     session.sessionGroupSlice =
       state.group_slice ?? data.dataset?.defaultGroupSlice;
     session.selectedLabels = toCamelCase(
