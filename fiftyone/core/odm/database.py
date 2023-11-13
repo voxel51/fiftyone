@@ -399,7 +399,7 @@ def get_async_db_client(use_global=False):
     """Returns an async database client.
 
     Args:
-        reuse: whether to use the global client singleton
+        use_global: whether to use the global client singleton
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorClient``
