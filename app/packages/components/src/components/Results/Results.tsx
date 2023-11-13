@@ -1,6 +1,5 @@
 import classNames from "classnames";
 import React, { useLayoutEffect, useRef } from "react";
-
 import style from "./Results.module.css";
 
 export interface ResultProps<T> {
@@ -33,12 +32,12 @@ export const getValueString = (value: unknown): [string, boolean] => {
   return [value as string, false];
 };
 
-export const Result = <T extends unknown>({
+export function Result<T>({
   active,
   result,
   onClick,
   component,
-}: ResultProps<T>) => {
+}: ResultProps<T>) {
   const Component = component;
 
   const classes = active ? [style.active, style.result] : [style.result];
@@ -52,11 +51,11 @@ export const Result = <T extends unknown>({
       <Component value={result} />
     </div>
   );
-};
+}
 
 export interface ResultsProps<T> {
   active?: number;
-  component: React.FC<{ value: T; className: string }>;
+  component: React.FC<{ value: T; className?: string }>;
   cy?: string;
   onSelect: (value: T) => void;
   results: T[];
@@ -64,7 +63,7 @@ export interface ResultsProps<T> {
   total?: number;
 }
 
-const Results = <T extends unknown>({
+function Results<T>({
   active,
   cy,
   component,
@@ -72,7 +71,7 @@ const Results = <T extends unknown>({
   results,
   toKey = (value: T) => String(value),
   total,
-}: ResultsProps<T>) => {
+}: ResultsProps<T>) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -80,7 +79,6 @@ const Results = <T extends unknown>({
       new CustomEvent(`selector-results-${cy}`, { bubbles: true })
     );
   }, [cy, ref]);
-  console.log(total);
 
   return (
     <div className={style.container}>
@@ -110,6 +108,6 @@ const Results = <T extends unknown>({
       </div>
     </div>
   );
-};
+}
 
 export default Results;

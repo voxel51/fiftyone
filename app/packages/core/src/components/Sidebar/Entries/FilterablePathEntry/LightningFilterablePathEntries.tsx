@@ -1,15 +1,16 @@
-import { count, lightningPaths, lightningThreshold } from "@fiftyone/state";
+import { LoadingDots, useTheme } from "@fiftyone/components";
+import {
+  granularExpanded,
+  lightningPaths,
+  lightningUnlocked,
+} from "@fiftyone/state";
 import React from "react";
-import { atomFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import { useRecoilValue, useRecoilValueLoadable } from "recoil";
 import Arrow from "./Arrow";
 import FilterItem from "./FilterItem";
 import Lock from "./Lock";
+import Tune from "./Tune";
 import useFilterData from "./useFilterData";
-
-const granularExpanded = atomFamily({
-  key: "granularExpanded",
-  default: false,
-});
 
 const LightningFilterablePathEntries = ({
   modal,
@@ -25,38 +26,41 @@ const LightningFilterablePathEntries = ({
   const { data, removed } = useFilterData(modal, path, (path) =>
     paths.has(path)
   );
-  const extended = useRecoilValueLoadable(
-    count({ path: "", extended: true, modal: false })
-  );
-  const threshold = useRecoilValue(lightningThreshold);
-  const unlocked =
-    extended.state === "hasValue" && extended.contents < threshold;
+  const unlocked = useRecoilValueLoadable(lightningUnlocked);
   const granularOpen = useRecoilValue(granularExpanded(path));
+  const theme = useTheme();
 
   const granular = removed.length;
-
   return (
     <>
       {data.map((props) => (
         <FilterItem key={props.path} {...events} {...props} />
       ))}
       {granular > 0 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ margin: 3 }}>{granular} or less granular fields</div>
-          {!unlocked ? (
-            <Lock />
-          ) : (
-            <Arrow
-              expanded={granularExpanded(path)}
-              id={`sidebar-granular-${path}`}
-            />
-          )}
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <span style={{ color: theme.text.secondary, marginLeft: 3 }}>
+            fine tune
+          </span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "right",
+              alignItems: "center",
+            }}
+          >
+            <Tune />
+            {unlocked.state === "loading" && (
+              <LoadingDots style={{ width: 21, textAlign: "center" }} />
+            )}
+            {unlocked.state === "hasValue" && unlocked.contents && (
+              <Arrow
+                expanded={granularExpanded(path)}
+                id={`sidebar-granular-${path}`}
+                color={theme.text.secondary}
+              />
+            )}
+            {unlocked.state === "hasValue" && !unlocked.contents && <Lock />}
+          </div>
         </div>
       )}
       {unlocked &&

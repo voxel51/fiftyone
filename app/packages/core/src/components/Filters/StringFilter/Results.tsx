@@ -2,30 +2,29 @@ import * as fos from "@fiftyone/state";
 import React, { MutableRefObject } from "react";
 import {
   RecoilState,
+  useRecoilCallback,
   useRecoilState,
   useRecoilValue,
   useSetRecoilState,
 } from "recoil";
 import Checkbox from "../../Common/Checkbox";
-import { Button } from "../../utils";
+import FilterOption from "../FilterOption/FilterOption";
+import { isInKeypointsField, isObjectIdField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
-import { V, isKeypointLabel } from "./CategoricalFilter";
-import FilterOption from "./filterOption/FilterOption";
+import Reset from "./Reset";
 
-interface WrapperProps {
-  results: [V["value"], number | null][];
-  selectedValuesAtom: RecoilState<V["value"][]>;
+interface ResultsProps {
+  results: [string | null, number | null][];
+  selectedValuesAtom: RecoilState<(string | null)[]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
-  color: string;
   modal: boolean;
   path: string;
-  selectedCounts: MutableRefObject<Map<V["value"], number | null>>;
+  selectedCounts: MutableRefObject<Map<string | null, number | null>>;
   lightning: boolean;
 }
 
-const Wrapper = ({
-  color,
+const Results = ({
   results,
   selectedValuesAtom,
   excludeAtom,
@@ -34,10 +33,10 @@ const Wrapper = ({
   path,
   selectedCounts,
   lightning,
-}: WrapperProps) => {
+}: ResultsProps) => {
   const name = path.split(".").slice(-1)[0];
-  const schema = useRecoilValue(fos.field(path));
   const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+  const color = useRecoilValue(fos.pathColor(path));
   const selectedSet = new Set(selected);
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const setIsMatching = useSetRecoilState(isMatchingAtom);
@@ -45,12 +44,13 @@ const Wrapper = ({
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
   const counts = new Map(results);
-  let allValues: V[] = selected.map<V>((value) => ({
+  let allValues = selected.map((value) => ({
     value,
-    count: counts.get(value) ?? 0,
+    count: counts.get(value) ?? (0 as number | null),
   }));
-  const skeleton = useRecoilValue(isKeypointLabel(path));
-  const neverShowExpansion = schema?.ftype.includes("ObjectIdField");
+  const skeleton =
+    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+  const neverShowExpansion = useRecoilValue(isObjectIdField(path));
 
   if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
@@ -63,27 +63,11 @@ const Wrapper = ({
 
   allValues = [...new Set(allValues)];
 
-  // only show all four options the field is a nested ListField.
-  // pass down nestedField as a prop to generate options. (e.g. "detections")
-  const fieldPath = path.split(".").slice(0, -1).join(".");
-  const fieldSchema = useRecoilValue(fos.field(fieldPath));
-  const nestedField = fieldSchema?.ftype.includes("ListField")
-    ? fieldSchema?.dbField?.toLowerCase()
-    : undefined;
-
-  // if the field is a BooleanField or ListField(BooleanField), there is no need to show the exclude option
-  const shouldNotShowExclude =
-    schema?.ftype.includes("BooleanField") ||
-    schema?.subfield?.includes("BooleanField");
-
-  // if the field is a keypoint label, there is no need to show match options
-  const isKeyPoints = fieldSchema?.dbField === "keypoints";
-
-  const handleReset = () => {
+  const handleReset = useRecoilCallback(({ snapshot }) => async () => {
     setSelected([]);
     excluded && setExcluded(false);
     isFilterMode && setIsMatching(!nestedField);
-  };
+  });
 
   if (!allValues.length && neverShowExpansion) {
     return lightning ? null : (
@@ -131,31 +115,17 @@ const Wrapper = ({
       {!!selectedSet.size && (
         <>
           <FilterOption
-            nestedField={nestedField}
-            shouldNotShowExclude={Boolean(shouldNotShowExclude)}
             excludeAtom={excludeAtom}
             isMatchingAtom={isMatchingAtom}
             valueName={name}
-            color={color}
             modal={modal}
             path={path}
-            isKeyPointLabel={isKeyPoints}
           />
-          <Button
-            text={"Reset"}
-            color={color}
-            onClick={handleReset}
-            style={{
-              margin: "0.25rem -0.5rem",
-              height: "2rem",
-              borderRadius: 0,
-              textAlign: "center",
-            }}
-          />
+          <Reset />
         </>
       )}
     </>
   );
 };
 
-export default Wrapper;
+export default Results;

@@ -3,9 +3,11 @@ import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 
 export default ({
+  color,
   expanded,
   id,
 }: {
+  color?: string;
   expanded: RecoilState<boolean>;
   id: string;
 }) => {
@@ -15,7 +17,7 @@ export default ({
     <Arrow
       key="arrow"
       data-cy={`sidebar-field-arrow-${id}`}
-      style={{ cursor: "pointer", margin: 0 }}
+      style={{ cursor: "pointer", margin: 0, color }}
       onClick={(event) => {
         event.preventDefault();
         event.stopPropagation();

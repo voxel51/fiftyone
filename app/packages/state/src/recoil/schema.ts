@@ -16,6 +16,7 @@ import {
   LABEL_LISTS,
   LABEL_LISTS_MAP,
   LIST_FIELD,
+  OBJECT_ID_FIELD,
   Schema,
   StrictField,
   VALID_PRIMITIVE_TYPES,
@@ -258,6 +259,7 @@ export const field = selectorFamily<Field | null, string>({
 
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
         let field: Field = {
+          path: "frames",
           name: "frames",
           ftype: LIST_FIELD,
           subfield: EMBEDDED_DOCUMENT_FIELD,
@@ -655,12 +657,7 @@ export const filterFields = selectorFamily<string[], string>({
       const label = LABELS.includes(topParent?.embeddedDocType);
       const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
 
-      if (label && path.endsWith(".tags")) {
-        return [[parentPath, "tags"].join(".")];
-      }
-
-      return Object.entries(parent.fields)
-        .map(([name, data]) => ({ ...data, name }))
+      return get(fields({ path: parentPath }))
         .filter(({ name, ftype, subfield }) => {
           if (ftype === LIST_FIELD) {
             ftype = subfield;
@@ -670,7 +667,7 @@ export const filterFields = selectorFamily<string[], string>({
             return false;
           }
 
-          if (label && name === "tags") {
+          if (ftype === OBJECT_ID_FIELD || subfield === OBJECT_ID_FIELD) {
             return false;
           }
 
@@ -687,3 +684,12 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
+
+export const isListField = selectorFamily({
+  key: "string",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(field(path))?.ftype === LIST_FIELD;
+    },
+});

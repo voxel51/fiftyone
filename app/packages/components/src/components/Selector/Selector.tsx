@@ -11,59 +11,15 @@ import React, {
 import Input from "react-input-autosize";
 import { UseLayerOptions, useLayer } from "react-laag";
 import LoadingDots from "../Loading/LoadingDots";
-import Results from "../Results/Results";
+import SearchResults, { UseSearch } from "./SearchResults";
 import style from "./Selector.module.css";
-
-export type UseSearch<T> = {
-  (search: string): { values: T[]; total?: number };
-};
-
-type Props<T> = {
-  active?: number;
-  cy?: string;
-  search: string;
-  useSearch: UseSearch<T>;
-  onSelect: (value: T) => void;
-  onResults: (results: T[]) => void;
-  component: React.FC<{ value: T; className: string }>;
-  toKey?: (value: T) => string;
-};
-
-function SelectorResults<T>({
-  active,
-  component,
-  cy,
-  onResults,
-  onSelect,
-  search,
-  toKey = (value) => String(value),
-  useSearch,
-}: Props<T>) {
-  const { values, total } = useSearch(search);
-
-  useLayoutEffect(() => {
-    onResults(values);
-  }, [values, onResults]);
-
-  return (
-    <Results
-      toKey={toKey}
-      active={active}
-      component={component}
-      results={values}
-      onSelect={onSelect}
-      total={total}
-      cy={cy}
-    />
-  );
-}
 
 export interface SelectorProps<T> {
   id?: string;
   value?: string;
-  onSelect: (value: T) => void;
+  onSelect: (search: string) => Promise<string>;
   placeholder: string;
-  useSearch: UseSearch<T>;
+  useSearch?: UseSearch<T>;
   component: React.FC<{ value: T; className: string }>;
   toKey?: (value: T) => string;
   inputClassName?: string;
@@ -72,7 +28,6 @@ export interface SelectorProps<T> {
   resultsPlacement?: UseLayerOptions["placement"];
   overflow?: boolean;
   overflowContainer?: boolean;
-  clear?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
 }
@@ -81,7 +36,6 @@ function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
     value,
-    clear = false,
     onSelect,
     placeholder,
     useSearch,
@@ -105,12 +59,13 @@ function Selector<T>(props: SelectorProps<T>) {
   const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
-    return (value: T) => {
-      onSelect(value);
-      local.current = clear ? "" : toKey(value);
+    return async (search: string) => {
+      local.current = await onSelect(
+        active !== undefined ? toKey(valuesRef.current[active]) : search
+      );
       setEditing(false);
     };
-  }, [clear, onSelect, toKey]);
+  }, [active, onSelect, toKey, valuesRef]);
 
   useEffect(() => {
     setSearch(value || "");
@@ -131,11 +86,10 @@ function Selector<T>(props: SelectorProps<T>) {
 
   const onResults = useCallback((results: T[]) => {
     valuesRef.current = results;
-    setActive(results.length ? 0 : undefined);
   }, []);
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
-    isOpen: editing,
+    isOpen: useSearch && editing,
     overflowContainer,
     auto: true,
     snap: true,
@@ -165,7 +119,7 @@ function Selector<T>(props: SelectorProps<T>) {
         spellCheck={false}
         inputRef={(node) => {
           ref.current = node;
-          triggerProps.ref(node);
+          useSearch && triggerProps.ref(node);
         }}
         className={style.input}
         value={editing ? search : local.current}
@@ -188,21 +142,16 @@ function Selector<T>(props: SelectorProps<T>) {
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            const found = valuesRef.current
-              .map((v) => toKey(v))
-              .indexOf(search);
-            found >= 0 && onSelectWrapper(valuesRef.current[found]);
-            active !== undefined && onSelectWrapper(valuesRef.current[active]);
+            onSelectWrapper(search);
             return;
           }
-          const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
               editing && setEditing(false);
               break;
             case "ArrowDown":
               active !== undefined &&
-                setActive(Math.min(active + 1, length - 1));
+                setActive(Math.min(active + 1, valuesRef.current.length - 1));
               break;
             case "ArrowUp":
               active !== undefined && setActive(Math.max(active - 1, 0));
@@ -211,47 +160,48 @@ function Selector<T>(props: SelectorProps<T>) {
         }}
         onMouseEnter={onMouseEnter}
       />
-      {renderLayer(
-        editing && (
-          <AnimatePresence>
-            <motion.div
-              className={style.resultsContainer}
-              id={id}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{
-                opacity: 1,
-                height: "auto",
-              }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              key={"results"}
-              {...layerProps}
-              style={{
-                ...layerProps.style,
-                width: overflow ? "auto" : triggerBounds?.width,
-                minWidth: triggerBounds?.width,
-              }}
-            >
-              <Suspense
-                fallback={
-                  <LoadingDots style={{ float: "right" }} text="Loading" />
-                }
+      {useSearch &&
+        renderLayer(
+          editing && (
+            <AnimatePresence>
+              <motion.div
+                className={style.resultsContainer}
+                id={id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  height: "auto",
+                }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                key={"results"}
+                {...layerProps}
+                style={{
+                  ...layerProps.style,
+                  width: overflow ? "auto" : triggerBounds?.width,
+                  minWidth: triggerBounds?.width,
+                }}
               >
-                <SelectorResults
-                  active={active}
-                  search={search}
-                  useSearch={useSearch}
-                  onSelect={(value) => onSelectWrapper(value)}
-                  component={component}
-                  onResults={onResults}
-                  toKey={toKey}
-                  cy={cy}
-                />
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
-        )
-      )}
+                <Suspense
+                  fallback={
+                    <LoadingDots style={{ float: "right" }} text="Loading" />
+                  }
+                >
+                  <SearchResults
+                    active={active}
+                    search={search}
+                    useSearch={useSearch}
+                    onSelect={(value) => onSelectWrapper(toKey(value))}
+                    component={component}
+                    onResults={onResults}
+                    toKey={toKey}
+                    cy={cy}
+                  />
+                </Suspense>
+              </motion.div>
+            </AnimatePresence>
+          )
+        )}
     </div>
   );
 }

@@ -172,10 +172,12 @@ export const boundsAtom = selectorFamily<
     ({ path, defaultRange }) =>
     ({ get }) => {
       const lightning = get(isLightningPath(path));
+
       const atom = lightning
         ? pathData.lightningBounds(path)
         : pathData.bounds({ path, extended: false, modal: false });
       const bounds = get(atom);
+
       if (!bounds) {
         return lightning ? null : [null, null];
       }

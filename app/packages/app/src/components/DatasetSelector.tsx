@@ -26,7 +26,10 @@ const DatasetSelector: React.FC<{
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
-      onSelect={(name) => setDataset(name)}
+      onSelect={async (name) => {
+        setDataset(name);
+        return name;
+      }}
       overflow={true}
       useSearch={useSearch}
       value={dataset}

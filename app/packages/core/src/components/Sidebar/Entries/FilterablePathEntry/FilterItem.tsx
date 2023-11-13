@@ -29,8 +29,6 @@ export const FILTERS = {
 const FilterItem = ({
   ftype,
   listField,
-  onBlur,
-  onFocus,
   path,
   title,
   ...rest
@@ -39,11 +37,9 @@ const FilterItem = ({
   return React.createElement(FILTERS[ftype], {
     key: path,
     color,
-    onFocus,
-    onBlur,
     path,
     title: title || (listField ? `${fou.LIST_FIELD}(${ftype})` : ftype),
-    rest,
+    ...rest,
   });
 };
 

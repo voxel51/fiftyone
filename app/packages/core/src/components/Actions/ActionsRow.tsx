@@ -510,6 +510,7 @@ export const GridActionsRow = () => {
       return () => actionsRowDivElem.removeEventListener("wheel", handleWheel);
     }
   }, []);
+  const unlocked = fos.useLightingUnlocked();
 
   return (
     <ActionsRowDiv
@@ -518,7 +519,7 @@ export const GridActionsRow = () => {
     >
       <ToggleSidebar modal={false} />
       <Colors />
-      <Tag modal={false} />
+      {unlocked && <Tag modal={false} />}
       <Patches />
       <Similarity modal={false} />
       <SaveFilters />

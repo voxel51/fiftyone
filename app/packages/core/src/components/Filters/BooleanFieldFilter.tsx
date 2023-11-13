@@ -5,35 +5,32 @@ import {
   booleanSelectedValuesAtom,
 } from "@fiftyone/state";
 import React from "react";
-import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
+import StringFilter from "./StringFilter";
 
 const BooleanFieldFilter = ({
   path,
   modal,
-  color,
   ...rest
 }: {
-  path: string;
   modal: boolean;
   named?: boolean;
   onFocus?: () => void;
   onBlur?: () => void;
+  path: string;
   title: string;
-  color: string;
 }) => {
   return (
-    <CategoricalFilter<{ value: boolean | null; count: number }>
+    <StringFilter
       selectedValuesAtom={booleanSelectedValuesAtom({ path, modal })}
       isMatchingAtom={boolIsMatchingAtom({ path, modal })}
       excludeAtom={boolExcludeAtom({ path, modal })}
-      countsAtom={booleanCountResults({
+      resultsAtom={booleanCountResults({
         path,
         modal,
         extended: false,
       })}
       modal={modal}
       path={path}
-      color={color}
       {...rest}
     />
   );

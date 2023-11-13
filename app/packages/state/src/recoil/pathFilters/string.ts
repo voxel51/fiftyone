@@ -20,11 +20,9 @@ const getFilter = (
   modal: boolean,
   path: string
 ): StringFilter => {
-  // nested listfield, label tag and modal use "isMatching: false" default
-  const fieldPath = path.split(".").slice(0, -1).join(".");
-  const fieldSchema = get(schemaAtoms.field(fieldPath));
-  const isNestedfield = fieldSchema?.ftype.includes("ListField");
-  const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
+  // list fields, label tags and modal use "isMatching: false" default
+  const defaultToFilterMode =
+    modal || path === "_label_tags" || get(schemaAtoms.isListField(path));
 
   return {
     values: [],
@@ -321,10 +319,10 @@ const handleValues = (
   exclude: boolean,
   isVisibility: boolean // filter and visibility has different logic for list values
 ) => {
-  const r =
+  const result =
     (isVisibility
       ? values?.some((v) => value?.includes(v))
       : values?.every((v) => value?.includes(v)) ||
         (none && NONE.has(value))) && Boolean(value);
-  return exclude ? !r : r;
+  return exclude ? !result : result;
 };

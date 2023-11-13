@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e37d762f250a359c1af7c71a7a793116>>
+ * @generated SignedSource<<5f98c43b960a223585044515e735eca5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -35,24 +35,50 @@ export type aggregationsQuery$variables = {
 };
 export type aggregationsQuery$data = {
   readonly aggregations: ReadonlyArray<{
-    readonly __typename: string;
-    readonly count?: number;
-    readonly exists?: number;
-    readonly expandedFieldCount?: number;
-    readonly false?: number;
-    readonly frameLabelFieldCount?: number | null;
-    readonly inf?: number;
-    readonly max?: number | null;
-    readonly min?: number | null;
-    readonly nan?: number;
-    readonly ninf?: number;
-    readonly path?: string;
-    readonly slice?: number | null;
-    readonly true?: number;
-    readonly values?: ReadonlyArray<{
+    readonly __typename: "BooleanAggregation";
+    readonly count: number;
+    readonly exists: number;
+    readonly false: number;
+    readonly path: string;
+    readonly true: number;
+  } | {
+    readonly __typename: "FloatAggregation";
+    readonly count: number;
+    readonly exists: number;
+    readonly inf: number;
+    readonly max: number | null;
+    readonly min: number | null;
+    readonly nan: number;
+    readonly ninf: number;
+    readonly path: string;
+  } | {
+    readonly __typename: "IntAggregation";
+    readonly count: number;
+    readonly exists: number;
+    readonly max: number | null;
+    readonly min: number | null;
+    readonly path: string;
+  } | {
+    readonly __typename: "RootAggregation";
+    readonly count: number;
+    readonly exists: number;
+    readonly expandedFieldCount: number;
+    readonly frameLabelFieldCount: number | null;
+    readonly path: string;
+    readonly slice: number | null;
+  } | {
+    readonly __typename: "StringAggregation";
+    readonly count: number;
+    readonly exists: number;
+    readonly path: string;
+    readonly values: ReadonlyArray<{
       readonly count: number;
       readonly value: string;
     }>;
+  } | {
+    // This will never be '%other', but we need some
+    // value in case none of the concrete values match.
+    readonly __typename: "%other";
   }>;
 };
 export type aggregationsQuery = {
@@ -72,24 +98,38 @@ v1 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "count",
+  "name": "path",
   "storageKey": null
 },
 v2 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
-  "name": "max",
+  "name": "count",
   "storageKey": null
 },
 v3 = {
   "alias": null,
   "args": null,
   "kind": "ScalarField",
+  "name": "exists",
+  "storageKey": null
+},
+v4 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "max",
+  "storageKey": null
+},
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
   "name": "min",
   "storageKey": null
 },
-v4 = [
+v6 = [
   {
     "alias": null,
     "args": [
@@ -114,28 +154,9 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "path",
-            "storageKey": null
-          },
           (v1/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "exists",
-            "storageKey": null
-          }
-        ],
-        "type": "Aggregation",
-        "abstractKey": "__isAggregation"
-      },
-      {
-        "kind": "InlineFragment",
-        "selections": [
+          (v2/*: any*/),
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -157,8 +178,11 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
           (v2/*: any*/),
-          (v3/*: any*/)
+          (v3/*: any*/),
+          (v4/*: any*/),
+          (v5/*: any*/)
         ],
         "type": "IntAggregation",
         "abstractKey": null
@@ -166,6 +190,9 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
+          (v2/*: any*/),
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -173,8 +200,8 @@ v4 = [
             "name": "inf",
             "storageKey": null
           },
-          (v2/*: any*/),
-          (v3/*: any*/),
+          (v4/*: any*/),
+          (v5/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -196,6 +223,9 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
+          (v2/*: any*/),
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -224,6 +254,9 @@ v4 = [
       {
         "kind": "InlineFragment",
         "selections": [
+          (v1/*: any*/),
+          (v2/*: any*/),
+          (v3/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -232,7 +265,7 @@ v4 = [
             "name": "values",
             "plural": true,
             "selections": [
-              (v1/*: any*/),
+              (v2/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -257,7 +290,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "aggregationsQuery",
-    "selections": (v4/*: any*/),
+    "selections": (v6/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -266,19 +299,19 @@ return {
     "argumentDefinitions": (v0/*: any*/),
     "kind": "Operation",
     "name": "aggregationsQuery",
-    "selections": (v4/*: any*/)
+    "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "dadc0977809d96f1e7d1963b5abf37b0",
+    "cacheID": "2144090869c7c920de788f41a77a0457",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on Aggregation {\n      __isAggregation: __typename\n      path\n      count\n      exists\n    }\n    ... on BooleanAggregation {\n      false\n      true\n    }\n    ... on IntAggregation {\n      max\n      min\n    }\n    ... on FloatAggregation {\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on BooleanAggregation {\n      path\n      count\n      exists\n      false\n      true\n    }\n    ... on IntAggregation {\n      path\n      count\n      exists\n      max\n      min\n    }\n    ... on FloatAggregation {\n      path\n      count\n      exists\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      path\n      count\n      exists\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      path\n      count\n      exists\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e8a94130200106bfc8e3c6b02b19ee7c";
+(node as any).hash = "a94b4b6879dd68ab04d17ce79e988895";
 
 export default node;

@@ -101,6 +101,7 @@ export const labelTagsCount = selectorFamily<
       if (!labelTagObj) return { count: 0, results: [] };
       const labelTags = Object.entries(labelTagObj);
       const count = labelTags.reduce((acc, [key, value]) => acc + value, 0);
+      console.log(labelTags);
       return { count, results: labelTags };
     },
 });

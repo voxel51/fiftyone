@@ -5,13 +5,12 @@ import {
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
 import React from "react";
-import { constSelector } from "recoil";
-import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
+import { constSelector, useRecoilValue } from "recoil";
+import StringFilter from "./StringFilter";
 
 const StringFieldFilter = ({
   path,
   modal,
-  color,
   ...rest
 }: {
   path: string;
@@ -22,9 +21,9 @@ const StringFieldFilter = ({
   onBlur?: () => void;
   title: string;
 }) => {
-  const lightning = !modal && true;
+  const lightning = useRecoilValue(fos.isLightningPath(path));
   return (
-    <CategoricalFilter
+    <StringFilter
       selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
@@ -39,7 +38,6 @@ const StringFieldFilter = ({
       }
       path={path}
       modal={modal}
-      color={color}
       {...rest}
     />
   );

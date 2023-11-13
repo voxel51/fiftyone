@@ -1,6 +1,7 @@
 import { selectorFamily } from "recoil";
-import { aggregation, count } from "../aggregations";
+import { aggregation } from "../aggregations";
 import { isLightningPath, lightning } from "../lightning";
+import { count } from "./counts";
 import { lightningNonfinites } from "./lightningNumeric";
 
 export const bounds = selectorFamily({
@@ -8,9 +9,16 @@ export const bounds = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
-      const { min, max } = get(aggregation(params)) || {};
+      const data = get(aggregation(params));
 
-      return [min, max] as [number, number];
+      if (
+        data.__typename === "FloatAggregation" ||
+        data.__typename === "IntAggregation"
+      ) {
+        return [data.min, data.max];
+      }
+
+      throw new Error("unexpected");
     },
 });
 
@@ -20,10 +28,16 @@ export const nonfiniteData = selectorFamily({
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
       if (get(lightning) && get(isLightningPath(params.path))) {
-        return { lightning: true, ...get(lightningNonfinites(params.path)) };
+        return get(lightningNonfinites(params.path));
       }
 
-      const { inf, nan, ninf, exists } = get(aggregation(params));
+      const data = get(aggregation(params));
+
+      if (data.__typename !== "FloatAggregation") {
+        throw new Error("unexpected");
+      }
+
+      const { inf, nan, ninf, exists } = data;
 
       const { count: parentCount } = get(
         aggregation({
@@ -53,7 +67,7 @@ export const nonfiniteCount = selectorFamily<
   get:
     ({ key, ...params }) =>
     ({ get }) =>
-      get(nonfiniteCounts(params))[key],
+      get(nonfiniteData(params))[key],
 });
 
 export const boundedCount = selectorFamily<
@@ -64,7 +78,7 @@ export const boundedCount = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const nonfinites = Object.entries(get(nonfiniteCounts(params))).reduce(
+      const nonfinites = Object.entries(get(nonfiniteData(params))).reduce(
         (sum, [key, count]) => (key === "none" ? sum : sum + (count || 0)),
         0
       );

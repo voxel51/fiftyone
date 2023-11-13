@@ -19,7 +19,9 @@ export const lightningNumericResults = selectorFamily({
         return data;
       }
 
-      throw new Error("bad");
+      throw new Error(
+        `unexpected type '${data.__typename}' for path '${path}'`
+      );
     },
 });
 

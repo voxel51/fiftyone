@@ -4,7 +4,12 @@ import {
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { DefaultValue, atom, selectorFamily } from "recoil";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import {
+  granularExpandedStore,
+  lightningPaths,
+  lightningUnlocked,
+} from "./lightning";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import { State } from "./types";
@@ -34,8 +39,23 @@ export const filters = (() => {
   );
 })();
 
+export const lightningFilters = selector({
+  key: "lightningFilters",
+  get: ({ get }) => {
+    const f = { ...get(filters) };
+    const paths = get(lightningPaths(""));
+    for (const p in f) {
+      if (!paths.has(p)) {
+        delete f[p];
+      }
+    }
+
+    return f;
+  },
+});
+
 export const filter = selectorFamily<
-  State.Filters,
+  State.Filter,
   { path: string; modal: boolean }
 >({
   key: "filter",
@@ -52,9 +72,23 @@ export const filter = selectorFamily<
     },
   set:
     ({ path, modal }) =>
-    ({ get, set }, filter) => {
+    ({ get, reset, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
+
+      if (!modal && get(lightningUnlocked)) {
+        const paths = get(lightningPaths(""));
+
+        if (paths.has(path)) {
+          for (const p in newFilters) {
+            if (!paths.has(p)) {
+              delete newFilters[p];
+            }
+          }
+          reset(granularExpandedStore);
+        }
+      }
+
       if (filter === null || filter instanceof DefaultValue) {
         delete newFilters[path];
       } else {
@@ -62,9 +96,6 @@ export const filter = selectorFamily<
       }
       set(atom, newFilters);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hasFilters = selectorFamily<boolean, boolean>({
@@ -77,9 +108,6 @@ export const hasFilters = selectorFamily<boolean, boolean>({
 
       return f || hidden;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -105,7 +133,4 @@ export const fieldIsFiltered = selectorFamily<
         paths.some(({ name }) => f[`${expandedPath}.${name}`])
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });

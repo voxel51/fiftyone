@@ -5,12 +5,13 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { datasetFrameCount, datasetSampleCount } from "./dataset";
 import { isLabelPath } from "./labels";
+import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import { datasetName } from "./selectors";
@@ -159,11 +160,15 @@ export const pathIndex = selectorFamily({
     },
 });
 
-export const lightningPaths = selectorFamily<Set<string>, string>({
+export const lightningPaths = selectorFamily({
   key: "lightningPaths",
   get:
     (path: string) =>
     ({ get }) => {
+      if (path === "") {
+        return get(indexesByPath);
+      }
+
       if (get(isLabelPath(path))) {
         const expanded = get(schemaAtoms.expandPath(path));
         const indexes = get(indexesByPath);
@@ -175,7 +180,7 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
             })
           )
             .map((p) => `${expanded}.${p}`)
-            .filter((p) => indexes.has(p))
+            .filter((p) => indexes.has(get(schemaAtoms.dbPath(p))))
         );
       }
 
@@ -224,4 +229,36 @@ export const isLightningPath = selectorFamily({
     ({ get }) => {
       return get(lightning) && !get(pathIsLocked(path));
     },
+});
+
+export const granularExpandedStore = atom<{ [key: string]: boolean }>({
+  key: "granularExpandedStore",
+  default: {},
+});
+
+export const granularExpanded = selectorFamily<boolean, string>({
+  key: "granularExpanded",
+  get:
+    (path) =>
+    ({ get }) =>
+      get(granularExpandedStore)[path] ?? false,
+  set:
+    (path) =>
+    ({ set }, value) =>
+      set(granularExpandedStore, (c) => ({
+        ...c,
+        [path]: value instanceof DefaultValue ? false : value,
+      })),
+});
+
+export const lightningUnlocked = selector({
+  key: "lightningUnlocked",
+  get: ({ get }) => {
+    if (
+      get(count({ path: "", extended: false, modal: false, lightning: true })) <
+      get(lightningThreshold)
+    ) {
+      return false;
+    }
+  },
 });

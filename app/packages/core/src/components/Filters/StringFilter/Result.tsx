@@ -1,9 +1,12 @@
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { V } from "./CategoricalFilter";
 
-const ResultComponent = ({ value: { value, count } }: { value: V }) => {
+const ResultComponent = ({
+  value: { value, count },
+}: {
+  value: { value: string | null; count: number | null };
+}) => {
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   return (
     <div

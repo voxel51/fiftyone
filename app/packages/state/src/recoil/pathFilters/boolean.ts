@@ -47,7 +47,6 @@ const getVisibility = (
     true: false,
     false: false,
     none: false,
-    onlyMatch: true,
     isMatching: false,
     exclude: false,
     ...get(visibilityAtoms.visibility({ modal, path })),
@@ -209,7 +208,7 @@ export const noneAtom = selectorFamily<
 });
 
 export const booleanSelectedValuesAtom = selectorFamily<
-  (null | boolean)[],
+  (null | string)[],
   { modal: boolean; path: string }
 >({
   key: "booleanSelectedValues",
@@ -230,7 +229,7 @@ export const booleanSelectedValuesAtom = selectorFamily<
         values.push(true);
       }
 
-      return values;
+      return values.map((v) => (v ? "True" : v === false ? "False" : null));
     },
   set:
     ({ path, modal }) =>
@@ -256,12 +255,12 @@ export const booleanSelectedValuesAtom = selectorFamily<
         set(noneA, newNone);
       }
 
-      const newFalse = values.includes(false);
+      const newFalse = values.includes("True");
       if (newFalse !== currentFalse) {
         set(falseA, newFalse);
       }
 
-      const newTrue = values.includes(true);
+      const newTrue = values.includes("False");
       if (newTrue !== currentTrue) {
         set(trueA, newTrue);
       }
@@ -287,12 +286,10 @@ const helperFunction = (
     values.push(false);
   }
 
-  const r = isVisibility
+  return isVisibility
     ? values.some((v) => v == value)
     : values.every((v) => v == value) ||
-      (noneValue && NONE.has(value) && Boolean(value));
-
-  return r;
+        (noneValue && NONE.has(value) && Boolean(value));
 };
 
 export const generateBooleanSelectorFamily = (key) =>
