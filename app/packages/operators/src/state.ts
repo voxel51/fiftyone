@@ -14,7 +14,6 @@ import {
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
-  RESOLVE_PLACEMENTS_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
@@ -398,6 +397,11 @@ export function filterChoicesByQuery(query, all) {
 export const availableOperatorsRefreshCount = atom({
   key: "availableOperatorsRefreshCount",
   default: 0,
+});
+
+export const operatorsInitializedAtom = atom({
+  key: "operatorsInitializedAtom",
+  default: false,
 });
 
 export const availableOperators = selector({
@@ -785,42 +789,6 @@ export const placementsForPlaceSelector = selectorFamily({
 });
 
 export function useOperatorPlacements(place: Places) {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const setContext = useSetRecoilState(operatorThrottledContext);
-  const setThrottledContext = useMemo(() => {
-    return debounce(
-      (context) => {
-        setContext(context);
-      },
-      RESOLVE_PLACEMENTS_TTL,
-      { leading: true }
-    );
-  }, [setContext]);
-
-  useEffect(() => {
-    setThrottledContext({
-      datasetName,
-      view,
-      extendedStages,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    });
-  }, [
-    setThrottledContext,
-    datasetName,
-    view,
-    extendedStages,
-    filters,
-    selectedSamples,
-    selectedLabels,
-  ]);
-
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
   return { placements };
