@@ -4,6 +4,7 @@ export * from "./attributeVisibility";
 export * from "./color";
 export * from "./config";
 export * from "./customEffects";
+export * from "./dataset";
 export * from "./distributions";
 export * from "./filters";
 export * from "./groupEntries";

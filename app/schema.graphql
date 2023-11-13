@@ -198,6 +198,8 @@ type Dataset {
   headName: String
   snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  estimatedSampleCount: Int!
+  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {
