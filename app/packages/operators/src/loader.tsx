@@ -1,10 +1,14 @@
-import { useEffect, useState } from "react";
-import { registerBuiltInOperators } from "./built-in-operators";
-import { executeStartupOperators, loadOperatorsFromServer } from "./operators";
-import { isPrimitiveString } from "@fiftyone/utilities";
-import { useSetRecoilState, useRecoilValue } from "recoil";
 import { datasetName as datasetNameAtom } from "@fiftyone/state";
-import { availableOperatorsRefreshCount } from "./state";
+import { isPrimitiveString } from "@fiftyone/utilities";
+import { useEffect, useState } from "react";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { registerBuiltInOperators } from "./built-in-operators";
+import { useOperatorPlacementsResolver } from "./hooks";
+import { executeStartupOperators, loadOperatorsFromServer } from "./operators";
+import {
+  availableOperatorsRefreshCount,
+  operatorsInitializedAtom,
+} from "./state";
 
 let startupOperatorsExecuted = false;
 
@@ -27,6 +31,8 @@ export function useOperators(datasetLess?: boolean) {
   const setAvailableOperatorsRefreshCount = useSetRecoilState(
     availableOperatorsRefreshCount
   );
+  const setOperatorsInitialized = useSetRecoilState(operatorsInitializedAtom);
+  const { initialized } = useOperatorPlacementsResolver();
 
   useEffect(() => {
     if (isPrimitiveString(datasetName) || datasetLess) {
@@ -34,9 +40,15 @@ export function useOperators(datasetLess?: boolean) {
         // trigger force refresh
         setAvailableOperatorsRefreshCount((count) => count + 1);
         setReady(true);
+        setOperatorsInitialized(true);
       });
     }
-  }, [datasetLess, datasetName, setAvailableOperatorsRefreshCount]);
+  }, [
+    datasetLess,
+    datasetName,
+    setAvailableOperatorsRefreshCount,
+    setOperatorsInitialized,
+  ]);
 
-  return ready;
+  return ready && (initialized || datasetLess);
 }

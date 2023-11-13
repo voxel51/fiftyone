@@ -1,3 +1,4 @@
+import { useOperators } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
@@ -6,7 +7,7 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import { useOperators } from "@fiftyone/operators";
+import { pluginsLoaderAtom } from "./state";
 
 declare global {
   interface Window {
@@ -141,8 +142,9 @@ async function loadScript(name, url) {
  * A react hook for loading the plugin system.
  */
 export function usePlugins() {
-  const [state, setState] = useState("loading");
-  useOperators();
+  const datasetName = recoil.useRecoilValue(fos.datasetName);
+  const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
+  const operatorsReady = useOperators(datasetName === null);
 
   useEffect(() => {
     loadPlugins()
@@ -152,12 +154,12 @@ export function usePlugins() {
       .then(() => {
         setState("ready");
       });
-  }, []);
+  }, [setState]);
 
   return {
-    isLoading: state === "loading",
+    isLoading: state === "loading" || !operatorsReady,
     hasError: state === "error",
-    ready: state === "ready",
+    ready: state === "ready" && operatorsReady,
   };
 }
 
@@ -363,3 +365,5 @@ export function usePluginSettings<T>(
 
   return settings as T;
 }
+
+export * from "./state";
