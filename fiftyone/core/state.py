@@ -126,9 +126,6 @@ class StateDescription(etas.Serializable):
 
             if isinstance(self.color_scheme, ColorScheme):
                 d["color_scheme"] = self.color_scheme.to_dict(False)
-                fo.pprint(d["color_scheme"])
-                if "id" not in d["color_scheme"]:
-                    raise ValueError("error")
 
             if self.field_visibility_stage:
                 d["field_visibility_stage"] = self.field_visibility_stage

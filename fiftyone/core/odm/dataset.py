@@ -281,7 +281,7 @@ class ColorScheme(EmbeddedDocument):
     def from_dict(cls, d):
         d = dict(**d)
         d["_id"] = ObjectId(d["id"])
-        return cls.from_dict(d)
+        return super().from_dict(d)
 
 
 class KeypointSkeleton(EmbeddedDocument):

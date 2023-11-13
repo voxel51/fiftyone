@@ -1,6 +1,15 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  colorSchemeFragment,
+  colorSchemeFragment$data,
+  colorSchemeFragment$key,
+  datasetAppConfigFragment,
+  datasetFragment,
+  datasetQuery$data,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -16,6 +25,24 @@ import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+
+export const datasetColorScheme = graphQLSyncFragmentAtom<
+  colorSchemeFragment$key,
+  colorSchemeFragment$data
+>(
+  {
+    fragments: [datasetFragment, datasetAppConfigFragment, colorSchemeFragment],
+    keys: ["dataset", "appConfig", "colorScheme"],
+    read: (data) => {
+      console.log(data);
+      return data;
+    },
+    default: null,
+  },
+  {
+    key: "datasetColorScheme",
+  }
+);
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -125,10 +152,6 @@ export const ensureColorScheme = (
   appConfig?: datasetQuery$data["config"]
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
-  console.log(colorScheme);
-  if (!colorScheme.id) {
-    throw new Error("E");
-  }
   return {
     id: colorScheme.id,
     colorPool:

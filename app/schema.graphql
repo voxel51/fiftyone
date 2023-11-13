@@ -408,7 +408,7 @@ type Mutation {
     subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
-  ): ColorScheme!
+  ): ColorScheme
   setFieldVisibilityStage(
     subscription: String!
     session: String

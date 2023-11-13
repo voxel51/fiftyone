@@ -1,7 +1,7 @@
 import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
@@ -22,23 +22,31 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetDefault = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
+  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
-
+  useEffect(
+    () => foq.subscribe(() => setActiveColorModalField(null)),
+    [setActiveColorModalField]
+  );
   if (!activeColorModalField) return null;
-
-  console.info("datasetd", datasetDefault?.fields);
-
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
+
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(fos.ensureColorScheme(datasetDefault));
+            const { id: _, ...update } = fos.ensureColorScheme(
+              datasetDefault,
+              configDefault
+            );
+            setColorScheme({
+              id: colorScheme.id,
+              ...update,
+            });
           }}
         >
           Reset
@@ -79,6 +87,9 @@ const ColorFooter: React.FC = () => {
             onClick={() => {
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
+                updater: (store) => {
+                  store.delete(datasetDefault.id);
+                },
               });
               setColorScheme((cur) => ({
                 ...cur,

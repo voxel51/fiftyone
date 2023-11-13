@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<09272144bff4e04a74d39a3a37f4efb2>>
+ * @generated SignedSource<<c58e2aa2a104dbb6145054b1b14e95dd>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -63,7 +63,7 @@ export type setDatasetColorSchemeMutation$variables = {
 export type setDatasetColorSchemeMutation$data = {
   readonly setDatasetColorScheme: {
     readonly " $fragmentSpreads": FragmentRefs<"colorSchemeFragment">;
-  };
+  } | null;
 };
 export type setDatasetColorSchemeMutation = {
   response: setDatasetColorSchemeMutation$data;

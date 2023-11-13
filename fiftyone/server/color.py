@@ -10,7 +10,6 @@ from enum import Enum
 import typing as t
 
 from bson import ObjectId
-from dacite import from_dict
 import strawberry as gql
 
 import fiftyone as fo
@@ -19,6 +18,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event, get_state
+from fiftyone.server.utils import from_dict
 
 fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
@@ -62,17 +62,13 @@ class Colorscale:
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
 
-    def _calculate_rgb(self) -> t.Optional[t.List[t.List[int]]]:
-        if self.name or self.list:
-            rgb = fop.get_colormap(
-                self.name or [[item.value, item.color] for item in self.list]
-            )
-            return rgb
-        return None
-
     @gql.field
     def rgb(self) -> t.Optional[t.List[t.List[int]]]:
-        return self._calculate_rgb()
+        data = self.name or [
+            [item.value, item.color] for item in self.list or []
+        ]
+        if data:
+            return fop.get_colormap(data)
 
 
 @gql.type
@@ -80,17 +76,13 @@ class DefaultColorscale:
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
 
-    def _calculate_rgb(self) -> t.Optional[t.List[t.List[int]]]:
-        if self.name or self.list:
-            rgb = fop.get_colormap(
-                self.name or [[item.value, item.color] for item in self.list]
-            )
-            return rgb
-        return None
-
     @gql.field
     def rgb(self) -> t.Optional[t.List[t.List[int]]]:
-        return self._calculate_rgb()
+        data = self.name or [
+            [item.value, item.color] for item in self.list or []
+        ]
+        if data:
+            return fop.get_colormap(data)
 
 
 @gql.enum
@@ -186,13 +178,10 @@ class SetColorScheme:
     ) -> ColorScheme:
         state = get_state()
         state.color_scheme = _to_odm_color_scheme(color_scheme)
-
         await dispatch_event(
             subscription, fose.SetColorScheme(color_scheme=color_scheme)
         )
-        # return updated colorscheme (add a unique id to the colorscheme) with colorscale
-        data = asdict(color_scheme)
-        return from_dict(ColorScheme, data)
+        return from_dict(ColorScheme, asdict(color_scheme))
 
     @gql.field
     async def set_dataset_color_scheme(
@@ -200,7 +189,7 @@ class SetColorScheme:
         subscription: str,
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
-    ) -> ColorScheme:
+    ) -> t.Optional[ColorScheme]:
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
@@ -211,8 +200,10 @@ class SetColorScheme:
         await fou.run_sync_task(run)
         await dispatch_event(subscription, fose.SetDatasetColorScheme())
 
-        data = asdict(color_scheme)
-        return from_dict(ColorScheme, data)
+        if color_scheme is None:
+            return None
+
+        return from_dict(ColorScheme, asdict(color_scheme))
 
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
