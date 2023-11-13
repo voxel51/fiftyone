@@ -452,7 +452,7 @@ export const activeModalSidebarSample = selector({
         currentModalLooker._UNSAFE_state.config.frameStoreController.store.samples.get(
           sampleId
         );
-      return sample.sample;
+      return sample?.sample ?? get(activeModalSample);
     }
 
     return get(activeModalSample);

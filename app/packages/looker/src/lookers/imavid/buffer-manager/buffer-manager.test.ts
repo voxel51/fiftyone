@@ -11,7 +11,7 @@ describe("BufferManager class tests", () => {
 
   test("addBufferRangeToBuffer method - no overlap", async () => {
     bufferManager.addNewRange([1, 4]);
-    bufferManager.addNewRange([5, 7]);
+    bufferManager.addNewRange([6, 7]);
 
     const mergedBuffers = bufferManager.buffers;
 
@@ -19,7 +19,7 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers.length).toBe(2);
     expect(mergedBuffers[0][0]).toBe(1);
     expect(mergedBuffers[0][1]).toBe(4);
-    expect(mergedBuffers[1][0]).toBe(5);
+    expect(mergedBuffers[1][0]).toBe(6);
     expect(mergedBuffers[1][1]).toBe(7);
   });
 
@@ -47,6 +47,30 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers[0][1]).toBe(5);
   });
 
+  test("addBufferRangeToBuffer method - partial encapsulated by existing range", async () => {
+    bufferManager.addNewRange([48, 84]);
+    bufferManager.addNewRange([48, 105]);
+
+    const mergedBuffers = bufferManager.buffers;
+
+    // we expect [48, 105]
+    expect(mergedBuffers.length).toBe(1);
+    expect(mergedBuffers[0][0]).toBe(48);
+    expect(mergedBuffers[0][1]).toBe(105);
+  });
+
+  test("addBufferRangeToBuffer method - consecutive ranges", async () => {
+    bufferManager.addNewRange([1, 10]);
+    bufferManager.addNewRange([11, 20]);
+
+    const mergedBuffers = bufferManager.buffers;
+
+    // we expect [48, 105]
+    expect(mergedBuffers.length).toBe(1);
+    expect(mergedBuffers[0][0]).toBe(1);
+    expect(mergedBuffers[0][1]).toBe(20);
+  });
+
   test("addBufferRangeToBuffer method - multiple merges", async () => {
     bufferManager.addNewRange([1, 4]);
     bufferManager.addNewRange([5, 7]);
@@ -58,6 +82,21 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers.length).toBe(1);
     expect(mergedBuffers[0][0]).toBe(1);
     expect(mergedBuffers[0][1]).toBe(7);
+  });
+
+  test("addBufferRangeToBuffer method - ignore ranges with metadata", async () => {
+    bufferManager.addNewRange([1, 4]);
+    bufferManager.addMetadataToBufferRange(0, "metadata");
+    bufferManager.addNewRange([5, 700]);
+
+    const mergedBuffers = bufferManager.buffers;
+
+    expect(mergedBuffers.length).toBe(2);
+
+    expect(mergedBuffers[0][0]).toBe(1);
+    expect(mergedBuffers[0][1]).toBe(4);
+    expect(mergedBuffers[1][0]).toBe(5);
+    expect(mergedBuffers[1][1]).toBe(700);
   });
 
   test("hasRange method - range exists", async () => {
@@ -75,7 +114,7 @@ describe("BufferManager class tests", () => {
     bufferManager.addNewRange([1, 4]);
     bufferManager.addNewRange([5, 15]);
 
-    expect(bufferManager.totalFramesInBuffer).toBe(13);
+    expect(bufferManager.totalFramesInBuffer).toBe(15);
 
     bufferManager.reset();
 

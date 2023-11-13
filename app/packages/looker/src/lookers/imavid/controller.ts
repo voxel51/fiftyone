@@ -1,4 +1,5 @@
 import * as foq from "@fiftyone/relay";
+import { partition } from "lodash";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { Sample } from "../..";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
@@ -15,7 +16,7 @@ const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
   public storeBufferManager = new BufferManager();
-  private fetchBufferManager = new BufferManager();
+  public fetchBufferManager = new BufferManager();
   private frameRate = DEFAULT_FRAME_RATE;
 
   public totalFrameCount: number;
@@ -49,16 +50,18 @@ export class ImaVidFramesController {
       return;
     }
 
-    this.timeoutId = window.setTimeout(
-      this.executeFetch.bind(this),
-      BUFFERS_REFRESH_TIMEOUT_YIELD
-    );
+    this.executeFetch();
   }
 
   public pauseFetch() {
     window.clearTimeout(this.timeoutId);
     this.fetchBufferManager.reset();
     this.isFetching = false;
+    this.updateImaVidState({ buffering: false });
+  }
+
+  public enqueueFetch(frameRange: Readonly<BufferRange>) {
+    this.fetchBufferManager.addNewRange(frameRange);
   }
 
   private async executeFetch() {
@@ -67,19 +70,30 @@ export class ImaVidFramesController {
     const unfetchedRanges = [];
 
     for (let i = 0; i < this.fetchBufferManager.buffers.length; ++i) {
-      if (this.fetchBufferManager.bufferMetadata[i] === "fetching") {
+      const range = this.fetchBufferManager.buffers[i];
+
+      if (!range) {
+        continue;
+      }
+
+      if (
+        this.fetchBufferManager.getMetadataForBufferRange(i) ===
+        BUFFER_METADATA_FETCHING
+      ) {
         totalFetchingRanges += 1;
       } else {
         totalUnfetchedRanges += 1;
-        unfetchedRanges.push(this.fetchBufferManager.buffers[i]);
+        unfetchedRanges.push(range);
       }
     }
 
+    // end recursion condition
     if (totalUnfetchedRanges === 0 && totalFetchingRanges === 0) {
-      this.isFetching = false;
-      this.updateImaVidState({ buffering: false });
+      this.pauseFetch();
       return;
     }
+
+    this.isFetching = true;
 
     if (totalFetchingRanges > 0 && totalUnfetchedRanges === 0) {
       this.timeoutId = window.setTimeout(
@@ -89,20 +103,22 @@ export class ImaVidFramesController {
       return;
     }
 
-    this.isFetching = true;
-
     this.updateImaVidState({ buffering: true });
 
     const fetchPromises = unfetchedRanges.map((range, index) => {
-      this.fetchBufferManager.bufferMetadata[index] = BUFFER_METADATA_FETCHING;
+      this.fetchBufferManager.addMetadataToBufferRange(
+        index,
+        BUFFER_METADATA_FETCHING
+      );
 
       // subtracting 1 from range[0] because cursor is 0-based
       return this.fetchMore(range[0] - 1, range[1] - range[0]).finally(() => {
-        this.fetchBufferManager.bufferMetadata[index] = null;
+        this.fetchBufferManager.removeMetadataFromBufferRange(index);
       });
     });
 
     const results = await Promise.allSettled(fetchPromises);
+
     results.forEach((result, index) => {
       if (result.status === "rejected") {
         console.error(
@@ -110,8 +126,6 @@ export class ImaVidFramesController {
         );
       } else {
         this.fetchBufferManager.removeRangeAtIndex(index);
-        this.fetchBufferManager.bufferMetadata[index] =
-          BUFFER_METADATA_FETCHING;
       }
     });
 
@@ -163,10 +177,6 @@ export class ImaVidFramesController {
     }
 
     this.frameRate = newFrameRate;
-  }
-
-  public enqueueFetch(frameRange: Readonly<BufferRange>) {
-    this.fetchBufferManager.addNewRange(frameRange);
   }
 
   public async fetchMore(cursor: number, count?: number) {

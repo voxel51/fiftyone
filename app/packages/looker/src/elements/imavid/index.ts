@@ -5,13 +5,14 @@
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import {
   ANIMATION_CANCELED_ID,
+  BUFFERING_PAUSE_TIMEOUT,
   DEFAULT_FRAME_RATE,
   LOOK_AHEAD_TIME_SECONDS,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { DispatchEvent, ImaVidState } from "../../state";
-import { BaseElement, Events } from "../base";
 import { getMillisecondsFromPlaybackRate } from "../../util";
+import { BaseElement, Events } from "../base";
 
 export function withImaVidLookerEvents(): () => Events<ImaVidState> {
   return function () {
@@ -89,7 +90,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private thumbnailSrc: string;
-  // private dispatchEvent:
+  private isBuffering: boolean;
   private waitingToPause = false;
   private waitingToPlay = false;
   private waitingToRelease = false;
@@ -198,7 +199,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   pause(shouldUpdatePlaying = true) {
-    console.log("pausing");
     this.waitingToPause = true;
 
     // "yield" so that requestAnimation gets to react to waitingToPause
@@ -226,9 +226,17 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
     if (!currentFrameSample) {
-      console.log("no current sample, ", currentFrameNumber);
-      this.pause();
-      return;
+      if (currentFrameNumber < this.framesController.totalFrameCount) {
+        setTimeout(() => {
+          this.animationId = requestAnimationFrame(
+            this.drawFrame.bind(this, currentFrameNumber)
+          );
+        }, BUFFERING_PAUSE_TIMEOUT);
+        return;
+      } else {
+        this.pause();
+        return;
+      }
     }
 
     this.waitingToPlay = true;
@@ -264,7 +272,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   async play(currentFrameNumber: number) {
     if (this.animationId !== ANIMATION_CANCELED_ID) {
       // animation is active, return
-      console.log("animation is active, returning");
       return;
     }
 
@@ -273,10 +280,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     );
   }
 
-  private getNecessaryFrameRange(currentFrameNumber: number) {
-    const frameRangeMax =
+  private getLookAheadFrameRange(currentFrameNumber: number) {
+    const frameRangeMax = Math.min(
       currentFrameNumber +
-      LOOK_AHEAD_TIME_SECONDS * this.framesController.currentFrameRate;
+        LOOK_AHEAD_TIME_SECONDS * this.playBackRate * DEFAULT_FRAME_RATE,
+      this.framesController.totalFrameCount
+    );
+
     return [currentFrameNumber, frameRangeMax] as const;
   }
 
@@ -285,12 +295,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * This method is not blocking, it merely enqueues a fetch job.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
-    if (this.framesController.isFetching) {
-      return;
-    }
+    // if (this.framesController.isFetching) {
+    //   return;
+    // }
 
-    let shouldBuffer = false;
-    const necessaryFrameRange = this.getNecessaryFrameRange(
+    let shouldEnqueueFetch = false;
+    const necessaryFrameRange = this.getLookAheadFrameRange(
       state.currentFrameNumber
     );
     const rangeAvailable =
@@ -298,30 +308,36 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         necessaryFrameRange
       );
 
-    if (state.config.thumbnail && state.hovering && !rangeAvailable) {
-      // for grid
-      // only buffer if hovering and range not available
-      shouldBuffer = true;
-    } else if (
-      !state.config.thumbnail &&
-      state.playing &&
-      !state.seeking &&
-      !rangeAvailable
-    ) {
-      // for modal
-      shouldBuffer = true;
+    if (rangeAvailable) {
+      return;
     }
 
-    if (shouldBuffer) {
-      const unprocessedBufferRange =
-        this.framesController.storeBufferManager.getUnprocessedBufferRange(
-          necessaryFrameRange
-        );
-      this.framesController.enqueueFetch(unprocessedBufferRange);
-      this.framesController.resumeFetch();
-    } else {
-      this.framesController.pauseFetch();
+    if (state.config.thumbnail && state.hovering) {
+      // for grid
+      // only buffer if hovering and range not available
+      shouldEnqueueFetch = true;
+      // todo: might want to buffer even when playing is false
+    } else if (!state.config.thumbnail && state.playing && !state.seeking) {
+      // for modal
+      shouldEnqueueFetch = true;
     }
+
+    if (shouldEnqueueFetch) {
+      const unprocessedBufferRange =
+        this.framesController.fetchBufferManager.getUnprocessedBufferRange(
+          this.framesController.storeBufferManager.getUnprocessedBufferRange(
+            necessaryFrameRange
+          )
+        );
+
+      if (unprocessedBufferRange) {
+        this.framesController.enqueueFetch(unprocessedBufferRange);
+        this.framesController.resumeFetch();
+      }
+    }
+    // else {
+    //   this.framesController.pauseFetch();
+    // }
   }
 
   renderSelf(state: Readonly<ImaVidState>) {
@@ -354,11 +370,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.element.setAttribute("src", thumbnailSrc);
     }
 
+    this.isBuffering = buffering;
+
     if (this.playBackRate !== playbackRate) {
       this.playBackRate = playbackRate;
       this.setTimeoutDelay = getMillisecondsFromPlaybackRate(playbackRate);
       const a = this.setTimeoutDelay;
-      console.log("delay is ", a);
     }
 
     this.batchUpdate(() => {
@@ -368,13 +385,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       }
 
       this.ensureBuffers(state);
-
-      const isPlayable =
-        this.getCurrentFrameSample(currentFrameNumber) !== null;
-
-      if (!isPlayable) {
-        return;
-      }
 
       if (thumbnail) {
         if (!hovering) {
@@ -392,8 +402,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
           this.framesController.cleanup();
         } else if (hovering && playing) {
-          this.waitingToPause = false;
-          this.waitingToPlay = true;
+          // this.waitingToPause = false;
+          // this.waitingToPlay = true;
           this.play(currentFrameNumber);
         }
       }
@@ -433,9 +443,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 }
 
+export * from "./frame-count";
 export * from "./loader-bar";
 export * from "./play-button";
 export * from "./playback-rate";
 export * from "./seek-bar";
 export * from "./seek-bar-thumb";
-export * from "./frame-count";
