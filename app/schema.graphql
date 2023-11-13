@@ -130,6 +130,7 @@ type ColorScheme {
 }
 
 input ColorSchemeInput {
+  id: ID!
   colorPool: [String!]!
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
@@ -143,10 +144,10 @@ input ColorSchemeInput {
 }
 
 type Colorscale {
+  path: String!
   name: String
   list: [ColorscaleList!]
   rgb: [[Int!]!]
-  path: String!
 }
 
 input ColorscaleInput {

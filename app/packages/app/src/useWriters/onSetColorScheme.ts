@@ -10,6 +10,7 @@ const onSetColorScheme: RegisteredWriter<"colorScheme"> =
       throw new Error("not implemented");
     }
 
+    console.log(colorScheme);
     commitMutation<setColorSchemeMutation>(environment, {
       mutation: setColorScheme,
       variables: {

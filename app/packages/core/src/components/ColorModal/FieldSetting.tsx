@@ -27,11 +27,11 @@ import {
   SectionWrapper,
 } from "./ShareStyledDiv";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import Colorscale from "./colorPalette/Colorscale";
 import FieldByValue from "./colorPalette/FieldByValue";
 import FieldsMaskTargets from "./colorPalette/FieldsMaskTarget";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
-import Colorscale from "./colorPalette/Colorscale";
 
 export const fieldColorSetting = selectorFamily<
   Omit<CustomizeColorInput, "path"> | undefined,
@@ -60,6 +60,8 @@ export const fieldColorSetting = selectorFamily<
             fields: current?.fields?.filter((field) => field.path !== path),
           };
         }
+
+        console.log(current);
 
         const setting = { ...newSetting, path };
         const fields = [...(current.fields || [])];
@@ -184,12 +186,14 @@ const FieldSetting = ({ path }: { path: string }) => {
             name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting((cur) => ({
-                ...cur,
-                fieldColor: v ? colorMap(path) : undefined,
-                valueColors: setting?.valueColors,
-                colorByAttribute: setting?.colorByAttribute,
-              }));
+              setSetting((cur) => {
+                return {
+                  ...cur,
+                  fieldColor: v ? colorMap(path) : undefined,
+                  valueColors: setting?.valueColors,
+                  colorByAttribute: setting?.colorByAttribute,
+                };
+              });
               setInput(colorMap(path));
             }}
           />

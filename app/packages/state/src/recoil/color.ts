@@ -12,10 +12,10 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
-import { configData } from "./config";
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -125,7 +125,12 @@ export const ensureColorScheme = (
   appConfig?: datasetQuery$data["config"]
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
+  console.log(colorScheme);
+  if (!colorScheme.id) {
+    throw new Error("E");
+  }
   return {
+    id: colorScheme.id,
     colorPool:
       colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",

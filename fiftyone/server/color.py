@@ -10,6 +10,7 @@ from enum import Enum
 import typing as t
 
 from bson import ObjectId
+from dacite import from_dict
 import strawberry as gql
 
 import fiftyone as fo
@@ -56,7 +57,8 @@ class ColorscaleList:
 
 
 @gql.type
-class ColorscaleBase:
+class Colorscale:
+    path: str
     name: t.Optional[str] = None
     list: t.Optional[t.List[ColorscaleList]] = None
 
@@ -74,13 +76,21 @@ class ColorscaleBase:
 
 
 @gql.type
-class Colorscale(ColorscaleBase):
-    path: str
+class DefaultColorscale:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
 
+    def _calculate_rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        if self.name or self.list:
+            rgb = fop.get_colormap(
+                self.name or [[item.value, item.color] for item in self.list]
+            )
+            return rgb
+        return None
 
-@gql.type
-class DefaultColorscale(ColorscaleBase):
-    pass
+    @gql.field
+    def rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        return self._calculate_rgb()
 
 
 @gql.enum
@@ -153,6 +163,7 @@ class LabelTagColorInput:
 
 @gql.input
 class ColorSchemeInput:
+    id: gql.ID
     color_pool: t.List[str]
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
@@ -180,7 +191,8 @@ class SetColorScheme:
             subscription, fose.SetColorScheme(color_scheme=color_scheme)
         )
         # return updated colorscheme (add a unique id to the colorscheme) with colorscale
-        return _to_odm_color_scheme(color_scheme)
+        data = asdict(color_scheme)
+        return from_dict(ColorScheme, data)
 
     @gql.field
     async def set_dataset_color_scheme(
@@ -199,21 +211,11 @@ class SetColorScheme:
         await fou.run_sync_task(run)
         await dispatch_event(subscription, fose.SetDatasetColorScheme())
 
+        data = asdict(color_scheme)
+        return from_dict(ColorScheme, data)
+
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
-    for colorscale in color_scheme.colorscales:
-        if colorscale.list is not None or colorscale.name is not None:
-            # Get the rgb tuples
-
-            input = None
-            if colorscale.name:
-                input = colorscale.name
-            elif colorscale.list:
-                input = [[item.value, item.color] for item in colorscale.list]
-
-            colormap_tuples = fop.get_colormap(input)
-            colorscale.rgb = colormap_tuples
-
     return foo.ColorScheme(
         color_pool=color_scheme.color_pool,
         color_by=color_scheme.color_by,
@@ -238,25 +240,3 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         if color_scheme.default_colorscale
         else {},
     )
-
-
-def prune_rgb_color_scheme(data: ColorScheme):
-    # Clone the input dictionary to avoid mutating the original object
-    cloned_data = data.copy()
-
-    # Process the 'colorscales' list
-    if "colorscales" in cloned_data and isinstance(
-        cloned_data["colorscales"], list
-    ):
-        cloned_data["colorscales"] = [
-            {key: value for key, value in item.items() if key != "rgb"}
-            for item in cloned_data["colorscales"]
-        ]
-
-    # Process the 'defaultColorscale' dictionary
-    if "defaultColorscale" in cloned_data and isinstance(
-        cloned_data["defaultColorscale"], dict
-    ):
-        cloned_data["defaultColorscale"].pop("rgb", None)
-
-    return cloned_data

@@ -7,7 +7,7 @@ Documents that track datasets and their sample schemas in the database.
 """
 import logging
 
-from bson import DBRef
+from bson import DBRef, ObjectId
 
 import eta.core.utils as etau
 
@@ -255,6 +255,11 @@ class ColorScheme(EmbeddedDocument):
     # strict=False lets this class ignore unknown fields from other versions
     meta = {"strict": False}
 
+    id = ObjectIdField(
+        required=True,
+        default=ObjectId,
+        db_field="_id",
+    )
     color_pool = ListField(ColorField(), null=True)
     color_by = StringField(null=True)
     fields = ListField(DictField(), null=True)
@@ -265,6 +270,18 @@ class ColorScheme(EmbeddedDocument):
     default_mask_targets_colors = ListField(DictField(), null=True)
     colorscales = ListField(DictField(), null=True)
     default_colorscale = DictField(null=True)
+
+    def to_dict(self, extended=False):
+        d = super().to_dict(extended)
+        print(d)
+        d["id"] = str(d.pop("_id"))
+        return d
+
+    @classmethod
+    def from_dict(cls, d):
+        d = dict(**d)
+        d["_id"] = ObjectId(d["id"])
+        return cls.from_dict(d)
 
 
 class KeypointSkeleton(EmbeddedDocument):
