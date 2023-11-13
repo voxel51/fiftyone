@@ -1,4 +1,3 @@
-import * as foo from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
@@ -7,7 +6,7 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import { availableOperatorsRefreshCount } from "@fiftyone/operators/src/state";
+import { useOperators } from "@fiftyone/operators";
 
 declare global {
   interface Window {
@@ -143,10 +142,7 @@ async function loadScript(name, url) {
  */
 export function usePlugins() {
   const [state, setState] = useState("loading");
-  const datasetName = recoil.useRecoilValue(fos.datasetName);
-  const setAvailableOperatorsRefreshCount = recoil.useSetRecoilState(
-    availableOperatorsRefreshCount
-  );
+  useOperators();
 
   useEffect(() => {
     loadPlugins()
@@ -157,15 +153,6 @@ export function usePlugins() {
         setState("ready");
       });
   }, []);
-
-  useEffect(() => {
-    if (fou.isPrimitiveString(datasetName)) {
-      foo.loadOperators(datasetName).then(() => {
-        // trigger force refresh
-        setAvailableOperatorsRefreshCount((count) => count + 1);
-      });
-    }
-  }, [datasetName]);
 
   return {
     isLoading: state === "loading",
