@@ -37,5 +37,6 @@ export class ImaVidFrameSamples {
     this.frameIndex.clear();
     this.reverseFrameIndex.clear();
     this.samples.reset();
+    this.storeBufferManager.reset();
   }
 }
