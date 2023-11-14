@@ -55,8 +55,8 @@ export class BufferManager {
     range: Readonly<BufferRange>,
     ignoreRangesWithMetadata = true
   ): void {
-    if (range[0] === range[1]) {
-      return;
+    if (range[1] < range[0]) {
+      throw new Error("invalid range: range[1] must be >= range[0]");
     }
 
     // add the new range to the buffer

@@ -47,6 +47,26 @@ describe("BufferManager class tests", () => {
     expect(mergedBuffers[0][1]).toBe(5);
   });
 
+  test("addBufferRangeToBuffer method - edge case ranges", async () => {
+    bufferManager.addNewRange([2, 2]);
+
+    const mergedBuffers = bufferManager.buffers;
+
+    expect(mergedBuffers.length).toBe(1);
+    expect(mergedBuffers[0][0]).toBe(2);
+    expect(mergedBuffers[0][1]).toBe(2);
+
+    bufferManager.addNewRange([2, 3]);
+
+    const mergedBuffers2 = bufferManager.buffers;
+
+    expect(mergedBuffers2.length).toBe(1);
+    expect(mergedBuffers2[0][0]).toBe(2);
+    expect(mergedBuffers2[0][1]).toBe(3);
+
+    expect(() => bufferManager.addNewRange([10, 1])).toThrowError();
+  });
+
   test("addBufferRangeToBuffer method - partial encapsulated by existing range", async () => {
     bufferManager.addNewRange([48, 84]);
     bufferManager.addNewRange([48, 105]);
