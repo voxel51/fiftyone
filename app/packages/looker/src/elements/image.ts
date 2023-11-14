@@ -11,9 +11,7 @@ export class ImageElement extends BaseElement<ImageState, HTMLImageElement> {
 
   constructor() {
     super();
-    this.allowAnonymousOrigin =
-      process.env.FIFTYONE_APP_SERVICE_WORKER_ENABLED === "true" ||
-      localStorage?.getItem("FIFTYONE_APP_SERVICE_WORKER_ENABLED") === "true";
+    this.allowAnonymousOrigin = window.LOOKER_CROSS_ORIGIN_MEDIA;
   }
 
   getEvents(): Events<ImageState> {

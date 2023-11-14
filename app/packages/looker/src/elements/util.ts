@@ -233,11 +233,7 @@ const makeAcquirer = (
 
       if (VIDEOS.length < maxVideos) {
         const video = document.createElement("video");
-        if (
-          process.env.FIFTYONE_APP_SERVICE_WORKER_ENABLED === "true" ||
-          localStorage?.getItem("FIFTYONE_APP_SERVICE_WORKER_ENABLED") ===
-            "true"
-        ) {
+        if (window.LOOKER_CROSS_ORIGIN_MEDIA) {
           video.crossOrigin = "Anonymous";
         }
         video.preload = "metadata";
