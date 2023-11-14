@@ -466,7 +466,7 @@ export const currentFrameNumberImaVid = atom<number>({
     ({ setSelf, getPromise, onSet }) => {
       let unsubscribe;
 
-      onSet((_newValue, _oldValue, isReset) => {
+      onSet((_newValue, oldValue, isReset) => {
         // note: resetRecoilState is not triggering `onSet` in effect,
         // see https://github.com/facebookexperimental/Recoil/issues/2183
         // replace with `useResetRecoileState` when fixed
@@ -474,6 +474,7 @@ export const currentFrameNumberImaVid = atom<number>({
         // if (!isReset) {
         //   throw new Error("cannot set currentFrameNumberImaVid directly");
         // }
+        unsubscribe && unsubscribe();
 
         getPromise(modalLooker)
           .then((looker: ImaVidLooker) => {

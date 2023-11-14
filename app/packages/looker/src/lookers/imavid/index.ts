@@ -7,6 +7,7 @@ import { ImaVidOptions, ImaVidState, LabelData, Sample } from "../../state";
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
 import { BufferManager } from "./buffer-manager";
+import { DEFAULT_PLAYBACK_RATE } from "./constants";
 
 interface ImaVidFrame {
   sample: Sample;
@@ -144,7 +145,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   getDefaultOptions() {
     return {
       loop: false,
-      playbackRate: 1,
+      playbackRate: DEFAULT_PLAYBACK_RATE,
     } as ImaVidOptions;
   }
 

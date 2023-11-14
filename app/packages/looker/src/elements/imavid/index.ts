@@ -4,9 +4,9 @@
 
 import { getSampleSrc, getStandardizedUrls } from "@fiftyone/state";
 import {
-  ANIMATION_CANCELED_ID,
   BUFFERING_PAUSE_TIMEOUT,
   DEFAULT_FRAME_RATE,
+  DEFAULT_PLAYBACK_RATE,
   LOOK_AHEAD_TIME_SECONDS,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
@@ -79,20 +79,21 @@ const seekFn = (
 export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private playBackRate = DEFAULT_PLAYBACK_RATE;
   private loop = false;
-  private playBackRate = 1.3;
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
-  private animationId = ANIMATION_CANCELED_ID;
   private posterFrame: number;
   private mediaField: string;
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private thumbnailSrc: string;
   private isBuffering: boolean;
+  private isPlaying: boolean;
   private waitingToPause = false;
   private waitingToPlay = false;
+  private isAnimationActive = false;
   private waitingToRelease = false;
 
   public framesController: ImaVidFramesController;
@@ -193,26 +194,23 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.waitingToRelease = false;
   }
 
-  cancelAnimation() {
-    cancelAnimationFrame(this.animationId);
-    this.animationId = ANIMATION_CANCELED_ID;
-  }
-
   pause(shouldUpdatePlaying = true) {
-    this.waitingToPause = true;
-
-    // "yield" so that requestAnimation gets to react to waitingToPause
-    setTimeout(() => {
-      this.cancelAnimation();
-      if (shouldUpdatePlaying) {
-        this.update({ playing: false });
-      }
-    }, 0);
+    this.isAnimationActive = false;
+    if (shouldUpdatePlaying) {
+      this.update(({ playing }) => {
+        if (playing) {
+          return { playing: false };
+        }
+        return {};
+      });
+    }
     this.resetWaitingFlags();
+    this.framesController.pauseFetch();
   }
 
   async resetCanvas() {
-    setTimeout(() => this.ctx.drawImage(this.element, 0, 0), 0);
+    console.log("resetting canvas");
+    this.ctx?.drawImage(this.element, 0, 0);
   }
 
   async drawFrame(currentFrameNumber: number, animate = true) {
@@ -221,6 +219,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return;
     }
 
+    if (!this.isPlaying) {
+      return;
+    }
+
+    console.log("animate is ", animate);
+    this.isAnimationActive = animate;
+
     const currentFrameSample = this.getCurrentFrameSample(currentFrameNumber);
     // TODO: CACHE EVERYTHING INSIDE HERE
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
@@ -228,18 +233,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (!currentFrameSample) {
       if (currentFrameNumber < this.framesController.totalFrameCount) {
         setTimeout(() => {
-          this.animationId = requestAnimationFrame(
-            this.drawFrame.bind(this, currentFrameNumber)
-          );
+          requestAnimationFrame(() => this.drawFrame(currentFrameNumber));
         }, BUFFERING_PAUSE_TIMEOUT);
         return;
       } else {
-        this.pause();
+        this.pause(true);
         return;
       }
     }
-
-    this.waitingToPlay = true;
 
     const urls = getStandardizedUrls(currentFrameSample.urls);
     const src = getSampleSrc(urls[this.mediaField]);
@@ -248,15 +249,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // thisSampleOverlayPrepared.then((overlay) => {
       this.ctx.drawImage(image, 0, 0);
 
-      if (animate) {
+      if (animate && !this.waitingToPause) {
         if (currentFrameNumber <= this.framesController.totalFrameCount) {
-          this.update({ currentFrameNumber: currentFrameNumber + 1 });
+          this.update(({ playing }) => {
+            if (playing) {
+              return { currentFrameNumber: currentFrameNumber + 1 };
+            }
+
+            return {};
+          });
         }
 
         setTimeout(() => {
-          this.animationId = requestAnimationFrame(
-            this.drawFrame.bind(this, currentFrameNumber + 1)
-          );
+          requestAnimationFrame(() => this.drawFrame(currentFrameNumber + 1));
         }, this.setTimeoutDelay);
       }
       // });
@@ -270,14 +275,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
    */
   async play(currentFrameNumber: number) {
-    if (this.animationId !== ANIMATION_CANCELED_ID) {
-      // animation is active, return
+    if (this.isAnimationActive) {
       return;
     }
 
-    this.animationId = requestAnimationFrame(
-      this.drawFrame.bind(this, currentFrameNumber)
-    );
+    requestAnimationFrame(() => this.drawFrame(currentFrameNumber));
   }
 
   private getLookAheadFrameRange(currentFrameNumber: number) {
@@ -295,10 +297,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * This method is not blocking, it merely enqueues a fetch job.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
-    // if (this.framesController.isFetching) {
-    //   return;
-    // }
-
     let shouldEnqueueFetch = false;
     const necessaryFrameRange = this.getLookAheadFrameRange(
       state.currentFrameNumber
@@ -335,9 +333,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.framesController.resumeFetch();
       }
     }
-    // else {
-    //   this.framesController.pauseFetch();
-    // }
   }
 
   renderSelf(state: Readonly<ImaVidState>) {
@@ -370,74 +365,72 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.element.setAttribute("src", thumbnailSrc);
     }
 
+    if (!loaded) {
+      return;
+    }
+
     this.isBuffering = buffering;
+    this.isPlaying = playing;
 
     if (this.playBackRate !== playbackRate) {
       this.playBackRate = playbackRate;
       this.setTimeoutDelay = getMillisecondsFromPlaybackRate(playbackRate);
-      const a = this.setTimeoutDelay;
     }
 
-    this.batchUpdate(() => {
-      // `destroyed` is called when looker is reset
-      if (destroyed) {
-        this.framesController.cleanup();
-      }
+    // `destroyed` is called when looker is reset
+    if (destroyed) {
+      this.framesController.pauseFetch();
+    }
 
-      this.ensureBuffers(state);
+    this.ensureBuffers(state);
 
-      if (thumbnail) {
-        if (!hovering) {
-          if (!playing) {
-            this.cancelAnimation();
+    if (!playing) {
+      // this flag will be picked up in `drawFrame`, that in turn will call `pause`
+      this.waitingToPause = true;
+      this.isAnimationActive = false;
+    }
+    console.log(
+      "isAnimationActive",
+      this.isAnimationActive,
+      "waitingToPlay",
+      this.waitingToPlay,
+      "waitingToPause",
+      this.waitingToPause
+    );
+
+    if (thumbnail) {
+      if (!hovering) {
+        if (!playing) {
+          // note: pausing happens below by setting waitingToPause flag to true
+          if (currentFrameNumber === 1) {
             this.resetCanvas();
-
-            if (
-              this.animationId === ANIMATION_CANCELED_ID &&
-              currentFrameNumber !== 1
-            ) {
-              this.update({ currentFrameNumber: 1 });
-            }
+            this.resetWaitingFlags();
           }
-
-          this.framesController.cleanup();
-        } else if (hovering && playing) {
-          // this.waitingToPause = false;
-          // this.waitingToPlay = true;
-          this.play(currentFrameNumber);
+          if (currentFrameNumber !== 1) {
+            this.update({ currentFrameNumber: 1 });
+          }
+          console.log("frame number is ", currentFrameNumber);
         }
-      }
-
-      if (!playing && this.animationId !== ANIMATION_CANCELED_ID) {
-        this.waitingToPause = true;
-      }
-
-      if (thumbnail) {
-        return;
-      }
-
-      if (playing && !seeking && !buffering) {
+      } else if (hovering && playing) {
+        this.waitingToPause = false;
+        this.waitingToPlay = true;
         this.play(currentFrameNumber);
       }
+      return;
+    }
 
-      if (playing && seeking) {
-        this.pause();
-        this.drawFrame(currentFrameNumber, false);
-      }
+    if (playing && !seeking) {
+      this.play(currentFrameNumber);
+    }
 
-      if (!playing && seeking) {
-        this.drawFrame(currentFrameNumber, false);
-      }
+    if (playing && seeking) {
+      this.pause();
+      this.drawFrame(currentFrameNumber, false);
+    }
 
-      return null;
-
-      if (this.loop !== loop) {
-        // this.element.loop = loop;
-        this.loop = loop;
-      }
-
-      return null;
-    });
+    if (!playing && seeking) {
+      this.drawFrame(currentFrameNumber, false);
+    }
 
     return null;
   }

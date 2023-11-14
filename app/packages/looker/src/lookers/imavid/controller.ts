@@ -53,11 +53,19 @@ export class ImaVidFramesController {
     this.executeFetch();
   }
 
-  public pauseFetch() {
+  public pauseFetch(updateBuffering = true) {
     window.clearTimeout(this.timeoutId);
+    this.subscription?.unsubscribe();
     this.fetchBufferManager.reset();
     this.isFetching = false;
-    this.updateImaVidState({ buffering: false });
+    if (updateBuffering) {
+      this.updateImaVidState(({ buffering }) => {
+        if (buffering) {
+          return { buffering: false };
+        }
+        return {};
+      });
+    }
   }
 
   public enqueueFetch(frameRange: Readonly<BufferRange>) {
@@ -153,18 +161,13 @@ export class ImaVidFramesController {
 
   public get store() {
     if (!ImaVidStore.has(this.posterSampleId)) {
-      ImaVidStore.set(this.posterSampleId, new ImaVidFrameSamples());
+      ImaVidStore.set(
+        this.posterSampleId,
+        new ImaVidFrameSamples(this.storeBufferManager)
+      );
     }
 
     return ImaVidStore.get(this.posterSampleId);
-  }
-
-  public cleanup() {
-    try {
-      this.subscription?.unsubscribe();
-    } catch {}
-
-    this.pauseFetch();
   }
 
   public setFrameRate(newFrameRate: number) {
