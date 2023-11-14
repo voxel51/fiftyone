@@ -9,15 +9,13 @@ import logging
 from typing import Optional
 from ..internal import secrets as fois
 
-config_cache = {}
-
 
 class PluginSecretsResolver:
     """Injects secrets from environmental variables into the execution
     context."""
 
     _instance = None
-    config_cache = {}
+    _registered_secrets = {}
 
     def __new__(cls):
         if cls._instance is None:
@@ -28,7 +26,7 @@ class PluginSecretsResolver:
     def register_operator(
         self, operator_uri: str, required_secrets: list[str]
     ) -> None:
-        self.config_cache[operator_uri] = required_secrets
+        self._registered_secrets[operator_uri] = required_secrets
 
     def client(self) -> fois.ISecretProvider:
         if not self._instance:
@@ -48,7 +46,7 @@ class PluginSecretsResolver:
         """
         # pylint: disable=no-member
 
-        secret_requirements = self.config_cache.get(operator_uri, None)
+        secret_requirements = self._registered_secrets.get(operator_uri, None)
 
         if not secret_requirements:
             logging.error(
@@ -78,7 +76,7 @@ class PluginSecretsResolver:
         """
         # pylint: disable=no-member
 
-        secret_requirements = self.config_cache.get(operator_uri, None)
+        secret_requirements = self._registered_secrets.get(operator_uri, None)
         if not secret_requirements:
             logging.error(
                 f"Cannot resolve secrets for unregistered "

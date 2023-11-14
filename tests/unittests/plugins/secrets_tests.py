@@ -102,7 +102,7 @@ class TestGetSecret(unittest.TestCase):
     @pytest.fixture(autouse=False)
     def plugin_secrets_resolver(self):
         resolver = fop.PluginSecretsResolver()
-        resolver.config_cache = {"operator": ["MY_SECRET_KEY"]}
+        resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
         return resolver
 
     @patch(
@@ -130,7 +130,7 @@ class TestGetSecretSync:
         )
 
         resolver = fop.PluginSecretsResolver()
-        resolver.config_cache = {"operator": ["MY_SECRET_KEY"]}
+        resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
 
         result = resolver.get_secret_sync(
             key="MY_SECRET_KEY", operator_uri="operator"
