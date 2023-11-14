@@ -28,7 +28,7 @@ const INSTALL_IO_PLUGIN_LINK =
 const INSTALL_UTILS_PLUGIN_LABEL = "@voxel51/utils";
 const INSTALL_IO_PLUGIN_LABEL = "@voxel51/io";
 
-export default function Starter(props: StarterPropsType) {
+export function Starter(props: StarterPropsType) {
   const { mode } = props;
   const ready = useOperators(true);
   const datasetName = useRecoilValue(datasetNameAtom);

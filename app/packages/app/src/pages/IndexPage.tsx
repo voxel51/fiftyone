@@ -5,7 +5,7 @@ import { graphql } from "relay-runtime";
 import Nav from "../components/Nav";
 import { Route } from "../routing";
 import { IndexPageQuery } from "./__generated__/IndexPageQuery.graphql";
-import Starter from "@fiftyone/core/src/components/Starter";
+import { Starter } from "@fiftyone/core";
 
 const IndexPageQueryNode = graphql`
   query IndexPageQuery($search: String = "", $count: Int, $cursor: String) {
