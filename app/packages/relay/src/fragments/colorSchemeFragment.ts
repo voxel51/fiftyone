@@ -21,6 +21,23 @@ export default r(graphql`
       intTarget
       color
     }
+    defaultColorscale {
+      name
+      list {
+        value
+        color
+      }
+      rgb
+    }
+    colorscales {
+      path
+      name
+      list {
+        value
+        color
+      }
+      rgb
+    }
     fields {
       colorByAttribute
       fieldColor

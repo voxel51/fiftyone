@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<3b8ab11f0c03964b7737b563cdbf9e32>>
+ * @generated SignedSource<<4eb93ca357784136884d2f56c71ed5e5>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,23 @@ import { FragmentRefs } from "relay-runtime";
 export type colorSchemeFragment$data = {
   readonly colorBy: ColorBy | null;
   readonly colorPool: ReadonlyArray<string>;
+  readonly colorscales: ReadonlyArray<{
+    readonly list: ReadonlyArray<{
+      readonly color: string;
+      readonly value: number;
+    }> | null;
+    readonly name: string | null;
+    readonly path: string;
+    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null;
+  }> | null;
+  readonly defaultColorscale: {
+    readonly list: ReadonlyArray<{
+      readonly color: string;
+      readonly value: number;
+    }> | null;
+    readonly name: string | null;
+    readonly rgb: ReadonlyArray<ReadonlyArray<number>> | null;
+  } | null;
   readonly defaultMaskTargetsColors: ReadonlyArray<{
     readonly color: string;
     readonly intTarget: number;
@@ -67,23 +84,24 @@ v1 = {
 v2 = {
   "alias": null,
   "args": null,
+  "kind": "ScalarField",
+  "name": "value",
+  "storageKey": null
+},
+v3 = {
+  "alias": null,
+  "args": null,
   "concreteType": "ValueColor",
   "kind": "LinkedField",
   "name": "valueColors",
   "plural": true,
   "selections": [
     (v1/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "value",
-      "storageKey": null
-    }
+    (v2/*: any*/)
   ],
   "storageKey": null
 },
-v3 = [
+v4 = [
   {
     "alias": null,
     "args": null,
@@ -92,7 +110,41 @@ v3 = [
     "storageKey": null
   },
   (v1/*: any*/)
-];
+],
+v5 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v6 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ColorscaleList",
+  "kind": "LinkedField",
+  "name": "list",
+  "plural": true,
+  "selections": [
+    (v2/*: any*/),
+    (v1/*: any*/)
+  ],
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "rgb",
+  "storageKey": null
+},
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "path",
+  "storageKey": null
+};
 return {
   "argumentDefinitions": [],
   "kind": "Fragment",
@@ -150,7 +202,7 @@ return {
       "plural": false,
       "selections": [
         (v0/*: any*/),
-        (v2/*: any*/)
+        (v3/*: any*/)
       ],
       "storageKey": null
     },
@@ -161,7 +213,36 @@ return {
       "kind": "LinkedField",
       "name": "defaultMaskTargetsColors",
       "plural": true,
-      "selections": (v3/*: any*/),
+      "selections": (v4/*: any*/),
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "DefaultColorscale",
+      "kind": "LinkedField",
+      "name": "defaultColorscale",
+      "plural": false,
+      "selections": [
+        (v5/*: any*/),
+        (v6/*: any*/),
+        (v7/*: any*/)
+      ],
+      "storageKey": null
+    },
+    {
+      "alias": null,
+      "args": null,
+      "concreteType": "Colorscale",
+      "kind": "LinkedField",
+      "name": "colorscales",
+      "plural": true,
+      "selections": [
+        (v8/*: any*/),
+        (v5/*: any*/),
+        (v6/*: any*/),
+        (v7/*: any*/)
+      ],
       "storageKey": null
     },
     {
@@ -180,14 +261,8 @@ return {
           "storageKey": null
         },
         (v0/*: any*/),
-        {
-          "alias": null,
-          "args": null,
-          "kind": "ScalarField",
-          "name": "path",
-          "storageKey": null
-        },
-        (v2/*: any*/),
+        (v8/*: any*/),
+        (v3/*: any*/),
         {
           "alias": null,
           "args": null,
@@ -195,7 +270,7 @@ return {
           "kind": "LinkedField",
           "name": "maskTargetsColors",
           "plural": true,
-          "selections": (v3/*: any*/),
+          "selections": (v4/*: any*/),
           "storageKey": null
         }
       ],
@@ -207,6 +282,6 @@ return {
 };
 })();
 
-(node as any).hash = "c6572d93e6d8829194c010fde9d6b1b1";
+(node as any).hash = "9aff4993141a4d45f20c54463124cf42";
 
 export default node;

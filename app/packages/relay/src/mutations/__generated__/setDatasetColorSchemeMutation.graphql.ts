@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<c58e2aa2a104dbb6145054b1b14e95dd>>
+ * @generated SignedSource<<8091dd16a36d258433dd6120b1559c37>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -120,23 +120,24 @@ v5 = {
 v6 = {
   "alias": null,
   "args": null,
+  "kind": "ScalarField",
+  "name": "value",
+  "storageKey": null
+},
+v7 = {
+  "alias": null,
+  "args": null,
   "concreteType": "ValueColor",
   "kind": "LinkedField",
   "name": "valueColors",
   "plural": true,
   "selections": [
     (v5/*: any*/),
-    {
-      "alias": null,
-      "args": null,
-      "kind": "ScalarField",
-      "name": "value",
-      "storageKey": null
-    }
+    (v6/*: any*/)
   ],
   "storageKey": null
 },
-v7 = [
+v8 = [
   {
     "alias": null,
     "args": null,
@@ -145,7 +146,41 @@ v7 = [
     "storageKey": null
   },
   (v5/*: any*/)
-];
+],
+v9 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "name",
+  "storageKey": null
+},
+v10 = {
+  "alias": null,
+  "args": null,
+  "concreteType": "ColorscaleList",
+  "kind": "LinkedField",
+  "name": "list",
+  "plural": true,
+  "selections": [
+    (v6/*: any*/),
+    (v5/*: any*/)
+  ],
+  "storageKey": null
+},
+v11 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "rgb",
+  "storageKey": null
+},
+v12 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "path",
+  "storageKey": null
+};
 return {
   "fragment": {
     "argumentDefinitions": [
@@ -246,7 +281,7 @@ return {
             "plural": false,
             "selections": [
               (v4/*: any*/),
-              (v6/*: any*/)
+              (v7/*: any*/)
             ],
             "storageKey": null
           },
@@ -257,7 +292,36 @@ return {
             "kind": "LinkedField",
             "name": "defaultMaskTargetsColors",
             "plural": true,
-            "selections": (v7/*: any*/),
+            "selections": (v8/*: any*/),
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "DefaultColorscale",
+            "kind": "LinkedField",
+            "name": "defaultColorscale",
+            "plural": false,
+            "selections": [
+              (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/)
+            ],
+            "storageKey": null
+          },
+          {
+            "alias": null,
+            "args": null,
+            "concreteType": "Colorscale",
+            "kind": "LinkedField",
+            "name": "colorscales",
+            "plural": true,
+            "selections": [
+              (v12/*: any*/),
+              (v9/*: any*/),
+              (v10/*: any*/),
+              (v11/*: any*/)
+            ],
             "storageKey": null
           },
           {
@@ -276,14 +340,8 @@ return {
                 "storageKey": null
               },
               (v4/*: any*/),
-              {
-                "alias": null,
-                "args": null,
-                "kind": "ScalarField",
-                "name": "path",
-                "storageKey": null
-              },
-              (v6/*: any*/),
+              (v12/*: any*/),
+              (v7/*: any*/),
               {
                 "alias": null,
                 "args": null,
@@ -291,7 +349,7 @@ return {
                 "kind": "LinkedField",
                 "name": "maskTargetsColors",
                 "plural": true,
-                "selections": (v7/*: any*/),
+                "selections": (v8/*: any*/),
                 "storageKey": null
               }
             ],
@@ -303,12 +361,12 @@ return {
     ]
   },
   "params": {
-    "cacheID": "8fa2698e3189b3e6c0ce4c1dbdc9a01e",
+    "cacheID": "c95f614ccb07c3ffc3af5192774dd150",
     "id": null,
     "metadata": {},
     "name": "setDatasetColorSchemeMutation",
     "operationKind": "mutation",
-    "text": "mutation setDatasetColorSchemeMutation(\n  $subscription: String!\n  $datasetName: String!\n  $colorScheme: ColorSchemeInput\n) {\n  setDatasetColorScheme(subscription: $subscription, datasetName: $datasetName, colorScheme: $colorScheme) {\n    ...colorSchemeFragment\n    id\n  }\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n"
+    "text": "mutation setDatasetColorSchemeMutation(\n  $subscription: String!\n  $datasetName: String!\n  $colorScheme: ColorSchemeInput\n) {\n  setDatasetColorScheme(subscription: $subscription, datasetName: $datasetName, colorScheme: $colorScheme) {\n    ...colorSchemeFragment\n    id\n  }\n}\n\nfragment colorSchemeFragment on ColorScheme {\n  id\n  colorBy\n  colorPool\n  multicolorKeypoints\n  opacity\n  showSkeletons\n  labelTags {\n    fieldColor\n    valueColors {\n      color\n      value\n    }\n  }\n  defaultMaskTargetsColors {\n    intTarget\n    color\n  }\n  defaultColorscale {\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  colorscales {\n    path\n    name\n    list {\n      value\n      color\n    }\n    rgb\n  }\n  fields {\n    colorByAttribute\n    fieldColor\n    path\n    valueColors {\n      color\n      value\n    }\n    maskTargetsColors {\n      intTarget\n      color\n    }\n  }\n}\n"
   }
 };
 })();
