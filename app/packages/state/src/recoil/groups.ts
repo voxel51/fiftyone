@@ -446,13 +446,11 @@ export const activeModalSidebarSample = selector({
 
       // frameIndex is zero-index based
       const sampleId =
-        currentModalLooker?._UNSAFE_state?.config.frameStoreController.store.frameIndex.get(
+        currentModalLooker?.frameStoreController?.store.frameIndex.get(
           currentFrameNumber - 1
         );
       const sample =
-        currentModalLooker?._UNSAFE_state?.config.frameStoreController.store.samples.get(
-          sampleId
-        );
+        currentModalLooker?.frameStoreController?.store.samples.get(sampleId);
       return sample?.sample ?? get(activeModalSample);
     }
 

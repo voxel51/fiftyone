@@ -35,8 +35,8 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return this.state.currentFrameNumber;
   }
 
-  get _UNSAFE_state() {
-    return this.state;
+  get frameStoreController() {
+    return this.state.config?.frameStoreController;
   }
 
   get playing() {
