@@ -233,7 +233,9 @@ const makeAcquirer = (
 
       if (VIDEOS.length < maxVideos) {
         const video = document.createElement("video");
-        // video.crossOrigin = "Anonymous";
+        if (window.LOOKER_CROSS_ORIGIN_MEDIA) {
+          video.crossOrigin = "Anonymous";
+        }
         video.preload = "metadata";
         video.muted = true;
         video.loop = false;
