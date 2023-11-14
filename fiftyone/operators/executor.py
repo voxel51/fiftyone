@@ -482,9 +482,9 @@ class ExecutionContext(object):
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> dict:
-        """The dict of secrets available to the operation (if any)."""
-        return self._secrets
+    def secrets(self) -> list[str]:
+        """The list of secrets that have been resolved (if any)."""
+        return [k for k, v in self._secrets.items() if v is not None]
 
     def secret(self, key):
         """Retrieves the secret with the given key.
