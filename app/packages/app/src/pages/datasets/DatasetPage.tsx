@@ -15,7 +15,7 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import Starter from "@fiftyone/core/src/components/Starter";
+import { Starter } from "@fiftyone/core";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
