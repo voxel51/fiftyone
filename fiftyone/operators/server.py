@@ -18,7 +18,6 @@ from .executor import (
     resolve_type,
     resolve_placement,
     ExecutionContext,
-    is_snapshot,  # teams-only
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
@@ -94,11 +93,6 @@ class ResolvePlacements(HTTPEndpoint):
         )
         placements = []
 
-        # teams-only
-        dataset_raw_name = data.get("dataset_name", None)
-        if is_snapshot(dataset_raw_name):
-            return {"placements": placements}
-
         for operator in registry.list_operators():
             # teams-only
             if not registry.can_execute(operator.uri):
@@ -119,7 +113,6 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-
         user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
