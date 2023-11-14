@@ -7,7 +7,7 @@ import {
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { isInListField } from "./state";
+import { isInListField } from "../state";
 import { Option, OptionKey } from "./useOptions";
 
 const filterDefault = selectorFamily({

@@ -1,49 +1,42 @@
 import * as fos from "@fiftyone/state";
 import React, { MutableRefObject } from "react";
-import {
-  RecoilState,
-  useRecoilCallback,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
+import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
 import { isInKeypointsField, isObjectIdField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
+import { Result } from "./Result";
 
 interface ResultsProps {
-  results: [string | null, number | null][];
-  selectedValuesAtom: RecoilState<(string | null)[]>;
+  results: Result[];
+  selectedAtom: RecoilState<(string | null)[]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   modal: boolean;
   path: string;
-  selectedCounts: MutableRefObject<Map<string | null, number | null>>;
+  selected: MutableRefObject<Map<string | null, number | null>>;
   lightning: boolean;
 }
 
 const Results = ({
   results,
-  selectedValuesAtom,
+  selectedAtom,
   excludeAtom,
   isMatchingAtom,
   modal,
   path,
-  selectedCounts,
+  selected: selectedRef,
   lightning,
 }: ResultsProps) => {
   const name = path.split(".").slice(-1)[0];
-  const [selected, setSelected] = useRecoilState(selectedValuesAtom);
+  const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
   const selectedSet = new Set(selected);
-  const [excluded, setExcluded] = useRecoilState(excludeAtom);
-  const setIsMatching = useSetRecoilState(isMatchingAtom);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
-  const counts = new Map(results);
+  const counts = new Map(results.map(({ count, value }) => [value, count]));
   let allValues = selected.map((value) => ({
     value,
     count: counts.get(value) ?? (0 as number | null),
@@ -55,19 +48,11 @@ const Results = ({
   if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
     allValues = [
       ...allValues,
-      ...results
-        .filter(([v]) => !selectedSet.has(v))
-        .map(([value, count]) => ({ value, count })),
+      ...results.filter(({ value }) => !selectedSet.has(value)),
     ];
   }
 
   allValues = [...new Set(allValues)];
-
-  const handleReset = useRecoilCallback(({ snapshot }) => async () => {
-    setSelected([]);
-    excluded && setExcluded(false);
-    isFilterMode && setIsMatching(!nestedField);
-  });
 
   if (!allValues.length && neverShowExpansion) {
     return lightning ? null : (
@@ -92,8 +77,8 @@ const Results = ({
           count={
             typeof count !== "number" || !isFilterMode
               ? undefined
-              : selectedCounts.current.has(value)
-              ? selectedCounts.current.get(value) ?? undefined
+              : selectedRef.current.has(value)
+              ? selectedRef.current.get(value) ?? undefined
               : count
           }
           setValue={(checked: boolean) => {
@@ -121,7 +106,12 @@ const Results = ({
             modal={modal}
             path={path}
           />
-          <Reset />
+          <Reset
+            excludeAtom={excludeAtom}
+            isMatchingAtom={isMatchingAtom}
+            path={path}
+            selectedAtom={selectedAtom}
+          />
         </>
       )}
     </>

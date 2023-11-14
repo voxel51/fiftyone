@@ -10,7 +10,6 @@ import CategoricalFilter from "./StringFilter/StringFilter";
 const LabelTagsFilter = ({
   path,
   modal,
-  color,
   ...rest
 }: {
   path: string;
@@ -21,7 +20,7 @@ const LabelTagsFilter = ({
 }) => {
   return (
     <CategoricalFilter
-      selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
+      selectedAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
       resultsAtom={labelTagsCount({ modal, extended: false })}

@@ -1,14 +1,14 @@
 import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { useRef } from "react";
-import { RecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import React from "react";
+import { RecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
 import { isInKeypointsField } from "../state";
-import { CHECKBOX_LIMIT } from "../utils";
-import ResultComponent from "./ResultComponent";
-import Wrapper from "./Results";
+import Checkboxes from "./Checkboxes";
+import ResultComponent from "./Result";
 import useOnSelect from "./useOnSelect";
+import useSelected, { ResultsAtom } from "./useSelected";
 
 const StringFilterContainer = styled.div`
   background: ${({ theme }) => theme.background.level2};
@@ -32,7 +32,7 @@ const NamedStringFilterHeader = styled.div`
 `;
 
 interface Props {
-  selectedValuesAtom: RecoilState<(string | null)[]>;
+  selectedAtom: RecoilState<(string | null)[]>;
   excludeAtom: RecoilState<boolean>; // toggles select or exclude
   isMatchingAtom: RecoilState<boolean>; // toggles match or filter
   resultsAtom: ResultsAtom;
@@ -52,38 +52,9 @@ const useName = (path: string) => {
   return name;
 };
 
-function useResults(modal: boolean, path: string, resultsAtom: ResultsAtom) {
-  const lightning = useRecoilValue(fos.isLightningPath(path));
-  const resultsLoadable = useRecoilValueLoadable(resultsAtom);
-  const field = useRecoilValue(fos.field(path));
-  const objectId = Boolean(field?.ftype.includes("ObjectIdField"));
-  if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
-
-  const data =
-    resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
-  // id fields should always use filter mode
-  const neverShowExpansion = objectId;
-  const showSelector =
-    lightning ||
-    neverShowExpansion ||
-    !data?.results ||
-    data?.results.length > CHECKBOX_LIMIT;
-
-  const useSearch = getUseSearch({ modal, path });
-
-  return {
-    data,
-    lightning,
-    loading: resultsLoadable.state === "loading",
-    showSelector,
-    results: resultsLoadable.contents,
-    useSearch: lightning && objectId ? undefined : useSearch,
-  };
-}
-
 const StringFilter = ({
   resultsAtom,
-  selectedValuesAtom,
+  selectedAtom,
   excludeAtom,
   isMatchingAtom,
   path,
@@ -92,20 +63,13 @@ const StringFilter = ({
 }: Props) => {
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const selectedCounts = useRef(new Map<V["value"], number | null>());
-  const selectVisibility = useRef(new Map<V["value"], number | null>());
   const field = useRecoilValue(fos.field(path));
-  const { showSelector, data, lightning, loading, useSearch } = useResults(
+  const { lightning, loading, results, showSearch, useSearch } = useSelected(
     modal,
     path,
     resultsAtom
   );
-  const onSelect = useOnSelect(
-    modal,
-    path,
-    selectedValuesAtom,
-    isFilterMode ? selectedCounts : selectVisibility
-  );
+  const { selected, onSelect } = useOnSelect(modal, path, selectedAtom);
 
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
@@ -138,7 +102,7 @@ const StringFilter = ({
           <LoadingDots text="Loading" />
         ) : (
           <>
-            {showSelector && !skeleton && (
+            {showSearch && !skeleton && (
               <Selector
                 useSearch={useSearch}
                 placeholder={`+ ${
@@ -156,14 +120,14 @@ const StringFilter = ({
                 id={path}
               />
             )}
-            <Wrapper
+            <Checkboxes
               path={path}
-              results={data?.results || []}
-              selectedValuesAtom={selectedValuesAtom}
+              results={results?.results || []}
+              selectedAtom={selectedAtom}
               excludeAtom={excludeAtom}
               isMatchingAtom={isMatchingAtom}
               modal={modal}
-              selectedCounts={selectedCounts}
+              selected={selected}
               lightning={lightning}
             />
           </>

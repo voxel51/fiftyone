@@ -1,7 +1,7 @@
 import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { isBooleanField, isInKeypointsField, isInListField } from "./state";
+import { isBooleanField, isInKeypointsField, isInListField } from "../state";
 
 export type OptionKey =
   | "filter"

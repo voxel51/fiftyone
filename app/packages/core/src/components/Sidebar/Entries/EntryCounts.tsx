@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React, { useCallback } from "react";
-import { selector, selectorFamily, useRecoilValue } from "recoil";
+import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
 import { pathIsExpanded } from "./utils";
 
@@ -32,11 +32,6 @@ const showEntryCounts = selectorFamily<
 
       return false;
     },
-});
-
-const count = selector({
-  key: "countTmp",
-  get: ({ get }) => get(fos.estimatedCounts)?.estimatedSampleCount || 0,
 });
 
 export const PathEntryCounts = ({
@@ -84,13 +79,10 @@ const labelTagCount = selectorFamily<
     },
 });
 
-export const labelTagsCount = selectorFamily<
-  { count: number; results: [string, number][] },
-  { modal: boolean; extended: boolean }
->({
+export const labelTagsCount = selectorFamily({
   key: `labelTagsCount`,
   get:
-    ({ ...props }) =>
+    (props: { modal: boolean; extended: boolean }) =>
     ({ get }) => {
       const labelTagObj = get(
         fos.cumulativeCounts({
@@ -99,9 +91,11 @@ export const labelTagsCount = selectorFamily<
         })
       );
       if (!labelTagObj) return { count: 0, results: [] };
-      const labelTags = Object.entries(labelTagObj);
-      const count = labelTags.reduce((acc, [key, value]) => acc + value, 0);
-      console.log(labelTags);
+      const labelTags = Object.entries(labelTagObj).map(([value, count]) => ({
+        value,
+        count,
+      }));
+      const count = labelTags.reduce((acc, { count }) => acc + count, 0);
       return { count, results: labelTags };
     },
 });

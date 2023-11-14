@@ -5,11 +5,7 @@ import {
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
 import { atomFamily, selectorFamily } from "recoil";
-
-export type Value = {
-  value: string | null;
-  count: number | null;
-};
+import { Result } from "./Result";
 
 export const categoricalSearch = atomFamily<
   string,
@@ -21,7 +17,7 @@ export const categoricalSearch = atomFamily<
 
 export const categoricalSearchResults = selectorFamily<
   {
-    values: Value[];
+    values: Result[];
     count?: number;
   },
   { path: string; modal: boolean }

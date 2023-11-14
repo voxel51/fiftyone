@@ -24,7 +24,7 @@ const StringFieldFilter = ({
   const lightning = useRecoilValue(fos.isLightningPath(path));
   return (
     <StringFilter
-      selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
+      selectedAtom={stringSelectedValuesAtom({ modal, path })}
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
       resultsAtom={

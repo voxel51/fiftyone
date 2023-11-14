@@ -2,11 +2,9 @@ import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
-const ResultComponent = ({
-  value: { value, count },
-}: {
-  value: { value: string | null; count: number | null };
-}) => {
+export type Result = { value: string | null; count: number | null };
+
+const ResultComponent = ({ value: { value, count } }: { value: Result }) => {
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   return (
     <div

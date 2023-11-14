@@ -9,7 +9,7 @@ export const stringCountResults = selectorFamily({
   key: "stringCountResults",
   get:
     (params: { path: string; modal: boolean; extended: boolean }) =>
-    ({ get }): { count: number; results: [string | null, number][] } => {
+    ({ get }) => {
       const keys = params.path.split(".");
       let parent = keys[0];
       const field = get(schemaAtoms.field(parent));
@@ -28,10 +28,7 @@ export const stringCountResults = selectorFamily({
         if (skeleton && skeleton.labels) {
           return {
             count: skeleton.labels.length,
-            results: skeleton.labels.map((label) => [
-              label as string | null,
-              -1,
-            ]),
+            results: skeleton.labels.map((value) => ({ value, count: null })),
           };
         }
       }
@@ -43,13 +40,13 @@ export const stringCountResults = selectorFamily({
 
       let count = data.count;
 
-      const results: [string | null, number][] = data.values.map(
-        ({ count, value }) => [value, count]
-      );
-      const none: number = get(noneCount(params));
+      const results: { value: string | null; count: number | null }[] = [
+        ...data.values,
+      ];
 
+      const none = get(noneCount(params));
       if (none) {
-        results.push([null, none]);
+        results.push({ value: null, count: none });
         count++;
       }
 

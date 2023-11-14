@@ -2,13 +2,10 @@ import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
 import { noneCount } from "./counts";
 
-export const booleanCountResults = selectorFamily<
-  { count: number; results: [boolean | null, number][] },
-  { path: string; modal: boolean; extended: boolean }
->({
+export const booleanCountResults = selectorFamily({
   key: "booleanCountResults",
   get:
-    (params) =>
+    (params: { path: string; modal: boolean; extended: boolean }) =>
     ({ get }) => {
       const data = get(aggregation(params));
       const none = get(noneCount(params));
@@ -20,12 +17,12 @@ export const booleanCountResults = selectorFamily<
       const result = {
         count: data.false + data.true,
         results: [
-          [false, data.false],
-          [true, data.true],
-        ] as [boolean, number][],
+          { value: "False", count: data.false },
+          { value: "True", count: data.true },
+        ],
       };
       if (none) {
-        result.results.push([null, none]);
+        result.results.push({ value: null, count: none });
       }
       return result;
     },

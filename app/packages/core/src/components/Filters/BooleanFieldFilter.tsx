@@ -21,7 +21,7 @@ const BooleanFieldFilter = ({
 }) => {
   return (
     <StringFilter
-      selectedValuesAtom={booleanSelectedValuesAtom({ path, modal })}
+      selectedAtom={booleanSelectedValuesAtom({ path, modal })}
       isMatchingAtom={boolIsMatchingAtom({ path, modal })}
       excludeAtom={boolExcludeAtom({ path, modal })}
       resultsAtom={booleanCountResults({
