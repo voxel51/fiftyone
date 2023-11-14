@@ -248,6 +248,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     if (!currentFrameSample) {
       if (frameNumberToDraw < this.framesController.totalFrameCount) {
+        console.log(
+          "waiting for frame ",
+          frameNumberToDraw,
+          " to be available to draw"
+        );
         skipAndTryAgain();
         return;
       } else {
@@ -325,7 +330,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       // only buffer if hovering and range not available
       shouldEnqueueFetch = true;
       // todo: might want to buffer even when playing is false
-    } else if (!state.config.thumbnail && state.playing && !state.seeking) {
+    } else if (!state.config.thumbnail) {
       // for modal
       shouldEnqueueFetch = true;
     }
