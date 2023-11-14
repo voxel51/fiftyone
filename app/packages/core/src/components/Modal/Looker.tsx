@@ -117,8 +117,8 @@ const Looker = ({
       setModalLooker(looker);
       setTimeout(() => {
         // this setter is to trigger onSet effect that kicks-off the subscription to frame number
-        // the supplied value (1) is placeholder
-        setCurrentFrameNumberImaVid(1);
+        // the supplied random value is placeholder so that the onSet effect is triggered in the atom
+        setCurrentFrameNumberImaVid(Math.random());
       }, 0);
     }
   }, [looker]);

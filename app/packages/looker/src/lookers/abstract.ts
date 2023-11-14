@@ -171,9 +171,14 @@ export abstract class AbstractLooker<
 
     // return unsubscribe function
     return () => {
-      this.subscriptions[field] = this.subscriptions[field].filter(
+      const newCallbacks = this.subscriptions[field].filter(
         (cb) => cb !== callback
       );
+      if (newCallbacks.length === 0) {
+        delete this.subscriptions[field];
+      } else {
+        this.subscriptions[field] = newCallbacks;
+      }
     };
   }
 
