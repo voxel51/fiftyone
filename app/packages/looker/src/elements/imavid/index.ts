@@ -92,7 +92,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private isBuffering: boolean;
   private isPlaying: boolean;
   private waitingToPause = false;
-  private waitingToPlay = false;
+  private isAnimationActive = false;
   private waitingToRelease = false;
 
   public framesController: ImaVidFramesController;
@@ -193,7 +193,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   pause(shouldUpdatePlaying = true) {
-    this.waitingToPlay = false;
+    this.isAnimationActive = false;
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
@@ -211,28 +211,44 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.ctx?.drawImage(this.element, 0, 0);
   }
 
-  async drawFrame(currentFrameNumber: number, animate = true) {
+  async drawFrame(frameNumberToDraw: number, animate = true) {
     if (this.waitingToPause) {
       this.pause();
       return;
     }
 
-    if (!this.isPlaying) {
+    const skipAndTryAgain = () =>
+      setTimeout(() => {
+        requestAnimationFrame(() => this.drawFrame(frameNumberToDraw));
+      }, BUFFERING_PAUSE_TIMEOUT);
+
+    if (!this.isPlaying && animate) {
       return;
     }
 
-    console.log("animate is ", animate);
-    this.waitingToPlay = animate;
+    this.isAnimationActive = animate;
 
-    const currentFrameSample = this.getCurrentFrameSample(currentFrameNumber);
+    // if abs(frameNumberToDraw, currentFrameNumber) > 1, then skip
+    // this is to avoid drawing frames that are too far apart
+    // this can happen when user is scrubbing through the video
+    if (Math.abs(frameNumberToDraw - this.frameNumber) > 1) {
+      console.log(
+        "skipping frame",
+        frameNumberToDraw,
+        "current",
+        this.frameNumber
+      );
+      skipAndTryAgain();
+      return;
+    }
+
+    const currentFrameSample = this.getCurrentFrameSample(frameNumberToDraw);
     // TODO: CACHE EVERYTHING INSIDE HERE
     // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
     if (!currentFrameSample) {
-      if (currentFrameNumber < this.framesController.totalFrameCount) {
-        setTimeout(() => {
-          requestAnimationFrame(() => this.drawFrame(currentFrameNumber));
-        }, BUFFERING_PAUSE_TIMEOUT);
+      if (frameNumberToDraw < this.framesController.totalFrameCount) {
+        skipAndTryAgain();
         return;
       } else {
         this.pause(true);
@@ -243,15 +259,16 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const urls = getStandardizedUrls(currentFrameSample.urls);
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
+
     image.addEventListener("load", () => {
       // thisSampleOverlayPrepared.then((overlay) => {
       this.ctx.drawImage(image, 0, 0);
 
       if (animate && !this.waitingToPause) {
-        if (currentFrameNumber <= this.framesController.totalFrameCount) {
+        if (frameNumberToDraw <= this.framesController.totalFrameCount) {
           this.update(({ playing }) => {
             if (playing) {
-              return { currentFrameNumber: currentFrameNumber + 1 };
+              return { currentFrameNumber: frameNumberToDraw + 1 };
             }
 
             return {};
@@ -259,7 +276,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         }
 
         setTimeout(() => {
-          requestAnimationFrame(() => this.drawFrame(currentFrameNumber + 1));
+          requestAnimationFrame(() => this.drawFrame(frameNumberToDraw + 1));
         }, this.setTimeoutDelay);
       }
       // });
@@ -267,17 +284,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     image.src = src;
   }
 
-  /**
-   * This method does the following:
-   * 1. Check if we have next 100 frames from current framestamp in store
-   * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
-   */
-  async play(currentFrameNumber: number) {
-    if (this.waitingToPlay) {
+  async play() {
+    if (this.isAnimationActive) {
       return;
     }
 
-    requestAnimationFrame(() => this.drawFrame(currentFrameNumber));
+    requestAnimationFrame(() => this.drawFrame(this.frameNumber));
   }
 
   private getLookAheadFrameRange(currentFrameNumber: number) {
@@ -369,6 +381,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.isBuffering = buffering;
     this.isPlaying = playing;
+    this.frameNumber = currentFrameNumber;
 
     if (this.playBackRate !== playbackRate) {
       this.playBackRate = playbackRate;
@@ -382,14 +395,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.ensureBuffers(state);
 
-    if (!playing && this.waitingToPlay) {
+    if (!playing && this.isAnimationActive) {
       // this flag will be picked up in `drawFrame`, that in turn will call `pause`
       this.waitingToPause = true;
-      this.waitingToPlay = false;
+      this.isAnimationActive = false;
     }
     console.log(
-      "waitingToPlay",
-      this.waitingToPlay,
+      "isAnimationActive",
+      this.isAnimationActive,
       "waitingToPause",
       this.waitingToPause
     );
@@ -397,7 +410,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (thumbnail) {
       if (!hovering) {
         if (!playing) {
-          // note: pausing happens below by setting waitingToPause flag to true
           if (currentFrameNumber === 1) {
             this.resetCanvas();
             this.resetWaitingFlags();
@@ -408,22 +420,25 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           console.log("frame number is ", currentFrameNumber);
         }
       } else if (hovering && playing) {
-        this.play(currentFrameNumber);
+        this.play();
       }
       return;
     }
 
     if (playing && !seeking) {
-      this.play(currentFrameNumber);
+      this.play();
     }
 
     if (playing && seeking) {
-      this.pause();
-      this.drawFrame(currentFrameNumber, false);
+      this.waitingToPause = true;
+      this.isAnimationActive = false;
     }
 
     if (!playing && seeking) {
-      this.drawFrame(currentFrameNumber, false);
+      this.waitingToPause = false;
+      // todo: need to subtract 1 here to get the correct frame, figure out why
+      this.drawFrame(currentFrameNumber - 1, false);
+      this.isAnimationActive = false;
     }
 
     return null;

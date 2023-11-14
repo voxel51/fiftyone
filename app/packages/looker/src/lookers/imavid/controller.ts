@@ -77,6 +77,8 @@ export class ImaVidFramesController {
     let totalFetchingRanges = 0;
     const unfetchedRanges = [];
 
+    const fetchingRanges = []; // remove
+
     for (let i = 0; i < this.fetchBufferManager.buffers.length; ++i) {
       const range = this.fetchBufferManager.buffers[i];
 
@@ -89,11 +91,19 @@ export class ImaVidFramesController {
         BUFFER_METADATA_FETCHING
       ) {
         totalFetchingRanges += 1;
+        fetchingRanges.push(range); // remove
       } else {
         totalUnfetchedRanges += 1;
         unfetchedRanges.push(range);
       }
     }
+
+    console.log("fetching ranges", fetchingRanges); // remove
+    console.log("unfetch ranges", unfetchedRanges); // remove
+
+    // if (unfetchedRanges?.at(0)[0] === 119) {
+    //   // debugger;
+    // }
 
     // end recursion condition
     if (totalUnfetchedRanges === 0 && totalFetchingRanges === 0) {
