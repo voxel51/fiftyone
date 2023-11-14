@@ -660,8 +660,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.last_loaded_at
 
     @property
-    def last_updated_at(self):
-        """The datetime that any element of the dataset was last updated."""
+    def _last_updated_at(self):
+        """The datetime that the dataset was last saved."""
+        return self._doc.last_updated_at or self._doc.created_at
+
+    @property
+    def _sample_last_updated_at(self):
+        """The datetime that any sample of the dataset was last updated."""
         conn = foo.get_db_conn()
         sample_collection = self._sample_collection_name
         docs = list(
@@ -674,6 +679,21 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             return docs[0]["last_updated_at"]
         else:
             return None
+
+    @property
+    def last_updated_at(self):
+        """The datetime that any element of the dataset was last updated.
+        This is the max of last_updated_at of each sample, and the
+        last_updated_at time for the dataset metadata itself.
+        """
+        sample_last_updated_at = self._sample_last_updated_at
+        self_updated_at = self._last_updated_at
+        if sample_last_updated_at is None:
+            return self_updated_at
+        elif self_updated_at is None:
+            return sample_last_updated_at
+        else:
+            return max(sample_last_updated_at, self_updated_at)
 
     @property
     def persistent(self):
@@ -3390,12 +3410,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None, fields=None):
+    def _save(self, view=None, fields=None, override_last_updated_at=False):
         if view is not None:
             _save_view(view, fields=fields)
 
         try:
-            self._doc.save(safe=True)
+            self._doc.save(
+                safe=True, override_last_updated_at=override_last_updated_at
+            )
         except moe.DoesNotExist:
             name = self.name
             self._deleted = True
@@ -6616,7 +6638,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self._save()
+        self._save(override_last_updated_at=True)
 
 
 def _get_random_characters(n):
@@ -6711,12 +6733,14 @@ def _create_dataset(
         frame_doc_cls = None
         frame_fields = None
 
+    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
         slug=slug,
         version=focn.VERSION,
-        created_at=datetime.utcnow(),
+        created_at=now,
+        last_updated_at=now,
         media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -6965,6 +6989,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.name = name
     dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
+    dataset_doc.last_loaded_at = dataset_doc.created_at
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name

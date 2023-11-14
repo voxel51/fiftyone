@@ -3312,7 +3312,7 @@ class DatasetIdTests(unittest.TestCase):
             )
 
 
-class SampleLastUpdatedAtTests(unittest.TestCase):
+class LastUpdatedAtTests(unittest.TestCase):
     def check_updated(
         self, sample, creation_time, prev_updated_time, reload=False
     ):
@@ -3321,7 +3321,14 @@ class SampleLastUpdatedAtTests(unittest.TestCase):
         dataset = sample._dataset
         self.assertEqual(sample.created_at, creation_time)
         self.assertGreater(sample.last_updated_at, prev_updated_time)
-        self.assertEqual(sample.last_updated_at, dataset.last_updated_at)
+        self.assertEqual(
+            sample.last_updated_at,
+            dataset._sample_last_updated_at,
+        )
+        self.assertEqual(
+            max(sample.last_updated_at, dataset._last_updated_at),
+            dataset.last_updated_at,
+        )
         return sample.last_updated_at
 
     @drop_datasets
@@ -3355,6 +3362,9 @@ class SampleLastUpdatedAtTests(unittest.TestCase):
         )
         self.assertEqual(sample.created_at, creation_time)
         self.assertEqual(sample.last_updated_at, updated_time)
+
+        # However the dataset updated time IS updated
+        self.assertGreater(dataset.last_updated_at, updated_time)
 
         # Make single field edit and check update time
         dataset.set_values("foo", ["bar"])
@@ -3453,8 +3463,53 @@ class SampleLastUpdatedAtTests(unittest.TestCase):
         # dataset2 = fo.Dataset()
         # dataset2.add_sample(dataset.first())
 
+    def check_dataset_updated(self, dataset, prev_last_updated_at):
+        self.assertGreater(dataset._last_updated_at, prev_last_updated_at)
+        self.assertEqual(dataset.last_updated_at, dataset._last_updated_at)
+        return dataset._last_updated_at
 
-class SampleCreatedUpdatedAtTests(unittest.TestCase):
+    def test_dataset_update_time(self):
+        now = datetime.utcnow()
+        delta = timedelta(seconds=1)
+
+        # Dataset last updated should be roughly now
+        dataset = fo.Dataset()
+        last_updated = dataset.last_updated_at
+        self.assertAlmostEqual(last_updated, now, delta=delta)
+
+        # Add sample field calls _save() on the doc
+        dataset.add_sample_field(
+            "foo",
+            fo.StringField,
+        )
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Rename field
+        dataset.rename_sample_field("foo", "bar")
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Appending to tags list causes it to be "dirty" for a save
+        dataset.tags.append("a-tag")
+        dataset.save()
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Setter should call save() automatically
+        dataset.description = "crazy awesome description"
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Calling save() with no changes should not update the time
+        dataset.save()
+        self.assertEqual(dataset.last_updated_at, last_updated)
+
+        # Loading dataset again which updates last_loaded_at, should not update
+        #   last_updated_at. Reloads multiple times to get rid of mongo rounding
+        dataset.reload()
+        last_updated = dataset.last_updated_at
+        dataset.reload()
+        self.assertEqual(dataset.last_updated_at, last_updated)
+
+
+class SampleCreatedTimeAtTests(unittest.TestCase):
     EQUAL_DELTA = timedelta(milliseconds=1)
     CLOSE_DELTA = timedelta(seconds=1)
 

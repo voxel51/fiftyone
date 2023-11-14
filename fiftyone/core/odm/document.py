@@ -5,6 +5,7 @@ Base classes for documents that back dataset contents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from copy import deepcopy
 import json
 
@@ -664,6 +665,11 @@ class Document(BaseDocument, mongoengine.Document):
         doc = self.to_mongo()
         _id = doc.get("_id", None)
 
+        populate_last_updated_at = self._meta.get(
+            "last_updated_at", False
+        ) and not kwargs.pop("override_last_updated_at", False)
+        now = datetime.datetime.utcnow()
+
         ops = None
 
         if created:
@@ -671,6 +677,9 @@ class Document(BaseDocument, mongoengine.Document):
             if _id is None:
                 _id = ObjectId()
                 doc["_id"] = _id
+            if populate_last_updated_at:
+                self.last_updated_at = now
+                doc["last_updated_at"] = now
 
             if deferred:
                 ops = [InsertOne(doc)]
@@ -680,6 +689,11 @@ class Document(BaseDocument, mongoengine.Document):
             # Update existing document
             updates = {}
             sets, unsets = self._delta()
+
+            # Update last_updated_at if we should and we have a delta.
+            if populate_last_updated_at and (sets or unsets):
+                self.last_updated_at = now
+                sets.update(last_updated_at=now)
 
             if sets:
                 updates["$set"] = sets
