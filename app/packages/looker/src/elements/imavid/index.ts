@@ -298,11 +298,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   private getLookAheadFrameRange(currentFrameNumber: number) {
+    if (typeof currentFrameNumber !== "number") {
+      throw new Error("currentFrameNumber must be a number");
+    }
+
     const frameRangeMax = Math.min(
       currentFrameNumber +
         LOOK_AHEAD_TIME_SECONDS * this.playBackRate * DEFAULT_FRAME_RATE,
       this.framesController.totalFrameCount
     );
+
+    if (isNaN(frameRangeMax)) {
+      return [currentFrameNumber, currentFrameNumber + 1];
+    }
 
     return [currentFrameNumber, frameRangeMax] as const;
   }
