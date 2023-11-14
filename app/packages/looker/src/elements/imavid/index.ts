@@ -93,7 +93,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private isPlaying: boolean;
   private waitingToPause = false;
   private waitingToPlay = false;
-  private isAnimationActive = false;
   private waitingToRelease = false;
 
   public framesController: ImaVidFramesController;
@@ -190,12 +189,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   resetWaitingFlags() {
     this.waitingToPause = false;
-    this.waitingToPlay = false;
     this.waitingToRelease = false;
   }
 
   pause(shouldUpdatePlaying = true) {
-    this.isAnimationActive = false;
+    this.waitingToPlay = false;
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
@@ -224,7 +222,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     console.log("animate is ", animate);
-    this.isAnimationActive = animate;
+    this.waitingToPlay = animate;
 
     const currentFrameSample = this.getCurrentFrameSample(currentFrameNumber);
     // TODO: CACHE EVERYTHING INSIDE HERE
@@ -275,7 +273,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * 2. If not, fetch next FPS * 5 frames (5 seconds of playback with 24 fps (max offered))
    */
   async play(currentFrameNumber: number) {
-    if (this.isAnimationActive) {
+    if (this.waitingToPlay) {
       return;
     }
 
@@ -384,14 +382,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.ensureBuffers(state);
 
-    if (!playing) {
+    if (!playing && this.waitingToPlay) {
       // this flag will be picked up in `drawFrame`, that in turn will call `pause`
       this.waitingToPause = true;
-      this.isAnimationActive = false;
+      this.waitingToPlay = false;
     }
     console.log(
-      "isAnimationActive",
-      this.isAnimationActive,
       "waitingToPlay",
       this.waitingToPlay,
       "waitingToPause",
@@ -412,8 +408,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           console.log("frame number is ", currentFrameNumber);
         }
       } else if (hovering && playing) {
-        this.waitingToPause = false;
-        this.waitingToPlay = true;
         this.play(currentFrameNumber);
       }
       return;
