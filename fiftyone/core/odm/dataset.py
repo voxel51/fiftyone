@@ -273,7 +273,6 @@ class ColorScheme(EmbeddedDocument):
 
     def to_dict(self, extended=False):
         d = super().to_dict(extended)
-        print(d)
         d["id"] = str(d.pop("_id"))
         return d
 

@@ -18,6 +18,7 @@ export const processState = (
   if (env().VITE_NO_STATE) {
     return { view: [], fieldVisibility: undefined };
   }
+
   setter(
     "colorScheme",
     ensureColorScheme(state.color_scheme as ColorSchemeInput)
