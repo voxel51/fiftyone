@@ -82,6 +82,7 @@ const globalContextSelector = selector({
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
+    const currentSample = get(fos.currentSampleId);
 
     return {
       datasetName,
@@ -90,6 +91,7 @@ const globalContextSelector = selector({
       filters,
       selectedSamples,
       selectedLabels,
+      currentSample,
     };
   },
 });
@@ -118,6 +120,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     params,
     selectedLabels,
+    currentSample,
   } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -129,6 +132,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         filters,
         selectedSamples,
         selectedLabels,
+        currentSample,
       },
       hooks
     );
@@ -791,6 +795,7 @@ export function useOperatorPlacements(place: Places) {
   const filters = useRecoilValue(fos.filters);
   const selectedSamples = useRecoilValue(fos.selectedSamples);
   const selectedLabels = useRecoilValue(fos.selectedLabels);
+  const currentSample = useRecoilValue(fos.currentSampleId);
   const setContext = useSetRecoilState(operatorThrottledContext);
   const setThrottledContext = useMemo(() => {
     return debounce(
@@ -810,6 +815,7 @@ export function useOperatorPlacements(place: Places) {
       filters,
       selectedSamples,
       selectedLabels,
+      currentSample,
     });
   }, [
     setThrottledContext,
@@ -819,6 +825,7 @@ export function useOperatorPlacements(place: Places) {
     filters,
     selectedSamples,
     selectedLabels,
+    currentSample,
   ]);
 
   const placements = useRecoilValue(placementsForPlaceSelector(place));

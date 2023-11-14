@@ -431,6 +431,15 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def current_sample(self):
+        """The ID of the current sample being processed (if any).
+
+        When executed via the FiftyOne App, this is set when the user opens a
+        sample in the modal.
+        """
+        return self.request_params.get("current_sample", None)
+
+    @property
     def delegated(self):
         """Whether the operation's execution was delegated to an orchestrator.
 
