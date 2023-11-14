@@ -2702,7 +2702,11 @@ class SampleCollection(object):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
-        self, overwrite=False, num_workers=None, skip_failures=True
+        self,
+        overwrite=False,
+        num_workers=None,
+        skip_failures=True,
+        warn_failures=False,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
 
@@ -2711,15 +2715,18 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
-            num_workers (None): a suggested number of processes to use
+            num_workers (None): a suggested number of threads to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
+            warn_failures (False): whether to log a warning if metadata cannot
+                be computed for a sample
         """
         fomt.compute_metadata(
             self,
             overwrite=overwrite,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
 
     def apply_model(
@@ -10449,6 +10456,9 @@ def _get_matching_label_field(label_schema, label_type_or_types):
 
 
 def _parse_values_dict(sample_collection, key_field, values):
+    if not values:
+        return [], []
+
     if key_field == "id":
         return zip(*values.items())
 
