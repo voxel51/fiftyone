@@ -1,12 +1,11 @@
 import { Locator, Page, expect } from "src/oss/fixtures";
-import { EventUtils } from "src/shared/event-utils";
 
 export class SidebarPom {
   readonly page: Page;
   readonly sidebar: Locator;
   readonly asserter: SidebarAsserter;
 
-  constructor(page: Page, eventUtils: EventUtils) {
+  constructor(page: Page) {
     this.page = page;
     this.asserter = new SidebarAsserter(this);
 
@@ -43,11 +42,14 @@ export class SidebarPom {
     return this.getNumericSliderContainer(field).getByTestId("slider");
   }
 
-  getSliderIndicator(field: string, text: string) {
-    return this.getSlider(field)
+  getSliderIndicator(field: string, text: string, parent?: boolean) {
+    const point = this.getSlider(field)
       .locator("span")
       .filter({ hasText: text })
-      .nth(1);
+      .first();
+    // TODO: we should figure out why pointA.dragTo(pointB) stopped working
+    // recent with upgrades. ".." drags to the center of slider
+    return parent ? point.locator("..") : point;
   }
 
   async clickFieldCheckbox(field: string) {
@@ -75,8 +77,8 @@ export class SidebarPom {
 
   async changeSliderStartValue(field: string, textA: string, textB: string) {
     const sliderPointA = this.getSliderIndicator(field, textA);
-    const sliderPointB = this.getSliderIndicator(field, textB);
-    await sliderPointA.dragTo(sliderPointB);
+    const sliderPointB = this.getSliderIndicator(field, textB, true);
+    await sliderPointA.dragTo(sliderPointB, { timeout: 1000 });
   }
 
   async getActiveMode() {

@@ -14,7 +14,7 @@ registerEvent("refresh", useRefresh);
 registerEvent("selectLabels", useSelectLabels);
 registerEvent("selectSamples", useSetSelectedSamples);
 registerEvent("setColorScheme", useSetColorScheme);
-registerEvent("sessionGroupSlice", useSetGroupSlice);
+registerEvent("setGroupSlice", useSetGroupSlice);
 registerEvent("setSpaces", useSetSpaces);
 registerEvent("stateUpdate", useStateUpdate);
 registerEvent("setFieldVisibilityStage", useSetFieldVisibilityStage);

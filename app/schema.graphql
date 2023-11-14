@@ -120,6 +120,7 @@ type ColorScheme {
   colorPool: [String!]!
   colorBy: ColorBy
   fields: [CustomizeColor!]
+  labelTags: LabelTagColor
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
@@ -129,6 +130,7 @@ input ColorSchemeInput {
   colorPool: [String!]!
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
+  labelTags: LabelTagColorInput = null
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
@@ -196,6 +198,8 @@ type Dataset {
   headName: String
   snapshotName: String
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  estimatedSampleCount: Int!
+  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {
@@ -322,6 +326,16 @@ scalar JSON
 type KeypointSkeleton {
   labels: [String!]
   edges: [[Int!]!]!
+}
+
+type LabelTagColor {
+  fieldColor: String
+  valueColors: [ValueColor!]
+}
+
+input LabelTagColorInput {
+  fieldColor: String = null
+  valueColors: [ValueColorInput!] = null
 }
 
 enum MediaType {

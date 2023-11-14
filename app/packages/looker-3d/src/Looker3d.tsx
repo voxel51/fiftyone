@@ -1,8 +1,13 @@
 import { Loading, useTheme } from "@fiftyone/components";
-import { getHashLabel, isValidColor } from "@fiftyone/looker/src/overlays/util";
+import {
+  getHashLabel,
+  getLabelColor,
+  isValidColor,
+  shouldShowLabelTag,
+} from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { getColor } from "@fiftyone/utilities";
+import { COLOR_BY, getColor } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -77,9 +82,8 @@ export const Looker3d = () => {
   const getFieldColor = useRecoilValue(fos.colorMap);
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
-  const { coloring } = useRecoilValue(
-    fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE })
-  );
+  const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
+    useRecoilValue(fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE }));
 
   const allPcdSlices = useRecoilValue(fos.allPcdSlices);
 
@@ -399,59 +403,15 @@ export const Looker3d = () => {
       load3dOverlays(sampleMap, selectedLabels)
         .map((l) => {
           const path = l.path.join(".");
-          let color: string;
-          const setting = colorSchemeFields?.find((s) => s.path === path);
-
-          if (coloring.by === "instance") {
-            color = getColor(coloring.pool, coloring.seed, getHashLabel(l));
-          }
-
-          if (coloring.by === "field") {
-            if (isValidColor(setting?.fieldColor ?? "")) {
-              color = setting.fieldColor;
-            } else {
-              color = getFieldColor(path);
-            }
-          }
-
-          if (coloring.by === "value") {
-            let key;
-            if (setting?.colorByAttribute) {
-              if (setting.colorByAttribute === "index") {
-                if (["string", "number"].includes(typeof l.index)) {
-                  key = l.index;
-                } else {
-                  key = l._id;
-                }
-              } else if (setting.colorByAttribute === "label") {
-                key = l.label;
-              } else if (l.attributes[setting.colorByAttribute]) {
-                key = l.attributes[setting.colorByAttribute];
-              } else {
-                key = l.label;
-              }
-            } else {
-              // fallback to label if colorByAttribute is not set
-              key = l.label;
-            }
-
-            if (
-              setting &&
-              setting.valueColors &&
-              setting.valueColors.length > 0
-            ) {
-              const labelColor = setting.valueColors.find(
-                (s) => s.value?.toString() === key?.toString()
-              )?.color;
-              if (isValidColor(labelColor)) {
-                color = labelColor;
-              } else {
-                color = getFieldColor(key);
-              }
-            } else {
-              color = getFieldColor(key);
-            }
-          }
+          const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
+          const color = getLabelColor({
+            coloring,
+            path,
+            label: l,
+            isTagged,
+            labelTagColors,
+            customizeColorSetting,
+          });
 
           return { ...l, color, id: l._id };
         })
@@ -463,6 +423,7 @@ export const Looker3d = () => {
       sampleMap,
       selectedLabels,
       colorSchemeFields,
+      colorScheme,
     ]
   );
 

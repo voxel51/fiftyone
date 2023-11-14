@@ -15,12 +15,12 @@ General
 
 - Optimized iterator operations such as export
 - Improved plugin upload reliability
+- Further improved dataset listing queries
 
 Bugs
 
 - Fixed clips, frames, and patches views for grouped datasets in the App
 - Fixed cloud credential initialization during deployment restarts
-- Further improved dataset listing queries
 
 .. _release-notes-v0.22.3:
 
@@ -60,7 +60,7 @@ Brain
 - Fixed performing similarity queries on filtered views in the
   :ref:`LanceDB integration <lancedb-integration>`
 - Fixed calling
-  :meth:`remove_from_index() <fiftyone.brain.SimilarityIndex.remove_from_index>`
+  :meth:`remove_from_index() <fiftyone.brain.similarity.SimilarityIndex.remove_from_index>`
   on an index that uses the ``embeddings_field`` parameter
 - Fixed
   :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
@@ -80,12 +80,11 @@ Plugins
 - Fixed ``ctx.secrets`` in
   :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
   `#3759 <https://github.com/voxel51/fiftyone/pull/3759>`_
-- 
 
 CLI
 
-- Added :ref:`delegated fail <cli-fiftyone-delegated-fail>` and
-  :ref:`delegated delete <cli-fiftyone-delegated-delete>` commands
+- Added :ref:`fiftyone delegated fail <cli-fiftyone-delegated-fail>` and
+  :ref:`fiftyone delegated delete <cli-fiftyone-delegated-delete>` commands
   `#3721 <https://github.com/voxel51/fiftyone/pull/3721>`_
 
 .. _release-notes-teams-v1.4.3:

@@ -6,7 +6,6 @@
     "devDependencies": {
         "@playwright/test": "^1.38.1",
         "@types/fluent-ffmpeg": "^2.1.21",
-        "@types/jimp": "^0.2.28",
         "@types/wait-on": "^5.3.1",
         "@typescript-eslint/eslint-plugin": "^6.7.4",
         "@typescript-eslint/parser": "^6.7.4",
@@ -14,7 +13,7 @@
         "eslint": "^8.50.0",
         "eslint-plugin-playwright": "^0.16.0",
         "fluent-ffmpeg": "^2.1.2",
-        "jimp": "^0.22.8",
+        "jimp": "^0.22.10",
         "tree-kill": "^1.2.2",
         "ts-dedent": "^2.2.0",
         "typescript": "^5.2.2",
@@ -22,7 +21,7 @@
         "wait-on": "^7.0.1"
     },
     "scripts": {
-        "lint": "bash -c 'set +e; eslint --quiet .; set -e; tsc --skipLibCheck --sourceMap false'",
+        "lint": "bash -c 'set +e; eslint --quiet --ignore-pattern *.js .; set -e; tsc --skipLibCheck --sourceMap false'",
         "unittests": "vitest",
         "check-flaky": "./scripts/check-flaky.sh",
         "kill-port": "./scripts/kill-port.sh",

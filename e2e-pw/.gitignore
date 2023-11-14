@@ -5,3 +5,13 @@ node_modules/
 .build
 
 .env.dev
+
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.yarnrc.yml
+coverage
+.snowpack
+yarn-error.log

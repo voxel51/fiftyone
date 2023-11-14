@@ -3,6 +3,7 @@
  */
 
 import {
+  COLOR_BY,
   getColor,
   prettify as pretty,
   useExternalLink,
@@ -17,8 +18,8 @@ import {
   DispatchEvent,
 } from "../../state";
 
-import { lookerCheckbox, lookerLabel } from "./util.module.css";
 import { getHashLabel } from "../../overlays/util";
+import { lookerCheckbox, lookerLabel } from "./util.module.css";
 
 export const dispatchTooltipEvent = <State extends BaseState>(
   dispatchEvent: DispatchEvent,
@@ -231,6 +232,8 @@ type ColorParams = {
   path: string;
   // if embeddedDocumentField or tags
   param?: Classification | Regression | string;
+  // for embeddedDocumentField, if the annotation has an active label tag applied
+  isTagged?: boolean;
   // fallback for index key, defaulted to "id" (not applicable for primitive fields)
   fallbackIndex?: string;
   // fallback for label key, defaulted to "label" (not applicable for primitive fields)
@@ -238,6 +241,7 @@ type ColorParams = {
   // if primitive fields
   value?: string | number | boolean;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors?: CustomizeColor;
   isValidColor: (string) => boolean;
 };
 
@@ -245,12 +249,17 @@ export function getAssignedColor({
   coloring,
   path,
   param,
+  isTagged = false,
   fallbackLabel = "label",
   value,
   customizeColorSetting,
+  labelTagColors,
   isValidColor,
 }: ColorParams): string {
-  const setting = findColorSetting(customizeColorSetting, path);
+  const setting =
+    path === "_label_tags" || isTagged
+      ? labelTagColors
+      : findColorSetting(customizeColorSetting, path);
   const isPrimitive = ![null, undefined].includes(value);
   const { by, seed, pool } = coloring;
   const fallbackColor = getFallbackColor(
@@ -261,7 +270,7 @@ export function getAssignedColor({
     by === "value"
   );
 
-  if (by === "instance") {
+  if (by === COLOR_BY.INSTANCE) {
     return getColor(
       coloring.pool,
       coloring.seed,
@@ -269,43 +278,71 @@ export function getAssignedColor({
     );
   }
 
-  if (by === "field") {
+  if (by === COLOR_BY.FIELD) {
+    if (isTagged) {
+      if (isValidColor(labelTagColors?.fieldColor)) {
+        return labelTagColors.fieldColor;
+      }
+      return getColor(pool, seed, "_label_tags");
+    }
+
     return getColorByField(setting, pool, seed, path, isValidColor);
   }
 
-  if (by === "value") {
-    if (!setting) {
-      return isPrimitive
-        ? fallbackColor
-        : getColor(pool, seed, path === "tags" ? param : param[fallbackLabel]);
+  if (by === COLOR_BY.VALUE) {
+    if (isTagged) {
+      const tagColor = labelTagColors?.valueColors?.find((pair) =>
+        param.tags?.includes(pair.value)
+      )?.color;
+      if (isValidColor(tagColor)) {
+        return tagColor;
+      } else if (isValidColor(labelTagColors?.fieldColor)) {
+        return labelTagColors.fieldColor;
+      } else {
+        return getColor(coloring.pool, coloring.seed, "_label_tags");
+      }
+    } else {
+      if (!setting) {
+        return isPrimitive
+          ? fallbackColor
+          : getColor(
+              pool,
+              seed,
+              path === "tags" ? param : param[fallbackLabel]
+            );
+      }
+
+      const currentValue = getCurrentValue(
+        isPrimitive,
+        setting,
+        param,
+        fallbackLabel,
+        value
+      );
+
+      if (path === "tags") {
+        return getTagColor(setting, pool, seed, param, isValidColor);
+      }
+
+      if (path === "_label_tags") {
+        return getTagColor(setting, pool, seed, param, isValidColor);
+      }
+
+      const targetColor = getTargetColor(
+        isPrimitive,
+        setting,
+        param,
+        setting.colorByAttribute ?? fallbackLabel,
+        value,
+        currentValue
+      );
+
+      if (isValidColor(targetColor)) {
+        return targetColor;
+      }
+
+      return getColor(pool, seed, currentValue);
     }
-
-    const currentValue = getCurrentValue(
-      isPrimitive,
-      setting,
-      param,
-      fallbackLabel,
-      value
-    );
-
-    if (path === "tags") {
-      return getTagColor(setting, pool, seed, param, isValidColor);
-    }
-
-    const targetColor = getTargetColor(
-      isPrimitive,
-      setting,
-      param,
-      setting.colorByAttribute ?? fallbackLabel,
-      value,
-      currentValue
-    );
-
-    if (isValidColor(targetColor)) {
-      return targetColor;
-    }
-
-    return getColor(pool, seed, currentValue);
   }
 
   return getColor(coloring.pool, coloring.seed, path);

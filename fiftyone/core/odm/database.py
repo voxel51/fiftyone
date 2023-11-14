@@ -283,13 +283,19 @@ def _connect():
         mongoengine.connect(_database_name, **_connection_kwargs)
 
 
-def _async_connect():
+def _async_connect(use_global=False):
     global _async_client
-    if _async_client is None:
-        global _async_mongo_client_cls
+    if not use_global or _async_client is None:
         global _connection_kwargs
+        global _async_mongo_client_cls
+        client = _async_mongo_client_cls(**_connection_kwargs)
 
-        _async_client = _async_mongo_client_cls(**_connection_kwargs)
+        if use_global:
+            _async_client = client
+    else:
+        client = _async_client
+
+    return client
 
 
 def _at_exit_internal():
@@ -452,14 +458,16 @@ def get_db_conn():
     return _apply_options(db)
 
 
-def get_async_db_client():
+def get_async_db_client(use_global=False):
     """Returns an async database client.
+
+    Args:
+        use_global: whether to use the global client singleton
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
-    _async_connect()
-    return _async_client
+    return _async_connect(use_global)
 
 
 def get_async_db_conn():
