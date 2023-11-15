@@ -1037,13 +1037,23 @@ class COCOObject(object):
         width, height = frame_size
 
         points = []
+        visible = []
         for x, y, v in fou.iter_batches(self.keypoints, 3):
             if v == 0:
                 points.append((float("nan"), float("nan")))
             else:
                 points.append((x / width, y / height))
 
-        return fol.Keypoint(label=label, points=points, **attributes)
+            visible.append(v)
+        if "visible" in attributes:
+            logger.debug(
+                "Found a custom attribute named 'visible' which is a reserved name. Ignoring the custom attribute"
+            )
+            attributes.pop("visible")
+
+        return fol.Keypoint(
+            label=label, points=points, visible=visible, **attributes
+        )
 
     def to_detection(
         self,
@@ -1278,6 +1288,7 @@ class COCOObject(object):
         attributes.pop(id_attr, None)  # okay if `id_attr` is None
         attributes.pop(iscrowd, None)
         attributes.pop("area", None)
+        attributes.pop("visible", None)
 
         return cls(
             id=_id,
@@ -2232,15 +2243,33 @@ def _instance_to_coco_segmentation(
 def _make_coco_keypoints(keypoint, frame_size):
     width, height = frame_size
 
-    # @todo true COCO format would set v = 1/2 based on whether the keypoints
-    # lie within the object's segmentation, but we'll be lazy for now
-
     keypoints = []
-    for x, y in keypoint.points:
+    num_points = len(keypoint.points)
+    if "visible" in keypoint:
+        if (
+            isinstance(keypoint.visible, list)
+            and len(keypoint.visible) == num_points
+        ):
+            visibility = keypoint.visible
+        if isinstance(keypoint.visible, int):
+            visibility = [keypoint.visible] * num_points
+    else:
+        visibility = [None] * num_points
+
+    for visible, (x, y) in zip(visibility, keypoint.points):
         if np.isnan(x) or np.isnan(y):
-            keypoints.extend((0, 0, 0))
+            _x = 0
+            _y = 0
+            _visible = 0
         else:
-            keypoints.extend((int(x * width), int(y * height), 2))
+            _x = int(x * width)
+            _y = int(y * height)
+            _visible = 2
+
+        if visible is not None:
+            _visible = visible
+
+        keypoints.extend((_x, _y, _visible))
 
     return keypoints
 
