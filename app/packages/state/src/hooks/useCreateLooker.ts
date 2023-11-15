@@ -15,6 +15,7 @@ import {
   LIST_FIELD,
   getMimeType,
 } from "@fiftyone/utilities";
+import { get } from "lodash";
 import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRelayEnvironment } from "react-relay";
@@ -163,9 +164,10 @@ export default <T extends AbstractLooker>(
           const { groupBy, orderBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
             .valueMaybe();
-          const groupByFieldValue = sample[
+          const groupByFieldValue = get(
+            sample,
             getSanitizedGroupByExpression(groupBy)
-          ] as string;
+          ) as string;
           const totalFrameCountPromise = getPromise(
             dynamicGroupsElementCount(groupByFieldValue)
           );

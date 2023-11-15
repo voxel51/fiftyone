@@ -91,6 +91,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private thumbnailSrc: string;
   private isBuffering: boolean;
   private isPlaying: boolean;
+  private isSeeking: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
   private waitingToRelease = false;
@@ -303,12 +304,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     // 5000 is an arbitrary upper bound for the multiplier
-    const frameCountMultiplier =
-      1 + Math.min(Math.floor(this.framesController.totalFrameCount / 5000), 1);
+    const frameCountMultiplierWeight =
+      1 + Math.min(this.framesController.totalFrameCount / 5000, 1);
+
+    const offset = this.isSeeking
+      ? 2
+      : DEFAULT_FRAME_RATE * LOOK_AHEAD_MULTIPLIER * frameCountMultiplierWeight;
 
     const frameRangeMax = Math.min(
-      currentFrameNumber +
-        LOOK_AHEAD_MULTIPLIER * DEFAULT_FRAME_RATE * frameCountMultiplier,
+      Math.trunc(currentFrameNumber + offset),
       this.framesController.totalFrameCount
     );
 
@@ -398,6 +402,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.isBuffering = buffering;
     this.isPlaying = playing;
+    this.isSeeking = seeking;
     this.frameNumber = currentFrameNumber;
 
     if (this.playBackRate !== playbackRate) {

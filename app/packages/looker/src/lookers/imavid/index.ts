@@ -189,27 +189,27 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   postProcess() {
-    // if (this.state.seeking) {
-    //   this.state.disableOverlays = true;
-    // } else if (!this.state.playing && !this.state.buffering) {
-    //   this.state.disableOverlays = false;
-    // }
-    // if (!this.state.setZoom) {
-    //   this.state.setZoom = this.hasResized();
-    // }
+    if (this.state.seeking) {
+      this.state.disableOverlays = true;
+    } else if (!this.state.playing && !this.state.buffering) {
+      this.state.disableOverlays = false;
+    }
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized();
+    }
 
-    // if (!this.state.setZoom) {
-    //   this.state.setZoom = this.hasResized();
-    // }
+    if (!this.state.setZoom) {
+      this.state.setZoom = this.hasResized();
+    }
 
-    // if (this.state.zoomToContent) {
-    //   LookerUtils.toggleZoom(this.state, this.currentOverlays);
-    // } else if (this.state.setZoom) {
-    //   this.state.pan = [0, 0];
-    //   this.state.scale = 1;
+    if (this.state.zoomToContent) {
+      LookerUtils.toggleZoom(this.state, this.currentOverlays);
+    } else if (this.state.setZoom) {
+      this.state.pan = [0, 0];
+      this.state.scale = 1;
 
-    //   this.state.setZoom = false;
-    // }
+      this.state.setZoom = false;
+    }
 
     return super.postProcess();
   }

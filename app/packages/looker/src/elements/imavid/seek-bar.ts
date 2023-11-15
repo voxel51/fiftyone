@@ -33,13 +33,14 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
   renderSelf({
     currentFrameNumber,
     config: { thumbnail, frameStoreController },
-    bufferManager: buffers,
   }: Readonly<ImaVidState>) {
     if (thumbnail) {
       return this.element;
     }
 
     const totalFrames = frameStoreController.totalFrameCount;
+    const storeBuffer = frameStoreController.storeBufferManager;
+    const fetchBuffer = frameStoreController.fetchBufferManager;
 
     if (totalFrames === 0) {
       this.element.style.display = "none";
@@ -52,25 +53,17 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     this.element.style.setProperty("--start", `${start}%`);
     this.element.style.setProperty("--end", `${end}%`);
 
-    let bufferValue = 100;
+    const currentBufferRange = storeBuffer.buffers.at(
+      storeBuffer.getRangeIndexForFrame(currentFrameNumber)
+    );
+    const bufferValue = (currentBufferRange[1] / totalFrames) * 100;
 
-    // todo: buffering work
-    // if (currentFrameNumber - 1 > 0) {
-    //   let bufferIndex = 0;
+    this.element.style.setProperty(
+      "--buffer-progress",
+      `${Math.min(bufferValue, end)}%`
+    );
 
-    //   for (let i = 0; i < buffers.length; i++) {
-    //     if (buffers[i][0] <= frameNumber && buffers[i][1] >= frameNumber) {
-    //       bufferIndex = i;
-    //       break;
-    //     }
-    //   }
-    //   bufferValue = ((buffers[bufferIndex][1] - 1) / (frameCount - 1)) * 100;
-    // }
-
-    // this.element.style.setProperty(
-    //   "--buffer-progress",
-    //   `${Math.min(bufferValue, end)}%`
-    // );
+    // todo: add indicator for fetch as well
 
     const value = ((currentFrameNumber - 1) / (totalFrames - 1)) * 100;
     this.element.style.display = "block";

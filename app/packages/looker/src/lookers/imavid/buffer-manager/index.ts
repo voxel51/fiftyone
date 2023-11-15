@@ -55,6 +55,10 @@ export class BufferManager {
     range: Readonly<BufferRange>,
     ignoreRangesWithMetadata = true
   ): void {
+    if (!range) {
+      return;
+    }
+
     if (range[1] < range[0]) {
       throw new Error("invalid range: range[1] must be >= range[0]");
     }
@@ -130,7 +134,7 @@ export class BufferManager {
    */
   public getRangeIndexForFrame(frame: number) {
     return this.buffers.findIndex(
-      (range) => range[0] <= frame && range[1] >= frame
+      (range) => range && range[0] <= frame && range[1] >= frame
     );
   }
 
