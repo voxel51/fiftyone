@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/state";
 import React from "react";
 import { labelTagsCount } from "../Sidebar/Entries/EntryCounts";
-import CategoricalFilter from "./StringFilter/StringFilter";
+import StringFilter from "./StringFilter";
 
 const LabelTagsFilter = ({
   path,
@@ -19,13 +19,14 @@ const LabelTagsFilter = ({
   title: string;
 }) => {
   return (
-    <CategoricalFilter
-      selectedAtom={stringSelectedValuesAtom({ modal, path })}
+    <StringFilter
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
-      resultsAtom={labelTagsCount({ modal, extended: false })}
-      path={path}
       modal={modal}
+      named={false}
+      path={path}
+      resultsAtom={labelTagsCount({ modal, extended: false })}
+      selectedAtom={stringSelectedValuesAtom({ modal, path })}
       {...rest}
     />
   );

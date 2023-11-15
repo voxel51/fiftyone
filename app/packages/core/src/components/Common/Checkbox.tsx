@@ -1,8 +1,8 @@
-import { useTheme } from "@fiftyone/components";
+import { LoadingDots, useTheme } from "@fiftyone/components";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
-import { constSelector, RecoilValueReadOnly } from "recoil";
+import { RecoilValueReadOnly, constSelector } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
@@ -14,6 +14,7 @@ import { SuspenseEntryCounts } from "./CountSubcount";
 interface CheckboxProps<T> {
   color?: string;
   name: T;
+  loading?: boolean;
   value: boolean;
   setValue?: (value: boolean) => void;
   count?: number;
@@ -39,6 +40,7 @@ const StyledCheckbox = animated(styled(ItemAction)`
 function Checkbox<T>({
   color,
   name,
+  loading,
   value,
   setValue,
   subcountAtom,
@@ -93,6 +95,7 @@ function Checkbox<T>({
           >
             {prettify(text)}
           </span>
+          {loading && <LoadingDots />}
           {countAtom && (
             <SuspenseEntryCounts
               countAtom={countAtom}

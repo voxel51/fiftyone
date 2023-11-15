@@ -3,83 +3,99 @@ import React, { MutableRefObject } from "react";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
-import { isInKeypointsField, isObjectIdField } from "../state";
+import { isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
 
-interface ResultsProps {
+interface CheckboxesProps {
   results: Result[];
   selectedAtom: RecoilState<(string | null)[]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
   modal: boolean;
   path: string;
-  selected: MutableRefObject<Map<string | null, number | null>>;
-  lightning: boolean;
+  selectedMap: MutableRefObject<Map<string | null, number | null>>;
 }
 
-const Results = ({
+const useValues = ({
+  modal,
+  path,
+  selected,
+  results,
+}: {
+  modal: boolean;
+  path: string;
+  results: Result[];
+  selected: (string | null)[];
+  selectedMap: Map<string | null, number | null>;
+}) => {
+  const name = path.split(".").slice(-1)[0];
+  const lightning = useRecoilValue(fos.lightning);
+  const lightningPath =
+    useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
+  const skeleton =
+    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+
+  const counts = new Map(results.map(({ count, value }) => [value, count]));
+  let allValues = selected.map((value) => ({
+    value,
+    count: counts.get(value),
+    loading: lightningPath && counts.get(value) === undefined,
+  }));
+
+  const objectId = useRecoilValue(fos.isObjectIdField(path));
+  const selectedSet = new Set(selected);
+  if (
+    (!lightningPath && results.length <= CHECKBOX_LIMIT && !objectId) ||
+    skeleton
+  ) {
+    allValues = [
+      ...allValues,
+      ...results
+        .filter(({ value }) => !selectedSet.has(value))
+        .map((d) => ({ ...d, loading: false })),
+    ];
+  }
+
+  return { name, selectedSet, values: [...new Set(allValues)] };
+};
+
+const Checkboxes = ({
   results,
   selectedAtom,
   excludeAtom,
   isMatchingAtom,
   modal,
   path,
-  selected: selectedRef,
-  lightning,
-}: ResultsProps) => {
-  const name = path.split(".").slice(-1)[0];
+  selectedMap,
+}: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
-  const selectedSet = new Set(selected);
   const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
-  const counts = new Map(results.map(({ count, value }) => [value, count]));
-  let allValues = selected.map((value) => ({
-    value,
-    count: counts.get(value) ?? (0 as number | null),
-  }));
-  const skeleton =
-    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
-  const neverShowExpansion = useRecoilValue(isObjectIdField(path));
-
-  if ((results.length <= CHECKBOX_LIMIT && !neverShowExpansion) || skeleton) {
-    allValues = [
-      ...allValues,
-      ...results.filter(({ value }) => !selectedSet.has(value)),
-    ];
-  }
-
-  allValues = [...new Set(allValues)];
-
-  if (!allValues.length && neverShowExpansion) {
-    return lightning ? null : (
-      <Checkbox
-        key={"No results"}
-        color={color}
-        value={false}
-        disabled={true}
-        name={"No results"}
-      />
-    );
-  }
+  const { name, selectedSet, values } = useValues({
+    modal,
+    path,
+    results,
+    selected,
+    selectedMap: selectedMap.current,
+  });
 
   return (
     <>
-      {allValues.sort(nullSort(sorting)).map(({ value, count }) => (
+      {values.sort(nullSort(sorting)).map(({ count, loading, value }) => (
         <Checkbox
           key={String(value)}
           color={color}
           value={selectedSet.has(value)}
           name={value}
+          loading={loading}
           count={
             typeof count !== "number" || !isFilterMode
               ? undefined
-              : selectedRef.current.has(value)
-              ? selectedRef.current.get(value) ?? undefined
-              : count
+              : selectedMap.current.get(value) ?? count
           }
           setValue={(checked: boolean) => {
             if (checked) {
@@ -106,16 +122,11 @@ const Results = ({
             modal={modal}
             path={path}
           />
-          <Reset
-            excludeAtom={excludeAtom}
-            isMatchingAtom={isMatchingAtom}
-            path={path}
-            selectedAtom={selectedAtom}
-          />
+          <Reset modal={modal} path={path} />
         </>
       )}
     </>
   );
 };
 
-export default Results;
+export default Checkboxes;

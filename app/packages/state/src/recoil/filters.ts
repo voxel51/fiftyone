@@ -5,13 +5,13 @@ import {
 } from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, atom, selector, selectorFamily } from "recoil";
-import {
-  granularExpandedStore,
-  lightningPaths,
-  lightningUnlocked,
-} from "./lightning";
+import { lightning, lightningPaths, lightningUnlocked } from "./lightning";
 import { expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
+import {
+  granularSidebarExpandedStore,
+  sidebarExpandedStore,
+} from "./sidebarExpanded";
 import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
@@ -42,6 +42,10 @@ export const filters = (() => {
 export const lightningFilters = selector({
   key: "lightningFilters",
   get: ({ get }) => {
+    if (!get(lightning)) {
+      return {};
+    }
+
     const f = { ...get(filters) };
     const paths = get(lightningPaths(""));
     for (const p in f) {
@@ -85,7 +89,18 @@ export const filter = selectorFamily<
               delete newFilters[p];
             }
           }
-          reset(granularExpandedStore);
+          reset(granularSidebarExpandedStore);
+          set(sidebarExpandedStore(false), (current) => {
+            const next = { ...current };
+
+            for (const parent in next) {
+              if (![...paths].some((p) => p.startsWith(parent))) {
+                delete next[parent];
+              }
+            }
+
+            return next;
+          });
         }
       }
 

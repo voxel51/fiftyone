@@ -1,33 +1,19 @@
+import * as fos from "@fiftyone/state";
 import { isSidebarFilterMode, pathColor } from "@fiftyone/state";
 import React from "react";
-import { RecoilState, useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { Button } from "../../utils";
-import { isInListField } from "../state";
 
-export default function ({
-  excludeAtom,
-  isMatchingAtom,
-  path,
-  selectedAtom,
-}: {
-  excludeAtom: RecoilState<boolean>;
-  isMatchingAtom: RecoilState<boolean>;
-  path: string;
-  selectedAtom: RecoilState<(string | null)[]>;
-}) {
-  const color = useRecoilValue(pathColor(path));
+export default function (params: { modal: boolean; path: string }) {
+  const color = useRecoilValue(pathColor(params.path));
   const handleReset = useRecoilCallback(
-    ({ snapshot, set }) =>
+    ({ snapshot, reset }) =>
       async () => {
-        set(selectedAtom, []);
-        set(excludeAtom, false);
-
         const isFilterMode = await snapshot.getPromise(isSidebarFilterMode);
 
-        const isInList = await snapshot.getPromise(isInListField(path));
-        isFilterMode && set(isMatchingAtom, !isInList);
+        reset(isFilterMode ? fos.filter(params) : fos.visibility(params));
       },
-    [excludeAtom, isMatchingAtom, path, selectedAtom]
+    [params.modal, params.path]
   );
 
   return (

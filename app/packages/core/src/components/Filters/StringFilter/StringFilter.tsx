@@ -1,4 +1,4 @@
-import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { RecoilState, useRecoilValue } from "recoil";
@@ -64,19 +64,22 @@ const StringFilter = ({
   const name = useName(path);
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
   const field = useRecoilValue(fos.field(path));
-  const { lightning, loading, results, showSearch, useSearch } = useSelected(
+  const { results, showSearch, useSearch } = useSelected(
     modal,
     path,
     resultsAtom
   );
-  const { selected, onSelect } = useOnSelect(modal, path, selectedAtom);
-
+  const { onSelect, selectedMap } = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
   const theme = useTheme();
   const color = useRecoilValue(fos.pathColor(path));
+  const lightningOn = useRecoilValue(fos.lightning);
+  const lightningPath = useRecoilValue(fos.isLightningPath(path));
+  const lightning = lightningOn && lightningPath;
+  const objectId = useRecoilValue(fos.isObjectIdField(path));
 
-  if (named && !loading && !lightning) {
+  if (named && !lightning && !results?.count) {
     return null;
   }
 
@@ -98,40 +101,34 @@ const StringFilter = ({
         />
       )}
       <StringFilterContainer onMouseDown={(event) => event.stopPropagation()}>
-        {loading ? (
-          <LoadingDots text="Loading" />
-        ) : (
-          <>
-            {showSearch && !skeleton && (
-              <Selector
-                useSearch={useSearch}
-                placeholder={`+ ${
-                  isFilterMode ? "filter" : "set visibility"
-                } by ${name}`}
-                component={ResultComponent}
-                onSelect={onSelect}
-                inputStyle={{
-                  color: theme.text.secondary,
-                  fontSize: "1rem",
-                  width: "100%",
-                }}
-                containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
-                toKey={(value) => String(value)}
-                id={path}
-              />
-            )}
-            <Checkboxes
-              path={path}
-              results={results?.results || []}
-              selectedAtom={selectedAtom}
-              excludeAtom={excludeAtom}
-              isMatchingAtom={isMatchingAtom}
-              modal={modal}
-              selected={selected}
-              lightning={lightning}
-            />
-          </>
+        {showSearch && !skeleton && (
+          <Selector
+            useSearch={useSearch}
+            placeholder={`+ ${
+              isFilterMode ? "filter" : "set visibility"
+            } by ${name}`}
+            component={ResultComponent}
+            onSelect={onSelect}
+            inputStyle={{
+              color: theme.text.secondary,
+              fontSize: "1rem",
+              width: "100%",
+            }}
+            containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
+            toKey={(value) => String(value.value)}
+            id={path}
+          />
         )}
+        <Checkboxes
+          path={path}
+          results={results?.results || []}
+          selectedAtom={selectedAtom}
+          excludeAtom={excludeAtom}
+          isMatchingAtom={isMatchingAtom}
+          modal={modal}
+          selectedMap={selectedMap}
+        />
+        {!lightning && !results?.count && !objectId && <>No results</>}
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );

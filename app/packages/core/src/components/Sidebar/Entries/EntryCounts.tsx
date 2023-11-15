@@ -2,7 +2,6 @@ import * as fos from "@fiftyone/state";
 import React, { useCallback } from "react";
 import { selectorFamily, useRecoilValue } from "recoil";
 import { SuspenseEntryCounts } from "../../Common/CountSubcount";
-import { pathIsExpanded } from "./utils";
 
 interface PathEntryCountsProps {
   path: string;
@@ -25,7 +24,7 @@ const showEntryCounts = selectorFamily<
         params.modal ||
         params.path === "" ||
         mode === "all" ||
-        get(pathIsExpanded(params))
+        get(fos.sidebarExpanded(params))
       ) {
         return true;
       }

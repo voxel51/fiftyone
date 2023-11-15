@@ -1,6 +1,7 @@
 import { VALID_KEYPOINTS } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
 import { aggregation } from "../aggregations";
+import { isLightningPath, lightning, lightningUnlocked } from "../lightning";
 import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { noneCount } from "./counts";
@@ -32,8 +33,16 @@ export const stringCountResults = selectorFamily({
           };
         }
       }
-      const data = get(aggregation(params));
 
+      if (
+        get(isLightningPath(params.path)) &&
+        get(lightning) &&
+        !get(lightningUnlocked)
+      ) {
+        return { results: [], count: null };
+      }
+
+      const data = get(aggregation(params));
       if (data.__typename !== "StringAggregation") {
         throw new Error("unexpected");
       }

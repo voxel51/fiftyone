@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { categoricalSearch, categoricalSearchResults } from "./state";
+import { stringSearch, stringSearchResults } from "./state";
 
 export default function ({ modal, path }: { modal: boolean; path: string }) {
   return (search: string) => {
     const { count, values } = useRecoilValue(
-      categoricalSearchResults({ modal, path })
+      stringSearchResults({ modal, path })
     );
 
-    const setSearch = useSetRecoilState(categoricalSearch({ modal, path }));
+    const setSearch = useSetRecoilState(stringSearch({ modal, path }));
 
     useEffect(() => {
       setSearch(search);

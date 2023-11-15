@@ -35,7 +35,12 @@ export default function (modal: boolean, path: string) {
 
     const isLabelTag = path === "_label_tags";
     const isSampleTag = path === "tags";
-    const name = isLabelTag ? "label tags" : path.split(".").slice(-1)[0];
+    const name = isLabelTag ? "tags" : path.split(".").slice(-1)[0];
+    const listName = isLabelTag
+      ? "labels"
+      : isList
+      ? path.split(".").slice(-2)[0]
+      : null;
 
     const options: Option[] = [];
     if (!isFilterMode) {
@@ -55,13 +60,13 @@ export default function (modal: boolean, path: string) {
       return options;
     }
 
-    if (isList || isLabelTag) {
+    if (listName) {
       options.push({
         icon: "FilterAltIcon",
         key: "filter",
         value: modal
-          ? `Show  ${isList ?? "labels"}`
-          : `Select ${isList ?? "labels"} with ${name}`,
+          ? `Show  ${listName ?? "labels"}`
+          : `Select ${listName ?? "labels"} with ${name}`,
         tooltip: isLabelTag
           ? "dataset.select_labels(tags=expr)"
           : isKeypoints
@@ -70,13 +75,11 @@ export default function (modal: boolean, path: string) {
       });
     }
 
-    if ((isList && !isBoolean) || isLabelTag) {
+    if (listName && !isBoolean) {
       options.push({
         icon: "FilterAltOffIcon",
         key: "negativeFilter",
-        value: modal
-          ? `Hide ${isList ?? "labels"}`
-          : `Exclude ${isList ?? "labels"} with ${name}`,
+        value: modal ? `Hide ${listName}` : `Exclude ${listName} with ${name}`,
         tooltip: isLabelTag
           ? "dataset.exclude_labels(tags=expr, omit_empty=False)"
           : isKeypoints

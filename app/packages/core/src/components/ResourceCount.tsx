@@ -25,19 +25,18 @@ const RightDiv = styled.div`
 const ResourceCount = () => {
   const groupStats = useRecoilValue(fos.groupStatistics(false));
   const lightning = useRecoilValue(fos.lightning);
-  return groupStats && !lightning ? <GroupsCount /> : <Count />;
+  return groupStats === "group" && !lightning ? <GroupsCount /> : <Count />;
 };
 
 const GroupsCount = () => {
   const element = useRecoilValue(fos.elementNames);
-  const total = useRecoilValue(
-    fos.count({ path: "_", extended: false, modal: false })
-  );
-
   const elementTotal = useRecoilValue(
     fos.count({ path: "", extended: false, modal: false })
   );
   const groupSlice = useRecoilValue(fos.groupSlice);
+  const total = useRecoilValue(
+    fos.count({ path: "_", extended: false, modal: false })
+  );
 
   return (
     <RightDiv data-cy="entry-counts">

@@ -1,7 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue, useRecoilValueLoadable } from "recoil";
-import { pathIsExpanded } from "../utils";
 import Arrow from "./Arrow";
 import Lock from "./Lock";
 
@@ -9,7 +8,10 @@ const Icon = ({ modal, path }: { modal: boolean; path: string }) => {
   const expandedPath = useRecoilValue(fos.expandPath(path));
 
   return (
-    <Arrow expanded={pathIsExpanded({ modal, path: expandedPath })} id={path} />
+    <Arrow
+      expanded={fos.sidebarExpanded({ modal, path: expandedPath })}
+      id={path}
+    />
   );
 };
 
@@ -28,20 +30,9 @@ const LightningCheck = ({ path }: { path: string }) => {
   return <Locked path={path} />;
 };
 
-const IconWrapper = ({
-  disabled,
-  modal,
-  path,
-}: {
-  disabled: boolean;
-  modal: boolean;
-  path: string;
-}) => {
-  if (disabled) {
-    return null;
-  }
-
-  if (!modal) {
+const IconWrapper = ({ modal, path }: { modal: boolean; path: string }) => {
+  const lightning = useRecoilValue(fos.lightning);
+  if (lightning && !modal) {
     return <LightningCheck path={path} />;
   }
 

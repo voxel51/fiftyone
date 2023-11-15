@@ -4,7 +4,6 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   KEYPOINTS_FIELD,
   LIST_FIELD,
-  OBJECT_ID_FIELD,
 } from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
 
@@ -41,16 +40,6 @@ export const isInListField = selectorFamily({
         parent?.ftype === LIST_FIELD &&
         parent?.subfield === EMBEDDED_DOCUMENT_FIELD
       );
-    },
-});
-
-export const isObjectIdField = selectorFamily({
-  key: "isObjectIdField",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      const f = get(field(path));
-      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
     },
 });
 

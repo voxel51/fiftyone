@@ -12,7 +12,7 @@ type Props<T> = {
   useSearch: UseSearch<T>;
   onSelect: (value: T) => void;
   onResults: (results: T[]) => void;
-  component: React.FC<{ value: T; className: string }>;
+  component: React.FC<{ value: T; className?: string }>;
   toKey?: (value: T) => string;
 };
 

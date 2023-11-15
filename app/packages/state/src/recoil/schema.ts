@@ -667,10 +667,6 @@ export const filterFields = selectorFamily<string[], string>({
             return false;
           }
 
-          if (ftype === OBJECT_ID_FIELD || subfield === OBJECT_ID_FIELD) {
-            return false;
-          }
-
           return (
             !label ||
             (!excluded.includes(name) && VALID_PRIMITIVE_TYPES.includes(ftype))
@@ -691,5 +687,15 @@ export const isListField = selectorFamily({
     (path: string) =>
     ({ get }) => {
       return get(field(path))?.ftype === LIST_FIELD;
+    },
+});
+
+export const isObjectIdField = selectorFamily({
+  key: "isObjectIdField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
     },
 });

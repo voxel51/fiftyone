@@ -2,34 +2,30 @@ import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Checkbox } from "@mui/material";
 import Color from "color";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import FieldLabelAndInfo from "../../../FieldLabelAndInfo";
 import RegularEntry from "../RegularEntry";
-import { makePseudoField, pathIsExpanded } from "../utils";
+import { makePseudoField } from "../utils";
 import FilterablePathEntries from "./FilterablePathEntries";
 import LightningFilterablePathEntries from "./LightningFilterablePathEntries";
-import createTitleTemplate from "./createTitleTemplate";
+import useTitleTemplate from "./useTitleTemplate";
 
-const useOnClick = ({
-  disabled,
-  modal,
-  path,
-}: {
-  disabled: boolean;
-  modal: boolean;
-  path: string;
-}) => {
+const LABEL_TAGS = "_label_tags";
+
+const useOnClick = ({ modal, path }: { modal: boolean; path: string }) => {
   return useRecoilCallback<[React.MouseEvent<HTMLButtonElement>], void>(
     ({ set }) =>
       async (event) => {
-        if (disabled) return;
         const checked = (event.target as HTMLInputElement).checked;
         set(fos.activeField({ modal, path }), checked);
       },
-    [disabled, modal, path]
+    [modal, path]
   );
 };
+
+const useField = (path: string) =>
+  useRecoilValue(fos.field(path)) || makePseudoField(path);
 
 const FilterableEntry = ({
   entryKey,
@@ -37,10 +33,8 @@ const FilterableEntry = ({
   path,
   onFocus,
   onBlur,
-  disabled = false,
   trigger,
 }: {
-  disabled?: boolean;
   entryKey: string;
   group: string;
   modal: boolean;
@@ -54,24 +48,16 @@ const FilterableEntry = ({
   ) => void;
 }) => {
   const active = useRecoilValue(fos.activeField({ modal, path }));
-  const activeColor = useRecoilValue(fos.pathColor(path));
-
-  const theme = useTheme();
-  const color = disabled ? theme.background.level2 : activeColor;
-
+  const color = useRecoilValue(fos.pathColor(path));
+  const field = useField(path);
+  const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const expanded = useRecoilValue(
-    pathIsExpanded({ modal, path: expandedPath })
+    fos.sidebarExpanded({ modal, path: expandedPath })
   );
-
-  const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
-  const field = useRecoilValue(fos.field(path));
-  const pseudoField = makePseudoField(path);
-  const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
-
-  const onClick = useOnClick({ disabled, modal, path });
-  const isLabelTag = path === "_label_tags";
+  const onClick = useOnClick({ modal, path });
   const lightning = useRecoilValue(fos.isLightningPath(path));
+  const theme = useTheme();
 
   const Entries = lightning
     ? LightningFilterablePathEntries
@@ -88,7 +74,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!disabled && !(modal && isLabelTag) && (
+          {!(modal && path === LABEL_TAGS) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}
@@ -104,18 +90,13 @@ const FilterableEntry = ({
           )}
           {
             <FieldLabelAndInfo
-              field={field ?? pseudoField}
+              field={field}
               path={path}
               color={color}
               expandedPath={expandedPath}
-              template={createTitleTemplate({
-                color,
-                disabled,
-                expandedPath,
-                lightning,
+              template={useTitleTemplate({
                 modal,
                 path,
-                showCounts: isFilterMode,
               })}
             />
           }
@@ -124,14 +105,16 @@ const FilterableEntry = ({
       trigger={trigger}
     >
       {expanded && (
-        <Entries
-          {...{
-            modal,
-            onBlur,
-            onFocus,
-            path,
-          }}
-        />
+        <Suspense fallback={null}>
+          <Entries
+            {...{
+              modal,
+              onBlur,
+              onFocus,
+              path,
+            }}
+          />
+        </Suspense>
       )}
     </RegularEntry>
   );

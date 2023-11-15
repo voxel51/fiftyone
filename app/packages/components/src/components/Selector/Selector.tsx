@@ -20,7 +20,7 @@ export interface SelectorProps<T> {
   onSelect: (search: string) => Promise<string>;
   placeholder: string;
   useSearch?: UseSearch<T>;
-  component: React.FC<{ value: T; className: string }>;
+  component: React.FC<{ value: T; className?: string }>;
   toKey?: (value: T) => string;
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
@@ -89,7 +89,7 @@ function Selector<T>(props: SelectorProps<T>) {
   }, []);
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
-    isOpen: useSearch && editing,
+    isOpen: Boolean(useSearch && editing),
     overflowContainer,
     auto: true,
     snap: true,

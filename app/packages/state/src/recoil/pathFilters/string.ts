@@ -113,6 +113,7 @@ export const stringSelectedValuesAtom = selectorFamily<
   set:
     ({ modal, path }) =>
     ({ get, set }, value) => {
+      value = value instanceof DefaultValue ? [] : value;
       const isFiltering = get(fos.isSidebarFilterMode);
       return isFiltering
         ? setFilter(get, set, modal, path, "values", value)
@@ -307,7 +308,7 @@ export const listString = selectorFamily<
         };
       }
 
-      return () => true; // not needed, but eslint complains
+      return () => true;
     },
 });
 

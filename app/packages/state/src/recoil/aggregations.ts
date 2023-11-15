@@ -6,11 +6,11 @@ import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
 import * as filterAtoms from "./filters";
 import { currentSlices, groupId, groupSlice, groupStatistics } from "./groups";
+import { lightning as lightningOn, lightningUnlocked } from "./lightning";
 import { sidebarSampleId } from "./modal";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
-
 import * as viewAtoms from "./view";
 
 type Aggregation = Exclude<
@@ -27,13 +27,13 @@ type Aggregation = Exclude<
 export const aggregationQuery = graphQLSelectorFamily<
   VariablesOf<foq.aggregationsQuery>,
   {
+    customView?: any;
     extended: boolean;
+    lightning?: boolean;
     modal: boolean;
+    mixed?: boolean;
     paths: string[];
     root?: boolean;
-    mixed?: boolean;
-    customView?: any;
-    lightning?: boolean;
   },
   Aggregation[]
 >({
@@ -44,22 +44,26 @@ export const aggregationQuery = graphQLSelectorFamily<
   query: foq.aggregation,
   variables:
     ({
+      customView = undefined,
       extended,
+      lightning,
+      mixed = false,
       modal,
       paths,
       root = false,
-      mixed = false,
-      customView = undefined,
-      lightning = false,
     }) =>
     ({ get }) => {
       const dataset = get(selectors.datasetName);
-
       if (!dataset) return null;
 
-      if (paths[0] !== "") {
-        lightning = true;
-      }
+      const lightningFilters =
+        lightning ||
+        (!modal &&
+          !root &&
+          !extended &&
+          paths[0] !== "" &&
+          get(lightningOn) &&
+          get(lightningUnlocked));
 
       mixed = mixed || get(groupStatistics(modal)) === "group";
       const aggForm = {
@@ -69,7 +73,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         filters:
           extended && !root
             ? get(modal ? filterAtoms.modalFilters : filterAtoms.filters)
-            : !modal && !root && !extended && lightning
+            : lightningFilters
             ? get(filterAtoms.lightningFilters)
             : null,
         groupId: !root && modal ? get(groupId) || null : null,
@@ -121,10 +125,10 @@ export const aggregation = selectorFamily({
       ...params
     }: {
       extended: boolean;
+      lightning?: boolean;
+      mixed?: boolean;
       modal: boolean;
       path: string;
-      mixed?: boolean;
-      lightning?: boolean;
     }) =>
     ({ get }) => {
       return get(

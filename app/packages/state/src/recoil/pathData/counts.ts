@@ -85,6 +85,9 @@ export const count = selectorFamily({
       }
 
       if (value !== undefined) {
+        if (params.path === "predictions.detections.label" && params.extended) {
+          console.log(get(counts(params))[value]);
+        }
         return get(counts(params))[value] || 0;
       }
 

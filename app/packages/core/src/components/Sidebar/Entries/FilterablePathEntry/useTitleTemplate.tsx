@@ -2,7 +2,12 @@ import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { Bolt, VisibilityOff } from "@mui/icons-material";
 import React, { Suspense } from "react";
-import { DefaultValue, selectorFamily, useRecoilState } from "recoil";
+import {
+  DefaultValue,
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+} from "recoil";
 import { NameAndCountContainer } from "../../../utils";
 import { PathEntryCounts } from "../EntryCounts";
 import Icon from "./Icon";
@@ -65,25 +70,18 @@ const Hidden = ({ path }: { path: string }) => {
   ) : null;
 };
 
-const createTitleTemplate =
-  ({
-    color,
-    disabled,
-    expandedPath,
-    lightning,
-    modal,
-    path,
-    showCounts,
-  }: {
-    disabled: boolean;
-    expandedPath: string;
-    modal: boolean;
-    path: string;
-    showCounts: boolean;
-    lightning: boolean;
-    color: string;
-  }) =>
-  ({ hoverHandlers, hoverTarget, container }) => {
+const useTitleTemplate = ({
+  modal,
+  path,
+}: {
+  modal: boolean;
+  path: string;
+}) => {
+  return function useTitleTemplate({ hoverHandlers, hoverTarget, container }) {
+    const color = useRecoilValue(fos.pathColor(path));
+    const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+    const lightning = useRecoilValue(fos.isLightningPath(path));
+    const expandedPath = useRecoilValue(fos.expandPath(path));
     return (
       <>
         <NameAndCountContainer
@@ -101,13 +99,14 @@ const createTitleTemplate =
             </Suspense>
           )}
           {lightning && !modal && <Bolt style={{ color }} />}
-          {showCounts && (!lightning || modal) && (
+          {!isFilterMode && (!lightning || modal) && (
             <PathEntryCounts key="count" modal={modal} path={expandedPath} />
           )}
-          <Icon disabled={disabled} modal={modal} path={path} />
+          <Icon modal={modal} path={path} />
         </NameAndCountContainer>
       </>
     );
   };
+};
 
-export default createTitleTemplate;
+export default useTitleTemplate;

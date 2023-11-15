@@ -1,6 +1,6 @@
 import { LoadingDots, useTheme } from "@fiftyone/components";
 import {
-  granularExpanded,
+  granularSidebarExpanded,
   lightningPaths,
   lightningUnlocked,
 } from "@fiftyone/state";
@@ -27,7 +27,7 @@ const LightningFilterablePathEntries = ({
     paths.has(path)
   );
   const unlocked = useRecoilValueLoadable(lightningUnlocked);
-  const granularOpen = useRecoilValue(granularExpanded(path));
+  const granularOpen = useRecoilValue(granularSidebarExpanded(path));
   const theme = useTheme();
 
   const granular = removed.length;
@@ -54,7 +54,7 @@ const LightningFilterablePathEntries = ({
             )}
             {unlocked.state === "hasValue" && unlocked.contents && (
               <Arrow
-                expanded={granularExpanded(path)}
+                expanded={granularSidebarExpanded(path)}
                 id={`sidebar-granular-${path}`}
                 color={theme.text.secondary}
               />

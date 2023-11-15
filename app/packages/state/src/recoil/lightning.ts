@@ -5,7 +5,7 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
@@ -160,7 +160,7 @@ export const pathIndex = selectorFamily({
     },
 });
 
-export const lightningPaths = selectorFamily({
+export const lightningPaths = selectorFamily<Set<string>, string>({
   key: "lightningPaths",
   get:
     (path: string) =>
@@ -231,34 +231,16 @@ export const isLightningPath = selectorFamily({
     },
 });
 
-export const granularExpandedStore = atom<{ [key: string]: boolean }>({
-  key: "granularExpandedStore",
-  default: {},
-});
-
-export const granularExpanded = selectorFamily<boolean, string>({
-  key: "granularExpanded",
-  get:
-    (path) =>
-    ({ get }) =>
-      get(granularExpandedStore)[path] ?? false,
-  set:
-    (path) =>
-    ({ set }, value) =>
-      set(granularExpandedStore, (c) => ({
-        ...c,
-        [path]: value instanceof DefaultValue ? false : value,
-      })),
-});
-
 export const lightningUnlocked = selector({
   key: "lightningUnlocked",
   get: ({ get }) => {
-    if (
-      get(count({ path: "", extended: false, modal: false, lightning: true })) <
-      get(lightningThreshold)
-    ) {
+    if (!get(lightning)) {
       return false;
     }
+
+    return (
+      get(count({ path: "", extended: false, modal: false, lightning: true })) <
+      get(lightningThreshold)
+    );
   },
 });

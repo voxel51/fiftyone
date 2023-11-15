@@ -65,7 +65,10 @@ const FilterOption: React.FC<Props> = ({
   return (
     <FilterOptionContainer>
       {options.length > 1 && (
-        <FilterMode data-cy="filter-mode-div" onClick={() => setOpen(!open)}>
+        <FilterMode
+          data-cy="filter-mode-div"
+          onClick={() => !open && setOpen(!open)}
+        >
           <IconButton sx={{ color, size: "small" }}>
             <Selected
               filterKey={filterKey}

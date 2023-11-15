@@ -1,48 +1,51 @@
-import {
-  groupStatistics,
-  lightningStringResults,
-  sortFilterResults,
-  stringSelectedValuesAtom,
-} from "@fiftyone/state";
+import * as fos from "@fiftyone/state";
+import { getFetchFunction } from "@fiftyone/utilities";
 import { atomFamily, selectorFamily } from "recoil";
+import { labelTagsCount } from "../../Sidebar/Entries/EntryCounts";
+import { nullSort } from "../utils";
 import { Result } from "./Result";
 
-export const categoricalSearch = atomFamily<
+export const stringSearch = atomFamily<
   string,
   { path: string; modal: boolean }
 >({
-  key: "categoricalSearchResults",
+  key: "stringSearchResults",
   default: "",
 });
 
-export const categoricalSearchResults = selectorFamily<
+export const stringSearchResults = selectorFamily<
   {
     values: Result[];
     count?: number;
   },
   { path: string; modal: boolean }
 >({
-  key: "categoricalSearchResults",
+  key: "stringSearchResults",
   get:
     ({ path, modal }) =>
     async ({ get }) => {
-      const search = get(categoricalSearch({ modal, path }));
-      const sorting = get(sortFilterResults(modal));
-      const mixed = get(groupStatistics(modal)) === "group";
-      const selected = get(stringSelectedValuesAtom({ path, modal }));
+      const search = get(stringSearch({ modal, path }));
+      const sorting = get(fos.sortFilterResults(modal));
+      const mixed = get(fos.groupStatistics(modal)) === "group";
+      const selected = get(fos.stringSelectedValuesAtom({ path, modal }));
 
       const isLabelTag = path.startsWith("_label_tags");
-      let data = { values: [] as V[], count: 0 };
-
-      return {
-        values: get(
-          lightningStringResults({
-            path,
-            search,
-            exclude: selected.filter((s) => s !== null),
-          })
-        ).map(([value]) => ({ value, count: null })),
+      let data: { values: Result[]; count: number | null } = {
+        values: [],
+        count: 0,
       };
+
+      if (!modal && get(fos.isLightningPath(path))) {
+        return {
+          values: get(
+            fos.lightningStringResults({
+              path,
+              search,
+              exclude: [...selected.filter((s) => s !== null)] as string[],
+            })
+          ).map(([value]) => ({ value, count: null })),
+        };
+      }
 
       const noneCount = get(fos.noneCount({ path, modal, extended: false }));
 
@@ -50,7 +53,7 @@ export const categoricalSearchResults = selectorFamily<
         const labels = get(labelTagsCount({ modal, extended: false }));
         data = {
           count: labels.count,
-          values: labels.results.map(([value, count]) => ({ value, count })),
+          values: labels.results,
         };
       } else {
         data = await getFetchFunction()("POST", "/values", {
@@ -59,17 +62,21 @@ export const categoricalSearchResults = selectorFamily<
           path,
           search,
           selected,
-          group_id: modal ? get(groupId) || null : null,
+          filters: !modal ? get(fos.lightningFilters) : null,
+          group_id: modal ? get(fos.groupId) || null : null,
           mixed,
           slice: get(fos.groupSlice),
           slices: mixed ? null : get(fos.currentSlices(modal)), // when mixed, slice is not needed
           sample_id:
-            modal && !get(groupId) && !mixed ? get(fos.modalSampleId) : null,
+            modal && !get(fos.groupId) && !mixed
+              ? get(fos.modalSampleId)
+              : null,
           ...sorting,
         });
       }
 
       let { values, count } = data;
+      count ??= 0;
       if (noneCount > 0 && "None".includes(search)) {
         values = [...values, { value: null, count: noneCount }]
           .sort(nullSort(sorting))
