@@ -1,4 +1,8 @@
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
+import {
+  LoadingDots,
+  PopoutSectionTitle,
+  useTheme,
+} from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
@@ -21,7 +25,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { Button } from "../utils";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
