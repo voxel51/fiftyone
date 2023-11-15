@@ -35,7 +35,7 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-from fiftyone.server.indexes import from_dict as indexes_from_dict
+from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
 from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
@@ -254,6 +254,11 @@ class Dataset:
     skeletons: t.List[NamedKeypointSkeleton]
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
+
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
+    frame_indexes: t.Optional[t.List[Index]]
+    sample_indexes: t.Optional[t.List[Index]]
 
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
