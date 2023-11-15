@@ -2245,6 +2245,7 @@ def _make_coco_keypoints(keypoint, frame_size):
 
     keypoints = []
     num_points = len(keypoint.points)
+    visibility = [None] * num_points
     if "visible" in keypoint:
         if (
             isinstance(keypoint.visible, list)
@@ -2253,8 +2254,6 @@ def _make_coco_keypoints(keypoint, frame_size):
             visibility = keypoint.visible
         if isinstance(keypoint.visible, int):
             visibility = [keypoint.visible] * num_points
-    else:
-        visibility = [None] * num_points
 
     for visible, (x, y) in zip(visibility, keypoint.points):
         if np.isnan(x) or np.isnan(y):
