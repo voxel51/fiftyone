@@ -19,7 +19,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
-from fiftyone.plugins.secrets import PluginSecretsResolver
+from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -482,9 +482,13 @@ class ExecutionContext(object):
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> list[str]:
-        """The list of secrets that have been resolved (if any)."""
-        return [k for k, v in self._secrets.items() if v is not None]
+    def secrets(self) -> SecretsDictionary:
+        """A read-only mapping of keys to their resolved values."""
+        return SecretsDictionary(
+            self._secrets,
+            operator_uri=self._operator_uri,
+            resolver_fn=self._secrets_client.get_secret_sync,
+        )
 
     def secret(self, key):
         """Retrieves the secret with the given key.

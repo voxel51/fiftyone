@@ -98,3 +98,61 @@ def _get_secrets_client():
     except:  # pylint: disable=bare-except
         client = getattr(fois, "EnvSecretProvider")
     return client()
+
+
+class SecretsDictionary:
+    """
+    A more secure dictionary for accessing plugin secrets in
+    operators that will attempt to resolve missing plugin secrets upon access.
+    """
+
+    def __init__(self, secrets_dict, operator_uri=None, resolver_fn=None):
+        self.__secrets = secrets_dict  # types.MappingProxyType(secrets_dict)
+        self._operator_uri = operator_uri
+        if resolver_fn:
+            self._resolver = resolver_fn
+        else:
+            self._resolver = None
+
+    def __eq__(self, other):
+        return self.__secrets == other
+
+    def __getitem__(self, key):
+        # Override __getitem__ to suppress KeyError and attempt to resolve
+        # plugin secrets if not yet resolved
+        val = self.__secrets.get(key, None)
+        if self._resolver and val is None:
+            val = self._resolver(key=key, operator_uri=self._operator_uri)
+            if val:
+                self.__secrets[key] = val
+        return val
+
+    def __setitem__(self, key, value):
+        raise RuntimeError("Setting values is not allowed")
+
+    def __deepcopy__(self, memodict={}):
+        logging.warning(
+            "Copying the SecretDictionary values is not " "allowed."
+        )
+
+        return {k: None for k in self.__secrets.keys()}
+
+    def __dict__(self):
+        return {k: True for k, v in self.__secrets.items() if v is not None}
+
+    def copy(self):
+        logging.warning(
+            "Copying the SecretDictionary values is not " "allowed."
+        )
+        return self.__deepcopy__()
+
+    def keys(self):
+        return [k for k, v in self.__secrets.items() if v is not None]
+
+    def values(self):
+        # Override values() to prevent iterating through plaintext values
+        raise RuntimeError("Iteration through values is not allowed")
+
+    def items(self):
+        # Override items() to prevent iterating through plaintext values
+        raise RuntimeError("Iteration through items is not allowed.")

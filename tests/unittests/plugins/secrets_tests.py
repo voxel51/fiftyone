@@ -59,7 +59,21 @@ class TestExecutionContext:
             SECRET_KEY2: SECRET_VALUE2,
         }
 
-        assert context.secrets == [SECRET_KEY, SECRET_KEY2]
+        assert context.secrets == context._secrets
+
+    def test_secret_property_on_demand_resolve(self, mocker):
+        mocker.patch.dict(
+            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
+        )
+        context = ExecutionContext(
+            operator_uri="operator", required_secrets=["MY_SECRET_KEY"]
+        )
+        context._secrets = {}
+        assert "MY_SECRET_KEY" not in context.secrets.keys()
+        secret_val = context.secrets["MY_SECRET_KEY"]
+        assert "MY_SECRET_KEY" in context.secrets.keys()
+        assert context.secrets["MY_SECRET_KEY"] == "mocked_sync_secret_value"
+        assert context.secrets == context._secrets
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
@@ -67,7 +81,7 @@ class TestExecutionContext:
         context._secrets_client = mock_secrets_resolver
 
         await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
-        assert context.secrets == [SECRET_KEY, SECRET_KEY2]
+        assert context.secrets == context._secrets
 
 
 class TestOperatorSecrets(unittest.TestCase):
