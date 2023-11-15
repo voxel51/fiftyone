@@ -3,7 +3,7 @@ import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
 import * as _ from "lodash";
-import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
+import React, { FunctionComponent, useEffect, useMemo } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
@@ -157,6 +157,7 @@ export function usePlugins() {
   }, [setState]);
 
   return {
+    state,
     isLoading: state === "loading" || !operatorsReady,
     hasError: state === "error",
     ready: state === "ready" && operatorsReady,

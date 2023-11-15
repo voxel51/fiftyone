@@ -31,7 +31,8 @@ export const SessionContext = React.createContext<Session>(SESSION_DEFAULT);
 
 const Plugins = ({ children }: { children: React.ReactNode }) => {
   const plugins = usePlugins();
-  if (plugins.isLoading) return <Loading>Pixelating...</Loading>;
+
+  if (plugins.state === "loading") return <Loading>Pixelating...</Loading>;
   if (plugins.hasError) return <Loading>Plugin error...</Loading>;
 
   return <>{children}</>;
