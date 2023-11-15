@@ -10,6 +10,7 @@ import fiftyone.core.odm as _foo
 
 config = _foc.load_config()
 annotation_config = _foc.load_annotation_config()
+evaluation_config = _foc.load_evaluation_config()
 app_config = _foc.load_app_config()
 
 _foo.establish_db_conn(config)
@@ -150,6 +151,11 @@ from .core.plots import (
     CategoricalHistogram,
     NumericalHistogram,
 )
+from .core.runs import (
+    RunConfig,
+    Run,
+    RunResults,
+)
 from .core.sample import Sample
 from .core.spaces import (
     Space,
@@ -212,15 +218,22 @@ from .core.utils import (
 from .core.view import DatasetView
 from .utils.eval.classification import (
     evaluate_classifications,
+    ClassificationEvaluationConfig,
     ClassificationResults,
-    BinaryClassificationResults,
 )
 from .utils.eval.detection import (
     evaluate_detections,
+    DetectionEvaluationConfig,
     DetectionResults,
+)
+from .utils.eval.regression import (
+    evaluate_regressions,
+    RegressionEvaluationConfig,
+    RegressionResults,
 )
 from .utils.eval.segmentation import (
     evaluate_segmentations,
+    SegmentationEvaluationConfig,
     SegmentationResults,
 )
 from .utils.quickstart import quickstart

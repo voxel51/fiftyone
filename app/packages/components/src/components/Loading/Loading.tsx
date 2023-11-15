@@ -7,15 +7,16 @@ const Loading: React.FC<
     dataCy?: string;
     ellipsisAnimation?: boolean;
     style?: React.CSSProperties;
+    wrapperStyle?: React.CSSProperties;
   }>
-> = ({ children, dataCy, ellipsisAnimation = false, style }) => {
+> = ({ children, dataCy, ellipsisAnimation = false, style, wrapperStyle }) => {
   return (
     <div
       data-cy={dataCy}
       className={ellipsisAnimation ? classNames(ellipsis, loading) : loading}
       style={style}
     >
-      <div>{children}</div>
+      <div style={wrapperStyle}>{children}</div>
     </div>
   );
 };

@@ -5,11 +5,16 @@ Annotation runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.core.runs import Run, RunConfig, RunInfo, RunResults
+from fiftyone.core.runs import (
+    BaseRun,
+    BaseRunConfig,
+    BaseRunInfo,
+    BaseRunResults,
+)
 from fiftyone.core.odm import patch_annotation_runs
 
 
-class AnnotationInfo(RunInfo):
+class AnnotationInfo(BaseRunInfo):
     """Information about an annotation run on a dataset.
 
     Args:
@@ -24,7 +29,7 @@ class AnnotationInfo(RunInfo):
         return AnnotationMethodConfig
 
 
-class AnnotationMethodConfig(RunConfig):
+class AnnotationMethodConfig(BaseRunConfig):
     """Base class for configuring :class:`AnnotationMethod` instances.
 
     Args:
@@ -32,10 +37,16 @@ class AnnotationMethodConfig(RunConfig):
             their parsing
     """
 
-    pass
+    @property
+    def type(self):
+        return "annotation"
+
+    @property
+    def method(self):
+        return None
 
 
-class AnnotationMethod(Run):
+class AnnotationMethod(BaseRun):
     """Base class for annotation methods.
 
     Args:
@@ -63,7 +74,7 @@ class AnnotationMethod(Run):
         return patch_annotation_runs
 
 
-class AnnotationResults(RunResults):
+class AnnotationResults(BaseRunResults):
     """Base class for annotation run results."""
 
     pass

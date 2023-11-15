@@ -5,11 +5,16 @@ Brain method runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.core.runs import Run, RunConfig, RunInfo, RunResults
+from fiftyone.core.runs import (
+    BaseRun,
+    BaseRunConfig,
+    BaseRunInfo,
+    BaseRunResults,
+)
 from fiftyone.core.odm import patch_brain_runs
 
 
-class BrainInfo(RunInfo):
+class BrainInfo(BaseRunInfo):
     """Information about an brain method that has been run on a dataset.
 
     Args:
@@ -23,7 +28,7 @@ class BrainInfo(RunInfo):
         return BrainMethodConfig
 
 
-class BrainMethodConfig(RunConfig):
+class BrainMethodConfig(BaseRunConfig):
     """Base class for configuring :class:`BrainMethod` instances.
 
     Args:
@@ -31,10 +36,16 @@ class BrainMethodConfig(RunConfig):
             their parsing
     """
 
-    pass
+    @property
+    def type(self):
+        return "brain"
+
+    @property
+    def method(self):
+        return None
 
 
-class BrainMethod(Run):
+class BrainMethod(BaseRun):
     """Base class for brain methods.
 
     Args:
@@ -62,7 +73,7 @@ class BrainMethod(Run):
         return patch_brain_runs
 
 
-class BrainResults(RunResults):
+class BrainResults(BaseRunResults):
     """Base class for brain method results."""
 
     pass

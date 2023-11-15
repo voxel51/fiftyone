@@ -2949,7 +2949,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
-        # Test import/export of runs
+        # Test import/export of evaluations
 
         dataset.clone_sample_field("predictions", "ground_truth")
 
@@ -2982,6 +2982,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info = dataset.get_evaluation_info("test")
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
+
+        # Test import/export of custom runs
+
+        config = dataset.init_run()
+        config.foo = "bar"
+        config.spam = "eggs"
+        dataset.register_run("custom", config)
+
+        results = dataset.init_run_results("custom")
+        results.foo = "bar"
+        results.spam = "eggs"
+        dataset.save_run_results("custom", results)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.FiftyOneDataset,
+        )
+
+        self.assertTrue("custom" in dataset.list_runs())
+        self.assertTrue("custom" in dataset2.list_runs())
+
+        run_doc = dataset2._doc.runs["custom"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
+
+        info = dataset.get_run_info("custom")
+        info2 = dataset2.get_run_info("custom")
+        self.assertEqual(info.key, info2.key)
+        self.assertEqual(info.config.foo, info2.config.foo)
+        self.assertEqual(info.config.spam, info2.config.spam)
+
+        results = dataset.load_run_results("custom")
+        results2 = dataset.load_run_results("custom")
+
+        self.assertEqual(results.foo, results2.foo)
+        self.assertEqual(results.spam, results2.spam)
 
         # Per sample/frame directories
 
@@ -3192,7 +3234,7 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         view2 = dataset2.load_saved_view("test")
         self.assertEqual(len(view), len(view2))
 
-        # Test import/export of runs
+        # Test import/export of evaluations
 
         dataset.clone_sample_field("predictions", "ground_truth")
 
@@ -3225,6 +3267,48 @@ class MultitaskImageDatasetTests(ImageDatasetTests):
         info = dataset.get_evaluation_info("test")
         info2 = dataset2.get_evaluation_info("test")
         self.assertEqual(info.key, info2.key)
+
+        # Test import/export of custom runs
+
+        config = dataset.init_run()
+        config.foo = "bar"
+        config.spam = "eggs"
+        dataset.register_run("custom", config)
+
+        results = dataset.init_run_results("custom")
+        results.foo = "bar"
+        results.spam = "eggs"
+        dataset.save_run_results("custom", results)
+
+        export_dir = self._new_dir()
+
+        dataset.export(
+            export_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        dataset2 = fo.Dataset.from_dir(
+            dataset_dir=export_dir,
+            dataset_type=fo.types.LegacyFiftyOneDataset,
+        )
+
+        self.assertTrue("custom" in dataset.list_runs())
+        self.assertTrue("custom" in dataset2.list_runs())
+
+        run_doc = dataset2._doc.runs["custom"]
+        self.assertEqual(str(dataset2._doc.id), run_doc.dataset_id)
+
+        info = dataset.get_run_info("custom")
+        info2 = dataset2.get_run_info("custom")
+        self.assertEqual(info.key, info2.key)
+        self.assertEqual(info.config.foo, info2.config.foo)
+        self.assertEqual(info.config.spam, info2.config.spam)
+
+        results = dataset.load_run_results("custom")
+        results2 = dataset.load_run_results("custom")
+
+        self.assertEqual(results.foo, results2.foo)
+        self.assertEqual(results.spam, results2.spam)
 
         # Labels-only (absolute paths)
 

@@ -1378,6 +1378,28 @@ class FieldView(View):
         super().__init__(**kwargs)
 
 
+class LazyFieldView(View):
+    """Displays a lazy text input which only apply input field changes on blur
+    or when user clicks the save button within the field.
+
+    .. note::
+
+        Must be used with :class:`String` or :class:`Number` properties.
+
+    Args:
+        save_on_blur (True): when set to False, changes in input field will not
+            be automatically applied when user moves mouse out of the changed
+            field. To apply changes, user must click the save button.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.save_on_blur = kwargs.get("save_on_blur", True)
+
+    def to_json(self):
+        return {**super().to_json(), "save_on_blur": self.save_on_blur}
+
+
 class DropdownView(Dropdown):
     """Displays a dropdown selector input."""
 

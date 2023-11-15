@@ -12,6 +12,13 @@ easily extended to import datasets in
 
 .. note::
 
+    Did you know? You can import media and/or labels from within the FiftyOne
+    App by installing the
+    `@voxel51/io <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/io>`_
+    plugin!
+
+.. note::
+
     If your data is in a custom format,
     :ref:`writing a simple loop <loading-custom-datasets>` is the easiest way
     to load your data into FiftyOne.

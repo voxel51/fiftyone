@@ -207,6 +207,8 @@ type Dataset {
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
+  estimatedSampleCount: Int!
+  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {

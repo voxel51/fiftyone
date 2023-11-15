@@ -8,6 +8,7 @@ Annotation utilities.
 from collections import defaultdict, OrderedDict
 from copy import deepcopy
 import getpass
+import inspect
 import logging
 import os
 
@@ -91,6 +92,7 @@ def annotate(
     The natively provided backends and their associated config classes are:
 
     -   ``"cvat"``: :class:`fiftyone.utils.cvat.CVATBackendConfig`
+    -   ``"labelstudio"``: :class:`fiftyone.utils.labelstudio.LabelStudioBackendConfig`
     -   ``"labelbox"``: :class:`fiftyone.utils.labelbox.LabelboxBackendConfig`
 
     See :ref:`this page <requesting-annotations>` for more information about
@@ -265,6 +267,9 @@ def _get_patches_view_label_ids(patches_view):
 def _parse_config(name, label_schema, **kwargs):
     if name is None:
         name = fo.annotation_config.default_backend
+
+    if inspect.isclass(name):
+        return name(None, label_schema, **kwargs)
 
     backends = fo.annotation_config.backends
 
@@ -2230,14 +2235,15 @@ class AnnotationAPI(object):
         pass
 
     def _prompt_username_password(self, backend, username=None, password=None):
-        prefix = "FIFTYONE_%s_" % backend.upper()
-        logger.info(
-            "Please enter your login credentials.\nYou can avoid this in the "
-            "future by setting your `%sUSERNAME` and `%sPASSWORD` environment "
-            "variables",
-            prefix,
-            prefix,
-        )
+        if backend:
+            prefix = "FIFTYONE_%s_" % backend.upper()
+            logger.info(
+                "Please enter your login credentials.\nYou can avoid this in "
+                "the future by setting your `%sUSERNAME` and `%sPASSWORD` "
+                "environment variables",
+                prefix,
+                prefix,
+            )
 
         if username is None:
             username = input("Username: ")
@@ -2248,12 +2254,13 @@ class AnnotationAPI(object):
         return username, password
 
     def _prompt_api_key(self, backend):
-        prefix = "FIFTYONE_%s_" % backend.upper()
-        logger.info(
-            "Please enter your API key.\nYou can avoid this in the future by "
-            "setting your `%sKEY` environment variable",
-            prefix,
-        )
+        if backend:
+            prefix = "FIFTYONE_%s_" % backend.upper()
+            logger.info(
+                "Please enter your API key.\nYou can avoid this in the future "
+                "by setting your `%sKEY` environment variable",
+                prefix,
+            )
 
         return getpass.getpass(prompt="API key: ")
 

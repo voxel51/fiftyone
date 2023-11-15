@@ -34,6 +34,7 @@ from .database import (
     patch_annotation_runs,
     patch_brain_runs,
     patch_evaluations,
+    patch_runs,
 )
 from .document import Document
 from .embedded_document import EmbeddedDocument
@@ -553,6 +554,7 @@ class DatasetDocument(Document):
     annotation_runs = DictField(ReferenceField(RunDocument))
     brain_methods = DictField(ReferenceField(RunDocument))
     evaluations = DictField(ReferenceField(RunDocument))
+    runs = DictField(ReferenceField(RunDocument))
 
     def get_saved_views(self):
         saved_views = []
@@ -614,6 +616,21 @@ class DatasetDocument(Document):
 
         return evaluations
 
+    def get_runs(self):
+        runs = {}
+        for key, run_doc in self.runs.items():
+            if not isinstance(run_doc, DBRef):
+                runs[key] = run_doc
+            else:
+                logger.warning(
+                    "This dataset's run references are corrupted. "
+                    "Run %s('%s') and dataset.reload() to resolve",
+                    etau.get_function_name(patch_runs),
+                    self.name,
+                )
+
+        return runs
+
     def to_dict(self, *args, no_dereference=False, **kwargs):
         d = super().to_dict(*args, **kwargs)
 
@@ -630,5 +647,6 @@ class DatasetDocument(Document):
             d["evaluations"] = {
                 k: v.to_dict() for k, v in self.get_evaluations().items()
             }
+            d["runs"] = {k: v.to_dict() for k, v in self.get_runs().items()}
 
         return d
