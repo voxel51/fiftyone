@@ -27,10 +27,19 @@ export class ImaVidFrameSamples {
         // remove from store buffer manager
         this.storeBufferManager.removeBufferValue(frameNumber);
       },
+      noDisposeOnSet: true,
     });
 
     this.frameIndex = new Map<number, string>();
     this.reverseFrameIndex = new Map<string, number>();
+  }
+
+  getSampleAtFrame(frameNumber: number) {
+    const sampleId = this.frameIndex.get(frameNumber);
+    if (sampleId === undefined) {
+      return undefined;
+    }
+    return this.samples.get(sampleId);
   }
 
   reset() {
