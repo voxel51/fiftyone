@@ -63,6 +63,9 @@ def _from_dict(d: t.Dict[str, t.Dict[str, t.Any]]):
             continue
 
         wildcard_projection = None
+        # if a global '$**' wildcard index is present, specific fields may be
+        # defined
+        # https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-multiple-fields/#restrictions
         if _WILDCARD_PROJECTION in index:
             wildcard_projection = WildcardProjection(
                 fields=sorted([f for f in index[_WILDCARD_PROJECTION]]),
