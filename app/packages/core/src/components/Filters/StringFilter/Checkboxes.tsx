@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import React, { MutableRefObject } from "react";
+import { MutableRefObject } from "react";
 import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
@@ -9,7 +9,7 @@ import Reset from "./Reset";
 import { Result } from "./Result";
 
 interface CheckboxesProps {
-  results: Result[];
+  results: Result[] | null;
   selectedAtom: RecoilState<(string | null)[]>;
   excludeAtom: RecoilState<boolean>;
   isMatchingAtom: RecoilState<boolean>;
@@ -27,7 +27,7 @@ const useValues = ({
 }: {
   modal: boolean;
   path: string;
-  results: Result[];
+  results: Result[] | null;
   selected: (string | null)[];
   selectedMap: Map<string | null, number | null>;
 }) => {
@@ -39,17 +39,23 @@ const useValues = ({
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
 
-  const counts = new Map(results.map(({ count, value }) => [value, count]));
+  const counts = results
+    ? new Map(results.map(({ count, value }) => [value, count]))
+    : new Map();
+  const loading = Boolean(lightningPath && !results);
   let allValues = selected.map((value) => ({
     value,
-    count: counts.get(value) || selectedMap.get(value),
-    loading: lightningPath && unlocked && counts.get(value) === undefined,
+    count:
+      !unlocked || loading
+        ? null
+        : counts.get(value) || selectedMap.get(value) || 0,
+    loading: unlocked && loading,
   }));
 
   const objectId = useRecoilValue(fos.isObjectIdField(path));
   const selectedSet = new Set(selected);
   if (
-    (!lightningPath && results.length <= CHECKBOX_LIMIT && !objectId) ||
+    (!lightningPath && results?.length <= CHECKBOX_LIMIT && !objectId) ||
     skeleton
   ) {
     allValues = [

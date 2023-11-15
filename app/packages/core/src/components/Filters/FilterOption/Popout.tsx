@@ -6,11 +6,11 @@ export default function ({
   children,
   close,
 }: {
-  close: () => void;
+  close: React.MouseEventHandler;
   children: React.ReactNode;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
-  useOutsideClick(ref, close);
+  useOutsideClick(ref, close, "click");
 
   return (
     <Popout ref={ref} style={{ padding: 0, position: "relative" }}>

@@ -67,7 +67,7 @@ const FilterOption: React.FC<Props> = ({
       {options.length > 1 && (
         <FilterMode
           data-cy="filter-mode-div"
-          onClick={() => !open && setOpen(!open)}
+          onClick={() => !open && setOpen(true)}
         >
           <IconButton sx={{ color, size: "small" }}>
             <Selected
@@ -96,7 +96,12 @@ const FilterOption: React.FC<Props> = ({
         </FilterMode>
       )}
       {open && (
-        <Popout close={() => setOpen(false)}>
+        <Popout
+          close={(e) => {
+            e.stopPropagation();
+            setOpen(false);
+          }}
+        >
           {options.map(({ key, ...option }) => (
             <Item
               key={key}

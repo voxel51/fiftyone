@@ -1,23 +1,12 @@
-import { isSidebarFilterMode } from "@fiftyone/state";
+import { isFilterDefault, isSidebarFilterMode } from "@fiftyone/state";
 import React from "react";
 import {
   RecoilState,
-  selectorFamily,
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
 } from "recoil";
-import { isInListField } from "../state";
 import { Option, OptionKey } from "./useOptions";
-
-const filterDefault = selectorFamily({
-  key: "filterDefault",
-  get:
-    ({ modal, path }: { path: string; modal: boolean }) =>
-    ({ get }) => {
-      return modal || path === "_label_tags" || get(isInListField(path));
-    },
-});
 
 export default function ({
   close,
@@ -36,7 +25,8 @@ export default function ({
 }) {
   const [excluded, setExcluded] = useRecoilState(excludeAtom);
   const [isMatching, setIsMatching] = useRecoilState(isMatchingAtom);
-  const defaultToFilter = useRecoilValue(filterDefault({ modal, path }));
+  const defaultToFilter = useRecoilValue(isFilterDefault({ modal, path }));
+
   const [filterKey, setFilterKey] = React.useState<OptionKey>(() => {
     if (defaultToFilter) return !excluded ? "filter" : "negativeFilter";
     return !excluded ? "match" : "negativeMatch";

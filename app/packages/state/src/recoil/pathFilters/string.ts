@@ -7,7 +7,7 @@ import {
 import * as fos from "../atoms";
 import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
-import * as schemaAtoms from "../schema";
+import { isFilterDefault } from "./utils";
 
 export interface StringFilter {
   values: string[];
@@ -20,14 +20,10 @@ const getFilter = (
   modal: boolean,
   path: string
 ): StringFilter => {
-  // list fields, label tags and modal use "isMatching: false" default
-  const defaultToFilterMode =
-    modal || path === "_label_tags" || get(schemaAtoms.isListField(path));
-
   return {
     values: [],
     exclude: false,
-    isMatching: defaultToFilterMode ? false : true,
+    isMatching: !get(isFilterDefault({ modal, path })),
     ...get(filterAtoms.filter({ modal, path })),
   } as StringFilter;
 };

@@ -1,5 +1,4 @@
 import * as fos from "@fiftyone/state";
-import React from "react";
 import { useRecoilValue } from "recoil";
 
 export type Result = { value: string | null; count: number | null };

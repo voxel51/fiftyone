@@ -699,3 +699,27 @@ export const isObjectIdField = selectorFamily({
       return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
     },
 });
+
+export const isInListField = selectorFamily({
+  key: "isInListField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = get(parentField(path));
+
+      return (
+        parent?.ftype === LIST_FIELD &&
+        parent?.subfield === EMBEDDED_DOCUMENT_FIELD
+      );
+    },
+});
+
+export const parentField = selectorFamily({
+  key: "parentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = path.split(".").slice(0, -1).join(".");
+      return get(field(parent));
+    },
+});

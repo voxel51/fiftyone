@@ -9,8 +9,8 @@ import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
-import * as schemaAtoms from "../schema";
 import { asDefaultRange, Range } from "../utils";
+import { isFilterDefault } from "./utils";
 
 export interface NumericFilter {
   range: Range;
@@ -27,12 +27,6 @@ const getFilter = (
   modal: boolean,
   path: string
 ): NumericFilter => {
-  // nested listfield, label tag and modal use "isMatching: false" default
-  const fieldPath = path.split(".").slice(0, -1).join(".");
-  const fieldSchema = get(schemaAtoms.field(fieldPath));
-  const isNestedfield = fieldSchema?.ftype.includes("ListField");
-  const defaultToFilterMode = isNestedfield || modal || path === "_label_tags";
-
   const result = {
     range: [null, null] as Range,
     none: true,
@@ -40,7 +34,7 @@ const getFilter = (
     inf: true,
     ninf: true,
     exclude: false,
-    isMatching: defaultToFilterMode ? false : true,
+    isMatching: !get(isFilterDefault({ modal, path })),
     ...get(modal ? filterAtoms.modalFilters : filterAtoms.filters)[path],
   };
 

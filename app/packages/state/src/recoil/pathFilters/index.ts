@@ -24,9 +24,11 @@ import { State } from "../types";
 import { boolean, listBoolean } from "./boolean";
 import { listNumber, numeric } from "./numeric";
 import { listString, string } from "./string";
+
 export * from "./boolean";
 export * from "./numeric";
 export * from "./string";
+export * from "./utils";
 
 const primitiveFilter = selectorFamily<
   (value: any) => boolean,
