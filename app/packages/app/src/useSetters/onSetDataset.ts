@@ -40,6 +40,7 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.fieldVisibilityStage = undefined;
       sessionRef.current.colorScheme = entry.data.dataset?.appConfig
         ?.colorScheme ?? {
+        id: sessionRef.current.colorScheme?.id,
         colorBy: entry.data.config.colorBy,
         colorPool: entry.data.config.colorPool,
         fields: [],
@@ -48,6 +49,11 @@ const onSetDataset: RegisteredSetter =
           valueColors: [],
         },
         defaultMaskTargetsColors: [],
+        defaultColorscale: {
+          name: entry.data.config.colorscale ?? "viridis",
+          list: [],
+        },
+        colorscales: [],
         multicolorKeypoints: false,
         opacity: 0.7,
         showSkeletons: true,

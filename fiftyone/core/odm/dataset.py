@@ -43,6 +43,7 @@ from .views import SavedViewDocument
 
 fol = fou.lazy_import("fiftyone.core.labels")
 fom = fou.lazy_import("fiftyone.core.metadata")
+fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 
 logger = logging.getLogger(__name__)
@@ -271,9 +272,48 @@ class ColorScheme(EmbeddedDocument):
     colorscales = ListField(DictField(), null=True)
     default_colorscale = DictField(null=True)
 
+    # def to_dict(self, extended=False):
+    #     d = super().to_dict(extended)
+    #     d["id"] = str(d.pop("_id"))
+
+    #     return d
     def to_dict(self, extended=False):
         d = super().to_dict(extended)
         d["id"] = str(d.pop("_id"))
+
+        # Processing colorscales to add rgb property
+        if self.colorscales:
+            processed_colorscales = []
+            for colorscale in self.colorscales:
+                # Prepare data for colormap function
+                if colorscale.get("name"):
+                    data = colorscale["name"]
+                elif colorscale.get("list"):
+                    data = [
+                        [item["value"], item["color"]]
+                        for item in colorscale["list"]
+                    ]
+                else:
+                    data = None
+
+                if data:
+                    rgb_values = fop.get_colormap(
+                        data
+                    )  # Assuming fop.get_colormap can handle this data format
+                    colorscale["rgb"] = rgb_values
+                processed_colorscales.append(colorscale)
+
+            d["colorscales"] = processed_colorscales
+
+        # Handling default_colorscale
+        if self.default_colorscale:
+            default_data = self.default_colorscale.get(
+                "name"
+            ) or self.default_colorscale.get("list")
+            if default_data:
+                default_rgb = fop.get_colormap(default_data)
+                self.default_colorscale["rgb"] = default_rgb
+        print("d", d)
         return d
 
     @classmethod

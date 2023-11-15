@@ -29,6 +29,7 @@ const ColorFooter: React.FC = () => {
     [setActiveColorModalField]
   );
   if (!activeColorModalField) return null;
+  console.log("datasetDefault", datasetDefault);
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
@@ -72,6 +73,11 @@ const ColorFooter: React.FC = () => {
                   labelTags: colorScheme.labelTags ?? {},
                   defaultMaskTargetsColors:
                     colorScheme.defaultMaskTargetsColors ?? [],
+                  defaultColorscale: colorScheme.defaultColorscale ?? {
+                    name: "virdis",
+                    list: [],
+                  },
+                  colorscales: colorScheme.colorscales ?? [],
                 },
               },
             });
@@ -100,6 +106,11 @@ const ColorFooter: React.FC = () => {
                 colorBy: configDefault.colorBy ?? "field",
                 multicolorKeypoints: false,
                 showSkeletons: true,
+                defaultColorscale: {
+                  name: configDefault.colorscale ?? "virdis",
+                  list: [],
+                },
+                colorscales: [],
               }));
             }}
             disabled={!canEdit}

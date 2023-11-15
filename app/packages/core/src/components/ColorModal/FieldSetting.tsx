@@ -112,12 +112,10 @@ const FieldSetting = ({ path }: { path: string }) => {
   );
 
   const isSegmentation = field.embeddedDocType?.includes(SEGMENTATION);
-
   const isHeatmap = field.embeddedDocType?.includes(HEATMAP);
+  const isFloatField = field.ftype == FLOAT_FIELD;
 
   const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
-  const isTypeValueSupported = !isNoShowType && !(field.ftype == FLOAT_FIELD);
-
   const isTypeFieldSupported = !isNoShowType;
 
   const onChangeFieldColor = useCallback(
@@ -254,7 +252,8 @@ const FieldSetting = ({ path }: { path: string }) => {
         <div>Color by field is not supported for this field type</div>
       )}
       {coloring.by == COLOR_BY.VALUE &&
-        isTypeValueSupported &&
+        isTypeFieldSupported &&
+        !isFloatField &&
         !isHeatmap &&
         !isSegmentation && (
           <div>
@@ -319,13 +318,12 @@ const FieldSetting = ({ path }: { path: string }) => {
           </div>
         )}
       {coloring.by == COLOR_BY.VALUE && isSegmentation && <FieldsMaskTargets />}
-      {coloring.by == COLOR_BY.VALUE && isHeatmap && <Colorscale />}
-      {coloring.by == COLOR_BY.VALUE &&
-        !isTypeValueSupported &&
-        !isHeatmap &&
-        !isSegmentation && (
-          <div>Color by value is not supported for this field type</div>
-        )}
+      {coloring.by == COLOR_BY.VALUE && (isHeatmap || isFloatField) && (
+        <Colorscale />
+      )}
+      {coloring.by == COLOR_BY.VALUE && !isTypeFieldSupported && (
+        <div>Color by value is not supported for this field type</div>
+      )}
       {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}

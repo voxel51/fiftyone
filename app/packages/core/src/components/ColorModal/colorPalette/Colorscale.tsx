@@ -1,9 +1,6 @@
-import {
-  ColorscaleInput,
-  ColorscaleListInput,
-  MaskColorInput,
-} from "@fiftyone/relay";
+import { ColorscaleInput, ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
   DefaultValue,
@@ -14,15 +11,14 @@ import {
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
+import { ControlGroupWrapper, FieldCHILD_STYLE } from "../ShareStyledDiv";
+import ManualColorScaleList from "../controls/ManualColorScaleList";
 import { activeColorPath } from "../state";
 import {
   getRGBColorFromPool,
   isValidFloatInput,
   namedColorScales,
 } from "../utils";
-import { ControlGroupWrapper, FieldCHILD_STYLE } from "../ShareStyledDiv";
-import ManualColorScaleList from "../controls/ManualColorScaleList";
-import { cloneDeep } from "lodash";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -79,8 +75,17 @@ const Colorscale: React.FC = () => {
   const setColorScheme = fos.useSetSessionColorScheme();
   const activePath = useRecoilValue(activeColorPath);
   const [setting, setSetting] = useRecoilState(colorscaleSetting(activePath));
-
   console.info("setting", setting);
+  const state = useMemo(
+    () => ({
+      useFieldSetting: Boolean(
+        setting &&
+          ((setting?.name && setting?.name !== "") ||
+            (setting?.list && setting?.list.length > 0))
+      ),
+    }),
+    [setting]
+  );
   const colorscaleValues = useMemo(
     () =>
       colorScheme.colorscales?.find((item) => item.path === activePath) ?? {
@@ -93,13 +98,15 @@ const Colorscale: React.FC = () => {
 
   const [input, setInput] = React.useState(colorscaleValues?.name ?? "");
   const [tab, setTab] = React.useState(
-    Boolean(
-      (setting?.name || setting?.name !== "") &&
-        setting?.list &&
-        setting?.list.length > 0
-    )
-      ? "list"
-      : "name"
+    state.useFieldSetting
+      ? Boolean(
+          (setting?.name || setting?.name !== "") &&
+            setting?.list &&
+            setting?.list.length > 0
+        )
+        ? "list"
+        : "name"
+      : null
   );
 
   const defaultValue = {
@@ -110,7 +117,6 @@ const Colorscale: React.FC = () => {
   const onBlurName = useCallback((value: string) => {
     // validate name is a plotly named colorscale
     // we convert the input to correct cases
-
     if (namedColorScales.includes(value.toLowerCase())) {
       setSetting({ ...colorscaleValues, name: value.toLowerCase() });
     } else {
@@ -155,12 +161,17 @@ const Colorscale: React.FC = () => {
 
   useEffect(() => {
     if (tab === "list") {
-      // when list is active, set name to null
-      // we use colorscale.name ?? colorscale.list to generate colorscale rgb list
       setSetting((prev) => ({
         ...prev,
         name: null,
-        list: prev?.list ?? [defaultValue],
+        list: prev?.list?.length ? prev.list : [defaultValue],
+      }));
+    }
+    if (tab === "name") {
+      setSetting((prev) => ({
+        ...prev,
+        name: prev?.name ?? "viridis",
+        list: [],
       }));
     }
   }, [tab]);
@@ -169,66 +180,76 @@ const Colorscale: React.FC = () => {
     setInput(colorscaleValues?.name ?? "");
   }, [colorscaleValues.name]);
 
-  useEffect(() => {
-    if (!setting) {
-      if (!colorScheme.colorscales || colorScheme.colorscales.length == 0) {
-        setColorScheme({
-          ...colorScheme,
-          colorscales: [
-            {
-              path: activePath,
-              name: "",
-              list: [defaultValue],
-            },
-          ],
-        });
-      }
-    }
-  }, [setting]);
-
   return (
     <div>
-      <RadioGroup
-        choices={["name", "list"]}
-        value={tab}
-        setValue={(mode) => {
-          setTab(mode);
-        }}
-        horizontal
-      />
-      {tab === "name" && (
-        <div>
-          Use a named plotly colorscale:
-          <Input
-            value={input}
-            setter={(v) => setInput(v)}
-            placeholder="(e.g. viridis, rdbu)"
-            onBlur={() => onBlurName(input)}
-            onEnter={() => onBlurName(input)}
-            style={{
-              width: 250,
-              margin: 3,
-            }}
-          />
-        </div>
-      )}
-      {tab === "list" && (
-        <div>
-          Define a custom colorscale:
-          <ManualColorScaleList
-            initialValue={
-              setting?.list && setting?.list.length > 0
-                ? setting.list
-                : ([defaultValue] as ColorscaleListInput[])
+      <Checkbox
+        name={`Use custom colorscale for ${activePath} field`}
+        value={state.useFieldSetting}
+        setValue={(v: boolean) => {
+          if (v) {
+            if (tab === "name") {
+              setSetting({
+                ...colorscaleValues,
+                name: "viridis",
+                list: null,
+              });
+            } else {
+              setSetting({
+                ...colorscaleValues,
+                name: null,
+                list: [defaultValue],
+              });
             }
-            values={setting?.list as ColorscaleListInput[]}
-            style={FieldCHILD_STYLE}
-            onValidate={validateFloat}
-            onSyncUpdate={onSyncUpdate}
-            shouldShowAddButton={shouldShowAddButton}
-            step={0.01}
+          } else {
+            setSetting(undefined);
+          }
+        }}
+      />
+      {state.useFieldSetting && (
+        <ControlGroupWrapper>
+          <RadioGroup
+            choices={["name", "list"]}
+            value={tab}
+            setValue={(mode) => {
+              setTab(mode);
+            }}
+            horizontal
           />
-        </div>
+          {tab === "name" && (
+            <div>
+              Use a named plotly colorscale:
+              <Input
+                value={input}
+                setter={(v) => setInput(v)}
+                placeholder="(e.g. viridis, rdbu)"
+                onBlur={() => onBlurName(input)}
+                onEnter={() => onBlurName(input)}
+                style={{
+                  width: 250,
+                  margin: 3,
+                }}
+              />
+            </div>
+          )}
+          {tab === "list" && (
+            <div>
+              Define a custom colorscale:
+              <ManualColorScaleList
+                initialValue={
+                  setting?.list && setting?.list.length > 0
+                    ? setting.list
+                    : ([defaultValue] as ColorscaleListInput[])
+                }
+                values={setting?.list as ColorscaleListInput[]}
+                style={FieldCHILD_STYLE}
+                onValidate={validateFloat}
+                onSyncUpdate={onSyncUpdate}
+                shouldShowAddButton={shouldShowAddButton}
+                step={0.01}
+              />
+            </div>
+          )}
+        </ControlGroupWrapper>
       )}
     </div>
   );

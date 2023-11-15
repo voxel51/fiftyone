@@ -50,11 +50,10 @@ export const coloring = selector<Coloring>({
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
 
-    // scale: embeddingsPlot expects RGB[] for colorscale
     return {
       seed,
       pool: colorScheme.colorPool,
-      scale: get(configData).colorscale as RGB[],
+      scale: get(configData).colorscale as RGB[], // from config, used as fallback
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
@@ -166,7 +165,7 @@ export const ensureColorScheme = (
     },
     defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
     defaultColorscale: colorScheme.defaultColorscale ?? {
-      name: "viridis",
+      name: appConfig?.colorscale ?? "viridis",
       list: null,
     },
     multicolorKeypoints:
