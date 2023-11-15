@@ -16,15 +16,14 @@ const DefaultMaskTargets: React.FC = () => {
   const setColorScheme = fos.useSetSessionColorScheme();
 
   const initialValue = colorScheme.defaultMaskTargetsColors ?? [];
-  const values = useMemo(
-    () => colorScheme.defaultMaskTargetsColors,
-    [colorScheme]
-  );
+
+  const values = colorScheme.defaultMaskTargetsColors;
+
   const defaultValue = {
     intTarget: 1,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
-  const shouldShowAddButton = Boolean(values?.length && values?.length > 0);
+  const shouldShowAddButton = Boolean(values?.length);
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
@@ -32,31 +31,23 @@ const DefaultMaskTargets: React.FC = () => {
         setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
       }
     },
-    [setColorScheme, colorScheme]
+    [setColorScheme]
   );
 
   useEffect(() => {
-    if (!values) {
-      if (
-        !colorScheme.defaultMaskTargetsColors ||
-        colorScheme.defaultMaskTargetsColors.length == 0
-      ) {
-        setColorScheme({
-          ...colorScheme,
-          defaultMaskTargetsColors: [defaultValue],
-        });
-      }
+    if (!colorScheme.defaultMaskTargetsColors?.length) {
+      setColorScheme({
+        ...colorScheme,
+        defaultMaskTargetsColors: [defaultValue],
+      });
     }
-  }, [values]);
+  }, [colorScheme.defaultMaskTargetsColors, defaultValue]);
 
   const state = useMemo(
     () => ({
-      useMaskTargetsColors: Boolean(
-        colorScheme.defaultMaskTargetsColors &&
-          colorScheme.defaultMaskTargetsColors.length > 0
-      ),
+      useMaskTargetsColors: Boolean(values?.length),
     }),
-    [colorScheme.defaultMaskTargetsColors]
+    [values]
   );
 
   return (

@@ -1,6 +1,6 @@
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
 import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
-import { isEmpty, xor } from "lodash";
+import { inRange, isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -95,20 +95,19 @@ export const validateLabelTags = (
 
 const getValidMaskColors = (maskColors: unknown[]) => {
   const r = maskColors
-    ?.filter((x) => {
+    ?.filter((input) => {
       return (
-        x &&
-        isObject(x) &&
-        typeof Number(x["intTarget"]) == "number" &&
-        Number(x["intTarget"]) >= 0 &&
-        Number(x["intTarget"]) <= 255 &&
-        isString(x["color"]) &&
-        isValidColor(x?.color)
+        input &&
+        isObject(input) &&
+        typeof Number(input["intTarget"]) == "number" &&
+        inRange(Number(input["intTarget"]), 0, 255) &&
+        isString(input["color"]) &&
+        isValidColor(input?.color)
       );
     })
-    .map((y: unknown) => ({
-      intTarget: Number(y?.intTarget),
-      color: y?.color,
+    .map((item) => ({
+      intTarget: Number(item?.intTarget),
+      color: item?.color,
     })) as MaskColorInput[];
 
   return r.length > 0 ? r : null;
@@ -137,7 +136,7 @@ export const getRandomColorFromPool = (pool: readonly string[]): string =>
   pool[Math.floor(Math.random() * pool.length)];
 
 export const validateIntMask = (value: number) => {
-  if (!value || value > 255 || value < 1 || !Number.isInteger(value)) {
+  if (!value || !Number.isInteger(value) || !inRange(value, 0, 255)) {
     return false;
   }
   return true;

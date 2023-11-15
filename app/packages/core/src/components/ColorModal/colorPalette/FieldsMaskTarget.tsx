@@ -24,7 +24,7 @@ const FieldsMaskTargets: React.FC = () => {
   const setColorScheme = fos.useSetSessionColorScheme();
   const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
 
-  const values = useMemo(() => setting?.maskTargetsColors ?? [], [setting]);
+  const values = setting?.maskTargetsColors ?? [];
 
   const defaultValue = {
     intTarget: 1,
@@ -33,63 +33,38 @@ const FieldsMaskTargets: React.FC = () => {
 
   const index = useMemo(
     () => colorScheme.fields?.findIndex((s) => s.path == activePath),
-    [activePath]
+    [activePath, colorScheme.fields]
   );
 
-  const shouldShowAddButton = Boolean(
-    setting?.maskTargetsColors && setting.maskTargetsColors.length > 0
-  );
+  const useFieldMaskColors = Boolean(setting?.maskTargetsColors?.length);
+  // Utility function to update the color scheme
+  const updateColorScheme = (maskTargetsColors) => {
+    let newSetting = cloneDeep(colorScheme.fields ?? []);
+    const idx = colorScheme.fields?.findIndex((s) => s.path === activePath);
 
-  const useFieldMaskColors = useMemo(
-    () =>
-      Boolean(
-        setting?.maskTargetsColors && setting.maskTargetsColors.length > 0
-      ),
-    [setting?.maskTargetsColors]
-  );
+    if (idx !== undefined && idx > -1) {
+      newSetting[idx].maskTargetsColors = maskTargetsColors;
+    } else {
+      newSetting = [...newSetting, { path: activePath, maskTargetsColors }];
+    }
+
+    setColorScheme({ ...colorScheme, fields: newSetting });
+  };
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
       if (copy && isValidMaskInput(copy)) {
-        const newSetting = cloneDeep(colorScheme.fields ?? []);
-        const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-        if (idx !== undefined && idx > -1) {
-          newSetting[idx].maskTargetsColors = copy;
-          setColorScheme({ ...colorScheme, fields: newSetting });
-        } else {
-          setColorScheme((cur) => ({
-            ...cur,
-            fields: [
-              ...newSetting,
-              { path: activePath, maskTargetsColors: copy },
-            ],
-          }));
-        }
+        updateColorScheme(copy);
       }
     },
-    [index, setColorScheme, activePath]
+    [updateColorScheme]
   );
 
   useEffect(() => {
     if (!values) {
-      const copy = cloneDeep(colorScheme.fields);
-      const idx = colorScheme.fields?.findIndex((s) => s.path == activePath);
-      if (copy) {
-        if (idx && idx > -1) {
-          copy[idx].maskTargetsColors = [defaultValue];
-          setColorScheme({ ...colorScheme, fields: copy });
-        } else {
-          setColorScheme({
-            ...colorScheme,
-            fields: [
-              ...copy,
-              { path: activePath, maskTargetsColors: [defaultValue] },
-            ],
-          });
-        }
-      }
+      updateColorScheme([defaultValue]);
     }
-  }, [values]);
+  }, [values, defaultValue, updateColorScheme]);
 
   if (isRGBMask) return null;
 
@@ -99,18 +74,10 @@ const FieldsMaskTargets: React.FC = () => {
         name={`Use custom colors for mask targets for ${activePath}`}
         value={useFieldMaskColors}
         setValue={(v: boolean) => {
-          setSetting((cur) => {
-            if (!cur) {
-              cur = { maskTargetsColors: [] };
-            }
-
-            if (v) {
-              cur = { ...cur, maskTargetsColors: [defaultValue] };
-            } else if (!v) {
-              cur = { ...cur, maskTargetsColors: [] };
-            }
-            return cur;
-          });
+          setSetting((cur) => ({
+            ...(cur ?? {}),
+            maskTargetsColors: v ? [defaultValue] : [],
+          }));
         }}
       />
       {useFieldMaskColors && (
@@ -121,7 +88,7 @@ const FieldsMaskTargets: React.FC = () => {
             style={FieldCHILD_STYLE}
             onValidate={validateIntMask}
             onSyncUpdate={onSyncUpdate}
-            shouldShowAddButton={shouldShowAddButton}
+            shouldShowAddButton={useFieldMaskColors}
             min={1}
             max={255}
             step={1}

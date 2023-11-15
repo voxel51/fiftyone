@@ -2,7 +2,9 @@
 In color by value mode, fields and label tags use this component 
 */
 
+import { useTheme } from "@fiftyone/components";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
@@ -21,11 +23,6 @@ import {
 import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
-
-type MaskColorInput = {
-  intTarget: number;
-  color: string;
-};
 
 type Input = {
   intTarget?: number;
@@ -63,34 +60,37 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const activePath = useRecoilValue(activeColorPath) ?? "global";
   const colorScheme = useRecoilValue(fos.colorScheme);
+  const theme = useTheme();
 
-  const handleAdd = () => {
+  const handleAdd = useCallback(() => {
     const newValue = {
       intTarget: undefined,
       color: getRandomColorFromPool(colorScheme.colorPool),
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
     setInput(newInput);
-    setShowPicker([...showPicker, false]);
-    /* does not sync update the session colorscheme here
-    because intTarget is not valid
-    it would sync to session when the user adds an valid intTarget input
-     */
-  };
+    setShowPicker((prev) => [...prev, false]);
+    // Note: Sync update is deferred until a valid intTarget input is added
+  }, [input, colorScheme.colorPool, setInput, setShowPicker]);
 
-  const handleDelete = (colorIdx: number) => {
-    const valueColors = [
-      ...input.slice(0, colorIdx),
-      ...input.slice(colorIdx + 1),
-    ];
-    setInput(valueColors);
-    onSyncUpdate(valueColors as MaskColorInput[]);
-  };
+  const handleDelete = useCallback(
+    (colorIdx: number) => {
+      const valueColors = [
+        ...input.slice(0, colorIdx),
+        ...input.slice(colorIdx + 1),
+      ];
+      setInput(valueColors);
+      onSyncUpdate(valueColors as MaskColorInput[]);
+    },
+    [input, setInput, onSyncUpdate]
+  );
 
   // color picker selection and sync with session
   const hanldeColorChange = useCallback(
     (color: any, colorIdx: number) => {
-      setShowPicker((prev) => prev.map((_, i) => (i === colorIdx ? false : _)));
+      setShowPicker((prev) =>
+        prev.map((status, i) => (i === colorIdx ? false : status))
+      );
       const copy = input ? [...cloneDeep(input)] : [];
       copy[colorIdx].color = color?.hex;
       setInput(copy);
@@ -102,7 +102,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
   // onBlue and onEnter in numberfield to validate certain rules
   const onSyncIdx = useCallback(
     (intValue: number, index: number) => {
-      if ((onValidate && onValidate(intValue)) || !onValidate) {
+      if (!onValidate || onValidate(intValue)) {
         onSyncUpdate(input as MaskColorInput[]);
       } else {
         const warning = cloneDeep(values) as Input[];
@@ -151,14 +151,10 @@ const IdxColorList: React.FC<IdxColorProp> = ({
     [input, values, onSyncUpdate]
   );
 
-  // on changing tabs, sync local state with new session values
+  // on changing tabs or session value changed, sync local state with new session values
   useEffect(() => {
     setInput(values ?? []);
-  }, [activePath]);
-
-  useEffect(() => {
-    setInput(initialValue);
-  }, [values]);
+  }, [activePath, values]);
 
   fos.useOutsideClick(wrapperRef, () => {
     setShowPicker(Array(values?.length ?? 0).fill(false));
@@ -189,6 +185,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
             min={min}
             max={max}
             step={step}
+            key={"int-input-" + index}
           />
           :
           <ColorSquare
@@ -213,7 +210,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
                   }
                   onChangeComplete={(color) => hanldeColorChange(color, index)}
                   ref={pickerRef}
-                  disableAlpha={true}
+                  disableAlpha
                   onBlur={() =>
                     setShowPicker((prev) =>
                       prev.map((_, i) => (i === index ? false : _))
@@ -225,7 +222,7 @@ const IdxColorList: React.FC<IdxColorProp> = ({
             )}
           </ColorSquare>
           <Input
-            placeholder="#009900"
+            placeholder={theme.voxel["500"]}
             value={input[index].color ?? ""}
             setter={(v) =>
               setInput((prev) => {
