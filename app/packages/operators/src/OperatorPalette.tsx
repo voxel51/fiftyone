@@ -47,7 +47,6 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
       }
       switch (key) {
         case "Escape":
-        case "`":
           if (onClose) onClose();
           if (onCancel) onCancel();
           break;

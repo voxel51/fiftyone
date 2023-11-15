@@ -5,11 +5,16 @@ Evaluation runs framework.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from fiftyone.core.runs import Run, RunInfo, RunConfig, RunResults
+from fiftyone.core.runs import (
+    BaseRun,
+    BaseRunInfo,
+    BaseRunConfig,
+    BaseRunResults,
+)
 from fiftyone.core.odm import patch_evaluations
 
 
-class EvaluationInfo(RunInfo):
+class EvaluationInfo(BaseRunInfo):
     """Information about an evaluation that has been run on a dataset.
 
     Args:
@@ -23,7 +28,7 @@ class EvaluationInfo(RunInfo):
         return EvaluationMethodConfig
 
 
-class EvaluationMethodConfig(RunConfig):
+class EvaluationMethodConfig(BaseRunConfig):
     """Base class for configuring :class:`EvaluationMethod` instances.
 
     Args:
@@ -31,10 +36,16 @@ class EvaluationMethodConfig(RunConfig):
             their parsing
     """
 
-    pass
+    @property
+    def type(self):
+        return "evaluation"
+
+    @property
+    def method(self):
+        return None
 
 
-class EvaluationMethod(Run):
+class EvaluationMethod(BaseRun):
     """Base class for evaluation methods.
 
     Subclasses will typically declare an interface method that handles
@@ -65,7 +76,7 @@ class EvaluationMethod(Run):
         return patch_evaluations
 
 
-class EvaluationResults(RunResults):
+class EvaluationResults(BaseRunResults):
     """Base class for evaluation results."""
 
     pass

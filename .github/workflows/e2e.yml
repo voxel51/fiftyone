@@ -4,10 +4,12 @@ on: workflow_call
 
 jobs:
   test-e2e:
-    timeout-minutes: 60
+    timeout-minutes: 90
     runs-on: ubuntu-latest-m
     env:
       FIFTYONE_DO_NOT_TRACK: true
+      FIFTYONE_DATABASE_URI: mongodb://localhost:27017
+      FIFTYONE_DATABASE_NAME: playwright
       ELECTRON_EXTRA_LAUNCH_ARGS: "--disable-gpu"
       PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/ms-playwright
     defaults:
@@ -23,6 +25,11 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
+
+      - name: Start MongoDB
+        uses: supercharge/mongodb-github-action@1.10.0
+        with:
+          mongodb-version: latest
 
       - name: Install setup dependencies
         run: |
