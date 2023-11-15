@@ -82,7 +82,18 @@ const GlobalColorscale: React.FC = () => {
         ...c,
         defaultColorscale: {
           name: null,
-          list: c.defaultColorscale?.list ?? [defaultValue],
+          list: c.defaultColorscale?.list?.length
+            ? c.defaultColorscale?.list
+            : [defaultValue],
+        },
+      }));
+    }
+    if (tab === "name") {
+      setColorScheme((c) => ({
+        ...c,
+        defaultColorscale: {
+          name: c?.defaultColorscale?.name ?? "viridis",
+          list: [],
         },
       }));
     }
