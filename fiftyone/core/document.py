@@ -856,6 +856,7 @@ class DocumentView(_Document):
         self._reload_parents()
 
     def _save(self, deferred=False):
+        self._doc.last_updated_at = datetime.datetime.utcnow()
         return self._doc._save(
             deferred=deferred,
             filtered_fields=self._filtered_fields,

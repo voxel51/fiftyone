@@ -3424,7 +3424,6 @@ class LastUpdatedAtTests(unittest.TestCase):
         # View is saved - first field only then entire view.
         view = dataset.set_field("foo", "spam")
         view.save("foo")
-        sample.reload()
         updated_time = self.check_updated(
             sample, creation_time, updated_time, reload=True
         )
@@ -3432,11 +3431,27 @@ class LastUpdatedAtTests(unittest.TestCase):
 
         view = dataset.set_field("foo", "eggs")
         view.save()
-        sample.reload()
         updated_time = self.check_updated(
             sample, creation_time, updated_time, reload=True
         )
         self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # SampleView
+        sample_view = view.first()
+        sample_view.foo = "bacon"
+        sample_view.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # Autosave / SaveContext
+        for s in dataset.iter_samples(autosave=True):
+            s.foo = "poe tay toes"
+
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
 
         # Clone fields
         dataset.clone_sample_field("foo", "food")
