@@ -55,7 +55,7 @@ def resolve_dataset_name(request_params: dict):
 class ListOperators(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         registry = await _get_operator_registry_for_route(
             self.__class__, request, is_list=True, dataset_ids=dataset_ids
