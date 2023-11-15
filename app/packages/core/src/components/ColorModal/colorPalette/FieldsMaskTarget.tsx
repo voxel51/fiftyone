@@ -21,7 +21,7 @@ const FieldsMaskTargets: React.FC = () => {
 
   const colorScheme = useRecoilValue(fos.colorScheme);
   const activePath = useRecoilValue(activeColorPath);
-  const setColorScheme = fos.useSetSessionColorScheme();
+  // const setColorScheme = fos.useSetSessionColorScheme();
   const [setting, setSetting] = useRecoilState(fieldColorSetting(activePath));
 
   const values = setting?.maskTargetsColors ?? [];
@@ -31,25 +31,34 @@ const FieldsMaskTargets: React.FC = () => {
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
 
-  const index = useMemo(
-    () => colorScheme.fields?.findIndex((s) => s.path == activePath),
-    [activePath, colorScheme.fields]
-  );
-
   const useFieldMaskColors = Boolean(setting?.maskTargetsColors?.length);
   // Utility function to update the color scheme
-  const updateColorScheme = (maskTargetsColors) => {
-    let newSetting = cloneDeep(colorScheme.fields ?? []);
-    const idx = colorScheme.fields?.findIndex((s) => s.path === activePath);
 
-    if (idx !== undefined && idx > -1) {
-      newSetting[idx].maskTargetsColors = maskTargetsColors;
-    } else {
-      newSetting = [...newSetting, { path: activePath, maskTargetsColors }];
-    }
+  // Refactored updateColorScheme to use setSetting
+  const updateColorScheme = useCallback(
+    (maskTargetsColors) => {
+      setSetting((currentSetting) => {
+        return {
+          ...currentSetting,
+          maskTargetsColors: maskTargetsColors,
+        };
+      });
+    },
+    [setSetting]
+  );
 
-    setColorScheme({ ...colorScheme, fields: newSetting });
-  };
+  // const updateColorScheme = (maskTargetsColors) => {
+  //   let newSetting = cloneDeep(colorScheme.fields ?? []);
+  //   const idx = colorScheme.fields?.findIndex((s) => s.path === activePath);
+
+  //   if (idx !== undefined && idx > -1) {
+  //     newSetting[idx].maskTargetsColors = maskTargetsColors;
+  //   } else {
+  //     newSetting = [...newSetting, { path: activePath, maskTargetsColors }];
+  //   }
+
+  //   setColorScheme({ ...colorScheme, fields: newSetting });
+  // };
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
