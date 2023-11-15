@@ -644,7 +644,7 @@ class Frames(object):
         doc = self._dataset._frame_dict_to_doc(d)
         return Frame.from_doc(doc, dataset=self._dataset)
 
-    def _make_dict(self, frame, include_id=False):
+    def _make_dict(self, frame, now_time, include_id=False):
         d = frame.to_mongo_dict(include_id=include_id)
 
         # We omit None here to allow frames with None-valued new fields to
@@ -654,9 +654,8 @@ class Frames(object):
 
         d["_sample_id"] = self._sample_id
         d["_dataset_id"] = self._dataset._doc.id
-        now = datetime.datetime.utcnow()
-        d["created_at"] = now
-        d["last_updated_at"] = now
+        d["created_at"] = frame.created_at or now_time
+        d["last_updated_at"] = now_time
 
         return d
 
@@ -669,6 +668,7 @@ class Frames(object):
     def _save_deletions(self, deferred=False):
         ops = []
 
+        sample_updated = True
         if self._delete_all:
             if deferred:
                 ops.append(DeleteMany({"_sample_id": self._sample_id}))
@@ -684,7 +684,7 @@ class Frames(object):
             self._delete_all = False
             self._delete_frames.clear()
 
-        if self._delete_frames:
+        elif self._delete_frames:
             ops = [
                 DeleteOne(
                     {
@@ -705,6 +705,11 @@ class Frames(object):
             )
 
             self._delete_frames.clear()
+        else:
+            sample_updated = False
+
+        if sample_updated:
+            self._dataset._update_samples_last_updated_at([self._sample_id])
 
         return ops
 
@@ -739,8 +744,9 @@ class Frames(object):
 
         ops = []
         new_dicts = {}
+        now = datetime.datetime.utcnow()
         for frame_number, frame in replacements.items():
-            d = self._make_dict(frame)
+            d = self._make_dict(frame, now)
             if not frame._in_db:
                 new_dicts[frame_number] = d
 
@@ -763,6 +769,8 @@ class Frames(object):
                     frame._set_backing_doc(doc, dataset=self._dataset)
 
                 frame._doc.id = ids_map[frame_number]
+
+        self._dataset._update_samples_last_updated_at([self._sample_id])
 
         self._replacements.clear()
 
@@ -884,6 +892,8 @@ class FramesView(Frames):
         frame_view = self._make_frame({"_sample_id": self._sample_id})
 
         for field, value in frame.iter_fields():
+            if field in {"created_at", "last_updated_at"}:
+                continue
             frame_view.set_field(
                 field,
                 value,
@@ -993,8 +1003,9 @@ class FramesView(Frames):
             self._validate_frames(self._replacements)
 
         ops = []
+        now = datetime.datetime.utcnow()
         for frame_number, frame in self._replacements.items():
-            doc = self._make_dict(frame)
+            doc = self._make_dict(frame, now)
 
             # Update elements of filtered array fields separately
             if self._filtered_fields is not None:
@@ -1026,6 +1037,8 @@ class FramesView(Frames):
 
         if not deferred:
             self._frame_collection.bulk_write(ops, ordered=False)
+
+        self._dataset._update_samples_last_updated_at([self._sample_id])
 
         self._replacements.clear()
 
@@ -1089,6 +1102,7 @@ class Frame(Document, metaclass=FrameSingleton):
             )
 
         super().save()
+        self._dataset._update_samples_last_updated_at([self._sample_id])
 
     def _reload_backing_doc(self):
         if not self._in_db:
@@ -1156,3 +1170,8 @@ class FrameView(DocumentView):
     def _sample_id(self):
         _id = self._doc._sample_id
         return ObjectId(_id) if _id is not None else None
+
+    def save(self):
+        """Saves the frameview to the database."""
+        super().save()
+        self._dataset._update_samples_last_updated_at([self._sample_id])

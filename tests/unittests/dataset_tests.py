@@ -3499,9 +3499,189 @@ class LastUpdatedAtTests(unittest.TestCase):
         dataset.delete_sample_field("class_field.smores")
         updated_time = self.check_updated(sample, creation_time, updated_time)
 
-        # Create new dataset
-        # dataset2 = fo.Dataset()
-        # dataset2.add_sample(dataset.first())
+    def check_frame_updated(
+        self,
+        frame,
+        sample,
+        frame_creation_time,
+        prev_frame_updated_time,
+        sample_creation_time,
+        prev_sample_updated_time,
+        reload=False,
+    ):
+        if reload:
+            frame.reload()
+
+        self.assertEqual(frame.created_at, frame_creation_time)
+        self.assertGreater(frame.last_updated_at, prev_frame_updated_time)
+        self.check_updated(
+            sample, sample_creation_time, prev_sample_updated_time
+        )
+
+        return frame.last_updated_at, sample.last_updated_at
+
+    def test_frame_update_times(self):
+        delta = timedelta(milliseconds=1000)
+        sample = fo.Sample("blah.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        view = dataset.select_fields()
+        frames = sample.frames
+        frame_view = view.first().frames.first()
+        frames_view = view.first().frames
+
+        # Add sample and test initial times
+        dataset.add_sample(sample)
+        sample.reload()
+        now = datetime.utcnow()
+        sample_creation_time = sample.created_at
+        frame_creation_time = frame.created_at
+        sample_updated_time = sample.last_updated_at
+        frame_updated_time = frame.last_updated_at
+
+        # Sample creation and updated time won't be exactly the same because
+        #   it is updated when the frames are saved.
+        self.assertAlmostEqual(
+            sample_creation_time, sample_updated_time, delta=delta
+        )
+        self.assertEqual(frame_creation_time, frame_updated_time)
+        self.assertAlmostEqual(sample_creation_time, now, delta=delta)
+        self.assertAlmostEqual(
+            frame_creation_time,
+            sample_creation_time,
+            delta=timedelta(milliseconds=100),
+        )
+
+        # Adding frame field should not update modify time because we update
+        #   the schema not each sample
+        dataset.add_frame_field(
+            "class_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_frame_field(
+            "detect_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        self.assertEqual(frame.last_updated_at, frame_updated_time)
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+
+        # However the dataset updated time IS updated
+        self.assertGreater(dataset.last_updated_at, sample_updated_time)
+
+        # Set values regular
+        dataset.set_values("frames.foo", ["bar"])
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Set values list field
+        dataset.set_values("frames.detect_field.foo", ["bar"])
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frame save
+        frame.foo = "baz"
+        frame.save()
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frame View save
+        frame_view["foo"] = "bat"
+        frame_view.save()
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frames add_frame
+        frames.add_frame(2, fo.Frame(frame_number=2))
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Delete frame
+        frames.delete_frame(2)
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten on save since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # FramesView add_frame
+        frames_view.add_frame(2, fo.Frame(frame_number=2))
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        sample.reload()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Delete all frames
+        frames.clear()
+        frames.save()
+        self.check_updated(sample, sample_creation_time, sample_updated_time)
 
     def check_dataset_updated(self, dataset, prev_last_updated_at):
         self.assertGreater(dataset._last_updated_at, prev_last_updated_at)

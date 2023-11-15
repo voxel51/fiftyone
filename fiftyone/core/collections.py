@@ -2531,6 +2531,20 @@ class SampleCollection(object):
                 frames=True,
             )
 
+        # Finally update all samples updated_at times whose frames were touched
+        #   by this operation.
+        self._update_samples_last_updated_at(view.values("_id"))
+
+    def _update_samples_last_updated_at(self, sample_ids):
+        ops = [
+            UpdateMany(
+                {"_id": {"$in": sample_ids}},
+                {"$set": {"last_updated_at": datetime.datetime.utcnow()}},
+            )
+        ]
+
+        self._dataset._bulk_write(ops, frames=False)
+
     def _set_doc_values(
         self,
         field_name,
