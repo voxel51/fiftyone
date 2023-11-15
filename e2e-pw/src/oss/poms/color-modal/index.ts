@@ -90,7 +90,9 @@ export class ColorModalPom {
   async addANewPair(value: string, color: string) {
     await this.getFieldSelector("button-add a new pair").click();
     await this.page.getByPlaceholder("Value (e.g. 'car')").last().fill(value);
+    await this.page.keyboard.press("Enter");
     await this.page.getByPlaceholder("#009900").last().fill(color);
+    await this.page.keyboard.press("Enter");
   }
 
   async getJSONEditor() {
