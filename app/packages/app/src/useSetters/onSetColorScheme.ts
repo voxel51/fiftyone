@@ -42,7 +42,7 @@ const onSetColorScheme: RegisteredSetter =
 
 export default onSetColorScheme;
 
-function removeRgbProperty(input) {
+export function removeRgbProperty(input) {
   // Clone the input to avoid mutating the original object
   const clonedInput = cloneDeep(input);
 

@@ -59,6 +59,13 @@ const ColorFooter: React.FC = () => {
               : "Can not save to dataset appConfig in read-only mode"
           }
           onClick={() => {
+            // remove rgb list from defaultColorscale and colorscales
+            const { rgb, ...rest } = colorScheme.defaultColorscale;
+            const newDefaultColorscale = rest;
+            const newColorscales = colorScheme.colorscales?.length
+              ? colorScheme.colorscales?.map(({ rgb, ...rest }) => rest)
+              : [];
+
             setDatasetColorScheme({
               variables: {
                 subscription,
@@ -73,11 +80,11 @@ const ColorFooter: React.FC = () => {
                   labelTags: colorScheme.labelTags ?? {},
                   defaultMaskTargetsColors:
                     colorScheme.defaultMaskTargetsColors ?? [],
-                  defaultColorscale: colorScheme.defaultColorscale ?? {
+                  defaultColorscale: newDefaultColorscale ?? {
                     name: "virdis",
                     list: [],
                   },
-                  colorscales: colorScheme.colorscales ?? [],
+                  colorscales: colorScheme.colorscales ? newColorscales : [],
                 },
               },
             });
