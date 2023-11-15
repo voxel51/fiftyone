@@ -181,7 +181,6 @@ export const PainterFactory = (requestColor) => ({
 
     // when colorscale is null or doe
     let scale;
-    console.log(colorscale);
 
     if (colorscale?.fields?.find((x) => x.path === field)?.rgb) {
       scale = colorscale?.fields?.find((x) => x.path === field).rgb;
@@ -191,8 +190,6 @@ export const PainterFactory = (requestColor) => ({
       console.log("using coloring.scale");
       scale = coloring.scale;
     }
-
-    console.info("scale", scale);
 
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {

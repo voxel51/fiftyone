@@ -4,9 +4,8 @@ import {
   ColorscaleListInput,
   MaskColorInput,
 } from "@fiftyone/relay";
-import { isEmpty, xor } from "lodash";
 import colorString from "color-string";
-import { RGB } from "@fiftyone/utilities";
+import { isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -124,6 +123,66 @@ export const validateMaskColor = (
   arr: any
 ): ColorSchemeInput["defaultMaskTargetsColors"] => {
   return Array.isArray(arr) ? getValidMaskColors(arr) : null;
+};
+
+const getValidColorscaleList = (list: unknown[]) => {
+  const r = list
+    ?.filter((x: unknown) => {
+      return (
+        x &&
+        isObject(x) &&
+        typeof Number(x["value"]) == "number" &&
+        isString(x["color"]) &&
+        isValidColor(x["color"])
+      );
+    })
+    .map((y) => ({
+      value: Number(y?.value),
+      color: convertToRGB(y?.color),
+    })) as ColorscaleListInput[];
+
+  return r.length > 0 ? r : null;
+};
+
+export const validateDefaultColorscale = (
+  obj: any
+): ColorSchemeInput["defaultColorscale"] => {
+  if (typeof obj === "object" && obj !== null) {
+    const list = Array.isArray(obj["list"])
+      ? getValidColorscaleList(obj["list"])
+      : null;
+
+    const name =
+      isString(obj["name"]) && namedColorScales.includes(obj["name"])
+        ? obj["name"]
+        : null;
+
+    return (
+      name || list ? { name, list } : null
+    ) as ColorSchemeInput["defaultColorscale"];
+  }
+};
+
+export const validateColorscales = (
+  arr: any
+): ColorSchemeInput["colorscales"] => {
+  const result = Array.isArray(arr)
+    ? arr
+        .map((x) => {
+          if (typeof x === "object" && x !== null) {
+            const list = Array.isArray(x["list"])
+              ? getValidColorscaleList(x["list"])
+              : null;
+
+            const name = isString(x["name"]) ? x["name"] : null;
+
+            return name || list ? { name, list } : null;
+          }
+        })
+        .filter((x) => x !== null)
+    : [];
+
+  return (result.length > 0 ? result : null) as ColorSchemeInput["colorscales"];
 };
 
 export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
