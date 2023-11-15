@@ -4,10 +4,13 @@ import { isLightningPath, lightning } from "../lightning";
 import { count } from "./counts";
 import { lightningNonfinites } from "./lightningNumeric";
 
-export const bounds = selectorFamily({
+export const bounds = selectorFamily<
+  [number, number],
+  { extended: boolean; path: string; modal: boolean }
+>({
   key: "bounds",
   get:
-    (params: { extended: boolean; path: string; modal: boolean }) =>
+    (params) =>
     ({ get }) => {
       const data = get(aggregation(params));
 
@@ -32,6 +35,18 @@ export const nonfiniteData = selectorFamily({
       }
 
       const data = get(aggregation(params));
+      const { count: parentCount } = get(
+        aggregation({
+          ...params,
+          path: params.path.split(".").slice(0, -1).join("."),
+        })
+      );
+
+      if (data.__typename === "IntAggregation") {
+        return {
+          none: parentCount - data.exists,
+        };
+      }
 
       if (data.__typename !== "FloatAggregation") {
         throw new Error("unexpected");
@@ -39,12 +54,6 @@ export const nonfiniteData = selectorFamily({
 
       const { inf, nan, ninf, exists } = data;
 
-      const { count: parentCount } = get(
-        aggregation({
-          ...params,
-          path: params.path.split(".").slice(0, -1).join("."),
-        })
-      );
       return {
         inf: inf === undefined ? 0 : inf,
         nan: nan === undefined ? 0 : nan,

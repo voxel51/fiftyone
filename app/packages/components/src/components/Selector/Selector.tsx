@@ -17,7 +17,7 @@ import style from "./Selector.module.css";
 export interface SelectorProps<T> {
   id?: string;
   value?: string;
-  onSelect: (search: string) => Promise<string>;
+  onSelect: (search: string, v?: T) => Promise<string>;
   placeholder: string;
   useSearch?: UseSearch<T>;
   component: React.FC<{ value: T; className?: string }>;
@@ -60,9 +60,12 @@ function Selector<T>(props: SelectorProps<T>) {
 
   const onSelectWrapper = useMemo(() => {
     return async (search: string) => {
-      local.current = await onSelect(
-        active !== undefined ? toKey(valuesRef.current[active]) : search
-      );
+      const value =
+        active !== undefined
+          ? valuesRef.current[active]
+          : valuesRef.current.filter((v) => toKey(v) === search)[0];
+
+      local.current = await onSelect(value ? toKey(value) : search, value);
       setEditing(false);
     };
   }, [active, onSelect, toKey, valuesRef]);

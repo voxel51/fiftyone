@@ -13,7 +13,6 @@ import * as state from "./state";
 interface NonfiniteState {
   value: boolean;
   setValue: SetterOrUpdater<boolean>;
-  count?: number;
   subcountAtom?: RecoilValueReadOnly<number>;
 }
 
@@ -24,7 +23,7 @@ const NONFINITES = {
   none: null,
 };
 
-const useNonfiniteData = (params: {
+const useNonfiniteSettings = (params: {
   modal: boolean;
   path: string;
   defaultRange?: [number, number];
@@ -55,16 +54,30 @@ const useNonfinites = (options: {
   defaultRange?: [number, number];
   modal: boolean;
   path: string;
-}): [fos.Nonfinite, NonfiniteState][] => {
-  const get = useNonfiniteData(options);
-  const data = [get("none")];
+}) => {
+  const get = useNonfiniteSettings(options);
+  const list = [get("none")];
   const { ftype } = fos.useAssertedRecoilValue(fos.field(options.path));
-
+  const data = useRecoilValue(
+    fos.nonfiniteData({
+      extended: false,
+      path: options.path,
+      modal: options.modal,
+    })
+  );
   if (ftype === FLOAT_FIELD) {
-    state.FLOAT_NONFINITES.forEach((key) => data.push(get(key)));
+    state.FLOAT_NONFINITES.forEach((key) => list.push(get(key)));
   }
 
-  return data.filter(([_, { count }]) => count !== undefined && count > 0);
+  return list
+    .filter(([key]) => data[key])
+    .map(([key, d]) => ({
+      key,
+      ...d,
+      count: (typeof data[key] === "number" ? data[key] : undefined) as
+        | number
+        | undefined,
+    }));
 };
 
 function Nonfinites({
@@ -84,10 +97,20 @@ function Nonfinites({
   });
   const hasBounds = useRecoilValue(state.hasBounds({ defaultRange, path }));
   const one = useRecoilValue(state.oneBound({ defaultRange, path }));
+  const lightning = useRecoilValue(fos.lightning);
+  const lightningPath = useRecoilValue(fos.isLightningPath(path));
+
+  if (lightning && lightningPath && nonfinites.length) {
+    return (
+      <span style={{ color: "var(--fo-palette-danger-plainColor)" }}>
+        {nonfinites.map(({ key }) => key).join(", ")} present
+      </span>
+    );
+  }
 
   return (
     <>
-      {nonfinites.map(([key, props]) => (
+      {nonfinites.map(({ key, ...props }) => (
         <Checkbox
           key={key}
           color={color}

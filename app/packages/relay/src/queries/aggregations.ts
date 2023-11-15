@@ -13,6 +13,10 @@ export default r(graphql`
         false
         true
       }
+      ... on DataAggregation {
+        path
+        count
+      }
       ... on IntAggregation {
         path
         count

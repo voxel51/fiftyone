@@ -1,5 +1,5 @@
 import { selectorFamily } from "recoil";
-import { aggregation } from "../aggregations";
+import { aggregations } from "../aggregations";
 import { activeLabelPaths } from "../schema";
 
 export const labelCount = selectorFamily<
@@ -12,8 +12,9 @@ export const labelCount = selectorFamily<
     ({ get }) => {
       let sum = 0;
 
-      for (const path of get(activeLabelPaths({ modal: params.modal }))) {
-        const data = get(aggregation({ ...params, path }));
+      const paths = get(activeLabelPaths({ modal: params.modal }));
+      const results = get(aggregations({ ...params, paths }));
+      for (const data of results) {
         sum += data.count;
       }
 

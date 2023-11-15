@@ -22,6 +22,7 @@ const useValues = ({
   modal,
   path,
   selected,
+  selectedMap,
   results,
 }: {
   modal: boolean;
@@ -31,6 +32,7 @@ const useValues = ({
   selectedMap: Map<string | null, number | null>;
 }) => {
   const name = path.split(".").slice(-1)[0];
+  const unlocked = fos.useLightingUnlocked();
   const lightning = useRecoilValue(fos.lightning);
   const lightningPath =
     useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
@@ -40,8 +42,8 @@ const useValues = ({
   const counts = new Map(results.map(({ count, value }) => [value, count]));
   let allValues = selected.map((value) => ({
     value,
-    count: counts.get(value),
-    loading: lightningPath && counts.get(value) === undefined,
+    count: counts.get(value) || selectedMap.get(value),
+    loading: lightningPath && unlocked && counts.get(value) === undefined,
   }));
 
   const objectId = useRecoilValue(fos.isObjectIdField(path));

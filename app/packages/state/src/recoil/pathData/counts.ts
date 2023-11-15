@@ -85,9 +85,6 @@ export const count = selectorFamily({
       }
 
       if (value !== undefined) {
-        if (params.path === "predictions.detections.label" && params.extended) {
-          console.log(get(counts(params))[value]);
-        }
         return get(counts(params))[value] || 0;
       }
 
@@ -131,7 +128,12 @@ export const counts = selectorFamily({
         );
       }
 
-      return Object.fromEntries(get(booleanCountResults(params)).results);
+      return Object.fromEntries(
+        get(booleanCountResults(params)).results.map(({ value, count }) => [
+          value,
+          count,
+        ])
+      );
     },
 });
 

@@ -28,6 +28,7 @@ const useField = (path: string) =>
   useRecoilValue(fos.field(path)) || makePseudoField(path);
 
 const FilterableEntry = ({
+  disabled,
   entryKey,
   modal,
   path,
@@ -35,6 +36,7 @@ const FilterableEntry = ({
   onBlur,
   trigger,
 }: {
+  disabled: boolean;
   entryKey: string;
   group: string;
   modal: boolean;
@@ -48,7 +50,7 @@ const FilterableEntry = ({
   ) => void;
 }) => {
   const active = useRecoilValue(fos.activeField({ modal, path }));
-  const color = useRecoilValue(fos.pathColor(path));
+  const pathColor = useRecoilValue(fos.pathColor(path));
   const field = useField(path);
   const fieldIsFiltered = useRecoilValue(fos.fieldIsFiltered({ path, modal }));
   const expandedPath = useRecoilValue(fos.expandPath(path));
@@ -58,6 +60,7 @@ const FilterableEntry = ({
   const onClick = useOnClick({ modal, path });
   const lightning = useRecoilValue(fos.isLightningPath(path));
   const theme = useTheme();
+  const color = disabled ? theme.background.paper : pathColor;
 
   const Entries = lightning
     ? LightningFilterablePathEntries
@@ -74,7 +77,7 @@ const FilterableEntry = ({
       entryKey={entryKey}
       heading={
         <>
-          {!(modal && path === LABEL_TAGS) && (
+          {!disabled && !(modal && path === LABEL_TAGS) && (
             <Checkbox
               checked={active}
               title={`Show ${path}`}

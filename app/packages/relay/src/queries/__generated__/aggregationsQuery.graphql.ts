@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5f98c43b960a223585044515e735eca5>>
+ * @generated SignedSource<<eaed7c345d4f7bd68c6ec6e3e4e3f7a8>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -41,6 +41,10 @@ export type aggregationsQuery$data = {
     readonly false: number;
     readonly path: string;
     readonly true: number;
+  } | {
+    readonly __typename: "DataAggregation";
+    readonly count: number;
+    readonly path: string;
   } | {
     readonly __typename: "FloatAggregation";
     readonly count: number;
@@ -179,6 +183,15 @@ v6 = [
         "kind": "InlineFragment",
         "selections": [
           (v1/*: any*/),
+          (v2/*: any*/)
+        ],
+        "type": "DataAggregation",
+        "abstractKey": null
+      },
+      {
+        "kind": "InlineFragment",
+        "selections": [
+          (v1/*: any*/),
           (v2/*: any*/),
           (v3/*: any*/),
           (v4/*: any*/),
@@ -302,16 +315,16 @@ return {
     "selections": (v6/*: any*/)
   },
   "params": {
-    "cacheID": "2144090869c7c920de788f41a77a0457",
+    "cacheID": "b7b1aa700040bbdd3f5615b96aa9aabe",
     "id": null,
     "metadata": {},
     "name": "aggregationsQuery",
     "operationKind": "query",
-    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on BooleanAggregation {\n      path\n      count\n      exists\n      false\n      true\n    }\n    ... on IntAggregation {\n      path\n      count\n      exists\n      max\n      min\n    }\n    ... on FloatAggregation {\n      path\n      count\n      exists\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      path\n      count\n      exists\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      path\n      count\n      exists\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
+    "text": "query aggregationsQuery(\n  $form: AggregationForm!\n) {\n  aggregations(form: $form) {\n    __typename\n    ... on BooleanAggregation {\n      path\n      count\n      exists\n      false\n      true\n    }\n    ... on DataAggregation {\n      path\n      count\n    }\n    ... on IntAggregation {\n      path\n      count\n      exists\n      max\n      min\n    }\n    ... on FloatAggregation {\n      path\n      count\n      exists\n      inf\n      max\n      min\n      nan\n      ninf\n    }\n    ... on RootAggregation {\n      path\n      count\n      exists\n      slice\n      expandedFieldCount\n      frameLabelFieldCount\n    }\n    ... on StringAggregation {\n      path\n      count\n      exists\n      values {\n        count\n        value\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "a94b4b6879dd68ab04d17ce79e988895";
+(node as any).hash = "817d2630505a7c0859ac0b6554523113";
 
 export default node;

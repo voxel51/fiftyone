@@ -1,7 +1,6 @@
-import { isObjectIdField } from "@fiftyone/state";
 import { useRef } from "react";
 import { RecoilState, useRecoilCallback } from "recoil";
-import { stringSearchResults } from "./state";
+import { Result } from "./Result";
 
 export default function (
   modal: boolean,
@@ -12,25 +11,11 @@ export default function (
   return {
     onSelect: useRecoilCallback(
       ({ snapshot, set }) =>
-        async (value: string) => {
-          const objectId = await snapshot.getPromise(isObjectIdField(path));
-          const results = objectId
-            ? null
-            : await snapshot.getPromise(stringSearchResults({ path, modal }));
-          const found = results?.values
-            ?.map(({ value: v }) => String(v))
-            .indexOf(value);
-
+        async (value: string, d?: Result) => {
           const selected = new Set(await snapshot.getPromise(selectedAtom));
-          selectedMap.current.set(
-            value,
-            found !== undefined && found >= 0
-              ? results?.values[found].count || null
-              : null
-          );
+          selectedMap.current.set(value, d?.count || null);
           selected.add(value);
           set(selectedAtom, [...selected].sort());
-
           return "";
         },
       [modal, path, selectedAtom, selectedMap]

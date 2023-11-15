@@ -25,7 +25,7 @@ const RangeSliderContainer = styled.div`
   border-radius: 2px;
   color: ${({ theme }) => theme.text.secondary};
   margin-top: 0.25rem;
-  padding: 0.25rem 0.5rem 0 0.5rem;
+  padding: 0.25rem 0.5rem;
 `;
 
 type Props = {
@@ -53,7 +53,7 @@ const NumericFieldFilter = ({
 
   const key = path.replace(/[ ,.]/g, "-");
 
-  if (!lightning && !hasBounds) {
+  if (named && !lightning && !hasBounds) {
     return null;
   }
 
@@ -96,6 +96,7 @@ const NumericFieldFilter = ({
         <Nonfinites modal={modal} path={path} />
         <FilterOption defaultRange={defaultRange} modal={modal} path={path} />
         <Reset defaultRange={defaultRange} modal={modal} path={path} />
+        {!lightning && !hasBounds && <>No results</>}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>
   );
