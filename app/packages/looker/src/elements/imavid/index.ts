@@ -7,7 +7,7 @@ import {
   BUFFERING_PAUSE_TIMEOUT,
   DEFAULT_FRAME_RATE,
   DEFAULT_PLAYBACK_RATE,
-  LOOK_AHEAD_TIME_SECONDS,
+  LOOK_AHEAD_MULTIPLIER,
 } from "../../lookers/imavid/constants";
 import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import { DispatchEvent, ImaVidState } from "../../state";
@@ -302,9 +302,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       throw new Error("currentFrameNumber must be a number");
     }
 
+    // 5000 is an arbitrary upper bound for the multiplier
+    const frameCountMultiplier =
+      1 + Math.min(Math.floor(this.framesController.totalFrameCount / 5000), 1);
+
     const frameRangeMax = Math.min(
       currentFrameNumber +
-        LOOK_AHEAD_TIME_SECONDS * this.playBackRate * DEFAULT_FRAME_RATE,
+        LOOK_AHEAD_MULTIPLIER * DEFAULT_FRAME_RATE * frameCountMultiplier,
       this.framesController.totalFrameCount
     );
 
@@ -403,7 +407,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     // `destroyed` is called when looker is reset
     if (destroyed) {
-      this.framesController.pauseFetch();
+      this.framesController.destroy();
     }
 
     this.ensureBuffers(state);

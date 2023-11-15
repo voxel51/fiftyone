@@ -3,11 +3,7 @@ import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { Sample } from "../..";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BufferManager } from "./buffer-manager";
-import {
-  BUFFERS_REFRESH_TIMEOUT_YIELD,
-  DEFAULT_FRAME_RATE,
-  LOOK_AHEAD_TIME_SECONDS as DEFAULT_LOOK_AHEAD_TIME_SECONDS,
-} from "./constants";
+import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
 import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 import { ImaVidStore } from "./store";
 
@@ -193,11 +189,8 @@ export class ImaVidFramesController {
     this.frameRate = newFrameRate;
   }
 
-  public async fetchMore(cursor: number, count?: number) {
-    const variables = this.page(
-      cursor,
-      count ?? DEFAULT_LOOK_AHEAD_TIME_SECONDS * this.frameRate
-    );
+  public async fetchMore(cursor: number, count: number) {
+    const variables = this.page(cursor, count);
 
     const fetchUid = `${this.posterSampleId}-${cursor}-${variables.count}`;
 
@@ -248,15 +241,9 @@ export class ImaVidFramesController {
     });
   }
 
-  public isHydrated() {
-    return (
-      ImaVidStore.has(this.posterSampleId) && this.store.samples.length > 0
-    );
-  }
-
-  public async hydrateIfEmpty() {
-    if (!this.isHydrated()) {
-      return this.fetchMore(0);
-    }
+  public destroy() {
+    this.pauseFetch();
+    this.storeBufferManager.reset();
+    this.fetchBufferManager.reset();
   }
 }

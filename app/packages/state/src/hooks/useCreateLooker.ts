@@ -8,6 +8,7 @@ import {
   VideoLooker,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
+import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
 import { ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
@@ -172,14 +173,25 @@ export default <T extends AbstractLooker>(
             .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
             .valueMaybe();
 
-          (config as ImaVidConfig).frameStoreController =
-            new ImaVidFramesController({
-              environment,
-              orderBy,
-              page,
-              totalFrameCountPromise,
-              posterSample: sample,
-            });
+          const thisSampleId = sample._id as string;
+          if (!ImaVidFramesControllerStore.has(thisSampleId)) {
+            ImaVidFramesControllerStore.set(
+              thisSampleId,
+              new ImaVidFramesController({
+                environment,
+                orderBy,
+                page,
+                totalFrameCountPromise,
+                posterSample: sample,
+              })
+            );
+          }
+
+          (config as ImaVidConfig).frameStoreController = (
+            config as ImaVidConfig
+          ).frameStoreController =
+            ImaVidFramesControllerStore.get(thisSampleId);
+
           // todo
           (config as ImaVidConfig).frameRate = 24;
         }
