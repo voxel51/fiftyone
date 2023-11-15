@@ -255,6 +255,11 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
+    frame_indexes: t.Optional[t.List[Index]]
+    sample_indexes: t.Optional[t.List[Index]]
+
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
 

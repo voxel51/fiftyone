@@ -164,7 +164,9 @@ def _resolve_lightning_path_queries(
     if not isinstance(field, fof.StringField) and (
         path.exclude or path.search
     ):
-        raise ValueError("unexpected")
+        raise ValueError(
+            "'excluded' and 'search' are not valid for f{fof.StringField}"
+        )
 
     if meets_type(field, fof.BooleanField):
         queries = [
