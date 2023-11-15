@@ -1,5 +1,4 @@
 import * as foq from "@fiftyone/relay";
-import { partition } from "lodash";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
 import { Sample } from "../..";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
@@ -15,7 +14,7 @@ import { ImaVidStore } from "./store";
 const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
-  public storeBufferManager = new BufferManager();
+  public storeBufferManager = new BufferManager([[1, 1]]);
   public fetchBufferManager = new BufferManager();
   private frameRate = DEFAULT_FRAME_RATE;
 

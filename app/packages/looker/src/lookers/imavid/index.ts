@@ -23,11 +23,22 @@ interface ImaVidFrame {
  * 2. adfadsf
  */
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
-  private frames: Map<number, WeakRef<ImaVidFrame>> = new Map();
-
   private elements: ReturnType<typeof getImaVidElements>;
+  private unsubscribe: ReturnType<typeof this.subscribeToState>;
 
-  get firstSample() {
+  init() {
+    // subscribe to frame number and update sample when frame number changes
+    this.unsubscribe = this.subscribeToState("currentFrameNumber", () => {
+      this.thisFrameSample?.sample &&
+        this.updateSample(this.thisFrameSample.sample);
+    });
+  }
+
+  get thisFrameSample() {
+    return this.frameStoreController.store.getSampleAtFrame(this.frameNumber);
+  }
+
+  get posterSample() {
     return this.sample;
   }
 
@@ -48,6 +59,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   }
 
   destroy() {
+    this.unsubscribe && this.unsubscribe();
     this.pause();
     super.destroy();
   }
@@ -66,8 +78,17 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
   }
 
+  // loadOverlays(posterSample: Sample) {
+  //   if (!this.thisFrameSample) {
+  //     this.sampleOverlays = loadOverlays(posterSample);
+  //     return;
+  //   }
+
+  //   this.sampleOverlays =
+  //     loadOverlays(this.thisFrameSample) ?? loadOverlays(posterSample);
+  // }
+
   getCurrentFrameLabels(): LabelData[] {
-    const frame = this.frames.get(this.frameNumber).deref();
     const labels: LabelData[] = [];
     // if (frame) {
     //   processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
@@ -202,12 +223,5 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     } else {
       this.updater({ options, disabled: false });
     }
-  }
-
-  private hasFrame(frameNumber: number) {
-    return (
-      this.frames.has(frameNumber) &&
-      this.frames.get(frameNumber)?.deref() !== undefined
-    );
   }
 }

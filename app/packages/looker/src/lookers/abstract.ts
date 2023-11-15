@@ -155,7 +155,11 @@ export abstract class AbstractLooker<
         ),
       3500
     );
+
+    this.init();
   }
+
+  protected init() {}
 
   public subscribeToState(
     field: string,

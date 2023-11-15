@@ -309,7 +309,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     );
 
     if (isNaN(frameRangeMax)) {
-      return [currentFrameNumber, currentFrameNumber + 1];
+      return [currentFrameNumber, currentFrameNumber + 1] as const;
     }
 
     return [currentFrameNumber, frameRangeMax] as const;
