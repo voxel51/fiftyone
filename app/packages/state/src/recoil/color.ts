@@ -34,7 +34,7 @@ export const datasetColorScheme = graphQLSyncFragmentAtom<
     fragments: [datasetFragment, datasetAppConfigFragment, colorSchemeFragment],
     keys: ["dataset", "appConfig", "colorScheme"],
     read: (data) => {
-      console.log(data);
+      console.log("dataset colorscheme", data);
       return data;
     },
     default: null,

@@ -133,12 +133,14 @@ const getValidColorscaleList = (list: unknown[]) => {
         isObject(x) &&
         typeof Number(x["value"]) == "number" &&
         isString(x["color"]) &&
-        isValidColor(x["color"])
+        isValidColor(x["color"]) &&
+        isString(x["color"])
       );
     })
     .map((y) => ({
       value: Number(y?.value),
       color: convertToRGB(y?.color),
+      path: y?.path,
     })) as ColorscaleListInput[];
 
   return r.length > 0 ? r : null;
@@ -176,7 +178,7 @@ export const validateColorscales = (
 
             const name = isString(x["name"]) ? x["name"] : null;
 
-            return name || list ? { name, list } : null;
+            return name || list ? { name, list, path: x["path"] } : null;
           }
         })
         .filter((x) => x !== null)
@@ -218,6 +220,26 @@ export const convertToRGB = (color: string) => {
   if (!isValidColor(color)) return "";
   const rgb = colorString.get.rgb(color).slice(0, 3);
   return colorString.to.rgb(rgb);
+};
+
+export const isValidMaskInput = (input: MaskColorInput[]) => {
+  let result = true;
+  input.forEach((item: MaskColorInput) => {
+    if (!item || [null, undefined].includes(item.intTarget)) {
+      result = false;
+    }
+  });
+  return result;
+};
+
+export const isValidFloatInput = (input: ColorscaleListInput[]) => {
+  let result = true;
+  input.forEach((item) => {
+    if (!item || [null, undefined].includes(item.value)) {
+      result = false;
+    }
+  });
+  return result;
 };
 
 export const namedColorScales = [
@@ -316,23 +338,3 @@ export const namedColorScales = [
   "mrybm",
   "mygbm",
 ];
-
-export const isValidMaskInput = (input: MaskColorInput[]) => {
-  let result = true;
-  input.forEach((item: MaskColorInput) => {
-    if (!item || [null, undefined].includes(item.intTarget)) {
-      result = false;
-    }
-  });
-  return result;
-};
-
-export const isValidFloatInput = (input: ColorscaleListInput[]) => {
-  let result = true;
-  input.forEach((item) => {
-    if (!item || [null, undefined].includes(item.value)) {
-      result = false;
-    }
-  });
-  return result;
-};

@@ -1,5 +1,4 @@
 import {
-  ColorSchemeInput,
   colorSchemeFragment,
   colorSchemeFragment$key,
   readFragment,
