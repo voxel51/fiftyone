@@ -6,6 +6,7 @@ Plugin secrets resolver.
 |
 """
 import logging
+import typing
 from typing import Optional
 from ..internal import secrets as fois
 
@@ -24,7 +25,7 @@ class PluginSecretsResolver:
         return cls._instance
 
     def register_operator(
-        self, operator_uri: str, required_secrets: list[str]
+        self, operator_uri: str, required_secrets: typing.List[str]
     ) -> None:
         self._registered_secrets[operator_uri] = required_secrets
 

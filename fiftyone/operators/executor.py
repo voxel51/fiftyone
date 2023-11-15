@@ -12,6 +12,7 @@ import logging
 import os
 import traceback
 import types as python_types
+import typing
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -364,7 +365,7 @@ class ExecutionContext(object):
         set_progress=None,
         delegated_operation_id=None,
         operator_uri=None,
-        required_secrets: list[str] = None,
+        required_secrets: typing.List[str] = None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
