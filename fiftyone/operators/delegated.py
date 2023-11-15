@@ -200,7 +200,9 @@ class DelegatedOperationService(object):
         doc = self._repo.get(_id=doc_id)
         return self._repo.queue_operation(**doc.__dict__)
 
-    def get_queued_operations(self, operator=None, dataset_name=None):
+    def get_queued_operations(
+        self, operator=None, dataset_name=None, delegation_target=None
+    ):
         """Returns all queued delegated operations.
 
         Args:
@@ -208,12 +210,15 @@ class DelegatedOperationService(object):
                 the queued delegated operations for
             dataset_name (None): the optional name of the dataset to return all
                 the queued delegated operations for
+            delegation_target (None): this optional delegation target to get queued operations for
 
         Returns:
             a list of :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.get_queued_operations(
-            operator=operator, dataset_name=dataset_name
+            operator=operator,
+            dataset_name=dataset_name,
+            delegation_target=delegation_target,
         )
 
     def get(self, doc_id):

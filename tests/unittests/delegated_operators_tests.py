@@ -251,6 +251,84 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         running = self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
         self.assertEqual(len(running), 10 + initial_running)
 
+    @patch(
+        "fiftyone.core.dataset.load_dataset",
+    )
+    def test_targets_returned(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+
+        dataset_id = ObjectId()
+        dataset_name = f"test_dataset_{dataset_id}"
+        mock_load_dataset.return_value.name = dataset_name
+        mock_load_dataset.return_value._doc.id = dataset_id
+
+        self.delete_test_data()
+
+        dataset_name = f"test_dataset_{ObjectId()}"
+        dataset_name2 = f"test_dataset_{ObjectId()}"
+
+        operator = "@voxelfiftyone/operator/foo"
+        operator2 = "@voxelfiftyone/operator/bar"
+
+        docs_to_run = []
+
+        # get all the existing counts of queued operations
+        initial_queued = len(self.svc.get_queued_operations())
+        initial_running = len(
+            self.svc.list_operations(run_state=ExecutionRunState.RUNNING)
+        )
+        initial_dataset_queued = len(
+            self.svc.get_queued_operations(dataset_name=dataset_name)
+        )
+        initial_operator_queued = len(
+            self.svc.get_queued_operations(operator=operator)
+        )
+
+        # create a bunch of ops
+        for i in range(10):
+            doc = self.svc.queue_operation(
+                operator=operator,
+                label=mock_get_operator.return_value.name,
+                delegation_target=f"delegation_target",
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name,
+                    },
+                ),
+            )
+            self.docs_to_delete.append(doc)
+            # pylint: disable=no-member
+            docs_to_run.append(doc.id)
+
+        for i in range(10):
+            doc = self.svc.queue_operation(
+                operator=operator2,
+                label=mock_get_operator.return_value.name,
+                context=ExecutionContext(
+                    request_params={
+                        "foo": "bar",
+                        "dataset_name": dataset_name2,
+                    },
+                ),
+            )
+            self.docs_to_delete.append(doc)
+
+        queued = self.svc.get_queued_operations(
+            delegation_target="delegation_target"
+        )
+        self.assertEqual(len(queued), 10 + initial_queued)
+        # assert that all the results have a delegation target set
+        for doc in queued:
+            self.assertEqual(doc.delegation_target, "delegation_target")
+
+        queued = self.svc.get_queued_operations()
+        self.assertEqual(len(queued), 10 + initial_dataset_queued)
+        # assert that none of the results have a delegation target set
+        for doc in queued:
+            self.assertIsNone(doc.delegation_target)
+
     def test_set_run_states(self, mock_get_operator, mock_operator_exists):
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
@@ -734,14 +812,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset.return_value._doc.id = dataset_id
 
         dataset_name = f"test_dataset_{ObjectId()}"
-        delegation_target = f"delegation_target{ObjectId()}"
         for i in range(4):
             operator = f"@voxelfiftyone/operator/test_{i}"
+            delegation_target = f"@delegation_target_{i}"
             for j in range(25):
                 doc = self.svc.queue_operation(
                     operator=operator,
                     label=mock_get_operator.return_value.name,
-                    delegation_target=delegation_target,
+                    # delegation_target=delegation_target,
                     context=ExecutionContext(
                         request_params={
                             "foo": "bar",

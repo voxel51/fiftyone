@@ -53,7 +53,7 @@ class DelegatedOperationRepo(object):
         raise NotImplementedError("subclass must implement update_progress()")
 
     def get_queued_operations(
-        self, operator: str = None, dataset_name=None
+        self, operator: str = None, dataset_name=None, delegation_target=None
     ) -> List[DelegatedOperationDocument]:
         """Get all queued operations."""
         raise NotImplementedError(
@@ -296,10 +296,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self,
         operator: str = None,
         dataset_name: ObjectId = None,
+        delegation_target: str = None,
     ) -> List[DelegatedOperationDocument]:
         return self.list_operations(
             operator=operator,
             dataset_name=dataset_name,
+            delegation_target=delegation_target,
             run_state=ExecutionRunState.QUEUED,
         )
 
@@ -326,6 +328,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             query["run_state"] = run_state
         if delegation_target:
             query["delegation_target"] = delegation_target
+        else:
+            query["delegation_target"] = None
         if dataset_id:
             query["dataset_id"] = dataset_id
 
