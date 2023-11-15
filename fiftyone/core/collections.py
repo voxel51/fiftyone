@@ -2678,6 +2678,7 @@ class SampleCollection(object):
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
         ops = []
+        now = datetime.datetime.utcnow()
         if is_list_field:
             elem_id = root + "._id"
             set_path = root + ".$"
@@ -2696,7 +2697,7 @@ class SampleCollection(object):
                     ops.append(
                         UpdateOne(
                             {"_id": _id, elem_id: doc["_id"]},
-                            {"$set": {set_path: doc}},
+                            {"$set": {set_path: doc, "last_updated_at": now}},
                         )
                     )
         else:
@@ -2709,7 +2710,7 @@ class SampleCollection(object):
                 ops.append(
                     UpdateOne(
                         {"_id": _id, elem_id: doc["_id"]},
-                        {"$set": {field_name: doc}},
+                        {"$set": {field_name: doc, "last_updated_at": now}},
                     )
                 )
 

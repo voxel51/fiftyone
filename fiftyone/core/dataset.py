@@ -3165,6 +3165,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         sample_ops = []
         frame_ops = []
+        now = datetime.utcnow()
         for field in fields:
             if view is not None:
                 _, id_path = view._get_label_field_path(field, "_id")
@@ -3183,7 +3184,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             query,
-                            {"$pull": {root: {"_id": {"$in": view_ids}}}},
+                            {
+                                "$pull": {root: {"_id": {"$in": view_ids}}},
+                                "$set": {"last_updated_at": now},
+                            },
                         )
                     )
 
@@ -3191,7 +3195,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             query,
-                            {"$pull": {root: {"_id": {"$in": ids}}}},
+                            {
+                                "$pull": {root: {"_id": {"$in": ids}}},
+                                "$set": {"last_updated_at": now},
+                            },
                         )
                     )
 
@@ -3203,7 +3210,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                 "$pull": {
                                     root: {
                                         "tags": {"$elemMatch": {"$in": tags}}
-                                    }
+                                    },
+                                    "$set": {"last_updated_at": now},
                                 }
                             },
                         )
@@ -3213,7 +3221,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": view_ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3221,7 +3229,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3229,7 +3237,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + ".tags": {"$elemMatch": {"$in": tags}}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3259,6 +3267,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         sample_ops = []
         frame_ops = []
+        now = datetime.utcnow()
         for field, field_labels in labels_map.items():
             if fields is not None and field not in fields:
                 continue
@@ -3285,7 +3294,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                     "_sample_id": ObjectId(sample_id),
                                     "frame_number": frame_number,
                                 },
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_updated_at": now},
+                                },
                             )
                         )
                 else:
@@ -3306,7 +3320,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "frame_number": frame_number,
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_updated_at": now,
+                                        }
+                                    },
                                 )
                             )
             else:
@@ -3320,7 +3339,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         sample_ops.append(
                             UpdateOne(
                                 {"_id": ObjectId(sample_id)},
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_updated_at": now},
+                                },
                             )
                         )
                 else:
@@ -3337,7 +3361,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "_id": ObjectId(sample_id),
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_updated_at": now,
+                                        }
+                                    },
                                 )
                             )
 

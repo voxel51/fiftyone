@@ -3445,6 +3445,31 @@ class LastUpdatedAtTests(unittest.TestCase):
         )
         self.assertEqual(view.first().last_updated_at, updated_time)
 
+        # Patches
+        patches = dataset.to_patches("detect_field")
+        patches.set_field("detect_field.spam", "foo").save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        patches.set_values("detect_field.spam", ["bar"])
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # PatchView
+        patch_view = patches.first()
+        patch_view.detect_field.spam = "bar"
+        patch_view.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # Essentially calls delete_labels
+        patches.limit(0).keep()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
         # Autosave / SaveContext
         for s in dataset.iter_samples(autosave=True):
             s.foo = "poe tay toes"
