@@ -510,6 +510,7 @@ export const GridActionsRow = () => {
       return () => actionsRowDivElem.removeEventListener("wheel", handleWheel);
     }
   }, []);
+  const lightning = useRecoilValue(fos.lightning);
   const unlocked = fos.useLightingUnlocked();
 
   return (
@@ -519,7 +520,7 @@ export const GridActionsRow = () => {
     >
       <ToggleSidebar modal={false} />
       <Colors />
-      {unlocked && <Tag modal={false} />}
+      {(!lightning || unlocked) && <Tag modal={false} />}
       <Patches />
       <Similarity modal={false} />
       <SaveFilters />
