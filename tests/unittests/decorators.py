@@ -26,9 +26,7 @@ def drop_datasets(func):
 
 
 def drop_async_dataset(func):
-    """Decorator that drops all non-persistent datasets from the database
-    before running a test.
-    """
+    """Decorator that drops a provided dataset"""
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
