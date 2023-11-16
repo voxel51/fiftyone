@@ -48,6 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
+  lightningThreshold: Int!
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -83,6 +84,12 @@ type BooleanAggregation implements Aggregation {
   exists: Int!
   false: Int!
   true: Int!
+}
+
+type BooleanLightningResult implements LightningResult {
+  path: String!
+  false: Boolean!
+  true: Boolean!
 }
 
 type BrainRun implements Run {
@@ -199,9 +206,11 @@ type Dataset {
   skeletons: [NamedKeypointSkeleton!]!
   appConfig: DatasetAppConfig
   info: JSON
-  stages(slug: String = null, view: BSONArray = null): BSONArray
-  estimatedSampleCount: Int!
   estimatedFrameCount: Int
+  estimatedSampleCount: Int!
+  frameIndexes: [Index!]
+  sampleIndexes: [Index!]
+  stages(slug: String = null, view: BSONArray = null): BSONArray
 }
 
 type DatasetAppConfig {
@@ -231,6 +240,18 @@ type DatasetStrPageInfo {
   hasPreviousPage: Boolean!
   startCursor: String
   endCursor: String
+}
+
+type DateLightningResult implements LightningResult {
+  path: String!
+  max: date
+  min: date
+}
+
+type DateTimeLightningResult implements LightningResult {
+  path: String!
+  max: datetime
+  min: datetime
 }
 
 type DatetimeHistogramValuesResponse {
@@ -278,6 +299,15 @@ type FloatHistogramValuesResponse {
   other: Int!
 }
 
+type FloatLightningResult implements LightningResult {
+  path: String!
+  inf: Boolean!
+  max: Float
+  min: Float
+  nan: Boolean!
+  ninf: Boolean!
+}
+
 type Group {
   name: String!
   mediaType: MediaType!
@@ -300,6 +330,23 @@ type ImageSample implements Sample {
   aspectRatio: Float!
 }
 
+type Index {
+  name: String!
+  key: [IndexFields!]!
+  unique: Boolean
+  wildcardProjection: WildcardProjection
+}
+
+type IndexFields {
+  field: String!
+  type: IndexType!
+}
+
+enum IndexType {
+  asc
+  desc
+}
+
 type IntAggregation implements Aggregation {
   path: String!
   count: Int!
@@ -316,6 +363,12 @@ type IntHistogramValuesResponse {
   counts: [Int!]!
   edges: [Float!]!
   other: Int!
+}
+
+type IntLightningResult implements LightningResult {
+  path: String!
+  max: Float
+  min: Float
 }
 
 type IntValueCount {
@@ -339,6 +392,34 @@ input LabelTagColorInput {
   fieldColor: String = null
   valueColors: [ValueColorInput!] = null
 }
+
+input LightningInput {
+  dataset: String!
+  paths: [LightningPathInput!]!
+}
+
+input LightningPathInput {
+  path: String!
+
+  """
+  exclude these values from results
+  """
+  exclude: [String!] = null
+  first: Int = null
+  search: String = null
+}
+
+interface LightningResult {
+  path: String!
+}
+
+union LightningResults =
+    BooleanLightningResult
+  | DateLightningResult
+  | DateTimeLightningResult
+  | FloatLightningResult
+  | IntLightningResult
+  | StringLightningResult
 
 type MaskColor {
   color: String!
@@ -474,6 +555,7 @@ type Query {
     after: String = null
   ): DatasetStrConnection!
   aggregations(form: AggregationForm!): [AggregateResult!]!
+  lightning(input: LightningInput!): [LightningResults!]!
   colorscale: [[Int!]!]
   config: AppConfig!
   context: String!
@@ -662,6 +744,11 @@ type StringAggregationValue {
   value: String!
 }
 
+type StringLightningResult implements LightningResult {
+  path: String!
+  values: [String]!
+}
+
 type Target {
   target: String!
   value: String!
@@ -696,6 +783,11 @@ type VideoSample implements Sample {
 Represents NULL values
 """
 scalar Void
+
+type WildcardProjection {
+  fields: [String!]!
+  inclusion: Boolean!
+}
 
 scalar date
 
