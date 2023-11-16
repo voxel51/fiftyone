@@ -2247,11 +2247,16 @@ def _make_coco_keypoints(keypoint, frame_size):
     num_points = len(keypoint.points)
     visibility = [None] * num_points
     if "visible" in keypoint:
-        if (
-            isinstance(keypoint.visible, list)
-            and len(keypoint.visible) == num_points
-        ):
-            visibility = keypoint.visible
+        if isinstance(keypoint.visible, list):
+            if len(keypoint.visible) == num_points:
+                visibility = keypoint.visible
+            else:
+                logger.warning(
+                    "Ignoring 'visible' attribute of length %d for keypoint %s."
+                    " The length does not match the 'points' attribute of"
+                    " length %d."
+                    % (len(keypoint.visible), str(keypoint.id), num_points)
+                )
         if isinstance(keypoint.visible, int):
             visibility = [keypoint.visible] * num_points
 
