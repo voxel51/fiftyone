@@ -163,7 +163,12 @@ const Looker = ({
     "panels",
     async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
       if (showJSON) {
-        jsonPanel[showJSON](sample);
+        if (shouldRenderImaVidLooker) {
+          const imaVidFrameSample = (looker as ImaVidLooker).thisFrameSample;
+          jsonPanel[showJSON](imaVidFrameSample);
+        } else {
+          jsonPanel[showJSON](sample);
+        }
       }
       if (showHelp) {
         if (showHelp == "close") {
