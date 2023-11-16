@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<5905ed59657b8a6eeb46daa09c037e22>>
+ * @generated SignedSource<<dbd75e7f8532563d8eff01c3443ce970>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,6 +17,9 @@ export type IndexPageQuery$variables = {
   search?: string | null;
 };
 export type IndexPageQuery$data = {
+  readonly allDatasets: {
+    readonly total: number | null;
+  };
   readonly config: {
     readonly colorBy: ColorBy;
     readonly colorPool: ReadonlyArray<string>;
@@ -82,7 +85,32 @@ v7 = {
   "name": "showSkeletons",
   "storageKey": null
 },
-v8 = [
+v8 = {
+  "alias": null,
+  "args": null,
+  "kind": "ScalarField",
+  "name": "total",
+  "storageKey": null
+},
+v9 = {
+  "alias": "allDatasets",
+  "args": [
+    {
+      "kind": "Literal",
+      "name": "search",
+      "value": ""
+    }
+  ],
+  "concreteType": "DatasetStrConnection",
+  "kind": "LinkedField",
+  "name": "datasets",
+  "plural": false,
+  "selections": [
+    (v8/*: any*/)
+  ],
+  "storageKey": "datasets(search:\"\")"
+},
+v10 = [
   {
     "kind": "Variable",
     "name": "after",
@@ -126,6 +154,7 @@ return {
         ],
         "storageKey": null
       },
+      (v9/*: any*/),
       {
         "args": null,
         "kind": "FragmentSpread",
@@ -250,21 +279,16 @@ return {
         ],
         "storageKey": null
       },
+      (v9/*: any*/),
       {
         "alias": null,
-        "args": (v8/*: any*/),
+        "args": (v10/*: any*/),
         "concreteType": "DatasetStrConnection",
         "kind": "LinkedField",
         "name": "datasets",
         "plural": false,
         "selections": [
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "total",
-            "storageKey": null
-          },
+          (v8/*: any*/),
           {
             "alias": null,
             "args": null,
@@ -345,7 +369,7 @@ return {
       },
       {
         "alias": null,
-        "args": (v8/*: any*/),
+        "args": (v10/*: any*/),
         "filters": [
           "search"
         ],
@@ -400,16 +424,16 @@ return {
     ]
   },
   "params": {
-    "cacheID": "6180fa5c5d2f125e50dc891b891d13ad",
+    "cacheID": "0e7b7f2715c3b7f4da96a674bd01861d",
     "id": null,
     "metadata": {},
     "name": "IndexPageQuery",
     "operationKind": "query",
-    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  ...NavFragment\n  ...configFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
+    "text": "query IndexPageQuery(\n  $search: String = \"\"\n  $count: Int\n  $cursor: String\n) {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    multicolorKeypoints\n    showSkeletons\n  }\n  allDatasets: datasets(search: \"\") {\n    total\n  }\n  ...NavFragment\n  ...configFragment\n}\n\nfragment NavDatasets on Query {\n  datasets(search: $search, first: $count, after: $cursor) {\n    total\n    edges {\n      cursor\n      node {\n        name\n        id\n        __typename\n      }\n    }\n    pageInfo {\n      endCursor\n      hasNextPage\n    }\n  }\n}\n\nfragment NavFragment on Query {\n  ...NavDatasets\n  ...NavGA\n  teamsSubmission\n}\n\nfragment NavGA on Query {\n  context\n  dev\n  doNotTrack\n  uid\n  version\n}\n\nfragment configFragment on Query {\n  config {\n    colorBy\n    colorPool\n    colorscale\n    gridZoom\n    loopVideos\n    multicolorKeypoints\n    notebookHeight\n    plugins\n    showConfidence\n    showIndex\n    showLabel\n    showSkeletons\n    showTooltip\n    sidebarMode\n    theme\n    timezone\n    useFrameNumber\n  }\n  colorscale\n}\n"
   }
 };
 })();
 
-(node as any).hash = "54ad38011a97beceb84fa9fbf6c38f22";
+(node as any).hash = "d84cfaac426f2730610de9dd1814da58";
 
 export default node;

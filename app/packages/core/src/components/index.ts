@@ -8,3 +8,4 @@ export { default as ResourceCount } from "./ResourceCount";
 export * from "./Sidebar";
 export { default as Snackbar } from "./Snackbar";
 export { default as ViewBar, rollbackViewBar } from "./ViewBar/ViewBar";
+export * from "./Starter";

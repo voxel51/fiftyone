@@ -721,8 +721,8 @@ Apache Airflow
 Delegated operations are also designed to be executed by workflow orchestration
 tools like `Airflow <https://airflow.apache.org>`_.
 
-To set up Airflow as an orchestrator to run delegated operations, you will need
-to:
+You can set up Airflow as an orchestrator to run delegated operations in a
+development environment by following these steps:
 
 -   Install
     `Apache Airflow <https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html>`_
@@ -736,7 +736,7 @@ to:
 
 .. note::
 
-    Want to run delegated operations at scale?
+    Want to run delegated operations at scale in production?
     `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
     :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
     enterprise deployment of FiftyOne with multiuser collaboration features,

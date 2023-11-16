@@ -1,16 +1,18 @@
-import { useSessionSetter } from "@fiftyone/state";
 import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { AppReadyState, EventHandlerHook } from "./registerEvent";
 import { appReadyState, processState } from "./utils";
 
-const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
-  const setter = useSessionSetter();
+const useStateUpdate: EventHandlerHook = ({
+  router,
+  readyStateRef,
+  session,
+}) => {
   const setReadyState = useSetRecoilState(appReadyState);
 
   return useCallback(
     (payload: any) => {
-      const state = processState(setter, payload.state);
+      const state = processState(session.current, payload.state);
 
       const searchParams = new URLSearchParams(router.history.location.search);
 
@@ -39,7 +41,7 @@ const useStateUpdate: EventHandlerHook = ({ router, readyStateRef }) => {
         router.history.push(path, state);
       }
     },
-    [readyStateRef, router, setter, setReadyState]
+    [readyStateRef, router, session, setReadyState]
   );
 };
 

@@ -1,3 +1,5 @@
+/*this is the UI component of default segmentation in the global setting page of color panel */
+
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -14,17 +16,20 @@ import {
 const DefaultMaskTargets: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
-
   const initialValue = colorScheme.defaultMaskTargetsColors ?? [];
-  const values = useMemo(
-    () => colorScheme.defaultMaskTargetsColors,
-    [colorScheme]
+  const values = colorScheme.defaultMaskTargetsColors;
+  const state = useMemo(
+    () => ({
+      useMaskTargetsColors: Boolean(values?.length),
+    }),
+    [values]
   );
+
   const defaultValue = {
     intTarget: 1,
     color: getRandomColorFromPool(colorScheme.colorPool),
   };
-  const shouldShowAddButton = Boolean(values?.length && values?.length > 0);
+  const shouldShowAddButton = Boolean(values?.length);
 
   const onSyncUpdate = useCallback(
     (copy: MaskColorInput[]) => {
@@ -32,32 +37,24 @@ const DefaultMaskTargets: React.FC = () => {
         setColorScheme((cur) => ({ ...cur, defaultMaskTargetsColors: copy }));
       }
     },
-    [setColorScheme, colorScheme]
+    [setColorScheme]
   );
 
   useEffect(() => {
-    if (!values) {
-      if (
-        !colorScheme.defaultMaskTargetsColors ||
-        colorScheme.defaultMaskTargetsColors.length == 0
-      ) {
-        setColorScheme({
-          ...colorScheme,
-          defaultMaskTargetsColors: [defaultValue],
-        });
-      }
+    if (
+      !colorScheme.defaultMaskTargetsColors?.length &&
+      state.useMaskTargetsColors
+    ) {
+      setColorScheme({
+        ...colorScheme,
+        defaultMaskTargetsColors: [defaultValue],
+      });
     }
-  }, [values]);
-
-  const state = useMemo(
-    () => ({
-      useMaskTargetsColors: Boolean(
-        colorScheme.defaultMaskTargetsColors &&
-          colorScheme.defaultMaskTargetsColors.length > 0
-      ),
-    }),
-    [colorScheme.defaultMaskTargetsColors]
-  );
+  }, [
+    colorScheme.defaultMaskTargetsColors,
+    state.useMaskTargetsColors,
+    defaultValue,
+  ]);
 
   return (
     <div>

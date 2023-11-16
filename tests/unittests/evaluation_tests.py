@@ -8,6 +8,7 @@ FiftyOne evaluation-related unit tests.
 import os
 import random
 import string
+import sys
 import unittest
 import warnings
 
@@ -16,10 +17,23 @@ import numpy as np
 import eta.core.utils as etau
 
 import fiftyone as fo
+import fiftyone.utils.eval.classification as fouc
+import fiftyone.utils.eval.coco as coco
+import fiftyone.utils.eval.detection as foud
+import fiftyone.utils.eval.regression as four
+import fiftyone.utils.eval.segmentation as fous
 import fiftyone.utils.labels as foul
 import fiftyone.utils.iou as foui
 
 from decorators import drop_datasets
+
+
+class CustomRegressionEvaluationConfig(four.SimpleEvaluationConfig):
+    pass
+
+
+class CustomRegressionEvaluation(four.SimpleEvaluation):
+    pass
 
 
 class RegressionTests(unittest.TestCase):
@@ -120,6 +134,35 @@ class RegressionTests(unittest.TestCase):
 
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
+
+    def test_custom_regression_evaluation(self):
+        dataset = self._make_regression_dataset()
+
+        dataset.evaluate_regressions(
+            "predictions",
+            gt_field="ground_truth",
+            method=CustomRegressionEvaluationConfig,
+            eval_key="custom",
+        )
+
+        dataset.clear_cache()
+
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), CustomRegressionEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), four.RegressionResults)
+
+        delattr(sys.modules[__name__], "CustomRegressionEvaluationConfig")
+        delattr(sys.modules[__name__], "CustomRegressionEvaluation")
+        dataset.clear_cache()
+
+        # Should fallback to base class
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), four.RegressionEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), four.RegressionResults)
 
 
 class VideoRegressionTests(unittest.TestCase):
@@ -233,6 +276,14 @@ class VideoRegressionTests(unittest.TestCase):
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
         self.assertNotIn("eval2", dataset.get_frame_field_schema())
+
+
+class CustomClassificationEvaluationConfig(fouc.SimpleEvaluationConfig):
+    pass
+
+
+class CustomClassificationEvaluation(fouc.SimpleEvaluation):
+    pass
 
 
 class ClassificationTests(unittest.TestCase):
@@ -551,6 +602,39 @@ class ClassificationTests(unittest.TestCase):
 
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
+
+    def test_custom_classification_evaluation(self):
+        dataset = self._make_classification_dataset()
+
+        dataset.evaluate_classifications(
+            "predictions",
+            gt_field="ground_truth",
+            method=CustomClassificationEvaluationConfig,
+            eval_key="custom",
+        )
+
+        dataset.clear_cache()
+
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(
+            type(info.config), CustomClassificationEvaluationConfig
+        )
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), fouc.ClassificationResults)
+
+        delattr(sys.modules[__name__], "CustomClassificationEvaluationConfig")
+        delattr(sys.modules[__name__], "CustomClassificationEvaluation")
+        dataset.clear_cache()
+
+        # Should fallback to base class
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(
+            type(info.config), fouc.ClassificationEvaluationConfig
+        )
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), fouc.ClassificationResults)
 
 
 class VideoClassificationTests(unittest.TestCase):
@@ -882,6 +966,14 @@ class VideoClassificationTests(unittest.TestCase):
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
         self.assertNotIn("eval2", dataset.get_frame_field_schema())
+
+
+class CustomDetectionEvaluationConfig(coco.COCOEvaluationConfig):
+    pass
+
+
+class CustomDetectionEvaluation(coco.COCOEvaluation):
+    pass
 
 
 class DetectionsTests(unittest.TestCase):
@@ -1640,6 +1732,35 @@ class DetectionsTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             detection["eval2"]
 
+    def test_custom_detection_evaluation(self):
+        dataset = self._make_detections_dataset()
+
+        dataset.evaluate_detections(
+            "predictions",
+            gt_field="ground_truth",
+            method=CustomDetectionEvaluationConfig,
+            eval_key="custom",
+        )
+
+        dataset.clear_cache()
+
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), CustomDetectionEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), foud.DetectionResults)
+
+        delattr(sys.modules[__name__], "CustomDetectionEvaluationConfig")
+        delattr(sys.modules[__name__], "CustomDetectionEvaluation")
+        dataset.clear_cache()
+
+        # Should fallback to base class
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), foud.DetectionEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), foud.DetectionResults)
+
 
 class CuboidTests(unittest.TestCase):
     def _make_dataset(self):
@@ -2308,6 +2429,14 @@ class VideoDetectionsTests(unittest.TestCase):
         )
 
 
+class CustomSegmentationEvaluationConfig(fous.SimpleEvaluationConfig):
+    pass
+
+
+class CustomSegmentationEvaluation(fous.SimpleEvaluation):
+    pass
+
+
 class SegmentationTests(unittest.TestCase):
     def setUp(self):
         self._temp_dir = etau.TempDir()
@@ -2639,6 +2768,35 @@ class SegmentationTests(unittest.TestCase):
         self.assertNotIn("eval2_accuracy", dataset.get_field_schema())
         self.assertNotIn("eval2_precision", dataset.get_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_field_schema())
+
+    def test_custom_segmentation_evaluation(self):
+        dataset = self._make_segmentation_dataset()
+
+        dataset.evaluate_segmentations(
+            "predictions",
+            gt_field="ground_truth",
+            method=CustomSegmentationEvaluationConfig,
+            eval_key="custom",
+        )
+
+        dataset.clear_cache()
+
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), CustomSegmentationEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), fous.SegmentationResults)
+
+        delattr(sys.modules[__name__], "CustomSegmentationEvaluationConfig")
+        delattr(sys.modules[__name__], "CustomSegmentationEvaluation")
+        dataset.clear_cache()
+
+        # Should fallback to base class
+        info = dataset.get_evaluation_info("custom")
+        self.assertEqual(type(info.config), fous.SegmentationEvaluationConfig)
+
+        results = dataset.load_evaluation_results("custom")
+        self.assertEqual(type(results), fous.SegmentationResults)
 
 
 class VideoSegmentationTests(unittest.TestCase):

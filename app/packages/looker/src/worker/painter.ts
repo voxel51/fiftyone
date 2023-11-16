@@ -305,11 +305,15 @@ export const PainterFactory = (requestColor) => ({
         color = get32BitColor(convertToHex(fieldColor));
       }
 
-      const getColor = (i) => {
-        i = Math.round(Math.abs(i)) % coloring.targets.length;
-
+      const getColor = (i: number) => {
         if (!(i in cache)) {
-          cache[i] = get32BitColor(convertToHex(coloring.targets[i]));
+          cache[i] = get32BitColor(
+            convertToHex(
+              coloring.targets[
+                Math.round(Math.abs(i)) % coloring.targets.length
+              ]
+            )
+          );
         }
 
         return cache[i];
@@ -336,15 +340,19 @@ export const PainterFactory = (requestColor) => ({
             if (coloring.by == COLOR_BY.VALUE) {
               // Attempt to find a color in the fields mask target color settings
               // If not found, attempt to find a color in the default mask target colors.
+
+              const target = targets[i].toString();
               const customColor =
-                fieldSetting?.[targets[i].toString()] ??
-                defaultSetting?.[targets[i].toString()];
+                fieldSetting?.[target] || defaultSetting?.[target];
 
               // If a customized color setting is found, get the 32-bit color representation.
               if (customColor) {
                 color = get32BitColor(convertToHex(customColor));
+              } else {
+                color = getColor(targets[i]);
               }
             }
+
             overlay[i] = color ? color : getColor(targets[i]);
           }
         }

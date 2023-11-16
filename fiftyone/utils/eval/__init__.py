@@ -9,19 +9,22 @@ import types
 
 from .classification import (
     evaluate_classifications,
+    ClassificationEvaluationConfig,
     ClassificationResults,
-    BinaryClassificationResults,
 )
 from .detection import (
     evaluate_detections,
+    DetectionEvaluationConfig,
     DetectionResults,
 )
 from .regression import (
     evaluate_regressions,
+    RegressionEvaluationConfig,
     RegressionResults,
 )
 from .segmentation import (
     evaluate_segmentations,
+    SegmentationEvaluationConfig,
     SegmentationResults,
 )
 

@@ -439,9 +439,12 @@ executes them.
 .. note::
 
     This section describes how to configure an
-    `Apache Airflow <https://airflow.apache.org>`_ orchestrator, but other
-    options are available, such as `Flyte <https://flyte.org>`_. Delegated
-    operations in FiftyOne Teams are designed to be workflow tool-agnostic.
+    `Apache Airflow <https://airflow.apache.org>`_ orchestrator in a
+    development environment.
+
+    Want to run delegated operations at scale? Contact your Voxel51 support
+    team to discuss adding a production-grade cluster to your FiftyOne Teams
+    deployment.
 
 To set up Airflow as an orchestrator to run delegated operations, you will need
 to:

@@ -60,6 +60,7 @@ class StateDescription(etas.Serializable):
         view=None,
         view_name=None,
         field_visibility_stage=None,
+        group_slice=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
@@ -75,6 +76,9 @@ class StateDescription(etas.Serializable):
         self.spaces = spaces
         self.color_scheme = color_scheme or build_color_scheme()
         self.field_visibility_stage = field_visibility_stage
+        if group_slice is None and view is not None:
+            group_slice = view.group_slice
+        self.group_slice = group_slice
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -111,10 +115,6 @@ class StateDescription(etas.Serializable):
                         collection.get_frame_field_schema(flat=True)
                     )
                 ]
-
-                view = self.view if self.view is not None else self.dataset
-                if view.media_type == fom.GROUP:
-                    d["group_slice"] = view.group_slice
 
             d["config"]["timezone"] = fo.config.timezone
 
@@ -169,14 +169,6 @@ class StateDescription(etas.Serializable):
                     dataset.reload()
                     view = fov.DatasetView._build(dataset, stages)
 
-        group_slice = d.get("group_slice", None)
-        if group_slice:
-            if dataset is not None:
-                dataset.group_slice = group_slice
-
-            if view is not None:
-                view.group_slice = group_slice
-
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
             setattr(config, field, value)
@@ -200,6 +192,7 @@ class StateDescription(etas.Serializable):
             spaces=spaces,
             color_scheme=color_scheme,
             field_visibility_stage=d.get("field_visibility_stage", None),
+            group_slice=d.get("group_slice", None),
         )
 
 
