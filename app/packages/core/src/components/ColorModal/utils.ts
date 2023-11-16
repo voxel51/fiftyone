@@ -100,7 +100,7 @@ const getValidMaskColors = (maskColors: unknown[]) => {
         input &&
         isObject(input) &&
         typeof Number(input["intTarget"]) == "number" &&
-        inRange(Number(input["intTarget"]), 0, 255) &&
+        inRange(Number(input["intTarget"]), 1, 255) &&
         isString(input["color"]) &&
         isValidColor(input?.color)
       );
@@ -136,7 +136,7 @@ export const getRandomColorFromPool = (pool: readonly string[]): string =>
   pool[Math.floor(Math.random() * pool.length)];
 
 export const validateIntMask = (value: number) => {
-  if (!value || !Number.isInteger(value) || !inRange(value, 0, 255)) {
+  if (!value || !Number.isInteger(value) || !inRange(value, 1, 255)) {
     return false;
   }
   return true;

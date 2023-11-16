@@ -1,3 +1,5 @@
+/*this is the UI component of default segmentation in the global setting page of color panel */
+
 import { MaskColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import React, { useCallback, useEffect, useMemo } from "react";
@@ -14,10 +16,14 @@ import {
 const DefaultMaskTargets: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const setColorScheme = fos.useSetSessionColorScheme();
-
   const initialValue = colorScheme.defaultMaskTargetsColors ?? [];
-
   const values = colorScheme.defaultMaskTargetsColors;
+  const state = useMemo(
+    () => ({
+      useMaskTargetsColors: Boolean(values?.length),
+    }),
+    [values]
+  );
 
   const defaultValue = {
     intTarget: 1,
@@ -35,20 +41,20 @@ const DefaultMaskTargets: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!colorScheme.defaultMaskTargetsColors?.length) {
+    if (
+      !colorScheme.defaultMaskTargetsColors?.length &&
+      state.useMaskTargetsColors
+    ) {
       setColorScheme({
         ...colorScheme,
         defaultMaskTargetsColors: [defaultValue],
       });
     }
-  }, [colorScheme.defaultMaskTargetsColors, defaultValue]);
-
-  const state = useMemo(
-    () => ({
-      useMaskTargetsColors: Boolean(values?.length),
-    }),
-    [values]
-  );
+  }, [
+    colorScheme.defaultMaskTargetsColors,
+    state.useMaskTargetsColors,
+    defaultValue,
+  ]);
 
   return (
     <div>
