@@ -8,8 +8,11 @@ FiftyOne operator execution.
 import asyncio
 import collections
 import inspect
+import logging
+import os
 import traceback
 import types as python_types
+import typing
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -17,7 +20,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
-from fiftyone.plugins.secrets import PluginSecretsResolver
+from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.registry import OperatorRegistry
@@ -265,6 +268,8 @@ async def prepare_operator_executor(
         executor=executor,
         set_progress=set_progress,
         delegated_operation_id=delegated_operation_id,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
         user=user,
     )
 
@@ -318,7 +323,11 @@ def resolve_type(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -337,7 +346,11 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator.uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
@@ -357,6 +370,9 @@ class ExecutionContext(object):
             current operation
         delegated_operation_id (None): an optional ID of the delegated
             operation
+        operator_uri (None): the unique id of the operator
+        required_secrets (None): the list of required secrets from the
+        plugin's definition
     """
 
     def __init__(
@@ -366,6 +382,8 @@ class ExecutionContext(object):
         set_progress=None,
         delegated_operation_id=None,
         user=None,
+        operator_uri=None,
+        required_secrets: typing.List[str] = None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -373,11 +391,18 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
-        self._secrets = {}
-        self._secrets_client = PluginSecretsResolver()
         self.user = user
+
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
+        self._operator_uri = operator_uri
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
+        if required_secrets:
+            self._secrets_client.register_operator(
+                operator_uri=self._operator_uri,
+                required_secrets=required_secrets,
+            )
 
     @property
     def dataset(self):
@@ -477,9 +502,13 @@ class ExecutionContext(object):
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> dict:
-        """The dict of secrets available to the operation (if any)."""
-        return self._secrets
+    def secrets(self) -> SecretsDictionary:
+        """A read-only mapping of keys to their resolved values."""
+        return SecretsDictionary(
+            self._secrets,
+            operator_uri=self._operator_uri,
+            resolver_fn=self._secrets_client.get_secret_sync,
+        )
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -490,6 +519,16 @@ class ExecutionContext(object):
         Returns:
             the secret value
         """
+        if key not in self._secrets:
+            try:
+                secret = self._secrets_client.get_secret_sync(
+                    key, self._operator_uri
+                )
+                if secret:
+                    self._secrets[secret.key] = secret.value
+
+            except KeyError:
+                logging.debug(f"Failed to resolve value for secret `{key}`")
         return self._secrets.get(key, None)
 
     async def resolve_secret_values(self, keys, **kwargs):
@@ -504,7 +543,9 @@ class ExecutionContext(object):
             return None
 
         for key in keys:
-            secret = await self._secrets_client.get_secret(key, **kwargs)
+            secret = await self._secrets_client.get_secret(
+                key, self._operator_uri, **kwargs
+            )
             if secret:
                 self._secrets[secret.key] = secret.value
 
