@@ -20,7 +20,7 @@ import {
 } from "./state";
 
 function useCurrentSample() {
-  // 'currentSampleId' may suspend for group datasets, so we use loadable
+  // 'currentSampleId' may suspend for group datasets, so we use a loadable
   const currentSample = useRecoilValueLoadable(fos.currentSampleId);
   return currentSample.state === "hasValue" ? currentSample.contents : null;
 }
