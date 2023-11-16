@@ -35,6 +35,8 @@ from fiftyone.server.aggregations import aggregate_resolver
 from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
+from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
+from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
@@ -253,6 +255,11 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
+    frame_indexes: t.Optional[t.List[Index]]
+    sample_indexes: t.Optional[t.List[Index]]
+
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
 
@@ -346,6 +353,7 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
+    lightning_threshold: int
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int
@@ -371,6 +379,7 @@ class SchemaResult:
 @gql.type
 class Query(fosa.AggregateQuery):
     aggregations = gql.field(resolver=aggregate_resolver)
+    lightning = gql.field(resolver=lightning_resolver)
 
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
@@ -649,6 +658,7 @@ async def serialize_dataset(
             )
 
         _assign_estimated_counts(data, dataset)
+        _assign_lightning_info(data, dataset)
 
         return data
 
@@ -668,3 +678,9 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
             "estimated_frame_count",
             fo_dataset._frame_collection.estimated_document_count(),
         )
+
+
+def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
+    dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
+        fo_dataset.get_index_information()
+    )

@@ -5,7 +5,6 @@ FiftyOne Server app.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime
 import os
 import pathlib
 import stat
@@ -28,12 +27,12 @@ import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.constants as foc
+from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
-from fiftyone.server.scalars import Date, DateTime
 
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
@@ -95,10 +94,7 @@ schema = gql.Schema(
     mutation=Mutation,
     query=Query,
     extensions=[EndSession],
-    scalar_overrides={
-        date: Date,
-        datetime: DateTime,
-    },
+    scalar_overrides=SCALAR_OVERRIDES,
 )
 
 
