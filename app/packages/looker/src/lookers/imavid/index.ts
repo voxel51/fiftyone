@@ -17,10 +17,6 @@ interface ImaVidFrame {
 /**
  * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
  *
- * @remarks
- * 1. Max fps offered is 24.
- * Because images are dynamically fetched, max
- * 2. adfadsf
  */
 export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
   private elements: ReturnType<typeof getImaVidElements>;
