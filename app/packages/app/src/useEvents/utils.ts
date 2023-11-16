@@ -42,18 +42,6 @@ export const processState = (
     return { view: [], fieldVisibility: undefined };
   }
   console.info("processState", state.color_scheme);
-  setter(
-    "colorScheme",
-    ensureColorScheme(state.color_scheme as ColorSchemeInput)
-  );
-  setter("sessionGroupSlice", state.group_slice);
-  setter("selectedSamples", new Set(state.selected));
-  setter(
-    "selectedLabels",
-    toCamelCase(state.selected_labels) as State.SelectedLabel[]
-  );
-  state.spaces && setter("sessionSpaces", state.spaces);
-  setter("fieldVisibilityStage", state.field_visibility_stage || undefined);
 
   return {
     view: state.view || [],
