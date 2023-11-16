@@ -7,6 +7,7 @@ Metadata stored in dataset samples.
 """
 import itertools
 import logging
+import multiprocessing.dummy
 import os
 import requests
 
@@ -229,7 +230,11 @@ def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
 
 
 def compute_metadata(
-    sample_collection, overwrite=False, num_workers=None, skip_failures=True
+    sample_collection,
+    overwrite=False,
+    num_workers=None,
+    skip_failures=True,
+    warn_failures=False,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -240,11 +245,13 @@ def compute_metadata(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         overwrite (False): whether to overwrite existing metadata
-        num_workers (None): a suggested number of processes to use
+        num_workers (None): a suggested number of threads to use
         skip_failures (True): whether to gracefully continue without raising an
             error if metadata cannot be computed for a sample
+        warn_failures (False): whether to log a warning if metadata cannot
+            be computed for a sample
     """
-    num_workers = fou.recommend_process_pool_workers(num_workers)
+    num_workers = fou.recommend_thread_pool_workers(num_workers)
 
     if sample_collection.media_type == fom.GROUP:
         sample_collection = sample_collection.select_group_slices(
@@ -255,10 +262,11 @@ def compute_metadata(
         _compute_metadata(sample_collection, overwrite=overwrite)
     else:
         _compute_metadata_multi(
-            sample_collection,
-            num_workers,
-            overwrite=overwrite,
+            sample_collection, num_workers, overwrite=overwrite
         )
+
+    if skip_failures and not warn_failures:
+        return
 
     num_missing = len(sample_collection.exists("metadata", False))
     if num_missing > 0:
@@ -287,21 +295,7 @@ def get_image_info(f):
     return (img.width, img.height, len(img.getbands()))
 
 
-def _compute_metadata(sample_collection, overwrite=False):
-    if not overwrite:
-        sample_collection = sample_collection.exists("metadata", False)
-
-    num_samples = len(sample_collection)
-    if num_samples == 0:
-        return
-
-    logger.info("Computing metadata...")
-    with fou.ProgressBar(total=num_samples) as pb:
-        for sample in pb(sample_collection.select_fields()):
-            compute_sample_metadata(sample, skip_failures=True)
-
-
-def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
+def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -310,25 +304,63 @@ def _compute_metadata_multi(sample_collection, num_workers, overwrite=False):
         _allow_missing=True,
     )
 
-    inputs = list(zip(ids, filepaths, media_types))
-    num_samples = len(inputs)
-
+    num_samples = len(ids)
     if num_samples == 0:
         return
 
     logger.info("Computing metadata...")
 
-    view = sample_collection.select_fields()
-    with fou.ProgressBar(total=num_samples) as pb:
-        with fou.get_multiprocessing_context().Pool(
-            processes=num_workers
-        ) as pool:
-            for sample_id, metadata in pb(
-                pool.imap_unordered(_do_compute_metadata, inputs)
-            ):
-                sample = view[sample_id]
-                sample.metadata = metadata
-                sample.save()
+    inputs = zip(ids, filepaths, media_types)
+    values = {}
+
+    try:
+        with fou.ProgressBar(total=num_samples) as pb:
+            for args in pb(inputs):
+                sample_id, metadata = _do_compute_metadata(args)
+                values[sample_id] = metadata
+                if len(values) >= batch_size:
+                    sample_collection.set_values(
+                        "metadata", values, key_field="id"
+                    )
+                    values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
+
+
+def _compute_metadata_multi(
+    sample_collection, num_workers, overwrite=False, batch_size=1000
+):
+    if not overwrite:
+        sample_collection = sample_collection.exists("metadata", False)
+
+    ids, filepaths, media_types = sample_collection.values(
+        ["id", "filepath", "_media_type"],
+        _allow_missing=True,
+    )
+
+    num_samples = len(ids)
+    if num_samples == 0:
+        return
+
+    logger.info("Computing metadata...")
+
+    inputs = zip(ids, filepaths, media_types)
+    values = {}
+
+    try:
+        with multiprocessing.dummy.Pool(processes=num_workers) as pool:
+            with fou.ProgressBar(total=num_samples) as pb:
+                for sample_id, metadata in pb(
+                    pool.imap_unordered(_do_compute_metadata, inputs)
+                ):
+                    values[sample_id] = metadata
+                    if len(values) >= batch_size:
+                        sample_collection.set_values(
+                            "metadata", values, key_field="id"
+                        )
+                        values.clear()
+    finally:
+        sample_collection.set_values("metadata", values, key_field="id")
 
 
 def _do_compute_metadata(args):

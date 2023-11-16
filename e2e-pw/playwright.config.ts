@@ -18,7 +18,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI || process.env.IS_UTILITY_DOCKER ? 3 : 0,
   /* Use max workers */
-  workers: process.env.USE_DEV_BUILD ? 1 : undefined,
+  workers: process.env.USE_DEV_BUILD || process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter:
     process.env.CI || process.env.IS_UTILITY_DOCKER

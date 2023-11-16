@@ -13,7 +13,7 @@ const useWriters = (
   sessionRef: MutableRefObject<Session>
 ) => {
   useSession((key, value) => {
-    if (env().VITE_NO_STATE && key !== "selectedFields") {
+    if (env().VITE_NO_STATE) {
       return;
     }
 

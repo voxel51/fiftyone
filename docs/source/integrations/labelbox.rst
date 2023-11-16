@@ -14,6 +14,13 @@ upload and annotate raw data in the user-friendly Labelbox editor. FiftyOne
 provides :ref:`simple setup instructions <labelbox-setup>` that you can use to
 specify the necessary API key and server endpoint to use.
 
+.. note::
+
+    Did you know? You can request, manage, and import annotations from within
+    the FiftyOne App by installing the
+    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
+    plugin!
+
 FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using Labelbox, all programmatically in Python. All of
 the following label types are supported, for both image and video datasets:
@@ -775,8 +782,9 @@ to see the available keys on a dataset.
 
     However, you can pass `cleanup=True` to delete all information associated
     with the run from the backend after the annotations are downloaded.
-    Specifically, it will delete the project, data rows, and ontology
-    associated with this annotation run.
+    Specifically, it will delete the project and ontology
+    associated with this annotation run. Data rows are not deleted since they
+    can be reused by other annotation runs.
 
 You can use the optional `dest_field` parameter to override the task's
 label schema and instead load annotations into different field name(s) of your

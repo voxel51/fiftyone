@@ -1,6 +1,6 @@
-import { stateSubscription, useClearModal } from "@fiftyone/state";
+import { Session, stateSubscription, useClearModal } from "@fiftyone/state";
 import { env, getEventSource } from "@fiftyone/utilities";
-import { useEffect, useMemo, useRef } from "react";
+import { MutableRefObject, useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Queries } from "./makeRoutes";
@@ -9,16 +9,20 @@ import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
 
-const useEventSource = (router: RoutingContext<Queries>) => {
+const useEventSource = (
+  router: RoutingContext<Queries>,
+  session: MutableRefObject<Session>
+) => {
   const [readyState, setReadyState] = useRecoilState(appReadyState);
   const readyStateRef = useRef<AppReadyState>(readyState);
   readyStateRef.current = readyState;
   const controller = useMemo(() => new AbortController(), []);
   const subscription = useRecoilValue(stateSubscription);
   const { subscriptions, handler } = useEvents(
-    router,
     controller,
-    readyStateRef
+    router,
+    readyStateRef,
+    session
   );
   const handleError = useErrorHandler();
   const clearModal = useClearModal();

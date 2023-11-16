@@ -6,8 +6,13 @@ FiftyOne operator execution.
 |
 """
 import asyncio
+import collections
+import inspect
+import logging
+import os
 import traceback
 import types as python_types
+import typing
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -15,7 +20,7 @@ import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
-from fiftyone.plugins.secrets import PluginSecretsResolver
+from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
@@ -144,7 +149,9 @@ def execute_operator(operator_uri, ctx, params=None):
     )
 
     return asyncio.run(
-        execute_or_delegate_operator(operator_uri, request_params)
+        execute_or_delegate_operator(
+            operator_uri, request_params, exhaust=True
+        )
     )
 
 
@@ -177,12 +184,15 @@ def _parse_ctx(ctx, params=None):
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
-async def execute_or_delegate_operator(operator_uri, request_params):
+async def execute_or_delegate_operator(
+    operator_uri, request_params, exhaust=False
+):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
         request_params: a dictionary of parameters for the operator
+        exhaust (False): whether to immediately exhaust generator operators
 
     Returns:
         an :class:`ExecutionResult`
@@ -219,18 +229,13 @@ async def execute_or_delegate_operator(operator_uri, request_params):
             )
     else:
         try:
-            raw_result = await (
-                operator.execute(ctx)
-                if asyncio.iscoroutinefunction(operator.execute)
-                else fou.run_sync_task(operator.execute, ctx)
-            )
-
+            result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as e:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
 
-        return ExecutionResult(result=raw_result, executor=executor)
+        return ExecutionResult(result=result, executor=executor)
 
 
 async def prepare_operator_executor(
@@ -250,6 +255,8 @@ async def prepare_operator_executor(
         executor=executor,
         set_progress=set_progress,
         delegated_operation_id=delegated_operation_id,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
     )
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
@@ -262,10 +269,25 @@ async def prepare_operator_executor(
     return operator, executor, ctx
 
 
-def _is_generator(value):
-    return isinstance(value, python_types.GeneratorType) or isinstance(
-        value, python_types.AsyncGeneratorType
+async def do_execute_operator(operator, ctx, exhaust=False):
+    result = await (
+        operator.execute(ctx)
+        if asyncio.iscoroutinefunction(operator.execute)
+        else fou.run_sync_task(operator.execute, ctx)
     )
+
+    if not exhaust:
+        return result
+
+    if inspect.isgenerator(result):
+        # Fastest way to exhaust sync generator, re: itertools consume()
+        #   https://docs.python.org/3/library/itertools.html
+        collections.deque(result, maxlen=0)
+    elif inspect.isasyncgen(result):
+        async for _ in result:
+            pass
+    else:
+        return result
 
 
 def resolve_type(registry, operator_uri, request_params):
@@ -284,7 +306,11 @@ def resolve_type(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -303,7 +329,11 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
-    ctx = ExecutionContext(request_params)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator.uri,
+        required_secrets=operator._plugin_secrets,
+    )
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
@@ -319,8 +349,13 @@ class ExecutionContext(object):
     Args:
         request_params (None): a optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
-        set_progress (None): an optional function to set the progress of the current operation
-        delegated_operation_id (None): an optional ID of the delegated operation
+        set_progress (None): an optional function to set the progress of the
+            current operation
+        delegated_operation_id (None): an optional ID of the delegated
+            operation
+        operator_uri (None): the unique id of the operator
+        required_secrets (None): the list of required secrets from the
+        plugin's definition
     """
 
     def __init__(
@@ -329,6 +364,8 @@ class ExecutionContext(object):
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
+        operator_uri=None,
+        required_secrets: typing.List[str] = None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -336,10 +373,17 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
-        self._secrets = {}
-        self._secrets_client = PluginSecretsResolver()
+
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
+        self._operator_uri = operator_uri
+        self._secrets = {}
+        self._secrets_client = PluginSecretsResolver()
+        if required_secrets:
+            self._secrets_client.register_operator(
+                operator_uri=self._operator_uri,
+                required_secrets=required_secrets,
+            )
 
     @property
     def dataset(self):
@@ -412,6 +456,15 @@ class ExecutionContext(object):
         return self.request_params.get("selected_labels", [])
 
     @property
+    def current_sample(self):
+        """The ID of the current sample being processed (if any).
+
+        When executed via the FiftyOne App, this is set when the user opens a
+        sample in the modal.
+        """
+        return self.request_params.get("current_sample", None)
+
+    @property
     def delegated(self):
         """Whether the operation's execution was delegated to an orchestrator.
 
@@ -430,9 +483,13 @@ class ExecutionContext(object):
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> dict:
-        """The dict of secrets available to the operation (if any)."""
-        return self._secrets
+    def secrets(self) -> SecretsDictionary:
+        """A read-only mapping of keys to their resolved values."""
+        return SecretsDictionary(
+            self._secrets,
+            operator_uri=self._operator_uri,
+            resolver_fn=self._secrets_client.get_secret_sync,
+        )
 
     def secret(self, key):
         """Retrieves the secret with the given key.
@@ -443,6 +500,16 @@ class ExecutionContext(object):
         Returns:
             the secret value
         """
+        if key not in self._secrets:
+            try:
+                secret = self._secrets_client.get_secret_sync(
+                    key, self._operator_uri
+                )
+                if secret:
+                    self._secrets[secret.key] = secret.value
+
+            except KeyError:
+                logging.debug(f"Failed to resolve value for secret `{key}`")
         return self._secrets.get(key, None)
 
     async def resolve_secret_values(self, keys, **kwargs):
@@ -457,7 +524,9 @@ class ExecutionContext(object):
             return None
 
         for key in keys:
-            secret = await self._secrets_client.get_secret(key, **kwargs)
+            secret = await self._secrets_client.get_secret(
+                key, self._operator_uri, **kwargs
+            )
             if secret:
                 self._secrets[secret.key] = secret.value
 
@@ -548,18 +617,29 @@ class ExecutionResult(object):
     @property
     def is_generator(self):
         """Whether the result is a generator or an async generator."""
-        return _is_generator(self.result)
+        return inspect.isgenerator(self.result) or inspect.isasyncgen(
+            self.result
+        )
+
+    def raise_exceptions(self):
+        """Raises an :class:`ExecutionError` (only) if the operation failed."""
+        exception = self.to_exception()
+        if exception is not None:
+            raise exception
 
     def to_exception(self):
         """Returns an :class:`ExecutionError` representing a failed execution
         result.
 
         Returns:
-            a :class:`ExecutionError`
+            a :class:`ExecutionError`, or None if the execution did not fail
         """
+        if not self.error:
+            return None
+
         msg = self.error
 
-        if self.validation_ctx.invalid:
+        if self.validation_ctx and self.validation_ctx.invalid:
             val_error = self.validation_ctx.errors[0]
             path = val_error.path.lstrip(".")
             reason = val_error.reason

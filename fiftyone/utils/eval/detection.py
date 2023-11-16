@@ -5,11 +5,16 @@ Detection evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
+import inspect
 import itertools
 import logging
 
 import numpy as np
 
+import eta.core.utils as etau
+
+import fiftyone as fo
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -63,7 +68,7 @@ def evaluate_detections(
     can optionally customize the method by passing additional parameters for
     the method's config class as ``kwargs``.
 
-    The supported ``method`` values and their associated configs are:
+    The natively provided ``method`` values and their associated configs are:
 
     -   ``"coco"``: :class:`fiftyone.utils.eval.coco.COCOEvaluationConfig`
     -   ``"open-images"``: :class:`fiftyone.utils.eval.openimages.OpenImagesEvaluationConfig`
@@ -111,11 +116,10 @@ def evaluate_detections(
             observed ground truth/predicted labels are used
         missing (None): a missing label string. Any unmatched objects are given
             this label for results purposes
-        method (None): a string specifying the evaluation method to use.
-            For spatial object detection, the supported values are
-            ``("coco", "open-images")`` and the default is ``"coco"``. For
-            temporal segment detection, the supported values are
-            ``("activitynet")`` and the default is ``"activitynet"``
+        method (None): a string specifying the evaluation method to use. The
+            supported values are
+            ``fo.evaluation_config.detection_backends.keys()`` and the default
+            is ``fo.evaluation_config.default_detection_backend``
         iou (0.50): the IoU threshold to use to determine matches
         use_masks (False): whether to compute IoUs using the instances masks in
             the ``mask`` attribute of the provided objects, which must be
@@ -239,6 +243,10 @@ class DetectionEvaluationConfig(foe.EvaluationMethodConfig):
         self.gt_field = gt_field
         self.iou = iou
         self.classwise = classwise
+
+    @property
+    def type(self):
+        return "detection"
 
     @property
     def requires_additional_fields(self):
@@ -578,26 +586,39 @@ class DetectionResults(BaseEvaluationResults):
 def _parse_config(pred_field, gt_field, method, is_temporal, **kwargs):
     if method is None:
         if is_temporal:
+            # @todo expose this in `fo.evaluation_config`?
             method = "activitynet"
         else:
-            method = "coco"
+            method = fo.evaluation_config.default_detection_backend
 
-    if method == "activitynet":
-        from .activitynet import ActivityNetEvaluationConfig
+    if inspect.isclass(method):
+        return method(pred_field, gt_field, **kwargs)
 
-        return ActivityNetEvaluationConfig(pred_field, gt_field, **kwargs)
+    backends = fo.evaluation_config.detection_backends
 
-    if method == "coco":
-        from .coco import COCOEvaluationConfig
+    if method not in backends:
+        raise ValueError(
+            "Unsupported detection evaluation method '%s'. The available "
+            "methods are %s" % (method, sorted(backends.keys()))
+        )
 
-        return COCOEvaluationConfig(pred_field, gt_field, **kwargs)
+    params = deepcopy(backends[method])
 
-    if method == "open-images":
-        from .openimages import OpenImagesEvaluationConfig
+    config_cls = kwargs.pop("config_cls", None)
 
-        return OpenImagesEvaluationConfig(pred_field, gt_field, **kwargs)
+    if config_cls is None:
+        config_cls = params.pop("config_cls", None)
 
-    raise ValueError("Unsupported evaluation method '%s'" % method)
+    if config_cls is None:
+        raise ValueError(
+            "Detection evaluation method '%s' has no `config_cls`" % method
+        )
+
+    if etau.is_str(config_cls):
+        config_cls = etau.get_class(config_cls)
+
+    params.update(**kwargs)
+    return config_cls(pred_field, gt_field, **params)
 
 
 def _tally_matches(matches):

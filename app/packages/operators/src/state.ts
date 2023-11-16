@@ -14,7 +14,6 @@ import {
 import {
   BROWSER_CONTROL_KEYS,
   RESOLVE_INPUT_VALIDATION_TTL,
-  RESOLVE_PLACEMENTS_TTL,
   RESOLVE_TYPE_TTL,
 } from "./constants";
 import {
@@ -82,6 +81,7 @@ const globalContextSelector = selector({
     const filters = get(fos.filters);
     const selectedSamples = get(fos.selectedSamples);
     const selectedLabels = get(fos.selectedLabels);
+    const currentSample = get(fos.currentSampleId);
 
     return {
       datasetName,
@@ -90,6 +90,7 @@ const globalContextSelector = selector({
       filters,
       selectedSamples,
       selectedLabels,
+      currentSample,
     };
   },
 });
@@ -118,6 +119,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
     selectedSamples,
     params,
     selectedLabels,
+    currentSample,
   } = curCtx;
   const ctx = useMemo(() => {
     return new ExecutionContext(
@@ -129,6 +131,7 @@ const useExecutionContext = (operatorName, hooks = {}) => {
         filters,
         selectedSamples,
         selectedLabels,
+        currentSample,
       },
       hooks
     );
@@ -350,6 +353,17 @@ const operatorIOState = atom({
   default: { visible: false },
 });
 
+export const operatorPaletteOpened = selector({
+  key: "operatorPaletteOpened",
+  get: ({ get }) => {
+    return (
+      get(showOperatorPromptSelector) ||
+      get(operatorBrowserVisibleState) ||
+      get(operatorIOState).visible
+    );
+  },
+});
+
 export function useShowOperatorIO() {
   const [state, setState] = useRecoilState(operatorIOState);
   return {
@@ -398,6 +412,11 @@ export function filterChoicesByQuery(query, all) {
 export const availableOperatorsRefreshCount = atom({
   key: "availableOperatorsRefreshCount",
   default: 0,
+});
+
+export const operatorsInitializedAtom = atom({
+  key: "operatorsInitializedAtom",
+  default: false,
 });
 
 export const availableOperators = selector({
@@ -497,6 +516,7 @@ export function useOperatorBrowser() {
   const defaultSelected = useRecoilValue(operatorDefaultChoice);
   const choices = useRecoilValue(operatorBrowserChoices);
   const promptForInput = usePromptOperatorInput();
+  const isOperatorPaletteOpened = useRecoilValue(operatorPaletteOpened);
 
   const selectedValue = useMemo(() => {
     return selected ?? defaultSelected;
@@ -558,6 +578,7 @@ export function useOperatorBrowser() {
   const onKeyDown = useCallback(
     (e) => {
       if (e.key !== "`" && !isVisible) return;
+      if (e.key === "`" && isOperatorPaletteOpened) return;
       if (BROWSER_CONTROL_KEYS.includes(e.key)) e.preventDefault();
       switch (e.key) {
         case "ArrowDown":
@@ -567,6 +588,7 @@ export function useOperatorBrowser() {
           selectPrevious();
           break;
         case "`":
+          if (isOperatorPaletteOpened) break;
           if (isVisible) {
             close();
           } else {
@@ -581,7 +603,15 @@ export function useOperatorBrowser() {
           break;
       }
     },
-    [selectNext, selectPrevious, isVisible, onSubmit, close, setIsVisible]
+    [
+      selectNext,
+      selectPrevious,
+      isVisible,
+      onSubmit,
+      close,
+      setIsVisible,
+      isOperatorPaletteOpened,
+    ]
   );
 
   const toggle = useCallback(() => {
@@ -785,42 +815,6 @@ export const placementsForPlaceSelector = selectorFamily({
 });
 
 export function useOperatorPlacements(place: Places) {
-  const datasetName = useRecoilValue(fos.datasetName);
-  const view = useRecoilValue(fos.view);
-  const extendedStages = useRecoilValue(fos.extendedStages);
-  const filters = useRecoilValue(fos.filters);
-  const selectedSamples = useRecoilValue(fos.selectedSamples);
-  const selectedLabels = useRecoilValue(fos.selectedLabels);
-  const setContext = useSetRecoilState(operatorThrottledContext);
-  const setThrottledContext = useMemo(() => {
-    return debounce(
-      (context) => {
-        setContext(context);
-      },
-      RESOLVE_PLACEMENTS_TTL,
-      { leading: true }
-    );
-  }, [setContext]);
-
-  useEffect(() => {
-    setThrottledContext({
-      datasetName,
-      view,
-      extendedStages,
-      filters,
-      selectedSamples,
-      selectedLabels,
-    });
-  }, [
-    setThrottledContext,
-    datasetName,
-    view,
-    extendedStages,
-    filters,
-    selectedSamples,
-    selectedLabels,
-  ]);
-
   const placements = useRecoilValue(placementsForPlaceSelector(place));
 
   return { placements };
