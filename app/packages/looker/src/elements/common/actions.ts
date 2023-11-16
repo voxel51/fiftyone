@@ -3,11 +3,13 @@
  */
 
 import { SCALE_FACTOR } from "../../constants";
+import { ImaVidFramesController } from "../../lookers/imavid/controller";
 import {
   BaseState,
   Control,
   ControlEventKeyType,
   ControlMap,
+  ImaVidConfig,
   ImaVidState,
   VideoState,
 } from "../../state";
@@ -405,18 +407,36 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      ({ currentFrameNumber: frameNumber, duration, playing, config }) => {
-        const { frameRate, thumbnail } = config;
+      (state: ImaVidState | VideoState) => {
+        const imavidController = (state.config as ImaVidConfig)
+          .frameStoreController as ImaVidFramesController;
 
-        if (playing || thumbnail) {
+        if (state.playing || state.config.thumbnail) {
           return {};
         }
-        const end = config.lockedToSupport
-          ? config.support[1]
+
+        if (imavidController) {
+          return {
+            currentFrameNumber: Math.min(
+              imavidController.totalFrameCount,
+              (state as ImaVidState).currentFrameNumber + 1
+            ),
+          };
+        }
+
+        const {
+          lockedToSupport,
+          duration,
+          frameNumber,
+          config: { frameRate, support },
+        } = state as VideoState;
+
+        const end = lockedToSupport
+          ? support[1]
           : getFrameNumber(duration, duration, frameRate);
 
         return {
-          currentFrameNumber: Math.min(end, frameNumber + 1),
+          frameNumber: Math.min(end, frameNumber + 1),
         };
       },
       (state, overlays) => dispatchTooltipEvent(dispatchEvent)(state, overlays)
@@ -424,7 +444,7 @@ export const nextFrame: Control<VideoState | ImaVidState> = {
   },
 };
 
-export const previousFrame: Control<VideoState> = {
+export const previousFrame: Control<VideoState | ImaVidState> = {
   title: "Previous frame",
   eventKeys: [",", "<"],
   shortcut: "<",
@@ -432,15 +452,29 @@ export const previousFrame: Control<VideoState> = {
   alwaysHandle: true,
   action: (update, dispatchEvent) => {
     update(
-      ({
-        frameNumber,
-        playing,
-        config: { support, thumbnail },
-        lockedToSupport,
-      }) => {
-        if (playing || thumbnail) {
+      (state: ImaVidState | VideoState) => {
+        const imavidController = (state.config as ImaVidConfig)
+          .frameStoreController as ImaVidFramesController;
+
+        if (state.playing || state.config.thumbnail) {
           return {};
         }
+
+        if (imavidController) {
+          return {
+            currentFrameNumber: Math.max(
+              1,
+              (state as ImaVidState).currentFrameNumber - 1
+            ),
+          };
+        }
+
+        const {
+          lockedToSupport,
+          frameNumber,
+          config: { support },
+        } = state as VideoState;
+
         return {
           frameNumber: Math.max(
             lockedToSupport ? support[0] : 1,
