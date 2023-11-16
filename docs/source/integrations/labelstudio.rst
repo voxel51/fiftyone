@@ -15,6 +15,13 @@ local server up and running. FiftyOne provides
 :ref:`simple setup instructions <label-studio-setup>` that you can use to
 specify the necessary account credentials and server endpoint to use.
 
+.. note::
+
+    Did you know? You can request, manage, and import annotations from within
+    the FiftyOne App by installing the
+    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
+    plugin!
+
 FiftyOne provides an API to create projects, upload data, define label schemas,
 and download annotations using Label Studio, all programmatically in Python.
 All of the following label types are supported for image datasets:

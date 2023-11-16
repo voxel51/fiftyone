@@ -6,6 +6,8 @@ FiftyOne operator execution.
 |
 """
 import asyncio
+import collections
+import inspect
 import traceback
 import types as python_types
 
@@ -144,7 +146,9 @@ def execute_operator(operator_uri, ctx, params=None):
     )
 
     return asyncio.run(
-        execute_or_delegate_operator(operator_uri, request_params)
+        execute_or_delegate_operator(
+            operator_uri, request_params, exhaust=True
+        )
     )
 
 
@@ -179,7 +183,7 @@ def _parse_ctx(ctx, params=None):
 # request token and user are teams-only
 @coroutine_timeout(seconds=fo.config.operator_timeout)
 async def execute_or_delegate_operator(
-    operator_uri, request_params, request_token=None, user=None
+    operator_uri, request_params, request_token=None, user=None, exhaust=False
 ):
     """Executes the operator with the given name.
 
@@ -188,6 +192,7 @@ async def execute_or_delegate_operator(
         request_params: a dictionary of parameters for the operator
         request_token (None): the authentication token from the request
         user (None): the user executing the operator
+        exhaust (False): whether to immediately exhaust generator operators
 
     Returns:
         an :class:`ExecutionResult`
@@ -232,18 +237,13 @@ async def execute_or_delegate_operator(
             )
     else:
         try:
-            raw_result = await (
-                operator.execute(ctx)
-                if asyncio.iscoroutinefunction(operator.execute)
-                else fou.run_sync_task(operator.execute, ctx)
-            )
-
+            result = await do_execute_operator(operator, ctx, exhaust=exhaust)
         except Exception as e:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
 
-        return ExecutionResult(result=raw_result, executor=executor)
+        return ExecutionResult(result=result, executor=executor)
 
 
 async def prepare_operator_executor(
@@ -281,10 +281,25 @@ async def prepare_operator_executor(
     return operator, executor, ctx
 
 
-def _is_generator(value):
-    return isinstance(value, python_types.GeneratorType) or isinstance(
-        value, python_types.AsyncGeneratorType
+async def do_execute_operator(operator, ctx, exhaust=False):
+    result = await (
+        operator.execute(ctx)
+        if asyncio.iscoroutinefunction(operator.execute)
+        else fou.run_sync_task(operator.execute, ctx)
     )
+
+    if not exhaust:
+        return result
+
+    if inspect.isgenerator(result):
+        # Fastest way to exhaust sync generator, re: itertools consume()
+        #   https://docs.python.org/3/library/itertools.html
+        collections.deque(result, maxlen=0)
+    elif inspect.isasyncgen(result):
+        async for _ in result:
+            pass
+    else:
+        return result
 
 
 def resolve_type(registry, operator_uri, request_params):
@@ -338,8 +353,10 @@ class ExecutionContext(object):
     Args:
         request_params (None): a optional dictionary of request parameters
         executor (None): an optional :class:`Executor` instance
-        set_progress (None): an optional function to set the progress of the current operation
-        delegated_operation_id (None): an optional ID of the delegated operation
+        set_progress (None): an optional function to set the progress of the
+            current operation
+        delegated_operation_id (None): an optional ID of the delegated
+            operation
     """
 
     def __init__(
@@ -431,6 +448,15 @@ class ExecutionContext(object):
             applicable to video samples)
         """
         return self.request_params.get("selected_labels", [])
+
+    @property
+    def current_sample(self):
+        """The ID of the current sample being processed (if any).
+
+        When executed via the FiftyOne App, this is set when the user opens a
+        sample in the modal.
+        """
+        return self.request_params.get("current_sample", None)
 
     @property
     def delegated(self):
@@ -570,18 +596,29 @@ class ExecutionResult(object):
     @property
     def is_generator(self):
         """Whether the result is a generator or an async generator."""
-        return _is_generator(self.result)
+        return inspect.isgenerator(self.result) or inspect.isasyncgen(
+            self.result
+        )
+
+    def raise_exceptions(self):
+        """Raises an :class:`ExecutionError` (only) if the operation failed."""
+        exception = self.to_exception()
+        if exception is not None:
+            raise exception
 
     def to_exception(self):
         """Returns an :class:`ExecutionError` representing a failed execution
         result.
 
         Returns:
-            a :class:`ExecutionError`
+            a :class:`ExecutionError`, or None if the execution did not fail
         """
+        if not self.error:
+            return None
+
         msg = self.error
 
-        if self.validation_ctx.invalid:
+        if self.validation_ctx and self.validation_ctx.invalid:
             val_error = self.validation_ctx.errors[0]
             path = val_error.path.lstrip(".")
             reason = val_error.reason

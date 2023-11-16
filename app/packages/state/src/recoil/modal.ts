@@ -30,6 +30,23 @@ export const sidebarSampleId = selector({
   },
 });
 
+export const currentSampleId = selector({
+  key: "currentSampleId",
+  get: ({ get }) => {
+    const override = get(pinned3DSampleSlice);
+
+    const id =
+      get(pinned3d) && override
+        ? get(pinned3DSample).id
+        : get(nullableModalSampleId);
+
+    if (id && id.endsWith("-modal")) {
+      return id.replace("-modal", "");
+    }
+    return id;
+  },
+});
+
 export type ModalSampleData = Exclude<
   Exclude<
     ResponseFrom<mainSampleQuery>["sample"],
@@ -92,6 +109,19 @@ export const modalSampleId = selector<string>({
 
     if (!current) {
       throw new Error("modal sample is not defined");
+    }
+
+    return current.id;
+  },
+});
+
+export const nullableModalSampleId = selector<string>({
+  key: "nullableModalSampleId",
+  get: ({ get }) => {
+    const current = get(currentModalSample);
+
+    if (!current) {
+      return null;
     }
 
     return current.id;

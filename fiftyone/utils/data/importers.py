@@ -1526,6 +1526,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._runs_dir = None
         self._frame_labels_dir = None
         self._samples = None
         self._iter_samples = None
@@ -1597,6 +1598,7 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
         self._anno_dir = fos.join(self.dataset_dir, "annotations")
         self._brain_dir = fos.join(self.dataset_dir, "brain")
         self._eval_dir = fos.join(self.dataset_dir, "evaluations")
+        self._runs_dir = fos.join(self.dataset_dir, "runs")
         self._frame_labels_dir = fos.join(self.dataset_dir, "frames")
 
         if fos.isdir(self._fields_dir):
@@ -1677,6 +1679,21 @@ class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
                 evaluations,
                 self._eval_dir,
                 foe.EvaluationMethod,
+            )
+
+        # Import runs
+        runs = self._metadata.get("runs", None)
+        if runs and self.import_runs and self.max_samples is None:
+            for run_key in runs.keys():
+                if dataset.has_run(run_key):
+                    logger.warning("Overwriting existing run '%s'", run_key)
+                    dataset.delete_run(run_key)
+
+            _import_runs(
+                dataset,
+                runs,
+                self._runs_dir,
+                fors.Run,
             )
 
     @staticmethod
@@ -1761,6 +1778,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._runs_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
@@ -1773,6 +1791,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         self._anno_dir = fos.join(self.dataset_dir, "annotations")
         self._brain_dir = fos.join(self.dataset_dir, "brain")
         self._eval_dir = fos.join(self.dataset_dir, "evaluations")
+        self._runs_dir = fos.join(self.dataset_dir, "runs")
         self._metadata_path = fos.join(self.dataset_dir, "metadata.json")
 
         if fos.isdir(self._fields_dir):
@@ -1834,6 +1853,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         annotations = dataset_dict.pop("annotation_runs", {})
         brain_methods = dataset_dict.pop("brain_methods", {})
         evaluations = dataset_dict.pop("evaluations", {})
+        runs = dataset_dict.pop("runs", {})
 
         if empty_import:
             #
@@ -1981,6 +2001,13 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 foe.EvaluationMethod,
             )
 
+            _import_runs(
+                dataset,
+                runs,
+                self._runs_dir,
+                fors.Run,
+            )
+
         #
         # Migrate dataset if necessary
         #
@@ -2107,7 +2134,9 @@ def _import_runs(dataset, runs, results_dir, run_cls):
             view = run_cls.load_run_view(dataset, key)
             run_info = run_cls.get_run_info(dataset, key)
             d = fos.read_json(json_path)
-            results = fors.RunResults.from_dict(d, view, run_info.config, key)
+            results = fors.BaseRunResults.from_dict(
+                d, view, run_info.config, key
+            )
             run_cls.save_run_results(dataset, key, results, cache=False)
 
 

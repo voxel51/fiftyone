@@ -1,14 +1,16 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import React, { useEffect } from "react";
 import { getComponent, getErrorsForView } from "../utils";
+import { isNullish } from "@fiftyone/utilities";
 
 export default function DynamicIO(props) {
-  const { schema, onChange, path } = props;
+  const { data, schema, onChange, path } = props;
   const customComponents = useCustomComponents();
   const Component = getComponent(schema, customComponents);
 
   // todo: need to improve initializing default value in state
   useEffect(() => {
+    if (!isNullish(data)) return;
     if (schema.default) onChange(path, schema.default);
     else if (schema.type === "boolean") onChange(path, false);
   }, []);
