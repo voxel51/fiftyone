@@ -322,6 +322,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._sample_doc_cls = sample_doc_cls
         self._frame_doc_cls = frame_doc_cls
 
+        self._sample_filter = None
         self._group_slice = doc.default_group_slice
 
         self._annotation_cache = cachetools.LRUCache(5)
@@ -369,6 +370,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         except:
             oid = None
             query = {"filepath": id_filepath_slice}
+
+        if self._sample_filter is not None:
+            query.update(self._sample_filter)
 
         d = self._sample_collection.find_one(query)
 
@@ -7014,6 +7018,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             detach_groups = False
 
         _pipeline = []
+
+        if self._sample_filter is not None:
+            _pipeline.append({"$match": self._sample_filter})
 
         # If this is a grouped dataset, always start the pipeline by selecting
         # `group_slice`, unless the caller manually overrides this
