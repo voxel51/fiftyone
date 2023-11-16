@@ -323,7 +323,7 @@ class Property(BaseType):
         self.required = kwargs.get("required", False)
         # todo: deprecate and remove
         self.choices = kwargs.get("choices", None)
-        self.error_message = kwargs.get("error_message", "Invalid property")
+        self.error_message = kwargs.get("error_message", "")
         self.view = kwargs.get("view", None)
 
     def to_json(self):
