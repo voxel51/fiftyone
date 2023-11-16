@@ -187,7 +187,6 @@ export const PainterFactory = (requestColor) => ({
     } else if (colorscale?.default?.rgb) {
       scale = colorscale.default.rgb;
     } else {
-      console.log("using coloring.scale");
       scale = coloring.scale;
     }
 

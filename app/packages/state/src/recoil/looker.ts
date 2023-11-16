@@ -64,11 +64,6 @@ export const lookerOptions = selectorFamily<
         : {};
       const activeVisibility = get(attributeVisibility);
       const isLabelTagActive = activePaths.includes("_label_tags");
-      console.info("fields-colorscale", get(atoms.colorScheme).colorscales);
-      console.info(
-        "global-colorscale",
-        get(atoms.colorScheme).defaultColorscale
-      );
       const colorscale = {
         default: get(atoms.colorScheme).defaultColorscale ?? {},
         fields: get(atoms.colorScheme).colorscales ?? [],
