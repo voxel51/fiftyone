@@ -31,13 +31,17 @@ class ListOperators(HTTPEndpoint):
         registry = await PermissionedOperatorRegistry.from_list_request(
             request, dataset_ids=dataset_ids
         )
-        ctx = ExecutionContext()
-        operators_as_json = [
-            operator.to_json(ctx) for operator in registry.list_operators()
-        ]
-        for operator in operators_as_json:
-            config = operator["config"]
-            config["can_execute"] = registry.can_execute(operator["uri"])
+        operators_as_json = []
+        for operator in registry.list_operators():
+
+            ctx = ExecutionContext(
+                operator_uri=operator.uri,
+                required_secrets=operator._plugin_secrets,
+            )
+            serialized_op = operator.to_json(ctx)
+            config = serialized_op["config"]
+            config["can_execute"] = registry.can_execute(serialized_op["uri"])
+            operators_as_json.append(serialized_op)
 
         return {
             "operators": operators_as_json,
