@@ -339,9 +339,9 @@ export const PainterFactory = (requestColor) => ({
               // Attempt to find a color in the fields mask target color settings
               // If not found, attempt to find a color in the default mask target colors.
 
+              const target = targets[i].toString()
               const customColor =
-                fieldSetting?.[targets[i].toString()] ??
-                defaultSetting?.[targets[i].toString()];
+                fieldSetting?.[target] || defaultSetting?.[target];
 
               // If a customized color setting is found, get the 32-bit color representation.
               if (customColor) {
