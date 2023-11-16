@@ -196,6 +196,9 @@ export const lightning = selector({
     }
 
     const threshold = get(lightningThreshold);
+    if (threshold === null) {
+      return false;
+    }
 
     return (
       get(datasetSampleCount) >= threshold ||

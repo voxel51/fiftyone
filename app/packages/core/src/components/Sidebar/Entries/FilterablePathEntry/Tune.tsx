@@ -1,4 +1,4 @@
-import { useTheme } from "@fiftyone/components";
+import { Tooltip, useTheme } from "@fiftyone/components";
 import { Tune } from "@mui/icons-material";
 import React from "react";
 import { RecoilState, useSetRecoilState } from "recoil";
@@ -16,7 +16,7 @@ export default ({
 
   const theme = useTheme();
 
-  return (
+  const children = (
     <div
       style={{
         display: "flex",
@@ -47,4 +47,14 @@ export default ({
       />
     </div>
   );
+
+  if (disabled) {
+    return (
+      <Tooltip text="disabled" placement="top-center">
+        {children}
+      </Tooltip>
+    );
+  }
+
+  return <>{children}</>;
 };
