@@ -22,6 +22,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
   const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
   useEffect(
@@ -87,6 +88,19 @@ const ColorFooter: React.FC = () => {
                   },
                   colorscales: colorScheme.colorscales ? newColorscales : [],
                 },
+              },
+              updater: (store, { setDatasetColorScheme }) => {
+                const datasetRecord = store.get(datasetId);
+                const config = datasetRecord?.getLinkedRecord("appConfig");
+                if (!datasetDefault && setDatasetColorScheme) {
+                  const fragment =
+                    foq.readFragment<foq.colorSchemeFragment$key>(
+                      foq.colorSchemeFragment,
+                      setDatasetColorScheme
+                    );
+                  const record = store.get(fragment.id);
+                  record && config?.setLinkedRecord(record, "colorScheme");
+                }
               },
             });
             setActiveColorModalField(null);
