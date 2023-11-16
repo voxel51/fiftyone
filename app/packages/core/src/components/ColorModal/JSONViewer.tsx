@@ -10,7 +10,11 @@ import { useRecoilValue } from "recoil";
 import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
-import { validateJSONSetting, validateLabelTags } from "./utils";
+import {
+  validateJSONSetting,
+  validateLabelTags,
+  validateMaskColor,
+} from "./utils";
 
 const JSONViewer: React.FC = () => {
   const themeMode = useRecoilValue(fos.theme);
@@ -25,10 +29,14 @@ const JSONViewer: React.FC = () => {
       opacity: colorScheme?.opacity ?? fos.DEFAULT_ALPHA,
       multicolorKeypoints: Boolean(colorScheme?.multicolorKeypoints),
       showSkeletons: colorScheme?.showSkeletons,
-      fields: validateJSONSetting(colorScheme.fields || []),
-      labelTags: validateLabelTags(colorScheme?.labelTags || {}),
+      fields: validateJSONSetting(colorScheme.fields ?? []),
+      labelTags: validateLabelTags(colorScheme?.labelTags ?? {}),
+      defaultMaskTargetsColors: validateMaskColor(
+        colorScheme.defaultMaskTargetsColors
+      ),
     };
   }, [colorScheme]);
+
   const setColorScheme = fos.useSetSessionColorScheme();
   const [data, setData] = useState(setting);
 
@@ -54,13 +62,13 @@ const JSONViewer: React.FC = () => {
       !data?.fields
     )
       return;
-    const { colorPool, fields } = data;
-    const validColors = colorPool
+    const validColors = data.colorPool
       ?.filter((c) => isValidColor(c))
-      .map((c) => colorString.to.hex(colorString.get(c)!.value));
+      .map((c) => colorString.to.hex(colorString.get.rgb(c)!));
     const validatedSetting = validateJSONSetting(
-      fields as ColorSchemeInput["fields"]
+      data.fields as ColorSchemeInput["fields"]
     );
+
     const validatedColorBy = ["field", "label"].includes(data?.colorBy)
       ? data?.colorBy
       : colorScheme.colorBy ?? "field";
@@ -93,6 +101,10 @@ const JSONViewer: React.FC = () => {
         })),
     };
 
+    const validatedDefaultMaskTargetsColors = validateMaskColor(
+      data.defaultMaskTargetsColors
+    );
+
     setData({
       colorPool: validColors,
       fields: validatedSetting,
@@ -101,7 +113,9 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
+      defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
     });
+
     setColorScheme({
       colorPool: validColors,
       colorBy: validatedColorBy,
@@ -110,6 +124,7 @@ const JSONViewer: React.FC = () => {
       multicolorKeypoints: validatedMulticolorKeypoints,
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
+      defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
     });
   };
 

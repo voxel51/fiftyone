@@ -4,8 +4,9 @@ import * as fos from "@fiftyone/state";
 import {
   COLOR_BY,
   FLOAT_FIELD,
+  HEATMAP,
   NOT_VISIBLE_LIST,
-  VALID_MASK_TYPES,
+  SEGMENTATION,
 } from "@fiftyone/utilities";
 import { Divider } from "@mui/material";
 import colorString from "color-string";
@@ -27,10 +28,11 @@ import {
 } from "./ShareStyledDiv";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
 import FieldByValue from "./colorPalette/FieldByValue";
+import FieldsMaskTargets from "./colorPalette/FieldsMaskTarget";
 import ColorAttribute from "./controls/ColorAttribute";
 import ModeControl from "./controls/ModeControl";
 
-const fieldColorSetting = selectorFamily<
+export const fieldColorSetting = selectorFamily<
   Omit<CustomizeColorInput, "path"> | undefined,
   string
 >({
@@ -101,17 +103,18 @@ const FieldSetting = ({ path }: { path: string }) => {
       useLabelColors: Boolean(
         setting?.valueColors && setting.valueColors.length > 0
       ),
-      useFieldColor: Boolean(setting),
+      useFieldColor: Boolean(setting && setting.fieldColor),
     }),
     [setting]
   );
 
-  const isMaskType =
-    field.embeddedDocType &&
-    VALID_MASK_TYPES.some((x) => field.embeddedDocType?.includes(x));
+  const isSegmentation = field.embeddedDocType?.includes(SEGMENTATION);
+
+  const isHeatmap = field.embeddedDocType?.includes(HEATMAP);
+
   const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
-  const isTypeValueSupported =
-    !isMaskType && !isNoShowType && !(field.ftype == FLOAT_FIELD);
+  const isTypeValueSupported = !isNoShowType && !(field.ftype == FLOAT_FIELD);
+
   const isTypeFieldSupported = !isNoShowType;
 
   const onChangeFieldColor = useCallback(
@@ -180,11 +183,12 @@ const FieldSetting = ({ path }: { path: string }) => {
             name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting({
+              setSetting((cur) => ({
+                ...cur,
                 fieldColor: v ? colorMap(path) : undefined,
                 valueColors: setting?.valueColors,
                 colorByAttribute: setting?.colorByAttribute,
-              });
+              }));
               setInput(colorMap(path));
             }}
           />
@@ -244,66 +248,78 @@ const FieldSetting = ({ path }: { path: string }) => {
       {coloring.by == COLOR_BY.FIELD && !isTypeFieldSupported && (
         <div>Color by field is not supported for this field type</div>
       )}
-      {coloring.by == COLOR_BY.VALUE && isTypeValueSupported && (
-        <div>
-          <form
-            style={{ display: "flex", flexDirection: "column", margin: "1rem" }}
-          >
-            {/* set attribute value - color */}
-            <Checkbox
-              name={`Use custom colors for specific field values`}
-              value={state.useLabelColors}
-              setValue={(v: boolean) => {
-                setSetting((cur) => {
-                  if (!cur) {
-                    cur = { valueColors: [] };
-                  }
-
-                  if (!cur?.valueColors?.length && v) {
-                    cur = {
-                      ...cur,
-                      valueColors: [
-                        {
-                          value: "",
-                          color:
-                            colorPool[
-                              Math.floor(Math.random() * colorPool.length)
-                            ],
-                        },
-                      ],
-                    };
-                  } else if (!v) {
-                    cur = { ...cur, valueColors: [] };
-                  }
-
-                  return {
-                    ...cur,
-                    colorByAttribute:
-                      field.embeddedDocType && !v ? null : cur.colorByAttribute,
-                  };
-                });
+      {coloring.by == COLOR_BY.VALUE &&
+        isTypeValueSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>
+            <form
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                margin: "1rem",
               }}
-            />
-            {/* set the attribute used for color */}
-            <SectionWrapper>
-              {path && field.embeddedDocType && state.useLabelColors && (
-                <>
-                  <ColorAttribute style={FieldCHILD_STYLE} />
-                  <br />
-                  <div style={FieldCHILD_STYLE}>
-                    Use specific colors for the following values
-                  </div>
-                </>
-              )}
-              <FieldByValue />
-            </SectionWrapper>
-          </form>
-        </div>
-      )}
+            >
+              {/* set attribute value - color */}
+              <Checkbox
+                name={`Use custom colors for specific field values`}
+                value={state.useLabelColors}
+                setValue={(v: boolean) => {
+                  setSetting((cur) => {
+                    if (!cur) {
+                      cur = { valueColors: [] };
+                    }
 
-      {coloring.by == COLOR_BY.VALUE && !isTypeValueSupported && (
-        <div>Color by value is not supported for this field type</div>
-      )}
+                    if (!cur?.valueColors?.length && v) {
+                      cur = {
+                        ...cur,
+                        valueColors: [
+                          {
+                            value: "",
+                            color:
+                              colorPool[
+                                Math.floor(Math.random() * colorPool.length)
+                              ],
+                          },
+                        ],
+                      };
+                    } else if (!v) {
+                      cur = { ...cur, valueColors: [] };
+                    }
+
+                    return {
+                      ...cur,
+                      colorByAttribute:
+                        field.embeddedDocType && !v
+                          ? null
+                          : cur.colorByAttribute,
+                    };
+                  });
+                }}
+              />
+              {/* set the attribute used for color */}
+              <SectionWrapper>
+                {path && field.embeddedDocType && state.useLabelColors && (
+                  <>
+                    <ColorAttribute style={FieldCHILD_STYLE} />
+                    <br />
+                    <div style={FieldCHILD_STYLE}>
+                      Use specific colors for the following values
+                    </div>
+                  </>
+                )}
+                <FieldByValue />
+              </SectionWrapper>
+            </form>
+          </div>
+        )}
+      {coloring.by == COLOR_BY.VALUE && isSegmentation && <FieldsMaskTargets />}
+      {coloring.by == COLOR_BY.VALUE &&
+        !isTypeValueSupported &&
+        !isHeatmap &&
+        !isSegmentation && (
+          <div>Color by value is not supported for this field type</div>
+        )}
       {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}

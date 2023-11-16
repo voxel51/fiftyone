@@ -21,6 +21,10 @@ export default graphql`
           value
         }
       }
+      defaultMaskTargetsColors {
+        intTarget
+        color
+      }
       fields {
         colorByAttribute
         fieldColor
@@ -28,6 +32,10 @@ export default graphql`
         valueColors {
           color
           value
+        }
+        maskTargetsColors {
+          intTarget
+          color
         }
       }
     }
