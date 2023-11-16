@@ -458,7 +458,7 @@ class DatasetTests(unittest.TestCase):
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
 
-        default_indexes = {"id", "filepath"}
+        default_indexes = {"id", "filepath", "last_updated_at"}
         self.assertSetEqual(set(info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -897,6 +897,8 @@ class DatasetTests(unittest.TestCase):
                 "filepath",
                 "tags",
                 "metadata",
+                "created_at",
+                "last_updated_at",
                 "foo",
                 "bar",
                 "spam",
@@ -927,7 +929,16 @@ class DatasetTests(unittest.TestCase):
         schema = view.get_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_field_schema(ftype=fo.StringField)
@@ -998,7 +1009,16 @@ class DatasetTests(unittest.TestCase):
         schema = dataset.get_frame_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
         )
 
         schema = dataset.get_frame_field_schema(ftype=fo.StringField)
@@ -1025,7 +1045,15 @@ class DatasetTests(unittest.TestCase):
 
         schema = view.get_frame_field_schema()
         self.assertSetEqual(
-            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+            set(schema.keys()),
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_frame_field_schema(ftype=fo.StringField)
@@ -1476,8 +1504,14 @@ class DatasetTests(unittest.TestCase):
             d1 = dataset1.clone()
             d1.merge_samples(dataset2, skip_existing=True, key_fcn=key_fcn)
 
-            fields1 = set(dataset1.get_field_schema().keys())
-            fields2 = set(d1.get_field_schema().keys())
+            fields1 = set(dataset1.get_field_schema().keys()) - {
+                "created_at",
+                "last_updated_at",
+            }
+            fields2 = set(d1.get_field_schema().keys()) - {
+                "created_at",
+                "last_updated_at",
+            }
             new_fields = fields2 - fields1
 
             self.assertEqual(len(d1), 6)
@@ -2909,8 +2943,6 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
-        self.assertNotIn("created_at", d)
-        self.assertNotIn("last_updated_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2957,8 +2989,6 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertNotIn("id", d)
         self.assertNotIn("_id", d)
         self.assertNotIn("_dataset_id", d)
-        self.assertNotIn("created_at", d)
-        self.assertNotIn("last_updated_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -4000,10 +4030,13 @@ class SampleCreatedTimeAtTests(unittest.TestCase):
         samples[0].frames[2] = fo.Frame(frame_number=2)
         self.assertIsNone(samples[0].frames[2][time_field])
         samples[0].frames.save()
-        self.assertGreater(
-            samples[0].frames[2][time_field], samples[0].frames[1][time_field]
-        )
         if not is_update:
+            # All frames are saved when a frame is added, so we can't check
+            #   this for last updated at.
+            self.assertGreater(
+                samples[0].frames[2][time_field],
+                samples[0].frames[1][time_field],
+            )
             self.assertEqual(
                 samples[0].frames[1][time_field], original_times[0]
             )

@@ -1643,7 +1643,7 @@ class SampleCollection(object):
             id_field = "frames._id" if is_frame_field else "_id"
             ops.append(
                 UpdateMany(
-                    {id_field: {"$in": ids}},
+                    {id_field: {"$in": list(ids)}},
                     {"$set": {"last_updated_at": now}},
                 )
             )
