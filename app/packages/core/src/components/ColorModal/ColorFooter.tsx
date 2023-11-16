@@ -37,7 +37,6 @@ const ColorFooter: React.FC = () => {
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
@@ -65,6 +64,8 @@ const ColorFooter: React.FC = () => {
               colorBy: colorScheme.colorBy ?? "field",
               multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
               showSkeletons: colorScheme.showSkeletons ?? true,
+              defaultMaskTargetsColors:
+                colorScheme.defaultMaskTargetsColors ?? [],
             });
             setDatasetColorScheme({
               variables: {
@@ -73,10 +74,13 @@ const ColorFooter: React.FC = () => {
                 colorScheme: {
                   ...colorScheme,
                   fields: colorScheme.fields ?? [],
-                  colorPool: colorScheme.colorPool ?? [],
-                  labelTags: colorScheme.labelTags ?? {},
                   multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
                   showSkeletons: colorScheme.showSkeletons ?? true,
+                  colorBy: colorScheme.colorBy ?? "field",
+                  colorPool: colorScheme.colorPool ?? [],
+                  labelTags: colorScheme.labelTags ?? {},
+                  defaultMaskTargetsColors:
+                    colorScheme.defaultMaskTargetsColors ?? [],
                 },
               },
             });
@@ -97,8 +101,12 @@ const ColorFooter: React.FC = () => {
               setColorScheme((cur) => ({
                 ...cur,
                 fields: [],
+                defaultMaskTargetsColors: [],
                 labelTags: {},
                 colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy ?? "field",
+                multicolorKeypoints: configDefault.multicolorKeypoints ?? false,
+                showSkeletons: configDefault.showSkeletons ?? true,
               }));
             }}
             disabled={!canEdit}
@@ -144,9 +152,19 @@ const useUpdateDatasetColorScheme = () => {
               [...(colorScheme.colorPool || [])],
               "colorPool"
             );
+
             colorSchemeRecord.setLinkedRecords(
               setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
               "fields"
+            );
+
+            colorSchemeRecord.setLinkedRecords(
+              setEntries(
+                store,
+                "MaskColor",
+                colorScheme?.defaultMaskTargetsColors ?? null
+              ),
+              "defaultMaskTargetsColors"
             );
 
             // get or create labelTags data {fieldcolor: null, valueColors: []}
@@ -199,14 +217,17 @@ const setEntries = (
 ) =>
   entries?.map((entry) => {
     const record = store.create(uuid(), name);
+
     Object.entries(entry).forEach(([key, value]) => {
       if (key !== "valueColors") {
         record.setValue(value, key);
         return;
       }
-
-      record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+      if (value === "valueColors") {
+        record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
+      }
     });
+
     return record;
   });
 

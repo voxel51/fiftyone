@@ -153,11 +153,18 @@ class ValueColor:
 
 
 @dataclass
+class MaskColor:
+    color: str
+    intTarget: t.Optional[int]
+
+
+@dataclass
 class CustomizeColor:
     path: str
     fieldColor: t.Optional[str] = None
     colorByAttribute: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
+    maskTargetsColors: t.Optional[t.List[MaskColor]] = None
 
 
 @dataclass
@@ -175,6 +182,9 @@ class ColorScheme:
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
+    fields: t.Optional[t.List[CustomizeColor]] = None
+    default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    label_tags: t.Optional[LabelTagsColors] = None
 
 
 @dataclass
@@ -193,6 +203,14 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
+        default_mask_targets_colors = (
+            [
+                asdict(target)
+                for target in self.color_scheme.default_mask_targets_colors
+            ]
+            if self.color_scheme.default_mask_targets_colors
+            else None
+        )
         label_tags = (
             asdict(self.color_scheme.label_tags)
             if self.color_scheme.label_tags
@@ -203,6 +221,7 @@ class SetColorScheme(Event):
             color_pool=self.color_scheme.color_pool,
             color_by=self.color_scheme.color_by,
             fields=fields,
+            default_mask_targets_colors=default_mask_targets_colors,
             label_tags=label_tags,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,

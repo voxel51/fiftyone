@@ -1,5 +1,6 @@
-import { ColorSchemeInput, LabelTagColorInput } from "@fiftyone/relay";
-import { isEmpty, xor } from "lodash";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import { ColorSchemeInput, MaskColorInput } from "@fiftyone/relay";
+import { inRange, isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -59,13 +60,21 @@ export const validateJSONSetting = (
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
       : [],
+    maskTargetsColors: Array.isArray(input["maskTargetsColors"])
+      ? getValidMaskColors(input.maskTargetsColors)
+      : [],
   }));
 
   return f.filter((x) => {
     const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.colorByAttribute;
-    const hasLabelColors = x.valueColors && x.valueColors.length > 0;
-    return hasFieldSetting || hasAttributeColor || hasLabelColors;
+    const hasLabelColors = x.valueColors?.length > 0;
+    const hasTargetMasks =
+      x.maskTargetsColors && x.maskTargetsColors?.length > 0;
+
+    return (
+      hasFieldSetting || hasAttributeColor || hasLabelColors || hasTargetMasks
+    );
   });
 };
 
@@ -84,6 +93,32 @@ export const validateLabelTags = (
   }
 };
 
+const getValidMaskColors = (maskColors: unknown[]) => {
+  const r = maskColors
+    ?.filter((input) => {
+      return (
+        input &&
+        isObject(input) &&
+        typeof Number(input["intTarget"]) == "number" &&
+        inRange(Number(input["intTarget"]), 1, 255) &&
+        isString(input["color"]) &&
+        isValidColor(input?.color)
+      );
+    })
+    .map((item) => ({
+      intTarget: Number(item?.intTarget),
+      color: item?.color,
+    })) as MaskColorInput[];
+
+  return r.length > 0 ? r : null;
+};
+
+export const validateMaskColor = (
+  arr: any
+): ColorSchemeInput["defaultMaskTargetsColors"] => {
+  return Array.isArray(arr) ? getValidMaskColors(arr) : null;
+};
+
 export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   if (typeof path === "object") {
     if (path.path === "tags") {
@@ -97,5 +132,22 @@ export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
   return path;
 };
 
-export const getRandomColorFromPool = (pool: readonly string[]) =>
+export const getRandomColorFromPool = (pool: readonly string[]): string =>
   pool[Math.floor(Math.random() * pool.length)];
+
+export const validateIntMask = (value: number) => {
+  if (!value || !Number.isInteger(value) || !inRange(value, 1, 255)) {
+    return false;
+  }
+  return true;
+};
+
+export const isValidMaskInput = (input: MaskColorInput[]) => {
+  let result = true;
+  input.forEach((item: MaskColorInput) => {
+    if (!item || [null, undefined].includes(item.intTarget)) {
+      result = false;
+    }
+  });
+  return result;
+};

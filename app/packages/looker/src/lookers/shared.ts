@@ -41,6 +41,14 @@ export const LookerUtils = {
       reloadSample = true;
     } else if (_.isEqual(next.labelTagColors, current.labelTagColors)) {
       reloadSample = true;
+    } else if (
+      next.coloring &&
+      hasColorChanged(
+        current.coloring.defaultMaskTargetsColors,
+        next.coloring.defaultMaskTargetsColors
+      )
+    ) {
+      reloadSample = true;
     }
 
     return reloadSample;

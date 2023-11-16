@@ -131,6 +131,7 @@ type ColorScheme {
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
+  defaultMaskTargetsColors: [MaskColor!]
 }
 
 input ColorSchemeInput {
@@ -141,6 +142,7 @@ input ColorSchemeInput {
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
+  defaultMaskTargetsColors: [MaskColorInput!] = null
 }
 
 input Count {
@@ -160,6 +162,7 @@ type CustomizeColor {
   valueColors: [ValueColor!]
   colorByAttribute: String
   fieldColor: String
+  maskTargetsColors: [MaskColor!]
 }
 
 input CustomizeColorInput {
@@ -167,6 +170,7 @@ input CustomizeColorInput {
   valueColors: [ValueColorInput!] = null
   colorByAttribute: String = null
   fieldColor: String = null
+  maskTargetsColors: [MaskColorInput!] = null
 }
 
 type DataAggregation implements Aggregation {
@@ -416,6 +420,16 @@ union LightningResults =
   | FloatLightningResult
   | IntLightningResult
   | StringLightningResult
+
+type MaskColor {
+  color: String!
+  intTarget: Int!
+}
+
+input MaskColorInput {
+  color: String!
+  intTarget: Int!
+}
 
 enum MediaType {
   image

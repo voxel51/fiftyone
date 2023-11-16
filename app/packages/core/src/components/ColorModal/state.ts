@@ -13,7 +13,7 @@ export const activeColorPath = selector<string>({
     const entry = get(activeColorEntry);
 
     if (!entry || typeof entry === "string") {
-      throw new Error(`active color entry is ${entry}`);
+      return entry as string;
     }
 
     return entry.path;

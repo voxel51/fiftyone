@@ -4,23 +4,30 @@
 
 import { Overlay } from "./overlays/base";
 
-import { AppError, Schema, Stage } from "@fiftyone/utilities";
+import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
 
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
 export interface Coloring {
-  by: "field" | "value" | "instance";
+  by: COLOR_BY.FIELD | COLOR_BY.INSTANCE | COLOR_BY.VALUE;
   pool: readonly string[];
   scale: RGB[];
   seed: number;
   defaultMaskTargets?: MaskTargets;
+  defaultMaskTargetsColors: MaskColorInput[];
   maskTargets: {
     [field: string]: MaskTargets;
   };
   points: boolean;
   targets: string[];
 }
+
+export type MaskColorInput = {
+  intTarget: number;
+  color: string;
+};
+
 export interface LabelTagColor {
   fieldColor?: string;
   valueColors?: {
@@ -32,6 +39,7 @@ export interface LabelTagColor {
 export interface CustomizeColor extends LabelTagColor {
   path: string;
   colorByAttribute?: string;
+  maskTargetsColors?: MaskColorInput[];
 }
 
 export type OrthogrpahicProjectionMetadata = {

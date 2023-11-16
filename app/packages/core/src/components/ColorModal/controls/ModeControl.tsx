@@ -3,13 +3,15 @@ import * as fos from "@fiftyone/state";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import React from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
+import { activeColorEntry } from "../state";
+import { getDisplayName } from "../utils";
 
 export const ModeControlContainer = styled.div`
   display: flex;
   flex-direction: row;
-  justify-content: flex-end;
+  justify-content: space-between;
   margin-bottom: 0.5rem;
 `;
 const Text = styled.div`
@@ -48,6 +50,12 @@ const ModeControl: React.FC = () => {
   fos.useOutsideClick(ref, () => open && setOpen(false));
   const theme = useTheme();
 
+  const activeEntry = useRecoilValue(activeColorEntry);
+  if (!activeEntry) {
+    throw new Error("entry not defined in color modal");
+  }
+  const title = getDisplayName(activeEntry);
+
   const options = ["field", "value", "instance"].map((option) => ({
     value: option,
     onClick: (e: React.MouseEvent) => {
@@ -62,6 +70,7 @@ const ModeControl: React.FC = () => {
 
   return (
     <ModeControlContainer>
+      <Text>{title}</Text>
       <Controls ref={ref}>
         <Text>Color by </Text>
         <SelectButton

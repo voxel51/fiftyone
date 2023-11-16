@@ -21,6 +21,7 @@ export const coloring = selector<Coloring>({
   get: ({ get }) => {
     const colorScheme = get(atoms.colorScheme);
     const seed = get(atoms.colorSeed);
+
     return {
       seed,
       pool: colorScheme.colorPool,
@@ -28,6 +29,7 @@ export const coloring = selector<Coloring>({
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
+      defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors,
       maskTargets: get(selectors.targets).fields,
       targets: new Array(colorScheme.colorPool.length)
         .fill(0)
@@ -125,11 +127,12 @@ export const ensureColorScheme = (
     colorPool:
       colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
-    fields: (colorScheme.fields as ColorSchemeInput["fields"]) || [],
-    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) || {
+    fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
+    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
     },
+    defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
@@ -139,6 +142,6 @@ export const ensureColorScheme = (
     showSkeletons:
       typeof colorScheme.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
-        : appConfig?.showSkeletons,
+        : appConfig?.showSkeletons ?? true,
   };
 };

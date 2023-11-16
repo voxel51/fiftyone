@@ -168,11 +168,11 @@ class ColorScheme(EmbeddedDocument):
         import fiftyone as fo
         import fiftyone.zoo as foz
 
-        dataset = foz.load_zoo_dataset("quickstart")
+        dataset=foz.load_zoo_dataset("quickstart")
 
         # Store a custom color scheme for a dataset
         dataset.app_config.color_scheme = fo.ColorScheme(
-            color_by = "field",
+            color_by="field",
             color_pool=["#ff0000", "#00ff00", "#0000ff", "pink", "yellowgreen"],
             fields=[
                 {
@@ -180,6 +180,7 @@ class ColorScheme(EmbeddedDocument):
                     "fieldColor": "#ff00ff",
                     "colorByAttribute": "label",
                     "valueColors": [{"value": "dog", "color": "yellow"}],
+                    "maskTargetsColors": [{"intTarget": 2, "color": "#ff0000"}, {"intTarget": 12, "color": "#99ff00"}],
                 }
             ],
             label_tags={
@@ -188,10 +189,11 @@ class ColorScheme(EmbeddedDocument):
                     {"value": "correct", "color": "#ff00ff"},
                     {"value": "mistake", "color": "#00ff00"},
                 ]
-            }
-            multicolor_keypoints = False,
-            opacity = 0.5,
-            show_skeletons = True
+            },
+            multicolor_keypoints=False,
+            opacity=0.5,
+            show_skeletons=True,
+            default_mask_targets_colors=[{"intTarget": 1, "color": "#FEC0AA" }, {"intTarget": 2, "color": "#EC4E20"}],
         )
         dataset.save()
 
@@ -200,6 +202,10 @@ class ColorScheme(EmbeddedDocument):
             "value" or "instance"
         color_pool (None): an optional list of colors to use as a color pool
             for this dataset
+        multicolor_keypoints (None): whether to use multiple colors for
+            keypoints
+        opacity (None): transparency of the annotation, between 0 and 1
+        show_skeletons (None): whether to show skeletons of keypoints
         fields (None): an optional list of per-field custom colors. Each
             element should be a dict with the following keys:
 
@@ -212,15 +218,14 @@ class ColorScheme(EmbeddedDocument):
                 document
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
+            -   `maskTargetsColors` (optional): a list of dicts specifying index and color for 2D masks
+        default_mask_targets_colors (None): a list of dicts specifying index and color for 2D masks of the dataset
         label_tags (None): an optional dict specifying custom colors for label tags
             with the following keys:
             -    `fieldColor` (optional): a color to assign to all label tags
             -    `valueColors` (optional): a list of dicts specifying colors to
             specific label tags
-        multicolor_keypoints (None): whether to use multiple colors for
-            keypoints
-        opacity (None): transparency of the annotation, between 0 and 1
-        show_skeletons (None): whether to show skeletons of keypoints
+
     """
 
     # strict=False lets this class ignore unknown fields from other versions
@@ -233,6 +238,7 @@ class ColorScheme(EmbeddedDocument):
     multicolor_keypoints = BooleanField(null=True)
     opacity = FloatField(null=True)
     show_skeletons = BooleanField(null=True)
+    default_mask_targets_colors = ListField(DictField(), null=True)
 
 
 class KeypointSkeleton(EmbeddedDocument):
