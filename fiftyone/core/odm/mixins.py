@@ -143,17 +143,18 @@ class DatasetMixin(object):
                 raise ValueError(
                     f"Readonly field '{field_name}' cannot be edited"
                 )
-            if validate:
-                field.validate(value)
+            if value is not None:
+                if validate:
+                    field.validate(value)
 
-            if dynamic:
-                self.add_implied_field(
-                    field_name,
-                    value,
-                    expand_schema=create,
-                    validate=validate,
-                    dynamic=dynamic,
-                )
+                if dynamic:
+                    self.add_implied_field(
+                        field_name,
+                        value,
+                        expand_schema=create,
+                        validate=validate,
+                        dynamic=dynamic,
+                    )
 
         super().__setattr__(field_name, value)
 
