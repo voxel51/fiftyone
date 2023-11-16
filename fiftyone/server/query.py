@@ -263,9 +263,6 @@ class Dataset:
     frame_collection_name: gql.Private[t.Optional[str]]
     sample_collection_name: gql.Private[t.Optional[str]]
 
-    frame_collection_name: gql.Private[t.Optional[str]]
-    sample_collection_name: gql.Private[t.Optional[str]]
-
     @gql.field
     def stages(
         self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
