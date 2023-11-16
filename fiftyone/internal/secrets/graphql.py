@@ -9,11 +9,12 @@ from typing import List, Optional, Tuple, Union
 
 from fiftyone.internal.secrets.secret import EncryptedSecret
 from fiftyone.internal.secrets.util import normalize_secret_key
-from fiftyone.plugins.permissions import (
-    _API_URL,
-    make_request,
+from fiftyone.internal.util import (
+    get_api_url,
 )
+from fiftyone.internal.requests import make_request
 
+_API_URL = get_api_url()
 _QUERY_SECRET = """
 query ResolveSecret($key: String!) {
   secret(key: $key) {

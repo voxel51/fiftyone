@@ -7,7 +7,7 @@ FiftyOne internal utilities.
 """
 import os
 
-from fiftyone.internal.constants import ENCRYPTION_KEY_ENV_VAR
+from fiftyone.internal.constants import API_URL_ENV_VAR, ENCRYPTION_KEY_ENV_VAR
 
 
 def is_internal_service():
@@ -27,3 +27,8 @@ def has_encryption_key():
         True/False
     """
     return is_internal_service() and ENCRYPTION_KEY_ENV_VAR in os.environ
+
+
+def get_api_url():
+    # use `or` to default to localhost if envar is falsy
+    return os.getenv(API_URL_ENV_VAR) or "http://localhost:8000"
