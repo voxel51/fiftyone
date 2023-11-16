@@ -6,8 +6,8 @@ import * as schemaAtoms from "../schema";
 import * as selectors from "../selectors";
 import { noneCount } from "./counts";
 
-export const stringCountResults = selectorFamily({
-  key: "stringCountResults",
+export const stringResults = selectorFamily({
+  key: "stringResults",
   get:
     (params: { path: string; modal: boolean; extended: boolean }) =>
     ({ get }) => {
@@ -35,13 +35,23 @@ export const stringCountResults = selectorFamily({
       }
 
       if (
+        !params.modal &&
         get(isLightningPath(params.path)) &&
         get(lightning) &&
         !get(lightningUnlocked)
       ) {
-        return { results: [], count: null };
+        return { count: null, results: [] };
       }
 
+      return get(stringCountResults(params));
+    },
+});
+
+export const stringCountResults = selectorFamily({
+  key: "stringCountResults",
+  get:
+    (params: { path: string; modal: boolean; extended: boolean }) =>
+    ({ get }) => {
       const data = get(aggregation(params));
       if (data.__typename !== "StringAggregation") {
         throw new Error("unexpected");

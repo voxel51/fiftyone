@@ -1,7 +1,7 @@
 import {
   boolExcludeAtom,
   boolIsMatchingAtom,
-  booleanCountResults,
+  booleanResults,
   booleanSelectedValuesAtom,
 } from "@fiftyone/state";
 import React from "react";
@@ -24,7 +24,7 @@ const BooleanFieldFilter = ({
       selectedAtom={booleanSelectedValuesAtom({ path, modal })}
       isMatchingAtom={boolIsMatchingAtom({ path, modal })}
       excludeAtom={boolExcludeAtom({ path, modal })}
-      resultsAtom={booleanCountResults({
+      resultsAtom={booleanResults({
         path,
         modal,
         extended: false,

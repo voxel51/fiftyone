@@ -34,7 +34,7 @@ export default function ({
   const [visibilityKey, setVisibilityKey] = React.useState<OptionKey>(() => {
     return !excluded ? "visible" : "notVisible";
   });
-  const isFilterMode = useRecoilState(isSidebarFilterMode);
+  const isFilterMode = useRecoilValue(isSidebarFilterMode);
   const selected = options.find(
     (o) => o.key === (isFilterMode ? filterKey : visibilityKey)
   )?.value;

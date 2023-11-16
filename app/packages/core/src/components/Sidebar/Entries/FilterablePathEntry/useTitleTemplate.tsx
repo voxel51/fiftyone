@@ -1,6 +1,6 @@
 import { PillButton } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Bolt, VisibilityOff } from "@mui/icons-material";
+import { VisibilityOff } from "@mui/icons-material";
 import React, { Suspense } from "react";
 import {
   DefaultValue,
@@ -111,8 +111,7 @@ const useTitleTemplate = ({
           {!disabled && isFilterMode && (unlocked || modal) && (
             <PathEntryCounts key="count" modal={modal} path={expandedPath} />
           )}
-          {!disabled && lightning && !modal && <Bolt style={{ color }} />}
-          {!disabled && <Icon modal={modal} path={path} />}
+          <Icon modal={modal} path={path} />
         </NameAndCountContainer>
       </>
     );

@@ -90,7 +90,6 @@ const setFilter = (
     ...filter,
     [key]: value,
   };
-
   const isDefault = meetsDefault(check);
 
   if (filter.range[0] === null && filter.range[1] === null) {
@@ -101,9 +100,11 @@ const setFilter = (
   const bounds = get(boundsAtom({ path }));
   const rangeIsNull = !filter.range || filter.range.every((r) => r === null);
 
-  if (!isDefault && rangeIsNull) {
-    set(filterAtoms.filter({ modal, path }), { ...filter, range: bounds });
-  } else if (isDefault) {
+  if (rangeIsNull) {
+    delete filter.range;
+  }
+
+  if (isDefault) {
     set(filterAtoms.filter({ modal, path }), null);
   } else {
     set(filterAtoms.filter({ modal, path }), filter);

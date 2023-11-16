@@ -1,9 +1,15 @@
 import * as fos from "@fiftyone/state";
-import { MutableRefObject } from "react";
-import { RecoilState, useRecoilState, useRecoilValue } from "recoil";
+import React, { MutableRefObject } from "react";
+import {
+  RecoilState,
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import Checkbox from "../../Common/Checkbox";
 import FilterOption from "../FilterOption/FilterOption";
-import { isInKeypointsField } from "../state";
+import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
@@ -18,12 +24,64 @@ interface CheckboxesProps {
   selectedMap: MutableRefObject<Map<string | null, number | null>>;
 }
 
+const isSkeleton = selectorFamily({
+  key: "isSkeleton",
+  get:
+    (path: string) =>
+    ({ get }) =>
+      get(isInKeypointsField(path)) &&
+      path.split(".").slice(-1)[0] === "keypoints",
+});
+
+const checkboxCounts = selectorFamily({
+  key: "checkboxCounts",
+  get:
+    ({ modal, path }: { modal: boolean; path: string }) =>
+    ({ get }) => {
+      const map = new Map<string | null, number | null>();
+      if (get(isSkeleton(path))) {
+        return map;
+      }
+
+      if (
+        !modal &&
+        get(fos.lightning) &&
+        get(fos.isLightningPath(path)) &&
+        !get(fos.lightningUnlocked)
+      ) {
+        return map;
+      }
+
+      const data = get(fos.counts({ modal, path, extended: false }));
+      for (const i in data) {
+        map.set(i, data[i]);
+      }
+      return map;
+    },
+});
+
+const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
+  const loadable = useRecoilValueLoadable(checkboxCounts({ modal, path }));
+  const data =
+    loadable.state === "hasValue"
+      ? loadable.contents
+      : new Map<string | null, number | null>();
+
+  results?.forEach(({ value, count }) => {
+    if (!data.has(value)) {
+      data.set(value, count);
+    }
+  });
+
+  return data;
+};
+
 const useValues = ({
   modal,
   path,
+  results,
   selected,
   selectedMap,
-  results,
 }: {
   modal: boolean;
   path: string;
@@ -36,33 +94,35 @@ const useValues = ({
   const lightning = useRecoilValue(fos.lightning);
   const lightningPath =
     useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
-  const skeleton =
-    useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
+  const skeleton = useRecoilValue(isSkeleton(path));
+  const counts = useCounts(modal, path, results);
+  const loading = Boolean(lightningPath && !counts.size);
+  const hasCount = (!lightning || unlocked) && !loading;
 
-  const counts = results
-    ? new Map(results.map(({ count, value }) => [value, count]))
-    : new Map();
-  const loading = Boolean(lightningPath && !results);
   let allValues = selected.map((value) => ({
     value,
-    count:
-      !unlocked || loading
-        ? null
-        : counts.get(value) || selectedMap.get(value) || 0,
+    count: hasCount ? counts.get(value) || selectedMap.get(value) || 0 : null,
     loading: unlocked && loading,
   }));
-
   const objectId = useRecoilValue(fos.isObjectIdField(path));
   const selectedSet = new Set(selected);
-  if (
-    (!lightningPath && results?.length <= CHECKBOX_LIMIT && !objectId) ||
-    skeleton
-  ) {
+  const boolean = useRecoilValue(isBooleanField(path));
+
+  const hasCheckboxResults =
+    (!lightningPath && counts.size <= CHECKBOX_LIMIT && !objectId) ||
+    skeleton ||
+    boolean;
+
+  if (hasCheckboxResults) {
     allValues = [
       ...allValues,
-      ...results
-        .filter(({ value }) => !selectedSet.has(value))
-        .map((d) => ({ ...d, loading: false })),
+      ...Array.from(counts.keys())
+        .filter((key) => !selectedSet.has(key))
+        .map((key) => ({
+          value: key,
+          count: counts.get(key) || null,
+          loading: false,
+        })),
     ];
   }
 

@@ -108,6 +108,10 @@ function Nonfinites({
     );
   }
 
+  if (nonfinites.length == 1 && nonfinites[0].key === "none") {
+    return null;
+  }
+
   return (
     <>
       {nonfinites.map(({ key, ...props }) => (

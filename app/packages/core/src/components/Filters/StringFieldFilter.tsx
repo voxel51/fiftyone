@@ -26,7 +26,7 @@ const StringFieldFilter = ({
       isMatchingAtom={isMatchingAtom({ modal, path })}
       modal={modal}
       path={path}
-      resultsAtom={fos.stringCountResults({
+      resultsAtom={fos.stringResults({
         modal,
         path,
         extended: false,

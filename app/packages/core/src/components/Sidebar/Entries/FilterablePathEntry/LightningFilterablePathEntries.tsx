@@ -1,14 +1,12 @@
-import { LoadingDots, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import {
   granularSidebarExpanded,
   lightningPaths,
-  lightningUnlocked,
+  useLightingUnlocked,
 } from "@fiftyone/state";
 import React from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
-import Arrow from "./Arrow";
+import { useRecoilValue } from "recoil";
 import FilterItem from "./FilterItem";
-import Lock from "./Lock";
 import Tune from "./Tune";
 import useFilterData from "./useFilterData";
 
@@ -26,7 +24,7 @@ const LightningFilterablePathEntries = ({
   const { data, removed } = useFilterData(modal, path, (path) =>
     paths.has(path)
   );
-  const unlocked = useRecoilValueLoadable(lightningUnlocked);
+  const unlocked = useLightingUnlocked();
   const granularOpen = useRecoilValue(granularSidebarExpanded(path));
   const theme = useTheme();
 
@@ -39,7 +37,7 @@ const LightningFilterablePathEntries = ({
       {granular > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: theme.text.secondary, marginLeft: 3 }}>
-            fine tune
+            see more
           </span>
           <div
             style={{
@@ -48,25 +46,22 @@ const LightningFilterablePathEntries = ({
               alignItems: "center",
             }}
           >
-            <Tune />
-            {unlocked.state === "loading" && (
-              <LoadingDots style={{ width: 21, textAlign: "center" }} />
-            )}
-            {unlocked.state === "hasValue" && unlocked.contents && (
-              <Arrow
-                expanded={granularSidebarExpanded(path)}
-                id={`sidebar-granular-${path}`}
-                color={theme.text.secondary}
-              />
-            )}
-            {unlocked.state === "hasValue" && !unlocked.contents && <Lock />}
+            <Tune
+              expanded={granularSidebarExpanded(path)}
+              disabled={!unlocked}
+              color={theme.text.secondary}
+            />
           </div>
         </div>
       )}
       {unlocked &&
         granularOpen &&
-        removed.map((props) => (
-          <FilterItem key={props.path} {...events} {...props} />
+        (removed.length ? (
+          removed.map((props) => (
+            <FilterItem key={props.path} {...events} {...props} />
+          ))
+        ) : (
+          <>No results</>
         ))}
     </>
   );

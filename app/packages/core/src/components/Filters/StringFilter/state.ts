@@ -43,7 +43,7 @@ export const stringSearchResults = selectorFamily<
               search,
               exclude: [...selected.filter((s) => s !== null)] as string[],
             })
-          ).map(([value]) => ({ value, count: null })),
+          ).map((value) => ({ value, count: null })),
         };
       }
 

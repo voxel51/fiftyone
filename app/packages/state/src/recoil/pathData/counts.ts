@@ -118,14 +118,14 @@ export const counts = selectorFamily({
 
       const data = get(aggregation(params));
 
-      if (data.__typename !== "StringAggregation") {
-        throw new Error("unexpected");
-      }
-
-      if (data.values) {
+      if (data.__typename === "StringAggregation") {
         return Object.fromEntries(
           data.values.map(({ count, value }) => [value, count])
         );
+      }
+
+      if (data.__typename !== "BooleanAggregation") {
+        throw new Error("unexpected");
       }
 
       return Object.fromEntries(

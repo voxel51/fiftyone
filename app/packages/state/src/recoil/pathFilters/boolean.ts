@@ -250,12 +250,12 @@ export const booleanSelectedValuesAtom = selectorFamily<
         set(noneA, newNone);
       }
 
-      const newFalse = values.includes("True");
+      const newFalse = values.includes("False");
       if (newFalse !== currentFalse) {
         set(falseA, newFalse);
       }
 
-      const newTrue = values.includes("False");
+      const newTrue = values.includes("True");
       if (newTrue !== currentTrue) {
         set(trueA, newTrue);
       }

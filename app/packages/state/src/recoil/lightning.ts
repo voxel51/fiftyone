@@ -39,24 +39,6 @@ export const lightningQuery = graphQLSelectorFamily<
     },
 });
 
-export const lightningStringResults = selectorFamily<
-  [string | null, null][],
-  { path: string; search?: string; exclude?: string[] }
->({
-  key: "lightningStringResults",
-  get:
-    (params) =>
-    ({ get }) => {
-      const [data] = get(lightningQuery([{ ...params, first: 25 }]));
-
-      if (data.__typename !== "StringLightningResult") {
-        throw new Error("bad");
-      }
-
-      return data.values.map((v) => [v, null]);
-    },
-});
-
 const indexes = foq.graphQLSyncFragmentAtom<foq.indexesFragment$key>(
   {
     keys: ["dataset"],

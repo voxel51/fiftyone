@@ -5,7 +5,7 @@ import HideImageIcon from "@mui/icons-material/HideImage";
 import ImageIcon from "@mui/icons-material/Image";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { IconButton } from "@mui/material";
+import IconButton from "@mui/material/IconButton";
 import React, { ForwardedRef } from "react";
 import styled from "styled-components";
 

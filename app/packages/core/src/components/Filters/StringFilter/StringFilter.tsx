@@ -1,5 +1,6 @@
 import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
+import React from "react";
 import { RecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
 import FieldLabelAndInfo from "../../FieldLabelAndInfo";
@@ -119,7 +120,7 @@ const StringFilter = ({
         )}
         <Checkboxes
           path={path}
-          results={results?.results}
+          results={results?.results || null}
           selectedAtom={selectedAtom}
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
@@ -130,11 +131,8 @@ const StringFilter = ({
           (results?.count === 0 ? (
             <>No results</>
           ) : (
-            <>
-              {typeof results?.count !== "number" && (
-                <LoadingDots text={"Loading"} />
-              )}
-            </>
+            typeof results?.count !== "number" &&
+            !results?.results?.length && <LoadingDots text={"Loading"} />
           ))}
       </StringFilterContainer>
     </NamedStringFilterContainer>

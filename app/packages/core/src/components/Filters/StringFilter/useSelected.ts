@@ -5,6 +5,7 @@ import {
   useRecoilValue,
   useRecoilValueLoadable,
 } from "recoil";
+import { isBooleanField } from "../state";
 import { CHECKBOX_LIMIT } from "../utils";
 import { Result } from "./Result";
 import useUseSearch from "./useUseSearch";
@@ -19,7 +20,10 @@ const showSearchSelector = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      return get(fos.isObjectIdField(path)) || get(fos.isLightningPath(path));
+      return (
+        (get(fos.isObjectIdField(path)) || get(fos.isLightningPath(path))) &&
+        !get(isBooleanField(path))
+      );
     },
 });
 

@@ -189,7 +189,6 @@ def _resolve_lightning_path_queries(
         ]
 
         def _resolve_int(results):
-            print(results)
             min, max = results
             return INT_CLS[field.__class__](
                 path=path.path,
