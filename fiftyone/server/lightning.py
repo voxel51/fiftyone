@@ -26,7 +26,9 @@ from fiftyone.server.utils import meets_type
 class LightningPathInput:
     path: str
 
-    exclude: t.Optional[t.List[str]] = None
+    exclude: t.Optional[t.List[str]] = gql.field(
+        description="exclude these values from results", default=None
+    )
     first: t.Optional[int] = None
     search: t.Optional[str] = None
 
