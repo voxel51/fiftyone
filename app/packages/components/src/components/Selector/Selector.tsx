@@ -65,7 +65,10 @@ function Selector<T>(props: SelectorProps<T>) {
           ? valuesRef.current[active]
           : valuesRef.current.find((v) => toKey(v) === search);
 
-      local.current = await onSelect(value ? toKey(value) : search, value);
+      const result = await onSelect(value ? toKey(value) : search, value);
+      if (result !== undefined) {
+        local.current = result;
+      }
       setEditing(false);
     };
   }, [active, onSelect, toKey, valuesRef]);

@@ -3,7 +3,7 @@ import { datasetName, useSetDataset } from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
 
-const DatasetLink: React.FC<{ value: string; className: string }> = ({
+const DatasetLink: React.FC<{ value: string; className?: string }> = ({
   className,
   value,
 }) => {
