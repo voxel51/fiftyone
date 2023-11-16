@@ -89,6 +89,11 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private thumbnailSrc: string;
+  /**
+   * This frame number is the authoritaive frame number that is drawn on the canvas.
+   * `frameNumber` or `currentFrameNumber`, on the other hand, are suggestive
+   */
+  private canvasFrameNumber: number;
   private isBuffering: boolean;
   private isPlaying: boolean;
   private isSeeking: boolean;
@@ -171,11 +176,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   private getCurrentFrameSample(currentFrameNumber: number) {
-    const samples = this.framesController.store.samples;
-    const indices = this.framesController.store.frameIndex;
-
-    const sampleIndex = indices.get(currentFrameNumber);
-    const sample = samples.get(sampleIndex);
+    const sample =
+      this.framesController.store.getSampleAtFrame(currentFrameNumber);
 
     if (!sample) {
       return null;
@@ -244,8 +246,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     const currentFrameSample = this.getCurrentFrameSample(frameNumberToDraw);
-    // TODO: CACHE EVERYTHING INSIDE HERE
-    // TODO: create a cache of fetched images (with fetch priority) before starting drawFrame requestAnimation
 
     if (!currentFrameSample) {
       if (frameNumberToDraw < this.framesController.totalFrameCount) {
@@ -266,6 +266,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     const src = getSampleSrc(urls[this.mediaField]);
     const image = new Image();
 
+    this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
       // thisSampleOverlayPrepared.then((overlay) => {
       this.ctx.drawImage(image, 0, 0);
@@ -274,7 +275,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         if (frameNumberToDraw <= this.framesController.totalFrameCount) {
           this.update(({ playing }) => {
             if (playing) {
-              return { currentFrameNumber: frameNumberToDraw + 1 };
+              return {
+                currentFrameNumber: Math.min(
+                  frameNumberToDraw + 1,
+                  this.framesController.totalFrameCount
+                ),
+              };
             }
 
             return {};
@@ -282,7 +288,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         }
 
         setTimeout(() => {
-          requestAnimationFrame(() => this.drawFrame(frameNumberToDraw + 1));
+          requestAnimationFrame(() =>
+            this.drawFrame(
+              Math.min(
+                frameNumberToDraw + 1,
+                this.framesController.totalFrameCount
+              )
+            )
+          );
         }, this.setTimeoutDelay);
       }
       // });
@@ -459,8 +472,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (!playing && seeking) {
       this.waitingToPause = false;
       // todo: need to subtract 1 here to get the correct frame, figure out why
-      this.drawFrame(currentFrameNumber - 1, false);
+      this.drawFrame(currentFrameNumber, false);
       this.isAnimationActive = false;
+    }
+
+    if (!playing && !seeking) {
+      // check if current frame number is what has been drawn
+      // if they're different, then draw the frame
+      console.log("Canvas frame number is ", this.canvasFrameNumber);
+      if (this.frameNumber !== this.canvasFrameNumber) {
+        this.waitingToPause = false;
+        this.drawFrame(this.frameNumber, false);
+        this.isAnimationActive = false;
+      }
     }
 
     return null;

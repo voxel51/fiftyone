@@ -444,10 +444,9 @@ export const activeModalSidebarSample = selector({
 
       const currentModalLooker = get(modalLooker) as ImaVidLooker;
 
-      // frameIndex is zero-index based
       const sampleId =
         currentModalLooker?.frameStoreController?.store.frameIndex.get(
-          currentFrameNumber - 1
+          currentFrameNumber
         );
       const sample =
         currentModalLooker?.frameStoreController?.store.samples.get(sampleId);

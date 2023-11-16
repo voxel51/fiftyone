@@ -215,8 +215,11 @@ export class ImaVidFramesController {
               const nodeSampleId = node.sample["_id"] as string;
 
               this.store.samples.set(node.sample["_id"], node);
-              this.store.frameIndex.set(Number(cursor), nodeSampleId);
-              this.store.reverseFrameIndex.set(nodeSampleId, Number(cursor));
+              this.store.frameIndex.set(Number(cursor) + 1, nodeSampleId);
+              this.store.reverseFrameIndex.set(
+                nodeSampleId,
+                Number(cursor) + 1
+              );
             }
 
             this.storeBufferManager.addNewRange([
