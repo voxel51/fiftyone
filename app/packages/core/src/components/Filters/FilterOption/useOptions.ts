@@ -47,8 +47,7 @@ export default function (modal: boolean, path: string) {
       options.push({
         icon: "VisibilityIcon",
         key: "visible",
-        value: `Show ${name} 
-        `,
+        value: `Show ${name}`,
         tooltip: "",
       });
       options.push({

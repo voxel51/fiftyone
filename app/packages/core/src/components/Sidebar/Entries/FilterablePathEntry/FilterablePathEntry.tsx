@@ -79,6 +79,7 @@ const FilterableEntry = ({
         <>
           {!disabled && !(modal && path === LABEL_TAGS) && (
             <Checkbox
+              key="checkbox"
               checked={active}
               title={`Show ${path}`}
               style={{
@@ -86,13 +87,13 @@ const FilterableEntry = ({
                 marginLeft: 2,
                 padding: 0,
               }}
-              key="checkbox"
               data-cy={`checkbox-${path}`}
               onClick={onClick}
             />
           )}
           {
             <FieldLabelAndInfo
+              key={"info"}
               field={field}
               path={path}
               color={color}
