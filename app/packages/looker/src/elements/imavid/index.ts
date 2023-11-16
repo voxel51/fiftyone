@@ -343,12 +343,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     }
 
     if (state.config.thumbnail && state.hovering) {
-      // for grid
-      // only buffer if hovering and range not available
       shouldEnqueueFetch = true;
-      // todo: might want to buffer even when playing is false
     } else if (!state.config.thumbnail) {
-      // for modal
       shouldEnqueueFetch = true;
     }
 
@@ -441,7 +437,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     if (!playing && seeking) {
       this.waitingToPause = false;
-      // todo: need to subtract 1 here to get the correct frame, figure out why
       this.drawFrame(currentFrameNumber, false);
       this.isAnimationActive = false;
     }

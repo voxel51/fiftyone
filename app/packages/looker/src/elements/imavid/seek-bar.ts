@@ -63,7 +63,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
       `${Math.min(bufferValue, end)}%`
     );
 
-    // todo: add indicator for fetch as well
+    // todo: add buffer indicator for fetch as well
 
     const value = ((currentFrameNumber - 1) / (totalFrames - 1)) * 100;
     this.element.style.display = "block";

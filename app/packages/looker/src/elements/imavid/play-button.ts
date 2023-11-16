@@ -20,7 +20,7 @@ export const playPause: Control<ImaVidState> = {
 
         dispatchEvent("options", { showJSON: false });
 
-        // todo: setting frame number to 1 doesn't restart playback because of drawFrame
+        // todo: figure out why setting frame number to 1 doesn't restart playback because of drawFrame
         return {
           playing: !playing,
           frameNumber:
