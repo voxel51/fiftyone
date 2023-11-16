@@ -1,5 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
+import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
@@ -14,6 +14,7 @@ import React, {
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useInitializeImaVidSubscriptions } from "./hooks";
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -95,13 +96,7 @@ const Looker = ({
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
   const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
   const setModalLooker = useSetRecoilState(fos.modalLooker);
-
-  // note: resetRecoilState is not triggering `onSet` in effect,
-  // see https://github.com/facebookexperimental/Recoil/issues/2183
-  // replace with `useResetRecoileState` when fixed
-  const setCurrentFrameNumberImaVid = useSetRecoilState(
-    fos.currentFrameNumberImaVid
-  );
+  const { subscribeToImaVidStateChanges } = useInitializeImaVidSubscriptions();
 
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
@@ -113,15 +108,11 @@ const Looker = ({
   ) as AbstractLooker<BaseState>;
 
   useEffect(() => {
-    if (looker) {
-      setModalLooker(looker);
-      setTimeout(() => {
-        // this setter is to trigger onSet effect that kicks-off the subscription to frame number
-        // the supplied random value is placeholder so that the onSet effect is triggered in the atom
-        setCurrentFrameNumberImaVid(Math.random());
-      }, 0);
+    setModalLooker(looker);
+    if (looker instanceof ImaVidLooker) {
+      subscribeToImaVidStateChanges();
     }
-  }, [looker]);
+  }, [looker, subscribeToImaVidStateChanges]);
 
   useEffect(() => {
     if (looker) {

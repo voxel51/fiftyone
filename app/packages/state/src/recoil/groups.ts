@@ -436,7 +436,7 @@ export const activeModalSidebarSample = selector({
   key: "activeModalSidebarSample",
   get: ({ get }) => {
     if (get(shouldRenderImaVidLooker)) {
-      const currentFrameNumber = get(currentFrameNumberImaVid);
+      const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
 
       if (!currentFrameNumber) {
         return get(activeModalSample);
@@ -458,10 +458,10 @@ export const activeModalSidebarSample = selector({
   },
 });
 
-export const currentFrameNumberImaVid = atom<number>({
-  key: "currentFrameNumberImaVid",
+export const imaVidLookerState = atomFamily<any, string>({
+  key: "imaVidLookerState",
   default: null,
-  effects: [
+  effects: (key) => [
     ({ setSelf, getPromise, onSet }) => {
       let unsubscribe;
 
@@ -471,19 +471,16 @@ export const currentFrameNumberImaVid = atom<number>({
         // replace with `useResetRecoileState` when fixed
 
         // if (!isReset) {
-        //   throw new Error("cannot set currentFrameNumberImaVid directly");
+        //   throw new Error("cannot set ima-vid state directly");
         // }
         unsubscribe && unsubscribe();
 
         getPromise(modalLooker)
           .then((looker: ImaVidLooker) => {
             if (looker) {
-              unsubscribe = looker.subscribeToState(
-                "currentFrameNumber",
-                (frameNumber) => {
-                  setSelf(frameNumber);
-                }
-              );
+              unsubscribe = looker.subscribeToState(key, (stateValue) => {
+                setSelf(stateValue);
+              });
             }
           })
           .catch((e) => {

@@ -93,13 +93,6 @@ export class ImaVidFramesController {
       }
     }
 
-    console.log("fetching ranges", fetchingRanges); // remove
-    console.log("unfetch ranges", unfetchedRanges); // remove
-
-    // if (unfetchedRanges?.at(0)[0] === 119) {
-    //   // debugger;
-    // }
-
     // end recursion condition
     if (totalUnfetchedRanges === 0 && totalFetchingRanges === 0) {
       this.pauseFetch();

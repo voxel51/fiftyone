@@ -1,5 +1,4 @@
-import { AbstractLooker, type Sample } from "@fiftyone/looker";
-import { ImaVidStore } from "@fiftyone/looker/src/lookers/imavid/store";
+import { AbstractLooker, ImaVidLooker, type Sample } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
@@ -11,6 +10,7 @@ import {
   groupId,
   groupSlice,
   hasGroupSlices,
+  imaVidLookerState,
   modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
@@ -32,20 +32,30 @@ export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
     if (get(shouldRenderImaVidLooker)) {
-      const currentFrameNumber = window["_fo_current_frame_number"];
+      const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+      const isPlaying = get(imaVidLookerState("playing"));
+      const isSeeking = get(imaVidLookerState("seeking"));
 
-      console.log("currentFrame number is ", currentFrameNumber);
-      if (!currentFrameNumber) {
-        return get(modalSampleId);
-      }
-
-      const sampleId = ImaVidStore.get(
-        "6421c8b0f4756d1549095aa3"
-      ).frameIndex.get(currentFrameNumber);
-      const sample = ImaVidStore.get("6421c8b0f4756d1549095aa3").samples.get(
-        sampleId
+      const thisLooker = get(modalLooker) as ImaVidLooker;
+      console.log(
+        "isplaying",
+        isPlaying,
+        "thisFramenumber",
+        thisFrameNumber,
+        "isSeeking",
+        isSeeking
       );
-      return sample.sample._id;
+
+      if (!isPlaying && !isSeeking && thisFrameNumber && thisLooker) {
+        const sample = thisLooker.thisFrameSample;
+        const id = sample?.id || sample?.sample?._id;
+        if (id) {
+          return id;
+        }
+      } else {
+        // suspend
+        return new Promise(() => {});
+      }
     }
 
     const override = get(pinned3DSampleSlice);
