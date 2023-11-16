@@ -151,3 +151,17 @@ class TestGetSecretSync:
         )
 
         assert "mocked_sync_secret_value" == result
+
+    def test_get_secret_sync_not_in_pd(self, mocker):
+        mocker.patch.dict(
+            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
+        )
+
+        resolver = fop.PluginSecretsResolver()
+        resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
+
+        result = resolver.get_secret_sync(
+            key="MY_SECRET_KEY", operator_uri="operator"
+        )
+
+        assert result is None
