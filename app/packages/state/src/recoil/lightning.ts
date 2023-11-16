@@ -9,7 +9,7 @@ import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
-import { datasetFrameCount, datasetSampleCount } from "./dataset";
+import { datasetSampleCount } from "./dataset";
 import { isLabelPath } from "./labels";
 import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
@@ -73,20 +73,20 @@ const wildcardProjection = selectorFamily({
 const indexesByPath = selector({
   key: "indexesByPath",
   get: ({ get }) => {
-    const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
-    const schema = get(
-      schemaAtoms.fieldPaths({
-        ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
-        space: State.SPACE.SAMPLE,
-      })
-    ).map((p) => get(schemaAtoms.dbPath(p)));
-    const frameSchema = get(
-      schemaAtoms.fieldPaths({
-        ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
-        space: State.SPACE.FRAME,
-      })
-    ).map((p) => get(schemaAtoms.dbPath(p)).slice("frames.".length));
+    const gatherPaths = (space: State.SPACE) =>
+      get(
+        schemaAtoms.fieldPaths({
+          ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
+          space,
+        })
+      ).map((p) => get(schemaAtoms.dbPath(p)));
 
+    const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
+
+    const schema = gatherPaths(State.SPACE.SAMPLE);
+    const frameSchema = gatherPaths(State.SPACE.FRAME).map((p) =>
+      p.slice("frames.".length)
+    );
     const samplesProjection = get(wildcardProjection(false));
     const framesProjection = get(wildcardProjection(true));
 
@@ -200,10 +200,7 @@ export const lightning = selector({
       return false;
     }
 
-    return (
-      get(datasetSampleCount) >= threshold ||
-      get(datasetFrameCount) >= threshold
-    );
+    return get(datasetSampleCount) >= threshold;
   },
 });
 

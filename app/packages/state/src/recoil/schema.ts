@@ -25,6 +25,7 @@ import {
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
@@ -86,7 +87,7 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   get:
     ({ space }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
+      const dataset = get(datasetAtom);
 
       if (!dataset) {
         return {};
