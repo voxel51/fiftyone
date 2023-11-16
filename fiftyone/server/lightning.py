@@ -148,10 +148,10 @@ def _resolve_lightning_path_queries(
     t.Union[DistinctQuery, t.List[t.Dict]],
     t.Callable,
 ]:
-    field = dataset.get_field(path.path)
     field_path = path.path
+    field = dataset.get_field(field_path)
     collection = dataset._sample_collection_name
-    is_frame_field = bool(dataset._is_frame_field(path.path))
+    is_frame_field = bool(dataset._is_frame_field(field_path))
     if is_frame_field:
         field_path = field_path[len(dataset._FRAMES_PREFIX) :]
         collection = dataset._frame_collection_name
