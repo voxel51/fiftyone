@@ -203,12 +203,10 @@ type Dataset {
   appConfig: DatasetAppConfig
   info: JSON
   estimatedFrameCount: Int
-  estimatedSampleCount: Int
+  estimatedSampleCount: Int!
   frameIndexes: [Index!]
   sampleIndexes: [Index!]
   stages(slug: String = null, view: BSONArray = null): BSONArray
-  estimatedSampleCount: Int!
-  estimatedFrameCount: Int
 }
 
 type DatasetAppConfig {
@@ -398,6 +396,10 @@ input LightningInput {
 
 input LightningPathInput {
   path: String!
+
+  """
+  exclude these values from results
+  """
   exclude: [String!] = null
   first: Int = null
   search: String = null
