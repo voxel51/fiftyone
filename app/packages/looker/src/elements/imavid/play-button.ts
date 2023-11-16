@@ -18,12 +18,6 @@ export const playPause: Control<ImaVidState> = {
           return {};
         }
 
-        console.log(
-          "end is ",
-          frameStoreController.totalFrameCount,
-          "current frame is ",
-          currentFrameNumber
-        );
         dispatchEvent("options", { showJSON: false });
 
         // todo: setting frame number to 1 doesn't restart playback because of drawFrame
@@ -119,8 +113,6 @@ export class PlayButtonElement extends BaseElement<
   }
 
   renderSelf({ playing, buffering, loaded }: Readonly<ImaVidState>) {
-    console.log("playing", playing, "buffering", buffering, "loaded", loaded);
-
     if (
       playing !== this.isPlaying ||
       this.isBuffering !== buffering ||

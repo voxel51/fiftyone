@@ -78,44 +78,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     }
   }
 
-  // loadOverlays(posterSample: Sample) {
-  //   if (!this.thisFrameSample) {
-  //     this.sampleOverlays = loadOverlays(posterSample);
-  //     return;
-  //   }
-
-  //   this.sampleOverlays =
-  //     loadOverlays(this.thisFrameSample) ?? loadOverlays(posterSample);
-  // }
-
-  getCurrentFrameLabels(): LabelData[] {
-    const labels: LabelData[] = [];
-    // if (frame) {
-    //   processOverlays(this.state, frame.overlays)[0].forEach((overlay) => {
-    //     if (overlay instanceof ClassificationsOverlay) {
-    //       overlay.getFilteredAndFlat(this.state).forEach(([field, label]) => {
-    //         labels.push({
-    //           field: field,
-    //           labelId: label.id,
-    //           frameNumber: this.frameNumber,
-    //           sampleId: this.sample.id,
-    //         });
-    //       });
-    //     } else {
-    //       const { id: labelId, field } = overlay.getSelectData(this.state);
-    //       labels.push({
-    //         labelId,
-    //         field,
-    //         sampleId: this.sample.id,
-    //         frameNumber: this.frameNumber,
-    //       });
-    //     }
-    //   });
-    // }
-
-    return labels;
-  }
-
   getElements(config) {
     const elements = getImaVidElements(
       config,

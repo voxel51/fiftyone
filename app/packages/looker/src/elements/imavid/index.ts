@@ -210,7 +210,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   }
 
   async resetCanvas() {
-    console.log("resetting canvas");
     this.ctx?.drawImage(this.element, 0, 0);
   }
 
@@ -235,12 +234,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     // this is to avoid drawing frames that are too far apart
     // this can happen when user is scrubbing through the video
     if (Math.abs(frameNumberToDraw - this.frameNumber) > 1) {
-      console.log(
-        "skipping frame",
-        frameNumberToDraw,
-        "current",
-        this.frameNumber
-      );
       skipAndTryAgain();
       return;
     }
@@ -249,11 +242,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     if (!currentFrameSample) {
       if (frameNumberToDraw < this.framesController.totalFrameCount) {
-        console.log(
-          "waiting for frame ",
-          frameNumberToDraw,
-          " to be available to draw"
-        );
         skipAndTryAgain();
         return;
       } else {
@@ -392,17 +380,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       buffering,
       destroyed,
     } = state;
-    console.log(
-      "render self",
-      currentFrameNumber,
-      "playing",
-      playing,
-      "buffering",
-      buffering,
-      "seeking",
-      seeking
-    );
-
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
     if (this.thumbnailSrc !== thumbnailSrc) {
       this.thumbnailSrc = thumbnailSrc;
@@ -435,12 +412,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.waitingToPause = true;
       this.isAnimationActive = false;
     }
-    console.log(
-      "isAnimationActive",
-      this.isAnimationActive,
-      "waitingToPause",
-      this.waitingToPause
-    );
 
     if (thumbnail) {
       if (!hovering) {
@@ -452,7 +423,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           if (currentFrameNumber !== 1) {
             this.update({ currentFrameNumber: 1 });
           }
-          console.log("frame number is ", currentFrameNumber);
         }
       } else if (hovering && playing) {
         this.play();
@@ -479,7 +449,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (!playing && !seeking) {
       // check if current frame number is what has been drawn
       // if they're different, then draw the frame
-      console.log("Canvas frame number is ", this.canvasFrameNumber);
       if (this.frameNumber !== this.canvasFrameNumber) {
         this.waitingToPause = false;
         this.drawFrame(this.frameNumber, false);

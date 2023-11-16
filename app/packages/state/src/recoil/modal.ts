@@ -37,14 +37,6 @@ export const sidebarSampleId = selector({
       const isSeeking = get(imaVidLookerState("seeking"));
 
       const thisLooker = get(modalLooker) as ImaVidLooker;
-      console.log(
-        "isplaying",
-        isPlaying,
-        "thisFramenumber",
-        thisFrameNumber,
-        "isSeeking",
-        isSeeking
-      );
 
       if (!isPlaying && !isSeeking && thisFrameNumber && thisLooker) {
         const sample = thisLooker.thisFrameSample;

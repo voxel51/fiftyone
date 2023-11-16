@@ -171,8 +171,6 @@ export abstract class AbstractLooker<
 
     this.subscriptions[field].push(callback);
 
-    console.log("Subscribed to changes in ", field);
-
     // return unsubscribe function
     return () => {
       const newCallbacks = this.subscriptions[field].filter(
@@ -248,8 +246,6 @@ export abstract class AbstractLooker<
       this.updater(this.batchMergedUpdates);
       this.batchMergedUpdates = {};
     }
-
-    console.log("flushed", this.batchMergedUpdates);
   }
 
   private makeUpdate(): StateUpdate<State> {
@@ -266,14 +262,11 @@ export abstract class AbstractLooker<
           return;
         }
 
-        console.log("new update: ", updates);
-
         if (this.isBatching) {
           this.batchMergedUpdates = mergeUpdates(
             this.batchMergedUpdates,
             updates
           );
-          console.log("batched, new merged is", this.batchMergedUpdates);
           return;
         }
 
