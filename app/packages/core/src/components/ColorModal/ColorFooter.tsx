@@ -105,8 +105,8 @@ const ColorFooter: React.FC = () => {
                 labelTags: {},
                 colorPool: configDefault.colorPool,
                 colorBy: configDefault.colorBy ?? "field",
-                multicolorKeypoints: false,
-                showSkeletons: true,
+                multicolorKeypoints: configDefault.multicolorKeypoints ?? false,
+                showSkeletons: configDefault.showSkeletons ?? true,
               }));
             }}
             disabled={!canEdit}
