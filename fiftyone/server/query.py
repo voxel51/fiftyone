@@ -353,7 +353,7 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
-    lightning_threshold: int
+    lightning_threshold: t.Optional[int]
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int

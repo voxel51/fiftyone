@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<60f6d6e62b1234b958d106ae62f5bd56>>
+ * @generated SignedSource<<15cdc78ae84090b5314f587ba80558b9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,7 +20,7 @@ export type configFragment$data = {
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
     readonly gridZoom: number;
-    readonly lightningThreshold: number;
+    readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
