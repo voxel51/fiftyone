@@ -2,7 +2,7 @@ import { Add, Delete } from "@mui/icons-material";
 import { Avatar, Box, Grid, IconButton } from "@mui/material";
 import { set } from "lodash";
 import React, { useEffect, useState } from "react";
-import { getComponentProps, getEmptyValue, log } from "../utils";
+import { getComponentProps, getEmptyValue } from "../utils";
 import Accordion from "./Accordion";
 import Button from "./Button";
 import DynamicIO from "./DynamicIO";

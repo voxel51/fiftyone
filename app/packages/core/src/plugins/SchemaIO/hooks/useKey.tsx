@@ -2,26 +2,32 @@ import { isNullish } from "@fiftyone/utilities";
 import { get } from "lodash";
 import { useCallback, useMemo } from "react";
 
-// todo: move to state?
 const userChangedPaths = new Set<string>();
 const pathsRefreshCount = new Map<string, number>();
 
 export function useKey(
   path: string,
-  schema: { default: unknown }
+  schema: { default: unknown },
+  data?: unknown,
+  useData?: boolean
 ): [string, () => void] {
+  const value = useMemo(() => {
+    return useData ? data : data ?? get(schema, "default");
+  }, [useData, data, schema]);
+  const memoizedPath = useMemo(() => path, [path]);
+
   const key = useMemo(() => {
-    let refreshCount: number = pathsRefreshCount.get(path) || 0;
-    if (!isNullish(get(schema, "default")) && !userChangedPaths.has(path)) {
+    let refreshCount: number = pathsRefreshCount.get(memoizedPath) || 0;
+    if (!isNullish(value) && !userChangedPaths.has(memoizedPath)) {
       refreshCount++;
-      pathsRefreshCount.set(path, refreshCount);
+      pathsRefreshCount.set(memoizedPath, refreshCount);
     }
-    return `${path}-${refreshCount}`;
-  }, [path, schema]);
+    return `${memoizedPath}-${refreshCount}`;
+  }, [memoizedPath, value]);
 
   const setUserChanged = useCallback(() => {
-    userChangedPaths.add(path);
-  }, [path]);
+    userChangedPaths.add(memoizedPath);
+  }, [memoizedPath]);
 
   return [key, setUserChanged];
 }
