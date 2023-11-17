@@ -151,20 +151,18 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
     return options;
   }, [isImaVidLookerAvailable]);
 
-  if (!modal) {
-    return (
-      <Checkbox
-        name={"Render frames as video"}
-        value={mode === "video"}
-        setValue={(value) => setMode(value ? "video" : "pagination")}
-      />
-    );
-  }
-
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
-      <TabOption active={mode} options={tabOptions} />
+      {modal ? (
+        <TabOption active={mode} options={tabOptions} />
+      ) : (
+        <Checkbox
+          name={"Render frames as video"}
+          value={mode === "video"}
+          setValue={(value) => setMode(value ? "video" : "pagination")}
+        />
+      )}
     </>
   );
 };
