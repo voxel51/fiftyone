@@ -14,7 +14,7 @@ import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
-import * as dataset from "./dataset";
+import { dataset as datasetAtom } from "./dataset";
 import { currentModalSample, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
@@ -73,7 +73,7 @@ export const stateSubscription = selector<string>({
 
 export const mediaTypeSelector = selector({
   key: "mediaTypeSelector",
-  get: ({ get }) => get(dataset.dataset)?.mediaType,
+  get: ({ get }) => get(datasetAtom)?.mediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -81,7 +81,7 @@ export const mediaTypeSelector = selector({
 
 export const parentMediaTypeSelector = selector({
   key: "parentMediaTypeSelector",
-  get: ({ get }) => get(dataset.dataset)?.parentMediaType,
+  get: ({ get }) => get(datasetAtom)?.parentMediaType,
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -89,7 +89,7 @@ export const parentMediaTypeSelector = selector({
 
 export const savedViewsSelector = selector<State.SavedView[]>({
   key: "datasetViews",
-  get: ({ get }) => get(dataset.dataset)?.savedViews || [],
+  get: ({ get }) => get(datasetAtom)?.savedViews || [],
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -153,7 +153,7 @@ export const datasetAppConfig = graphQLSyncFragmentAtom<
 export const defaultTargets = selector({
   key: "defaultTargets",
   get: ({ get }) => {
-    return get(dataset.dataset)?.defaultMaskTargets || {};
+    return get(datasetAtom)?.defaultMaskTargets || {};
   },
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
@@ -163,8 +163,8 @@ export const defaultTargets = selector({
 export const targets = selector({
   key: "targets",
   get: ({ get }) => {
-    const defaults = get(dataset.dataset)?.defaultMaskTargets || {};
-    const labelTargets = get(dataset.dataset)?.maskTargets || {};
+    const defaults = get(datasetAtom)?.defaultMaskTargets || {};
+    const labelTargets = get(datasetAtom)?.maskTargets || {};
     return {
       defaults,
       fields: labelTargets,
@@ -179,7 +179,7 @@ export const getSkeleton = selector<(field: string) => KeypointSkeleton | null>(
   {
     key: "getSkeleton",
     get: ({ get }) => {
-      const dataset = get(dataset.dataset);
+      const dataset = get(datasetAtom);
 
       const skeletons = dataset.skeletons.reduce((acc, { name, ...rest }) => {
         acc[name] = rest;
@@ -384,7 +384,7 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    const methods = get(dataset.dataset)?.brainMethods || [];
+    const methods = get(datasetAtom)?.brainMethods || [];
 
     return methods
       .filter(
