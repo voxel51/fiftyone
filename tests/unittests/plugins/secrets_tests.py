@@ -96,7 +96,6 @@ class TestExecutionContext:
             operator_uri="operator", required_secrets=["MY_SECRET_KEY"]
         )
 
-        # context._secrets_client = mock_secrets_resolver
         context._secrets = {}
         assert "MY_SECRET_KEY" not in context.secrets.keys()
         secret_val = context.secrets["MY_SECRET_KEY"]
@@ -112,8 +111,6 @@ class TestExecutionContext:
         )
 
         context = ExecutionContext()
-        # context._secrets_client = mock_secrets_resolver
-
         await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
         assert context.secrets == context._secrets
 
