@@ -355,7 +355,7 @@ class ExecutionContext(object):
             operation
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
-        plugin's definition
+            plugin's definition
     """
 
     def __init__(
