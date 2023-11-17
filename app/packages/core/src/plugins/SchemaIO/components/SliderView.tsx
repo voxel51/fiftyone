@@ -6,7 +6,7 @@ import { useKey } from "../hooks";
 import { isNumber } from "lodash";
 
 export default function SliderView(props) {
-  const { onChange, path, schema } = props;
+  const { data, onChange, path, schema } = props;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
   const { type, min, max, multipleOf } = schema;
@@ -22,7 +22,7 @@ export default function SliderView(props) {
     }
   }, [sliderRef, focus]);
 
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FieldWrapper {...props}>
@@ -33,7 +33,7 @@ export default function SliderView(props) {
         key={key}
         disabled={schema.view?.readOnly}
         valueLabelDisplay="auto"
-        defaultValue={schema.default}
+        defaultValue={data}
         onChange={(e, value: string) => {
           onChange(path, type === "number" ? parseFloat(value) : value);
           setUserChanged();

@@ -12,7 +12,7 @@ export default function AutocompleteView(props) {
   const { choices = [], readOnly } = view;
 
   const multiple = schema.type === "array";
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FieldWrapper {...props}>
@@ -21,7 +21,7 @@ export default function AutocompleteView(props) {
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data ?? schema?.default, choices)}
+        defaultValue={getDefaultValue(data, choices)}
         freeSolo
         size="small"
         onChange={(e, choice) => {

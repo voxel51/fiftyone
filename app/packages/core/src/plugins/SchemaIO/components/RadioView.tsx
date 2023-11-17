@@ -15,7 +15,7 @@ export default function RadioView(props: RadioGroupProps) {
   const { view = {} } = schema;
   const { choices, label, description, orientation, readOnly } = view;
 
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FormControl {...getComponentProps(props, "container")}>
@@ -29,7 +29,7 @@ export default function RadioView(props: RadioGroupProps) {
       )}
       <MUIRadioGroup
         key={key}
-        defaultValue={schema.default}
+        defaultValue={data}
         onChange={(e, value) => {
           onChange(path, value);
           setUserChanged();
@@ -88,4 +88,7 @@ export type RadioGroupProps = {
   description?: string;
   choices: Array<Choice>;
   onChange: (path: string, value: string) => void;
+  schema: any; // todo
+  path: string;
+  data: unknown;
 };

@@ -9,9 +9,9 @@ import { useKey } from "../hooks";
 export default function CodeView(props) {
   const { mode } = useColorScheme();
   const { onChange, path, schema, data } = props;
-  const { default: defaultValue, view = {} } = schema;
+  const { view = {} } = schema;
   const { language, readOnly } = view;
-  const src = data ?? defaultValue;
+  const src = data;
   let height = view.height ?? 250;
   if (view.height === "auto") {
     const lineHeight = 19;
@@ -19,7 +19,7 @@ export default function CodeView(props) {
     height = lineHeight * numLines;
   }
 
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <Box
@@ -39,7 +39,7 @@ export default function CodeView(props) {
         key={key}
         height={height}
         theme={mode === "dark" ? "vs-dark" : "light"}
-        value={readOnly ? data : undefined}
+        value={data}
         defaultValue={src}
         onChange={(value) => {
           onChange(path, value);

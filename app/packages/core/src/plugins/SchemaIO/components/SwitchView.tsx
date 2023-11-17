@@ -7,7 +7,7 @@ import { useKey } from "../hooks";
 export default function SwitchView(props) {
   const { onChange, path, schema, data } = props;
 
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FormControlLabel
@@ -16,7 +16,7 @@ export default function SwitchView(props) {
           key={key}
           disabled={schema.view?.readOnly}
           autoFocus={autoFocus(props)}
-          defaultChecked={data === true || schema.default === true}
+          defaultChecked={data === true}
           onChange={(e, checked) => {
             onChange(path, checked);
             setUserChanged();

@@ -122,7 +122,7 @@ const componentsMap = {
 };
 
 export default function MarkdownView(props) {
-  const { schema, data } = props;
+  const { data } = props;
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -132,7 +132,7 @@ export default function MarkdownView(props) {
         remarkPlugins={[remarkGfm]}
         {...getComponentProps(props, "markdown")}
       >
-        {data || schema?.default}
+        {data}
       </ReactMarkdown>
     </Box>
   );

@@ -12,12 +12,12 @@ export default function ColorView(props) {
   const { view = {} } = schema;
   const { compact, variant, readOnly } = view;
   const [open, setOpen] = useState(false);
-  const [color, setColor] = useState(schema.default ?? data ?? fallbackColor);
+  const [color, setColor] = useState(data ?? fallbackColor);
   const [anchor, setAnchor] = React.useState<null | HTMLElement>(null);
   const Component = ColorPickers[variant] || ColorPickers.ChromePicker;
 
   const { bgColor, hexColor } = formatColor(color);
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   const handleChange = useCallback(
     (color) => {
@@ -29,7 +29,7 @@ export default function ColorView(props) {
   );
 
   useEffect(() => {
-    setColor(schema.default ?? data ?? fallbackColor);
+    setColor(data ?? fallbackColor);
   }, [key]);
 
   return (

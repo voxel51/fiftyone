@@ -11,7 +11,7 @@ export default function TextFieldView(props) {
 
   const { inputProps = {}, ...fieldProps } = getComponentProps(props, "field");
 
-  const [key, setUserChanged] = useKey(path, schema);
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FieldWrapper {...props}>
@@ -19,7 +19,7 @@ export default function TextFieldView(props) {
         key={key}
         disabled={view.readOnly}
         autoFocus={autoFocus(props)}
-        defaultValue={data ?? schema.default}
+        defaultValue={data}
         size="small"
         fullWidth
         placeholder={view.placeholder}

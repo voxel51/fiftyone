@@ -11,7 +11,7 @@ const MULTI_SELECT_TYPES = ["string", "array"];
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
-  const { default: defaultValue, view = {}, type } = schema;
+  const { view = {}, type } = schema;
   const {
     choices,
     multiple: multiSelect,
@@ -19,6 +19,7 @@ export default function DropdownView(props) {
     separator = ",",
     readOnly,
   } = view;
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -38,7 +39,7 @@ export default function DropdownView(props) {
   const isArrayType = type === "array";
   const multiple = multiSelect || isArrayType;
   const fallbackDefaultValue = multiple ? [] : "";
-  const rawDefaultValue = data ?? defaultValue ?? fallbackDefaultValue;
+  const rawDefaultValue = data ?? fallbackDefaultValue;
   const computedDefaultValue =
     multiple && !Array.isArray(rawDefaultValue)
       ? rawDefaultValue.toString().split(separator)
@@ -48,8 +49,6 @@ export default function DropdownView(props) {
     labels[choice.value] = choice.label;
     return labels;
   }, {});
-
-  const [key, setUserChanged] = useKey(path, schema);
 
   return (
     <FieldWrapper {...props}>
