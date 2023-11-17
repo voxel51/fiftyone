@@ -52,7 +52,6 @@ class CloneSelectedSamples(foo.Operator):
 
         ctx.trigger("clear_selected_samples")
         ctx.trigger("reload_samples")
-        ctx.trigger("show_samples", {"samples": sample_ids})
 
 
 class CloneSampleField(foo.Operator):
@@ -246,6 +245,7 @@ class DeleteSelectedSamples(foo.Operator):
             return
 
         ctx.dataset.delete_samples(ctx.selected)
+
         ctx.trigger("clear_selected_samples")
         ctx.trigger("reload_samples")
 
