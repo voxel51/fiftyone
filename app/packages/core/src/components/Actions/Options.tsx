@@ -122,7 +122,7 @@ const SidebarMode = ({ modal }) => {
   );
 };
 
-const DynamicGroupsViewMode = () => {
+const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
   const isImaVidLookerAvailable = useRecoilValue(fos.isImaVidLookerAvailable);
 
@@ -151,6 +151,16 @@ const DynamicGroupsViewMode = () => {
     return options;
   }, [isImaVidLookerAvailable]);
 
+  if (!modal) {
+    return (
+      <Checkbox
+        name={"Render frames as video"}
+        value={mode === "video"}
+        setValue={(value) => setMode(value ? "video" : "pagination")}
+      />
+    );
+  }
+
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
@@ -176,7 +186,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       fixed
       anchorRef={anchorRef}
     >
-      {modal && isNonNestedDynamicGroup && <DynamicGroupsViewMode />}
+      {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
