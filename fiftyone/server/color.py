@@ -155,7 +155,7 @@ class LabelTagColorInput:
 
 @gql.input
 class ColorSchemeInput:
-    id: gql.ID
+    id: t.Optional[gql.ID] = None
     color_pool: t.List[str]
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None

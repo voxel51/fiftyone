@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<240ad1fb1eea4f0b9d192086ae5b5c0c>>
+ * @generated SignedSource<<aac83d3bf7940af0b5bc557743622bc0>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -17,7 +17,7 @@ export type ColorSchemeInput = {
   defaultColorscale?: DefaultColorscaleInput | null;
   defaultMaskTargetsColors?: ReadonlyArray<MaskColorInput> | null;
   fields?: ReadonlyArray<CustomizeColorInput> | null;
-  id: string;
+  id?: string | null;
   labelTags?: LabelTagColorInput | null;
   multicolorKeypoints?: boolean | null;
   opacity?: number | null;

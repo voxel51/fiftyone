@@ -30,8 +30,6 @@ const ColorFooter: React.FC = () => {
     [setActiveColorModalField]
   );
   if (!activeColorModalField) return null;
-
-  console.log("datasetDefault", datasetDefault);
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
@@ -74,6 +72,7 @@ const ColorFooter: React.FC = () => {
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
+                  id: datasetDefault?.id,
                   fields: colorScheme.fields ?? [],
                   multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
                   showSkeletons: colorScheme.showSkeletons ?? true,
