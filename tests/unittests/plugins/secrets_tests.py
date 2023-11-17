@@ -173,6 +173,10 @@ class TestGetSecretSync:
         mocker.patch.dict(
             os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
         )
+        mocker.patch(
+            "fiftyone.plugins.secrets._get_secrets_client",
+            return_value=fois.EnvSecretProvider(),
+        )
 
         resolver = fop.PluginSecretsResolver()
         resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
@@ -187,7 +191,10 @@ class TestGetSecretSync:
         mocker.patch.dict(
             os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
         )
-
+        mocker.patch(
+            "fiftyone.plugins.secrets._get_secrets_client",
+            return_value=fois.EnvSecretProvider(),
+        )
         resolver = fop.PluginSecretsResolver()
         resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
 
