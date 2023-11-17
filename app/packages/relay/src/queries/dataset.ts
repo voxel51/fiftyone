@@ -10,6 +10,7 @@ export default graphql`
     config {
       colorBy
       colorPool
+      colorscale
       multicolorKeypoints
       showSkeletons
     }

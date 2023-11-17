@@ -61,7 +61,7 @@ const colorscaleSetting = selectorFamily<
         } else {
           colorscales[index] = setting;
         }
-        console.info("set colorscales in component", colorscales);
+
         return {
           ...current,
           colorscales,

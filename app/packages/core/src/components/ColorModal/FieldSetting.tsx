@@ -61,8 +61,6 @@ export const fieldColorSetting = selectorFamily<
           };
         }
 
-        console.log(current);
-
         const setting = { ...newSetting, path };
         const fields = [...(current.fields || [])];
 

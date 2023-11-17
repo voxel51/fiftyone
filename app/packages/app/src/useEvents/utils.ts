@@ -5,7 +5,6 @@ import { atom } from "recoil";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { LocationState } from "../routing";
 import { AppReadyState } from "./registerEvent";
-import { useEffect } from "react";
 
 export const appReadyState = atom<AppReadyState>({
   key: "appReadyState",
@@ -41,8 +40,6 @@ export const processState = (
   if (env().VITE_NO_STATE) {
     return { view: [], fieldVisibility: undefined };
   }
-  console.info("processState", state.color_scheme);
-
   return {
     view: state.view || [],
     fieldVisibility: state.field_visibility_stage,
