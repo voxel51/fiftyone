@@ -190,7 +190,7 @@ class SetColorScheme:
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
     ) -> t.Optional[ColorScheme]:
-        if color_scheme.id is None:
+        if color_scheme and color_scheme.id is None:
             color_scheme.id = str(ObjectId())
 
         def run():
