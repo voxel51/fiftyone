@@ -94,6 +94,20 @@ export const collapseFields = (paths): StrictField[] => {
   return Object.entries(schema).map(([_, field]) => toStrictField(field));
 };
 
+export const getStandardizedUrls = (
+  urls: Array<{ field: string; url: string }> | { [field: string]: string }
+) => {
+  let standardizedUrls: { [field: string]: string } = {};
+  if (Array.isArray(urls)) {
+    for (const { field, url } of urls) {
+      standardizedUrls[field] = url;
+    }
+  } else {
+    standardizedUrls = urls;
+  }
+  return standardizedUrls;
+};
+
 const convertTargets = (
   targets: {
     target: string;

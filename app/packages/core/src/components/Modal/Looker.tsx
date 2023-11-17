@@ -1,4 +1,6 @@
 import { useTheme } from "@fiftyone/components";
+import { AbstractLooker, ImaVidLooker } from "@fiftyone/looker";
+import { BaseState } from "@fiftyone/looker/src/state";
 import * as fos from "@fiftyone/state";
 import { useEventHandler, useOnSelectLabel } from "@fiftyone/state";
 import React, {
@@ -10,8 +12,9 @@ import React, {
   useState,
 } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilCallback, useRecoilValue } from "recoil";
+import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
 import { v4 as uuid } from "uuid";
+import { useInitializeImaVidSubscriptions } from "./hooks";
 
 const useLookerOptionsUpdate = () => {
   return useRecoilCallback(
@@ -91,6 +94,9 @@ const Looker = ({
   const lookerOptions = fos.useLookerOptions(true);
   const [reset, setReset] = useState(false);
   const selectedMediaField = useRecoilValue(fos.selectedMediaField(true));
+  const shouldRenderImaVidLooker = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const setModalLooker = useSetRecoilState(fos.modalLooker);
+  const { subscribeToImaVidStateChanges } = useInitializeImaVidSubscriptions();
 
   const createLooker = fos.useCreateLooker(true, false, {
     ...lookerOptions,
@@ -98,8 +104,15 @@ const Looker = ({
 
   const looker = React.useMemo(
     () => createLooker.current(sampleData),
-    [reset, createLooker, selectedMediaField]
-  );
+    [reset, createLooker, selectedMediaField, shouldRenderImaVidLooker]
+  ) as AbstractLooker<BaseState>;
+
+  useEffect(() => {
+    setModalLooker(looker);
+    if (looker instanceof ImaVidLooker) {
+      subscribeToImaVidStateChanges();
+    }
+  }, [looker, subscribeToImaVidStateChanges]);
 
   useEffect(() => {
     if (looker) {
@@ -150,7 +163,12 @@ const Looker = ({
     "panels",
     async ({ detail: { showJSON, showHelp, SHORTCUTS } }) => {
       if (showJSON) {
-        jsonPanel[showJSON](sample);
+        if (shouldRenderImaVidLooker) {
+          const imaVidFrameSample = (looker as ImaVidLooker).thisFrameSample;
+          jsonPanel[showJSON](imaVidFrameSample);
+        } else {
+          jsonPanel[showJSON](sample);
+        }
       }
       if (showHelp) {
         if (showHelp == "close") {
@@ -182,12 +200,14 @@ const Looker = ({
     const hoveredSampleId = hoveredSample && hoveredSample._id;
     looker.updater((state) => ({
       ...state,
-      shouldHandleKeyEvents: hoveredSampleId === sample._id,
+      // todo: `|| shouldRenderImaVidLooker` is a hack until hoveredSample works for imavid looker
+      shouldHandleKeyEvents:
+        hoveredSampleId === sample._id || shouldRenderImaVidLooker,
       options: {
         ...state.options,
       },
     }));
-  }, [hoveredSample, sample, looker]);
+  }, [hoveredSample, sample, looker, shouldRenderImaVidLooker]);
 
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {

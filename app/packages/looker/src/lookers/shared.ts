@@ -3,6 +3,7 @@ import { Overlay } from "../overlays/base";
 import {
   BaseState,
   FrameState,
+  ImaVidState,
   ImageState,
   Optional,
   VideoState,
@@ -20,7 +21,7 @@ import { hasColorChanged } from "../util";
 export const LookerUtils = {
   shouldReloadSample: (
     current: Readonly<BaseState["options"]>,
-    next: Readonly<Optional<BaseState["options"]>>
+    next: Readonly<Partial<BaseState["options"]>>
   ): boolean => {
     let reloadSample = false;
 
@@ -59,7 +60,9 @@ export const LookerUtils = {
     return reloadSample;
   },
 
-  toggleZoom: <State extends FrameState | ImageState | VideoState>(
+  toggleZoom: <
+    State extends FrameState | ImageState | VideoState | ImaVidState
+  >(
     state: State,
     overlays: Overlay<State>[]
   ) => {

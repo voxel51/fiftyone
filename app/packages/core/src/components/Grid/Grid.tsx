@@ -28,6 +28,7 @@ const Grid: React.FC<{}> = () => {
   const resize = useResize();
 
   const isModalOpen = useRecoilValue(fos.isModalActive);
+
   const { page, reset } = useFlashlightPager(
     store,
     pageParameters,
@@ -113,6 +114,7 @@ const Grid: React.FC<{}> = () => {
     useRecoilValue(fos.selectedMediaField(false)),
     useRecoilValue(fos.extendedStagesUnsorted),
     useRecoilValue(fos.extendedStages),
+    useRecoilValue(fos.shouldRenderImaVidLooker),
   ]);
 
   const select = fos.useSelectFlashlightSample();

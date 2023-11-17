@@ -33,7 +33,6 @@ const ColorFooter: React.FC = () => {
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
@@ -73,19 +72,19 @@ const ColorFooter: React.FC = () => {
                 colorScheme: {
                   ...colorScheme,
                   id: datasetDefault?.id,
-                  fields: colorScheme.fields ?? [],
-                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
-                  showSkeletons: colorScheme.showSkeletons ?? true,
                   colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
-                  labelTags: colorScheme.labelTags ?? {},
+                  colorscales: colorScheme.colorscales ? newColorscales : [],
                   defaultMaskTargetsColors:
                     colorScheme.defaultMaskTargetsColors ?? [],
                   defaultColorscale: newDefaultColorscale ?? {
                     name: "virdis",
                     list: [],
                   },
-                  colorscales: colorScheme.colorscales ? newColorscales : [],
+                  fields: colorScheme.fields ?? [],
+                  labelTags: colorScheme.labelTags ?? {},
+                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+                  showSkeletons: colorScheme.showSkeletons ?? true,
                 },
               },
               updater: (store, { setDatasetColorScheme }) => {
@@ -120,18 +119,18 @@ const ColorFooter: React.FC = () => {
               });
               setColorScheme((cur) => ({
                 ...cur,
-                fields: [],
-                defaultMaskTargetsColors: [],
-                labelTags: {},
                 colorPool: configDefault.colorPool,
                 colorBy: configDefault.colorBy ?? "field",
-                multicolorKeypoints: false,
-                showSkeletons: true,
+                colorscales: [],
                 defaultColorscale: {
                   name: configDefault.colorscale ?? "virdis",
                   list: [],
                 },
-                colorscales: [],
+                defaultMaskTargetsColors: [],
+                fields: [],
+                labelTags: {},
+                multicolorKeypoints: configDefault.multicolorKeypoints ?? false,
+                showSkeletons: configDefault.showSkeletons ?? true,
               }));
             }}
             disabled={!canEdit}

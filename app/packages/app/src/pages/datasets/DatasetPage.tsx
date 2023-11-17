@@ -1,4 +1,4 @@
-import { Dataset, Snackbar } from "@fiftyone/core";
+import { Dataset, Snackbar, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -15,7 +15,6 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { Starter } from "@fiftyone/core";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(

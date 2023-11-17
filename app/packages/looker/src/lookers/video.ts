@@ -16,7 +16,6 @@ import {
   LabelData,
   Optional,
   StateUpdate,
-  VideoConfig,
   VideoSample,
   VideoState,
 } from "../state";
@@ -529,7 +528,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     return super.postProcess();
   }
 
-  updateOptions(options: Optional<VideoState["options"]>) {
+  updateOptions(options: Partial<VideoState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
 
     if (reload) {

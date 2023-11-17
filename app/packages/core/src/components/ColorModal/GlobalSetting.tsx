@@ -12,8 +12,8 @@ import {
 } from "./ShareStyledDiv";
 import ColorPalette from "./colorPalette/ColorPalette";
 import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
-import ShuffleColor from "./controls/RefreshColor";
 import GlobalColorscale from "./colorPalette/GlobalColorscale";
+import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting = () => {
   const [colorScheme, setColorScheme] = useRecoilState(fos.colorScheme);

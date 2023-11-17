@@ -57,7 +57,7 @@ export const isShown = <State extends BaseState, Label extends RegularLabel>(
   return true;
 };
 
-export interface Overlay<State extends BaseState> {
+export interface Overlay<State extends Partial<BaseState>> {
   draw(ctx: CanvasRenderingContext2D, state: State): void;
   isShown(state: Readonly<State>): boolean;
   field?: string;
