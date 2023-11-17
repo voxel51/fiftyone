@@ -155,7 +155,7 @@ class LabelTagColorInput:
 
 @gql.input
 class ColorSchemeInput:
-    id: t.Optional[gql.ID] = None
+    id: t.Optional[gql.ID]
     color_pool: t.List[str]
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
@@ -190,6 +190,9 @@ class SetColorScheme:
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
     ) -> t.Optional[ColorScheme]:
+        if color_scheme.id is None:
+            color_scheme.id = str(ObjectId())
+
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
