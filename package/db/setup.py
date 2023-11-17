@@ -149,6 +149,12 @@ class CustomBdistWheel(bdist_wheel):
         return impl, abi_tag, self.plat_name
 
     def write_wheelfile(self, *args, **kwargs):
+        try:
+            self._write_wheelfile(*args, **kwargs)
+        except:
+            pass
+
+    def _write_wheelfile(self, *args, **kwargs):
         bdist_wheel.write_wheelfile(self, *args, **kwargs)
         bin_dir = os.path.join(
             self.bdist_dir, self.data_dir, "purelib", "fiftyone", "db", "bin"
