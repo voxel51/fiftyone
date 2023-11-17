@@ -30,23 +30,16 @@ class TestExecutionContext:
     @pytest.fixture(autouse=False)
     def mock_secrets_resolver(self, mocker):
         mock = MagicMock(spec=fop.PluginSecretsResolver)
-        mock.client = fois.EnvSecretProvider()
-        mock.get_secret.side_effect = lambda key, *args, **kwargs: MockSecret(
+        mock.get_secret.side_effect = lambda key, operator: MockSecret(
             key, self.secrets.get(key)
         )
-        mock.get_secret_sync.side_effect = lambda key, *args, **kwargs: (
-            MockSecret(key, self.secrets.get(key))
+        mock.get_secret_sync.side_effect = lambda key, operator: MockSecret(
+            key, self.secrets.get(key)
         )
-
-        mock.config_cache = {self.operator_uri: self.plugin_secrets}
+        mock._registered_secrets = {self.operator_uri: self.plugin_secrets}
         return mock
 
-    def test_secret(self, mocker):
-        mocker.patch(
-            "fiftyone.plugins.secrets._get_secrets_client",
-            return_value=fois.EnvSecretProvider(),
-        )
-
+    def test_secret(self):
         context = ExecutionContext()
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
@@ -54,12 +47,7 @@ class TestExecutionContext:
 
         assert result == SECRET_VALUE
 
-    def test_secret_non_existing_key(self, mocker):
-        mocker.patch(
-            "fiftyone.plugins.secrets._get_secrets_client",
-            return_value=fois.EnvSecretProvider(),
-        )
-
+    def test_secret_non_existing_key(self):
         context = ExecutionContext()
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
@@ -67,11 +55,7 @@ class TestExecutionContext:
 
         assert result is None
 
-    def test_secrets_property(self, mocker):
-        mocker.patch(
-            "fiftyone.plugins.secrets._get_secrets_client",
-            return_value=fois.EnvSecretProvider(),
-        )
+    def test_secrets_property(self):
         context = ExecutionContext()
         context._secrets = {
             SECRET_KEY: SECRET_VALUE,
@@ -80,28 +64,30 @@ class TestExecutionContext:
 
         assert context.secrets == context._secrets
 
-    def test_secret_property_on_demand_resolve(
-        self, mocker, mock_secrets_resolver
-    ):
-        mocker.patch.dict(
+    def test_secret_property_on_demand_resolve(self):
+        with patch.dict(
             os.environ,
             {"MY_SECRET_KEY": "mocked_sync_secret_value"},
             clear=True,
-        )
-        mocker.patch(
-            "fiftyone.plugins.secrets._get_secrets_client",
-            return_value=fois.EnvSecretProvider(),
-        )
+        ):
+            with patch(
+                "fiftyone.plugins.secrets._get_secrets_client",
+                return_value=fois.EnvSecretProvider(),
+            ):
 
-        context = ExecutionContext(
-            operator_uri="operator", required_secrets=["MY_SECRET_KEY"]
-        )
-        context._secrets_client = mock_secrets_resolver
-        context._secrets = {}
-        assert "MY_SECRET_KEY" not in context.secrets.keys()
-        secret_val = context.secrets["MY_SECRET_KEY"]
-        assert "MY_SECRET_KEY" in context.secrets.keys()
-        assert context.secrets == context._secrets
+                context = ExecutionContext(
+                    operator_uri="operator", required_secrets=["MY_SECRET_KEY"]
+                )
+                context._secrets = {}
+                assert "MY_SECRET_KEY" not in context.secrets.keys()
+
+                secret_val = context.secrets["MY_SECRET_KEY"]
+                assert "MY_SECRET_KEY" in context.secrets.keys()
+                assert (
+                    context.secrets["MY_SECRET_KEY"]
+                    == "mocked_sync_secret_value"
+                )
+                assert context.secrets == context._secrets
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
@@ -113,9 +99,8 @@ class TestExecutionContext:
         context = ExecutionContext()
 
         context._secrets_client = mock_secrets_resolver
-        await context.resolve_secret_values(
-            keys=[SECRET_KEY, SECRET_KEY2], operator_uri="operator"
-        )
+
+        await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
         assert context.secrets == context._secrets
 
 
@@ -130,14 +115,12 @@ class TestOperatorSecrets(unittest.TestCase):
         self.assertListEqual(operator._plugin_secrets, secrets)
 
 
-# TODO: temp disable for merge oss and fix in followup teams pr that
-# updates SecretManager
-# class PluginSecretResolverClientTests(unittest.TestCase):
+class PluginSecretResolverClientTests(unittest.TestCase):
 
-# Teams always uses SecretsManager
-# def test_get_secrets_client(self, mocker):    #
-#     resolver = fop.PluginSecretsResolver()
-#     assert isinstance(resolver.client, fois.SecretsManager)
+    # Teams always uses SecretsManager
+    def test_get_secrets_client(self):
+        resolver = fop.PluginSecretsResolver()
+        assert isinstance(resolver.client, fois.SecretsManager)
 
 
 class TestGetSecret(unittest.TestCase):
@@ -172,40 +155,32 @@ class TestGetSecret(unittest.TestCase):
         )
 
 
-#
-# TODO: uncomment out when sm update merged
-# class TestGetSecretSync:
-#     def test_get_secret_sync(self, mocker):
-#         mocker.patch.dict(
-#             os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
-#         )
-#         mocker.patch(
-#             "fiftyone.plugins.secrets._get_secrets_client",
-#             return_value=fois.EnvSecretProvider(),
-#         )
-#
-#         resolver = fop.PluginSecretsResolver()
-#         resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
-#
-#         result = resolver.get_secret_sync(
-#             key="MY_SECRET_KEY", operator_uri="operator"
-#         )
-#
-#         assert "mocked_sync_secret_value" == result
-#
-#     def test_get_secret_sync_not_in_pd(self, mocker):
-#         mocker.patch.dict(
-#             os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
-#         )
-#         mocker.patch(
-#             "fiftyone.plugins.secrets._get_secrets_client",
-#             return_value=fois.EnvSecretProvider(),
-#         )
-#         resolver = fop.PluginSecretsResolver()
-#         resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
-#
-#         result = resolver.get_secret_sync(
-#             key="MY_SECRET_KEY", operator_uri="operator"
-#         )
-#
-#         assert result is None
+class TestGetSecretSync:
+    def test_get_secret_sync(self, mocker):
+        with patch.dict(
+            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
+        ) as mock_env:
+
+            resolver = fop.PluginSecretsResolver()
+            resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
+            resolver._instance = fois.EnvSecretProvider()
+
+            result = resolver.get_secret_sync(
+                key="MY_SECRET_KEY", operator_uri="operator"
+            )
+
+            assert "mocked_sync_secret_value" == result
+
+    def test_get_secret_sync_not_in_pd(self, mocker):
+        mocker.patch.dict(
+            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
+        )
+
+        resolver = fop.PluginSecretsResolver()
+        resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
+
+        result = resolver.get_secret_sync(
+            key="MY_SECRET_KEY", operator_uri="operator"
+        )
+
+        assert result is None

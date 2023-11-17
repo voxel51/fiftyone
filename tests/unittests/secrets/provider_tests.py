@@ -119,6 +119,7 @@ class TestEnvSecretProvider:
 
         assert secret is None
 
+    @pytest.mark.asyncio
     async def test_search(self, mocker):
         mocker.patch.dict(
             os.environ, {"KEY1": "value1", "KEY2": "value2"}, clear=True
@@ -144,6 +145,13 @@ class TestFiftyoneDatabaseSecretProvider:
     def mock_provider(self):
         mock = MagicMock(spec=FiftyoneDatabaseSecretProvider)
         mock.get.side_effect = (
+            lambda key, **kwargs: MockUnencryptedSecret(
+                self.SECRET_KEY, self.SECRET_VALUE
+            )
+            if key == self.SECRET_KEY
+            else None
+        )
+        mock.get_sync.side_effect = (
             lambda key, **kwargs: MockUnencryptedSecret(
                 self.SECRET_KEY, self.SECRET_VALUE
             )
@@ -209,7 +217,18 @@ class TestFiftyoneDatabaseSecretProvider:
 
     @pytest.mark.asyncio
     async def test_get_multiple_secrets_empty_list(self, mock_provider):
-
         secrets = await mock_provider.get_multiple([])
 
         assert not secrets
+
+    def test_get_sync(self, mock_provider):
+        secret = mock_provider.get_sync("SECRET_KEY")
+
+        assert isinstance(secret, ISecret)
+        assert secret.key == self.SECRET_KEY
+        assert secret.value == self.SECRET_VALUE
+
+    def test_get_sync_non_existing_secret(self, mock_provider):
+        secret = mock_provider.get_sync("UNSET_SECRET_KEY")
+
+        assert secret is None

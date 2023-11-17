@@ -10,8 +10,10 @@ from fiftyone.internal.crypto import decrypt_token
 from fiftyone.internal.util import has_encryption_key
 
 from fiftyone.internal.secrets.graphql import (
+    resolve_secret_sync,
     resolve_secrets,
     resolve_secret,
+    search_secrets,
 )
 from fiftyone.internal.secrets.secret import (
     UnencryptedSecret,
@@ -41,13 +43,26 @@ class FiftyoneDatabaseSecretProvider(ISecretProvider):
 
     async def get(self, key: str, **kwargs) -> Optional[ISecret]:
         secret = None
+        request_token = None
         if "request_token" in kwargs.keys():
             request_token = kwargs["request_token"]
-            _gql_encrypted_secret = await resolve_secret(
-                key, request_token=request_token
-            )
-            if _gql_encrypted_secret:
-                secret = self._decrypt_if_possible(_gql_encrypted_secret)
+        _gql_encrypted_secret = await resolve_secret(
+            key, request_token=request_token
+        )
+        if _gql_encrypted_secret:
+            secret = self._decrypt_if_possible(_gql_encrypted_secret)
+        return secret
+
+    def get_sync(self, key: str, **kwargs) -> Optional[ISecret]:
+        secret = None
+        request_token = None
+        if "request_token" in kwargs.keys():
+            request_token = kwargs["request_token"]
+        _gql_encrypted_secret = resolve_secret_sync(
+            key, request_token=request_token
+        )
+        if _gql_encrypted_secret:
+            secret = self._decrypt_if_possible(_gql_encrypted_secret)
         return secret
 
     async def get_multiple(
@@ -63,6 +78,22 @@ class FiftyoneDatabaseSecretProvider(ISecretProvider):
                     secret.key: self._decrypt_if_possible(secret)
                     for secret in _gql_encrypted_secrets
                 }
+        return {}
+
+    async def search(
+        self, regex: str, **kwargs
+    ) -> Dict[str, Optional[ISecret]]:
+        request_token = None
+        if "request_token" in kwargs.keys():
+            request_token = kwargs["request_token"]
+        _gql_encrypted_secrets = await search_secrets(
+            regex, request_token=request_token
+        )
+        if _gql_encrypted_secrets:
+            return {
+                secret.key: self._decrypt_if_possible(secret)
+                for secret in _gql_encrypted_secrets
+            }
         return {}
 
     def _decrypt_if_possible(

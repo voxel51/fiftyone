@@ -786,10 +786,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(len(docs), 25)
 
     @patch(
-        "fiftyone.plugins.secrets._get_secrets_client",
-        return_value=unittest.mock.Mock(),
-    )
-    @patch(
         "fiftyone.core.dataset.load_dataset",
     )
     def test_count(
@@ -797,7 +793,6 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         mock_load_dataset,
         mock_get_operator,
         mock_operator_exists,
-        secrets_mock,
     ):
         dataset_id = ObjectId()
         dataset_name = f"test_dataset_{dataset_id}"
@@ -819,7 +814,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                         request_params={
                             "foo": "bar",
                             "dataset_name": dataset_name,
-                        }
+                        },
+                        operator_uri=operator,
                     ),
                 )
                 time.sleep(

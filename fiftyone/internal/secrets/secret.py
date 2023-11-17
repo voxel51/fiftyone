@@ -133,6 +133,7 @@ class EncryptedSecret(AbstractSecret, ABC):
         super().__init__(key, value)
         self._token_created_at = datetime.now()
         self._hash = hash(str(self._value))
+        self._id = kwargs.get("id", None)
         for k, v in kwargs.items():
             setattr(self, k, v)
         self._crypto = crypto or FiftyoneDBEncryptionHandler()
@@ -154,3 +155,12 @@ class EncryptedSecret(AbstractSecret, ABC):
         if self._crypto.ttl is None:
             return None
         return self._token_created_at + timedelta(seconds=self._crypto.ttl)
+
+    @classmethod
+    def from_dict(self, data: dict, include: Optional[list] = None):
+        if include is None:
+            include = ["key", "value", "id", "_hash"]
+
+        return EncryptedSecret(
+            **{k: v for k, v in data.items() if k in include}
+        )

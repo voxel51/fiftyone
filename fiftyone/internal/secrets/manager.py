@@ -11,7 +11,7 @@ import os
 import traceback
 from typing import Dict, List, Optional, Union
 
-from . import ISecretProvider
+from .providers import ISecretProvider
 from .util import ensure_unencrypted_secret
 from fiftyone.internal.constants import (
     ENCRYPTION_KEY_ENV_VAR,
@@ -101,22 +101,49 @@ class SecretsManager(ISecretProvider):
             try:
                 secret = await provider.get(key, **kwargs)
             except Exception as e:
-                print(
+                logging.error(
                     f"Failed to get secret for key {key} with provider"
                     f" {provider}"
                 )
-                print(traceback.format_exc())
+                logging.debug(traceback.format_exc())
                 continue
             if secret:
                 try:
                     return ensure_unencrypted_secret(secret)
                 except Exception as e:
-                    print(
+                    logging.error(
                         f"Failed to decrypt secret for key {key} with "
                         f"provider"
                         f" {provider}"
                     )
-                    print(traceback.format_exc())
+                    logging.error(traceback.format_exc())
+                    continue
+        return None
+
+    def _get_secret_from_providers_sync(
+        self, key: str, **kwargs
+    ) -> Optional[fois.UnencryptedSecret]:
+        """Get a secret from the provider."""
+        for provider in self._providers:
+            try:
+                secret = provider.get_sync(key, **kwargs)
+            except Exception as e:
+                logging.error(
+                    f"Failed to get secret for key {key} with provider"
+                    f" {provider}"
+                )
+                logging.debug(traceback.format_exc())
+                continue
+            if secret:
+                try:
+                    return ensure_unencrypted_secret(secret)
+                except Exception as e:
+                    logging.error(
+                        f"Failed to decrypt secret for key {key} with "
+                        f"provider"
+                        f" {provider}"
+                    )
+                    logging.debug(traceback.format_exc())
                     continue
         return None
 
@@ -147,9 +174,47 @@ class SecretsManager(ISecretProvider):
         environment variables will take priority if they exist."""
         return await self._get_secret_from_providers(key, **kwargs)
 
+    def get_sync(self, key: str, **kwargs) -> Optional[fois.UnencryptedSecret]:
+        """Get a secret with plaintext value for the given key. Local
+        environment variables will take priority if they exist."""
+        print("secretmanager.get_sync")
+        return self._get_secret_from_providers_sync(key, **kwargs)
+
     async def get_multiple(
         self, keys: List[str], **kwargs
     ) -> Dict[str, Optional[fois.UnencryptedSecret]]:
         """Get secrets with plaintext values from providers for the given
         keys. Local environment variables will take priority if they exist."""
         return await self._get_secrets_from_providers(keys, **kwargs)
+
+    async def search(
+        self, regex: str, **kwargs
+    ) -> Dict[str, Optional[fois.UnencryptedSecret]]:
+        """Search for secrets with keys matching the given regex.
+        Local environment variables will take priority if they exist. To
+        limit the search to specific providers, pass a list of provider"""
+        secrets = {}
+        if not self:
+            self.__init__()
+        if "providers" in kwargs:
+            _provider_cls = kwargs.pop("providers")
+            _providers = [
+                p for p in self._providers if p.__class__ in _provider_cls
+            ]
+        else:
+            _providers = self._providers
+        for provider in _providers:
+            if hasattr(provider, "search"):
+                try:
+                    provider_secrets = await provider.search(regex, **kwargs)
+                    for k, secret in provider_secrets.items():
+                        if k not in secrets.keys():
+                            secrets[k] = ensure_unencrypted_secret(secret)
+                except Exception as e:
+                    logging.error(
+                        f"Failed to search for secrets with regex patt"
+                        f"ern `{regex}` with "
+                        f"provider {provider}"
+                    )
+                    logging.debug(traceback.format_exc())
+        return secrets
