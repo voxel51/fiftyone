@@ -27,3 +27,10 @@ export function resolveServerPath(plugin) {
   const origin = getFetchOrigin();
   return origin + plugin.serverPath;
 }
+
+export function formatValidationErrors(errors: []) {
+  if (!Array.isArray(errors) || errors.length === 0) return "";
+  return errors
+    .map(({ path, reason }) => `params.${path}: ${reason}`)
+    .join("\n");
+}

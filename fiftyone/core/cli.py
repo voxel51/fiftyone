@@ -94,6 +94,7 @@ class FiftyOneCommand(Command):
         _register_command(subparsers, "quickstart", QuickstartCommand)
         _register_command(subparsers, "annotation", AnnotationCommand)
         _register_command(subparsers, "brain", BrainCommand)
+        _register_command(subparsers, "evaluation", EvaluationCommand)
         _register_command(subparsers, "app", AppCommand)
         _register_command(subparsers, "cache", CacheCommand)
         _register_command(subparsers, "config", ConfigCommand)
@@ -1791,6 +1792,66 @@ class BrainConfigCommand(Command):
                 print(etas.json_to_str(field))
         else:
             print(fob.brain_config)
+
+
+class EvaluationCommand(Command):
+    """Tools for working with the FiftyOne evaluation API."""
+
+    @staticmethod
+    def setup(parser):
+        subparsers = parser.add_subparsers(title="available commands")
+        _register_command(subparsers, "config", EvaluationConfigCommand)
+
+    @staticmethod
+    def execute(parser, args):
+        parser.print_help()
+
+
+class EvaluationConfigCommand(Command):
+    """Tools for working with your FiftyOne evaluation config.
+
+    Examples::
+
+        # Print your entire evaluation config
+        fiftyone evaluation config
+
+        # Print a specific evaluation config field
+        fiftyone evaluation config <field>
+
+        # Print the location of your evaluation config on disk (if one exists)
+        fiftyone evaluation config --locate
+    """
+
+    @staticmethod
+    def setup(parser):
+        parser.add_argument(
+            "field",
+            nargs="?",
+            metavar="FIELD",
+            help="an evaluation config field to print",
+        )
+        parser.add_argument(
+            "-l",
+            "--locate",
+            action="store_true",
+            help="print the location of your evaluation config on disk",
+        )
+
+    @staticmethod
+    def execute(parser, args):
+        if args.locate:
+            evaluation_config_path = focg.locate_evaluation_config()
+            print(evaluation_config_path)
+            return
+
+        if args.field:
+            field = getattr(fo.evaluation_config, args.field)
+            if etau.is_str(field):
+                print(field)
+            else:
+                print(etas.json_to_str(field))
+        else:
+            print(fo.evaluation_config)
 
 
 class ZooCommand(Command):

@@ -358,6 +358,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache = cachetools.LRUCache(5)
         self._brain_cache = cachetools.LRUCache(5)
         self._evaluation_cache = cachetools.LRUCache(5)
+        self._run_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
@@ -6738,6 +6739,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
+        self._run_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -7077,6 +7079,15 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
+    for run_doc in dataset_doc.runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+        run_doc.delete()
+
     from fiftyone.operators.delegated import DelegatedOperationService
 
     DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
@@ -7138,6 +7149,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
+    dataset_doc.runs.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -7185,6 +7197,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
+        or dataset.has_runs
     ):
         _clone_extras(dataset, clone_dataset)
 
@@ -7557,6 +7570,14 @@ def _clone_extras(src_dataset, dst_dataset):
         run_doc.save(upsert=True)
 
         dst_doc.evaluations[eval_key] = run_doc
+
+    # Clone other runs
+    for run_key, _run_doc in src_doc.get_runs().items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save(upsert=True)
+
+        dst_doc.runs[run_key] = run_doc
 
     dst_doc.save()
 

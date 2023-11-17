@@ -5,8 +5,10 @@ Regression evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import logging
+from copy import deepcopy
+import inspect
 import itertools
+import logging
 import numbers
 
 import numpy as np
@@ -15,6 +17,7 @@ from tabulate import tabulate
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -32,7 +35,7 @@ def evaluate_regressions(
     gt_field="ground_truth",
     eval_key=None,
     missing=None,
-    method="simple",
+    method=None,
     **kwargs,
 ):
     """Evaluates the regression predictions in the given collection with
@@ -41,7 +44,7 @@ def evaluate_regressions(
     You can customize the evaluation method by passing additional
     parameters for the method's config class as ``kwargs``.
 
-    The supported ``method`` values and their associated configs are:
+    The natively provided ``method`` values and their associated configs are:
 
     -   ``"simple"``: :class:`SimpleEvaluationConfig`
 
@@ -67,8 +70,10 @@ def evaluate_regressions(
         eval_key (None): a string key to use to refer to this evaluation
         missing (None): a missing value. Any None-valued regressions are
             given this value for results purposes
-        method ("simple"): a string specifying the evaluation method to use.
-            Supported values are ``("simple")``
+        method (None): a string specifying the evaluation method to use. The
+            supported values are
+            ``fo.evaluation_config.regression_backends.keys()`` and the default
+            is ``fo.evaluation_config.default_regression_backend``
         **kwargs: optional keyword arguments for the constructor of the
             :class:`RegressionEvaluationConfig` being used
 
@@ -108,6 +113,10 @@ class RegressionEvaluationConfig(foe.EvaluationMethodConfig):
         super().__init__(**kwargs)
         self.pred_field = pred_field
         self.gt_field = gt_field
+
+    @property
+    def type(self):
+        return "regression"
 
 
 class RegressionEvaluation(foe.EvaluationMethod):
@@ -511,12 +520,36 @@ class RegressionResults(foe.EvaluationResults):
 
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
-        method = "simple"
+        method = fo.evaluation_config.default_regression_backend
 
-    if method == "simple":
-        return SimpleEvaluationConfig(pred_field, gt_field, **kwargs)
+    if inspect.isclass(method):
+        return method(pred_field, gt_field, **kwargs)
 
-    raise ValueError("Unsupported evaluation method '%s'" % method)
+    backends = fo.evaluation_config.regression_backends
+
+    if method not in backends:
+        raise ValueError(
+            "Unsupported regression evaluation method '%s'. The available "
+            "methods are %s" % (method, sorted(backends.keys()))
+        )
+
+    params = deepcopy(backends[method])
+
+    config_cls = kwargs.pop("config_cls", None)
+
+    if config_cls is None:
+        config_cls = params.pop("config_cls", None)
+
+    if config_cls is None:
+        raise ValueError(
+            "Regression evaluation method '%s' has no `config_cls`" % method
+        )
+
+    if etau.is_str(config_cls):
+        config_cls = etau.get_class(config_cls)
+
+    params.update(**kwargs)
+    return config_cls(pred_field, gt_field, **params)
 
 
 def _safe_mean(values):

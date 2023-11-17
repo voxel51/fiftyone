@@ -444,6 +444,7 @@ async function executeOperatorAsGenerator(
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      current_sample: currentContext.currentSample,
     },
     "json-stream"
   );
@@ -522,6 +523,7 @@ export async function executeOperatorWithContext(
             ? Array.from(currentContext.selectedSamples)
             : [],
           selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+          current_sample: currentContext.currentSample,
         }
       );
       result = serverResult.result;
@@ -573,6 +575,7 @@ export async function resolveRemoteType(
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       results: results ? results.result : null,
       delegated: results ? results.delegated : null,
+      current_sample: currentContext.currentSample,
     }
   );
 
@@ -599,6 +602,7 @@ export async function fetchRemotePlacements(ctx: ExecutionContext) {
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+      current_sample: currentContext.currentSample,
     }
   );
   if (result && result.error) {

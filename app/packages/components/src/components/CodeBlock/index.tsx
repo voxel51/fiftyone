@@ -8,7 +8,7 @@ import {
 } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import { scrollable } from "../../scrollable.module.css";
 
-export default function CodeBlock({ text, ...props }) {
+export default function CodeBlock({ text, ...props }: CodeBlockProps) {
   const { mode } = useColorScheme();
 
   return (
@@ -50,3 +50,14 @@ export default function CodeBlock({ text, ...props }) {
     </Box>
   );
 }
+
+export type CodeBlockProps = {
+  text: string;
+  language?: string;
+  showLineNumbers?: boolean;
+  theme?: object;
+  highlight?: string;
+  codeBlock?: boolean;
+  onCopy?: (text: string) => void;
+  fontSize?: number;
+};

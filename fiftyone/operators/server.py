@@ -63,16 +63,20 @@ class ListOperators(HTTPEndpoint):
         role_scoped_registry = await _get_operator_registry_for_route(
             self.__class__, request, is_list=True
         )
-        ctx = ExecutionContext()
-        operators_as_json = [
-            operator.to_json(ctx)
-            for operator in role_scoped_registry.list_operators()
-            if role_scoped_registry.can_execute(operator.uri)
-        ]
 
-        for operator in operators_as_json:
-            config = operator["config"]
-            config["can_execute"] = registry.can_execute(operator["uri"])
+        operators_as_json = []
+        for operator in role_scoped_registry.list_operators():
+            if role_scoped_registry.can_execute(operator.uri):
+                ctx = ExecutionContext(
+                    operator_uri=operator.uri,
+                    required_secrets=operator._plugin_secrets,
+                )
+                serialized_op = operator.to_json(ctx)
+                config = serialized_op["config"]
+                config["can_execute"] = registry.can_execute(
+                    serialized_op["uri"]
+                )
+                operators_as_json.append(serialized_op)
 
         return {
             "operators": operators_as_json,
