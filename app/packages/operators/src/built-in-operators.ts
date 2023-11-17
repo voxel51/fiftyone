@@ -456,7 +456,10 @@ class SetSelectedSamples extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.samples);
+    const { samples } = params || {};
+    if (!Array.isArray(samples))
+      throw new Error("param 'samples' must be an array of string");
+    hooks.setSelected(new Set(samples));
   }
 }
 
@@ -539,7 +542,7 @@ class ShowSamples extends Operator {
           ]
         : []),
     ];
-    hooks.setView(fos.view, newView);
+    hooks.setView(newView);
   }
 }
 
