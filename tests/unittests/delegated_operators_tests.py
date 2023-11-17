@@ -484,6 +484,8 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         rerun_doc = self.svc.rerun_operation(doc.id)
         self.docs_to_delete.append(rerun_doc)
         self.assertNotEqual(doc.id, rerun_doc.id)
+        self.assertIsNotNone(rerun_doc.delegation_target)
+        self.assertEqual(rerun_doc.delegation_target, doc.delegation_target)
         self.assertEqual(rerun_doc.run_state, ExecutionRunState.QUEUED)
         self.assertIsNotNone(rerun_doc.queued_at)
         self.assertIsNone(rerun_doc.started_at)
