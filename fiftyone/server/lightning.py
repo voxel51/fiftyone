@@ -79,7 +79,7 @@ class IntLightningResult(LightningResult):
 
 @gql.type
 class StringLightningResult(LightningResult):
-    values: t.List[t.Optional[str]]
+    values: t.Optional[t.List[t.Optional[str]]] = None
 
 
 LIGHTNING_QUERIES = (
@@ -276,7 +276,12 @@ async def _do_distinct_query(
     if query.search:
         match = query.search
 
-    result = await collection.distinct(query.path)
+    try:
+        result = await collection.distinct(query.path)
+    except:
+        # too many results
+        return None
+
     values = []
     exclude = set(query.exclude or [])
 

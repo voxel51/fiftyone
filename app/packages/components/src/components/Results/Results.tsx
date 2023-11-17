@@ -57,8 +57,9 @@ export interface ResultsProps<T> {
   active?: number;
   component: React.FC<{ value: T; className?: string }>;
   cy?: string;
+  noResults?: string;
   onSelect: (value: T) => void;
-  results: T[];
+  results?: T[];
   toKey: (value: T) => string;
   total?: number;
 }
@@ -67,6 +68,7 @@ function Results<T>({
   active,
   cy,
   component,
+  noResults,
   onSelect,
   results,
   toKey = (value: T) => String(value),
@@ -84,27 +86,29 @@ function Results<T>({
     <div className={style.container}>
       <div
         className={style.scrollContainer}
-        style={{ paddingBottom: total || !results.length ? 26.5 : undefined }}
+        style={{ paddingBottom: total || !results?.length ? 26.5 : undefined }}
         data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
         ref={ref}
       >
-        {results.map((result, i) => (
-          <Result
-            active={i === active}
-            component={component}
-            key={toKey(result)}
-            result={result}
-            onClick={() => onSelect(result)}
-          />
-        ))}
+        {!!results &&
+          results.map((result, i) => (
+            <Result
+              active={i === active}
+              component={component}
+              key={toKey(result)}
+              result={result}
+              onClick={() => onSelect(result)}
+            />
+          ))}
       </div>
       <div className={style.footer}>
-        {total && results.length && (
+        {!results && !!noResults && <>{noResults}</>}
+        {total && results?.length && (
           <>
             {results.length} of {total.toLocaleString()}
           </>
         )}
-        {!results.length && <>No results</>}
+        {!!results && !results.length && <>No results</>}
       </div>
     </div>
   );

@@ -15,6 +15,10 @@ export const lightningStringResults = selectorFamily<
         throw new Error("bad");
       }
 
+      if (!data.values) {
+        return null;
+      }
+
       return [...data.values];
     },
 });

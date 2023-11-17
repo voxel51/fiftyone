@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<60f8be69877a5bc4f6e1fb028ae7f883>>
+ * @generated SignedSource<<e03888005e9020c4f86c8452025ba5be>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -54,7 +54,7 @@ export type lightningQuery$data = {
   } | {
     readonly __typename: "StringLightningResult";
     readonly path: string;
-    readonly values: ReadonlyArray<string | null>;
+    readonly values: ReadonlyArray<string | null> | null;
   } | {
     // This will never be '%other', but we need some
     // value in case none of the concrete values match.

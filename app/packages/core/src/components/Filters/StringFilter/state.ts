@@ -15,7 +15,7 @@ export const stringSearch = atomFamily<
 
 export const stringSearchResults = selectorFamily<
   {
-    values: Result[];
+    values?: Result[];
     count?: number;
   },
   { path: string; modal: boolean }
@@ -43,7 +43,7 @@ export const stringSearchResults = selectorFamily<
               search,
               exclude: [...selected.filter((s) => s !== null)] as string[],
             })
-          ).map((value) => ({ value, count: null })),
+          )?.map((value) => ({ value, count: null })),
         };
       }
 

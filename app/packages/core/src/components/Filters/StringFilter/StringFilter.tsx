@@ -113,6 +113,7 @@ const StringFilter = ({
               fontSize: "1rem",
               width: "100%",
             }}
+            noResults={"Too many results"}
             containerStyle={{ borderBottomColor: color, zIndex: 1000 }}
             toKey={(value) => String(value.value)}
             id={path}

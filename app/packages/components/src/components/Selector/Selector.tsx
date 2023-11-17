@@ -30,6 +30,7 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
+  noResults?: string;
 }
 
 function Selector<T>(props: SelectorProps<T>) {
@@ -49,6 +50,7 @@ function Selector<T>(props: SelectorProps<T>) {
     overflowContainer = false,
     onMouseEnter,
     cy,
+    noResults,
     ...otherProps
   } = props;
 
@@ -195,6 +197,7 @@ function Selector<T>(props: SelectorProps<T>) {
                 >
                   <SearchResults
                     active={active}
+                    noResults={noResults}
                     search={search}
                     useSearch={useSearch}
                     onSelect={(value) => onSelectWrapper(toKey(value))}
