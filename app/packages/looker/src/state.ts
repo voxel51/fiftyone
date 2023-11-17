@@ -2,6 +2,8 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { ImaVidFramesController } from "./lookers/imavid/controller";
 import { Overlay } from "./overlays/base";
 
 import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
@@ -53,12 +55,10 @@ export type OrthogrpahicProjectionMetadata = {
 };
 
 export type GenericLabel = {
-  [labelKey: string]:
-    | {
-        _cls: string;
-        [field: string]: unknown;
-      }
-    | OrthogrpahicProjectionMetadata;
+  [labelKey: string]: {
+    _cls: string;
+    [field: string]: unknown;
+  };
   // todo: add other label types
 };
 
@@ -69,6 +69,7 @@ export type Sample = {
     mime_type?: string;
   };
   _id: string;
+  id: string;
   filepath: string;
   tags: string[];
   _label_tags: string[];
@@ -99,7 +100,7 @@ export type RgbMaskTargets = {
 export type MaskTargets = IntMaskTargets | RgbMaskTargets;
 
 export type BufferRange = [number, number];
-export type Buffers = BufferRange[];
+export type Buffers = Readonly<BufferRange>[];
 
 export type DispatchEvent = (eventType: string, details?: any) => void;
 
@@ -177,6 +178,7 @@ export type Coordinates = [number, number];
 export type Dimensions = [number, number];
 
 export interface BaseConfig {
+  mediaField: string;
   thumbnail: boolean;
   src: string;
   sources: { [path: string]: string };
@@ -202,6 +204,19 @@ export interface VideoConfig extends BaseConfig {
   support?: [number, number];
 }
 
+export interface ImaVidConfig extends BaseConfig {
+  /**
+   * number of frames-per-second.
+   * this number is suggestive rather than authoritative,
+   * which is why we hide it from the user.
+   */
+  frameRate: number;
+  /**
+   * "C"ontroller for [ImaVidStore](./lookers/imavid/store.ts)
+   */
+  frameStoreController: ImaVidFramesController;
+}
+
 export type PcdConfig = BaseConfig;
 
 export interface FrameOptions extends BaseOptions {
@@ -219,6 +234,11 @@ export interface VideoOptions extends BaseOptions {
   playbackRate: number;
   useFrameNumber: boolean;
   volume: number;
+}
+
+export interface ImaVidOptions extends BaseOptions {
+  loop: boolean;
+  playbackRate: number;
 }
 
 export type PcdOptions = BaseOptions;
@@ -249,6 +269,7 @@ export interface BaseState {
   showOptions: boolean;
   config: BaseConfig;
   options: BaseOptions;
+  shouldHandleKeyEvents: boolean;
   scale: number;
   pan: Coordinates;
   panning: boolean;
@@ -299,7 +320,6 @@ export interface VideoState extends BaseState {
   duration: number | null;
   fragment: [number, number] | null;
   buffering: boolean;
-  buffers: Buffers;
   seekBarHovering: boolean;
   SHORTCUTS: Readonly<ControlMap<VideoState>>;
   hasPoster: boolean;
@@ -307,15 +327,56 @@ export interface VideoState extends BaseState {
   lockedToSupport: boolean;
 }
 
+export interface ImaVidState extends BaseState {
+  /**
+   * parameters for imavid looker (comes from [`useCreateLooker()`](../../state/src/hooks/useCreateLooker.ts))
+   */
+  config: ImaVidConfig;
+  /**
+   * user configurable options for video player
+   * @see [Configuring FiftyOne](https://docs.voxel51.com/user_guide/config.html#configuring-the-app)
+   */
+  options: ImaVidOptions;
+  /**
+   * true if seeking, i.e. either seek thumb or bar is being clicked / dragged
+   */
+  seeking: boolean;
+  /**
+   * true if playing, false if paused
+   */
+  playing: boolean;
+  /**
+   * current frame number
+   */
+  currentFrameNumber: number;
+  /**
+   * current frame number is usually synced from the player's state,
+   * if this flag is true, then the sync happens in the opposite direction
+   */
+  isCurrentFrameNumberAuthoritative: boolean;
+  /**
+   * total number of frames
+   */
+  totalFrames: number;
+  /**
+   * true if frames are buffering from server
+   */
+  buffering: boolean;
+  /**
+   * ranges of frame numbers that have been buffered.
+   */
+  bufferManager: BufferManager;
+  /**
+   * true if the seek bar is being hovered
+   */
+  seekBarHovering: boolean;
+}
+
 export interface PcdState extends BaseState {
   config: PcdConfig;
   options: PcdOptions;
   SHORTCUTS: Readonly<ControlMap<PcdState>>;
 }
-
-export type Optional<T> = {
-  [P in keyof T]?: Optional<T[P]>;
-};
 
 export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
@@ -327,8 +388,8 @@ export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
   stateOrUpdater:
-    | Optional<State>
-    | ((state: Readonly<State>) => Optional<State>),
+    | Partial<State>
+    | ((previousState: Partial<State>) => Partial<State>),
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
@@ -338,6 +399,7 @@ export type StateUpdate<State extends BaseState> = (
 
 const DEFAULT_BASE_OPTIONS: BaseOptions = {
   highlight: false,
+  isPointcloudDataset: false,
   activePaths: [],
   selectedLabels: [],
   selectedLabelTags: undefined,
@@ -345,6 +407,7 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showControls: true,
   showIndex: false,
   showJSON: false,
+  showHelp: false,
   showLabel: false,
   showTooltip: false,
   onlyShowHoveredLabel: false,
