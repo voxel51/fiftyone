@@ -1,3 +1,4 @@
+import { ImaVidLooker } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import {
   datasetFragment,
@@ -10,9 +11,10 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   GROUP,
   LIST_FIELD,
+  Stage,
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
-import { PreloadedQuery, VariablesOf } from "react-relay";
+import { VariablesOf } from "react-relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
@@ -20,13 +22,14 @@ import type { ResponseFrom } from "../utils";
 import { mediaType } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
-import { ModalSample, modalSample } from "./modal";
+import { ModalSample, modalLooker, modalSample } from "./modal";
+import { nonNestedDynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
-import { view } from "./view";
+import { GROUP_BY_VIEW_STAGE, dynamicGroupViewQuery, view } from "./view";
 
 export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   key: "groupMediaIsCarouselVisibleSetting",
@@ -367,11 +370,108 @@ export const dynamicGroupIndex = atom<number>({
   default: null,
 });
 
-export const dynamicGroupSamplesQueryRef = atom<
-  PreloadedQuery<foq.paginateSamplesQuery>
+export const dynamicGroupCurrentElementIndex = atom<number>({
+  key: "dynamicGroupCurrentElementIndex",
+  default: 1,
+});
+
+export const dynamicGroupParameters =
+  selector<State.DynamicGroupParameters | null>({
+    key: "dynamicGroupParameters",
+    get: ({ get }) => {
+      const viewArr = get(view);
+      if (!viewArr) return null;
+
+      const groupByViewStageNode = viewArr.find(
+        (view) => view._cls === GROUP_BY_VIEW_STAGE
+      );
+      if (!groupByViewStageNode) return null;
+
+      const isFlat = groupByViewStageNode.kwargs[2][1]; // third index is 'flat', we want it to be false for dynamic groups
+      if (isFlat) return null;
+
+      return {
+        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
+        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
+      };
+    },
+  });
+
+export const isDynamicGroup = selector<boolean>({
+  key: "isDynamicGroup",
+  get: ({ get }) => {
+    return Boolean(get(dynamicGroupParameters));
+  },
+});
+
+export const isNonNestedDynamicGroup = selector<boolean>({
+  key: "isNonNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(groupField) === null;
+  },
+});
+
+export const isImaVidLookerAvailable = selector<boolean>({
+  key: "isImaVidLookerAvailable",
+  get: ({ get }) => {
+    const isOrderedDynamicGroup_ = get(isOrderedDynamicGroup);
+    const isNonNestedDynamicGroup_ = get(isNonNestedDynamicGroup);
+    return isOrderedDynamicGroup_ && isNonNestedDynamicGroup_;
+  },
+});
+
+export const shouldRenderImaVidLooker = selector<boolean>({
+  key: "shouldRenderImaVidLooker",
+  get: ({ get }) => {
+    return (
+      get(isImaVidLookerAvailable) &&
+      get(nonNestedDynamicGroupsViewMode) === "video"
+    );
+  },
+});
+
+export const isOrderedDynamicGroup = selector<boolean>({
+  key: "isOrderedDynamicGroup",
+  get: ({ get }) => {
+    const params = get(dynamicGroupParameters);
+    if (!params) return false;
+
+    const { orderBy } = params;
+    return Boolean(orderBy?.length);
+  },
+});
+
+export const dynamicGroupPageSelector = selectorFamily<
+  (
+    cursor: number,
+    pageSize: number
+  ) => {
+    filter: Record<string, never>;
+    after: string;
+    count: number;
+    dataset: string;
+    view: Stage[];
+  },
+  string
 >({
-  key: "dynamicGroupSamplesQueryRef",
-  default: null,
+  key: "paginateDynamicGroupVariables",
+  get:
+    (groupByValue) =>
+    ({ get }) => {
+      const params = {
+        dataset: get(datasetName),
+        view: get(
+          dynamicGroupViewQuery({ groupByFieldValueExplicit: groupByValue })
+        ),
+      };
+
+      return (cursor: number, pageSize: number) => ({
+        ...params,
+        filter: {},
+        after: cursor ? String(cursor) : null,
+        count: pageSize,
+      });
+    },
 });
 
 export const activeModalSample = selector({
@@ -383,6 +483,68 @@ export const activeModalSample = selector({
 
     return get(modalSample).sample;
   },
+});
+
+export const activeModalSidebarSample = selector({
+  key: "activeModalSidebarSample",
+  get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const currentFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+
+      if (!currentFrameNumber) {
+        return get(activeModalSample);
+      }
+
+      const currentModalLooker = get(modalLooker) as ImaVidLooker;
+
+      const sampleId =
+        currentModalLooker?.frameStoreController?.store.frameIndex.get(
+          currentFrameNumber
+        );
+      const sample =
+        currentModalLooker?.frameStoreController?.store.samples.get(sampleId);
+      return sample?.sample ?? get(activeModalSample);
+    }
+
+    return get(activeModalSample);
+  },
+});
+
+export const imaVidLookerState = atomFamily<any, string>({
+  key: "imaVidLookerState",
+  default: null,
+  effects: (key) => [
+    ({ setSelf, getPromise, onSet }) => {
+      let unsubscribe;
+
+      onSet((_newValue, oldValue, isReset) => {
+        // note: resetRecoilState is not triggering `onSet` in effect,
+        // see https://github.com/facebookexperimental/Recoil/issues/2183
+        // replace with `useResetRecoileState` when fixed
+
+        // if (!isReset) {
+        //   throw new Error("cannot set ima-vid state directly");
+        // }
+        unsubscribe && unsubscribe();
+
+        getPromise(modalLooker)
+          .then((looker: ImaVidLooker) => {
+            if (looker) {
+              unsubscribe = looker.subscribeToState(key, (stateValue) => {
+                setSelf(stateValue);
+              });
+            }
+          })
+          .catch((e) => {
+            console.error(e);
+          });
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    },
+  ],
 });
 
 export const groupStatistics = atomFamily<"group" | "slice", boolean>({

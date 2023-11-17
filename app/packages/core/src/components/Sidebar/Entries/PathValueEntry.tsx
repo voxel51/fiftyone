@@ -364,7 +364,7 @@ const Loadable = ({ path }: { path: string }) => {
 
 const useData = <T extends unknown>(path: string): T => {
   const keys = path.split(".");
-  const loadable = useRecoilValueLoadable(fos.activeModalSample);
+  const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
 
   if (loadable.state === "loading") {
     throw loadable.contents;

@@ -113,7 +113,6 @@ export function getRootOrProtocol(path: string) {
   }
   if (pathType === PathType.WINDOWS) {
     const parsed = pathUtils.win32.parse(path);
-    console.log(parsed);
     return parsed.root;
   }
   return "/";

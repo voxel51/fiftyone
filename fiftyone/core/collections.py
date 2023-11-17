@@ -3319,7 +3319,7 @@ class SampleCollection(object):
 
     @property
     def has_evaluations(self):
-        """Whether this colection has any evaluation results."""
+        """Whether this collection has any evaluation results."""
         return bool(self.list_evaluations())
 
     def has_evaluation(self, eval_key):
@@ -3428,7 +3428,7 @@ class SampleCollection(object):
 
     @property
     def has_brain_runs(self):
-        """Whether this colection has any brain runs."""
+        """Whether this collection has any brain runs."""
         return bool(self.list_brain_runs())
 
     def has_brain_run(self, brain_key):
@@ -3538,7 +3538,7 @@ class SampleCollection(object):
 
     @property
     def has_runs(self):
-        """Whether this colection has any runs."""
+        """Whether this collection has any runs."""
         return bool(self.list_runs())
 
     def has_run(self, run_key):
@@ -8563,7 +8563,7 @@ class SampleCollection(object):
 
     @property
     def has_annotation_runs(self):
-        """Whether this colection has any annotation runs."""
+        """Whether this collection has any annotation runs."""
         return bool(self.list_annotation_runs())
 
     def has_annotation_run(self, anno_key):
@@ -9533,7 +9533,7 @@ class SampleCollection(object):
                 end of the pipeline. Only applicable to datasets that contain
                 videos
             frames_only (False): whether to generate a pipeline that contains
-                *only* the frames in the colection
+                *only* the frames in the collection
             support (None): an optional ``[first, last]`` range of frames to
                 attach. Only applicable when attaching frames
             group_slice (None): the current group slice of the collection, if

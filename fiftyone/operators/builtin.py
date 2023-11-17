@@ -187,6 +187,40 @@ class RenameSampleField(foo.Operator):
         ctx.trigger("reload_dataset")
 
 
+class ClearSampleField(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="clear_sample_field",
+            label="Clear sample field",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        fields = ctx.dataset.get_field_schema(flat=True)
+        field_keys = list(fields.keys())
+        field_selector = types.AutocompleteView()
+        for key in field_keys:
+            field_selector.add_choice(key, label=key)
+
+        inputs.enum(
+            "field_name",
+            field_keys,
+            label="Field to clear",
+            view=field_selector,
+            required=True,
+        )
+
+        return types.Property(
+            inputs, view=types.View(label="Clear sample field")
+        )
+
+    def execute(self, ctx):
+        ctx.dataset.clear_sample_field(ctx.params.get("field_name", None))
+        ctx.trigger("reload_dataset")
+
+
 class DeleteSelectedSamples(foo.Operator):
     @property
     def config(self):
@@ -362,6 +396,7 @@ BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
     RenameSampleField(_builtin=True),
+    ClearSampleField(_builtin=True),
     DeleteSelectedSamples(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),

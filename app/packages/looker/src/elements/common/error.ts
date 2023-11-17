@@ -15,10 +15,7 @@ export class ErrorElement<State extends BaseState> extends BaseElement<State> {
   private errorElement: HTMLDivElement = null;
   private reset: () => void;
 
-  createHTMLElement(
-    _: StateUpdate<State>,
-    dispatchEvent: (eventType: string, details?: any) => void
-  ) {
+  createHTMLElement(dispatchEvent: (eventType: string, details?: any) => void) {
     this.reset = () => {
       dispatchEvent("reset");
     };
