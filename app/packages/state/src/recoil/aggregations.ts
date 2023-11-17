@@ -1,6 +1,6 @@
 import * as foq from "@fiftyone/relay";
 import { VariablesOf } from "react-relay";
-import { selectorFamily } from "recoil";
+import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { refresher } from "./atoms";
@@ -138,4 +138,17 @@ export const aggregation = selectorFamily({
         })
       ).filter((data) => data.path === path)[0];
     },
+});
+
+export const dynamicGroupsElementCount = selector<number>({
+  key: "dynamicGroupsElementCount",
+  get: ({ get }) =>
+    get(
+      aggregationQuery({
+        customView: get(viewAtoms.dynamicGroupViewQuery),
+        extended: false,
+        modal: false,
+        paths: [""],
+      })
+    )?.at(0)?.count ?? 0,
 });
