@@ -146,7 +146,7 @@ class SecretsDictionary:
 
     def __deepcopy__(self, memodict={}):
         logging.warning(
-            "Copying the SecretDictionary values is not " "allowed."
+            "Copying the SecretsDictionary values is not " "allowed."
         )
 
         return {k: None for k in self.__secrets.keys()}
@@ -156,7 +156,7 @@ class SecretsDictionary:
 
     def copy(self):
         logging.warning(
-            "Copying the SecretDictionary values is not " "allowed."
+            "Copying the SecretsDictionary values is not " "allowed."
         )
         return self.__deepcopy__()
 
