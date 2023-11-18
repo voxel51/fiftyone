@@ -107,8 +107,15 @@ class SecretsDictionary:
     operators that will attempt to resolve missing plugin secrets upon access.
     """
 
-    def __init__(self, secrets_dict, operator_uri=None, resolver_fn=None):
-        self.__secrets = secrets_dict  # types.MappingProxyType(secrets_dict)
+    def __init__(
+        self,
+        secrets_dict,
+        operator_uri=None,
+        resolver_fn=None,
+        required_keys=None,
+    ):
+        self.__secrets = secrets_dict
+        self.__required_keys = required_keys
         self._operator_uri = operator_uri
         if resolver_fn:
             self._resolver = resolver_fn
@@ -117,6 +124,12 @@ class SecretsDictionary:
 
     def __eq__(self, other):
         return self.__secrets == other
+
+    def __setattr__(self, key, value):
+        if key == "__secrets" or key == "__required_keys":
+            raise AttributeError("Cannot mutate hidden properties")
+        else:
+            super().__setattr__(key, value)
 
     def __getitem__(self, key):
         # Override __getitem__ to suppress KeyError and attempt to resolve
@@ -155,5 +168,7 @@ class SecretsDictionary:
         raise RuntimeError("Iteration through values is not allowed")
 
     def items(self):
-        # Override items() to prevent iterating through plaintext values
-        raise RuntimeError("Iteration through items is not allowed.")
+        # Override items() to use __getitem__ to automatically resolve
+        # missing secrets upon iteration
+        for key in self.keys():
+            yield key, self[key]

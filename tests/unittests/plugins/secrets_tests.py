@@ -60,6 +60,14 @@ class TestExecutionContext:
         }
 
         assert context.secrets == context._secrets
+        try:
+            for k, v in context.secrets.items():
+                assert k in context._secrets
+                assert context._secrets[k] == v
+        except Exception as e:
+            pytest.fail(
+                "secrets proproperty items should be the same as _secrets items"
+            )
 
     def test_secret_property_on_demand_resolve(self, mocker):
         mocker.patch.dict(
