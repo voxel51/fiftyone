@@ -6,6 +6,7 @@ import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
+import { v4 as uuid } from "uuid";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -25,6 +26,7 @@ const ColorFooter: React.FC = () => {
   const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
   const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
+
   useEffect(
     () => foq.subscribe(() => setActiveColorModalField(null)),
     [setActiveColorModalField]
@@ -96,6 +98,7 @@ const ColorFooter: React.FC = () => {
                       foq.colorSchemeFragment,
                       setDatasetColorScheme
                     );
+
                   const record = store.get(fragment.id);
                   record && config?.setLinkedRecord(record, "colorScheme");
                 }

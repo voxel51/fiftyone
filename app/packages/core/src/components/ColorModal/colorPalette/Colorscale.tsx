@@ -75,7 +75,7 @@ const Colorscale: React.FC = () => {
   const setColorScheme = fos.useSetSessionColorScheme();
   const activePath = useRecoilValue(activeColorPath);
   const [setting, setSetting] = useRecoilState(colorscaleSetting(activePath));
-  console.info("setting", setting);
+
   const state = useMemo(
     () => ({
       useFieldSetting: Boolean(
