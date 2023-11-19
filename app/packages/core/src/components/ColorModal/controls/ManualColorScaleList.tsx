@@ -31,7 +31,7 @@ type Input = {
   color: string;
 };
 
-type ManualCOlorScaleListProp = {
+type ManualColorScaleListProp = {
   initialValue: ColorscaleListInput[];
   values: ColorscaleListInput[];
   style: React.CSSProperties;
