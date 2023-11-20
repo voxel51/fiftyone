@@ -43,7 +43,7 @@ type ManualColorScaleListProp = {
   step?: number;
 };
 
-const ManualColorScaleList: React.FC<ManualCOlorScaleListProp> = ({
+const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
   initialValue,
   values,
   style,
