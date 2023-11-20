@@ -73,7 +73,7 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain~=0.13.2",
+    "fiftyone-brain~=0.13.3",
     "fiftyone-db~=0.4",
     "voxel51-eta~=0.12",
 ]
