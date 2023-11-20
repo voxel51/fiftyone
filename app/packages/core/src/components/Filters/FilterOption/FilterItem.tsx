@@ -33,7 +33,7 @@ const Text = styled.div`
   ${({ theme }) => theme.text.secondary};
 `;
 
-const getIcon = (icon: string) => {
+export const getIcon = (icon: string) => {
   switch (String(icon).toLowerCase()) {
     case "filteralticon":
       return <FilterAltIcon fontSize="small" />;
@@ -47,6 +47,9 @@ const getIcon = (icon: string) => {
       return <VisibilityIcon fontSize="small" />;
     case "visibilityofficon":
       return <VisibilityOffIcon fontSize="small" />;
+
+    default:
+      throw new Error(`no icon for ${icon}`);
   }
 };
 

@@ -9,6 +9,7 @@ import RegularEntry from "../RegularEntry";
 import { makePseudoField } from "../utils";
 import FilterablePathEntries from "./FilterablePathEntries";
 import LightningFilterablePathEntries from "./LightningFilterablePathEntries";
+import Loading from "./Loading";
 import useTitleTemplate from "./useTitleTemplate";
 
 const LABEL_TAGS = "_label_tags";
@@ -109,7 +110,7 @@ const FilterableEntry = ({
       trigger={trigger}
     >
       {expanded && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<Loading />}>
           <Entries
             {...{
               modal,

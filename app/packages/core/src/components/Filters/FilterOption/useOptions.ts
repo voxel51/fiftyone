@@ -28,7 +28,7 @@ export default function (modal: boolean, path: string) {
     //  feature requirements:
     //  1) only list field items should have the filter and negative filter
     //     options
-    //  2) boolean fields should not have the negative filter or negative match
+    //  2) only string fields should have the negative filter or negative match
     //     options
     //  3) in expanded mode or keypoints fields, do not show the match or
     //     negative match options

@@ -11,8 +11,11 @@ export default function (
   return {
     onSelect: useRecoilCallback(
       ({ snapshot, set }) =>
-        async (value: string, d?: Result) => {
+        async (value: string | null, d?: Result) => {
           const selected = new Set(await snapshot.getPromise(selectedAtom));
+          if (d?.value === null) {
+            value = null;
+          }
           selectedMap.current.set(value, d?.count || null);
           selected.add(value);
           set(selectedAtom, [...selected].sort());

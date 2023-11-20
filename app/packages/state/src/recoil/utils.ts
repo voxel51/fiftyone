@@ -165,21 +165,6 @@ export const getEmbeddedLabelFields = (fields: StrictField[], prefix = "") =>
 
 export type Range = [number | null | undefined, number | null | undefined];
 
-export const asDefaultRange = (
-  range: Range,
-  defaultRange?: [number, number]
-): Range => {
-  if (!defaultRange) {
-    return range;
-  }
-
-  const [maxMin, minMax] = defaultRange;
-  return [
-    maxMin < range[0] ? maxMin : range[0],
-    minMax > range[1] ? minMax : range[1],
-  ];
-};
-
 export function useAssertedRecoilValue<T>(recoilValue: RecoilValue<T>) {
   const value = useRecoilValue(recoilValue);
 

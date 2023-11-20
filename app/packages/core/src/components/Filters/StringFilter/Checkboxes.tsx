@@ -73,7 +73,7 @@ const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
     }
   });
 
-  return data;
+  return { counts: data, loading: loadable.state === "loading" };
 };
 
 const useValues = ({
@@ -95,8 +95,7 @@ const useValues = ({
   const lightningPath =
     useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
   const skeleton = useRecoilValue(isSkeleton(path));
-  const counts = useCounts(modal, path, results);
-  const loading = Boolean(lightningPath && !counts.size);
+  const { counts, loading } = useCounts(modal, path, results);
   const hasCount = (!lightning || unlocked) && !loading;
 
   let allValues = selected.map((value) => ({
@@ -113,6 +112,8 @@ const useValues = ({
     skeleton ||
     boolean;
 
+  const sorting = useRecoilValue(fos.sortFilterResults(modal));
+
   if (hasCheckboxResults) {
     allValues = [
       ...allValues,
@@ -126,7 +127,12 @@ const useValues = ({
     ];
   }
 
-  return { name, selectedSet, values: [...new Set(allValues)] };
+  return {
+    name,
+    selectedSet,
+    sorting: !lightningPath ? sorting : { asc: true, count: false },
+    values: [...new Set(allValues)],
+  };
 };
 
 const Checkboxes = ({
@@ -140,10 +146,9 @@ const Checkboxes = ({
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
-  const sorting = useRecoilValue(fos.sortFilterResults(modal));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
-  const { name, selectedSet, values } = useValues({
+  const { name, selectedSet, sorting, values } = useValues({
     modal,
     path,
     results,
@@ -153,34 +158,37 @@ const Checkboxes = ({
 
   return (
     <>
-      {values.sort(nullSort(sorting)).map(({ count, loading, value }) => (
-        <Checkbox
-          key={String(value)}
-          color={color}
-          value={selectedSet.has(value)}
-          name={value}
-          loading={loading}
-          count={
-            typeof count !== "number" || !isFilterMode
-              ? undefined
-              : selectedMap.current.get(value) ?? count
-          }
-          setValue={(checked: boolean) => {
-            if (checked) {
-              selectedSet.add(value);
-            } else {
-              selectedSet.delete(value);
+      {values.sort(nullSort(sorting)).map(({ count, loading, value }) => {
+        return (
+          <Checkbox
+            key={value}
+            color={color}
+            value={selectedSet.has(value)}
+            forceColor={value === null}
+            name={value === null ? "None" : value}
+            loading={loading}
+            count={
+              typeof count !== "number" || !isFilterMode
+                ? undefined
+                : selectedMap.current.get(value) ?? count
             }
-            setSelected([...selectedSet].sort());
-          }}
-          subcountAtom={fos.count({
-            modal,
-            path,
-            extended: true,
-            value: value as string,
-          })}
-        />
-      ))}
+            setValue={(checked: boolean) => {
+              if (checked) {
+                selectedSet.add(value);
+              } else {
+                selectedSet.delete(value);
+              }
+              setSelected([...selectedSet].sort());
+            }}
+            subcountAtom={fos.count({
+              modal,
+              path,
+              extended: true,
+              value: value as string,
+            })}
+          />
+        );
+      })}
       {!!selectedSet.size && (
         <>
           <FilterOption

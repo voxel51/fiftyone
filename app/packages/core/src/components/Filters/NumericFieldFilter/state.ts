@@ -1,29 +1,38 @@
-import { Nonfinite, boundsAtom, nonfiniteAtom } from "@fiftyone/state";
+import {
+  Nonfinite,
+  boundsAtom,
+  nonfiniteAtom,
+  rangeAtom,
+} from "@fiftyone/state";
 import { selectorFamily } from "recoil";
-
-type Params = {
-  defaultRange?: [number, number];
-  path: string;
-};
 
 export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
 
 export const hasBounds = selectorFamily({
   key: "hasBounds",
   get:
-    (params: Params) =>
+    (path: string) =>
     ({ get }) => {
-      return Boolean(get(boundsAtom(params))?.every((b) => b !== null));
+      return Boolean(get(boundsAtom({ path }))?.every((b) => b !== null));
+    },
+});
+
+export const hasDefaultRange = selectorFamily({
+  key: "hasBounds",
+  get:
+    (params: { modal: boolean; path: string }) =>
+    ({ get }) => {
+      return Boolean(get(rangeAtom(params))?.every((r) => r === null));
     },
 });
 
 export const hasNonfinites = selectorFamily({
   key: "hasNonfinites",
   get:
-    (params: Params) =>
+    (path: string) =>
     ({ get }) => {
       return FLOAT_NONFINITES.every((key) =>
-        get(nonfiniteAtom({ ...params, key, modal: false }))
+        get(nonfiniteAtom({ path, key, modal: false }))
       );
     },
 });
@@ -31,11 +40,11 @@ export const hasNonfinites = selectorFamily({
 export const oneBound = selectorFamily({
   key: "oneBound",
   get:
-    (params: { defaultRange?: [number, number]; path: string }) =>
+    (path: string) =>
     ({ get }) => {
       return (
-        get(hasBounds(params)) &&
-        get(boundsAtom(params))[0] === get(boundsAtom(params))[1]
+        get(hasBounds(path)) &&
+        get(boundsAtom({ path }))[0] === get(boundsAtom({ path }))[1]
       );
     },
 });

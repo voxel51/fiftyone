@@ -17,7 +17,7 @@ import style from "./Selector.module.css";
 export interface SelectorProps<T> {
   id?: string;
   value?: string;
-  onSelect: (search: string, v?: T) => Promise<string>;
+  onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
   useSearch?: UseSearch<T>;
   component: React.FC<{ value: T; className?: string }>;

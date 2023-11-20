@@ -23,11 +23,7 @@ const NONFINITES = {
   none: null,
 };
 
-const useNonfiniteSettings = (params: {
-  modal: boolean;
-  path: string;
-  defaultRange?: [number, number];
-}) => {
+const useNonfiniteSettings = (params: { modal: boolean; path: string }) => {
   function useData(key: fos.Nonfinite): [fos.Nonfinite, NonfiniteState] {
     const [value, setValue] = useRecoilState(
       fos.nonfiniteAtom({ ...params, key })
@@ -50,11 +46,7 @@ const useNonfiniteSettings = (params: {
   return useData;
 };
 
-const useNonfinites = (options: {
-  defaultRange?: [number, number];
-  modal: boolean;
-  path: string;
-}) => {
+const useNonfinites = (options: { modal: boolean; path: string }) => {
   const get = useNonfiniteSettings(options);
   const list = [get("none")];
   const { ftype } = fos.useAssertedRecoilValue(fos.field(options.path));
@@ -80,23 +72,14 @@ const useNonfinites = (options: {
     }));
 };
 
-function Nonfinites({
-  defaultRange,
-  modal,
-  path,
-}: {
-  defaultRange?: [number, number];
-  modal: boolean;
-  path: string;
-}) {
+function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
   const color = useRecoilValue(fos.pathColor(path));
   const nonfinites = useNonfinites({
     modal,
     path,
-    defaultRange,
   });
-  const hasBounds = useRecoilValue(state.hasBounds({ defaultRange, path }));
-  const one = useRecoilValue(state.oneBound({ defaultRange, path }));
+  const hasBounds = useRecoilValue(state.hasBounds(path));
+  const one = useRecoilValue(state.oneBound(path));
   const lightning = useRecoilValue(fos.lightning);
   const lightningPath = useRecoilValue(fos.isLightningPath(path));
 

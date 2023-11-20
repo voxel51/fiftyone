@@ -9,7 +9,7 @@ import * as visibilityAtoms from "../attributeVisibility";
 import * as filterAtoms from "../filters";
 import { isLightningPath } from "../lightning";
 import * as pathData from "../pathData";
-import { asDefaultRange, Range } from "../utils";
+import { Range } from "../utils";
 import { isFilterDefault } from "./utils";
 
 export interface NumericFilter {
@@ -60,13 +60,15 @@ const getVisibility = (
   return result;
 };
 
-const meetsDefault = (filter: NumericFilter) => {
+const meetsBounds = (range: Range, bounds: Range) => {
+  return range[0] === bounds[0] && range[1] === bounds[1];
+};
+
+const meetsDefault = (filter: NumericFilter, bounds: Range) => {
+  const isDefaultRange =
+    filter.range.every((r) => r === null) || meetsBounds(filter.range, bounds);
   return (
-    filter.range.every((r) => r === null) &&
-    filter.none &&
-    filter.nan &&
-    filter.inf &&
-    filter.ninf
+    isDefaultRange && filter.none && filter.nan && filter.inf && filter.ninf
   );
 };
 
@@ -90,14 +92,9 @@ const setFilter = (
     ...filter,
     [key]: value,
   };
-  const isDefault = meetsDefault(check);
-
-  if (filter.range[0] === null && filter.range[1] === null) {
-    filter.exclude = false;
-    filter.isMatching = true;
-  }
-
   const bounds = get(boundsAtom({ path }));
+  const isDefault = meetsDefault(check, bounds);
+
   const rangeIsNull = !filter.range || filter.range.every((r) => r === null);
 
   if (rangeIsNull) {
@@ -131,24 +128,17 @@ const setVisibility = (
     ...visibility,
     [key]: value,
   };
-
-  const isDefault = meetsDefault(check);
-
-  if (visibility.range[0] === null && visibility.range[1] === null) {
-    visibility.exclude = false;
-    visibility.isMatching = true;
-  }
-
   const bounds = get(boundsAtom({ path }));
+  const isDefault = meetsDefault(check, bounds);
+
   const rangeIsNull =
     !visibility.range || visibility.range.every((r) => r === null);
 
-  if (!isDefault && rangeIsNull) {
-    set(visibilityAtoms.visibility({ modal, path }), {
-      ...visibility,
-      range: bounds,
-    });
-  } else if (isDefault) {
+  if (rangeIsNull) {
+    delete visibility.range;
+  }
+
+  if (isDefault) {
     set(visibilityAtoms.visibility({ modal, path }), null);
   } else {
     set(visibilityAtoms.visibility({ modal, path }), visibility);
@@ -159,12 +149,11 @@ export const boundsAtom = selectorFamily<
   Range,
   {
     path: string;
-    defaultRange?: Range;
   }
 >({
   key: "numericFieldBounds",
   get:
-    ({ path, defaultRange }) =>
+    ({ path }) =>
     ({ get }) => {
       const lightning = get(isLightningPath(path));
 
@@ -177,18 +166,13 @@ export const boundsAtom = selectorFamily<
         return lightning ? null : [null, null];
       }
 
-      if (bounds.every((b) => b === null)) {
-        return bounds;
-      }
-
-      return asDefaultRange(bounds, defaultRange);
+      return bounds;
     },
 });
 
 export const rangeAtom = selectorFamily<
   Range,
   {
-    defaultRange?: Range;
     modal: boolean;
     path: string;
     withBounds?: boolean;
@@ -196,7 +180,7 @@ export const rangeAtom = selectorFamily<
 >({
   key: "filterNumericFieldRange",
   get:
-    ({ modal, path, defaultRange, withBounds }) =>
+    ({ modal, path, withBounds }) =>
     ({ get }) => {
       const isFilterMode = get(fos.isSidebarFilterMode);
       const range = isFilterMode
@@ -206,7 +190,7 @@ export const rangeAtom = selectorFamily<
         return range;
       }
 
-      return get(boundsAtom({ path, defaultRange }));
+      return get(boundsAtom({ path }));
     },
   set:
     ({ modal, path }) =>
@@ -252,7 +236,6 @@ export const nonfiniteAtom = selectorFamily<
 export const numericExcludeAtom = selectorFamily<
   boolean,
   {
-    defaultRange?: Range;
     modal: boolean;
     path: string;
   }
@@ -267,7 +250,7 @@ export const numericExcludeAtom = selectorFamily<
         : getVisibility(get, modal, path).exclude;
     },
   set:
-    ({ modal, path, defaultRange }) =>
+    ({ modal, path }) =>
     ({ get, set }, value) => {
       const isFilterMode = get(fos.isSidebarFilterMode);
       if (isFilterMode) {
@@ -281,7 +264,6 @@ export const numericExcludeAtom = selectorFamily<
 export const numericIsMatchingAtom = selectorFamily<
   boolean,
   {
-    defaultRange?: Range;
     modal: boolean;
     path: string;
   }
@@ -293,7 +275,7 @@ export const numericIsMatchingAtom = selectorFamily<
       return getFilter(get, modal, path).isMatching;
     },
   set:
-    ({ modal, path, defaultRange }) =>
+    ({ modal, path }) =>
     ({ get, set }, value) => {
       setFilter(get, set, modal, path, "isMatching", value);
     },
@@ -361,7 +343,7 @@ const helperFunction = (
 export const generateSelectorFamily = (key) =>
   selectorFamily<
     (value: number | null) => boolean,
-    { modal: boolean; path: string; defaultRange?: Range }
+    { modal: boolean; path: string }
   >({
     key: key,
     get:
@@ -378,8 +360,8 @@ export const generateSelectorFamily = (key) =>
         // if there is visibility and no filter
         if (!filter && visibility) {
           const excludeVisibility = visibility.exclude;
-          const startVisibility = visibility.range[0];
-          const endVisibility = visibility.range[1];
+          const startVisibility = visibility["range"][0];
+          const endVisibility = visibility["range"][1];
           const noneVisibility = visibility["none"];
           const infVisibility = visibility["inf"];
           const ninfVisibility = visibility["ninf"];
@@ -403,8 +385,8 @@ export const generateSelectorFamily = (key) =>
         if (filter && !visibility) {
           const excludeFilter = filter.exclude;
           const isMatchingFilter = filter.isMatching;
-          const startFilter = filter.range[0];
-          const endFilter = filter.range[1];
+          const startFilter = filter["range"][0];
+          const endFilter = filter["range"][1];
           const noneFilter = filter["none"];
           const infFilter = filter["inf"];
           const ninfFilter = filter["ninf"];
@@ -432,16 +414,16 @@ export const generateSelectorFamily = (key) =>
         if (filter && visibility) {
           const excludeFilter = filter.exclude;
           const isMatchingFilter = filter.isMatching;
-          const startFilter = filter.range[0];
-          const endFilter = filter.range[1];
+          const startFilter = filter["range"][0];
+          const endFilter = filter["range"][1];
           const noneFilter = filter["none"];
           const infFilter = filter["inf"];
           const ninfFilter = filter["ninf"];
           const nanFilter = filter["nan"];
 
           const excludeVisibility = visibility.exclude;
-          const startVisibility = visibility.range[0];
-          const endVisibility = visibility.range[1];
+          const startVisibility = visibility["range"][0];
+          const endVisibility = visibility["range"][1];
           const noneVisibility = visibility["none"];
           const infVisibility = visibility["inf"];
           const ninfVisibility = visibility["ninf"];
@@ -476,7 +458,7 @@ export const generateSelectorFamily = (key) =>
           };
         }
 
-        return () => true; // not needed but eslint complains
+        return () => true;
       },
   });
 

@@ -60,7 +60,7 @@ export interface ResultsProps<T> {
   noResults?: string;
   onSelect: (value: T) => void;
   results?: T[];
-  toKey: (value: T) => string;
+  toKey?: (value: T) => string;
   total?: number;
 }
 
@@ -91,15 +91,17 @@ function Results<T>({
         ref={ref}
       >
         {!!results &&
-          results.map((result, i) => (
-            <Result
-              active={i === active}
-              component={component}
-              key={toKey(result)}
-              result={result}
-              onClick={() => onSelect(result)}
-            />
-          ))}
+          results.map((result, i) => {
+            return (
+              <Result
+                active={i === active}
+                component={component}
+                key={toKey ? toKey(result) : String(result)}
+                result={result}
+                onClick={() => onSelect(result)}
+              />
+            );
+          })}
       </div>
       <div className={style.footer}>
         {!results && !!noResults && <>{noResults}</>}

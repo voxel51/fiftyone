@@ -29,7 +29,6 @@ const RangeSliderContainer = styled.div`
 `;
 
 type Props = {
-  defaultRange?: [number, number];
   modal: boolean;
   path: string;
   named?: boolean;
@@ -38,20 +37,17 @@ type Props = {
   onBlur?: () => void;
 };
 
-const NumericFieldFilter = ({
-  defaultRange,
-  modal,
-  path,
-  named = true,
-}: Props) => {
+const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
   const name = path.split(".").slice(-1)[0];
   const color = useRecoilValue(fos.pathColor(path));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
-  const hasBounds = useRecoilValue(state.hasBounds({ defaultRange, path }));
+  const hasBounds = useRecoilValue(state.hasBounds(path));
   const lightning = useRecoilValue(fos.isLightningPath(path));
 
   const key = path.replace(/[ ,.]/g, "-");
+  const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
+  const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
 
   if (named && !lightning && !hasBounds) {
     return null;
@@ -76,26 +72,24 @@ const NumericFieldFilter = ({
         style={{ cursor: "default" }}
         data-cy={`numeric-slider-container-${key}`}
       >
-        {hasBounds && (
+        {hasBounds && !(excluded && defaultRange) && (
           <RangeSlider
             showBounds={false}
             fieldType={ftype}
             valueAtom={fos.rangeAtom({
               modal,
               path,
-              defaultRange,
               withBounds: true,
             })}
             boundsAtom={fos.boundsAtom({
               path,
-              defaultRange,
             })}
             color={color}
           />
         )}
-        <Nonfinites modal={modal} path={path} />
-        <FilterOption defaultRange={defaultRange} modal={modal} path={path} />
-        <Reset defaultRange={defaultRange} modal={modal} path={path} />
+        {defaultRange && <Nonfinites modal={modal} path={path} />}
+        <FilterOption modal={modal} path={path} />
+        <Reset modal={modal} path={path} />
         {!lightning && !hasBounds && <>No results</>}
       </RangeSliderContainer>
     </NamedRangeSliderContainer>

@@ -3,11 +3,7 @@ import React from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { Button } from "../../utils";
 
-const useReset = (options: {
-  defaultRange?: [number, number];
-  modal: boolean;
-  path: string;
-}) => {
+const useReset = (options: { modal: boolean; path: string }) => {
   return useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
@@ -24,21 +20,13 @@ const useReset = (options: {
   );
 };
 
-function Reset({
-  defaultRange,
-  modal,
-  path,
-}: {
-  defaultRange?: [number, number];
-  modal: boolean;
-  path: string;
-}) {
+function Reset({ modal, path }: { modal: boolean; path: string }) {
   const color = useRecoilValue(fos.pathColor(path));
   const hasVisibilitySetting = useRecoilValue(
     fos.fieldHasVisibilitySetting({ modal, path })
   );
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
-  const reset = useReset({ defaultRange, modal, path });
+  const reset = useReset({ modal, path });
 
   if (!isFiltered && !hasVisibilitySetting) {
     return null;

@@ -4,9 +4,10 @@ import {
   lightningPaths,
   useLightingUnlocked,
 } from "@fiftyone/state";
-import React from "react";
+import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import FilterItem from "./FilterItem";
+import Loading from "./Loading";
 import Tune from "./Tune";
 import useFilterData from "./useFilterData";
 
@@ -34,7 +35,7 @@ const LightningFilterablePathEntries = ({
       {data.map((props) => (
         <FilterItem key={props.path} {...events} {...props} />
       ))}
-      {granular > 0 && (
+      {unlocked && granular > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: theme.text.secondary, marginLeft: 3 }}>
             see more
@@ -54,15 +55,13 @@ const LightningFilterablePathEntries = ({
           </div>
         </div>
       )}
-      {unlocked &&
-        granularOpen &&
-        (removed.length ? (
-          removed.map((props) => (
+      {unlocked && granularOpen && (
+        <Suspense fallback={<Loading />}>
+          {removed.map((props) => (
             <FilterItem key={props.path} {...events} {...props} />
-          ))
-        ) : (
-          <>No results</>
-        ))}
+          ))}
+        </Suspense>
+      )}
     </>
   );
 };

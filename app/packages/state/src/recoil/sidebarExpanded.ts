@@ -7,6 +7,7 @@ export const sidebarExpandedStore = atomFamily<
 >({
   key: "sidebarExpanded",
   default: {},
+  effects: [({ node }) => subscribe((_, { reset }) => reset(node))],
 });
 
 export const sidebarExpanded = selectorFamily<

@@ -34,7 +34,7 @@ export default ({
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          setExpanded((v) => !v);
+          !disabled && setExpanded((v) => !v);
         }}
         onMouseDown={(event) => {
           event.stopPropagation();

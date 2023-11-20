@@ -17,6 +17,7 @@ import {
   LABEL_LISTS_MAP,
   LIST_FIELD,
   OBJECT_ID_FIELD,
+  STRING_FIELD,
   Schema,
   StrictField,
   VALID_PRIMITIVE_TYPES,
@@ -682,25 +683,6 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
 
-export const isListField = selectorFamily({
-  key: "string",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      return get(field(path))?.ftype === LIST_FIELD;
-    },
-});
-
-export const isObjectIdField = selectorFamily({
-  key: "isObjectIdField",
-  get:
-    (path: string) =>
-    ({ get }) => {
-      const f = get(field(path));
-      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
-    },
-});
-
 export const isInListField = selectorFamily({
   key: "isInListField",
   get:
@@ -712,6 +694,35 @@ export const isInListField = selectorFamily({
         parent?.ftype === LIST_FIELD &&
         parent?.subfield === EMBEDDED_DOCUMENT_FIELD
       );
+    },
+});
+
+export const isListField = selectorFamily({
+  key: "string",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(field(path))?.ftype === LIST_FIELD;
+    },
+});
+
+export const isStringField = selectorFamily({
+  key: "isStringField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === STRING_FIELD || f?.subfield === STRING_FIELD;
+    },
+});
+
+export const isObjectIdField = selectorFamily({
+  key: "isObjectIdField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
     },
 });
 
