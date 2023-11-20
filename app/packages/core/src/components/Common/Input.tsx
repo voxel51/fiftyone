@@ -42,6 +42,7 @@ interface BaseProps {
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   style?: React.CSSProperties;
   title?: string;
+  id?: string;
 }
 interface InputProps extends BaseProps {
   validator?: (value: string) => boolean;
@@ -74,6 +75,7 @@ const Input = React.memo(
         onKeyDown,
         style,
         title,
+        id = undefined,
       }: InputProps,
       ref
     ) => {
@@ -83,11 +85,13 @@ const Input = React.memo(
       return (
         <StyledInputContainer
           style={{ borderBottom: `1px solid ${color}`, ...style }}
+          key={id ?? ""}
         >
           <StyledInput
             ref={ref}
             placeholder={placeholder}
-            data-cy={`input-${placeholder}`}
+            data-cy={`input-${id ?? placeholder}`}
+            key={id ?? "input"}
             value={value === null ? "" : String(value)}
             onChange={(e: React.FormEvent<HTMLInputElement>) => {
               if (validator(e.currentTarget.value)) {

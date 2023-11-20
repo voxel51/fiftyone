@@ -81,17 +81,24 @@ export class ColorModalPom {
       .click({ force: true });
   }
 
-  async addNewPairs(pairs: { value: string; color: string }[]) {
-    for (const pair of pairs) {
-      await this.addANewPair(pair.value, pair.color);
+  async addNewPairs(pairs) {
+    for (let i = 0; i < pairs.length; i++) {
+      await this.addANewPair(pairs[i].value, pairs[i].color, i);
     }
   }
 
-  async addANewPair(value: string, color: string) {
-    await this.getFieldSelector("button-add a new pair").click();
-    await this.page.getByPlaceholder("Value (e.g. 'car')").last().fill(value);
+  async addANewPair(value: string, color: string, index: number) {
+    if (index !== 0) {
+      await this.getFieldSelector("button-add a new pair").click();
+    }
+
+    await this.getFieldSelector(`input-value-${index}`).click();
+    await this.getFieldSelector(`input-value-${index}`).fill(value);
     await this.page.keyboard.press("Enter");
-    await this.page.getByPlaceholder("#009900").last().fill(color);
+
+    await this.getFieldSelector(`input-color-${index}`).focus();
+    await this.getFieldSelector(`input-color-${index}`).clear();
+    await this.getFieldSelector(`input-color-${index}`).fill(color);
     await this.page.keyboard.press("Enter");
   }
 
