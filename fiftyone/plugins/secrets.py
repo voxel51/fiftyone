@@ -5,8 +5,9 @@ Plugin secrets resolver.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from __future__ import annotations
+# from __future__ import annotations
 import logging
+import re
 import typing
 from collections.abc import Mapping
 from typing import Optional
@@ -144,6 +145,12 @@ class SecretsDictionary(Mapping[str, str]):
             if val:
                 self.__secrets[key] = val
         return val
+
+    def __setattr__(self, key, value):
+        if re.search("_SecretsDictionary__(secrets|required_keys)$", key):
+            raise AttributeError("Cannot mutate hidden properties")
+        else:
+            super().__setattr__(key, value)
 
     def __setitem__(self, key, value):
         raise RuntimeError("Setting values is not allowed")
