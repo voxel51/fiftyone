@@ -214,7 +214,7 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(label._cls)) {
         await imputeOverlayFromPath(
-          field,
+          `${prefix || ""}${field}`,
           label,
           coloring,
           customizeColorSetting,
