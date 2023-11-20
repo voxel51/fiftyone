@@ -148,7 +148,7 @@ class SecretsDictionary(Mapping[str, str]):
 
     def __setattr__(self, key, value):
         if re.search("_SecretsDictionary__(secrets|required_keys)$", key):
-            raise AttributeError("Cannot mutate hidden properties")
+            raise KeyError("Cannot mutate hidden properties")
         else:
             super().__setattr__(key, value)
 
