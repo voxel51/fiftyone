@@ -3,11 +3,11 @@ vi.mock("recoil");
 vi.mock("recoil-relay");
 
 import { setMockAtoms, TestSelector } from "../../../../__mocks__/recoil";
-import * as view from "./view";
+import * as groups from "./groups";
 
 describe("handles non-nested dynamic groups", () => {
-  const testNesting = <TestSelector<typeof view.isNonNestedDynamicGroup>>(
-    (<unknown>view.isNonNestedDynamicGroup)
+  const testNesting = <TestSelector<typeof groups.isNonNestedDynamicGroup>>(
+    (<unknown>groups.isNonNestedDynamicGroup)
   );
 
   it("resolves as non-nesting", () => {
