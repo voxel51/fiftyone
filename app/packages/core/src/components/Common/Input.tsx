@@ -168,11 +168,15 @@ export const NumberInput = React.memo(
               // allow deleting zero and disable typing 00000
               if (e.currentTarget.value == "") {
                 setter(undefined);
-              } else if (e.currentTarget.value === "0") {
-                setter(0);
-              } else if (isZeroString(e.currentTarget.value)) {
-                // clear the 0000000 to 0;
-                e.currentTarget.value = "0";
+              } else if (Number(e.currentTarget.value) === 0) {
+                if (e.currentTarget.value === "0") {
+                  setter(0);
+                } else if (isZeroString(e.currentTarget.value)) {
+                  // clear the 0000000 to 0;
+                  e.currentTarget.value = "0";
+                } else {
+                  setter(Number(e.currentTarget.value));
+                }
               } else if (validator(e.currentTarget.value)) {
                 e.currentTarget.value = String(Number(e.currentTarget.value));
                 setter(Number(e.currentTarget.value));
