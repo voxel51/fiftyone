@@ -7,7 +7,6 @@ FiftyOne operators.
 """
 from .types import Object, Form, Property, PromptView
 
-
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
 
@@ -48,6 +47,10 @@ class OperatorConfig(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
+        allow_immdeiate_execution=True,
+        allow_delegated_execution=False,
+        default_choice_to_delegated=False,
+        resolve_execution_options_on_change=False,
     ):
         self.name = name
         self.label = label or name
@@ -61,6 +64,10 @@ class OperatorConfig(object):
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
+        self.allow_immdeiate_execution = allow_immdeiate_execution
+        self.allow_delegated_execution = allow_delegated_execution
+        self.default_choice_to_delegated = default_choice_to_delegated
+        self.resolve_execution_options_on_change = resolve_execution_options_on_change
 
     def to_json(self):
         return {
@@ -76,6 +83,10 @@ class OperatorConfig(object):
             "icon": self.icon,
             "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
+            "allow_immdeiate_execution": self.allow_immdeiate_execution,
+            "allow_delegated_execution": self.allow_delegated_execution,
+            "default_choice_to_delegated": self.default_choice_to_delegated,
+            "resolve_execution_options_on_change": self.resolve_execution_options_on_change
         }
 
 
@@ -102,10 +113,6 @@ class Operator(object):
     @property
     def name(self):
         return self.config.name
-
-    @property
-    def delegation_target(self):
-        return self.config.delegation_target
 
     @property
     def uri(self):
@@ -169,9 +176,34 @@ class Operator(object):
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            a boolean
+            a boolean indicating whether the operation should be delegated or `None`
+            to allow the default logic to be used
         """
-        return False
+        return None
+
+    def resolve_execution_options(self, ctx):
+        """Returns the resolved execution options.
+
+        Subclasses can implement this method to define the execution options. This
+        defines the behavior of the Execute button in the FiftyOne App.
+
+        Returns:
+            a :class:`fiftyone.operators.executor.ExecutionOptions` instance
+        """
+        from .executor import ExecutionOptions
+
+        resolved_delegation = self.resolve_delegation(ctx)
+        if resolved_delegation is None:
+            # legacy behavior
+            return ExecutionOptions(
+                allow_immediate_execution=self.config.allow_immdeiate_execution,
+                allow_delegated_execution=self.config.allow_delegated_execution,
+            )
+
+        return ExecutionOptions(
+            allow_immediate_execution=not resolved_delegation,
+            allow_delegated_execution=resolved_delegation,
+        )
 
     def execute(self, ctx):
         """Executes the operator.
