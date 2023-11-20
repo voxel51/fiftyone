@@ -92,7 +92,7 @@ export class ColorModalPom {
       await this.getFieldSelector("button-add a new pair").click();
     }
 
-    await this.getFieldSelector(`input-value-${index}`).click();
+    await this.getFieldSelector(`input-value-${index}`).focus();
     await this.getFieldSelector(`input-value-${index}`).fill(value);
     await this.page.keyboard.press("Enter");
 
