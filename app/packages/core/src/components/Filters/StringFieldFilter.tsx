@@ -5,35 +5,33 @@ import {
   stringSelectedValuesAtom,
 } from "@fiftyone/state";
 import React from "react";
-import CategoricalFilter from "./categoricalFilter/CategoricalFilter";
+import StringFilter from "./StringFilter";
 
 const StringFieldFilter = ({
   path,
   modal,
-  color,
   ...rest
 }: {
   path: string;
   modal: boolean;
-  name?: boolean;
+  named?: boolean;
   color: string;
   onFocus?: () => void;
   onBlur?: () => void;
   title: string;
 }) => {
   return (
-    <CategoricalFilter<{ value: string | null; count: number }>
-      selectedValuesAtom={stringSelectedValuesAtom({ modal, path })}
+    <StringFilter
       excludeAtom={stringExcludeAtom({ modal, path })}
       isMatchingAtom={isMatchingAtom({ modal, path })}
-      countsAtom={fos.stringCountResults({
+      modal={modal}
+      path={path}
+      resultsAtom={fos.stringResults({
         modal,
         path,
         extended: false,
       })}
-      path={path}
-      modal={modal}
-      color={color}
+      selectedAtom={stringSelectedValuesAtom({ modal, path })}
       {...rest}
     />
   );

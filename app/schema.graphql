@@ -48,7 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
-  lightningThreshold: Int!
+  lightningThreshold: Int
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -746,7 +746,7 @@ type StringAggregationValue {
 
 type StringLightningResult implements LightningResult {
   path: String!
-  values: [String]!
+  values: [String]
 }
 
 type Target {

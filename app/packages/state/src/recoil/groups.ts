@@ -19,7 +19,9 @@ import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { dataset, mediaType } from "./atoms";
+import { mediaType } from "./atoms";
+import { getBrowserStorageEffectForKey } from "./customEffects";
+import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
 import { nonNestedDynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
@@ -28,6 +30,57 @@ import { datasetName } from "./selectors";
 import { State } from "./types";
 import { mapSampleResponse } from "./utils";
 import { GROUP_BY_VIEW_STAGE, dynamicGroupViewQuery, view } from "./view";
+
+export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
+  key: "groupMediaIsCarouselVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMedia3dVisibleSetting = atom<boolean>({
+  key: "groupMediaIs3dVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIs3dVisible = selector<boolean>({
+  key: "groupMedia3dVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMedia3dVisibleSetting) && hasPcd;
+  },
+});
+
+export const groupMediaIsMainVisibleSetting = atom<boolean>({
+  key: "groupMediaIsMainVisibleSetting",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
+      sessionStorage: true,
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const groupMediaIsMainVisible = selector<boolean>({
+  key: "groupMediaIsMainVisible",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasPcd = set.has("point_cloud");
+    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
+  },
+});
 
 export const pinned3DSampleSlice = atom<string | null>({
   key: "pinned3DSampleSlice",
@@ -494,7 +547,7 @@ export const imaVidLookerState = atomFamily<any, string>({
   ],
 });
 
-export const groupStatistics = atomFamily<"group" | "slice">({
+export const groupStatistics = atomFamily<"group" | "slice", boolean>({
   key: "groupStatistics",
   default: "slice",
 });

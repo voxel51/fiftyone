@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<0c7ad77b49d587faeccc33fc0bd6c0a9>>
+ * @generated SignedSource<<aa8f33fcbf01653dc5062c25e748de3f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,11 +28,11 @@ export type datasetFragment$data = {
       readonly type: BrainRunType | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
-  readonly createdAt: any | null;
+  readonly createdAt: number | null;
   readonly datasetId: string;
   readonly defaultMaskTargets: ReadonlyArray<{
     readonly target: string;
@@ -49,7 +49,7 @@ export type datasetFragment$data = {
       readonly predField: string | null;
     } | null;
     readonly key: string;
-    readonly timestamp: any | null;
+    readonly timestamp: number | null;
     readonly version: string | null;
     readonly viewStages: ReadonlyArray<string> | null;
   }> | null;
@@ -60,7 +60,7 @@ export type datasetFragment$data = {
   }> | null;
   readonly id: string;
   readonly info: object | null;
-  readonly lastLoadedAt: any | null;
+  readonly lastLoadedAt: number | null;
   readonly maskTargets: ReadonlyArray<{
     readonly name: string;
     readonly targets: ReadonlyArray<{
@@ -76,7 +76,7 @@ export type datasetFragment$data = {
     readonly name: string;
   }>;
   readonly version: string | null;
-  readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
+  readonly " $fragmentSpreads": FragmentRefs<"estimatedCountsFragment" | "frameFieldsFragment" | "groupSliceFragment" | "indexesFragment" | "mediaFieldsFragment" | "mediaTypeFragment" | "sampleFieldsFragment" | "sidebarGroupsFragment" | "viewFragment">;
   readonly " $fragmentType": "datasetFragment";
 };
 export type datasetFragment$key = {
@@ -438,6 +438,11 @@ return {
     {
       "args": null,
       "kind": "FragmentSpread",
+      "name": "indexesFragment"
+    },
+    {
+      "args": null,
+      "kind": "FragmentSpread",
       "name": "mediaFieldsFragment"
     },
     {
@@ -466,6 +471,6 @@ return {
 };
 })();
 
-(node as any).hash = "2f86e3dc8bca4f586b4cb2ca7be31f47";
+(node as any).hash = "d5b86e8b0d16b8727f4fa858b8a62735";
 
 export default node;

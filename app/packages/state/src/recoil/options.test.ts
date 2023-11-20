@@ -97,50 +97,7 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
   it("resolves to fast", () => {
     setMockAtoms({
       configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 1,
-            expandedFieldCount: 15,
-            frameLabelFieldCount: 1,
-          },
-        ],
-      },
-    });
-    expect(test()).toBe("fast");
-  });
-
-  it("resolves to fast", () => {
-    setMockAtoms({
-      configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 1,
-            expandedFieldCount: 14,
-            frameLabelFieldCount: 1,
-          },
-        ],
-      },
-    });
-    expect(test()).toBe("fast");
-  });
-
-  it("resolves to fast", () => {
-    setMockAtoms({
-      configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 10000,
-            expandedFieldCount: 14,
-            frameLabelFieldCount: 0,
-          },
-        ],
-      },
+      datasetSampleCount: 10000,
     });
     expect(test()).toBe("fast");
   });
@@ -148,16 +105,7 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
   it("resolves to all", () => {
     setMockAtoms({
       configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 9999,
-            expandedFieldCount: 14,
-            frameLabelFieldCount: 0,
-          },
-        ],
-      },
+      datasetSampleCount: 9999,
     });
     expect(test()).toBe("all");
   });
@@ -165,53 +113,9 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
   it("resolves to fast", () => {
     setMockAtoms({
       configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 1000,
-            expandedFieldCount: 15,
-            frameLabelFieldCount: 0,
-          },
-        ],
-      },
+      datasetSampleCount: 10000,
     });
     expect(test()).toBe("fast");
-  });
-
-  it("resolves to fast", () => {
-    setMockAtoms({
-      configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "RootAggregation",
-            count: 0,
-            expandedFieldCount: 0,
-            frameLabelFieldCount: 1,
-          },
-        ],
-      },
-    });
-    expect(test()).toBe("fast");
-  });
-
-  it("throws error", () => {
-    setMockAtoms({
-      configuredSidebarModeDefault: (modal) => "best",
-      aggregationQuery: {
-        aggregations: [
-          {
-            __typename: "Aggregation",
-            count: 0,
-            expandedFieldCount: 0,
-            frameLabelFieldCount: 0,
-          },
-        ],
-      },
-    });
-
-    expect(test).toThrow(Error);
   });
 });
 
@@ -222,7 +126,7 @@ describe("Resolves the large video datasets threshold", () => {
 
   it("resolves to true", () => {
     setMockAtoms({
-      aggregationQuery: { aggregations: [{ count: 1000 }] },
+      datasetSampleCount: 1000,
       isVideoDataset: true,
     });
     expect(test.call()).toBe(true);
@@ -230,14 +134,14 @@ describe("Resolves the large video datasets threshold", () => {
 
   it("resolves to false", () => {
     setMockAtoms({
-      aggregationQuery: { aggregations: [{ count: 999 }] },
+      datasetSampleCount: 999,
     });
     expect(test.call()).toBe(false);
   });
 
   it("resolves to false", () => {
     setMockAtoms({
-      aggregationQuery: { aggregations: [{ count: 1000 }] },
+      datasetSampleCount: 10000,
       isVideoDataset: false,
     });
     expect(test.call()).toBe(false);

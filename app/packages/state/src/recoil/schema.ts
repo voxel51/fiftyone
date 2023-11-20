@@ -16,6 +16,8 @@ import {
   LABEL_LISTS,
   LABEL_LISTS_MAP,
   LIST_FIELD,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
   Schema,
   StrictField,
   VALID_PRIMITIVE_TYPES,
@@ -24,6 +26,7 @@ import {
 } from "@fiftyone/utilities";
 import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
@@ -85,7 +88,7 @@ export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   get:
     ({ space }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
+      const dataset = get(datasetAtom);
 
       if (!dataset) {
         return {};
@@ -258,6 +261,7 @@ export const field = selectorFamily<Field | null, string>({
 
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
         let field: Field = {
+          path: "frames",
           name: "frames",
           ftype: LIST_FIELD,
           subfield: EMBEDDED_DOCUMENT_FIELD,
@@ -291,6 +295,22 @@ export const field = selectorFamily<Field | null, string>({
       }
 
       return field;
+    },
+});
+
+export const dbPath = selectorFamily({
+  key: "dbPath",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const fieldData = get(field(path));
+      if (!fieldData?.dbField) {
+        return path;
+      }
+
+      const keys = path.split(".");
+      keys[keys.length - 1] = fieldData.dbField;
+      return keys.join(".");
     },
 });
 
@@ -639,22 +659,13 @@ export const filterFields = selectorFamily<string[], string>({
       const label = LABELS.includes(topParent?.embeddedDocType);
       const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
 
-      if (label && path.endsWith(".tags")) {
-        return [[parentPath, "tags"].join(".")];
-      }
-
-      return Object.entries(parent.fields)
-        .map(([name, data]) => ({ ...data, name }))
+      return get(fields({ path: parentPath }))
         .filter(({ name, ftype, subfield }) => {
           if (ftype === LIST_FIELD) {
             ftype = subfield;
           }
 
           if (name.startsWith("_")) {
-            return false;
-          }
-
-          if (label && name === "tags") {
             return false;
           }
 
@@ -671,3 +682,56 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
+
+export const isInListField = selectorFamily({
+  key: "isInListField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = get(parentField(path));
+
+      return (
+        parent?.ftype === LIST_FIELD &&
+        parent?.subfield === EMBEDDED_DOCUMENT_FIELD
+      );
+    },
+});
+
+export const isListField = selectorFamily({
+  key: "string",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(field(path))?.ftype === LIST_FIELD;
+    },
+});
+
+export const isStringField = selectorFamily({
+  key: "isStringField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === STRING_FIELD || f?.subfield === STRING_FIELD;
+    },
+});
+
+export const isObjectIdField = selectorFamily({
+  key: "isObjectIdField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
+    },
+});
+
+export const parentField = selectorFamily({
+  key: "parentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = path.split(".").slice(0, -1).join(".");
+      return get(field(parent));
+    },
+});

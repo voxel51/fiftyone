@@ -1,4 +1,4 @@
-import { atom, selectorFamily } from "recoil";
+import { DefaultValue, atom, selectorFamily } from "recoil";
 
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 
@@ -17,7 +17,7 @@ export const attributeVisibility = atom<State.Filters>({
 });
 
 export const visibility = selectorFamily<
-  State.Filters,
+  State.Filter,
   { path: string; modal: boolean }
 >({
   key: "visibility",
@@ -37,16 +37,13 @@ export const visibility = selectorFamily<
     ({ get, set }, visibility) => {
       const atom = modal ? modalAttributeVisibility : attributeVisibility;
       const newSetting = Object.assign({}, get(atom));
-      if (visibility === null) {
+      if (visibility === null || visibility instanceof DefaultValue) {
         delete newSetting[path];
       } else {
         newSetting[path] = visibility;
       }
       set(atom, newSetting);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hasVisibility = selectorFamily<boolean, boolean>({
@@ -61,9 +58,6 @@ export const hasVisibility = selectorFamily<boolean, boolean>({
 
       return f || hidden;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const fieldHasVisibilitySetting = selectorFamily<
@@ -89,7 +83,4 @@ export const fieldHasVisibilitySetting = selectorFamily<
         paths.some(({ name }) => f[`${expandedPath}.${name}`])
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });

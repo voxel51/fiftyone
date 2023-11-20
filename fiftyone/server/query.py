@@ -353,7 +353,7 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
-    lightning_threshold: int
+    lightning_threshold: t.Optional[int]
     loop_videos: bool
     multicolor_keypoints: bool
     notebook_height: int
@@ -671,13 +671,13 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
         "estimated_sample_count",
         fo_dataset._sample_collection.estimated_document_count(),
     )
-
-    if fo_dataset._frame_collection_name:
-        setattr(
-            dataset,
-            "estimated_frame_count",
-            fo_dataset._frame_collection.estimated_document_count(),
-        )
+    setattr(
+        dataset,
+        "estimated_frame_count",
+        fo_dataset._frame_collection.estimated_document_count()
+        if fo_dataset._frame_collection_name
+        else None,
+    )
 
 
 def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
