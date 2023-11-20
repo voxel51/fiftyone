@@ -148,7 +148,7 @@ class SecretsDictionary(Mapping[str, str]):
         raise RuntimeError("Setting values is not allowed")
 
     def __deepcopy__(self, memodict={}):
-        logging.warning("Copying the SecretsDictionary is not allowed.")
+        logging.warning("Copying the SecretsDictionary values is not allowed.")
 
         return {k: None for k in self.__secrets.keys()}
 
@@ -156,7 +156,7 @@ class SecretsDictionary(Mapping[str, str]):
         return {k: True for k, v in self.__secrets.items() if v is not None}
 
     def copy(self):
-        logging.warning("Copying the SecretsDictionary is not allowed.")
+        logging.warning("Copying the SecretsDictionary values is not allowed.")
         return self.__deepcopy__()
 
     def keys(self):
