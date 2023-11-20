@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<aa8f33fcbf01653dc5062c25e748de3f>>
+ * @generated SignedSource<<18d5090250555bdba67d42cdd28af87f>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -70,6 +70,7 @@ export type datasetFragment$data = {
   }>;
   readonly mediaType: MediaType | null;
   readonly name: string;
+  readonly parentMediaType: MediaType | null;
   readonly skeletons: ReadonlyArray<{
     readonly edges: ReadonlyArray<ReadonlyArray<number>>;
     readonly labels: ReadonlyArray<string> | null;
@@ -214,6 +215,13 @@ return {
     },
     (v0/*: any*/),
     (v1/*: any*/),
+    {
+      "alias": null,
+      "args": null,
+      "kind": "ScalarField",
+      "name": "parentMediaType",
+      "storageKey": null
+    },
     (v2/*: any*/),
     {
       "alias": null,
@@ -471,6 +479,6 @@ return {
 };
 })();
 
-(node as any).hash = "d5b86e8b0d16b8727f4fa858b8a62735";
+(node as any).hash = "866766401d421b021e8ff682461bb3c0";
 
 export default node;
