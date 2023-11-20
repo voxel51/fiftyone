@@ -11,6 +11,8 @@ import { COLOR_SCHEME } from "../../utils/links";
 import { Button } from "../utils";
 import { SectionWrapper } from "./ShareStyledDiv";
 import {
+  validateColorscales,
+  validateDefaultColorscale,
   validateJSONSetting,
   validateLabelTags,
   validateMaskColor,
@@ -34,6 +36,9 @@ const JSONViewer: React.FC = () => {
       defaultMaskTargetsColors: validateMaskColor(
         colorScheme.defaultMaskTargetsColors
       ),
+      colorscales: validateColorscales(colorScheme?.colorscales) ?? [],
+      defaultColorscale:
+        validateDefaultColorscale(colorScheme?.defaultColorscale) ?? {},
     };
   }, [colorScheme]);
 
@@ -104,6 +109,10 @@ const JSONViewer: React.FC = () => {
     const validatedDefaultMaskTargetsColors = validateMaskColor(
       data.defaultMaskTargetsColors
     );
+    const validatedDefaultColorscale = validateDefaultColorscale(
+      data.defaultColorscale
+    );
+    const validatedColorscales = validateColorscales(data.colorscales);
 
     setData({
       colorPool: validColors,
@@ -114,9 +123,12 @@ const JSONViewer: React.FC = () => {
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
       defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
+      defaultColorscale: validatedDefaultColorscale!,
+      colorscales: validatedColorscales!,
     });
 
-    setColorScheme({
+    setColorScheme((cur) => ({
+      ...cur,
       colorPool: validColors,
       colorBy: validatedColorBy,
       fields: validatedSetting,
@@ -125,7 +137,9 @@ const JSONViewer: React.FC = () => {
       opacity: validatedOpacity,
       showSkeletons: validatedShowSkeletons,
       defaultMaskTargetsColors: validatedDefaultMaskTargetsColors,
-    });
+      defaultColorscale: validatedDefaultColorscale,
+      colorscales: validatedColorscales,
+    }));
   };
 
   useLayoutEffect(() => {

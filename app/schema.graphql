@@ -132,9 +132,12 @@ type ColorScheme {
   opacity: Float
   showSkeletons: Boolean
   defaultMaskTargetsColors: [MaskColor!]
+  colorscales: [Colorscale!]
+  defaultColorscale: DefaultColorscale
 }
 
 input ColorSchemeInput {
+  id: ID
   colorPool: [String!]!
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
@@ -143,6 +146,31 @@ input ColorSchemeInput {
   opacity: Float = null
   showSkeletons: Boolean = null
   defaultMaskTargetsColors: [MaskColorInput!] = null
+  colorscales: [ColorscaleInput!] = null
+  defaultColorscale: DefaultColorscaleInput = null
+}
+
+type Colorscale {
+  path: String!
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input ColorscaleInput {
+  path: String!
+  name: String = null
+  list: [ColorscaleListInput!] = null
+}
+
+type ColorscaleList {
+  color: String!
+  value: Float!
+}
+
+input ColorscaleListInput {
+  color: String!
+  value: Float
 }
 
 input Count {
@@ -258,6 +286,17 @@ type DatetimeHistogramValuesResponse {
   counts: [Int!]!
   edges: [datetime!]!
   other: Int!
+}
+
+type DefaultColorscale {
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input DefaultColorscaleInput {
+  name: String = null
+  list: [ColorscaleListInput!] = null
 }
 
 type EvaluationRun implements Run {
@@ -447,12 +486,12 @@ type Mutation {
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!
-  ): Boolean!
+  ): ColorScheme!
   setDatasetColorScheme(
     subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
-  ): Void
+  ): ColorScheme
   setFieldVisibilityStage(
     subscription: String!
     session: String
@@ -778,11 +817,6 @@ type VideoSample implements Sample {
   frameNumber: Int!
   frameRate: Float!
 }
-
-"""
-Represents NULL values
-"""
-scalar Void
 
 type WildcardProjection {
   fields: [String!]!

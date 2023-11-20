@@ -27,6 +27,7 @@ import {
   SectionWrapper,
 } from "./ShareStyledDiv";
 import { colorPicker } from "./colorPalette/Colorpicker.module.css";
+import Colorscale from "./colorPalette/Colorscale";
 import FieldByValue from "./colorPalette/FieldByValue";
 import FieldsMaskTargets from "./colorPalette/FieldsMaskTarget";
 import ColorAttribute from "./controls/ColorAttribute";
@@ -56,7 +57,7 @@ export const fieldColorSetting = selectorFamily<
         if (!newSetting || newSetting instanceof DefaultValue) {
           return {
             ...current,
-            fields: current.fields.filter((field) => field.path !== path),
+            fields: current?.fields?.filter((field) => field.path !== path),
           };
         }
 
@@ -109,12 +110,10 @@ const FieldSetting = ({ path }: { path: string }) => {
   );
 
   const isSegmentation = field.embeddedDocType?.includes(SEGMENTATION);
-
   const isHeatmap = field.embeddedDocType?.includes(HEATMAP);
+  const isFloatField = field.ftype == FLOAT_FIELD;
 
   const isNoShowType = NOT_VISIBLE_LIST.some((t) => field?.ftype?.includes(t));
-  const isTypeValueSupported = !isNoShowType && !(field.ftype == FLOAT_FIELD);
-
   const isTypeFieldSupported = !isNoShowType;
 
   const onChangeFieldColor = useCallback(
@@ -183,12 +182,14 @@ const FieldSetting = ({ path }: { path: string }) => {
             name={`Use custom color for ${path} field`}
             value={state.useFieldColor}
             setValue={(v: boolean) => {
-              setSetting((cur) => ({
-                ...cur,
-                fieldColor: v ? colorMap(path) : undefined,
-                valueColors: setting?.valueColors,
-                colorByAttribute: setting?.colorByAttribute,
-              }));
+              setSetting((cur) => {
+                return {
+                  ...cur,
+                  fieldColor: v ? colorMap(path) : undefined,
+                  valueColors: setting?.valueColors,
+                  colorByAttribute: setting?.colorByAttribute,
+                };
+              });
               setInput(colorMap(path));
             }}
           />
@@ -249,7 +250,8 @@ const FieldSetting = ({ path }: { path: string }) => {
         <div>Color by field is not supported for this field type</div>
       )}
       {coloring.by == COLOR_BY.VALUE &&
-        isTypeValueSupported &&
+        isTypeFieldSupported &&
+        !isFloatField &&
         !isHeatmap &&
         !isSegmentation && (
           <div>
@@ -314,12 +316,12 @@ const FieldSetting = ({ path }: { path: string }) => {
           </div>
         )}
       {coloring.by == COLOR_BY.VALUE && isSegmentation && <FieldsMaskTargets />}
-      {coloring.by == COLOR_BY.VALUE &&
-        !isTypeValueSupported &&
-        !isHeatmap &&
-        !isSegmentation && (
-          <div>Color by value is not supported for this field type</div>
-        )}
+      {coloring.by == COLOR_BY.VALUE && (isHeatmap || isFloatField) && (
+        <Colorscale />
+      )}
+      {coloring.by == COLOR_BY.VALUE && !isTypeFieldSupported && (
+        <div>Color by value is not supported for this field type</div>
+      )}
       {coloring.by == COLOR_BY.INSTANCE && (
         <div>Cannot customize settings under color by instance mode</div>
       )}

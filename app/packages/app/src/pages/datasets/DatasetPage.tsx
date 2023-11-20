@@ -1,4 +1,4 @@
-import { Dataset, Snackbar } from "@fiftyone/core";
+import { Dataset, Snackbar, Starter } from "@fiftyone/core";
 import "@fiftyone/embeddings";
 import "@fiftyone/looker-3d";
 import "@fiftyone/map";
@@ -15,7 +15,6 @@ import Nav from "../../components/Nav";
 import { Route } from "../../routing";
 import style from "../index.module.css";
 import { DatasetPageQuery } from "./__generated__/DatasetPageQuery.graphql";
-import { Starter } from "@fiftyone/core";
 
 const DatasetPageQueryNode = graphql`
   query DatasetPageQuery(
@@ -30,10 +29,11 @@ const DatasetPageQueryNode = graphql`
     config {
       colorBy
       colorPool
+      colorscale
       multicolorKeypoints
       showSkeletons
     }
-
+    colorscale
     dataset(name: $name, view: $extendedView, savedViewSlug: $savedViewSlug) {
       name
       defaultGroupSlice
@@ -48,6 +48,23 @@ const DatasetPageQueryNode = graphql`
           defaultMaskTargetsColors {
             intTarget
             color
+          }
+          defaultColorscale {
+            name
+            list {
+              value
+              color
+            }
+            rgb
+          }
+          colorscales {
+            path
+            name
+            list {
+              value
+              color
+            }
+            rgb
           }
           fields {
             colorByAttribute

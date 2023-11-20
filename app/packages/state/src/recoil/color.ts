@@ -1,6 +1,15 @@
 import { Coloring } from "@fiftyone/looker";
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ColorSchemeInput, datasetQuery$data } from "@fiftyone/relay";
+import {
+  ColorSchemeInput,
+  colorSchemeFragment,
+  colorSchemeFragment$data,
+  colorSchemeFragment$key,
+  datasetAppConfigFragment,
+  datasetFragment,
+  datasetQuery$data,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   RGB,
@@ -12,9 +21,24 @@ import {
 } from "@fiftyone/utilities";
 import { selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+
+export const datasetColorScheme = graphQLSyncFragmentAtom<
+  colorSchemeFragment$key,
+  colorSchemeFragment$data
+>(
+  {
+    fragments: [datasetFragment, datasetAppConfigFragment, colorSchemeFragment],
+    keys: ["dataset", "appConfig", "colorScheme"],
+    default: null,
+  },
+  {
+    key: "datasetColorScheme",
+  }
+);
 
 export const coloring = selector<Coloring>({
   key: "coloring",
@@ -25,7 +49,7 @@ export const coloring = selector<Coloring>({
     return {
       seed,
       pool: colorScheme.colorPool,
-      scale: [],
+      scale: get(configData).colorscale as RGB[], // from config, used as fallback
       by: colorScheme.colorBy,
       points: colorScheme.multicolorKeypoints,
       defaultMaskTargets: get(selectors.defaultTargets),
@@ -124,19 +148,26 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
+    id: colorScheme.id,
     colorPool:
       colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
     colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
+    colorscales:
+      (colorScheme.colorscales as ColorSchemeInput["colorscales"]) ?? [],
+    defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
+    defaultColorscale: colorScheme.defaultColorscale ?? {
+      name: appConfig?.colorscale ?? "viridis",
+      list: null,
+    },
     fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
     labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
     },
-    defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
     multicolorKeypoints:
       typeof colorScheme.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
-        : appConfig?.multicolorKeypoints,
+        : appConfig?.multicolorKeypoints ?? false,
     opacity:
       typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:

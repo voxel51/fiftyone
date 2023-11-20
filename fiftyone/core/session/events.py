@@ -17,10 +17,11 @@ from dacite import from_dict
 import eta.core.serial as etas
 import eta.core.utils as etau
 
-
 import fiftyone.core.odm.dataset as foo
 import fiftyone.core.state as fos
-from fiftyone.core.utils import run_sync_task
+from fiftyone.core.utils import lazy_import, run_sync_task
+
+fop = lazy_import("fiftyone.core.plots.plotly")
 
 
 EventType = t.Union[
@@ -78,6 +79,9 @@ class Event:
             return Event.from_data(event_name, data)
 
         return await run_sync_task(run)
+
+    def serialize(self):
+        return _asdict(self)
 
 
 @dataclass
@@ -168,6 +172,33 @@ class CustomizeColor:
 
 
 @dataclass
+class ColorscaleList:
+    value: float
+    color: str
+
+
+@dataclass
+class Colorscale:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+
+    def serialize(self):
+        d = _asdict(self)
+        d["rgb"] = _serialize_rgb_colorscale(self.name, self.list)
+
+
+@dataclass
+class DefaultColorscale:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+
+    def serialize(self):
+        d = _asdict(self)
+        d["rgb"] = _serialize_rgb_colorscale(self.name, self.list)
+
+
+@dataclass
 class LabelTagsColors:
     fieldColor: t.Optional[str] = None
     valueColors: t.Optional[t.List[ValueColor]] = None
@@ -177,14 +208,23 @@ class LabelTagsColors:
 class ColorScheme:
     color_pool: t.Optional[t.List[str]] = None
     color_by: t.Optional[str] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
-    label_tags: t.Optional[LabelTagsColors] = None
     multicolor_keypoints: t.Optional[bool] = None
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     fields: t.Optional[t.List[CustomizeColor]] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    colorscales: t.Optional[t.List[Colorscale]] = None
+    default_colorscale: t.Optional[DefaultColorscale] = None
     label_tags: t.Optional[LabelTagsColors] = None
+
+    def serialize(self):
+        if self.default_colorscale:
+            self.default_colorscale = self.default_colorscale.serialize()
+
+        if self.colorscales:
+            self.colorscales = [
+                colorscale.serialize() for colorscale in self.colorscales
+            ]
 
 
 @dataclass
@@ -203,12 +243,25 @@ class SetColorScheme(Event):
             if self.color_scheme.fields
             else None
         )
+        colorscales = (
+            [
+                asdict(colorscales)
+                for colorscales in self.color_scheme.colorscales
+            ]
+            if self.color_scheme.colorscales
+            else None
+        )
         default_mask_targets_colors = (
             [
                 asdict(target)
                 for target in self.color_scheme.default_mask_targets_colors
             ]
             if self.color_scheme.default_mask_targets_colors
+            else None
+        )
+        default_colorscale = (
+            asdict(self.color_scheme.default_colorscale)
+            if self.color_scheme.default_colorscale
             else None
         )
         label_tags = (
@@ -223,6 +276,8 @@ class SetColorScheme(Event):
             fields=fields,
             default_mask_targets_colors=default_mask_targets_colors,
             label_tags=label_tags,
+            colorscales=colorscales,
+            default_colorscale=default_colorscale,
             multicolor_keypoints=self.color_scheme.multicolor_keypoints,
             opacity=self.color_scheme.opacity,
             show_skeletons=self.color_scheme.show_skeletons,
@@ -307,9 +362,21 @@ def get_screenshot(subscription: str, pop=False) -> Screenshot:
     )
 
 
+def _asdict(d):
+    return asdict(d, dict_factory=dict_factory)
+
+
 async def _load_state(data: dict):
     def run():
         return fos.StateDescription.from_dict(data)
 
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, run)
+
+
+def _serialize_rgb_colorscale(
+    name: t.Optional[str], values: t.Optional[t.List[ColorscaleList]]
+):
+    return fop.get_colormap(
+        name or [[item.value, item.color] for item in values]
+    )

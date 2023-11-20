@@ -3,14 +3,13 @@ In color by value mode, fields and label tags use this component
 */
 
 import { isValidColor } from "@fiftyone/looker/src/overlays/util";
-import { ValueColorInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import colorString from "color-string";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilValue } from "recoil";
-import Input from "../../Common/Input";
+import Input, { NumberInput } from "../../Common/Input";
 import { Button } from "../../utils";
 import {
   AddContainer,
@@ -23,33 +22,46 @@ import { activeColorPath } from "../state";
 import { getRandomColorFromPool } from "../utils";
 import { colorPicker } from "./../colorPalette/Colorpicker.module.css";
 
-type ValueColorProp = {
-  initialValue: ValueColorInput[];
-  values: ValueColorInput[];
-  style: React.CSSProperties;
-  onSyncUpdate: (input: ValueColorInput[]) => void;
-  shouldShowAddButton: boolean;
+type MaskColorInput = {
+  intTarget: number;
+  color: string;
 };
 
-const ValueColorList: React.FC<ValueColorProp> = ({
+type IdxColorProp = {
+  initialValue: MaskColorInput[];
+  values: MaskColorInput[];
+  style: React.CSSProperties;
+  onValidate?: (value: number) => boolean;
+  onSyncUpdate: (input: MaskColorInput[]) => void;
+  shouldShowAddButton: boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+};
+
+const ColorscaleList: React.FC<IdxColorProp> = ({
   initialValue,
   values,
   style,
+  onValidate,
   onSyncUpdate,
   shouldShowAddButton,
+  min,
+  max,
+  step,
 }) => {
-  const [input, setInput] = useState<ValueColorInput[]>(initialValue);
+  const [input, setInput] = useState<MaskColorInput[]>(initialValue ?? []);
   const [showPicker, setShowPicker] = useState(
-    Array(input?.length > 0 ? input.length : 1).fill(false)
+    Array(values?.length ?? 0).fill(false)
   );
   const pickerRef = useRef<ChromePicker>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const activePath = useRecoilValue(activeColorPath);
+  const activePath = useRecoilValue(activeColorPath) ?? "global";
   const colorScheme = useRecoilValue(fos.colorScheme);
 
   const handleAdd = () => {
     const newValue = {
-      value: "",
+      intTarget: undefined,
       color: getRandomColorFromPool(colorScheme.colorPool),
     };
     const newInput = input.length > 0 ? [...input, newValue] : [newValue];
@@ -77,6 +89,28 @@ const ValueColorList: React.FC<ValueColorProp> = ({
       onSyncUpdate(copy);
     },
     [input, onSyncUpdate]
+  );
+
+  // onBlue and onEnter in numberfield to validate certain rules
+  const onSyncIdx = useCallback(
+    (intValue: number, index: number) => {
+      if ((onValidate && onValidate(intValue)) || !onValidate) {
+        onSyncUpdate(input);
+      } else {
+        const warning = cloneDeep(values);
+        if (!warning) return;
+        warning[index].intTarget = null;
+        setInput(warning);
+        setTimeout(() => {
+          setInput(() => {
+            const prev = cloneDeep(values);
+            prev[index].intTarget = values[index].intTarget;
+            return prev;
+          });
+        }, 1000);
+      }
+    },
+    [input, values, onSyncUpdate, onValidate]
   );
 
   // onBlur and onEnter in textfield to validate color and sync with atoms
@@ -115,7 +149,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   }, [activePath]);
 
   useEffect(() => {
-    setInput(values);
+    setInput(initialValue);
   }, [values]);
 
   fos.useOutsideClick(wrapperRef, () => {
@@ -126,22 +160,23 @@ const ValueColorList: React.FC<ValueColorProp> = ({
 
   return (
     <div style={style}>
-      {input?.map((value, index) => (
+      {input?.map((v, index) => (
         <RowContainer key={index}>
-          <Input
-            placeholder="Value (e.g. 'car')"
-            value={input[index].value ?? ""}
-            setter={(v) => {
+          <NumberInput
+            placeholder="integer (1 to 255)"
+            value={input[index].intTarget}
+            setter={(v) =>
               setInput((p) => {
                 const copy = cloneDeep(p);
-                copy[index].value = v;
+                copy[index].intTarget = v;
                 return copy;
-              });
-            }}
-            onBlur={() => onSyncUpdate(input)}
-            onEnter={() => onSyncUpdate(input)}
+              })
+            }
+            onBlur={() => onSyncIdx(input[index].intTarget, index)}
             style={{ width: "12rem" }}
-            id={`value-${index}`}
+            min={min}
+            max={max}
+            step={step}
           />
           :
           <ColorSquare
@@ -194,7 +229,6 @@ const ValueColorList: React.FC<ValueColorProp> = ({
             onEnter={() => {
               onSyncColor(index, input[index].color);
             }}
-            id={`color-${index}`}
           />
           <DeleteButton
             onClick={() => {
@@ -216,4 +250,4 @@ const ValueColorList: React.FC<ValueColorProp> = ({
   );
 };
 
-export default ValueColorList;
+export default ColorscaleList;

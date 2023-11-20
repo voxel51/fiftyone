@@ -36,6 +36,11 @@ export const LookerUtils = {
     ) {
       reloadSample = true;
     } else if (
+      !_.isEmpty(_.xor(next.coloring?.scale, current.coloring?.scale)) ||
+      current.coloring?.scale?.length !== next.coloring?.scale?.length
+    ) {
+      reloadSample = true;
+    } else if (
       !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
       current.selectedLabelTags?.length !== next.selectedLabelTags?.length
     ) {

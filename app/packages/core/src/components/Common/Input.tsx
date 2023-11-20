@@ -42,6 +42,7 @@ interface BaseProps {
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
   style?: React.CSSProperties;
   title?: string;
+  id?: string;
 }
 interface InputProps extends BaseProps {
   validator?: (value: string) => boolean;
@@ -50,8 +51,8 @@ interface InputProps extends BaseProps {
 }
 
 interface NumberInputProps extends BaseProps {
-  validator?: (value: number) => boolean;
-  setter: (value: number) => void;
+  validator?: (value: number | string) => boolean;
+  setter: (value: number | undefined) => void;
   value: number;
   min?: number;
   max?: number;
@@ -74,6 +75,7 @@ const Input = React.memo(
         onKeyDown,
         style,
         title,
+        id = undefined,
       }: InputProps,
       ref
     ) => {
@@ -83,11 +85,13 @@ const Input = React.memo(
       return (
         <StyledInputContainer
           style={{ borderBottom: `1px solid ${color}`, ...style }}
+          key={id ?? ""}
         >
           <StyledInput
             ref={ref}
             placeholder={placeholder}
-            data-cy={`input-${placeholder}`}
+            data-cy={`input-${id ?? placeholder}`}
+            key={id ?? "input"}
             value={value === null ? "" : String(value)}
             onChange={(e: React.FormEvent<HTMLInputElement>) => {
               if (validator(e.currentTarget.value)) {
@@ -145,6 +149,7 @@ export const NumberInput = React.memo(
     ) => {
       const theme = useTheme();
       color = color ?? theme.primary.plainColor;
+      const display = [null, undefined].includes(value) ? "" : Number(value);
 
       return (
         <StyledInputContainer
@@ -158,9 +163,22 @@ export const NumberInput = React.memo(
             step={step}
             placeholder={placeholder}
             data-cy={`input-${placeholder}`}
-            value={value === null ? "" : Number(value)}
+            value={display}
             onChange={(e: React.FormEvent<HTMLInputElement>) => {
-              if (validator(Number(e.currentTarget.value))) {
+              // allow deleting zero and disable typing 00000
+              if (e.currentTarget.value == "") {
+                setter(undefined);
+              } else if (Number(e.currentTarget.value) === 0) {
+                if (e.currentTarget.value === "0") {
+                  setter(0);
+                } else if (isZeroString(e.currentTarget.value)) {
+                  // clear the 0000000 to 0;
+                  e.currentTarget.value = "0";
+                } else {
+                  setter(Number(e.currentTarget.value));
+                }
+              } else if (validator(e.currentTarget.value)) {
+                e.currentTarget.value = String(Number(e.currentTarget.value));
                 setter(Number(e.currentTarget.value));
               }
             }}
@@ -188,3 +206,12 @@ export const NumberInput = React.memo(
     }
   )
 );
+
+// catches "00" and 00
+function isZeroString(input) {
+  if (typeof input !== "string") {
+    return false;
+  }
+  const pattern = /^0+$/;
+  return pattern.test(input);
+}
