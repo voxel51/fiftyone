@@ -11,7 +11,7 @@ import multiprocessing.dummy
 import os
 import requests
 
-from PIL import Image
+from PIL import ExifTags, Image
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -281,6 +281,30 @@ def compute_metadata(
             raise ValueError(msg)
 
 
+def _image_has_flipped_dimensions(img):
+    """Returns True if image has flipped width/height dimensions
+
+    EXIF Orientation metadata can specify that an image be rotated or otherwise
+    transposed. ``PIL.Image`` does not handle this by default so we have to
+    inspect the EXIF info. See ``PIL.ImageOps.exif_transpose()`` for the basis
+    of this function, except we don't actually want to transpose the image
+    when we only need the dimensions.
+
+    Tag name reference: https://exiftool.org/TagNames/EXIF.html
+    PIL.ImageOps reference: https://github.com/python-pillow/Pillow/blob/main/src/PIL/ImageOps.py
+
+    Args:
+        img: a ``PIL.Image``
+
+    Returns:
+        True if image width/height should be flipped
+    """
+    exif_orientation = img.getexif().get(ExifTags.Base.Orientation)
+    # 5, 6, 7, 8 --> TRANSPOSE, ROTATE_270, TRANSVERSE, ROTATE_90
+    is_rotated = exif_orientation in {5, 6, 7, 8}
+    return is_rotated
+
+
 def get_image_info(f):
     """Retrieves the dimensions and number of channels of the given image from
     a file-like object that is streaming its contents.
@@ -292,7 +316,15 @@ def get_image_info(f):
         ``(width, height, num_channels)``
     """
     img = Image.open(f)
-    return (img.width, img.height, len(img.getbands()))
+
+    # Flip the dimensions if image metadata requires us to. PIL.Image doesn't
+    #   handle by default.
+    if _image_has_flipped_dimensions(img):
+        width, height = img.height, img.width
+    else:
+        width, height = img.width, img.height
+
+    return width, height, len(img.getbands())
 
 
 def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
