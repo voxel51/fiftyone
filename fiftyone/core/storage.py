@@ -44,20 +44,13 @@ foc = fou.lazy_import("fiftyone.core.cache")
 logger = logging.getLogger(__name__)
 
 creds_manager = None
-s3_client = None
-gcs_client = None
-azure_client = None
-minio_client = None
 http_client = None
 available_file_systems = None
 bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
+client_cache = {}
 
-minio_alias_prefix = None
-minio_endpoint_prefix = None
-azure_alias_prefix = None
-azure_endpoint_prefix = None
 
 S3_PREFIX = "s3://"
 GCS_PREFIX = "gs://"
@@ -71,61 +64,24 @@ def init_storage():
     This method may be called at any time to reinitialize storage client usage.
     """
     global creds_manager
-    global s3_client
-    global gcs_client
-    global azure_client
-    global minio_client
     global available_file_systems
     global bucket_regions
     global region_clients
-    global minio_alias_prefix
-    global minio_endpoint_prefix
-    global azure_alias_prefix
-    global azure_endpoint_prefix
+    global client_cache
 
     if has_encryption_key():
         creds_manager = CloudCredentialsManager()
     else:
         creds_manager = None
 
-    s3_client = None
-    gcs_client = None
-    azure_client = None
-    minio_client = None
     available_file_systems = None
     bucket_regions.clear()
     region_clients.clear()
 
-    minio_alias_prefix = None
-    minio_endpoint_prefix = None
-    azure_alias_prefix = None
-    azure_endpoint_prefix = None
-
-    credentials = _load_minio_credentials()
-    if credentials:
-        if "alias" in credentials:
-            minio_alias_prefix = credentials["alias"] + "://"
-
-        if "endpoint_url" in credentials:
-            minio_endpoint_prefix = (
-                credentials["endpoint_url"].rstrip("/") + "/"
-            )
-
-    credentials = _load_azure_credentials()
-    if credentials:
-        if "alias" in credentials:
-            azure_alias_prefix = credentials["alias"] + "://"
-
-        if "account_url" in credentials:
-            azure_endpoint_prefix = (
-                credentials["account_url"].rstrip("/") + "/"
-            )
-        elif "conn_str" in credentials or "account_name" in credentials:
-            account_url = AzureStorageClient._to_account_url(
-                conn_str=credentials.get("conn_str", None),
-                account_name=credentials.get("account_name", None),
-            )
-            azure_endpoint_prefix = account_url.rstrip("/") + "/"
+    # client cache to prevent creating new clients
+    # constantly when iterating over objects with
+    # the same creds requirements (i.e. bucket prefixes)
+    client_cache.clear()
 
 
 class FileSystem(object):
@@ -191,6 +147,56 @@ class HTTPStorageClient(etast.HTTPStorageClient):
         return os.path.join(host, *p.path.lstrip("/").split("/"))
 
 
+def _get_minio_prefixes():
+    # get all available minio creds
+    minio_creds_list = creds_manager.get_all_credentials_for_provider("MINIO")
+
+    prefix_list = set()
+
+    for credentials in minio_creds_list:
+        minio_alias_prefix = None
+        minio_endpoint_prefix = None
+        if "alias" in credentials:
+            minio_alias_prefix = credentials["alias"] + "://"
+
+        if "endpoint_url" in credentials:
+            minio_endpoint_prefix = (
+                credentials["endpoint_url"].rstrip("/") + "/"
+            )
+
+        prefix_list.add((minio_alias_prefix, minio_endpoint_prefix))
+
+    return prefix_list
+
+
+def _get_azure_prefixes():
+    # get all available azure creds
+    azure_creds_list = creds_manager.get_all_credentials_for_provider("AZURE")
+
+    prefix_list = set()
+
+    for credentials in azure_creds_list:
+        azure_alias_prefix = None
+        azure_endpoint_prefix = None
+        if "alias" in credentials:
+            azure_alias_prefix = credentials["alias"] + "://"
+
+        if "account_url" in credentials:
+            azure_endpoint_prefix = (
+                credentials["account_url"].rstrip("/") + "/"
+            )
+        elif "conn_str" in credentials or "account_name" in credentials:
+            account_url = AzureStorageClient._to_account_url(
+                conn_str=credentials.get("conn_str", None),
+                account_name=credentials.get("account_name", None),
+            )
+            azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
+        prefix_list.add((azure_alias_prefix, azure_endpoint_prefix))
+
+    return prefix_list
+
+
 def get_file_system(path):
     """Returns the file system enum for the given path.
 
@@ -206,21 +212,30 @@ def get_file_system(path):
     # Check MinIO and Azure first in case alias/endpoint clashes with another
     # file system
 
-    if (
-        minio_alias_prefix is not None and path.startswith(minio_alias_prefix)
-    ) or (
-        minio_endpoint_prefix is not None
-        and path.startswith(minio_endpoint_prefix)
-    ):
-        return FileSystem.MINIO
+    # get the credentials here to see if the alias and endpoint prefixes are present
+    minio_prefix_list = _get_minio_prefixes()
+    azure_prefix_list = _get_azure_prefixes()
 
-    if (
-        azure_alias_prefix is not None and path.startswith(azure_alias_prefix)
-    ) or (
-        azure_endpoint_prefix is not None
-        and path.startswith(azure_endpoint_prefix)
-    ):
-        return FileSystem.AZURE
+    # if any of the returned aliases match and the path starts with it, then we found it!
+    for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
+        if (
+            minio_alias_prefix is not None
+            and path.startswith(minio_alias_prefix)
+        ) or (
+            minio_endpoint_prefix is not None
+            and path.startswith(minio_endpoint_prefix)
+        ):
+            return FileSystem.MINIO
+
+    for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
+        if (
+            azure_alias_prefix is not None
+            and path.startswith(azure_alias_prefix)
+        ) or (
+            azure_endpoint_prefix is not None
+            and path.startswith(azure_endpoint_prefix)
+        ):
+            return FileSystem.AZURE
 
     if path.startswith(S3_PREFIX):
         return FileSystem.S3
@@ -287,21 +302,41 @@ def split_prefix(path):
     """
     # Check MinIO and Azure first in case alias/endpoint clashes with another
     # file system
-    if minio_alias_prefix is not None and path.startswith(minio_alias_prefix):
-        prefix = minio_alias_prefix
-    elif minio_endpoint_prefix is not None and path.startswith(
-        minio_endpoint_prefix
-    ):
-        prefix = minio_endpoint_prefix
-    elif azure_alias_prefix is not None and path.startswith(
-        azure_alias_prefix
-    ):
-        prefix = azure_alias_prefix
-    elif azure_endpoint_prefix is not None and path.startswith(
-        azure_endpoint_prefix
-    ):
-        prefix = azure_endpoint_prefix
-    elif path.startswith(S3_PREFIX):
+
+    minio_prefix_list = _get_minio_prefixes()
+    azure_prefix_list = _get_azure_prefixes()
+
+    if minio_prefix_list:
+        prefix = None
+        for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
+            if minio_alias_prefix is not None and path.startswith(
+                minio_alias_prefix
+            ):
+                prefix = minio_alias_prefix
+            elif minio_endpoint_prefix is not None and path.startswith(
+                minio_endpoint_prefix
+            ):
+                prefix = minio_endpoint_prefix
+
+            if prefix is not None:
+                return prefix, path[len(prefix) :]
+
+    if azure_prefix_list:
+        prefix = None
+        for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
+            if azure_alias_prefix is not None and path.startswith(
+                azure_alias_prefix
+            ):
+                prefix = azure_alias_prefix
+            elif azure_endpoint_prefix is not None and path.startswith(
+                azure_endpoint_prefix
+            ):
+                prefix = azure_endpoint_prefix
+
+            if prefix is not None:
+                return prefix, path[len(prefix) :]
+
+    if path.startswith(S3_PREFIX):
         prefix = S3_PREFIX
     elif path.startswith(GCS_PREFIX):
         prefix = GCS_PREFIX
@@ -1731,10 +1766,16 @@ def _is_root(path):
         return path == GCS_PREFIX
 
     if fs == FileSystem.AZURE:
-        return path in (azure_alias_prefix, azure_endpoint_prefix)
+        azure_prefix_list = _get_azure_prefixes()
+        for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
+            if path in (azure_alias_prefix, azure_endpoint_prefix):
+                return path in (azure_alias_prefix, azure_endpoint_prefix)
 
     if fs == FileSystem.MINIO:
-        return path in (minio_alias_prefix, minio_endpoint_prefix)
+        minio_prefix_list = _get_minio_prefixes()
+        for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
+            if path in (minio_alias_prefix, minio_endpoint_prefix):
+                return path in (minio_alias_prefix, minio_endpoint_prefix)
 
     return False
 
@@ -1756,41 +1797,256 @@ def list_buckets(fs, abs_paths=False):
         root = os.path.abspath(os.sep)
         return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
 
-    client = get_client(fs=fs)
+    # this methods needs to be updated to use ALL creds available to list buckets
+    # also update the docstring
 
     if fs == FileSystem.S3:
-        resp = client._client.list_buckets()
-        buckets = [r["Name"] for r in resp.get("Buckets", [])]
-        if abs_paths:
-            prefix = S3_PREFIX
-            buckets = [prefix + b for b in buckets]
+        _local_client_list = []
+        # hehe
+        bucket_list = set()
 
-        return buckets
+        if creds_manager:
+            creds_file_list = creds_manager.get_all_credentials_for_provider(
+                "AWS"
+            )
+            for creds_file in creds_file_list:
+
+                credentials, _ = S3StorageClient.load_credentials(
+                    credentials_path=creds_file, profile=None
+                )
+
+                _local_client_list.append(
+                    S3StorageClient(credentials=credentials)
+                )
+
+            for client in _local_client_list:
+                resp = client._client.list_buckets()
+                buckets = [r["Name"] for r in resp.get("Buckets", [])]
+                if abs_paths:
+                    prefix = S3_PREFIX
+                    buckets = [prefix + b for b in buckets]
+                for name in buckets:
+                    bucket_list.add(name)
+
+            return list(bucket_list)
+
+        # creds manager is not present, so we load from env
+        else:
+            credentials_path = fo.media_cache_config.aws_config_file
+            profile = fo.media_cache_config.aws_profile
+            credentials = S3StorageClient.load_credentials(
+                credentials_path=credentials_path, profile=profile
+            )
+            client = S3StorageClient(credentials=credentials)
+            resp = client._client.list_buckets()
+            buckets = [r["Name"] for r in resp.get("Buckets", [])]
+            if abs_paths:
+                prefix = S3_PREFIX
+                buckets = [prefix + b for b in buckets]
+
+            return buckets
 
     if fs == FileSystem.GCS:
-        buckets = [b.name for b in client._client.list_buckets()]
-        if abs_paths:
-            prefix = GCS_PREFIX
-            buckets = [prefix + b for b in buckets]
+        _local_client_list = []
+        # teehee
+        bucket_list = set()
 
-        return buckets
+        if creds_manager:
+            creds_file_list = creds_manager.get_all_credentials_for_provider(
+                "GCP"
+            )
+            for creds_file in creds_file_list:
+                credentials, _ = GoogleCloudStorageClient.load_credentials(
+                    credentials_path=creds_file
+                )
+
+                _local_client_list.append(
+                    GoogleCloudStorageClient(credentials=credentials)
+                )
+
+            for client in _local_client_list:
+                buckets = [b.name for b in client._client.list_buckets()]
+                if abs_paths:
+                    prefix = GCS_PREFIX
+                    buckets = [prefix + b for b in buckets]
+                for name in buckets:
+                    bucket_list.add(name)
+
+            return list(bucket_list)
+
+        # creds manager is not present, so we load from env
+        else:
+            credentials_path = (
+                fo.media_cache_config.google_application_credentials
+            )
+            credentials, _ = GoogleCloudStorageClient.load_credentials(
+                credentials_path=credentials_path
+            )
+            client = GoogleCloudStorageClient(credentials=credentials)
+            buckets = [b.name for b in client._client.list_buckets()]
+            if abs_paths:
+                prefix = GCS_PREFIX
+                buckets = [prefix + b for b in buckets]
+
+            return buckets
 
     if fs == FileSystem.AZURE:
-        buckets = [c["name"] for c in client._client.list_containers()]
-        if abs_paths:
-            prefix = azure_alias_prefix or azure_endpoint_prefix
-            buckets = [prefix + b for b in buckets]
+        _local_client_prefix_dict = {}
+        # come on, it's kinda funny
+        bucket_list = set()
 
-        return buckets
+        if creds_manager:
+            creds_file_list = creds_manager.get_all_credentials_for_provider(
+                "AZURE"
+            )
+            for creds_file in creds_file_list:
+                credentials, _ = AzureStorageClient.load_credentials(
+                    credentials_path=creds_file, profile=None
+                )
+
+                azure_alias_prefix = None
+                azure_endpoint_prefix = None
+
+                if "alias" in credentials:
+                    azure_alias_prefix = credentials["alias"] + "://"
+
+                if "account_url" in credentials:
+                    azure_endpoint_prefix = (
+                        credentials["account_url"].rstrip("/") + "/"
+                    )
+                elif (
+                    "conn_str" in credentials or "account_name" in credentials
+                ):
+                    account_url = AzureStorageClient._to_account_url(
+                        conn_str=credentials.get("conn_str", None),
+                        account_name=credentials.get("account_name", None),
+                    )
+                    azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
+                _local_client_prefix_dict[
+                    AzureStorageClient(credentials=credentials)
+                ] = (azure_alias_prefix, azure_endpoint_prefix)
+
+            for client_set in _local_client_prefix_dict.items():
+                client = client_set[0]
+                azure_alias_prefix = client_set[1][0]
+                azure_endpoint_prefix = client_set[1][1]
+
+                buckets = [c["name"] for c in client._client.list_containers()]
+                if abs_paths:
+                    prefix = azure_alias_prefix or azure_endpoint_prefix
+                    buckets = [prefix + b for b in buckets]
+
+                for name in buckets:
+                    bucket_list.add(name)
+
+            return list(bucket_list)
+
+        else:
+            credentials_path = fo.media_cache_config.azure_credentials_file
+            profile = fo.media_cache_config.azure_profile
+
+            credentials, _ = AzureStorageClient.load_credentials(
+                credentials_path=credentials_path, profile=profile
+            )
+            azure_alias_prefix = None
+            azure_endpoint_prefix = None
+
+            if "alias" in credentials:
+                azure_alias_prefix = credentials["alias"] + "://"
+
+            if "account_url" in credentials:
+                azure_endpoint_prefix = (
+                    credentials["account_url"].rstrip("/") + "/"
+                )
+            elif "conn_str" in credentials or "account_name" in credentials:
+                account_url = AzureStorageClient._to_account_url(
+                    conn_str=credentials.get("conn_str", None),
+                    account_name=credentials.get("account_name", None),
+                )
+                azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
+            client = AzureStorageClient(credentials=credentials)
+
+            buckets = [c["name"] for c in client._client.list_containers()]
+            if abs_paths:
+                prefix = azure_alias_prefix or azure_endpoint_prefix
+                buckets = [prefix + b for b in buckets]
+
+            return buckets
 
     if fs == FileSystem.MINIO:
-        resp = client._client.list_buckets()
-        buckets = [r["Name"] for r in resp.get("Buckets", [])]
-        if abs_paths:
-            prefix = minio_alias_prefix or minio_endpoint_prefix
-            buckets = [prefix + b for b in buckets]
+        _local_client_prefix_dict = {}
+        # cause it's a bucket list!
+        bucket_list = set()
 
-        return buckets
+        if creds_manager:
+            creds_file_list = creds_manager.get_all_credentials_for_provider(
+                "MINIO"
+            )
+            for creds_file in creds_file_list:
+                credentials, _ = MinIOStorageClient.load_credentials(
+                    credentials_path=creds_file, profile=None
+                )
+
+                minio_alias_prefix = None
+                minio_endpoint_prefix = None
+
+                if "alias" in credentials:
+                    minio_alias_prefix = credentials["alias"] + "://"
+
+                if "endpoint_url" in credentials:
+                    minio_endpoint_prefix = (
+                        credentials["endpoint_url"].rstrip("/") + "/"
+                    )
+
+                _local_client_prefix_dict[
+                    MinIOStorageClient(credentials=credentials)
+                ] = (minio_alias_prefix, minio_endpoint_prefix)
+
+            for client_set in _local_client_prefix_dict.items():
+                client = client_set[0]
+                minio_alias_prefix = client_set[1][0]
+                minio_endpoint_prefix = client_set[1][1]
+
+                resp = client._client.list_buckets()
+                buckets = [r["Name"] for r in resp.get("Buckets", [])]
+                if abs_paths:
+                    prefix = minio_alias_prefix or minio_endpoint_prefix
+                    buckets = [prefix + b for b in buckets]
+                for name in buckets:
+                    bucket_list.add(name)
+
+            return list(bucket_list)
+
+        else:
+            credentials_path = fo.media_cache_config.minio_config_file
+            profile = fo.media_cache_config.minio_profile
+
+            credentials, _ = MinIOStorageClient.load_credentials(
+                credentials_path=credentials_path, profile=profile
+            )
+
+            minio_alias_prefix = None
+            minio_endpoint_prefix = None
+
+            if "alias" in credentials:
+                minio_alias_prefix = credentials["alias"] + "://"
+
+            if "endpoint_url" in credentials:
+                minio_endpoint_prefix = (
+                    credentials["endpoint_url"].rstrip("/") + "/"
+                )
+
+            client = MinIOStorageClient(credentials=credentials)
+
+            resp = client._client.list_buckets()
+            buckets = [r["Name"] for r in resp.get("Buckets", [])]
+            if abs_paths:
+                prefix = minio_alias_prefix or minio_endpoint_prefix
+                buckets = [prefix + b for b in buckets]
+
+            return buckets
 
     raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -2133,11 +2389,13 @@ def _get_client(fs=None, path=None):
     elif fs is None:
         raise ValueError("You must provide either a file system or a path")
 
-    if path is not None and fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
+    if path is not None:
         bucket = get_bucket_name(path)
+
+    if fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
         return _get_regional_client(fs, bucket)
 
-    return _get_default_client(fs)
+    return _get_default_client(fs, bucket)
 
 
 def _get_regional_client(fs, bucket):
@@ -2155,45 +2413,66 @@ def _get_regional_client(fs, bucket):
         region = _get_region(fs, bucket)
         bucket_regions[fs][bucket] = region
 
-    client = region_clients[fs].get(region, None)
+    # try to get from the central client cache
+    client = _get_client_from_cache(fs, bucket)
 
     if client is None:
         if region == _UNKNOWN_REGION:
-            client = _get_default_client(fs)
+            client = _get_default_client(fs, bucket)
         else:
-            client = _make_regional_client(fs, region)
-
-        region_clients[fs][region] = client
+            client = _make_regional_client(fs, region, bucket)
 
     return client
 
 
-def _get_default_client(fs):
-    if fs == FileSystem.S3:
-        global s3_client
-        if s3_client is None:
-            s3_client = _make_client(fs)
+def _get_client_from_cache(provider, bucket_name):
+    global client_cache
 
+    # Note that this cache does not care about "default" creds
+    # as it is only aware of clients, not credentials.
+
+    # if there is a valid client based on the bucket and provider combo
+    # it will use it from the cache, regardless of if the credentials
+    # used to make the client were default or specific.
+    # The creds manager keeps track of those details
+
+    # client_cache has shape
+    # {"provider-bucket": "creds"}
+
+    for client_key in client_cache:
+        if bucket_name in client_key and client_key.startswith(provider):
+            return client_cache[client_key]
+
+    return None
+
+
+def _get_default_client(fs, bucket):
+    global client_cache
+
+    if fs == FileSystem.S3:
+        s3_client = _get_client_from_cache("AWS", bucket)
+        if s3_client is None:
+            s3_client = _make_client(fs, bucket)
         return s3_client
 
     if fs == FileSystem.GCS:
-        global gcs_client
+        gcs_client = _get_client_from_cache("GCP", bucket)
         if gcs_client is None:
-            gcs_client = _make_client(fs)
+            gcs_client = _make_client(fs, bucket)
 
         return gcs_client
 
     if fs == FileSystem.AZURE:
-        global azure_client
+        azure_client = _get_client_from_cache("AZURE", bucket)
         if azure_client is None:
-            azure_client = _make_client(fs)
+            azure_client = _make_client(fs, bucket)
 
         return azure_client
 
     if fs == FileSystem.MINIO:
-        global minio_client
+        minio_client = _get_client_from_cache("MINIO", bucket)
         if minio_client is None:
-            minio_client = _make_client(fs)
+            minio_client = _make_client(fs, bucket)
 
         return minio_client
 
@@ -2201,7 +2480,7 @@ def _get_default_client(fs):
         global http_client
 
         if http_client is None:
-            http_client = _make_client(fs)
+            http_client = _make_client(fs, bucket)
 
         return http_client
 
@@ -2209,7 +2488,7 @@ def _get_default_client(fs):
 
 
 def _get_region(fs, bucket):
-    client = _get_default_client(fs)
+    client = _get_default_client(fs, bucket)
 
     try:
         # HeadBucket is the AWS recommended way to determine a bucket's region
@@ -2237,7 +2516,8 @@ def _get_region(fs, bucket):
             return _UNKNOWN_REGION
 
 
-def _make_client(fs, num_workers=None):
+def _make_client(fs, bucket, num_workers=None):
+    global client_cache
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
@@ -2247,20 +2527,27 @@ def _make_client(fs, num_workers=None):
         kwargs["max_pool_connections"] = num_workers
 
     if fs == FileSystem.S3:
-        credentials = _load_s3_credentials()
-        return S3StorageClient(credentials=credentials, **kwargs)
+        credentials = _load_s3_credentials(bucket)
+        client = S3StorageClient(credentials=credentials, **kwargs)
+        client_cache[f"AWS-{bucket}"] = client
+        return client
 
     if fs == FileSystem.GCS:
-        credentials = _load_gcs_credentials()
-        return GoogleCloudStorageClient(credentials=credentials, **kwargs)
+        credentials = _load_gcs_credentials(bucket)
+        client = GoogleCloudStorageClient(credentials=credentials, **kwargs)
+        client_cache[f"GCP-{bucket}"] = client
+        return client
 
     if fs == FileSystem.AZURE:
-        credentials = _load_azure_credentials()
-        return AzureStorageClient(credentials=credentials, **kwargs)
+        credentials = _load_azure_credentials(bucket)
+        client = AzureStorageClient(credentials=credentials, **kwargs)
+        client_cache[f"AZURE-{bucket}"] = client
+        return client
 
     if fs == FileSystem.MINIO:
-        credentials = _load_minio_credentials()
-        return MinIOStorageClient(credentials=credentials, **kwargs)
+        credentials = _load_minio_credentials(bucket)
+        client = MinIOStorageClient(credentials=credentials, **kwargs)
+        client_cache[f"MINIO-{bucket}"] = client
 
     if fs == FileSystem.HTTP:
         return HTTPStorageClient(**kwargs)
@@ -2268,7 +2555,7 @@ def _make_client(fs, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
-def _make_regional_client(fs, region, num_workers=None):
+def _make_regional_client(fs, region, bucket, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
@@ -2278,14 +2565,18 @@ def _make_regional_client(fs, region, num_workers=None):
         kwargs["max_pool_connections"] = num_workers
 
     if fs == FileSystem.S3:
-        credentials = _load_s3_credentials() or {}
+        credentials = _load_s3_credentials(bucket) or {}
         credentials["region"] = region
-        return S3StorageClient(credentials=credentials, **kwargs)
+        client = S3StorageClient(credentials=credentials, **kwargs)
+        client_cache[f"AWS-{bucket}"] = client
+        return client
 
     if fs == FileSystem.MINIO:
-        credentials = _load_minio_credentials() or {}
+        credentials = _load_minio_credentials(bucket) or {}
         credentials["region"] = region
-        return MinIOStorageClient(credentials=credentials, **kwargs)
+        client = MinIOStorageClient(credentials=credentials, **kwargs)
+        client_cache[f"MINIO-{bucket}"] = client
+        return client
 
     raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -2298,15 +2589,15 @@ def _check_managed_credentials():
         init_storage()
 
 
-def _get_managed_credentials(provider):
+def _get_managed_credentials(provider, bucket):
     if creds_manager is None:
         return None
 
-    return creds_manager.get_stored_credentials(provider)
+    return creds_manager.get_stored_credentials_per_bucket(provider, bucket)
 
 
-def _load_s3_credentials():
-    credentials_path = _get_managed_credentials("AWS")
+def _load_s3_credentials(bucket):
+    credentials_path = _get_managed_credentials("AWS", bucket)
     profile = None
 
     if credentials_path:
@@ -2323,8 +2614,8 @@ def _load_s3_credentials():
     return credentials
 
 
-def _load_gcs_credentials():
-    credentials_path = _get_managed_credentials("GCP")
+def _load_gcs_credentials(bucket):
+    credentials_path = _get_managed_credentials("GCP", bucket)
 
     if credentials_path:
         logger.debug("Loaded GCP creds from Teams DB")
@@ -2339,8 +2630,8 @@ def _load_gcs_credentials():
     return credentials
 
 
-def _load_azure_credentials():
-    credentials_path = _get_managed_credentials("AZURE")
+def _load_azure_credentials(bucket):
+    credentials_path = _get_managed_credentials("AZURE", bucket)
     profile = None
 
     if credentials_path:
@@ -2357,8 +2648,8 @@ def _load_azure_credentials():
     return credentials
 
 
-def _load_minio_credentials():
-    credentials_path = _get_managed_credentials("MINIO")
+def _load_minio_credentials(bucket):
+    credentials_path = _get_managed_credentials("MINIO", bucket)
     profile = None
 
     if credentials_path:
