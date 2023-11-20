@@ -5,6 +5,7 @@ Plugin secrets resolver.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from __future__ import annotations
 import logging
 import typing
 from collections.abc import Mapping
