@@ -125,12 +125,6 @@ class SecretsDictionary:
     def __eq__(self, other):
         return self.__secrets == other
 
-    def __setattr__(self, key, value):
-        if key == "__secrets" or key == "__required_keys":
-            raise AttributeError("Cannot mutate hidden properties")
-        else:
-            super().__setattr__(key, value)
-
     def __getitem__(self, key):
         # Override __getitem__ to suppress KeyError and attempt to resolve
         # plugin secrets if not yet resolved
@@ -145,9 +139,7 @@ class SecretsDictionary:
         raise RuntimeError("Setting values is not allowed")
 
     def __deepcopy__(self, memodict={}):
-        logging.warning(
-            "Copying the SecretsDictionary values is not " "allowed."
-        )
+        logging.warning("Copying the SecretsDictionary is not allowed.")
 
         return {k: None for k in self.__secrets.keys()}
 
@@ -155,17 +147,15 @@ class SecretsDictionary:
         return {k: True for k, v in self.__secrets.items() if v is not None}
 
     def copy(self):
-        logging.warning(
-            "Copying the SecretsDictionary values is not " "allowed."
-        )
+        logging.warning("Copying the SecretsDictionary is not allowed.")
         return self.__deepcopy__()
 
     def keys(self):
         return [k for k, v in self.__secrets.items() if v is not None]
 
     def values(self):
-        # Override values() to prevent iterating through plaintext values
-        raise RuntimeError("Iteration through values is not allowed")
+        # Override values() to ensure that resolvable secrets are always returned upon iteration
+        return [self[k] for k in self.keys()]
 
     def items(self):
         # Override items() to use __getitem__ to automatically resolve
