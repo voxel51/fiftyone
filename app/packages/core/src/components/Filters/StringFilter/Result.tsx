@@ -1,10 +1,13 @@
+import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { useRecoilValue } from "recoil";
-import { V } from "./CategoricalFilter";
 
-const ResultComponent = ({ value: { value, count } }: { value: V }) => {
+export type Result = { value: string | null; count: number | null };
+
+const ResultComponent = ({ value: { value, count } }: { value: Result }) => {
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
+  const theme = useTheme();
   return (
     <div
       style={{
@@ -21,9 +24,10 @@ const ResultComponent = ({ value: { value, count } }: { value: V }) => {
           whiteSpace: "nowrap",
           overflow: "hidden",
           textOverflow: "ellipsis",
+          color: value === null ? theme.text.disabled : undefined,
         }}
       >
-        {value}
+        {value === null ? "None" : value}
       </div>
       {isFilterMode && <div style={{ fontSize: "1rem" }}>{count}</div>}
     </div>

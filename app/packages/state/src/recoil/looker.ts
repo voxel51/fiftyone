@@ -7,17 +7,17 @@ import {
   VideoOptions,
 } from "@fiftyone/looker";
 import { selectorFamily, useRecoilValue, useRecoilValueLoadable } from "recoil";
-
 import * as atoms from "./atoms";
 import { attributeVisibility } from "./attributeVisibility";
 import * as colorAtoms from "./color";
+import { dataset } from "./dataset";
 import { filters, modalFilters } from "./filters";
 import { pathFilter } from "./pathFilters";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import skeletonFilter from "./skeletonFilter";
-import * as viewAtoms from "./view";
 import { State } from "./types";
+import * as viewAtoms from "./view";
 
 type Lookers = FrameLooker | ImageLooker | VideoLooker;
 
@@ -100,9 +100,9 @@ export const lookerOptions = selectorFamily<
         showOverlays: modal ? get(atoms.showOverlays) : true,
         alpha: get(atoms.colorScheme).opacity,
         showSkeletons: get(atoms.colorScheme).showSkeletons,
-        defaultSkeleton: get(atoms.dataset)?.defaultSkeleton,
+        defaultSkeleton: get(dataset)?.defaultSkeleton,
         skeletons: Object.fromEntries(
-          get(atoms.dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
+          get(dataset)?.skeletons.map(({ name, ...rest }) => [name, rest])
         ),
         pointFilter: get(skeletonFilter(modal)),
       };

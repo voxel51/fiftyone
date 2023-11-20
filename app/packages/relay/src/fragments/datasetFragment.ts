@@ -69,6 +69,7 @@ export default graphql`
     ...estimatedCountsFragment
     ...frameFieldsFragment
     ...groupSliceFragment
+    ...indexesFragment
     ...mediaFieldsFragment
     ...mediaTypeFragment
     ...sampleFieldsFragment

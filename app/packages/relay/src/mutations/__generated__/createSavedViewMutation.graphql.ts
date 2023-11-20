@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<b42852c8bf7979bf954d5bfef201053c>>
+ * @generated SignedSource<<a5785624632e0cc9d66374e1894c550c>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -36,7 +36,7 @@ export type createSavedViewMutation$variables = {
 export type createSavedViewMutation$data = {
   readonly createSavedView: {
     readonly color: string | null;
-    readonly createdAt: any | null;
+    readonly createdAt: number | null;
     readonly datasetId: string | null;
     readonly description: string | null;
     readonly id: string | null;

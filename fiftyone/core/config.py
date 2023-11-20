@@ -338,7 +338,7 @@ class AppConfig(EnvConfig):
             d,
             "lightning_threshold",
             env_var="FIFTYONE_APP_LIGHTNING_THRESHOLD",
-            default=100,
+            default=None,
         )
         self.loop_videos = self.parse_bool(
             d,

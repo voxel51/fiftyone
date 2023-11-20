@@ -1,6 +1,6 @@
 import { useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { groupStatistics, isGroup as isGroupAtom } from "@fiftyone/state";
+import { isGroup as isGroupAtom } from "@fiftyone/state";
 import { Apps } from "@mui/icons-material";
 import Color from "color";
 import React, { Suspense, useMemo } from "react";
@@ -62,7 +62,6 @@ const ImageContainerHeader = () => {
   const theme = useTheme();
   const isGroup = useRecoilValue(isGroupAtom);
   const groupSlices = useRecoilValue(fos.groupSlices);
-  const groupStats = useRecoilValue(groupStatistics(false));
 
   const shouldShowSliceSelector = useMemo(
     () => isGroup && groupSlices.length > 1,
@@ -80,7 +79,7 @@ const ImageContainerHeader = () => {
             </RightDiv>
           }
         >
-          <ResourceCount isGroup={groupStats === "group"} />
+          <ResourceCount />
         </Suspense>
         {shouldShowSliceSelector && (
           <RightDiv>
