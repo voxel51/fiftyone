@@ -10,7 +10,6 @@ import * as schemaAtoms from "../recoil/schema";
 import * as selectors from "../recoil/selectors";
 import * as sidebarAtoms from "../recoil/sidebar";
 import { getSanitizedGroupByExpression } from "../recoil/utils";
-import * as viewAtoms from "../recoil/view";
 import { LookerStore, Lookers } from "./useLookerStore";
 import useSetExpandedSample from "./useSetExpandedSample";
 
@@ -115,7 +114,7 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
         );
         const groupField = await snapshot.getPromise(groupAtoms.groupField);
         const dynamicGroupParameters = await snapshot.getPromise(
-          viewAtoms.dynamicGroupParameters
+          groupAtoms.dynamicGroupParameters
         );
 
         const getIndex = async (index: number) => {

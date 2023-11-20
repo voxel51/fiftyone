@@ -29,7 +29,7 @@ class PluginSecretsResolver:
     ) -> None:
         self._registered_secrets[operator_uri] = required_secrets
 
-    def client(self):
+    def client(self) -> fois.ISecretProvider:
         if not self._instance:
             self._instance = self.__new__(self.__class__)
         return self._instance.client

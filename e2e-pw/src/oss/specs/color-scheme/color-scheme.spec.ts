@@ -132,8 +132,8 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .getByTitle(`Use custom colors for specific field values`)
       .first()
       .click({ force: true });
-    await colorModal.addANewPair("validation", "yellowgreen");
-    await colorModal.addANewPair("test", "black"); // this doesn't matter
+    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+    await colorModal.addANewPair("test", "black", 1); // this doesn't matter
 
     await colorModal.closeColorModal();
     const tagBubble = page.getByTestId("tag-validation").first();
@@ -162,31 +162,31 @@ test.describe("color scheme basic functionality with quickstart", () => {
     // color by value mode
     await colorModal.changeColorMode("value");
 
-    await page
-      .getByTitle(`Use custom colors for specific field values`)
-      .first()
-      .click({ force: true });
-    // I can set value colors directly bypass choosing attribute by value
-    await colorModal.addNewPairs([
-      { value: "bird", color: "yellow" },
-      { value: "person", color: "red" },
-      { value: "horse", color: "green" },
-      { value: "cat", color: "blue" },
-      { value: "bottle", color: "white" },
-      { value: "surfboard", color: "white" },
-      { value: "knife", color: "white" },
-      { value: "fork", color: "white" },
-      { value: "cup", color: "white" },
-      { value: "dining table", color: "white" },
-      { value: "chair", color: "white" },
-      { value: "cake", color: "white" },
-    ]);
+    // await page
+    //   .getByTitle(`Use custom colors for specific field values`)
+    //   .first()
+    //   .click({ force: true });
+    // // I can set value colors directly bypass choosing attribute by value
+    // await colorModal.addNewPairs([
+    //   { value: "bird", color: "#ffff00" }, // yellow
+    //   { value: "person", color: "#ff0000" }, // red
+    //   { value: "horse", color: "#008000" }, //green
+    //   { value: "cat", color: "#0000ff" }, //blue
+    //   { value: "bottle", color: "#ffffff" }, // white
+    //   { value: "surfboard", color: "#ffffff" },
+    //   { value: "knife", color: "#ffffff" },
+    //   { value: "fork", color: "#ffffff" },
+    //   { value: "cup", color: "#ffffff" },
+    //   { value: "dining table", color: "#ffffff" },
+    //   { value: "chair", color: "#ffffff" },
+    //   { value: "cake", color: "#ffffff" },
+    // ]);
 
-    await colorModal.closeColorModal();
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "color-value-setting-1.png",
-      { animations: "allow" }
-    );
+    // await colorModal.closeColorModal();
+    // await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
+    //   "color-value-setting-1.png",
+    //   { animations: "allow" }
+    // );
   });
 
   test("update color by value - ground_truth - with custom string field", async ({

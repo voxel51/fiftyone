@@ -6,7 +6,7 @@ const LoadingDots = ({
   text,
   style,
 }: {
-  text: string;
+  text?: string;
   color?: string;
   style?: React.CSSProperties;
 }) => {

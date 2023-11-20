@@ -22,6 +22,7 @@ import { OverlayMask } from "../numpy";
 import {
   BaseConfig,
   Coloring,
+  Colorscale,
   CustomizeColor,
   FrameChunk,
   FrameSample,
@@ -103,6 +104,7 @@ const imputeOverlayFromPath = async (
   label: Record<string, any>,
   coloring: Coloring,
   customizeColorSetting: CustomizeColor[],
+  colorscale: Colorscale,
   buffers: ArrayBuffer[],
   sources: { [path: string]: string }
 ) => {
@@ -114,6 +116,7 @@ const imputeOverlayFromPath = async (
         detection,
         coloring,
         customizeColorSetting,
+        colorscale,
         buffers,
         {}
       )
@@ -192,6 +195,7 @@ const processLabels = async (
   prefix = "",
   sources: { [key: string]: string },
   customizeColorSetting: ProcessSample["customizeColorSetting"],
+  colorscale: ProcessSample["colorscale"],
   labelTagColors: ProcessSample["labelTagColors"],
   selectedLabelTags: ProcessSample["selectedLabelTags"]
 ): Promise<ArrayBuffer[]> => {
@@ -214,6 +218,7 @@ const processLabels = async (
           label,
           coloring,
           customizeColorSetting,
+          colorscale,
           buffers,
           sources
         );
@@ -230,6 +235,7 @@ const processLabels = async (
           `${prefix ? prefix : ""}${field}.`,
           sources,
           customizeColorSetting,
+          colorscale,
           labelTagColors,
           selectedLabelTags
         );
@@ -253,6 +259,7 @@ const processLabels = async (
             label,
             coloring,
             customizeColorSetting,
+            colorscale,
             labelTagColors,
             selectedLabelTags
           )
@@ -283,6 +290,7 @@ export interface ProcessSample {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
   labelTagColors: LabelTagColor;
+  colorscale: Colorscale;
   selectedLabelTags: string[];
   sources: { [path: string]: string };
 }
@@ -295,6 +303,7 @@ const processSample = ({
   coloring,
   sources,
   customizeColorSetting,
+  colorscale,
   selectedLabelTags,
   labelTagColors,
 }: ProcessSample) => {
@@ -312,6 +321,7 @@ const processSample = ({
         null,
         sources,
         customizeColorSetting,
+        colorscale,
         labelTagColors,
         selectedLabelTags
       ),
@@ -329,6 +339,7 @@ const processSample = ({
             "frames.",
             sources,
             customizeColorSetting,
+            colorscale,
             labelTagColors,
             selectedLabelTags
           )
@@ -345,6 +356,7 @@ const processSample = ({
         coloring,
         uuid,
         customizeColorSetting,
+        colorscale,
         labelTagColors,
         selectedLabelTags,
       },
@@ -365,6 +377,7 @@ interface FrameStream {
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
 }
@@ -373,6 +386,7 @@ const createReader = ({
   chunkSize,
   coloring,
   customizeColorSetting,
+  colorscale,
   labelTagColors,
   selectedLabelTags,
   frameCount,
@@ -385,6 +399,7 @@ const createReader = ({
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
   frameCount: number;
@@ -429,6 +444,7 @@ const createReader = ({
               range,
               coloring,
               customizeColorSetting,
+              colorscale,
               labelTagColors,
               selectedLabelTags,
             });
@@ -471,6 +487,7 @@ const getSendChunk =
             "frames.",
             {},
             value.customizeColorSetting,
+            value.colorscale,
             value.labelTagColors,
             value.selectedLabelTags
           )
@@ -505,6 +522,7 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 interface SetStream {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
   frameCount: number;
@@ -521,6 +539,7 @@ type SetStreamMethod = ReaderMethod & SetStream;
 const setStream = ({
   coloring,
   customizeColorSetting,
+  colorscale,
   selectedLabelTags,
   labelTagColors,
   frameCount,
@@ -537,6 +556,7 @@ const setStream = ({
   stream = createReader({
     coloring,
     customizeColorSetting,
+    colorscale,
     selectedLabelTags,
     labelTagColors,
     chunkSize: CHUNK_SIZE,

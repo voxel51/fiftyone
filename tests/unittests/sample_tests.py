@@ -5,12 +5,13 @@ FiftyOne sample-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import datetime
 import os
+import tempfile
 import unittest
 
 from bson import Binary, ObjectId
 import numpy as np
+from PIL import ExifTags, Image
 
 import fiftyone as fo
 from fiftyone import ViewField as F
@@ -188,6 +189,40 @@ class SampleTests(unittest.TestCase):
 
         with self.assertRaises(KeyError):
             sample["dynamic.classifications.classifications.foo"]
+
+    def test_compute_metadata_exif_transpose(self):
+        width = 800
+        height = 1200
+        img = Image.new("RGB", (width, height), (255, 255, 255))
+        self.assertEqual(img.width, width)
+        self.assertEqual(img.height, height)
+
+        with tempfile.NamedTemporaryFile("w") as image_file:
+            # Test all possible orientations. width/height only flipped with
+            #   5, 6, 7, 8
+            for orientation in range(1, 10):
+                exif = img.getexif()
+                exif[ExifTags.Base.Orientation] = orientation
+
+                expected_width, expected_height = width, height
+                if orientation in {5, 6, 7, 8}:
+                    expected_width, expected_height = height, width
+                img.save(image_file.name, "jpeg", exif=exif)
+
+                sample = fo.Sample(image_file.name)
+                sample.compute_metadata()
+
+                self.assertEqual(sample.metadata.width, expected_width)
+                self.assertEqual(sample.metadata.height, expected_height)
+                self.assertEqual(sample.metadata.num_channels, 3)
+
+            # Finally a normal non-exif file
+            img.save(image_file.name, "jpeg")
+            sample = fo.Sample(image_file.name)
+            sample.compute_metadata()
+            self.assertEqual(sample.metadata.width, width)
+            self.assertEqual(sample.metadata.height, height)
+            self.assertEqual(sample.metadata.num_channels, 3)
 
 
 class SampleInDatasetTests(unittest.TestCase):

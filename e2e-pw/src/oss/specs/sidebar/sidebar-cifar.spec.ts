@@ -50,7 +50,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["cat"],
-      "show-label--------"
+      "show-label"
     );
     await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -117,7 +117,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["frog"],
-      "show-label--------"
+      "show-label"
     );
     await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
@@ -175,7 +175,7 @@ test.describe("classification-sidebar-filter-visibility", () => {
     await sidebar.applyLabelFromList(
       "ground_truth.detections.label",
       ["cat"],
-      "show-label--------"
+      "show-label"
     );
     await gridRefreshedEventPromise;
     await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(

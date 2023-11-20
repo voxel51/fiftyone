@@ -165,6 +165,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
 
+        # also set the delegation target (not required)
+        delegation_target = kwargs.get("delegation_target", None)
+        if delegation_target:
+            setattr(op, "delegation_target", delegation_target)
+
         dataset_name = None
         if isinstance(op.context, dict):
             dataset_name = op.context.get("request_params", {}).get(

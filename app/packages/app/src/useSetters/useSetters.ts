@@ -1,8 +1,13 @@
 import { Setter } from "@fiftyone/relay";
-import { Session, snackbarErrors } from "@fiftyone/state";
+import {
+  Session,
+  snackbarErrors,
+  stateSubscription,
+  useSessionSetter,
+} from "@fiftyone/state";
 import { MutableRefObject, useMemo } from "react";
 import { Environment } from "react-relay";
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { pendingEntry } from "../Renderer";
 import { Queries } from "../makeRoutes";
 import { RoutingContext } from "../routing";
@@ -21,6 +26,8 @@ const useSetters = (
       },
     []
   );
+  const subscription = useRecoilValue(stateSubscription);
+  const setter = useSessionSetter();
 
   return useMemo(() => {
     const setters = new Map<string, Setter>();
@@ -29,13 +36,15 @@ const useSetters = (
       handleError,
       router,
       sessionRef,
+      setter,
+      subscription,
     };
     REGISTERED_SETTERS.forEach((value, key) => {
       setters.set(key, value(ctx));
     });
 
     return setters;
-  }, [environment, handleError, router, sessionRef]);
+  }, [environment, handleError, router, sessionRef, subscription]);
 };
 
 export default useSetters;

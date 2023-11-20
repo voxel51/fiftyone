@@ -3,7 +3,7 @@ import ListView from "./ListView";
 import { getComponentProps } from "../utils";
 
 export default function MapView(props) {
-  const { id, schema, onChange, path, data, errors } = props;
+  const { id, schema, onChange, data } = props;
   const { additionalProperties, view = {} } = schema;
   const keyLabel = schema?.view?.key?.label || "Key";
 

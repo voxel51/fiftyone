@@ -2,12 +2,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import * as React from "react";
 import { Arrow, useHover, useLayer } from "react-laag";
 import { PlacementType } from "react-laag/dist/PlacementType";
-
 import { useTheme } from "../..";
 import style from "./Tooltip.module.css";
 
 const Tooltip: React.FC<{
-  children: React.ReactElement;
+  children: React.ReactNode;
   placement: PlacementType;
   text: string;
 }> = ({ children, text, placement = "top-center" }) => {

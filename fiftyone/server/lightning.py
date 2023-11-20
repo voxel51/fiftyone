@@ -79,7 +79,7 @@ class IntLightningResult(LightningResult):
 
 @gql.type
 class StringLightningResult(LightningResult):
-    values: t.List[t.Optional[str]]
+    values: t.Optional[t.List[t.Optional[str]]] = None
 
 
 LIGHTNING_QUERIES = (
@@ -276,7 +276,12 @@ async def _do_distinct_query(
     if query.search:
         match = query.search
 
-    result = await collection.distinct(query.path)
+    try:
+        result = await collection.distinct(query.path)
+    except:
+        # too many results
+        return None
+
     values = []
     exclude = set(query.exclude or [])
 
@@ -324,11 +329,23 @@ def _first(
     sort: t.Union[t.Literal[-1], t.Literal[1]],
     is_frame_field: bool,
 ):
-    return (
-        [{"$sort": {path: sort}}, {"$limit": 1}]
-        + _unwind(dataset, path, is_frame_field)
-        + [{"$group": {"_id": {"$min" if sort else "$max": f"${path}"}}}]
-    )
+    pipeline = [{"$sort": {path: sort}}]
+
+    if sort:
+        pipeline.append({"$match": {path: {"$ne": None}}})
+
+    pipeline.append({"$limit": 1})
+
+    unwound = _unwind(dataset, path, is_frame_field)
+
+    if unwound:
+        pipeline += unwound
+        if sort:
+            pipeline.append({"$match": {path: {"$ne": None}}})
+
+    return pipeline + [
+        {"$group": {"_id": {"$min" if sort == 1 else "$max": f"${path}"}}}
+    ]
 
 
 def _has_list(dataset: fo.Dataset, path: str, is_frame_field: bool):

@@ -1,17 +1,12 @@
 import { Button } from "@fiftyone/components";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
-import {
-  commitLocalUpdate,
-  useMutation,
-  useRelayEnvironment,
-} from "react-relay";
-import { useRecoilCallback, useRecoilState, useRecoilValue } from "recoil";
-import { RecordSourceProxy } from "relay-runtime";
-import { v4 as uuid } from "uuid";
+import React, { useEffect, useMemo } from "react";
+import { useMutation } from "react-relay";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
+import { v4 as uuid } from "uuid";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -28,23 +23,32 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetDefault = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const updateDatasetColorScheme = useUpdateDatasetColorScheme();
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
 
+  useEffect(
+    () => foq.subscribe(() => setActiveColorModalField(null)),
+    [setActiveColorModalField]
+  );
   if (!activeColorModalField) return null;
-
   if (!datasetName) {
     throw new Error("dataset not defined");
   }
-
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(fos.ensureColorScheme(datasetDefault));
+            const { id: _, ...update } = fos.ensureColorScheme(
+              datasetDefault,
+              configDefault
+            );
+            setColorScheme({
+              id: colorScheme.id,
+              ...update,
+            });
           }}
         >
           Reset
@@ -56,28 +60,48 @@ const ColorFooter: React.FC = () => {
               : "Can not save to dataset appConfig in read-only mode"
           }
           onClick={() => {
-            updateDatasetColorScheme({
-              ...colorScheme,
-              fields: colorScheme.fields ?? [],
-              labelTags: checkLabelTagsDefault(colorScheme.labelTags ?? {}),
-              colorPool:
-                colorScheme.colorPool ?? fos.appConfigDefault.colorPool ?? [],
-              colorBy: colorScheme.colorBy ?? "field",
-              multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
-              showSkeletons: colorScheme.showSkeletons ?? true,
-            });
+            // remove rgb list from defaultColorscale and colorscales
+            const { rgb, ...rest } = colorScheme.defaultColorscale;
+            const newDefaultColorscale = rest;
+            const newColorscales = colorScheme.colorscales?.length
+              ? colorScheme.colorscales?.map(({ rgb, ...rest }) => rest)
+              : [];
+
             setDatasetColorScheme({
               variables: {
                 subscription,
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
-                  fields: colorScheme.fields ?? [],
+                  id: datasetDefault?.id,
+                  colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
+                  colorscales: colorScheme.colorscales ? newColorscales : [],
+                  defaultMaskTargetsColors:
+                    colorScheme.defaultMaskTargetsColors ?? [],
+                  defaultColorscale: newDefaultColorscale ?? {
+                    name: "virdis",
+                    list: [],
+                  },
+                  fields: colorScheme.fields ?? [],
                   labelTags: colorScheme.labelTags ?? {},
                   multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
                   showSkeletons: colorScheme.showSkeletons ?? true,
                 },
+              },
+              updater: (store, { setDatasetColorScheme }) => {
+                const datasetRecord = store.get(datasetId);
+                const config = datasetRecord?.getLinkedRecord("appConfig");
+                if (!datasetDefault && setDatasetColorScheme) {
+                  const fragment =
+                    foq.readFragment<foq.colorSchemeFragment$key>(
+                      foq.colorSchemeFragment,
+                      setDatasetColorScheme
+                    );
+
+                  const record = store.get(fragment.id);
+                  record && config?.setLinkedRecord(record, "colorScheme");
+                }
               },
             });
             setActiveColorModalField(null);
@@ -90,15 +114,26 @@ const ColorFooter: React.FC = () => {
           <Button
             title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
-              updateDatasetColorScheme(null);
               setDatasetColorScheme({
                 variables: { subscription, datasetName, colorScheme: null },
+                updater: (store) => {
+                  store.delete(datasetDefault.id);
+                },
               });
               setColorScheme((cur) => ({
                 ...cur,
+                colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy ?? "field",
+                colorscales: [],
+                defaultColorscale: {
+                  name: configDefault.colorscale ?? "virdis",
+                  list: [],
+                },
+                defaultMaskTargetsColors: [],
                 fields: [],
                 labelTags: {},
-                colorPool: configDefault.colorPool,
+                multicolorKeypoints: configDefault.multicolorKeypoints ?? false,
+                showSkeletons: configDefault.showSkeletons ?? true,
               }));
             }}
             disabled={!canEdit}
@@ -110,104 +145,5 @@ const ColorFooter: React.FC = () => {
     </ModalActionButtonContainer>
   );
 };
-
-const useUpdateDatasetColorScheme = () => {
-  const environment = useRelayEnvironment();
-
-  return useRecoilCallback(
-    ({ snapshot }) =>
-      async (colorScheme: foq.ColorSchemeInput | null) => {
-        const id = (await snapshot.getPromise(fos.dataset))?.id;
-        id &&
-          commitLocalUpdate(environment, (store) => {
-            const appConfigRecord = store
-              .get<foq.datasetFragment$data>(id)
-              ?.getLinkedRecord("appConfig");
-
-            if (!appConfigRecord) {
-              throw new Error("app config not found");
-            }
-
-            if (!colorScheme) {
-              appConfigRecord.setValue(null, "colorScheme");
-              return;
-            }
-            let colorSchemeRecord =
-              appConfigRecord.getLinkedRecord("colorScheme");
-
-            if (!colorSchemeRecord) {
-              colorSchemeRecord = store.create(uuid(), "ColorScheme");
-              appConfigRecord.setLinkedRecord(colorSchemeRecord, "colorScheme");
-            }
-            colorSchemeRecord.setValue(colorScheme.colorBy, "colorBy");
-            colorSchemeRecord.setValue(
-              [...(colorScheme.colorPool || [])],
-              "colorPool"
-            );
-            colorSchemeRecord.setLinkedRecords(
-              setEntries(store, "CustomizeColor", colorScheme?.fields ?? null),
-              "fields"
-            );
-
-            // get or create labelTags data {fieldcolor: null, valueColors: []}
-            let labelTagsRecord =
-              colorSchemeRecord.getLinkedRecord("labelTags");
-            if (!labelTagsRecord) {
-              labelTagsRecord = store.create(uuid(), "LabelTagColor");
-              colorSchemeRecord.setLinkedRecord(labelTagsRecord, "labelTags");
-            }
-
-            labelTagsRecord.setValue(
-              colorScheme.labelTags?.fieldColor,
-              "fieldColor"
-            );
-            labelTagsRecord.setLinkedRecords(
-              setEntries(
-                store,
-                "ValueColor",
-                colorScheme.labelTags?.valueColors ?? null
-              ),
-              "valueColors"
-            );
-
-            colorSchemeRecord.setValue(
-              colorScheme.multicolorKeypoints,
-              "multicolorKeypoints"
-            );
-            colorSchemeRecord.setValue(colorScheme.opacity, "opacity");
-            colorSchemeRecord.setValue(
-              colorScheme.showSkeletons,
-              "showSkeletons"
-            );
-          });
-      },
-    [environment]
-  );
-};
-
-// do not send null or {} or {fieldColor: null, valueColors: null}
-// updateDatasetColorScheme expect valueColors to be an array
-const checkLabelTagsDefault = (obj: foq.LabelTagColorInput) => ({
-  fieldColor: obj.fieldColor,
-  valueColors: obj.valueColors ?? [],
-});
-
-const setEntries = (
-  store: RecordSourceProxy,
-  name: string,
-  entries: readonly object[] | null
-) =>
-  entries?.map((entry) => {
-    const record = store.create(uuid(), name);
-    Object.entries(entry).forEach(([key, value]) => {
-      if (key !== "valueColors") {
-        record.setValue(value, key);
-        return;
-      }
-
-      record.setLinkedRecords(setEntries(store, "ValueColor", value), key);
-    });
-    return record;
-  });
 
 export default ColorFooter;

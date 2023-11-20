@@ -124,7 +124,7 @@ class StateDescription(etas.Serializable):
                 d["spaces"] = self.spaces.to_json()
 
             if isinstance(self.color_scheme, ColorScheme):
-                d["color_scheme"] = self.color_scheme.to_dict(True)
+                d["color_scheme"] = self.color_scheme.to_dict(False)
 
             if self.field_visibility_stage:
                 d["field_visibility_stage"] = self.field_visibility_stage

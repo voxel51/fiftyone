@@ -12,6 +12,8 @@ export default r(graphql`
       subscription: $subscription
       datasetName: $datasetName
       colorScheme: $colorScheme
-    )
+    ) {
+      ...colorSchemeFragment
+    }
   }
 `);

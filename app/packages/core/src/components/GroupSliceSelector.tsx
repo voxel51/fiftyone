@@ -31,7 +31,10 @@ const GroupSlice: React.FC = () => {
         marginLeft: "0.5rem",
         position: "relative",
       }}
-      onSelect={setSlice}
+      onSelect={async (slice) => {
+        setSlice(slice);
+        return slice;
+      }}
       overflow={true}
       placeholder={"slice"}
       useSearch={useSearch}
