@@ -283,7 +283,9 @@ def get_image_info(f):
     Returns:
         ``(width, height, num_channels)``
     """
-    img = ImageOps.exif_transpose(Image.open(f))
+    img = Image.open(f)
+    if 'exif' in img.info:
+        img = ImageOps.exif_transpose(img)
     return (img.width, img.height, len(img.getbands()))
 
 
