@@ -7,6 +7,7 @@ Plugin secrets resolver.
 """
 import logging
 import typing
+from collections.abc import Mapping
 from typing import Optional
 from ..internal import secrets as fois
 
@@ -101,7 +102,7 @@ def _get_secrets_client():
     return client()
 
 
-class SecretsDictionary:
+class SecretsDictionary(Mapping[str, str]):
     """
     A more secure dictionary for accessing plugin secrets in
     operators that will attempt to resolve missing plugin secrets upon access.
@@ -121,6 +122,14 @@ class SecretsDictionary:
             self._resolver = resolver_fn
         else:
             self._resolver = None
+
+    def __len__(self):
+        """Returns the number of secrets defined in the plugin definition"""
+        return len(self.__required_keys)
+
+    def __iter__(self):
+        for key in self.keys():
+            yield key, self[key]
 
     def __eq__(self, other):
         return self.__secrets == other
