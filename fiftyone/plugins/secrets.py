@@ -5,12 +5,11 @@ Plugin secrets resolver.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-# from __future__ import annotations
 import logging
-import re
+import traceback
 import typing
-from collections.abc import Mapping
 from typing import Optional
+
 from ..internal import secrets as fois
 
 
@@ -104,7 +103,7 @@ def _get_secrets_client():
     return client()
 
 
-class SecretsDictionary(Mapping[str, str]):
+class SecretsDictionary:
     """
     A more secure dictionary for accessing plugin secrets in
     operators that will attempt to resolve missing plugin secrets upon access.
@@ -112,17 +111,26 @@ class SecretsDictionary(Mapping[str, str]):
 
     def __init__(
         self,
-        secrets_dict,
-        operator_uri=None,
-        resolver_fn=None,
-        required_keys=None,
+        secrets_dict: typing.Dict[str, str],
+        operator_uri: str = None,
+        resolver_fn: typing.Callable = None,
+        required_keys: typing.List[str] = None,
     ):
-        self.__secrets = secrets_dict
-        self.__required_keys = required_keys
-        self._operator_uri = operator_uri
-        if resolver_fn:
-            self._resolver = resolver_fn
+        self.__frozen = False
+        if required_keys:
+            self.__required_keys = frozenset(required_keys)
+            self.__secrets = secrets_dict
+            self._operator_uri = operator_uri
+            if resolver_fn:
+                self._resolver = resolver_fn
+            else:
+                self._resolver = None
+
+            self.__frozen = True
         else:
+            self.__required_keys = []
+            self.__secrets = {}
+            self._operator_uri = None
             self._resolver = None
 
     def __len__(self):
@@ -139,17 +147,44 @@ class SecretsDictionary(Mapping[str, str]):
     def __getitem__(self, key):
         # Override __getitem__ to suppress KeyError and attempt to resolve
         # plugin secrets if not yet resolved
+        if not self.__frozen:
+            return None
+        if key not in self.__required_keys:
+            return None
         val = self.__secrets.get(key, None)
         if self._resolver and val is None:
             val = self._resolver(key=key, operator_uri=self._operator_uri)
             if val:
-                self.__secrets[key] = val
+                self.__secrets[key] = val.value
+            else:
+                # If the secret is not found, set it to an empty string to
+                # prevent continually trying to resolve it
+                self.__secrets[key] = ""
         return val
 
     def __setattr__(self, key, value):
-        if re.search("_SecretsDictionary__(secrets|required_keys)$", key):
-            raise KeyError("Cannot mutate hidden properties")
-        else:
+        if not getattr(
+            self, "_SecretsDictionary__frozen", False
+        ) or not hasattr(self, key):
+            super().__setattr__(key, value)
+            return
+
+        if key == "_SecretsDictionary__secrets" and value != {}:
+            is_allowed = all(v in self.__required_keys for v in value.keys())
+            if not is_allowed:
+                raise KeyError(
+                    "Cannot access secrets not defined in the "
+                    "plugin's definition"
+                )
+        elif key == "_SecretsDictionary__required_keys" and self.__frozen:
+            raise AttributeError("Cannot mutate plugin secrets requirement")
+        elif (
+            key == "_SecretsDictionary__frozen"
+            and len(self.__required_keys) > 0
+        ):
+            raise AttributeError("Cannot mutate plugin secrets requirement")
+
+        elif hasattr(super(), key):
             super().__setattr__(key, value)
 
     def __setitem__(self, key, value):
@@ -164,18 +199,24 @@ class SecretsDictionary(Mapping[str, str]):
         return {k: True for k, v in self.__secrets.items() if v is not None}
 
     def copy(self):
-        logging.warning("Copying the SecretsDictionary values is not allowed.")
+        logging.warning("Copying the SecretsDictionary  is not allowed.")
         return self.__deepcopy__()
 
     def keys(self):
-        return [k for k, v in self.__secrets.items() if v is not None]
+        return self.__required_keys
 
     def values(self):
-        # Override values() to ensure that resolvable secrets are always returned upon iteration
+        # Override values() to ensure that resolvable secrets are always
+        # returned upon iteration
         return [self[k] for k in self.keys()]
 
     def items(self):
         # Override items() to use __getitem__ to automatically resolve
         # missing secrets upon iteration
-        for key in self.keys():
-            yield key, self[key]
+        try:
+            if self.__frozen:
+                for key in self.keys():
+                    yield key, self[key]
+        except Exception as e:
+            logging.error(f"Error when iterating through secrets:\n{e}")
+            logging.debug(traceback.print_exc())
