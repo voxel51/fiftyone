@@ -11,6 +11,7 @@ from .database import (
     aggregate,
     get_db_config,
     establish_db_conn,
+    disconnect_db,
     get_db_client,
     get_db_conn,
     get_async_db_client,

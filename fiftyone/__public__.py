@@ -6,12 +6,39 @@ FiftyOne's public interface.
 |
 """
 
-import fiftyone.core.config as _foc
+config = None
+annotation_config = None
+evaluation_config = None
+app_config = None
 
-config = _foc.load_config()
-annotation_config = _foc.load_annotation_config()
-evaluation_config = _foc.load_evaluation_config()
-app_config = _foc.load_app_config()
+
+def reload(hard=False):
+    """Reloads the current database connection.
+
+    Args:
+        hard (False): whether to reconnect using the current in-memory config
+            values (False) or reload configs from environment variables (True)
+    """
+    global config
+    global annotation_config
+    global evaluation_config
+    global app_config
+
+    import fiftyone.core.config as foc
+    import fiftyone.core.odm as foo
+
+    if hard:
+        config = foc.load_config()
+        annotation_config = foc.load_annotation_config()
+        evaluation_config = foc.load_evaluation_config()
+        app_config = foc.load_app_config()
+
+    foo.disconnect_db()
+    foo.establish_db_conn(config)
+
+
+reload(hard=True)
+
 
 from .core.aggregations import (
     Aggregation,
