@@ -3,6 +3,18 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.4.5:
+
+FiftyOne Teams 1.4.5
+--------------------
+*Released November 21, 2023*
+
+General
+
+- Added debug log events to API server startup
+- Updated internal dependency `fiftyone-brain` version from `0.13.2` to `0.13.3`
+  to ensure install of the latest release
+
 .. _release-notes-teams-v1.4.4:
 
 FiftyOne Teams 1.4.4
@@ -187,7 +199,7 @@ Includes all updates from :ref:`FiftyOne 0.22.1 <release-notes-v0.22.1>`, plus:
 General
 
 - Error messages now clearly indicate when attempting to use a duplicate
-  key on datasets a user does not have access to 
+  key on datasets a user does not have access to
 - Fixed issue with setting default access permissions for new datasets
 - Deleting a dataset now deletes all dataset-related references
 - Default fields now populate properly when creating a new dataset regardless
@@ -214,9 +226,9 @@ App
 - Fixed empty detection instance masks
   `#3559 <https://github.com/voxel51/fiftyone/pull/3559>`_
 - Fixed a visual issue with scrollbars
-  `#3605 <https://github.com/voxel51/fiftyone/pull/3605>`_ 
+  `#3605 <https://github.com/voxel51/fiftyone/pull/3605>`_
 - Fixed a bug with color by index for videos
-  `#3606 <https://github.com/voxel51/fiftyone/pull/3606>`_ 
+  `#3606 <https://github.com/voxel51/fiftyone/pull/3606>`_
 - Fixed an issue where |Detections| (and other label types) subfields were
   properly handling primitive types
   `#3577 <https://github.com/voxel51/fiftyone/pull/3577>`_
@@ -1804,7 +1816,7 @@ Core
 - Added support for the `path` variable in `dataset.yaml` of
   :ref:`YOLOv5 datasets <YOLOv5Dataset-import>`
   `#1903 <https://github.com/voxel51/fiftyone/issues/1903>`_
-- Fixed a bug that prevented using 
+- Fixed a bug that prevented using
   :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
   to set frame-level label fields
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
@@ -1880,9 +1892,9 @@ App
   `#1810 <https://github.com/voxel51/fiftyone/pull/1810>`_
 - Fixed the expanded view tooltip when a keypoint has ``nan`` point(s)
   `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
-- Fixed initial loading of keypoint skeletons 
+- Fixed initial loading of keypoint skeletons
   `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
-- Fixed |Classifications| rendering in the grid 
+- Fixed |Classifications| rendering in the grid
   `#1828 <https://github.com/voxel51/fiftyone/pull/1828>`_
 - Fixed App loads for environments with old (``<=v0.14.0``) datasets that have
   yet to be migrated `#1829 <https://github.com/voxel51/fiftyone/pull/1829>`_
@@ -1993,13 +2005,13 @@ App
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
 - Fixed mask and map coloring
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
-- Fixed fortran array handling for masks and maps 
+- Fixed fortran array handling for masks and maps
   `#1790 <https://github.com/voxel51/fiftyone/pull/1790>`_
 
 Core
 
 - Fixed a formatting issue when raising an exception because unsupported
-  plotting backend was requested 
+  plotting backend was requested
   `#1794 <https://github.com/voxel51/fiftyone/pull/1794>`_
 
 .. _release-notes-v0.16.0:
