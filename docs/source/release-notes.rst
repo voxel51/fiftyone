@@ -12,8 +12,6 @@ FiftyOne Teams 1.4.5
 General
 
 - Added debug log events to API server startup
-- Updated internal dependency `fiftyone-brain` version from `0.13.2` to `0.13.3`
-  to ensure install of the latest release
 
 .. _release-notes-teams-v1.4.4:
 
