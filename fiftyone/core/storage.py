@@ -50,6 +50,8 @@ bucket_regions = {}
 region_clients = {}
 client_lock = threading.Lock()
 client_cache = {}
+minio_prefixes = set()
+azure_prefixes = set()
 
 
 S3_PREFIX = "s3://"
@@ -68,6 +70,8 @@ def init_storage():
     global bucket_regions
     global region_clients
     global client_cache
+    global minio_prefixes
+    global azure_prefixes
 
     if has_encryption_key():
         creds_manager = CloudCredentialsManager()
@@ -82,6 +86,78 @@ def init_storage():
     # constantly when iterating over objects with
     # the same creds requirements (i.e. bucket prefixes)
     client_cache.clear()
+    minio_prefixes = set()
+    azure_prefixes = set()
+
+    minio_creds_list = None
+    azure_creds_list = None
+
+    # set up a global list of prefixes for minio and azure aliases
+    if creds_manager:
+        minio_creds_list = creds_manager.get_all_credentials_for_provider(
+            "MINIO"
+        )
+
+        azure_creds_list = creds_manager.get_all_credentials_for_provider(
+            "AZURE"
+        )
+    else:
+        # no creds manager, check environment
+
+        # MINIO
+        minio_credentials_path = fo.media_cache_config.minio_config_file
+        minio_profile = fo.media_cache_config.minio_profile
+
+        minio_credentials, _ = MinIOStorageClient.load_credentials(
+            credentials_path=minio_credentials_path, profile=minio_profile
+        )
+        if minio_credentials:
+            minio_creds_list = [minio_credentials]
+
+        # AZURE
+        azure_credentials_path = fo.media_cache_config.azure_credentials_file
+        azure_profile = fo.media_cache_config.azure_profile
+
+        azure_credentials, _ = AzureStorageClient.load_credentials(
+            credentials_path=azure_credentials_path, profile=azure_profile
+        )
+        if azure_credentials:
+            azure_creds_list = [azure_credentials]
+
+    # get the prefixes from any available minio/azure creds
+    if minio_creds_list:
+        for credentials in minio_creds_list:
+            minio_alias_prefix = None
+            minio_endpoint_prefix = None
+            if "alias" in credentials:
+                minio_alias_prefix = credentials["alias"] + "://"
+
+            if "endpoint_url" in credentials:
+                minio_endpoint_prefix = (
+                    credentials["endpoint_url"].rstrip("/") + "/"
+                )
+
+            minio_prefixes.add((minio_alias_prefix, minio_endpoint_prefix))
+
+    if azure_creds_list:
+        for credentials in azure_creds_list:
+            azure_alias_prefix = None
+            azure_endpoint_prefix = None
+            if "alias" in credentials:
+                azure_alias_prefix = credentials["alias"] + "://"
+
+            if "account_url" in credentials:
+                azure_endpoint_prefix = (
+                    credentials["account_url"].rstrip("/") + "/"
+                )
+            elif "conn_str" in credentials or "account_name" in credentials:
+                account_url = AzureStorageClient._to_account_url(
+                    conn_str=credentials.get("conn_str", None),
+                    account_name=credentials.get("account_name", None),
+                )
+                azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
+            azure_prefixes.add((azure_alias_prefix, azure_endpoint_prefix))
 
 
 class FileSystem(object):
@@ -147,56 +223,6 @@ class HTTPStorageClient(etast.HTTPStorageClient):
         return os.path.join(host, *p.path.lstrip("/").split("/"))
 
 
-def _get_minio_prefixes():
-    # get all available minio creds
-    minio_creds_list = creds_manager.get_all_credentials_for_provider("MINIO")
-
-    prefix_list = set()
-
-    for credentials in minio_creds_list:
-        minio_alias_prefix = None
-        minio_endpoint_prefix = None
-        if "alias" in credentials:
-            minio_alias_prefix = credentials["alias"] + "://"
-
-        if "endpoint_url" in credentials:
-            minio_endpoint_prefix = (
-                credentials["endpoint_url"].rstrip("/") + "/"
-            )
-
-        prefix_list.add((minio_alias_prefix, minio_endpoint_prefix))
-
-    return prefix_list
-
-
-def _get_azure_prefixes():
-    # get all available azure creds
-    azure_creds_list = creds_manager.get_all_credentials_for_provider("AZURE")
-
-    prefix_list = set()
-
-    for credentials in azure_creds_list:
-        azure_alias_prefix = None
-        azure_endpoint_prefix = None
-        if "alias" in credentials:
-            azure_alias_prefix = credentials["alias"] + "://"
-
-        if "account_url" in credentials:
-            azure_endpoint_prefix = (
-                credentials["account_url"].rstrip("/") + "/"
-            )
-        elif "conn_str" in credentials or "account_name" in credentials:
-            account_url = AzureStorageClient._to_account_url(
-                conn_str=credentials.get("conn_str", None),
-                account_name=credentials.get("account_name", None),
-            )
-            azure_endpoint_prefix = account_url.rstrip("/") + "/"
-
-        prefix_list.add((azure_alias_prefix, azure_endpoint_prefix))
-
-    return prefix_list
-
-
 def get_file_system(path):
     """Returns the file system enum for the given path.
 
@@ -212,12 +238,11 @@ def get_file_system(path):
     # Check MinIO and Azure first in case alias/endpoint clashes with another
     # file system
 
-    # get the credentials here to see if the alias and endpoint prefixes are present
-    minio_prefix_list = _get_minio_prefixes()
-    azure_prefix_list = _get_azure_prefixes()
-
     # if any of the returned aliases match and the path starts with it, then we found it!
-    for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
+    # prefix set is (minio_alias_prefix, minio_endpoint_prefix)
+    for prefix_set in minio_prefixes:
+        minio_alias_prefix = prefix_set[0]
+        minio_endpoint_prefix = prefix_set[1]
         if (
             minio_alias_prefix is not None
             and path.startswith(minio_alias_prefix)
@@ -227,7 +252,9 @@ def get_file_system(path):
         ):
             return FileSystem.MINIO
 
-    for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
+    for prefix_set in azure_prefixes:
+        azure_alias_prefix = prefix_set[0]
+        azure_endpoint_prefix = prefix_set[1]
         if (
             azure_alias_prefix is not None
             and path.startswith(azure_alias_prefix)
@@ -303,38 +330,37 @@ def split_prefix(path):
     # Check MinIO and Azure first in case alias/endpoint clashes with another
     # file system
 
-    minio_prefix_list = _get_minio_prefixes()
-    azure_prefix_list = _get_azure_prefixes()
-
-    if minio_prefix_list:
+    for prefix_set in minio_prefixes:
+        minio_alias_prefix = prefix_set[0]
+        minio_endpoint_prefix = prefix_set[1]
         prefix = None
-        for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
-            if minio_alias_prefix is not None and path.startswith(
-                minio_alias_prefix
-            ):
-                prefix = minio_alias_prefix
-            elif minio_endpoint_prefix is not None and path.startswith(
-                minio_endpoint_prefix
-            ):
-                prefix = minio_endpoint_prefix
+        if minio_alias_prefix is not None and path.startswith(
+            minio_alias_prefix
+        ):
+            prefix = minio_alias_prefix
+        elif minio_endpoint_prefix is not None and path.startswith(
+            minio_endpoint_prefix
+        ):
+            prefix = minio_endpoint_prefix
 
-            if prefix is not None:
-                return prefix, path[len(prefix) :]
+        if prefix is not None:
+            return prefix, path[len(prefix) :]
 
-    if azure_prefix_list:
+    for prefix_set in azure_prefixes:
+        azure_alias_prefix = prefix_set[0]
+        azure_endpoint_prefix = prefix_set[1]
         prefix = None
-        for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
-            if azure_alias_prefix is not None and path.startswith(
-                azure_alias_prefix
-            ):
-                prefix = azure_alias_prefix
-            elif azure_endpoint_prefix is not None and path.startswith(
-                azure_endpoint_prefix
-            ):
-                prefix = azure_endpoint_prefix
+        if azure_alias_prefix is not None and path.startswith(
+            azure_alias_prefix
+        ):
+            prefix = azure_alias_prefix
+        elif azure_endpoint_prefix is not None and path.startswith(
+            azure_endpoint_prefix
+        ):
+            prefix = azure_endpoint_prefix
 
-            if prefix is not None:
-                return prefix, path[len(prefix) :]
+        if prefix is not None:
+            return prefix, path[len(prefix) :]
 
     if path.startswith(S3_PREFIX):
         prefix = S3_PREFIX
@@ -1766,14 +1792,16 @@ def _is_root(path):
         return path == GCS_PREFIX
 
     if fs == FileSystem.AZURE:
-        azure_prefix_list = _get_azure_prefixes()
-        for azure_alias_prefix, azure_endpoint_prefix in azure_prefix_list:
+        for prefix_set in azure_prefixes:
+            azure_alias_prefix = prefix_set[0]
+            azure_endpoint_prefix = prefix_set[1]
             if path in (azure_alias_prefix, azure_endpoint_prefix):
                 return path in (azure_alias_prefix, azure_endpoint_prefix)
 
     if fs == FileSystem.MINIO:
-        minio_prefix_list = _get_minio_prefixes()
-        for minio_alias_prefix, minio_endpoint_prefix in minio_prefix_list:
+        for prefix_set in minio_prefixes:
+            minio_alias_prefix = prefix_set[0]
+            minio_endpoint_prefix = prefix_set[1]
             if path in (minio_alias_prefix, minio_endpoint_prefix):
                 return path in (minio_alias_prefix, minio_endpoint_prefix)
 
@@ -2437,7 +2465,7 @@ def _get_client_from_cache(provider, bucket_name):
     # The creds manager keeps track of those details
 
     # client_cache has shape
-    # {"provider-bucket": "creds"}
+    # {"provider-bucket": client}
 
     for client_key in client_cache:
         if bucket_name in client_key and client_key.startswith(provider):
