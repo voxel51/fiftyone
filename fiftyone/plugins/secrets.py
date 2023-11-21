@@ -138,11 +138,14 @@ class SecretsDictionary:
         return len(self.__required_keys)
 
     def __iter__(self):
-        for key in self.keys():
-            yield key, self[key]
+        for key in self.__required_keys:
+            yield key
 
     def __eq__(self, other):
         return self.__secrets == other
+
+    def __ne__(self, other):
+        return self.__secrets != other
 
     def __getitem__(self, key):
         # Override __getitem__ to suppress KeyError and attempt to resolve
@@ -203,7 +206,7 @@ class SecretsDictionary:
         return self.__deepcopy__()
 
     def keys(self):
-        return self.__required_keys
+        return [k for k in self.__required_keys if k in self.__secrets]
 
     def values(self):
         # Override values() to ensure that resolvable secrets are always
@@ -215,7 +218,7 @@ class SecretsDictionary:
         # missing secrets upon iteration
         try:
             if self.__frozen:
-                for key in self.keys():
+                for key in self.__required_keys:
                     yield key, self[key]
         except Exception as e:
             logging.error(f"Error when iterating through secrets:\n{e}")

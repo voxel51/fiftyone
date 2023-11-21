@@ -37,7 +37,10 @@ class TestExecutionContext:
         return mock
 
     def test_secret(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
         result = context.secret(SECRET_KEY)
@@ -45,7 +48,10 @@ class TestExecutionContext:
         assert result == SECRET_VALUE
 
     def test_secret_non_existing_key(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
         result = context.secret("NON_EXISTING_SECRET")
@@ -53,7 +59,10 @@ class TestExecutionContext:
         assert result is None
 
     def test_secrets_property(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {
             SECRET_KEY: SECRET_VALUE,
             SECRET_KEY2: SECRET_VALUE2,
@@ -85,7 +94,10 @@ class TestExecutionContext:
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets_client = mock_secrets_resolver
 
         await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
