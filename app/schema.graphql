@@ -48,7 +48,7 @@ type AppConfig {
   colorPool: [String!]!
   colorscale: String!
   gridZoom: Int!
-  lightningThreshold: Int!
+  lightningThreshold: Int
   loopVideos: Boolean!
   multicolorKeypoints: Boolean!
   notebookHeight: Int!
@@ -131,9 +131,13 @@ type ColorScheme {
   multicolorKeypoints: Boolean
   opacity: Float
   showSkeletons: Boolean
+  defaultMaskTargetsColors: [MaskColor!]
+  colorscales: [Colorscale!]
+  defaultColorscale: DefaultColorscale
 }
 
 input ColorSchemeInput {
+  id: ID
   colorPool: [String!]!
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
@@ -141,6 +145,32 @@ input ColorSchemeInput {
   multicolorKeypoints: Boolean = null
   opacity: Float = null
   showSkeletons: Boolean = null
+  defaultMaskTargetsColors: [MaskColorInput!] = null
+  colorscales: [ColorscaleInput!] = null
+  defaultColorscale: DefaultColorscaleInput = null
+}
+
+type Colorscale {
+  path: String!
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input ColorscaleInput {
+  path: String!
+  name: String = null
+  list: [ColorscaleListInput!] = null
+}
+
+type ColorscaleList {
+  color: String!
+  value: Float!
+}
+
+input ColorscaleListInput {
+  color: String!
+  value: Float
 }
 
 input Count {
@@ -160,6 +190,7 @@ type CustomizeColor {
   valueColors: [ValueColor!]
   colorByAttribute: String
   fieldColor: String
+  maskTargetsColors: [MaskColor!]
 }
 
 input CustomizeColorInput {
@@ -167,6 +198,7 @@ input CustomizeColorInput {
   valueColors: [ValueColorInput!] = null
   colorByAttribute: String = null
   fieldColor: String = null
+  maskTargetsColors: [MaskColorInput!] = null
 }
 
 type DataAggregation implements Aggregation {
@@ -256,6 +288,17 @@ type DatetimeHistogramValuesResponse {
   counts: [Int!]!
   edges: [datetime!]!
   other: Int!
+}
+
+type DefaultColorscale {
+  name: String
+  list: [ColorscaleList!]
+  rgb: [[Int!]!]
+}
+
+input DefaultColorscaleInput {
+  name: String = null
+  list: [ColorscaleListInput!] = null
 }
 
 type EvaluationRun implements Run {
@@ -419,6 +462,16 @@ union LightningResults =
   | IntLightningResult
   | StringLightningResult
 
+type MaskColor {
+  color: String!
+  intTarget: Int!
+}
+
+input MaskColorInput {
+  color: String!
+  intTarget: Int!
+}
+
 enum MediaType {
   image
   group
@@ -435,12 +488,12 @@ type Mutation {
   setColorScheme(
     subscription: String!
     colorScheme: ColorSchemeInput!
-  ): Boolean!
+  ): ColorScheme!
   setDatasetColorScheme(
     subscription: String!
     datasetName: String!
     colorScheme: ColorSchemeInput = null
-  ): Void
+  ): ColorScheme
   setFieldVisibilityStage(
     subscription: String!
     session: String
@@ -734,7 +787,7 @@ type StringAggregationValue {
 
 type StringLightningResult implements LightningResult {
   path: String!
-  values: [String]!
+  values: [String]
 }
 
 type Target {
@@ -767,10 +820,10 @@ type VideoSample implements Sample {
   frameRate: Float!
 }
 
-"""
-Represents NULL values
-"""
-scalar Void
+type WildcardProjection {
+  fields: [String!]!
+  inclusion: Boolean!
+}
 
 type WildcardProjection {
   fields: [String!]!

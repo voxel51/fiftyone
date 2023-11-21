@@ -1,19 +1,20 @@
 import { COLOR_BY, get32BitColor, rgbToHexCached } from "@fiftyone/utilities";
+import colorString from "color-string";
 import { ARRAY_TYPES, OverlayMask, TypedArray } from "../numpy";
 import {
   getHashLabel,
   isRgbMaskTargets,
-  isValidColor,
   shouldShowLabelTag,
 } from "../overlays/util";
 import {
   Coloring,
+  Colorscale,
   CustomizeColor,
   LabelTagColor,
+  MaskColorInput,
   MaskTargets,
   RgbMaskTargets,
 } from "../state";
-import colorString from "color-string";
 
 export const PainterFactory = (requestColor) => ({
   Detection: async (
@@ -21,6 +22,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -129,6 +131,7 @@ export const PainterFactory = (requestColor) => ({
     labels,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -150,7 +153,8 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
-    selectedLabelsTags: string[],
+    colorscale: Colorscale,
+    selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
     if (!label.map) {
@@ -170,53 +174,49 @@ export const PainterFactory = (requestColor) => ({
       : isFloatArray(targets)
       ? [0, 1]
       : [0, 255];
+    const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+    let color;
+    const fieldSetting = customizeColorSetting?.find((x) => field === x.path);
 
-    const color =
-      setting?.fieldColor ??
-      (await requestColor(coloring.pool, coloring.seed, field));
+    // when colorscale is null or doe
+    let scale;
 
-    const getColor =
-      coloring.by === "value"
-        ? (value) => {
-            if (value === 0) {
-              return 0;
-            }
-
-            const index = Math.round(
-              (Math.max(value - start, 0) / (stop - start)) *
-                (coloring.scale.length - 1)
-            );
-
-            return get32BitColor(coloring.scale[index]);
-          }
-        : (value) => {
-            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
-            const absMax = Math.max(Math.abs(start), Math.abs(stop));
-
-            // clip value
-            if (value < start) {
-              value = start;
-            } else if (value > stop) {
-              value = stop;
-            }
-
-            const alpha = Math.abs(value) / absMax;
-
-            return get32BitColor(color, alpha);
-          };
+    if (colorscale?.fields?.find((x) => x.path === field)?.rgb) {
+      scale = colorscale?.fields?.find((x) => x.path === field).rgb;
+    } else if (colorscale?.default?.rgb) {
+      scale = colorscale.default.rgb;
+    } else {
+      scale = coloring.scale;
+    }
 
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
-      if (targets[i] !== 0) {
-        if (mapData.channels > 2) {
-          overlay[i] = getColor(
-            getRgbFromMaskData(targets, mapData.channels, i)[0]
-          );
+      let value;
+      if (mapData.channels > 2) {
+        // rgb mask
+        value = getRgbFromMaskData(targets, mapData.channels, i)[0];
+      } else {
+        value = targets[i];
+      }
+
+      // 0 is background image
+      if (value !== 0) {
+        let r;
+        if (coloring.by === COLOR_BY.FIELD) {
+          color =
+            fieldSetting?.fieldColor ??
+            (await requestColor(coloring.pool, coloring.seed, field));
+
+          r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
-          overlay[i] = getColor(targets[i]);
+          const index = Math.round(
+            (Math.max(value - start, 0) / (stop - start)) * (scale.length - 1)
+          );
+          r = get32BitColor(scale[index]);
         }
+
+        overlay[i] = r;
       }
     }
   },
@@ -225,6 +225,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {
@@ -234,7 +235,7 @@ export const PainterFactory = (requestColor) => ({
 
     // the actual overlay that'll be painted, byte-length of width * height * 4 (RGBA channels)
     const overlay = new Uint32Array(label.mask.image);
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+
     // each field may have its own target map
     let maskTargets: MaskTargets = coloring.maskTargets[field];
 
@@ -286,37 +287,44 @@ export const PainterFactory = (requestColor) => ({
       maskData.buffer = maskData.buffer.slice(0, overlay.length);
     } else {
       const cache = {};
-      let color;
-      let colorKey;
-      if (maskTargets && Object.keys(maskTargets).length === 1) {
-        if (coloring.by === "field") {
-          if (shouldShowLabelTag(selectedLabelsTags, label.tags)) {
-            color =
-              isValidColor(labelTagColors?.fieldColor) ??
-              (await requestColor(coloring.pool, coloring.seed, "_label_tags"));
-          } else {
-            colorKey = field;
-          }
-        } else {
-          colorKey = label.id;
-        }
 
-        const requestedColor =
-          coloring.by === "field" && setting?.fieldColor
-            ? setting?.fieldColor
-            : await requestColor(coloring.pool, coloring.seed, colorKey);
-        color = get32BitColor(requestedColor);
+      let color;
+      const setting = customizeColorSetting.find((x) => x.path === field);
+      if (
+        coloring.by === COLOR_BY.FIELD ||
+        (maskTargets && Object.keys(maskTargets).length === 1)
+      ) {
+        let fieldColor;
+
+        // if field color has valid custom settings, use the custom field color
+        // convert the color into hex code, since it could be a color name (e.g. yellowgreen)
+        fieldColor = setting?.fieldColor
+          ? setting.fieldColor
+          : await requestColor(coloring.pool, coloring.seed, field);
+        color = get32BitColor(convertToHex(fieldColor));
       }
 
-      const getColor = (i) => {
-        i = Math.round(Math.abs(i)) % coloring.targets.length;
-
+      const getColor = (i: number) => {
         if (!(i in cache)) {
-          cache[i] = get32BitColor(coloring.targets[i]);
+          cache[i] = get32BitColor(
+            convertToHex(
+              coloring.targets[
+                Math.round(Math.abs(i)) % coloring.targets.length
+              ]
+            )
+          );
         }
 
         return cache[i];
       };
+
+      // convert the defaultMaskTargetsColors and fields maskTargetsColors into objects to improve performance
+      const defaultSetting = convertMaskColorsToObject(
+        coloring.defaultMaskTargetsColors
+      );
+      const fieldSetting = convertMaskColorsToObject(
+        setting?.maskTargetsColors
+      );
 
       // these for loops must be fast. no "in" or "of" syntax
       for (let i = 0; i < overlay.length; i++) {
@@ -328,6 +336,22 @@ export const PainterFactory = (requestColor) => ({
           ) {
             targets[i] = 0;
           } else {
+            if (coloring.by == COLOR_BY.VALUE) {
+              // Attempt to find a color in the fields mask target color settings
+              // If not found, attempt to find a color in the default mask target colors.
+
+              const target = targets[i].toString();
+              const customColor =
+                fieldSetting?.[target] || defaultSetting?.[target];
+
+              // If a customized color setting is found, get the 32-bit color representation.
+              if (customColor) {
+                color = get32BitColor(convertToHex(customColor));
+              } else {
+                color = getColor(targets[i]);
+              }
+            }
+
             overlay[i] = color ? color : getColor(targets[i]);
           }
         }
@@ -349,4 +373,16 @@ const getRgbFromMaskData = (
   const b = maskTypedArray[index * channels + 2];
 
   return [r, g, b] as [number, number, number];
+};
+
+export const convertToHex = (color: string) =>
+  colorString.to.hex(colorString.get.rgb(color));
+
+const convertMaskColorsToObject = (array: MaskColorInput[]) => {
+  const result = {};
+  if (!array) return {};
+  array.forEach((item) => {
+    result[item.intTarget.toString()] = item.color;
+  });
+  return result;
 };

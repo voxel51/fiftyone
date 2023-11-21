@@ -29,7 +29,6 @@ import {
   Coordinates,
   Dimensions,
   LabelData,
-  Optional,
   Sample,
   StateUpdate,
 } from "../state";
@@ -43,6 +42,7 @@ import {
   snapBox,
 } from "../util";
 
+import { isEmpty } from "lodash";
 import { Events } from "../elements/base";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
@@ -53,6 +53,9 @@ const LABEL_LIST_KEY = Object.fromEntries(
 );
 const LABELS_SET = new Set(LABELS);
 
+/**
+ * worker pool for processing labels
+ */
 const getLabelsWorker = (() => {
   const numWorkers =
     typeof window !== "undefined" ? navigator.hardwareConcurrency || 4 : 1;
@@ -74,10 +77,14 @@ const getLabelsWorker = (() => {
 })();
 
 export abstract class AbstractLooker<
-  State extends BaseState = BaseState,
+  State extends BaseState,
   S extends Sample = Sample
 > {
+  public readonly subscriptions: {
+    [fieldName: string]: ((newValue: any) => void)[];
+  };
   private eventTarget: EventTarget;
+
   private hideControlsTimeout: ReturnType<typeof setTimeout> | null = null;
   protected lookerElement: LookerElement<State>;
   private resizeObserver: ResizeObserver;
@@ -91,14 +98,19 @@ export abstract class AbstractLooker<
   protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
   protected state: State;
-  protected readonly updater: StateUpdate<State>;
+  protected readonly updater: StateUpdate<BaseState>;
+
+  private batchMergedUpdates: Partial<State> = {};
+  private isBatching = false;
+  private isCommittingBatchUpdates = false;
 
   constructor(
     sample: S,
     config: State["config"],
-    options: Optional<State["options"]> = {}
+    options: Partial<State["options"]> = {}
   ) {
     this.eventTarget = new EventTarget();
+    this.subscriptions = {};
     this.updater = this.makeUpdate();
     this.state = this.getInitialState(config, options);
     this.loadSample(sample);
@@ -117,6 +129,7 @@ export abstract class AbstractLooker<
         this.updater({
           windowBBox: box,
         });
+      this.updater({});
     });
 
     this.rootEvents = {};
@@ -142,6 +155,33 @@ export abstract class AbstractLooker<
         ),
       3500
     );
+
+    this.init();
+  }
+
+  protected init() {}
+
+  public subscribeToState(
+    field: string,
+    callback: (value: any) => void
+  ): () => void {
+    if (!(field in this.subscriptions)) {
+      this.subscriptions[field] = [];
+    }
+
+    this.subscriptions[field].push(callback);
+
+    // return unsubscribe function
+    return () => {
+      const newCallbacks = this.subscriptions[field].filter(
+        (cb) => cb !== callback
+      );
+      if (newCallbacks.length === 0) {
+        delete this.subscriptions[field];
+      } else {
+        this.subscriptions[field] = newCallbacks;
+      }
+    };
   }
 
   loadOverlays(sample: Sample): void {
@@ -192,6 +232,22 @@ export abstract class AbstractLooker<
     };
   }
 
+  public batchUpdater(cb: () => unknown) {
+    this.isBatching = true;
+    cb();
+    this.isBatching = false;
+
+    if (this.isCommittingBatchUpdates || isEmpty(this.batchMergedUpdates)) {
+      return;
+    }
+
+    if (!this.isCommittingBatchUpdates) {
+      this.isCommittingBatchUpdates = true;
+      this.updater(this.batchMergedUpdates);
+      this.batchMergedUpdates = {};
+    }
+  }
+
   private makeUpdate(): StateUpdate<State> {
     return (stateOrUpdater, postUpdate) => {
       try {
@@ -206,8 +262,25 @@ export abstract class AbstractLooker<
           return;
         }
 
+        if (this.isBatching) {
+          this.batchMergedUpdates = mergeUpdates(
+            this.batchMergedUpdates,
+            updates
+          );
+          return;
+        }
+
+        const mergedUpdates = mergeUpdates(this.state, updates);
+
         this.previousState = this.state;
-        this.state = mergeUpdates(this.state, updates);
+        this.state = mergedUpdates as State;
+
+        // check subscriptions
+        for (const field in updates) {
+          if (this.subscriptions[field]) {
+            this.subscriptions[field].forEach((cb) => cb(updates[field]));
+          }
+        }
 
         // Need this because when user reset attributeVisibility, it resets
         // to empty object, which gets overwritten in mergeUpdates
@@ -421,7 +494,7 @@ export abstract class AbstractLooker<
       );
   }
 
-  abstract updateOptions(options: Optional<State["options"]>): void;
+  abstract updateOptions(options: Partial<State["options"]>): void;
 
   updateSample(sample: Sample) {
     this.loadSample(sample);
@@ -489,7 +562,7 @@ export abstract class AbstractLooker<
 
   protected abstract getInitialState(
     config: State["config"],
-    options: Optional<State["options"]>
+    options: Partial<State["options"]>
   ): State;
 
   protected getImageSource(): CanvasImageSource {
@@ -627,6 +700,7 @@ export abstract class AbstractLooker<
       method: "processSample",
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
+      colorscale: this.state.options.colorscale,
       labelTagColors: this.state.options.labelTagColors,
       selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,

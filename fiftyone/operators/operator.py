@@ -47,10 +47,11 @@ class OperatorConfig(object):
         icon=None,
         light_icon=None,
         dark_icon=None,
-        allow_immdeiate_execution=True,
+        allow_immediate_execution=True,
         allow_delegated_execution=False,
         default_choice_to_delegated=False,
         resolve_execution_options_on_change=False,
+        **kwargs
     ):
         self.name = name
         self.label = label or name
@@ -64,10 +65,13 @@ class OperatorConfig(object):
         self.icon = icon
         self.dark_icon = dark_icon
         self.light_icon = light_icon
-        self.allow_immdeiate_execution = allow_immdeiate_execution
+        self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
-        self.resolve_execution_options_on_change = resolve_execution_options_on_change
+        self.resolve_execution_options_on_change = (
+            resolve_execution_options_on_change
+        )
+        self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
         return {
@@ -83,10 +87,10 @@ class OperatorConfig(object):
             "icon": self.icon,
             "dark_icon": self.dark_icon,
             "light_icon": self.light_icon,
-            "allow_immdeiate_execution": self.allow_immdeiate_execution,
+            "allow_immediate_execution": self.allow_immediate_execution,
             "allow_delegated_execution": self.allow_delegated_execution,
             "default_choice_to_delegated": self.default_choice_to_delegated,
-            "resolve_execution_options_on_change": self.resolve_execution_options_on_change
+            "resolve_execution_options_on_change": self.resolve_execution_options_on_change,
         }
 
 
@@ -196,7 +200,7 @@ class Operator(object):
         if resolved_delegation is None:
             # legacy behavior
             return ExecutionOptions(
-                allow_immediate_execution=self.config.allow_immdeiate_execution,
+                allow_immediate_execution=self.config.allow_immediate_execution,
                 allow_delegated_execution=self.config.allow_delegated_execution,
             )
 

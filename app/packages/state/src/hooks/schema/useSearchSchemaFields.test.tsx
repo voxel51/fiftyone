@@ -1,17 +1,12 @@
+import { act, renderHook } from "@testing-library/react-hooks";
 import React from "react";
-import { renderHook, act } from "@testing-library/react-hooks";
-import {
-  RecoilRoot,
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-} from "recoil";
+import { RecoilRoot, useRecoilState, useResetRecoilState } from "recoil";
 
-import { afterEach, describe, expect, test, vi } from "vitest";
 import * as fos from "@fiftyone/state";
-import { FIELDS } from "../useSchemaSettings.utils.test";
 import { RelayEnvironmentProvider } from "react-relay";
 import { Environment } from "relay-runtime";
+import { afterEach, describe, expect, test, vi } from "vitest";
+import { FIELDS } from "../useSchemaSettings.utils.test";
 
 const TEST_DS = {
   name: "test-dataset",

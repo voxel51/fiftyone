@@ -412,7 +412,7 @@ class ExecutionContext(object):
             operation
         operator_uri (None): the unique id of the operator
         required_secrets (None): the list of required secrets from the
-        plugin's definition
+            plugin's definition
     """
 
     def __init__(
@@ -438,7 +438,6 @@ class ExecutionContext(object):
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
         self._operator_uri = operator_uri
-
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
         if required_secrets:

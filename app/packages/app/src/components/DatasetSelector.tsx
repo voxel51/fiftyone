@@ -4,7 +4,7 @@ import React, { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { datasetHeadName, datasetSnapshotName } from "../versionSelectors";
 
-const DatasetLink: React.FC<{ value: string; className: string }> = ({
+const DatasetLink: React.FC<{ value: string; className?: string }> = ({
   className,
   value,
 }) => {
@@ -35,7 +35,10 @@ const DatasetSelector: React.FC<{
       placeholder={"Select dataset"}
       inputStyle={{ height: 40, maxWidth: 300 }}
       containerStyle={{ position: "relative" }}
-      onSelect={(name) => name !== dataset && setDataset(name)}
+      onSelect={async (name) => {
+        setDataset(name);
+        return name;
+      }}
       overflow={true}
       useSearch={useSearch}
       value={nameWithSnapshot || dataset || ""}

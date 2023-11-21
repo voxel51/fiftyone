@@ -71,9 +71,9 @@ export class FrameLooker extends AbstractLooker<FrameState> {
     return super.postProcess();
   }
 
-  updateOptions(options: Optional<FrameState["options"]>) {
+  updateOptions(options: Partial<FrameState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Optional<FrameState> = { options };
+    const state: Partial<FrameState> = { options };
     if (options.zoom !== undefined) {
       state.setZoom = this.state.options.zoom !== options.zoom;
     }

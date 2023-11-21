@@ -533,14 +533,17 @@ You can use the group action in the App's menu to
 In this mode, the App's grid shows the first sample from each group, and you
 can click on a sample to view all elements of the group in the modal.
 
-When viewing *unordered* groups, the modal will show a carousel at the
-top that you can use to navigate between different samples within a group.
-
-When viewing *ordered* groups, the modal will show a pagination UI at the
-bottom that you can use to navigate sequentially or via random access through
-the elements of the group.
+You may navigate through the elements of the group either sequentially using 
+the carousel, or randomly using the pagination UI at the bottom of the modal.
 
 .. image:: /images/groups/dynamic-groups.gif
+   :alt: dynamic-groups-pagination
+   :align: center
+
+When viewing *ordered* groups, you have an additional option to render the 
+elements of the group as a video.
+
+.. image:: /images/groups/dynamic-groups-frames-as-video.gif
    :alt: dynamic-groups
    :align: center
 

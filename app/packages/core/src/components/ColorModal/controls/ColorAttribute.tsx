@@ -14,7 +14,7 @@ import { cloneDeep } from "lodash";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
+import Item from "../../Filters/FilterOption/FilterItem";
 import { activeColorPath } from "../state";
 
 const ActionDiv = styled.div`

@@ -56,28 +56,33 @@ export const GroupElementsLinkBar = React.memo(
     ) as fos.State.DynamicGroupParameters;
     const groupField = useRecoilValue(fos.groupField);
     const setSample = useRecoilTransaction_UNSTABLE(
-      ({ set, get }) => (sample: fos.ModalSample) => {
-        const current = get(fos.currentModalSample);
-        const currentGroup = get(fos.groupByFieldValue);
-        const nextGroup = String(
-          getValue(sample.sample, dynamicGroupParameters.groupBy)
-        );
+      ({ set, get }) =>
+        (sample: fos.ModalSample) => {
+          const current = get(fos.currentModalSample);
+          const currentGroup = get(fos.groupByFieldValue);
+          const nextGroup = String(
+            getValue(sample.sample, dynamicGroupParameters.groupBy)
+          );
 
-        if (current && current.id !== sample.id) {
-          set(currentModalSample, { index: current.index, id: sample.id });
+          if (current && current.id !== sample.id) {
+            set(currentModalSample, { index: current.index, id: sample.id });
 
-          if (groupField && currentGroup === nextGroup) {
-            set(fos.groupId, getValue(sample.sample, groupField)._id as string);
+            if (groupField && currentGroup === nextGroup) {
+              set(
+                fos.groupId,
+                getValue(sample.sample, groupField)._id as string
+              );
+            }
           }
-        }
-      },
+        },
       [dynamicGroupParameters, groupField]
     );
 
     const groupByFieldValue = useRecoilValue(fos.groupByFieldValue);
-    const mapRef = useMemo(() => new Map<number, fos.ModalSample>(), [
-      groupByFieldValue,
-    ]);
+    const mapRef = useMemo(
+      () => new Map<number, fos.ModalSample>(),
+      [groupByFieldValue]
+    );
 
     const map = useMemo(() => {
       if (data?.samples?.edges?.length) {
@@ -102,7 +107,7 @@ export const GroupElementsLinkBar = React.memo(
       }
     }, [map, setCursor, deferred, setSample]);
 
-    const elementsCount = useRecoilValue(fos.dynamicGroupsElementCount);
+    const elementsCount = useRecoilValue(fos.dynamicGroupsElementCount(null));
 
     const [isTextBoxEmpty, setIsTextBoxEmpty] = useState(false);
     const textBoxRef = useRef<HTMLInputElement>(null);

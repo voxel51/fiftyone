@@ -23,6 +23,7 @@
         "copy-to-clipboard": "^3.3.1",
         "fast-png": "^6.1.0",
         "immutable": "^4.0.0-rc.12",
+        "lodash": "^4.17.21",
         "lru-cache": "^6.0.0",
         "mime": "^2.5.2",
         "uuid": "^8.3.2"

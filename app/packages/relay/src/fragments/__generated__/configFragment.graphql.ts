@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<13264b349b2956b06aec4b4b1c3ea746>>
+ * @generated SignedSource<<15cdc78ae84090b5314f587ba80558b9>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -20,6 +20,7 @@ export type configFragment$data = {
     readonly colorPool: ReadonlyArray<string>;
     readonly colorscale: string;
     readonly gridZoom: number;
+    readonly lightningThreshold: number | null;
     readonly loopVideos: boolean;
     readonly multicolorKeypoints: boolean;
     readonly notebookHeight: number;
@@ -83,6 +84,13 @@ return {
           "args": null,
           "kind": "ScalarField",
           "name": "gridZoom",
+          "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "lightningThreshold",
           "storageKey": null
         },
         {
@@ -186,6 +194,6 @@ return {
 };
 })();
 
-(node as any).hash = "b9064045e9aedc401925305dc8c7ab6d";
+(node as any).hash = "bb8881f0e6c36892097f4168c2c64f79";
 
 export default node;

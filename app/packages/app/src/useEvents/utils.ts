@@ -40,7 +40,6 @@ export const processState = (
   if (env().VITE_NO_STATE) {
     return { view: [], fieldVisibility: undefined };
   }
-
   return {
     view: state.view || [],
     fieldVisibility: state.field_visibility_stage,

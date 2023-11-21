@@ -274,7 +274,11 @@ export function getAssignedColor({
     return getColor(
       coloring.pool,
       coloring.seed,
-      path === "tags" ? param : getHashLabel(param)
+      path === "tags"
+        ? (param as string)
+        : isPrimitive
+        ? value
+        : getHashLabel(param as RegularLabel)
     );
   }
 

@@ -1,26 +1,38 @@
 import {
   AbstractLooker,
   FrameLooker,
+  ImaVidLooker,
   ImageLooker,
   PcdLooker,
   Sample,
   VideoLooker,
 } from "@fiftyone/looker";
+import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
+import { ImaVidFramesControllerStore } from "@fiftyone/looker/src/lookers/imavid/store";
+import { ImaVidConfig } from "@fiftyone/looker/src/state";
 import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
   getMimeType,
 } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { get } from "lodash";
+import { useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { useRecoilValue } from "recoil";
-import { ModalSample, selectedMediaField } from "../recoil";
+import { useRelayEnvironment } from "react-relay";
+import { useRecoilCallback, useRecoilValue } from "recoil";
+import {
+  ModalSample,
+  dynamicGroupsElementCount,
+  selectedMediaField,
+} from "../recoil";
 import { selectedSamples } from "../recoil/atoms";
+import * as groupAtoms from "../recoil/groups";
 import * as schemaAtoms from "../recoil/schema";
 import { datasetName } from "../recoil/selectors";
 import { State } from "../recoil/types";
-import { getSampleSrc } from "../recoil/utils";
+import { getSampleSrc, getSanitizedGroupByExpression } from "../recoil/utils";
 import * as viewAtoms from "../recoil/view";
+import { getStandardizedUrls } from "../utils";
 
 export default <T extends AbstractLooker>(
   isModal: boolean,
@@ -28,6 +40,7 @@ export default <T extends AbstractLooker>(
   options: Omit<Parameters<T["updateOptions"]>[0], "selected">,
   highlight?: (sample: Sample) => boolean
 ) => {
+  const environment = useRelayEnvironment();
   const selected = useRecoilValue(selectedSamples);
   const isClip = useRecoilValue(viewAtoms.isClipsView);
   const isFrame = useRecoilValue(viewAtoms.isFramesView);
@@ -45,122 +58,172 @@ export default <T extends AbstractLooker>(
     schemaAtoms.fieldSchema({ space: State.SPACE.FRAME })
   );
 
-  const create = useCallback(
-    ({
-      frameNumber,
-      frameRate,
-      sample,
-      urls: rawUrls,
-    }: ModalSample["sample"]): T => {
-      let constructor:
-        | typeof FrameLooker
-        | typeof ImageLooker
-        | typeof PcdLooker
-        | typeof VideoLooker = ImageLooker;
+  const shouldRenderImaVidLooker = useRecoilValue(
+    groupAtoms.shouldRenderImaVidLooker
+  );
 
-      const mimeType = getMimeType(sample);
+  // callback to get the latest promise inside another recoil callback
+  // gets around the limitation of the fact that snapshot inside callback refs to the committed state at the time
+  const getPromise = useRecoilCallback(
+    ({ snapshot: { getPromise } }) => getPromise,
+    []
+  );
 
-      let urls: { [key: string]: string } = {};
-
-      // sometimes the urls are an array of objects, sometimes they are just an object
-      // this is a workaround to make sure we can handle both cases
-      // todo: investigate why this is the case
-      if (Array.isArray(rawUrls)) {
-        for (const { field, url } of rawUrls) {
-          urls[field] = url;
-        }
-      } else {
-        urls = rawUrls;
-      }
-
-      // checking for pcd extension instead of media_type because this also applies for group slices
-      // split("?")[0] is to remove query params, if any, from signed urls
-      if (urls.filepath?.split("?")[0].endsWith(".pcd")) {
-        constructor = PcdLooker;
-      } else if (mimeType !== null) {
-        const isVideo = mimeType.startsWith("video/");
-
-        if (isVideo && (isFrame || isPatch)) {
-          constructor = FrameLooker;
-        }
-
-        if (isVideo) {
-          constructor = VideoLooker;
-        }
-      } else {
-        constructor = ImageLooker;
-      }
-
-      let sampleMediaFilePath = urls[mediaField];
-
-      if (constructor === PcdLooker) {
-        const orthographicProjectionField = Object.entries(sample)
-          .find(
-            (el) => el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
-          )
-          ?.at(0) as string | undefined;
-        if (orthographicProjectionField) {
-          sampleMediaFilePath = urls[
-            `${orthographicProjectionField}.filepath`
-          ] as string;
-        }
-      }
-
-      const config: ConstructorParameters<T>[1] = {
-        fieldSchema: {
-          ...fieldSchema,
-          frames: {
-            name: "frames",
-            ftype: LIST_FIELD,
-            subfield: EMBEDDED_DOCUMENT_FIELD,
-            embeddedDocType: "fiftyone.core.frames.FrameSample",
-            fields: frameFieldSchema,
-            dbField: null,
-          },
-        },
-        sources: urls,
-        frameNumber: constructor === FrameLooker ? frameNumber : undefined,
+  const create = useRecoilCallback(
+    ({ snapshot }) =>
+      ({
+        frameNumber,
         frameRate,
-        sampleId: sample._id,
-        src: getSampleSrc(sampleMediaFilePath),
-        support: isClip ? sample["support"] : undefined,
-        thumbnail,
-        dataset,
-        view,
-      };
+        sample,
+        urls: rawUrls,
+      }: ModalSample["sample"]): T => {
+        let constructor:
+          | typeof FrameLooker
+          | typeof ImageLooker
+          | typeof ImaVidLooker
+          | typeof PcdLooker
+          | typeof VideoLooker = ImageLooker;
 
-      if (sample.group?.name) {
-        config.group = {
-          name: sample.group.name,
-          id: sample.group._id,
+        const mimeType = getMimeType(sample);
+
+        // sometimes the urls are an array of objects, sometimes they are just an object
+        // this is a workaround to make sure we can handle both cases
+        // todo: investigate why this is the case
+        const urls = getStandardizedUrls(rawUrls);
+
+        // checking for pcd extension instead of media_type because this also applies for group slices
+        // split("?")[0] is to remove query params, if any, from signed urls
+        if (urls.filepath?.split("?")[0].endsWith(".pcd")) {
+          constructor = PcdLooker;
+        } else if (mimeType !== null) {
+          const isVideo = mimeType.startsWith("video/");
+
+          if (isVideo && (isFrame || isPatch)) {
+            constructor = FrameLooker;
+          }
+
+          if (isVideo) {
+            constructor = VideoLooker;
+          }
+
+          if (!isVideo && shouldRenderImaVidLooker) {
+            constructor = ImaVidLooker;
+          }
+        } else {
+          constructor = ImageLooker;
+        }
+
+        let sampleMediaFilePath = urls[mediaField];
+
+        const config: ConstructorParameters<T>[1] = {
+          fieldSchema: {
+            ...fieldSchema,
+            frames: {
+              name: "frames",
+              ftype: LIST_FIELD,
+              subfield: EMBEDDED_DOCUMENT_FIELD,
+              embeddedDocType: "fiftyone.core.frames.FrameSample",
+              fields: frameFieldSchema,
+              dbField: null,
+            },
+          },
+          sources: urls,
+          frameNumber: constructor === FrameLooker ? frameNumber : undefined,
+          frameRate,
+          sampleId: sample._id,
+          src: getSampleSrc(sampleMediaFilePath),
+          support: isClip ? sample["support"] : undefined,
+          dataset,
+          mediaField,
+          thumbnail,
+          view,
         };
-      }
 
-      const looker = new constructor(sample, config, {
-        ...options,
-        selected: selected.has(sample._id),
-        highlight: highlight && highlight(sample),
-      });
+        if (sample.group?.name) {
+          config.group = {
+            name: sample.group.name,
+            id: sample.group._id,
+          };
+        }
 
-      looker.addEventListener("error", (event) => {
-        handleError(event.error);
-      });
+        if (constructor === PcdLooker) {
+          const orthographicProjectionField = Object.entries(sample)
+            .find(
+              (el) =>
+                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+            )
+            ?.at(0) as string | undefined;
+          if (orthographicProjectionField) {
+            sampleMediaFilePath = urls[
+              `${orthographicProjectionField}.filepath`
+            ] as string;
+          }
+        }
 
-      return looker;
-    },
+        if (constructor === ImaVidLooker) {
+          const { groupBy, orderBy } = snapshot
+            .getLoadable(groupAtoms.dynamicGroupParameters)
+            .valueMaybe();
+          const groupByFieldValue = get(
+            sample,
+            getSanitizedGroupByExpression(groupBy)
+          ) as string;
+          const totalFrameCountPromise = getPromise(
+            dynamicGroupsElementCount(groupByFieldValue)
+          );
+          const page = snapshot
+            .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
+            .valueMaybe();
+
+          const thisSampleId = sample._id as string;
+          if (!ImaVidFramesControllerStore.has(thisSampleId)) {
+            ImaVidFramesControllerStore.set(
+              thisSampleId,
+              new ImaVidFramesController({
+                environment,
+                orderBy,
+                page,
+                totalFrameCountPromise,
+                posterSample: sample,
+              })
+            );
+          }
+
+          (config as ImaVidConfig).frameStoreController = (
+            config as ImaVidConfig
+          ).frameStoreController =
+            ImaVidFramesControllerStore.get(thisSampleId);
+
+          // todo
+          (config as ImaVidConfig).frameRate = 24;
+        }
+
+        const looker = new constructor(sample, config, {
+          ...options,
+          selected: selected.has(sample._id),
+          highlight: highlight && highlight(sample),
+        });
+
+        looker.addEventListener("error", (event) => {
+          handleError(event.error);
+        });
+
+        return looker;
+      },
     [
-      isClip,
-      isFrame,
-      isPatch,
-      options,
-      thumbnail,
-      mediaField,
       dataset,
       fieldSchema,
       frameFieldSchema,
       handleError,
       highlight,
+      isClip,
+      isFrame,
+      shouldRenderImaVidLooker,
+      isPatch,
+      mediaField,
+      options,
       selected,
+      thumbnail,
       view,
     ]
   );

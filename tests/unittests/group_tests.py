@@ -1047,6 +1047,26 @@ class GroupTests(unittest.TestCase):
         self.assertEqual(len(set(samples.values("frames.id", unwind=True))), 4)
 
     @drop_datasets
+    def test_merge_groups6(self):
+        dataset = _make_group_dataset()
+
+        view = dataset.select_group_slices(_allow_mixed=True)
+        samples = list(view)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(view), 6)
+
+        key_fcn = lambda sample: sample.filepath
+        dataset.merge_samples(samples, key_fcn=key_fcn)
+
+        view = dataset.select_group_slices(_allow_mixed=True)
+
+        self.assertEqual(len(dataset), 2)
+        self.assertEqual(dataset.count("frames"), 2)
+        self.assertEqual(len(view), 6)
+
+    @drop_datasets
     def test_indexes(self):
         dataset = _make_group_dataset()
 

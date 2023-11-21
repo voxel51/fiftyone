@@ -17,7 +17,7 @@ import { StrictField } from "@fiftyone/utilities";
 import { DefaultValue, atom, atomFamily, selector } from "recoil";
 import { ModalSample } from "..";
 import { SPACES_DEFAULT, sessionAtom } from "../session";
-import { collapseFields, transformDataset } from "../utils";
+import { collapseFields } from "../utils";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
 import { State } from "./types";
@@ -112,28 +112,6 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
     key: "tagging",
     default: false,
-  }
-);
-
-/**
- * The state of the current dataset. Contains informations about the dataset, and the samples contained in it.
- *
- * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
- */
-export const dataset = graphQLSyncFragmentAtom<
-  datasetFragment$key,
-  State.Dataset | null
->(
-  {
-    fragments: [datasetFragment],
-    keys: ["dataset"],
-    read: (dataset) => {
-      return { ...transformDataset(dataset) };
-    },
-    default: null,
-  },
-  {
-    key: "dataset",
   }
 );
 
@@ -323,63 +301,12 @@ export const lookerPanels = atom({
   },
 });
 
-export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
-  key: "groupMediaIsCarouselVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const groupMedia3dVisibleSetting = atom<boolean>({
-  key: "groupMediaIs3dVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
 export const onlyPcd = selector<boolean>({
   key: "onlyPcd",
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
     const hasPcd = set.has("point_cloud");
     return set.size === 1 && hasPcd;
-  },
-});
-
-export const groupMediaIs3dVisible = selector<boolean>({
-  key: "groupMedia3dVisible",
-  get: ({ get }) => {
-    const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return get(groupMedia3dVisibleSetting) && hasPcd;
-  },
-});
-
-export const groupMediaIsMainVisibleSetting = atom<boolean>({
-  key: "groupMediaIsMainVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const groupMediaIsMainVisible = selector<boolean>({
-  key: "groupMediaIsMainVisible",
-  get: ({ get }) => {
-    const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
   },
 });
 

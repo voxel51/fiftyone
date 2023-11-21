@@ -135,10 +135,12 @@ export const convertId = (obj: Record<string, any>): Record<string, any> => {
 };
 
 export const getHashLabel = (label: RegularLabel): string => {
-  if (["number", "string"].includes(typeof label.index)) {
+  if (label?.index && ["number", "string"].includes(typeof label?.index)) {
     return `${label.label}.${label.index}`;
-  } else {
+  } else if (label?.label && label?.id) {
     return `${label.label}.${label.id}`;
+  } else {
+    return `${label}`;
   }
 };
 

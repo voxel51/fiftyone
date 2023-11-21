@@ -89,7 +89,8 @@ DEFAULT_APP_COLOR_POOL = [
 DEFAULT_COLOR_SCHEME = {
     "color_pool": DEFAULT_APP_COLOR_POOL,
     "fields": [],
-    "label_tags": {},
+    "label_tags": {"fieldColor": None, "valueColors": []},
+    "default_mask_targets": [],
 }
 
 # MongoDB setup

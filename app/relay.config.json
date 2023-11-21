@@ -8,6 +8,8 @@
         "BSONArray": "Array",
         "Date": "number",
         "DateTime": "number",
+        "date": "number",
+        "datetime": "number",
         "JSON": "object",
         "JSONArray": "Array"
     }

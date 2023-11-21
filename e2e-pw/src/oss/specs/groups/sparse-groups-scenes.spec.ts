@@ -70,6 +70,7 @@ test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await modal.groupLooker.click();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "right");
   await modal.navigateNextSample(true);
+  await modal.waitForCarouselToLoad();
   await modal.sidebar.assert.verifySidebarEntryText("group.name", "left");
   await modal.assert.verifyCarouselLength(1);
   await modal.close();
