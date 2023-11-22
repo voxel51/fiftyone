@@ -89,18 +89,38 @@ def init_storage():
     minio_prefixes = set()
     azure_prefixes = set()
 
-    minio_creds_list = None
-    azure_creds_list = None
+    minio_creds_list = []
+    azure_creds_list = []
 
     # set up a global list of prefixes for minio and azure aliases
     if creds_manager:
-        minio_creds_list = creds_manager.get_all_credentials_for_provider(
+        # get the paths for all minio creds
+        minio_creds_path_list = creds_manager.get_all_credentials_for_provider(
             "MINIO"
         )
 
-        azure_creds_list = creds_manager.get_all_credentials_for_provider(
+        # add the actual creds to the list
+        for creds_path in minio_creds_path_list:
+            minio_credentials, _ = MinIOStorageClient.load_credentials(
+                credentials_path=creds_path
+            )
+
+            if minio_credentials:
+                minio_creds_list.append(minio_credentials)
+
+        # get the paths for all azure creds
+        azure_creds_path_list = creds_manager.get_all_credentials_for_provider(
             "AZURE"
         )
+
+        # add the actual creds to the list
+        for creds_path in azure_creds_path_list:
+            azure_credentials, _ = AzureStorageClient.load_credentials(
+                credentials_path=creds_path
+            )
+
+            if azure_credentials:
+                azure_creds_list.append(azure_credentials)
     else:
         # no creds manager, check environment
 
@@ -129,35 +149,41 @@ def init_storage():
         for credentials in minio_creds_list:
             minio_alias_prefix = None
             minio_endpoint_prefix = None
-            if "alias" in credentials:
-                minio_alias_prefix = credentials["alias"] + "://"
 
-            if "endpoint_url" in credentials:
-                minio_endpoint_prefix = (
-                    credentials["endpoint_url"].rstrip("/") + "/"
-                )
+            if credentials:
+                if "alias" in credentials:
+                    minio_alias_prefix = credentials["alias"] + "://"
 
-            minio_prefixes.add((minio_alias_prefix, minio_endpoint_prefix))
+                if "endpoint_url" in credentials:
+                    minio_endpoint_prefix = (
+                        credentials["endpoint_url"].rstrip("/") + "/"
+                    )
+
+                minio_prefixes.add((minio_alias_prefix, minio_endpoint_prefix))
 
     if azure_creds_list:
         for credentials in azure_creds_list:
             azure_alias_prefix = None
             azure_endpoint_prefix = None
-            if "alias" in credentials:
-                azure_alias_prefix = credentials["alias"] + "://"
 
-            if "account_url" in credentials:
-                azure_endpoint_prefix = (
-                    credentials["account_url"].rstrip("/") + "/"
-                )
-            elif "conn_str" in credentials or "account_name" in credentials:
-                account_url = AzureStorageClient._to_account_url(
-                    conn_str=credentials.get("conn_str", None),
-                    account_name=credentials.get("account_name", None),
-                )
-                azure_endpoint_prefix = account_url.rstrip("/") + "/"
+            if credentials:
+                if "alias" in credentials:
+                    azure_alias_prefix = credentials["alias"] + "://"
 
-            azure_prefixes.add((azure_alias_prefix, azure_endpoint_prefix))
+                if "account_url" in credentials:
+                    azure_endpoint_prefix = (
+                        credentials["account_url"].rstrip("/") + "/"
+                    )
+                elif (
+                    "conn_str" in credentials or "account_name" in credentials
+                ):
+                    account_url = AzureStorageClient._to_account_url(
+                        conn_str=credentials.get("conn_str", None),
+                        account_name=credentials.get("account_name", None),
+                    )
+                    azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
+                azure_prefixes.add((azure_alias_prefix, azure_endpoint_prefix))
 
 
 class FileSystem(object):

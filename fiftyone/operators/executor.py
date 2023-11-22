@@ -440,10 +440,11 @@ class ExecutionContext(object):
         self._operator_uri = operator_uri
         self._secrets = {}
         self._secrets_client = PluginSecretsResolver()
-        if required_secrets:
+        self._required_secret_keys = required_secrets
+        if self._required_secret_keys:
             self._secrets_client.register_operator(
                 operator_uri=self._operator_uri,
-                required_secrets=required_secrets,
+                required_secrets=self._required_secret_keys,
             )
         self._delegation_target = delegation_target
         self._request_delegation = request_delegation
@@ -559,6 +560,7 @@ class ExecutionContext(object):
             self._secrets,
             operator_uri=self._operator_uri,
             resolver_fn=self._secrets_client.get_secret_sync,
+            required_keys=self._required_secret_keys,
         )
 
     @property
