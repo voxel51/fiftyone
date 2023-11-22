@@ -209,7 +209,16 @@ Troubleshooting Linux imports
 
 `fiftyone-db` officially supports Debian 9+ (x86_64 only), Ubuntu 18.04+, and
 RHEL/CentOS 7+ Linux distributions. The correct MongoDB build is downloaded
-and installed while building the package wheel on your machine. 
+and installed while building the package wheel on your machine.
+
+.. note::
+
+    If installing on Ubuntu 22.04, Debian, or RHEL/CentOS,
+    ``fiftyone-db==0.4.3`` must be requested.
+
+    .. code-block:: shell
+
+        pip install fiftyone-db==0.4.3 fiftyone
 
 If a suitable MongoDB build is not available or otherwise does not
 work in your environment, you may encounter a `FiftyOneConfigError`.
