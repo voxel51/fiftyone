@@ -275,16 +275,16 @@ async def prepare_operator_executor(
 
     operator = registry.get_operator(operator_uri)
     executor = Executor()
+
     ctx = ExecutionContext(
         request_params=request_params,
+        operator=operator,
         executor=executor,
         set_progress=set_progress,
         delegated_operation_id=delegated_operation_id,
-        operator_uri=operator_uri,
-        required_secrets=operator._plugin_secrets,
     )
 
-    await ctx.resolve_secret_values(operator._plugin_secrets)
+    await ctx.resolve_secret_values()
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
     if validation_ctx.invalid:
@@ -332,11 +332,8 @@ def resolve_type(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
-    ctx = ExecutionContext(
-        request_params,
-        operator_uri=operator_uri,
-        required_secrets=operator._plugin_secrets,
-    )
+    ctx = ExecutionContext(request_params, operator=operator)
+
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -360,11 +357,7 @@ def resolve_execution_options(registry, operator_uri, request_params):
         raise ValueError("Operator '%s' does not exist" % operator_uri)
 
     operator = registry.get_operator(operator_uri)
-    ctx = ExecutionContext(
-        request_params,
-        operator_uri=operator_uri,
-        required_secrets=operator._plugin_secrets,
-    )
+    ctx = ExecutionContext(request_params, operator=operator)
     try:
         return operator.resolve_execution_options(ctx)
     except Exception as e:
@@ -381,11 +374,8 @@ def resolve_placement(operator, request_params):
     Returns:
         the placement of the operator or ``None``
     """
-    ctx = ExecutionContext(
-        request_params,
-        operator_uri=operator.uri,
-        required_secrets=operator._plugin_secrets,
-    )
+    ctx = ExecutionContext(request_params, operator=operator)
+
     try:
         return operator.resolve_placement(ctx)
     except Exception as e:
@@ -399,43 +389,42 @@ class ExecutionContext(object):
     selected samples, as well as to trigger other operators.
 
     Args:
-        request_params (None): a optional dictionary of request parameters
+        request_params (None): an optional dictionary of request parameters
+        operator (None): the :class:`fiftyone.operators.operator.Operator`
+            being executed
         executor (None): an optional :class:`Executor` instance
         set_progress (None): an optional function to set the progress of the
             current operation
         delegated_operation_id (None): an optional ID of the delegated
             operation
-        operator_uri (None): the unique id of the operator
-        required_secrets (None): the list of required secrets from the
-            plugin's definition
     """
 
     def __init__(
         self,
         request_params=None,
+        operator=None,
         executor=None,
         set_progress=None,
         delegated_operation_id=None,
-        operator_uri=None,
-        required_secrets=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
+        self.operator = operator
         self.executor = executor
 
         self._dataset = None
         self._view = None
-
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
-        self._operator_uri = operator_uri
-        self._secrets = {}
-        self._secrets_client = PluginSecretsResolver()
-        self._required_secret_keys = required_secrets
-        if self._required_secret_keys:
+
+        self._secrets_dict = {}
+        self._secrets_client = None
+        self._secrets = None
+
+        if operator.has_secrets:
+            self._secrets_client = PluginSecretsResolver()
             self._secrets_client.register_operator(
-                operator_uri=self._operator_uri,
-                required_secrets=self._required_secret_keys,
+                operator_uri=operator.uri, secrets=operator.secrets
             )
 
     @property
@@ -540,51 +529,28 @@ class ExecutionContext(object):
     @property
     def secrets(self):
         """A read-only mapping of keys to their resolved values."""
-        return SecretsDictionary(
-            self._secrets,
-            operator_uri=self._operator_uri,
-            resolver_fn=self._secrets_client.get_secret_sync,
-            required_keys=self._required_secret_keys,
-        )
+        if self._secrets is None:
+            self._secrets = SecretsDictionary(self._secrets_dict)
 
-    def secret(self, key):
-        """Retrieves the secret with the given key.
+        return self._secrets
+
+    async def resolve_secret_values(self, **kwargs):
+        """Resolves the secret values for the operator.
 
         Args:
-            key: a secret key
-
-        Returns:
-            the secret value
-        """
-        if key not in self._secrets:
-            try:
-                secret = self._secrets_client.get_secret_sync(
-                    key, self._operator_uri
-                )
-                if secret:
-                    self._secrets[secret.key] = secret.value
-
-            except KeyError:
-                logging.debug(f"Failed to resolve value for secret `{key}`")
-        return self._secrets.get(key, None)
-
-    async def resolve_secret_values(self, keys, **kwargs):
-        """Resolves the values of the given secrets keys.
-
-        Args:
-            keys: a list of secret keys
             **kwargs: additional keyword arguments to pass to the secrets
-                client for authentication if required
+                client for authentication
         """
-        if None in (self._secrets_client, keys):
-            return None
+        if not self.operator.has_secrets:
+            return
 
-        for key in keys:
+        self._secrets_dict.clear()
+        for key in self.operator.secrets:
             secret = await self._secrets_client.get_secret(
-                key, self._operator_uri, **kwargs
+                key, self.operator.uri, **kwargs
             )
             if secret:
-                self._secrets[secret.key] = secret.value
+                self._secrets_dict[secret.key] = secret.value
 
     def trigger(self, operator_name, params=None):
         """Triggers an invocation of the operator with the given name.

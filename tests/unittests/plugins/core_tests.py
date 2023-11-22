@@ -1,11 +1,20 @@
+"""
+FiftyOne core plugin unit tests.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+import json
 import os
 
-import fiftyone as fo
-import pytest
-import json
-import yaml
 from unittest import mock
+import pytest
+import yaml
+
+import fiftyone as fo
 import fiftyone.plugins as fop
+
 
 _DEFAULT_TEST_PLUGINS = ["test-plugin1", "test-plugin2"]
 _DEFAULT_APP_CONFIG = {}

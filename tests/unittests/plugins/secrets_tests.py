@@ -1,187 +1,149 @@
+"""
+FiftyOne plugin secrets unit tests.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import os
-import unittest
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import unittest
+from unittest.mock import MagicMock, patch
 
-import fiftyone.plugins as fop
-from fiftyone.internal import secrets as fois
-from fiftyone.internal.secrets import UnencryptedSecret
-from fiftyone.operators import Operator
+from fiftyone.internal.secrets import UnencryptedSecret, EnvSecretProvider
+from fiftyone.operators import Operator, OperatorConfig
 from fiftyone.operators.executor import ExecutionContext
+from fiftyone.plugins.secrets import PluginSecretsResolver
 
-SECRET_KEY = "MY_SECRET_KEY"
+
+SECRET_KEY1 = "MY_SECRET_KEY1"
 SECRET_KEY2 = "MY_SECRET_KEY2"
-SECRET_VALUE = "password123"
+SECRET_VALUE1 = "password123"
 SECRET_VALUE2 = "another password123"
 
 
 class MockSecret(UnencryptedSecret):
-    def __init__(self, key, value):
-        super().__init__(key, value)
+    pass
+
+
+class MockOperator(Operator):
+    @property
+    def config(self):
+        return OperatorConfig(name="mock_operator")
 
 
 class TestExecutionContext:
+    @pytest.fixture
+    def secrets(self):
+        return {SECRET_KEY1: SECRET_VALUE1, SECRET_KEY2: SECRET_VALUE2}
 
-    secrets = {SECRET_KEY: SECRET_VALUE, SECRET_KEY2: SECRET_VALUE2}
-    operator_uri = "operator"
-    plugin_secrets = [k for k, v in secrets.items()]
+    @pytest.fixture
+    def operator(self):
+        operator = MockOperator()
+        operator.register_secrets([SECRET_KEY1, SECRET_KEY2])
+        return operator
 
-    @pytest.fixture(autouse=False)
-    def mock_secrets_resolver(self, mocker):
-        mock = MagicMock(spec=fop.PluginSecretsResolver)
+    @pytest.fixture
+    def secrets_resolver(self, secrets, operator):
+        mock = MagicMock(spec=PluginSecretsResolver)
         mock.get_secret.side_effect = lambda key, operator: MockSecret(
-            key, self.secrets.get(key)
+            key, secrets.get(key)
         )
-        mock.config_cache = {self.operator_uri: self.plugin_secrets}
+        mock.config_cache = {operator.uri: operator.secrets}
         return mock
 
-    def test_secret(self):
-        context = ExecutionContext(
-            operator_uri=self.operator_uri,
-            required_secrets=self.plugin_secrets,
-        )
-        context._secrets = {SECRET_KEY: SECRET_VALUE}
+    def test_secret(self, operator):
+        context = ExecutionContext(operator=operator)
+        context._secrets_dict = {SECRET_KEY1: SECRET_VALUE1}
 
-        result = context.secret(SECRET_KEY)
+        result = context.secrets[SECRET_KEY1]
 
-        assert result == SECRET_VALUE
+        assert result == SECRET_VALUE1
 
-    def test_secret_non_existing_key(self):
-        context = ExecutionContext(
-            operator_uri=self.operator_uri,
-            required_secrets=self.plugin_secrets,
-        )
-        context._secrets = {SECRET_KEY: SECRET_VALUE}
+    def test_secret_non_existing_key(self, operator):
+        context = ExecutionContext(operator=operator)
+        context._secrets_dict = {SECRET_KEY1: SECRET_VALUE1}
 
-        result = context.secret("NON_EXISTING_SECRET")
+        result = context.secrets["NON_EXISTENT_SECRET"]
 
         assert result is None
 
-    def test_secrets_property(self):
-        context = ExecutionContext(
-            operator_uri=self.operator_uri,
-            required_secrets=self.plugin_secrets,
-        )
-        context._secrets = {
-            SECRET_KEY: SECRET_VALUE,
+    def test_secrets_property(self, operator):
+        context = ExecutionContext(operator=operator)
+        context._secrets_dict = {
+            SECRET_KEY1: SECRET_VALUE1,
             SECRET_KEY2: SECRET_VALUE2,
         }
 
-        assert context.secrets == context._secrets
-        try:
-            for k, v in context.secrets.items():
-                assert k in context._secrets
-                assert context._secrets[k] == v
-        except Exception as e:
-            pytest.fail(
-                "secrets proproperty items should be the same as _secrets items"
-            )
-
-    def test_secret_property_on_demand_resolve(self, mocker):
-        mocker.patch.dict(
-            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
-        )
-        context = ExecutionContext(
-            operator_uri="operator", required_secrets=["MY_SECRET_KEY"]
-        )
-        context._secrets = {}
-        assert "MY_SECRET_KEY" not in context.secrets.keys()
-        secret_val = context.secrets["MY_SECRET_KEY"]
-        assert "MY_SECRET_KEY" in context.secrets.keys()
-        assert context.secrets["MY_SECRET_KEY"] == "mocked_sync_secret_value"
-        assert context.secrets == context._secrets
+        assert dict(context.secrets) == context._secrets_dict
 
     @pytest.mark.asyncio
-    async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
-        context = ExecutionContext(
-            operator_uri=self.operator_uri,
-            required_secrets=self.plugin_secrets,
-        )
-        context._secrets_client = mock_secrets_resolver
+    async def test_resolve_secret_values(self, operator, secrets_resolver):
+        context = ExecutionContext(operator=operator)
+        context._secrets_client = secrets_resolver
 
-        await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
-        assert context.secrets == context._secrets
+        await context.resolve_secret_values()
+
+        assert dict(context.secrets) == context._secrets_dict
 
 
-class TestOperatorSecrets(unittest.TestCase):
-    def test_operator_add_secrets(self):
-        operator = Operator()
-        secrets = [SECRET_KEY, SECRET_KEY2]
+class TestOperatorSecrets:
+    def test_operator_register_secrets(self):
+        op = MockOperator()
+        secrets = [SECRET_KEY1, SECRET_KEY2]
 
-        operator.add_secrets(secrets)
+        assert not op.has_secrets
+        assert op.secrets is None
 
-        self.assertIsNotNone(operator._plugin_secrets)
-        self.assertListEqual(operator._plugin_secrets, secrets)
+        op.register_secrets(secrets)
 
-
-class PluginSecretResolverClientTests(unittest.TestCase):
-    @patch(
-        "fiftyone.plugins.secrets._get_secrets_client",
-        return_value=fois.EnvSecretProvider(),
-    )
-    def test_get_secrets_client_env_secret_provider(self, mocker):
-        resolver = fop.PluginSecretsResolver()
-        assert isinstance(resolver.client, fois.EnvSecretProvider)
+        assert op.has_secrets
+        assert op.secrets == secrets
 
 
-class TestGetSecret(unittest.TestCase):
-    @pytest.fixture(autouse=False)
-    def secrets_client(self):
-        mock_client = MagicMock(spec=fois.EnvSecretProvider)
-        mock_client.get.return_value = "mocked_secret_value"
-        mock_client.get_sync.return_value = "mocked_sync_secret_value"
-        return mock_client
-
-    @pytest.fixture(autouse=False)
-    def plugin_secrets_resolver(self):
-        resolver = fop.PluginSecretsResolver()
+class TestPluginSecretResolver:
+    @pytest.fixture
+    def plugin_secrets_resolver(self, mocker):
+        resolver = PluginSecretsResolver()
         resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
         return resolver
 
     @patch(
         "fiftyone.plugins.secrets._get_secrets_client",
-        return_value=fois.EnvSecretProvider(),
+        return_value=EnvSecretProvider(),
     )
+    def test_get_secrets_provider_client(self, _):
+        resolver = PluginSecretsResolver()
+        assert isinstance(resolver.client, EnvSecretProvider)
+
     @pytest.mark.asyncio
-    async def test_get_secret(
-        self, secrets_client, plugin_secrets_resolver, patched_get_client
-    ):
+    async def test_get_secret(self, mocker, plugin_secrets_resolver):
+        mocker.patch.dict(os.environ, {"MY_SECRET_KEY": "mocked_secret_value"})
+
         result = await plugin_secrets_resolver.get_secret(
             key="MY_SECRET_KEY", operator_uri="operator"
         )
 
         assert result == "mocked_secret_value"
-        secrets_client.get.assert_called_once_with(
+
+        result = await plugin_secrets_resolver.get_secret(
+            key="SOME_OTHER_SECRET_KEY", operator_uri="operator"
+        )
+
+        assert result is None
+
+    def test_get_secret_sync(self, mocker, plugin_secrets_resolver):
+        mocker.patch.dict(os.environ, {"MY_SECRET_KEY": "mocked_secret_value"})
+
+        result = plugin_secrets_resolver.get_secret_sync(
             key="MY_SECRET_KEY", operator_uri="operator"
         )
 
+        assert result == "mocked_secret_value"
 
-class TestGetSecretSync:
-    def test_get_secret_sync(self, mocker):
-        mocker.patch.dict(
-            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
-        )
-
-        resolver = fop.PluginSecretsResolver()
-        resolver._registered_secrets = {"operator": ["MY_SECRET_KEY"]}
-
-        result = resolver.get_secret_sync(
-            key="MY_SECRET_KEY", operator_uri="operator"
-        )
-
-        assert "mocked_sync_secret_value" == result
-
-    def test_get_secret_sync_not_in_pd(self, mocker):
-        mocker.patch.dict(
-            os.environ, {"MY_SECRET_KEY": "mocked_sync_secret_value"}
-        )
-
-        resolver = fop.PluginSecretsResolver()
-        resolver._registered_secrets = {"operator": ["SOME_OTHER_SECRET_KEY"]}
-
-        result = resolver.get_secret_sync(
-            key="MY_SECRET_KEY", operator_uri="operator"
+        result = plugin_secrets_resolver.get_secret_sync(
+            key="SOME_OTHER_SECRET_KEY", operator_uri="operator"
         )
 
         assert result is None

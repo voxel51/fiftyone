@@ -120,12 +120,13 @@ class Operator(object):
         # Plugin names are populated when the operators are registered
         plugin_name = BUILTIN_OPERATOR_PREFIX if _builtin else None
 
-        self._builtin = _builtin
-        self._plugin_secrets = None
         self.plugin_name = plugin_name
         self.definition = Object()
         self.definition.define_property("inputs", Object())
         self.definition.define_property("outputs", Object())
+
+        self._builtin = _builtin
+        self._secrets = None
 
     @property
     def name(self):
@@ -147,6 +148,27 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
+
+    @property
+    def has_secrets(self):
+        """Whther this operator has any secrets registered."""
+        return bool(self._secrets)
+
+    @property
+    def secrets(self):
+        """The list of secrets known to the operator, or None."""
+        return self._secrets
+
+    def register_secrets(self, secrets):
+        """Registers the given secrets on the operator.
+
+        Args:
+            secrets: a list of secrets
+        """
+        if self._secrets is None:
+            self._secrets = []
+
+        self._secrets.extend(secrets)
 
     def resolve_definition(self, resolve_dynamic, ctx):
         """Returns a resolved definition of the operator.
@@ -335,13 +357,3 @@ class Operator(object):
             "_builtin": self._builtin,
             "uri": self.uri,
         }
-
-    def add_secrets(self, secrets):
-        """Adds secrets to the operator.
-
-        Args:
-            secrets: a list of secrets
-        """
-        if not self._plugin_secrets:
-            self._plugin_secrets = []
-        self._plugin_secrets.extend(secrets)
