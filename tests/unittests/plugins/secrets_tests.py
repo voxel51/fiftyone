@@ -40,7 +40,10 @@ class TestExecutionContext:
         return mock
 
     def test_secret(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
         result = context.secret(SECRET_KEY)
@@ -48,7 +51,10 @@ class TestExecutionContext:
         assert result == SECRET_VALUE
 
     def test_secret_non_existing_key(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {SECRET_KEY: SECRET_VALUE}
 
         result = context.secret("NON_EXISTING_SECRET")
@@ -56,13 +62,24 @@ class TestExecutionContext:
         assert result is None
 
     def test_secrets_property(self):
-        context = ExecutionContext()
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
+        )
         context._secrets = {
             SECRET_KEY: SECRET_VALUE,
             SECRET_KEY2: SECRET_VALUE2,
         }
 
         assert context.secrets == context._secrets
+        try:
+            for k, v in context.secrets.items():
+                assert k in context._secrets
+                assert context._secrets[k] == v
+        except Exception as e:
+            pytest.fail(
+                "secrets proproperty items should be the same as _secrets items"
+            )
 
     def test_secret_property_on_demand_resolve(self):
         with patch.dict(
@@ -91,13 +108,11 @@ class TestExecutionContext:
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
-        mocker.patch(
-            "fiftyone.plugins.secrets._get_secrets_client",
-            return_value=fois.EnvSecretProvider(),
+
+        context = ExecutionContext(
+            operator_uri=self.operator_uri,
+            required_secrets=self.plugin_secrets,
         )
-
-        context = ExecutionContext()
-
         context._secrets_client = mock_secrets_resolver
 
         await context.resolve_secret_values(keys=[SECRET_KEY, SECRET_KEY2])
