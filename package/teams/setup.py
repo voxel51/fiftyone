@@ -47,7 +47,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-teams-app",
-    version="1.6.0.dev0",
+    version="1.6.0.dev1",
 
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
