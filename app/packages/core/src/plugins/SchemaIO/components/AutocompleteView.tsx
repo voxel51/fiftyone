@@ -47,6 +47,7 @@ export default function AutocompleteView(props) {
         onInputChange={(e) => {
           if (!multiple && e) {
             onChange(path, e.target.value);
+            setUserChanged();
           }
         }}
         isOptionEqualToValue={() => false} // allow duplicates
