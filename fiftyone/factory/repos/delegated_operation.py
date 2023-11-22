@@ -8,8 +8,8 @@ FiftyOne delegated operation repository.
 from datetime import datetime
 from typing import Any, List
 
-from bson import ObjectId
 import pymongo
+from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
@@ -17,9 +17,9 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
+    ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
 
 
