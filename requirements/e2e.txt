@@ -1,3 +1,0 @@
--r github.txt
-
-umap-learn>=0.5.3
