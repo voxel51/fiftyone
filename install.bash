@@ -31,6 +31,8 @@ SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
 VOXEL51_INSTALL=false
+GITHUB_INSTALL=false
+E2E_INSTALL=false
 while getopts "hdempv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
