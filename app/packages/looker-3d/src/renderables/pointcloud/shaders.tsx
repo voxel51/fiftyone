@@ -9,6 +9,7 @@ export type ShaderProps = {
   max: number;
   pointSize: number;
   isPointSizeAttenuated: boolean;
+  useIntensity: boolean;
 };
 
 const useGradientMap = (gradients: Gradients) => {
@@ -120,9 +121,11 @@ const ShadeByIntensityShaders = {
   uniform float min;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
+  uniform bool useIntensity;
 
   varying vec2 vUv;
   varying float hValue;
+  attribute float intensity;
   attribute vec3 color;
 
   float remap ( float minval, float maxval, float curval ) {
@@ -132,7 +135,8 @@ const ShadeByIntensityShaders = {
   void main() {
     vUv = uv;
     vec3 pos = position;
-    hValue = remap(min, max, color.r);
+    float effectiveIntensity = useIntensity ? intensity : color.r;
+    hValue = remap(min, max, effectiveIntensity);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
@@ -210,6 +214,7 @@ export const ShadeByIntensity = ({
   max,
   pointSize,
   isPointSizeAttenuated,
+  useIntensity,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
 
@@ -222,6 +227,7 @@ export const ShadeByIntensity = ({
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
+          useIntensity: { value: useIntensity },
         },
         vertexShader: ShadeByIntensityShaders.vertexShader,
         fragmentShader: ShadeByIntensityShaders.fragmentShader,

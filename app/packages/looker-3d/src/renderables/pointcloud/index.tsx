@@ -66,6 +66,8 @@ export const PointCloudMesh = ({
     max: 1,
   });
 
+  const [useIntensity, setUseIntensity] = useState(false);
+
   const pointsGeometry = points.geometry;
 
   const boundingBox = useMemo(() => {
@@ -81,8 +83,13 @@ export const PointCloudMesh = ({
     onLoad(boundingBox);
 
     const colorAttribute = pointsGeometry.getAttribute("color");
+    const intensityAttribute = pointsGeometry.getAttribute("intensity");
 
-    if (colorAttribute) {
+    setUseIntensity(!!intensityAttribute);
+    if (intensityAttribute) {
+      setColorMinMax(computeMinMaxForColorBufferAttribute(intensityAttribute));
+    }
+    if (colorAttribute && !intensityAttribute) {
       setColorMinMax(computeMinMaxForColorBufferAttribute(colorAttribute));
     }
   }, [boundingBox, pointsGeometry, points, onLoad]);
@@ -113,6 +120,7 @@ export const PointCloudMesh = ({
             gradients={ShadingGradients}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
+            useIntensity={useIntensity}
           />
         );
 
