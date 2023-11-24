@@ -2718,7 +2718,7 @@ __metadata:
     react-color: ^2.19.3
     rollup-plugin-external-globals: ^0.6.1
     styled-components: ^5.3.5
-    three: ^0.141.0
+    three: ^0.143.0
     typescript: ^4.6.3
     vite: ^3.2.7
     vite-plugin-externals: ^0.5.0
@@ -20202,10 +20202,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.141.0":
-  version: 0.141.0
-  resolution: "three@npm:0.141.0"
-  checksum: d161350b5134f2db616c7081d625c84235a1d50658b9f9c6ffe94143ddb77944b1c1b6831ad0be00037f8c744c8c60ee8d740ea4d48844b54f4525ee73a2d44f
+"three@npm:^0.143.0":
+  version: 0.143.0
+  resolution: "three@npm:0.143.0"
+  checksum: 6fe8793a04a931c8fb86bad566ac4310a6243c9e9139678b5084e0773457a63fe254109479c4d4a2b484812d0932940eabf9baa21749c8c8d8dceb2815ca747b
   languageName: node
   linkType: hard
 
