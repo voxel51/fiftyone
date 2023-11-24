@@ -99,15 +99,21 @@ if [ ${VOXEL51_INSTALL} = false ]; then
     pip install --upgrade fiftyone-brain
 fi
 
+pip install poetry
+
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
     echo "Performing dev install"
-    pip install -r requirements/dev.txt
-    pre-commit install
-    pip install -e .
+    poetry install --with docs,extras,test,dev
+elif [ ${GITHUB_INSTALL} = true ]; then
+    echo "Performing github install"
+    poetry install --with test,github
+elif [ ${E2E_INSTALL} = true ]; then
+    echo "Performing e2e install"
+    poetry install --with test,github,e2e
 else
-    pip install -r requirements.txt
-    pip install .
+    poetry build
+    pip install dist/fiftyone-*.whl
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
