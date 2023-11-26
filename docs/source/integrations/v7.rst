@@ -177,12 +177,12 @@ API key.
 Installing the V7 backend
 -------------------------
 
-In order to use the V7 backend, you must install the ``fiftyone_darwin`` Python
+In order to use the V7 backend, you must install the ``darwin_fiftyone`` Python
 package:
 
 .. code-block:: shell
 
-    pip install fiftyone_darwin
+    pip install darwin_fiftyone
 
 and register the ``darwin`` backend with FiftyOne, which you can do either by
 setting the following environment variables:
