@@ -9,7 +9,7 @@ V7 Integration
 tools available, and we've made it easy to upload your data directly from
 FiftyOne to V7 for labeling.
 
-You can create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
+Create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
 these :ref:`simple setup instructions <v7-setup>` to get up and running.
 
 .. note::
@@ -19,17 +19,14 @@ these :ref:`simple setup instructions <v7-setup>` to get up and running.
     `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
     plugin!
 
-FiftyOne provides an API to create projects, upload data, define label schemas,
+FiftyOne provides an API to upload data, define label schemas,
 and download annotations using V7, all programmatically in Python. All of the
 following label types are supported, for both image and video datasets:
 
 - :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
-- :ref:`Instance segmentations <instance-segmentation>`
 - :ref:`Polygons and polylines <polylines>`
 - :ref:`Keypoints <keypoints>`
-- :ref:`Scalar fields <adding-sample-fields>`
-- :ref:`Semantic segmentation <semantic-segmentation>`
 
 .. image:: /images/integrations/v7-hero.jpg
    :alt: v7-hero
@@ -299,27 +296,6 @@ that require connections to V7:
         api_key=...,
     )
 
-**Command line prompt**
-
-If you have not stored your API key via another method, you will be prompted to
-enter it interactively in your shell each time you call a method that requires
-a connection to V7:
-
-.. code:: python
-    :linenos:
-
-    view.annotate(
-        anno_key,
-        backend="darwin",
-        label_field="ground_truth",
-        launch_editor=True,
-    )
-
-.. code-block:: text
-
-    Please enter your API key.
-    You can avoid this in the future by setting your `FIFTYONE_DARWIN_API_KEY` environment variable.
-    API key: ...
 
 .. _v7-requesting-annotations:
 
@@ -387,9 +363,6 @@ details:
     -   ``"classifications"``: multilabel classifications stored in
         |Classifications| fields
     -   ``"detections"``: object detections stored in |Detections| fields
-    -   ``"instances"``: instance segmentations stored in |Detections| fields
-        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
-        attributes populated
     -   ``"polylines"``: polylines stored in |Polylines| fields with their
         :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `False`
@@ -397,10 +370,6 @@ details:
         :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
-    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
-        fields
-    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
-        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -423,21 +392,6 @@ details:
     If a `label_schema` is also provided, this parameter determines which
     attributes are included for all fields that do not explicitly define their
     per-field attributes (in addition to any per-class attributes)
--   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations
--   **allow_additions** (*True*): whether to allow new labels to be added. Only
-    applicable when editing existing label fields
--   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
-    applicable when editing existing label fields
--   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing
-    fields with `label` attributes
--   **allow_index_edits** (*True*): whether to allow the `index` attribute
-    of existing video tracks to be modified. Only applicable when editing
-    existing frame fields with `index` attributes
--   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
-    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, the following V7-specific parameters can also be provided:
