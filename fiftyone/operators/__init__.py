@@ -12,7 +12,11 @@ from .registry import (
     list_operators,
     operator_exists,
 )
-from .executor import execute_operator, execute_or_delegate_operator
+from .executor import (
+    execute_operator,
+    execute_or_delegate_operator,
+    ExecutionOptions,
+)
 
 # This enables Sphinx refs to directly use paths imported here
 __all__ = [k for k, v in globals().items() if not k.startswith("_")]
