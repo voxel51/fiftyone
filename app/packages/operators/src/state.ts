@@ -257,6 +257,12 @@ const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
   );
   const selectedOption = options.find((option) => option.id === selectedID);
 
+  useEffect(() => {
+    if (options.length === 1) {
+      setSelectedID(options[0].id);
+    }
+  }, [options]);
+
   const handleSubmit = useCallback(() => {
     const selectedOption = options.find((option) => option.id === selectedID);
     if (selectedOption) {
