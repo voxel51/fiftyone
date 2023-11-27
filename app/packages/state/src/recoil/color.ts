@@ -25,6 +25,7 @@ import { configData } from "./config";
 import * as schemaAtoms from "./schema";
 import * as selectors from "./selectors";
 import { PathEntry, sidebarEntries } from "./sidebar";
+import { cloneDeep } from "lodash";
 
 export const datasetColorScheme = graphQLSyncFragmentAtom<
   colorSchemeFragment$key,
@@ -176,3 +177,26 @@ export const ensureColorScheme = (
         : appConfig?.showSkeletons ?? true,
   };
 };
+
+export function removeRgbProperty(input) {
+  // Clone the input to avoid mutating the original object
+  const clonedInput = cloneDeep(input);
+
+  // Process the 'colorscales' array
+  if (clonedInput.colorscales && Array.isArray(clonedInput.colorscales)) {
+    clonedInput.colorscales = clonedInput.colorscales.map(
+      ({ rgb, ...rest }) => rest
+    );
+  }
+
+  // Process the 'defaultColorscale' object
+  if (
+    clonedInput.defaultColorscale &&
+    typeof clonedInput.defaultColorscale === "object"
+  ) {
+    const { rgb, ...rest } = clonedInput.defaultColorscale;
+    clonedInput.defaultColorscale = rest;
+  }
+
+  return clonedInput;
+}
