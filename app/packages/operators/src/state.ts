@@ -244,8 +244,13 @@ const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
     }
   }
 
+  const fallbackId = executionOptions.allowImmediateExecution
+    ? "execute"
+    : "schedule";
   const defaultID =
-    options.find((option) => option.default)?.id || options[0]?.id || "execute";
+    options.find((option) => option.default)?.id ||
+    options[0]?.id ||
+    fallbackId;
   let [selectedID, setSelectedID] = fos.useBrowserStorage(
     persistUnderKey,
     defaultID
@@ -833,7 +838,6 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const execute = useRecoilCallback(
     (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
       const { delegationTarget, requestDelegation } = options || {};
-      console.log({ options });
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)

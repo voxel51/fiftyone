@@ -444,7 +444,7 @@ async function executeOperatorAsGenerator(
       operator_uri: operator.uri,
       params: ctx.params,
       dataset_name: currentContext.datasetName,
-      delgation_target: currentContext.delegationTarget,
+      delegation_target: currentContext.delegationTarget,
       delegate_execution: currentContext.delegateExecution,
       extended: currentContext.extended,
       view: currentContext.view,
