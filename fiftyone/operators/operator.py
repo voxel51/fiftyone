@@ -31,6 +31,9 @@ class OperatorConfig(object):
             when app is in the light mode
         dark_icon (None): icon to show for the operator in the Operator Browser
             when app is in the dark mode
+        allow_immediate_execution (True): whether the operator should allow immediate execution
+        allow_delegated_execution (False): whether the operator should allow delegated execution
+        resolve_execution_options_on_change (False): whether the execution options are resolved on change
     """
 
     def __init__(
@@ -68,9 +71,12 @@ class OperatorConfig(object):
         self.allow_immediate_execution = allow_immediate_execution
         self.allow_delegated_execution = allow_delegated_execution
         self.default_choice_to_delegated = default_choice_to_delegated
-        self.resolve_execution_options_on_change = (
-            resolve_execution_options_on_change
-        )
+        if resolve_execution_options_on_change is None:
+            self.resolve_execution_options_on_change = dynamic
+        else:
+            self.resolve_execution_options_on_change = (
+                resolve_execution_options_on_change
+            )
         self.kwargs = kwargs  # unused, placeholder for future extensibility
 
     def to_json(self):
