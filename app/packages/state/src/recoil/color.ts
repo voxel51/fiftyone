@@ -149,30 +149,30 @@ export const ensureColorScheme = (
 ): ColorSchemeInput => {
   colorScheme = toCamelCase(colorScheme);
   return {
-    id: colorScheme.id,
+    id: colorScheme?.id,
     colorPool:
-      colorScheme.colorPool ?? appConfig?.colorPool ?? default_app_color,
-    colorBy: colorScheme.colorBy ?? appConfig?.colorBy ?? "field",
+      colorScheme?.colorPool ?? appConfig?.colorPool ?? default_app_color,
+    colorBy: colorScheme?.colorBy ?? appConfig?.colorBy ?? "field",
     colorscales:
-      (colorScheme.colorscales as ColorSchemeInput["colorscales"]) ?? [],
-    defaultMaskTargetsColors: colorScheme.defaultMaskTargetsColors ?? [],
-    defaultColorscale: colorScheme.defaultColorscale ?? {
+      (colorScheme?.colorscales as ColorSchemeInput["colorscales"]) ?? [],
+    defaultMaskTargetsColors: colorScheme?.defaultMaskTargetsColors ?? [],
+    defaultColorscale: colorScheme?.defaultColorscale ?? {
       name: appConfig?.colorscale ?? "viridis",
       list: null,
     },
-    fields: (colorScheme.fields as ColorSchemeInput["fields"]) ?? [],
-    labelTags: (colorScheme.labelTags as ColorSchemeInput["labelTags"]) ?? {
+    fields: (colorScheme?.fields as ColorSchemeInput["fields"]) ?? [],
+    labelTags: (colorScheme?.labelTags as ColorSchemeInput["labelTags"]) ?? {
       fieldColor: null,
       valueColors: [],
     },
     multicolorKeypoints:
-      typeof colorScheme.multicolorKeypoints == "boolean"
+      typeof colorScheme?.multicolorKeypoints == "boolean"
         ? colorScheme.multicolorKeypoints
         : appConfig?.multicolorKeypoints ?? false,
     opacity:
-      typeof colorScheme.opacity === "number" ? colorScheme.opacity : 0.7,
+      typeof colorScheme?.opacity === "number" ? colorScheme.opacity : 0.7,
     showSkeletons:
-      typeof colorScheme.showSkeletons == "boolean"
+      typeof colorScheme?.showSkeletons == "boolean"
         ? colorScheme.showSkeletons
         : appConfig?.showSkeletons ?? true,
   };
