@@ -33,7 +33,7 @@ class OperatorConfig(object):
             when app is in the dark mode
         allow_immediate_execution (True): whether the operator should allow immediate execution
         allow_delegated_execution (False): whether the operator should allow delegated execution
-        resolve_execution_options_on_change (False): whether the execution options are resolved on change
+        resolve_execution_options_on_change (None): whether the execution options are resolved on change
     """
 
     def __init__(
@@ -53,7 +53,7 @@ class OperatorConfig(object):
         allow_immediate_execution=True,
         allow_delegated_execution=False,
         default_choice_to_delegated=False,
-        resolve_execution_options_on_change=False,
+        resolve_execution_options_on_change=None,
         **kwargs
     ):
         self.name = name
