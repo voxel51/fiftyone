@@ -19,7 +19,7 @@ export function SchemaIOComponent(props) {
       const updatedState = cloneDeep(currentState);
       set(updatedState, path, cloneDeep(value));
       stateRef.current = updatedState;
-      onChange(updatedState);
+      if (onChange) onChange(updatedState);
       return updatedState;
     },
     [onChange]
