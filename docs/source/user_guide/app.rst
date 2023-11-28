@@ -299,6 +299,83 @@ attribute names in the App's sidebar:
     :alt: app-field-tooltips
     :align: center
 
+.. _app-lightning-mode:
+
+Lightning mode
+--------------
+
+Lightning mode is a performant sidebar setting for larger datasets that is be
+enabled through the `lightning_threshold`
+:ref:`App config <configuring-fiftyone-app>` option, or through the options
+dropdown. The threshold is a dataset sample count, above which the sidebar is
+restricted to indexed sample or frame fields. 
+
+For datasets with a relatively small number of fields, the easiest option for
+taking advantage of lightning mode is to create a global wildcard index
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.create_index("$**")
+    
+    fo.app_config.lightning_threshold = len(dataset) - 1 # for illustration
+    session = fo.launch_app(dataset)
+
+For video datasets, a separate wildcard index for frame fields is necessary
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+    dataset.create_index("$**")
+    dataset.create_index("frames.$**")
+    
+    fo.app_config.lightning_threshold = len(dataset) - 1 # for illustration
+    session = fo.launch_app(dataset)
+
+
+For large datasets with a large number fields, adding individual and/or selective
+wildcard indexes is recommended.
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = fo.Dataset("my-large-dataset")
+
+    # it is best to create indexes before adding samples
+    dataset.create_index("camera_id")
+    dataset.create_index("recorded_at")
+    dataset.create_index("annotated_at")
+    dataset.create_index("annotated_by")
+
+    # wildcard on ground truth frame detections
+    dataset.create_index("frames.ground_truth.detections.$**")  
+
+    # ... add samples
+
+    fo.app_config.lightning_threshold = 10000
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes
+
+
+Notable restrictions
+
+
+
 .. _app-sidebar-mode:
 
 Sidebar mode
