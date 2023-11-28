@@ -97,9 +97,10 @@ export interface Field {
   embeddedDocType: string | null;
   subfield: string | null;
   path: string;
+  fields?: Schema;
 }
 
-export interface StrictField extends Field {
+export interface StrictField extends Omit<Field, "fields"> {
   fields?: StrictField[];
 }
 

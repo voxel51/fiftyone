@@ -4,19 +4,22 @@ import React from "react";
 import HeaderView from "./HeaderView";
 import autoFocus from "../utils/auto-focus";
 import { getComponentProps } from "../utils";
+import { useKey } from "../hooks";
 
 export default function CodeView(props) {
   const { mode } = useColorScheme();
   const { onChange, path, schema, data } = props;
-  const { default: defaultValue, view = {} } = schema;
+  const { view = {} } = schema;
   const { language, readOnly } = view;
-  const src = data ?? defaultValue;
+  const src = data;
   let height = view.height ?? 250;
   if (view.height === "auto") {
     const lineHeight = 19;
     const numLines = src.split("\n").length;
     height = lineHeight * numLines;
   }
+
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <Box
@@ -33,11 +36,15 @@ export default function CodeView(props) {
     >
       <HeaderView {...props} nested />
       <Editor
+        key={key}
         height={height}
         theme={mode === "dark" ? "vs-dark" : "light"}
-        value={readOnly ? data : undefined}
+        value={data}
         defaultValue={src}
-        onChange={(value) => onChange(path, value)}
+        onChange={(value) => {
+          onChange(path, value);
+          setUserChanged();
+        }}
         language={language}
         options={{ readOnly }}
         onMount={(editor) => {

@@ -7605,14 +7605,16 @@ def _merge_samples_python(
     dynamic=False,
     num_samples=None,
 ):
+    if dataset.media_type == fom.GROUP:
+        dst = dataset.select_group_slices(_allow_mixed=True)
+    else:
+        dst = dataset
+
     if (
         isinstance(samples, foc.SampleCollection)
         and samples.media_type == fom.GROUP
     ):
         samples = samples.select_group_slices(_allow_mixed=True)
-        dst = dataset.select_group_slices(_allow_mixed=True)
-    else:
-        dst = dataset
 
     if num_samples is None:
         try:

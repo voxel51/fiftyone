@@ -10,6 +10,7 @@ export default graphql`
     lastLoadedAt
     mediaType
     name
+    parentMediaType
     version
     appConfig {
       ...datasetAppConfigFragment
@@ -66,8 +67,10 @@ export default graphql`
       edges
     }
 
+    ...estimatedCountsFragment
     ...frameFieldsFragment
     ...groupSliceFragment
+    ...indexesFragment
     ...mediaFieldsFragment
     ...mediaTypeFragment
     ...sampleFieldsFragment

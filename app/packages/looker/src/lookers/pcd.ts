@@ -31,9 +31,9 @@ export class PcdLooker extends AbstractLooker<PcdState> {
     return DEFAULT_PCD_OPTIONS;
   }
 
-  updateOptions(options: Optional<PcdState["options"]>) {
+  updateOptions(options: Partial<PcdState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Optional<PcdState> = { options };
+    const state: Partial<PcdState> = { options };
     if (reload) {
       this.updater({
         ...state,

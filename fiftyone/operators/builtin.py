@@ -24,46 +24,34 @@ class CloneSelectedSamples(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
-        sample_ids = ctx.selected
-        count = len(sample_ids)
-        header = "Clone sample"
+
+        count = len(ctx.selected)
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
-            header = f"Clone {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to clone {count} selected {sample_text}",
-                view=types.Notice(space=6),
-            )
-            inputs.str(
-                "btn",
-                label="Show selected samples",
-                view=types.Button(operator="show_selected_samples", space=3),
+                label=f"Clone {count} selected {sample_text}?",
+                view=types.Warning(),
             )
         else:
-            header = "No selected samples"
             inputs.str(
                 "msg",
                 label="You must select samples in the grid to clone",
                 view=types.Warning(),
             )
 
-        return types.Property(inputs, view=types.View(label=header))
+        view = types.View(label="Clone selected samples")
+        return types.Property(inputs, view=view)
 
     def execute(self, ctx):
-        sample_ids = ctx.selected
-        if len(sample_ids) > 0:
-            samples = ctx.dataset.select(sample_ids)
-            cloned_samples = [
-                fo.Sample.from_dict(dict(**sample.to_dict(), id=None))
-                for sample in samples
-            ]
-            ctx.dataset.add_samples(cloned_samples)
-            ctx.trigger("reload_samples")
-            ctx.trigger(
-                "show_samples",
-                {"samples": [sample.id for sample in cloned_samples]},
-            )
+        if not ctx.selected:
+            return
+
+        samples = ctx.dataset.select(ctx.selected)
+        sample_ids = ctx.dataset.add_collection(samples, new_ids=True)
+
+        ctx.trigger("clear_selected_samples")
+        ctx.trigger("reload_samples")
 
 
 class CloneSampleField(foo.Operator):
@@ -187,6 +175,40 @@ class RenameSampleField(foo.Operator):
         ctx.trigger("reload_dataset")
 
 
+class ClearSampleField(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="clear_sample_field",
+            label="Clear sample field",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+        fields = ctx.dataset.get_field_schema(flat=True)
+        field_keys = list(fields.keys())
+        field_selector = types.AutocompleteView()
+        for key in field_keys:
+            field_selector.add_choice(key, label=key)
+
+        inputs.enum(
+            "field_name",
+            field_keys,
+            label="Field to clear",
+            view=field_selector,
+            required=True,
+        )
+
+        return types.Property(
+            inputs, view=types.View(label="Clear sample field")
+        )
+
+    def execute(self, ctx):
+        ctx.dataset.clear_sample_field(ctx.params.get("field_name", None))
+        ctx.trigger("reload_dataset")
+
+
 class DeleteSelectedSamples(foo.Operator):
     @property
     def config(self):
@@ -198,31 +220,24 @@ class DeleteSelectedSamples(foo.Operator):
 
     def resolve_input(self, ctx):
         inputs = types.Object()
-        sample_ids = ctx.selected
-        count = len(sample_ids)
-        header = "Delete samples"
+
+        count = len(ctx.selected)
         if count > 0:
             sample_text = "sample" if count == 1 else "samples"
-            header = f"Delete {count} {sample_text}?"
             inputs.str(
                 "msg",
-                label=f"Press 'Execute' to delete {count} selected {sample_text}",
-                view=types.Notice(space=6),
-            )
-            inputs.str(
-                "btn",
-                label="Show selected samples",
-                view=types.Button(operator="show_selected_samples", space=3),
+                label=f"Delete {count} selected {sample_text}s?",
+                view=types.Warning(),
             )
         else:
-            header = "No selected samples"
             inputs.str(
                 "msg",
                 label="You must select samples in the grid to delete",
                 view=types.Warning(),
             )
 
-        return types.Property(inputs, view=types.View(label=header))
+        view = types.View(label="Delete selected samples")
+        return types.Property(inputs, view=view)
 
     def execute(self, ctx):
         num_samples = len(ctx.selected)
@@ -230,6 +245,7 @@ class DeleteSelectedSamples(foo.Operator):
             return
 
         ctx.dataset.delete_samples(ctx.selected)
+
         ctx.trigger("clear_selected_samples")
         ctx.trigger("reload_samples")
 
@@ -362,6 +378,7 @@ BUILTIN_OPERATORS = [
     CloneSelectedSamples(_builtin=True),
     CloneSampleField(_builtin=True),
     RenameSampleField(_builtin=True),
+    ClearSampleField(_builtin=True),
     DeleteSelectedSamples(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),

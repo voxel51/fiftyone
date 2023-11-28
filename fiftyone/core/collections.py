@@ -2702,7 +2702,11 @@ class SampleCollection(object):
         self._dataset.delete_labels(ids=ids, fields=fields)
 
     def compute_metadata(
-        self, overwrite=False, num_workers=None, skip_failures=True
+        self,
+        overwrite=False,
+        num_workers=None,
+        skip_failures=True,
+        warn_failures=False,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
 
@@ -2711,15 +2715,18 @@ class SampleCollection(object):
 
         Args:
             overwrite (False): whether to overwrite existing metadata
-            num_workers (None): a suggested number of processes to use
+            num_workers (None): a suggested number of threads to use
             skip_failures (True): whether to gracefully continue without
                 raising an error if metadata cannot be computed for a sample
+            warn_failures (False): whether to log a warning if metadata cannot
+                be computed for a sample
         """
         fomt.compute_metadata(
             self,
             overwrite=overwrite,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            warn_failures=warn_failures,
         )
 
     def apply_model(
@@ -3312,7 +3319,7 @@ class SampleCollection(object):
 
     @property
     def has_evaluations(self):
-        """Whether this colection has any evaluation results."""
+        """Whether this collection has any evaluation results."""
         return bool(self.list_evaluations())
 
     def has_evaluation(self, eval_key):
@@ -3421,7 +3428,7 @@ class SampleCollection(object):
 
     @property
     def has_brain_runs(self):
-        """Whether this colection has any brain runs."""
+        """Whether this collection has any brain runs."""
         return bool(self.list_brain_runs())
 
     def has_brain_run(self, brain_key):
@@ -3531,7 +3538,7 @@ class SampleCollection(object):
 
     @property
     def has_runs(self):
-        """Whether this colection has any runs."""
+        """Whether this collection has any runs."""
         return bool(self.list_runs())
 
     def has_run(self, run_key):
@@ -8556,7 +8563,7 @@ class SampleCollection(object):
 
     @property
     def has_annotation_runs(self):
-        """Whether this colection has any annotation runs."""
+        """Whether this collection has any annotation runs."""
         return bool(self.list_annotation_runs())
 
     def has_annotation_run(self, anno_key):
@@ -9526,7 +9533,7 @@ class SampleCollection(object):
                 end of the pipeline. Only applicable to datasets that contain
                 videos
             frames_only (False): whether to generate a pipeline that contains
-                *only* the frames in the colection
+                *only* the frames in the collection
             support (None): an optional ``[first, last]`` range of frames to
                 attach. Only applicable when attaching frames
             group_slice (None): the current group slice of the collection, if
@@ -10449,6 +10456,9 @@ def _get_matching_label_field(label_schema, label_type_or_types):
 
 
 def _parse_values_dict(sample_collection, key_field, values):
+    if not values:
+        return [], []
+
     if key_field == "id":
         return zip(*values.items())
 

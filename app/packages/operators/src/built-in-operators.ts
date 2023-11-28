@@ -1,9 +1,9 @@
 import {
+  Layout,
   SpaceNode,
   usePanels,
   useSpaceNodes,
   useSpaces,
-  Layout,
 } from "@fiftyone/spaces";
 import * as fos from "@fiftyone/state";
 import * as types from "./types";
@@ -14,11 +14,9 @@ import {
   ExecutionContext,
   Operator,
   OperatorConfig,
+  _registerBuiltInOperator,
   executeOperator,
-  executeStartupOperators,
   listLocalAndRemoteOperators,
-  loadOperatorsFromServer,
-  registerOperator,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
 
@@ -458,7 +456,10 @@ class SetSelectedSamples extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
-    hooks.setSelected(params.samples);
+    const { samples } = params || {};
+    if (!Array.isArray(samples))
+      throw new Error("param 'samples' must be an array of string");
+    hooks.setSelected(new Set(samples));
   }
 }
 
@@ -541,7 +542,7 @@ class ShowSamples extends Operator {
           ]
         : []),
     ];
-    hooks.setView(fos.view, newView);
+    hooks.setView(newView);
   }
 }
 
@@ -740,55 +741,42 @@ class ClearSelectedLabels extends Operator {
     });
   }
   async execute({ state }: ExecutionContext) {
-    state.set(fos.selectedLabels, {});
+    state.set(fos.selectedLabels, []);
   }
 }
 
 export function registerBuiltInOperators() {
   try {
-    registerOperator(CopyViewAsJSON);
-    registerOperator(ViewFromJSON);
-    registerOperator(ReloadSamples);
-    registerOperator(ReloadDataset);
-    registerOperator(ClearSelectedSamples);
-    registerOperator(OpenAllPanels);
-    registerOperator(CloseAllPanels);
-    registerOperator(OpenDataset);
-    registerOperator(ClearView);
-    registerOperator(ClearSidebarFilters);
-    registerOperator(ClearAllStages);
-    registerOperator(RefreshColors);
-    registerOperator(ShowSelectedSamples);
-    registerOperator(ConvertExtendedSelectionToSelectedSamples);
-    registerOperator(SetSelectedSamples);
-    registerOperator(OpenPanel);
-    registerOperator(OpenAllPanels);
-    registerOperator(ClosePanel);
-    registerOperator(CloseAllPanels);
-    registerOperator(SetView);
-    registerOperator(ShowSamples);
-    // registerOperator(ClearShowSamples);
-    registerOperator(ConsoleLog);
-    registerOperator(ShowOutput);
-    registerOperator(SetProgress);
-    registerOperator(TestOperator);
-    registerOperator(SplitPanel);
-    registerOperator(SetSelectedLabels);
-    registerOperator(ClearSelectedLabels);
+    _registerBuiltInOperator(CopyViewAsJSON);
+    _registerBuiltInOperator(ViewFromJSON);
+    _registerBuiltInOperator(ReloadSamples);
+    _registerBuiltInOperator(ReloadDataset);
+    _registerBuiltInOperator(ClearSelectedSamples);
+    _registerBuiltInOperator(OpenAllPanels);
+    _registerBuiltInOperator(CloseAllPanels);
+    _registerBuiltInOperator(OpenDataset);
+    _registerBuiltInOperator(ClearView);
+    _registerBuiltInOperator(ClearSidebarFilters);
+    _registerBuiltInOperator(ClearAllStages);
+    _registerBuiltInOperator(RefreshColors);
+    _registerBuiltInOperator(ShowSelectedSamples);
+    _registerBuiltInOperator(ConvertExtendedSelectionToSelectedSamples);
+    _registerBuiltInOperator(SetSelectedSamples);
+    _registerBuiltInOperator(OpenPanel);
+    _registerBuiltInOperator(ClosePanel);
+    _registerBuiltInOperator(SetView);
+    _registerBuiltInOperator(ShowSamples);
+    // _registerBuiltInOperator(ClearShowSamples);
+    _registerBuiltInOperator(ConsoleLog);
+    _registerBuiltInOperator(ShowOutput);
+    _registerBuiltInOperator(SetProgress);
+    _registerBuiltInOperator(TestOperator);
+    _registerBuiltInOperator(SplitPanel);
+    _registerBuiltInOperator(SetSelectedLabels);
+    _registerBuiltInOperator(ClearSelectedLabels);
   } catch (e) {
     console.error("Error registering built-in operators");
     console.error(e);
-  }
-}
-
-let startupOperatorsExecuted = false;
-export async function loadOperators(datasetName: string) {
-  registerBuiltInOperators();
-  // todo: move to better spot
-  await loadOperatorsFromServer(datasetName);
-  if (!startupOperatorsExecuted) {
-    executeStartupOperators();
-    startupOperatorsExecuted = true;
   }
 }
 

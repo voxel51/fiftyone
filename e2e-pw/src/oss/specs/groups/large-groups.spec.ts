@@ -64,7 +64,7 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await grid.openFirstSample();
     await modal.sidebar.toggleSidebarGroup("GROUP");
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "0");
-
+    await modal.waitForCarouselToLoad();
     await modal.scrollCarousel();
     await modal.navigateSlice("group.name", "19", true);
     await modal.sidebar.assert.verifySidebarEntryText("group.name", "19");

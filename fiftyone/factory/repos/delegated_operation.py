@@ -8,8 +8,8 @@ FiftyOne delegated operation repository.
 from datetime import datetime
 from typing import Any, List
 
-from bson import ObjectId
 import pymongo
+from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
@@ -17,9 +17,9 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
+    ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
 
 
@@ -117,11 +117,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
-        import fiftyone.core.odm as foo
         import fiftyone as fo
+        import fiftyone.core.odm as foo
 
-        db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
-        database = db_client[fo.config.database_name]
+        database: pymongo.database.Database = foo.get_db_conn()
         return database[self.COLLECTION_NAME]
 
     def _create_indexes(self):
@@ -156,6 +155,11 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             if prop not in kwargs:
                 raise ValueError("Missing required property '%s'" % prop)
             setattr(op, prop, kwargs.get(prop))
+
+        # also set the delegation target (not required)
+        delegation_target = kwargs.get("delegation_target", None)
+        if delegation_target:
+            setattr(op, "delegation_target", delegation_target)
 
         dataset_name = None
         if isinstance(op.context, dict):

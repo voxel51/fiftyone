@@ -5,7 +5,6 @@ import { getComponentProps } from "../utils";
 
 export default function ImageView(props) {
   const { schema, data } = props;
-  const { view = {} } = schema;
   const imageURI = data ?? schema?.default;
 
   return (

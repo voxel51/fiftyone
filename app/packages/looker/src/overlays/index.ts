@@ -81,7 +81,6 @@ const accumulateOverlays = <State extends BaseState>(
 } => {
   const classifications = [];
   const overlays = [];
-
   for (const field in data) {
     const label = data[field];
 

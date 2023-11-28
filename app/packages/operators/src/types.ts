@@ -1084,6 +1084,49 @@ export class PromptView extends View {
 }
 
 /**
+ * Operator class for describing a FieldView {@link View} for an
+ * operator type.
+ */
+export class FieldView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "FieldView";
+  }
+  static fromJSON(json) {
+    return new FieldView(json);
+  }
+}
+
+/**
+ * Operator class for describing a TextFieldView {@link View} for an
+ * operator type.
+ */
+export class TextFieldView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "TextFieldView";
+  }
+  static fromJSON(json) {
+    return new TextFieldView(json);
+  }
+}
+
+/**
+ * Operator class for describing a LazyFieldView {@link View} for an
+ * operator type. When using LazyFieldView, only apply input field changes on
+ * blur or when user clicks the save button within the field.
+ */
+export class LazyFieldView extends View {
+  constructor(options: ViewProps) {
+    super(options);
+    this.name = "LazyFieldView";
+  }
+  static fromJSON(json) {
+    return new LazyFieldView(json);
+  }
+}
+
+/**
  * Places where you can have your operator placement rendered.
  */
 export enum Places {
@@ -1147,6 +1190,9 @@ const VIEWS = {
   ProgressView,
   MarkdownView,
   PromptView,
+  FieldView,
+  TextFieldView,
+  LazyFieldView,
 };
 
 export function typeFromJSON({ name, ...rest }): ANY_TYPE {

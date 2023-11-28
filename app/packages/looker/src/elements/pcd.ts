@@ -24,11 +24,7 @@ export class PcdElement extends BaseElement<PcdState, HTMLImageElement> {
     };
   }
 
-  createHTMLElement(
-    _: StateUpdate<PcdState>,
-    __: (_: string, details) => void,
-    { src }: Readonly<PcdState["config"]>
-  ) {
+  createHTMLElement(_dispatchEvent, { src }: Readonly<PcdState["config"]>) {
     const element = new Image();
     element.crossOrigin = "Anonymous";
     element.loading = "eager";

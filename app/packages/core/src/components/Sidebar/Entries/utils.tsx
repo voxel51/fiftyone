@@ -1,5 +1,4 @@
 import { Field } from "@fiftyone/utilities";
-import { atomFamily } from "recoil";
 import styled from "styled-components";
 
 export const InputDiv = styled.div`
@@ -53,14 +52,6 @@ export const FilterInputDiv = styled.div<{ modal: boolean }>`
     padding: 3px;
   }
 `;
-
-export const pathIsExpanded = atomFamily<
-  boolean,
-  { modal: boolean; path: string }
->({
-  key: "pathIsExpanded",
-  default: false,
-});
 
 export const makePseudoField = (path: string): Field => ({
   name: path.split(".").slice(1).join("."),

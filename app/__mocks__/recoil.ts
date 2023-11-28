@@ -109,7 +109,7 @@ export function selectorFamily<
 }
 
 export type TestSelector<T extends recoil.RecoilValueReadOnly<K>, K = any> = {
-  call: () => T["__tag"][0];
+  (): T["__tag"][0];
   key: string;
 };
 

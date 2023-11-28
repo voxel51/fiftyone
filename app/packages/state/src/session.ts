@@ -49,6 +49,9 @@ export const SESSION_DEFAULT: Session = {
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,
+    colorscales: [],
+    defaultColorscale: { name: "viridis", list: null },
+    defaultMaskTargetsColors: [],
   },
   fieldVisibilityStage: undefined,
 };
@@ -136,7 +139,10 @@ export function sessionAtom<K extends keyof Session>(
     ],
   });
 
-  const transitionKeys = new Set<string>(["fieldVisibilityStage"]);
+  const transitionKeys = new Set<string>([
+    "colorScheme",
+    "fieldVisibilityStage",
+  ]);
   if (transitionKeys.has(options.key)) {
     return selectorWithEffect<Session[K]>(
       {

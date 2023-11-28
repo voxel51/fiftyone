@@ -1,4 +1,5 @@
-import type { Sample } from "@fiftyone/looker";
+import { AbstractLooker, ImaVidLooker, type Sample } from "@fiftyone/looker";
+import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
 import { graphQLSelector } from "recoil-relay";
@@ -9,24 +10,68 @@ import {
   groupId,
   groupSlice,
   hasGroupSlices,
+  imaVidLookerState,
   modalGroupSlice,
   pinned3DSample,
   pinned3DSampleSlice,
   pinned3d,
+  shouldRenderImaVidLooker,
 } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
 
+export const modalLooker = atom<AbstractLooker<BaseState> | null>({
+  key: "modalLooker",
+  default: null,
+  dangerouslyAllowMutability: true,
+});
+
 export const sidebarSampleId = selector({
   key: "sidebarSampleId",
   get: ({ get }) => {
+    if (get(shouldRenderImaVidLooker)) {
+      const thisFrameNumber = get(imaVidLookerState("currentFrameNumber"));
+      const isPlaying = get(imaVidLookerState("playing"));
+      const isSeeking = get(imaVidLookerState("seeking"));
+
+      const thisLooker = get(modalLooker) as ImaVidLooker;
+
+      if (!isPlaying && !isSeeking && thisFrameNumber && thisLooker) {
+        const sample = thisLooker.thisFrameSample;
+        const id = sample?.id || sample?.sample?._id;
+        if (id) {
+          return id;
+        }
+      } else {
+        // suspend
+        return new Promise(() => {});
+      }
+    }
+
     const override = get(pinned3DSampleSlice);
 
     return get(pinned3d) && override
       ? get(pinned3DSample).id
       : get(modalSampleId);
+  },
+});
+
+export const currentSampleId = selector({
+  key: "currentSampleId",
+  get: ({ get }) => {
+    const override = get(pinned3DSampleSlice);
+
+    const id =
+      get(pinned3d) && override
+        ? get(pinned3DSample).id
+        : get(nullableModalSampleId);
+
+    if (id && id.endsWith("-modal")) {
+      return id.replace("-modal", "");
+    }
+    return id;
   },
 });
 
@@ -92,6 +137,19 @@ export const modalSampleId = selector<string>({
 
     if (!current) {
       throw new Error("modal sample is not defined");
+    }
+
+    return current.id;
+  },
+});
+
+export const nullableModalSampleId = selector<string>({
+  key: "nullableModalSampleId",
+  get: ({ get }) => {
+    const current = get(currentModalSample);
+
+    if (!current) {
+      return null;
     }
 
     return current.id;

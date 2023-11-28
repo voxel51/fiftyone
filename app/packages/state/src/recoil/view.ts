@@ -8,8 +8,8 @@ import {
   viewFragment$key,
 } from "@fiftyone/relay";
 import { Stage } from "@fiftyone/utilities";
-import { atom, selector } from "recoil";
-import { groupByFieldValue, groupField } from "./groups";
+import { atom, selector, selectorFamily } from "recoil";
+import { dynamicGroupParameters, groupByFieldValue } from "./groups";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
 
@@ -192,126 +192,90 @@ export const isFramesView = selector<boolean>({
   },
 });
 
-export const dynamicGroupCurrentElementIndex = atom<number>({
-  key: "dynamicGroupCurrentElementIndex",
-  default: 1,
-});
-
-export const dynamicGroupParameters =
-  selector<State.DynamicGroupParameters | null>({
-    key: "dynamicGroupParameters",
-    get: ({ get }) => {
-      const viewArr = get(view);
-      if (!viewArr) return null;
-
-      const groupByViewStageNode = viewArr.find(
-        (view) => view._cls === GROUP_BY_VIEW_STAGE
-      );
-      if (!groupByViewStageNode) return null;
-
-      const isFlat = groupByViewStageNode.kwargs[2][1]; // third index is 'flat', we want it to be false for dynamic groups
-      if (isFlat) return null;
-
-      return {
-        groupBy: groupByViewStageNode.kwargs[0][1] as string, // first index is 'field_or_expr', which defines group-by
-        orderBy: groupByViewStageNode.kwargs[1][1] as string, // second index is 'order_by', which defines order-by
-      };
-    },
-  });
-
-export const isDynamicGroup = selector<boolean>({
-  key: "isDynamicGroup",
-  get: ({ get }) => {
-    return Boolean(get(dynamicGroupParameters));
-  },
-});
-
-export const isNonNestedDynamicGroup = selector<boolean>({
-  key: "isNonNestedDynamicGroup",
-  get: ({ get }) => {
-    return get(isDynamicGroup) && get(groupField) === null;
-  },
-});
-
-export const dynamicGroupViewQuery = selector<Stage[]>({
+export const dynamicGroupViewQuery = selectorFamily<
+  Stage[],
+  { groupByFieldValueExplicit?: string }
+>({
   key: "dynamicGroupViewQuery",
-  get: ({ get }) => {
-    const params = get(dynamicGroupParameters);
-    if (!dynamicGroupParameters) return [];
+  get:
+    ({ groupByFieldValueExplicit }) =>
+    ({ get }) => {
+      const params = get(dynamicGroupParameters);
+      if (!params) return [];
 
-    const { groupBy, orderBy } = params;
+      const { groupBy, orderBy } = params;
 
-    // todo: fix sample_id issue
-    // todo: sanitize expressions
-    const groupBySanitized = getSanitizedGroupByExpression(groupBy);
+      // todo: fix sample_id issue
+      // todo: sanitize expressions
+      const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
-    const viewStages: State.Stage[] = [
-      {
-        _cls: MATCH_VIEW_STAGE,
-        kwargs: [
-          [
-            "filter",
-            {
-              $expr: {
-                $let: {
-                  vars: {
-                    expr: `$${groupBySanitized}`,
-                  },
-                  in: {
-                    $in: [
-                      {
-                        $toString: "$$expr",
-                      },
-                      [get(groupByFieldValue)],
-                    ],
+      const viewStages: State.Stage[] = [
+        {
+          _cls: MATCH_VIEW_STAGE,
+          kwargs: [
+            [
+              "filter",
+              {
+                $expr: {
+                  $let: {
+                    vars: {
+                      expr: `$${groupBySanitized}`,
+                    },
+                    in: {
+                      $in: [
+                        {
+                          $toString: "$$expr",
+                        },
+                        [groupByFieldValueExplicit ?? get(groupByFieldValue)],
+                      ],
+                    },
                   },
                 },
               },
-            },
+            ],
           ],
-        ],
-      },
-    ];
+        },
+      ];
 
-    if (orderBy?.length) {
-      viewStages.push({
-        _cls: SORT_VIEW_STAGE,
-        kwargs: [
-          ["field_or_expr", orderBy],
-          ["reverse", false],
-        ],
-      });
-    }
-
-    const baseView = [...get(view)];
-    let modalView: State.Stage[] = [];
-    let pastGroup = false;
-    for (let index = 0; index < baseView.length; index++) {
-      const stage = baseView[index];
-      if (stage._cls === GROUP_BY_VIEW_STAGE) {
-        modalView = [...modalView, ...viewStages];
-        pastGroup = true;
-        continue;
+      if (orderBy?.length) {
+        viewStages.push({
+          _cls: SORT_VIEW_STAGE,
+          kwargs: [
+            ["field_or_expr", orderBy],
+            ["reverse", false],
+          ],
+        });
       }
 
-      if (!pastGroup) {
-        modalView.push(stage);
-        continue;
+      const baseView = [...get(view)];
+      let modalView: State.Stage[] = [];
+      let pastGroup = false;
+      for (let index = 0; index < baseView.length; index++) {
+        const stage = baseView[index];
+        if (stage._cls === GROUP_BY_VIEW_STAGE) {
+          modalView = [...modalView, ...viewStages];
+          pastGroup = true;
+          continue;
+        }
+
+        if (!pastGroup) {
+          modalView.push(stage);
+          continue;
+        }
+
+        // Assume these stages should be filtered out because they apply to the slices
+        // and not a slice list. To be improved
+        if (
+          ![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE, TAKE_VIEW_STAGE].includes(
+            stage._cls
+          )
+        ) {
+          modalView.push(stage);
+        }
       }
 
-      // Assume these stages should be filtered out because they apply to the slices
-      // and not a slice list. To be improved
-      if (
-        ![LIMIT_VIEW_STAGE, SKIP_VIEW_STAGE, TAKE_VIEW_STAGE].includes(
-          stage._cls
-        )
-      ) {
-        modalView.push(stage);
-      }
-    }
-
-    return modalView;
-  },
+      return modalView;
+    },
 });
 
 export const currentViewSlug = selector<string>({
