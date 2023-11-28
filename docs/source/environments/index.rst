@@ -202,8 +202,6 @@ cloud notebook that has an accessible network proxy via configured
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
-https://myinstance.notebook.us-east-1.sagemaker.aws/proxy/6006/
-
 .. code-block:: text
 
     !pip install fiftyone
