@@ -1,8 +1,9 @@
-import { useTheme } from "@fiftyone/components";
 import { Radio as MaterialRadio } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useLayoutEffect } from "react";
 import styled from "styled-components";
+
+import { useTheme } from "@fiftyone/components";
 import { ItemAction } from "../Actions/ItemAction";
 import { useHighlightHover } from "../Actions/utils";
 
@@ -21,37 +22,33 @@ const RadioName = styled.div`
   flex-grow: 1;
 `;
 
-interface RadioProps<T extends string> {
-  color?: string;
-  setValue: (value: T) => void;
-  value: T;
-  currentValue: T;
+interface RadioProps {
+  color: string;
+  setValue: (value: string) => void;
+  value: string;
+  currentValue: string;
 }
 
-const Radio = <T extends string>({
-  color,
-  currentValue,
-  setValue,
-  value,
-}: RadioProps<T>) => {
-  const props = useHighlightHover(false);
-  return (
-    <StyledRadioContainer>
-      <StyledRadio
-        {...props}
-        onClick={() => setValue(value)}
-        data-cy={`radio-button-${value}`}
-      >
-        <MaterialRadio
-          style={{ color, padding: "0 0.5rem 0 0" }}
-          checked={value === currentValue}
-        />
-        <RadioName>{value}</RadioName>
-      </StyledRadio>
-    </StyledRadioContainer>
-  );
-};
-
+const Radio = React.memo(
+  ({ color, currentValue, setValue, value }: RadioProps) => {
+    const props = useHighlightHover(false);
+    return (
+      <StyledRadioContainer>
+        <StyledRadio
+          {...props}
+          onClick={() => setValue(value)}
+          data-cy={`radio-button-${value}`}
+        >
+          <MaterialRadio
+            style={{ color, padding: "0 0.5rem 0 0" }}
+            checked={value === currentValue}
+          />
+          <RadioName>{value}</RadioName>
+        </StyledRadio>
+      </StyledRadioContainer>
+    );
+  }
+);
 type Props = {
   horizontal: boolean;
 };
@@ -74,22 +71,22 @@ const RadioGroupContainer = styled.div<Props>`
   }
 `;
 
-interface RadioGroupProps<T extends string> {
-  choices: T[];
-  setValue: (value: T) => void;
-  value: T;
+interface RadioGroupProps {
+  choices: string[];
+  setValue: (value: string) => void;
+  value: string;
   color?: string;
   horizontal?: boolean;
 }
 
 const RadioGroup = React.memo(
-  <T extends string>({
+  ({
     choices,
-    color,
+    color = null,
     value,
     setValue,
     horizontal = false,
-  }: RadioGroupProps<T>) => {
+  }: RadioGroupProps) => {
     const theme = useTheme();
     color = color ?? theme.primary.plainColor;
 
