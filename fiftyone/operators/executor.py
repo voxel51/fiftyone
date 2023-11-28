@@ -1013,8 +1013,11 @@ class ExecutionOptions(object):
 
     @property
     def orchestrator_registration_enabled(self):
-        return bool(
-            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
+        return (
+            os.environ.get(
+                "FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", "false"
+            ).lower()
+            == "true"
         )
 
     @property

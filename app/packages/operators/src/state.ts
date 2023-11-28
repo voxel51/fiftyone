@@ -258,8 +258,13 @@ const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
   const selectedOption = options.find((option) => option.id === selectedID);
 
   useEffect(() => {
+    const selectedOptionExists = !!options.find((o) => o.id === selectedID);
     if (options.length === 1) {
       setSelectedID(options[0].id);
+    } else if (!selectedOptionExists) {
+      const nextSelectedID =
+        options.find((option) => option.default)?.id || options[0]?.id;
+      setSelectedID(nextSelectedID);
     }
   }, [options]);
 

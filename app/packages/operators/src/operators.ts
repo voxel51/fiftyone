@@ -444,8 +444,8 @@ async function executeOperatorAsGenerator(
       operator_uri: operator.uri,
       params: ctx.params,
       dataset_name: currentContext.datasetName,
-      delegation_target: currentContext.delegationTarget,
-      delegate_execution: currentContext.delegateExecution,
+      delegation_target: ctx.delegationTarget,
+      request_delegation: ctx.requestDelegation,
       extended: currentContext.extended,
       view: currentContext.view,
       filters: currentContext.filters,
@@ -453,7 +453,7 @@ async function executeOperatorAsGenerator(
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
-      current_sample: currentContext.currentSample,
+      current_sample: currentContext.currentSample
     },
     "json-stream"
   );
