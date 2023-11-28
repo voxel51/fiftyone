@@ -110,7 +110,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
       }
 
       // see https://docs.voxel51.com/user_guide/app.html#sidebar-mode
-      const sampleCount = get(view).length
+      const sampleCount = get(view)?.length
         ? get(count({ path: "", modal: false, extended: false }))
         : get(datasetSampleCount);
 
