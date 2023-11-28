@@ -310,8 +310,25 @@ enabled through the `lightning_threshold`
 dropdown. The threshold is a dataset sample count, above which the sidebar is
 restricted to indexed sample or frame fields. 
 
+After filtering below the configured threshold using indexed fields, other fields
+become available for filtering and counts are presented. Note that base counts
+are with respect to the indexed field filters.
+
+
+
+
+
+.. note::
+
+    When setting the lightning threshold in the App, the value is persisted
+    in your browser
+
 For datasets with a relatively small number of fields, the easiest option for
 taking advantage of lightning mode is to create a global wildcard index
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes
 
 .. code-block:: python
     :linenos:
@@ -367,9 +384,21 @@ wildcard indexes is recommended.
     fo.app_config.lightning_threshold = 10000
     session = fo.launch_app(dataset)
 
-.. note::
 
-    Numeric field filters are not supported by wildcard indexes
+For group datasets, it is recommended to create compound indexes that include
+the group `name` for performant sample grid results.
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+    
+    fo.app_config.lightning_threshold = len(dataset) - 1 # for illustration
+    session = fo.launch_app(dataset)
 
 
 Notable restrictions
