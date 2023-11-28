@@ -39,10 +39,6 @@ export function resolveURL(
   dataset?: string | null,
   view?: string
 ): string {
-  if (dataset == undefined && view == undefined) {
-    return `${window.location.pathname}${window.location.search}`;
-  }
-
   const params = new URLSearchParams(router.history.location.search);
   view ? params.set("view", encodeURIComponent(view)) : params.delete("view");
   let search = params.toString();
@@ -50,15 +46,10 @@ export function resolveURL(
     search = `?${search}`;
   }
 
-  let path = "";
-  const proxy = params.get("proxy");
-  if (proxy) {
-    path = decodeURIComponent(proxy);
-  }
-
+  const path = decodeURIComponent(params.get("proxy") ?? "");
   if (dataset) {
     return `${path}/datasets/${encodeURIComponent(dataset)}${search}`;
   }
 
-  return `${path}${search}`;
+  return `${path.length ? path : "/"}${search}`;
 }

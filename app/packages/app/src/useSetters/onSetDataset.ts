@@ -31,26 +31,10 @@ const onSetDataset: RegisteredSetter =
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
-      sessionRef.current.colorScheme = entry.data.dataset?.appConfig
-        ?.colorScheme ?? {
-        id: sessionRef.current.colorScheme?.id,
-        colorBy: entry.data.config.colorBy,
-        colorPool: entry.data.config.colorPool,
-        fields: [],
-        labelTags: {
-          fieldColor: null,
-          valueColors: [],
-        },
-        defaultMaskTargetsColors: [],
-        defaultColorscale: {
-          name: entry.data.config.colorscale ?? "viridis",
-          list: [],
-        },
-        colorscales: [],
-        multicolorKeypoints: false,
-        opacity: 0.7,
-        showSkeletons: true,
-      };
+      sessionRef.current.colorScheme = ensureColorScheme(
+        entry.data.dataset?.appConfig,
+        entry.data.config
+      );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });
