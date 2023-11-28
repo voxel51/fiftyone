@@ -8871,7 +8871,9 @@ class SampleCollection(object):
         is_frame_fields = []
         index_spec = []
         for field, option in input_spec:
-            self._validate_root_field(field, include_private=True)
+            if field not in {"$**", "frames.$**"}:  # global wildcard index
+                self._validate_root_field(field, include_private=True)
+
             _field, _, _ = self._handle_id_fields(field)
             _field, is_frame_field = self._handle_frame_field(_field)
             is_frame_fields.append(is_frame_field)
