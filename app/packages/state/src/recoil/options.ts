@@ -108,6 +108,8 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
       if (mode !== "best") {
         return mode;
       }
+
+      // see https://docs.voxel51.com/user_guide/app.html#sidebar-mode
       const sampleCount = get(view).length
         ? get(count({ path: "", modal: false, extended: false }))
         : get(datasetSampleCount);
@@ -120,6 +122,7 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
       const paths = get(sidebarEntries({ modal: false, loading: true })).filter(
         (data) => data.kind === "PATH" && !disabled.has(data.path)
       );
+
       if (sampleCount >= 1000 && paths.length >= 15) {
         return "fast";
       }
