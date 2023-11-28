@@ -62,18 +62,21 @@ const checkboxCounts = selectorFamily({
 
 const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
   const loadable = useRecoilValueLoadable(checkboxCounts({ modal, path }));
+  const unlocked = fos.useLightingUnlocked();
+  const lightning = useRecoilValue(fos.lightning);
   const data =
     loadable.state === "hasValue"
       ? loadable.contents
       : new Map<string | null, number | null>();
 
+  const loading = loadable.state === "loading";
   results?.forEach(({ value, count }) => {
     if (!data.has(value)) {
-      data.set(value, count);
+      data.set(value, loading || (lightning && !unlocked) ? count : count ?? 0);
     }
   });
 
-  return { counts: data, loading: loadable.state === "loading" };
+  return { counts: data, loading };
 };
 
 const useValues = ({
@@ -96,7 +99,7 @@ const useValues = ({
     useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
   const skeleton = useRecoilValue(isSkeleton(path));
   const { counts, loading } = useCounts(modal, path, results);
-  const hasCount = (!lightning || unlocked) && !loading;
+  const hasCount = (!lightning || unlocked || modal) && !loading;
 
   let allValues = selected.map((value) => ({
     value,
@@ -121,7 +124,7 @@ const useValues = ({
         .filter((key) => !selectedSet.has(key))
         .map((key) => ({
           value: key,
-          count: counts.get(key) || null,
+          count: counts.get(key) ?? null,
           loading: false,
         })),
     ];

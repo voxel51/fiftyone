@@ -5,15 +5,15 @@ import {
   mediaFieldsFragment$key,
 } from "@fiftyone/relay";
 import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import { configData } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
-import { fieldPaths } from "./schema";
-import {
-  appConfigDefault,
-  datasetAppConfig,
-  isVideoDataset,
-} from "./selectors";
+import { count } from "./pathData";
+import { fieldPaths, labelPaths } from "./schema";
+import { datasetAppConfig, isVideoDataset } from "./selectors";
+import { disabledPaths, sidebarEntries } from "./sidebar";
 import { State } from "./types";
+import { view } from "./view";
 
 export const selectedMediaFieldAtomFamily = graphQLSyncFragmentAtomFamily<
   mediaFieldsFragment$key,
@@ -84,11 +84,15 @@ export const configuredSidebarModeDefault = selectorFamily<
         return setting;
       }
 
-      const appDefault = get(
-        appConfigDefault({ modal: false, key: "sidebarMode" })
-      ) as "all" | "best" | "fast";
-
+      const appDefault = get(configData).config.sidebarMode;
       const datasetDefault = get(datasetAppConfig)?.sidebarMode;
+
+      if (
+        appDefault === "%future added value" ||
+        datasetDefault === "%future added value"
+      ) {
+        throw new Error("unexpected");
+      }
 
       return datasetDefault || appDefault;
     },
@@ -104,8 +108,26 @@ export const resolvedSidebarMode = selectorFamily<"all" | "fast", boolean>({
       if (mode !== "best") {
         return mode;
       }
+      const sampleCount = get(view).length
+        ? get(count({ path: "", modal: false, extended: false }))
+        : get(datasetSampleCount);
 
-      if (get(datasetSampleCount) >= 10000) {
+      if (sampleCount >= 10000) {
+        return "fast";
+      }
+
+      const disabled = get(disabledPaths);
+      const paths = get(sidebarEntries({ modal: false, loading: true })).filter(
+        (data) => data.kind === "PATH" && !disabled.has(data.path)
+      );
+      if (sampleCount >= 1000 && paths.length >= 15) {
+        return "fast";
+      }
+
+      if (
+        get(isVideoDataset) &&
+        get(labelPaths({ space: State.SPACE.FRAME })).length > 0
+      ) {
         return "fast";
       }
 

@@ -66,6 +66,7 @@ export const aggregationQuery = graphQLSelectorFamily<
           get(lightningUnlocked));
 
       mixed = mixed || get(groupStatistics(modal)) === "group";
+
       const aggForm = {
         index: get(refresher),
         dataset,

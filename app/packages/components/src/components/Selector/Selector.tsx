@@ -20,7 +20,7 @@ export interface SelectorProps<T> {
   onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
   useSearch?: UseSearch<T>;
-  component: React.FC<{ value: T; className?: string }>;
+  component?: React.FC<{ value: T; className?: string }>;
   toKey?: (value: T) => string;
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
@@ -169,6 +169,8 @@ function Selector<T>(props: SelectorProps<T>) {
         onMouseEnter={onMouseEnter}
       />
       {useSearch &&
+        component &&
+        onResults &&
         renderLayer(
           editing && (
             <AnimatePresence>

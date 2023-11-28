@@ -6,10 +6,22 @@ import {
 } from "@fiftyone/state";
 import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
+import Container from "./Container";
 import FilterItem from "./FilterItem";
 import Loading from "./Loading";
 import Tune from "./Tune";
+import { hasMoreFilters } from "./state";
 import useFilterData from "./useFilterData";
+
+const IfEmpty = ({ path }: { path: string }) => {
+  const more = useRecoilValue(hasMoreFilters(path));
+
+  if (more) {
+    return null;
+  }
+
+  return <Container>No results</Container>;
+};
 
 const LightningFilterablePathEntries = ({
   modal,
@@ -35,10 +47,10 @@ const LightningFilterablePathEntries = ({
       {data.map((props) => (
         <FilterItem key={props.path} {...events} {...props} />
       ))}
-      {unlocked && granular > 0 && (
+      {granular > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: theme.text.secondary, marginLeft: 3 }}>
-            see more
+            see more...
           </span>
           <div
             style={{
@@ -60,6 +72,7 @@ const LightningFilterablePathEntries = ({
           {removed.map((props) => (
             <FilterItem key={props.path} {...events} {...props} />
           ))}
+          <IfEmpty path={path} />
         </Suspense>
       )}
     </>

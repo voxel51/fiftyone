@@ -5,10 +5,11 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { atom, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
 import { isLabelPath } from "./labels";
 import { count } from "./pathData";
@@ -183,9 +184,22 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
-export const lightningThreshold = selector({
+const lightningThresholdAtom = atom<null | number>({
+  key: "lightningThresholdAtom",
+  default: null,
+  effects: [
+    getBrowserStorageEffectForKey("lightningThresholdAtom", {
+      sessionStorage: true,
+      valueClass: "number",
+    }),
+  ],
+});
+
+export const lightningThreshold = selector<null | number>({
   key: "lightningThreshold",
-  get: ({ get }) => get(config).lightningThreshold,
+  get: ({ get }) =>
+    get(lightningThresholdAtom) ?? get(config).lightningThreshold,
+  set: ({ set }, value) => set(lightningThresholdAtom, value),
 });
 
 export const lightning = selector({
