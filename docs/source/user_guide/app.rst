@@ -779,8 +779,25 @@ You can also programmatically configure a session's color scheme by creating
                     {"value": "fp", "color": "#ff0000"},  # false positives: red
                     {"value": "tp", "color": "#00ff00"},  # true positives: green
                 ]
+            },
+            {
+                "path": "segmentations",
+                "maskTargetsColors": [
+                    {"intTarget": 12, "color": "#ff0000"},  # 12: red
+                    {"intTarget": 15, "color": "#00ff00"},  # 15: green
+                ]
             }
-        ]
+        ],
+        color_by="value",
+        opacity=0.5,
+        default_colorscale= { "name": "rdbu", "list": None },
+        colorscales=[
+            {
+                "path": "heatmap_2", # field definition overrides the default_colorscale
+                "name": None, # if name is defined, it will override the list
+                "list": [{"value": 0.0, "color": "#ff0000"}, {"value": 1.0, "color": "#00ff00"}],
+            }
+        ],
     )
 
 .. note::
