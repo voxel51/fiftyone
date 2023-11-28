@@ -176,6 +176,9 @@ class SetColorScheme:
         subscription: str,
         color_scheme: ColorSchemeInput,
     ) -> ColorScheme:
+        if color_scheme.id is None:
+            color_scheme.id = str(ObjectId())
+
         state = get_state()
         state.color_scheme = _to_odm_color_scheme(color_scheme)
         await dispatch_event(

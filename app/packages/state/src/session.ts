@@ -49,6 +49,9 @@ export const SESSION_DEFAULT: Session = {
     multicolorKeypoints: false,
     opacity: 0.7,
     showSkeletons: true,
+    colorscales: [],
+    defaultColorscale: { name: "viridis", list: null },
+    defaultMaskTargetsColors: [],
   },
   fieldVisibilityStage: undefined,
 };
