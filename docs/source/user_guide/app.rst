@@ -703,11 +703,22 @@ in detail:
     | Tab             | Element                       | Description                                                   |
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
-    |                 |                               | the `field` that they are in or the `value` that each         |
-    |                 |                               | annotation takes                                              |
+    |                 |                               | the `field` that they are in, the `value` that each           |
+    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Label Opacity                 | Color opacity of annotations                                  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Multicolor keypoints          | Whether to independently coloy keypoint points by their index |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Show keypoints skeletons      | Whether to show keypoint skeletons, if available              |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default mask targets colors   | If the MaskTargetsField is defined with integer keys, the     |
+    |                 |                               | dataset can assign a default color based on the integer keys  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default colorscale            | The default colorscale to use when rendering heatmaps         |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | JSON editor     |                               | A JSON representation of the current color scheme that you    |
     |                 |                               | can directly edit or copy + paste                             |
@@ -732,6 +743,10 @@ in detail:
     |                 |                               | color all                                                     |
     |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
     |                 |                               | instances whose `label` is `"car"` in `#FF0000`               |
+    |                 |                               | :class:`Segmentation <fiftyone.core.labels.Segmentation>`     |
+    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`    |
+    |                 |                               | :class:`Heatmap <fiftyone.core.labels.Heatmap>`               |
+    |                 |                               | instances using `hsv` colorscale                              |
     +-----------------+-------------------------------+---------------------------------------------------------------+
 
 .. _app-color-schemes-python:
