@@ -314,10 +314,6 @@ After filtering below the configured threshold using indexed fields, other field
 become available for filtering and counts are presented. Note that base counts
 are with respect to the indexed field filters.
 
-
-
-
-
 .. note::
 
     When setting the lightning threshold in the App, the value is persisted
@@ -357,10 +353,8 @@ For video datasets, a separate wildcard index for frame fields is necessary
     fo.app_config.lightning_threshold = len(dataset) - 1 # for illustration
     session = fo.launch_app(dataset)
 
-
 For large datasets with a large number fields, adding individual and/or selective
 wildcard indexes is recommended.
-
 
 .. code-block:: python
     :linenos:
@@ -384,10 +378,8 @@ wildcard indexes is recommended.
     fo.app_config.lightning_threshold = 10000
     session = fo.launch_app(dataset)
 
-
 For group datasets, it is recommended to create compound indexes that include
-the group `name` for performant sample grid results.
-
+the group `name` for performant sample grid results
 
 .. code-block:: python
     :linenos:
@@ -396,14 +388,15 @@ the group `name` for performant sample grid results.
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    dataset.create_index("ground_truth.detections.label")
+    # include compound index
+    dataset.create_index(
+        [("group.name", 1), ("ground_truth.detections.label", 1)]
+    ) 
     
     fo.app_config.lightning_threshold = len(dataset) - 1 # for illustration
     session = fo.launch_app(dataset)
-
-
-Notable restrictions
-
-
 
 .. _app-sidebar-mode:
 
