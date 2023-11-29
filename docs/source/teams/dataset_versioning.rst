@@ -169,6 +169,10 @@ required to perform different Snapshot-related operations:
 +----------------------------+----------+----------+------------+
 | Delete Snapshot            |          |          |     ✅     |
 +----------------------------+----------+----------+------------+
+| Archive Snapshot           |          |          |     ✅     |
++----------------------------+----------+----------+------------+
+| Unarchive Snapshot         |          |          |     ✅     |
++----------------------------+----------+----------+------------+
 | Revert dataset to Snapshot |          |          |     ✅     |
 +----------------------------+----------+----------+------------+
 | Edit Snapshot's contents   |    ❌    |    ❌    |     ❌     |
@@ -511,6 +515,51 @@ method in the Management SDK.
     dataset.reload()
 
     assert len(dataset) > 0
+
+.. _dataset-versioning-archive-snapshot:
+
+Archive snapshot
+----------------
+
+To avoid exceeding the maximum total snapshot and maximum snapshots per-dataset
+limitation, you can archive snapshots to a 
+
+.. note::
+
+    Once a snapshot is archived, you will no longer have an option to instantly
+    browse an archived snapshot. To browse archived snapshot, you must first
+    unarchive the snapshot.
+
+Teams UI
+~~~~~~~~
+
+To archive a snapshot, click the 3-dot (kebab) menu in the History tab for a
+snapshot you want to archive and select "Archive snapshot". This will begin the
+archival process and the browse button will be replaced with "Archiving" spinner
+
+.. image:: /images/teams/versioning/archive-snapshot.png
+    :alt: archive-snapshot
+    :align: center
+
+.. _dataset-versioning-unarchive-snapshot:
+
+Unarchive snapshot
+----------------
+
+To make an archived snapshot browseable again, you can unarchive a snapshot you
+want to browse.
+
+Teams UI
+~~~~~~~~
+
+To unarchive a snapshot, click the "Unarchive" button on History tab for a
+snapshot you want to unarchive. This will begin the unarchival process and the
+archive button will be replaced with "Unarchiving" spinner.
+
+.. image:: /images/teams/versioning/unarchive-snapshot.png
+    :alt: unarchive-snapshot
+    :align: center
+
 
 .. _dataset-versioning-backends:
 
