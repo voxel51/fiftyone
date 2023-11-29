@@ -4,7 +4,6 @@ import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo } from "react";
 import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
 
@@ -73,7 +72,7 @@ const ColorFooter: React.FC = () => {
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
-                  id: datasetDefault?.id ?? colorScheme.id ?? uuid(),
+                  id: datasetDefault?.id ?? null,
                   colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
                   colorscales: colorScheme.colorscales ? newColorscales : [],
