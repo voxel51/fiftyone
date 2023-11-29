@@ -95,15 +95,10 @@ const ColorFooter: React.FC = () => {
                   console.error(
                     "dataset.appConfig record not found and thus can not be updated"
                   );
+                  return;
                 }
                 if (!datasetDefault && setDatasetColorScheme) {
-                  const fragment =
-                    foq.readFragment<foq.colorSchemeFragment$key>(
-                      foq.colorSchemeFragment,
-                      setDatasetColorScheme
-                    );
-
-                  const record = store.get(fragment.id);
+                  const record = store.get(setDatasetColorScheme.id);
                   record && config!.setLinkedRecord(record, "colorScheme");
                 }
               },
