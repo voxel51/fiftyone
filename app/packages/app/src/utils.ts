@@ -40,6 +40,11 @@ export function resolveURL(
   view?: string
 ): string {
   const params = new URLSearchParams(router.history.location.search);
+
+  if (dataset === undefined) {
+    return `${window.location.pathname}${params.toString()}`;
+  }
+
   view ? params.set("view", encodeURIComponent(view)) : params.delete("view");
   let search = params.toString();
   if (search.length) {
