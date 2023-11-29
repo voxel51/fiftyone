@@ -4,9 +4,9 @@ import * as fos from "@fiftyone/state";
 import React, { useEffect, useMemo } from "react";
 import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { v4 as uuid } from "uuid";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
-import { v4 as uuid } from "uuid";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -23,7 +23,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const id = fos.useAssertedRecoilValue(fos.dataset).id;
   const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -73,7 +73,7 @@ const ColorFooter: React.FC = () => {
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
-                  id: datasetDefault?.id,
+                  id: datasetDefault?.id ?? colorScheme.id ?? uuid(),
                   colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
                   colorscales: colorScheme.colorscales ? newColorscales : [],
@@ -90,8 +90,13 @@ const ColorFooter: React.FC = () => {
                 },
               },
               updater: (store, { setDatasetColorScheme }) => {
-                const datasetRecord = store.get(datasetId);
+                const datasetRecord = store.get(id);
                 const config = datasetRecord?.getLinkedRecord("appConfig");
+                if (!config) {
+                  console.error(
+                    "dataset.appConfig record not found and thus can not be updated"
+                  );
+                }
                 if (!datasetDefault && setDatasetColorScheme) {
                   const fragment =
                     foq.readFragment<foq.colorSchemeFragment$key>(
@@ -100,7 +105,7 @@ const ColorFooter: React.FC = () => {
                     );
 
                   const record = store.get(fragment.id);
-                  record && config?.setLinkedRecord(record, "colorScheme");
+                  record && config!.setLinkedRecord(record, "colorScheme");
                 }
               },
             });
