@@ -27,6 +27,7 @@ export default () => {
       ) => {
         set(groupAtoms.groupId, groupId || null);
         set(currentModalSample, { id, index });
+
         reset(groupAtoms.dynamicGroupIndex);
         reset(dynamicGroupCurrentElementIndex);
         groupByFieldValue &&
@@ -48,6 +49,7 @@ export default () => {
     ({ snapshot }) =>
       async (index: number | ((current: number) => number)) => {
         const current = await snapshot.getPromise(currentModalSample);
+
         if (index instanceof Function) {
           index = index(current.index);
         }
