@@ -38,25 +38,34 @@ const GlobalColorscale: React.FC = () => {
       : "name"
   );
 
-  const defaultValue = {
-    value: 0,
-    color: getRGBColorFromPool(colorScheme.colorPool),
-  };
+  const defaultValue = [
+    {
+      value: 0,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+    {
+      value: 1,
+      color: getRGBColorFromPool(colorScheme.colorPool),
+    },
+  ];
 
-  const onBlurName = useCallback((value: string) => {
-    // validate name is a plotly named colorscale
-    // we convert the input to correct cases
+  const onBlurName = useCallback(
+    (value: string) => {
+      // validate name is a plotly named colorscale
+      // we convert the input to correct cases
 
-    if (namedColorScales.includes(value.toLowerCase())) {
-      const newSetting = { ...setting, name: value.toLowerCase() };
-      setColorScheme((s) => ({ ...s, defaultColorscale: newSetting }));
-    } else {
-      setInput("invalid colorscale name");
-      setTimeout(() => {
-        setInput(setting?.name || "");
-      }, 1000);
-    }
-  }, []);
+      if (namedColorScales.includes(value.toLowerCase())) {
+        const newSetting = { ...setting, name: value.toLowerCase() };
+        setColorScheme((s) => ({ ...s, defaultColorscale: newSetting }));
+      } else {
+        setInput("invalid colorscale name");
+        setTimeout(() => {
+          setInput(setting?.name || "");
+        }, 1000);
+      }
+    },
+    [setting]
+  );
 
   const shouldShowAddButton = Boolean(
     setting?.list && setting?.list?.length && setting?.list?.length > 0
@@ -65,10 +74,12 @@ const GlobalColorscale: React.FC = () => {
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
-        const prev = colorScheme.defaultColorscale ?? {};
+        const list = copy.sort(
+          (a, b) => (a.value as number) - (b.value as number)
+        );
         setColorScheme((c) => ({
           ...c,
-          defaultColorscale: { ...prev, list: copy },
+          defaultColorscale: { ...(c.defaultColorscale ?? {}), list },
         }));
       }
     },
@@ -85,7 +96,7 @@ const GlobalColorscale: React.FC = () => {
           name: null,
           list: c.defaultColorscale?.list?.length
             ? c.defaultColorscale?.list
-            : [defaultValue],
+            : defaultValue,
         },
       }));
     }
@@ -114,7 +125,7 @@ const GlobalColorscale: React.FC = () => {
           ...colorScheme,
           defaultColorscale: {
             name: "viridis",
-            list: [defaultValue],
+            list: defaultValue,
           },
         });
       }
@@ -162,12 +173,12 @@ const GlobalColorscale: React.FC = () => {
       )}
       {tab === "list" && (
         <div>
-          Define a custom colorscale:
+          Define a custom colorscale (range between 0 and 1):
           <ManualColorScaleList
             initialValue={
               setting?.list && setting?.list.length > 0
                 ? setting.list
-                : ([defaultValue] as ColorscaleListInput[])
+                : (defaultValue as ColorscaleListInput[])
             }
             values={setting?.list as ColorscaleListInput[]}
             style={FieldCHILD_STYLE}

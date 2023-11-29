@@ -119,18 +119,21 @@ const Colorscale: React.FC = () => {
     color: getRGBColorFromPool(colorScheme.colorPool),
   };
 
-  const onBlurName = useCallback((value: string) => {
-    // validate name is a plotly named colorscale
-    // we convert the input to correct cases
-    if (namedColorScales.includes(value.toLowerCase())) {
-      setSetting({ ...colorscaleValues, name: value.toLowerCase() });
-    } else {
-      setInput("invalid colorscale name");
-      setTimeout(() => {
-        setInput(colorscaleValues?.name || "");
-      }, 1000);
-    }
-  }, []);
+  const onBlurName = useCallback(
+    (value: string) => {
+      // validate name is a plotly named colorscale
+      // we convert the input to correct cases
+      if (namedColorScales.includes(value.toLowerCase())) {
+        setSetting({ ...colorscaleValues, name: value.toLowerCase() });
+      } else {
+        setInput("invalid colorscale name");
+        setTimeout(() => {
+          setInput(colorscaleValues?.name || "");
+        }, 1000);
+      }
+    },
+    [colorscaleValues]
+  );
 
   const shouldShowAddButton = Boolean(
     colorscaleValues?.list &&
@@ -146,17 +149,20 @@ const Colorscale: React.FC = () => {
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
+        const list = copy.sort(
+          (a, b) => (a.value as number) - (b.value as number)
+        );
         const newSetting = cloneDeep(colorScheme.colorscales ?? []);
         const idx = colorScheme.colorscales?.findIndex(
           (s) => s.path == activePath
         );
         if (idx !== undefined && idx > -1) {
-          newSetting[idx].list = copy;
+          newSetting[idx].list = list;
           setColorScheme({ ...colorScheme, colorscales: newSetting });
         } else {
           setColorScheme((cur) => ({
             ...cur,
-            colorscales: [...newSetting, { path: activePath, list: copy }],
+            colorscales: [...newSetting, { path: activePath, list }],
           }));
         }
       }
@@ -251,7 +257,7 @@ const Colorscale: React.FC = () => {
           )}
           {tab === "list" && (
             <div>
-              Define a custom colorscale:
+              Define a custom colorscale (range between 0 and 1):
               <ManualColorScaleList
                 initialValue={
                   setting?.list && setting?.list.length > 0
