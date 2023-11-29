@@ -12,3 +12,5 @@ export const SORT_BY_SIMILARITY =
 
 export const COLOR_SCHEME =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
+
+export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";

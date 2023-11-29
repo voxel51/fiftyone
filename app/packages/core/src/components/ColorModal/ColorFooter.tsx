@@ -6,7 +6,6 @@ import { useMutation } from "react-relay";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
 import { activeColorEntry } from "./state";
-import { v4 as uuid } from "uuid";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -23,7 +22,7 @@ const ColorFooter: React.FC = () => {
   const colorScheme = useRecoilValue(fos.colorScheme);
   const datasetName = useRecoilValue(fos.datasetName);
   const configDefault = useRecoilValue(fos.config);
-  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
+  const id = fos.useAssertedRecoilValue(fos.dataset).id;
   const datasetDefault = useRecoilValue(fos.datasetColorScheme);
   const subscription = useRecoilValue(fos.stateSubscription);
 
@@ -73,7 +72,7 @@ const ColorFooter: React.FC = () => {
                 datasetName,
                 colorScheme: {
                   ...colorScheme,
-                  id: datasetDefault?.id,
+                  id: datasetDefault?.id ?? null,
                   colorBy: colorScheme.colorBy ?? "field",
                   colorPool: colorScheme.colorPool ?? [],
                   colorscales: colorScheme.colorscales ? newColorscales : [],
@@ -90,17 +89,17 @@ const ColorFooter: React.FC = () => {
                 },
               },
               updater: (store, { setDatasetColorScheme }) => {
-                const datasetRecord = store.get(datasetId);
+                const datasetRecord = store.get(id);
                 const config = datasetRecord?.getLinkedRecord("appConfig");
+                if (!config) {
+                  console.error(
+                    "dataset.appConfig record not found and thus can not be updated"
+                  );
+                  return;
+                }
                 if (!datasetDefault && setDatasetColorScheme) {
-                  const fragment =
-                    foq.readFragment<foq.colorSchemeFragment$key>(
-                      foq.colorSchemeFragment,
-                      setDatasetColorScheme
-                    );
-
-                  const record = store.get(fragment.id);
-                  record && config?.setLinkedRecord(record, "colorScheme");
+                  const record = store.get(setDatasetColorScheme.id);
+                  record && config!.setLinkedRecord(record, "colorScheme");
                 }
               },
             });
