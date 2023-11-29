@@ -24,6 +24,7 @@ import {
   isValidFloatInput,
   namedColorScales,
 } from "../utils";
+import { NAME_COLORSCALE } from "../../../utils/links";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -231,7 +232,7 @@ const Colorscale: React.FC = () => {
               <Guide>
                 Use a named colorscale
                 <a
-                  href="https://plotly.com/python/colorscales/"
+                  href={NAME_COLORSCALE}
                   target="_blank"
                   rel="noopener"
                   title="what is named colorscale"
