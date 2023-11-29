@@ -38,7 +38,8 @@ class OperatorConfig(object):
         default_choice_to_delegated (False): whether to default to delegated
             execution, if allowed
         resolve_execution_options_on_change (None): whether to resolve
-            execution options are resolved on change
+            execution options dynamically when inputs change. By default, this
+            behavior will match the ``dynamic`` setting
     """
 
     def __init__(
