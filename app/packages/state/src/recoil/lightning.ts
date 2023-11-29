@@ -5,7 +5,7 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { atom, selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
@@ -15,7 +15,7 @@ import { isLabelPath } from "./labels";
 import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
-import { datasetName } from "./selectors";
+import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -184,11 +184,11 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
-const lightningThresholdAtom = atom<null | number>({
+const lightningThresholdAtom = atomFamily<null | number, string>({
   key: "lightningThresholdAtom",
   default: null,
-  effects: [
-    getBrowserStorageEffectForKey("lightningThresholdAtom", {
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`lightningThresholdAto-${datasetId}`, {
       sessionStorage: true,
       valueClass: "number",
     }),
@@ -198,8 +198,10 @@ const lightningThresholdAtom = atom<null | number>({
 export const lightningThreshold = selector<null | number>({
   key: "lightningThreshold",
   get: ({ get }) =>
-    get(lightningThresholdAtom) ?? get(config).lightningThreshold,
-  set: ({ set }, value) => set(lightningThresholdAtom, value),
+    get(lightningThresholdAtom(get(datasetId))) ??
+    get(config).lightningThreshold,
+  set: ({ get, set }, value) =>
+    set(lightningThresholdAtom(get(datasetId)), value),
 });
 
 export const lightning = selector({
