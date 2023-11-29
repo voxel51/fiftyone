@@ -797,6 +797,60 @@ appears beside the operator label:
     Pinned runs are stored at the dataset-level and will be visible to all
     users with access to the dataset.
 
+Renaming
+^^^^^^^^
+
+When an operator is delegated multiple times, it can be challenging to find a
+specific run of an operator as they all have identical label on runs page. With
+the edit label functionality in the app, you can rename the label for an
+operator run to a label you can easily identify.
+
+To edit label of an operator run, move your mouse cursor over a operator run in
+the runs table you are interested and click the pencil button as indicated with
+indicator "1". This will present an input field indicated with indicator "2"
+where you can update label to text of you choice. Once you are ready to apply
+changes, click the save button indicated with indicator "3" to save changes.
+
+.. image:: /images/plugins/operators/runs/edit_label.png
+
+.. note::
+
+    Searching by custom label is not currently supported.
+
+Mark as failed
+^^^^^^^^^^^^^^
+
+If a delegated operation run terminates unexpectedly without reporting failure,
+you can manually mark an in progress run on the runs page as failed.
+
+To mark a run as failed, click the 3-dot (kebab) menu indicated by "1". Then, in
+the menu, click "Mark as failed" as indicated by "2". The run status will be
+updated and will now display as failed.
+
+.. image:: /images/plugins/operators/runs/mark_as_failed.png
+
+.. note::
+
+    If the delegated operation is still in progress in your orchestrator,
+    marking a run as failed will **not** terminate the execution of operation.
+
+Monitoring progress
+^^^^^^^^^^^^^^^^^^^
+
+During the execution of a delegation operation, it can report back it's progress
+to display in the runs table. If a progress is available for a run, it will be
+displayed besides "Running" tag as indicated with indicator "2". By default, the
+progress of running operations will be automatically refreshed. You can disable
+auto-refresh of running operations by toggling auto refresh indicated with
+indicator "1".
+
+.. image:: /images/plugins/operators/runs/run_progress.png
+
+.. note::
+
+    Only the progress of running operations will be automatically refreshed.
+
+
 Run page
 --------
 
@@ -849,3 +903,4 @@ The View tab on the Run page lets you see the dataset view on which the run was
 scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
+
