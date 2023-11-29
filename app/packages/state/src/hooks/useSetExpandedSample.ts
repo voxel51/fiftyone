@@ -49,7 +49,6 @@ export default () => {
     ({ snapshot }) =>
       async (index: number | ((current: number) => number)) => {
         const current = await snapshot.getPromise(currentModalSample);
-
         if (index instanceof Function) {
           index = index(current.index);
         }

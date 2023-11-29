@@ -21,7 +21,6 @@ import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
-import { modal } from "./atoms";
 
 export const modalLooker = atom<AbstractLooker<BaseState> | null>({
   key: "modalLooker",
@@ -122,7 +121,6 @@ export const modalSampleIndex = selector<number>({
   key: "modalSampleIndex",
   get: ({ get }) => {
     const current = get(currentModalSample);
-
     if (!current) {
       throw new Error("modal sample is not defined");
     }
