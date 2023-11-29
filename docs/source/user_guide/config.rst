@@ -948,14 +948,14 @@ system:
     You can also store dataset-specific plugin settings by storing any subset
     of the above values on a :ref:`dataset's App config <dataset-app-config>`.
 
-.. _configuring-proxy-yrl:
+.. _configuring-proxy-url:
 
 Configuring a proxy URL
 -----------------------
 
 When running FiftyOne in a cloud machine, such as a
 `SageMaker Notebook <https://aws.amazon.com/sagemaker/notebooks/>`_, a
-`proxy_url <configuring-proxy-url>` should be set in your
+`proxy_url` should be set in your
 `FiftyOne App config <configuring-fiftyone-app>` before launching the App in
 order for browser windows or notebook cells to point to a correct App URL. For
 `SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_, the below

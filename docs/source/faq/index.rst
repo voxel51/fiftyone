@@ -126,7 +126,7 @@ Why isn't the App loading in my cloud notebook?
 -----------------------------------------------
 
 Except for `Google Colab <https://colab.research.google.com>`_ and
-`Databricks <https://docs.databricks.com/en/notebooks/index.html>` which have
+`Databricks <https://docs.databricks.com/en/notebooks/index.html>`_ which have
 built-in App configuration, when working in a cloud notebook a
 `proxy_url <configuring-proxy-url>` should be set in your
 `FiftyOne App config <configuring-fiftyone-app>`.
