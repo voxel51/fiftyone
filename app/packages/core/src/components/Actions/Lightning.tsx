@@ -93,7 +93,7 @@ const Lightning = () => {
         onClick={() => setOpen(!open)}
         highlight={open || enabled}
         title={"Lightning mode"}
-        data-cy="action-display-options"
+        data-cy="action-lightning"
       />
       {open && <LightningThreshold anchorRef={ref} />}
     </ActionDiv>
