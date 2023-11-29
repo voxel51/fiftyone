@@ -1,11 +1,12 @@
 import { ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { isEmpty } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
-import { FieldCHILD_STYLE } from "../ShareStyledDiv";
+import { FieldCHILD_STYLE, Guide } from "../ShareStyledDiv";
 import ManualColorScaleList from "../controls/ManualColorScaleList";
 import {
   getRGBColorFromPool,
@@ -132,7 +133,20 @@ const GlobalColorscale: React.FC = () => {
       />
       {tab === "name" && (
         <div>
-          Use a named plotly colorscale:
+          <Guide>
+            Use a named plotly colorscale
+            <a
+              href="https://plotly.com/python/colorscales/"
+              target="_blank"
+              rel="noopener"
+              title="what is named colorscale"
+            >
+              <InfoOutlinedIcon
+                fontSize="small"
+                style={{ margin: "5", cursor: "pointer" }}
+              />
+            </a>
+          </Guide>
           <Input
             value={input}
             setter={(v) => setInput(v)}
@@ -161,6 +175,8 @@ const GlobalColorscale: React.FC = () => {
             onSyncUpdate={onSyncUpdate}
             shouldShowAddButton={shouldShowAddButton}
             step={0.01}
+            min={0}
+            max={1}
           />
         </div>
       )}

@@ -1,5 +1,6 @@
 import { ColorscaleInput, ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
@@ -11,7 +12,11 @@ import {
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
-import { ControlGroupWrapper, FieldCHILD_STYLE } from "../ShareStyledDiv";
+import {
+  ControlGroupWrapper,
+  FieldCHILD_STYLE,
+  Guide,
+} from "../ShareStyledDiv";
 import ManualColorScaleList from "../controls/ManualColorScaleList";
 import { activeColorPath } from "../state";
 import {
@@ -217,7 +222,20 @@ const Colorscale: React.FC = () => {
           />
           {tab === "name" && (
             <div>
-              Use a named plotly colorscale:
+              <Guide>
+                Use a named colorscale
+                <a
+                  href="https://plotly.com/python/colorscales/"
+                  target="_blank"
+                  rel="noopener"
+                  title="what is named colorscale"
+                >
+                  <InfoOutlinedIcon
+                    fontSize="small"
+                    style={{ margin: "5", cursor: "pointer" }}
+                  />
+                </a>
+              </Guide>
               <Input
                 value={input}
                 setter={(v) => setInput(v)}
