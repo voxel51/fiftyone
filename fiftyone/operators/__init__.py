@@ -14,7 +14,6 @@ from .registry import (
 )
 from .executor import (
     execute_operator,
-    execute_or_delegate_operator,
     ExecutionOptions,
 )
 
