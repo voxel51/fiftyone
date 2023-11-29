@@ -42,7 +42,7 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
   const color = useRecoilValue(fos.pathColor(path));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
-  const hasBounds = useRecoilValue(state.hasBounds(path));
+  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
   const lightning = useRecoilValue(fos.isLightningPath(path));
 
   const key = path.replace(/[ ,.]/g, "-");
@@ -83,6 +83,7 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
             })}
             boundsAtom={fos.boundsAtom({
               path,
+              modal,
             })}
             color={color}
           />

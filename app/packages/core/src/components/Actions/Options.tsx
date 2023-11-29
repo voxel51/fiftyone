@@ -1,9 +1,4 @@
-import {
-  PopoutSectionTitle,
-  Selector,
-  TabOption,
-  useTheme,
-} from "@fiftyone/components";
+import { PopoutSectionTitle, TabOption, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   configuredSidebarModeDefault,
@@ -11,13 +6,8 @@ import {
   sidebarMode,
 } from "@fiftyone/state";
 import React, { MutableRefObject, useMemo } from "react";
-import {
-  useRecoilState,
-  useRecoilValue,
-  useResetRecoilState,
-  useSetRecoilState,
-} from "recoil";
-import { LIGHTNING_MODE, SIDEBAR_MODE } from "../../utils/links";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
+import { SIDEBAR_MODE } from "../../utils/links";
 import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
 import { ActionOption } from "./Common";
@@ -113,56 +103,6 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
-const LightningThreshold = () => {
-  const [threshold, setThreshold] = useRecoilState(fos.lightningThreshold);
-  const reset = useResetRecoilState(fos.lightningThreshold);
-  const theme = useTheme();
-  console.log(threshold);
-
-  return (
-    <>
-      <ActionOption
-        id="lightning-threshold"
-        text="Lightning threshold"
-        href={LIGHTNING_MODE}
-        title={"More on lightning mode"}
-        style={{
-          background: "unset",
-          color: theme.text.primary,
-          paddingTop: 0,
-          paddingBottom: 0,
-        }}
-        svgStyles={{ height: "1rem", marginTop: 7.5 }}
-      />
-      <Selector
-        placeholder="Number of samples"
-        onSelect={async (text) => {
-          if (text === "") {
-            reset();
-            return "";
-          }
-          const value = parseInt(text);
-
-          if (!isNaN(value)) {
-            setThreshold(value);
-            return text;
-          }
-
-          return "";
-        }}
-        inputStyle={{
-          fontSize: "1rem",
-          textAlign: "right",
-          float: "right",
-          width: "100%",
-        }}
-        value={threshold === null ? "" : String(threshold)}
-        containerStyle={{ display: "flex", justifyContent: "right" }}
-      />
-    </>
-  );
-};
-
 const SidebarMode = () => {
   const mode = useRecoilValue(configuredSidebarModeDefault(false));
   const setMode = useSetRecoilState(sidebarMode(false));
@@ -250,7 +190,6 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
   const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
-  const view = useRecoilValue(fos.view);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
@@ -258,7 +197,6 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
-      {!modal && !view?.length && <LightningThreshold />}
       {!modal && <SidebarMode />}
       <SortFilterResults modal={modal} />
     </Popout>

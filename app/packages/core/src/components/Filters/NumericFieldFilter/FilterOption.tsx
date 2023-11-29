@@ -6,7 +6,7 @@ import * as state from "./state";
 
 function FilterOption({ modal, path }: { modal: boolean; path: string }) {
   const isFiltered = useRecoilValue(fos.fieldIsFiltered({ modal, path }));
-  const hasBounds = useRecoilValue(state.hasBounds(path));
+  const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
 
   if (!isFiltered || !hasBounds) {

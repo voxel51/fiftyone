@@ -1,9 +1,5 @@
 import { useTheme } from "@fiftyone/components";
-import {
-  granularSidebarExpanded,
-  lightningPaths,
-  useLightingUnlocked,
-} from "@fiftyone/state";
+import { granularSidebarExpanded, lightningPaths } from "@fiftyone/state";
 import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
 import Container from "./Container";
@@ -37,7 +33,6 @@ const LightningFilterablePathEntries = ({
   const { data, removed } = useFilterData(modal, path, (path) =>
     paths.has(path)
   );
-  const unlocked = useLightingUnlocked();
   const granularOpen = useRecoilValue(granularSidebarExpanded(path));
   const theme = useTheme();
 
@@ -61,13 +56,12 @@ const LightningFilterablePathEntries = ({
           >
             <Tune
               expanded={granularSidebarExpanded(path)}
-              disabled={!unlocked}
               color={theme.text.secondary}
             />
           </div>
         </div>
       )}
-      {unlocked && granularOpen && (
+      {granularOpen && (
         <Suspense fallback={<Loading />}>
           {removed.map((props) => (
             <FilterItem key={props.path} {...events} {...props} />

@@ -7,6 +7,10 @@ import { useState } from "react";
 import { selectorFamily } from "recoil";
 import styled from "styled-components";
 
+export const ActionDiv = styled.div`
+  position: relative;
+`;
+
 export const SwitcherDiv = styled.div`
   border-bottom: 1px solid ${({ theme }) => theme.background.body};
   display: flex;

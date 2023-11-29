@@ -43,11 +43,13 @@ import { activeColorEntry } from "../ColorModal/state";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
+import Lightning from "./Lightning";
 import OptionsActions from "./Options";
 import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ActionDiv } from "./utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -81,10 +83,6 @@ const Loading = () => {
   const theme = useTheme();
   return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
-
-export const ActionDiv = styled.div`
-  position: relative;
-`;
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
@@ -512,6 +510,7 @@ export const GridActionsRow = () => {
   }, []);
   const lightning = useRecoilValue(fos.lightning);
   const unlocked = fos.useLightingUnlocked();
+  const view = useRecoilValue(fos.view);
 
   return (
     <ActionsRowDiv
@@ -528,6 +527,7 @@ export const GridActionsRow = () => {
       <DynamicGroupAction />
       <BrowseOperations />
       <Options modal={false} />
+      {!view?.length && <Lightning />}
       <OperatorPlacements place={types.Places.SAMPLES_GRID_ACTIONS} />
       <OperatorPlacements place={types.Places.SAMPLES_GRID_SECONDARY_ACTIONS} />
     </ActionsRowDiv>

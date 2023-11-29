@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import React, {
   Suspense,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -75,7 +74,7 @@ function Selector<T>(props: SelectorProps<T>) {
     };
   }, [active, onSelect, toKey, valuesRef]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setSearch(value || "");
     local.current = value || "";
   }, [value]);

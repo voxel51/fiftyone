@@ -5,8 +5,8 @@ import MergeIcon from "@mui/icons-material/Merge";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
-import { ActionDiv } from "./ActionsRow";
 import DynamicGroup from "./DynamicGroup";
+import { ActionDiv } from "./utils";
 
 const DYNAMIC_GROUP_PILL_BUTTON_ID = "dynamic-group-pill-button";
 

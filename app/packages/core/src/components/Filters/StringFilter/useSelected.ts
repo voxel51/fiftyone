@@ -15,7 +15,7 @@ export type ResultsAtom = RecoilValue<{
   count: number | null;
 }>;
 
-const showSearchSelector = selectorFamily({
+export const showSearchSelector = selectorFamily({
   key: "showSearch",
   get:
     ({ modal, path }: { modal: boolean; path: string }) =>

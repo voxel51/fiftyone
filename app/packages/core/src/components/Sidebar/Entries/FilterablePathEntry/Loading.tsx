@@ -1,11 +1,11 @@
 import { LoadingDots } from "@fiftyone/components";
-import React, { useEffect, useState } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import Container from "./Container";
 
 export default function () {
   const [show, setShow] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const timeout = setTimeout(() => setShow(true), 300);
 
     return () => {

@@ -63,9 +63,10 @@ const FilterableEntry = ({
   const theme = useTheme();
   const color = disabled ? theme.background.paper : pathColor;
 
-  const Entries = lightning
-    ? LightningFilterablePathEntries
-    : FilterablePathEntries;
+  const Entries =
+    lightning && !modal
+      ? LightningFilterablePathEntries
+      : FilterablePathEntries;
 
   return (
     <RegularEntry
