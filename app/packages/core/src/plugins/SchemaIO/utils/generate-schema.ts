@@ -1,11 +1,11 @@
 // Auto generate SchemaIO compatible schema based on a value
 
-import { isPrimitiveType } from "@fiftyone/utilities";
+import { isNullish, isPrimitiveType } from "@fiftyone/utilities";
 
 // todo: add support for OneOfView, TupleView, and MapView
-export function generateSchema(value, options?) {
+export function generateSchema(value: any, options?: GenerateSchemaOptions) {
   const type = getType(value);
-  const { label, readOnly } = options;
+  const { label, readOnly } = options || {};
   if (type === "array") {
     const dominantType = getDominantType(value);
     const isValueTable = isTable(value);
@@ -16,10 +16,9 @@ export function generateSchema(value, options?) {
           label,
           component: "TableView",
           columns: getTableColumns(value),
-          readOnly: true,
         },
       };
-    } else if (isPrimitiveType(dominantType) && readOnly) {
+    } else if (isPrimitiveType(dominantType || "") && readOnly) {
       return {
         type,
         view: {
@@ -53,7 +52,7 @@ export function generateSchema(value, options?) {
         readOnly,
       },
     };
-  } else {
+  } else if (isPrimitiveType(type || "")) {
     return {
       type,
       view: {
@@ -66,12 +65,16 @@ export function generateSchema(value, options?) {
         readOnly,
       },
     };
+  } else {
+    // todo: improve unknown type - TupleView? CodeView?
+    return { type, view: { label, component: "UnsupportedView", readOnly } };
   }
 }
 
 function getType(value) {
-  if (value !== undefined || value !== null)
+  if (!isNullish(value)) {
     return Array.isArray(value) ? "array" : typeof value;
+  }
 }
 
 function getDominantType(array) {
@@ -119,3 +122,8 @@ function getTableColumns(array) {
   const [firstItem] = array;
   return Object.keys(firstItem).map((key) => ({ key, label: key }));
 }
+
+type GenerateSchemaOptions = {
+  label?: string;
+  readOnly?: boolean;
+};
