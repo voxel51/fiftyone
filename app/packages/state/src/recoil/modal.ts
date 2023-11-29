@@ -21,6 +21,7 @@ import { RelayEnvironmentKey } from "./relay";
 import { datasetName } from "./selectors";
 import { mapSampleResponse } from "./utils";
 import { view } from "./view";
+import { modal } from "./atoms";
 
 export const modalLooker = atom<AbstractLooker<BaseState> | null>({
   key: "modalLooker",
@@ -180,6 +181,7 @@ export const modalSample = graphQLSelector<
   },
   variables: ({ get }) => {
     const current = get(currentModalSample);
+
     if (current === null) return null;
 
     const slice = get(groupSlice);

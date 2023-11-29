@@ -66,7 +66,6 @@ export class ControlsElement<
     error,
     loaded,
   }: Readonly<State>) {
-    console.log("showcontrols is ", showControls);
     showControls = showControls && !disableControls && !error && loaded;
     if (this.showControls === showControls) {
       return this.element;
