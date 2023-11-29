@@ -325,6 +325,10 @@ class OpenDataset extends Operator {
     };
   }
   async execute({ hooks, params }: ExecutionContext) {
+    const { dataset } = params;
+    if (typeof dataset !== "string" || dataset.trim().length === 0) {
+      throw new Error('Param "dataset" must be a non-empty string');
+    }
     hooks.setDataset(params.dataset);
   }
 }
