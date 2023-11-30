@@ -1,5 +1,6 @@
 import { ColorscaleInput, ColorscaleListInput } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { cloneDeep } from "lodash";
 import React, { useCallback, useEffect, useMemo } from "react";
 import {
@@ -11,7 +12,11 @@ import {
 import Checkbox from "../../Common/Checkbox";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
-import { ControlGroupWrapper, FieldCHILD_STYLE } from "../ShareStyledDiv";
+import {
+  ControlGroupWrapper,
+  FieldCHILD_STYLE,
+  Guide,
+} from "../ShareStyledDiv";
 import ManualColorScaleList from "../controls/ManualColorScaleList";
 import { activeColorPath } from "../state";
 import {
@@ -19,6 +24,7 @@ import {
   isValidFloatInput,
   namedColorScales,
 } from "../utils";
+import { NAME_COLORSCALE } from "../../../utils/links";
 
 const colorscaleSetting = selectorFamily<
   Omit<ColorscaleInput, "path"> | undefined,
@@ -114,18 +120,21 @@ const Colorscale: React.FC = () => {
     color: getRGBColorFromPool(colorScheme.colorPool),
   };
 
-  const onBlurName = useCallback((value: string) => {
-    // validate name is a plotly named colorscale
-    // we convert the input to correct cases
-    if (namedColorScales.includes(value.toLowerCase())) {
-      setSetting({ ...colorscaleValues, name: value.toLowerCase() });
-    } else {
-      setInput("invalid colorscale name");
-      setTimeout(() => {
-        setInput(colorscaleValues?.name || "");
-      }, 1000);
-    }
-  }, []);
+  const onBlurName = useCallback(
+    (value: string) => {
+      // validate name is a plotly named colorscale
+      // we convert the input to correct cases
+      if (namedColorScales.includes(value.toLowerCase())) {
+        setSetting({ ...colorscaleValues, name: value.toLowerCase() });
+      } else {
+        setInput("invalid colorscale name");
+        setTimeout(() => {
+          setInput(colorscaleValues?.name || "");
+        }, 1000);
+      }
+    },
+    [colorscaleValues]
+  );
 
   const shouldShowAddButton = Boolean(
     colorscaleValues?.list &&
@@ -141,17 +150,20 @@ const Colorscale: React.FC = () => {
   const onSyncUpdate = useCallback(
     (copy: ColorscaleListInput[]) => {
       if (copy && isValidFloatInput(copy)) {
+        const list = copy.sort(
+          (a, b) => (a.value as number) - (b.value as number)
+        );
         const newSetting = cloneDeep(colorScheme.colorscales ?? []);
         const idx = colorScheme.colorscales?.findIndex(
           (s) => s.path == activePath
         );
         if (idx !== undefined && idx > -1) {
-          newSetting[idx].list = copy;
+          newSetting[idx].list = list;
           setColorScheme({ ...colorScheme, colorscales: newSetting });
         } else {
           setColorScheme((cur) => ({
             ...cur,
-            colorscales: [...newSetting, { path: activePath, list: copy }],
+            colorscales: [...newSetting, { path: activePath, list }],
           }));
         }
       }
@@ -217,7 +229,20 @@ const Colorscale: React.FC = () => {
           />
           {tab === "name" && (
             <div>
-              Use a named plotly colorscale:
+              <Guide>
+                Use a named colorscale
+                <a
+                  href={NAME_COLORSCALE}
+                  target="_blank"
+                  rel="noopener"
+                  title="what is named colorscale"
+                >
+                  <InfoOutlinedIcon
+                    fontSize="small"
+                    style={{ margin: "5", cursor: "pointer" }}
+                  />
+                </a>
+              </Guide>
               <Input
                 value={input}
                 setter={(v) => setInput(v)}
@@ -233,7 +258,7 @@ const Colorscale: React.FC = () => {
           )}
           {tab === "list" && (
             <div>
-              Define a custom colorscale:
+              Define a custom colorscale (range between 0 and 1):
               <ManualColorScaleList
                 initialValue={
                   setting?.list && setting?.list.length > 0

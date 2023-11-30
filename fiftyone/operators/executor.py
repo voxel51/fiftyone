@@ -223,9 +223,7 @@ async def execute_or_delegate_operator(
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
-                delegation_target=(
-                    ctx.delegation_target or operator.config.delegation_target
-                ),
+                delegation_target=ctx.delegation_target,
                 label=operator.name,
             )
 

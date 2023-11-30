@@ -108,7 +108,6 @@ class TestExecutionContext:
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, mocker, mock_secrets_resolver):
-
         context = ExecutionContext(
             operator_uri=self.operator_uri,
             required_secrets=self.plugin_secrets,

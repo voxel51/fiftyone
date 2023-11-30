@@ -98,7 +98,7 @@ const ManualColorScaleList: React.FC<ManualColorScaleListProp> = ({
     [input, onSyncUpdate]
   );
 
-  // onBlue and onEnter in numberfield to validate certain rules
+  // onBlur and onEnter in numberfield to validate certain rules
   const onSyncIdx = useCallback(
     (intValue: number, index: number) => {
       if ((onValidate && onValidate(intValue)) || !onValidate) {

@@ -118,11 +118,10 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
-        import fiftyone.core.odm as foo
         import fiftyone as fo
+        import fiftyone.core.odm as foo
 
-        db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
-        database = db_client[fo.config.database_name]
+        database: pymongo.database.Database = foo.get_db_conn()
         return database[self.COLLECTION_NAME]
 
     def _create_indexes(self):

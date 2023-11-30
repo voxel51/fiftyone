@@ -453,7 +453,7 @@ async function executeOperatorAsGenerator(
         ? Array.from(currentContext.selectedSamples)
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
-      current_sample: currentContext.currentSample
+      current_sample: currentContext.currentSample,
     },
     "json-stream"
   );

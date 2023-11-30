@@ -87,7 +87,7 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
           text={
             "You can select StringField, BooleanField or IntField attribute for annotation's color"
           }
-          placement={"bottom-center"}
+          placement={"top-center"}
         >
           <SelectButton
             onClick={() => setOpen((o) => !o)}
