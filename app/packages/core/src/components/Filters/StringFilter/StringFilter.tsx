@@ -1,4 +1,4 @@
-import { LoadingDots, Selector, useTheme } from "@fiftyone/components";
+import { Selector, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React from "react";
 import { RecoilState, useRecoilValue } from "recoil";
@@ -76,7 +76,7 @@ const StringFilter = ({
   const color = useRecoilValue(fos.pathColor(path));
   const lightningOn = useRecoilValue(fos.lightning);
   const lightningPath = useRecoilValue(fos.isLightningPath(path));
-  const lightning = lightningOn && lightningPath;
+  const lightning = lightningOn && lightningPath && !modal;
 
   if (named && !lightning && !results?.count) {
     return null;
@@ -128,13 +128,6 @@ const StringFilter = ({
           modal={modal}
           selectedMap={selectedMap}
         />
-        {!showSearch &&
-          (results?.count === 0 ? (
-            <>No results</>
-          ) : (
-            typeof results?.count !== "number" &&
-            !results?.results?.length && <LoadingDots text={"Loading"} />
-          ))}
       </StringFilterContainer>
     </NamedStringFilterContainer>
   );

@@ -1,27 +1,42 @@
-import { Tooltip } from "@fiftyone/components";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import { ExternalLink, Tooltip } from "@fiftyone/components";
+import useLightningUnlocked from "@fiftyone/state/src/hooks/useLightningUnlocked";
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
+import Launch from "@mui/icons-material/Launch";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
+import { LIGHTNING_MODE } from "../../../../utils/links";
 
 export default ({
   color,
-  disabled,
   expanded,
   id,
+  unindexed,
 }: {
   color?: string;
-  disabled?: boolean;
+  unindexed?: boolean;
   expanded: RecoilState<boolean>;
   id: string;
 }) => {
   const [isExpanded, setExpanded] = useRecoilState(expanded);
   const Arrow = isExpanded ? KeyboardArrowUp : KeyboardArrowDown;
   const theme = useTheme();
+  const unlocked = useLightningUnlocked();
 
-  if (disabled) {
+  if (unindexed && !unlocked) {
     return (
-      <Tooltip text="disabled" placement="top-center">
+      <Tooltip
+        text={
+          <ExternalLink
+            style={{ color: theme.text.primary, padding: "0.25rem" }}
+            href={LIGHTNING_MODE}
+          >
+            add an index <Launch style={{ height: "1rem", marginTop: 7.5 }} />
+          </ExternalLink>
+        }
+        placement="top-center"
+      >
         <Arrow
           data-cy={`sidebar-field-arrow-${id}`}
           style={{ margin: 0, color: theme.text.secondary }}

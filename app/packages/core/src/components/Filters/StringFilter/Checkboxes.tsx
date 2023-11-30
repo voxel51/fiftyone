@@ -1,3 +1,4 @@
+import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import React, { MutableRefObject } from "react";
 import {
@@ -13,6 +14,7 @@ import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
+import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
   results: Result[] | null;
@@ -62,18 +64,21 @@ const checkboxCounts = selectorFamily({
 
 const useCounts = (modal: boolean, path: string, results: Result[] | null) => {
   const loadable = useRecoilValueLoadable(checkboxCounts({ modal, path }));
+  const unlocked = fos.useLightingUnlocked();
+  const lightning = useRecoilValue(fos.lightning);
   const data =
     loadable.state === "hasValue"
       ? loadable.contents
       : new Map<string | null, number | null>();
 
+  const loading = loadable.state === "loading";
   results?.forEach(({ value, count }) => {
     if (!data.has(value)) {
-      data.set(value, count);
+      data.set(value, loading || (lightning && !unlocked) ? count : count ?? 0);
     }
   });
 
-  return { counts: data, loading: loadable.state === "loading" };
+  return { counts: data, loading };
 };
 
 const useValues = ({
@@ -96,7 +101,8 @@ const useValues = ({
     useRecoilValue(fos.isLightningPath(path)) && lightning && !modal;
   const skeleton = useRecoilValue(isSkeleton(path));
   const { counts, loading } = useCounts(modal, path, results);
-  const hasCount = (!lightning || unlocked) && !loading;
+  const hasCount =
+    (!lightning || !lightningPath || unlocked || modal) && !loading;
 
   let allValues = selected.map((value) => ({
     value,
@@ -121,7 +127,7 @@ const useValues = ({
         .filter((key) => !selectedSet.has(key))
         .map((key) => ({
           value: key,
-          count: counts.get(key) || null,
+          count: counts.get(key) ?? null,
           loading: false,
         })),
     ];
@@ -132,6 +138,7 @@ const useValues = ({
     selectedSet,
     sorting: !lightningPath ? sorting : { asc: true, count: false },
     values: [...new Set(allValues)],
+    loading: !lightning && loading,
   };
 };
 
@@ -148,13 +155,27 @@ const Checkboxes = ({
   const color = useRecoilValue(fos.pathColor(path));
   const isFilterMode = useRecoilValue(fos.isSidebarFilterMode);
 
-  const { name, selectedSet, sorting, values } = useValues({
+  const { loading, name, selectedSet, sorting, values } = useValues({
     modal,
     path,
     results,
     selected,
     selectedMap: selectedMap.current,
   });
+
+  const show = useRecoilValue(showSearchSelector({ modal, path }));
+
+  if (loading) {
+    return <LoadingDots text={"Loading"} />;
+  }
+
+  if (
+    !show &&
+    (results?.length ?? 0) <= CHECKBOX_LIMIT &&
+    values.length === 0
+  ) {
+    return <>No results</>;
+  }
 
   return (
     <>

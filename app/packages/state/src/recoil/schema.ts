@@ -20,6 +20,7 @@ import {
   STRING_FIELD,
   Schema,
   StrictField,
+  VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
   meetsFieldType,
   withPath,
@@ -713,6 +714,19 @@ export const isStringField = selectorFamily({
     ({ get }) => {
       const f = get(field(path));
       return f?.ftype === STRING_FIELD || f?.subfield === STRING_FIELD;
+    },
+});
+
+export const isNumericField = selectorFamily({
+  key: "isNumericField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return (
+        VALID_NUMERIC_TYPES.includes(f?.ftype) ||
+        VALID_NUMERIC_TYPES.includes(f?.subfield)
+      );
     },
 });
 

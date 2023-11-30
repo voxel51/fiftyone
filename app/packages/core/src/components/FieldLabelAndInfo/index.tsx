@@ -20,6 +20,7 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { LIGHTNING_MODE } from "../../utils/links";
 import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
@@ -328,6 +329,7 @@ type LightningProp = {
 const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
   const lightning = useRecoilValue(fos.lightning);
   const lightnigPath = useRecoilValue(fos.lightningPaths(path)).size > 0;
+  const theme = useTheme();
   if (!lightning || !lightnigPath) {
     return null;
   }
@@ -340,7 +342,14 @@ const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
             <Bolt sx={{ color }} fontSize={"small"} />
           </td>
           <td>
-            <ContentValue>lightning index</ContentValue>
+            <ContentValue>
+              <ExternalLink
+                style={{ color: theme.text.primary }}
+                href={LIGHTNING_MODE}
+              >
+                Lightning indexed
+              </ExternalLink>
+            </ContentValue>
           </td>
         </tr>
       </tbody>

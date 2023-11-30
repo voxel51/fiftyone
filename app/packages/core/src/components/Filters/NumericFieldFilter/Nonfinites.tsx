@@ -78,8 +78,8 @@ function Nonfinites({ modal, path }: { modal: boolean; path: string }) {
     modal,
     path,
   });
-  const hasBounds = useRecoilValue(state.hasBounds(path));
-  const one = useRecoilValue(state.oneBound(path));
+  const hasBounds = useRecoilValue(state.hasBounds({ modal, path }));
+  const one = useRecoilValue(state.oneBound({ modal, path }));
   const lightning = useRecoilValue(fos.lightning);
   const lightningPath = useRecoilValue(fos.isLightningPath(path));
 
