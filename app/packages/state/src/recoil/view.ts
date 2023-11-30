@@ -43,6 +43,7 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
       }
 
       if (Array.isArray(newView) && Array.isArray(current)) {
+        // if 'seed' changes in a Take stage, clear '_rand'
         const oldTakes = current.reduce((acc, cur) => {
           if (cur._cls === TAKE_VIEW_STAGE && cur._uuid) {
             acc[cur._uuid] = cur;
