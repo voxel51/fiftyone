@@ -169,7 +169,11 @@ const Checkboxes = ({
     return <LoadingDots text={"Loading"} />;
   }
 
-  if (!show && values.length === 0) {
+  if (
+    !show &&
+    (results?.length ?? 0) <= CHECKBOX_LIMIT &&
+    values.length === 0
+  ) {
     return <>No results</>;
   }
 

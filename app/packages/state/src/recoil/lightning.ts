@@ -80,7 +80,7 @@ const indexesByPath = selector({
           ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
           space,
         })
-      ).map((p) => get(schemaAtoms.dbPath(p)));
+      );
 
     const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
 
