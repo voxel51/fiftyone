@@ -184,7 +184,7 @@ class Operator(object):
         return definition
 
     def resolve_delegation(self, ctx):
-        """Returns the resolved forced delegation flag.
+        """Returns the resolved *forced* delegation flag.
 
         Subclasses can implement this method to decide if delegated execution
         should be *forced* for the given operation.
@@ -193,9 +193,9 @@ class Operator(object):
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            True/False whether the operation should be delegated, or None to
-            defer to :meth:`resolve_execution_options` to specify the available
-            options
+            whether the operation should be delegated (True), run immediately
+            (False), or None to defer to :meth:`resolve_execution_options` to
+            specify the available options
         """
         return None
 
