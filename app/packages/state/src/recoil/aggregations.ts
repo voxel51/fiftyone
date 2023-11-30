@@ -103,6 +103,7 @@ export const aggregations = selectorFamily({
       lightning?: boolean;
       modal: boolean;
       paths: string[];
+      mixed?: boolean;
     }) =>
     ({ get }) => {
       if (params) {
@@ -131,10 +132,20 @@ export const aggregation = selectorFamily({
       path: string;
     }) =>
     ({ get }) => {
+      let paths = get(schemaAtoms.filterFields(path));
+      const numeric = get(schemaAtoms.isNumericField(path));
+      if (params.modal) {
+        paths = paths.filter((p) => {
+          const n = get(schemaAtoms.isNumericField(p));
+          return numeric ? n : !n;
+        });
+      }
+
       return get(
         aggregations({
           ...params,
-          paths: get(schemaAtoms.filterFields(path)),
+          mixed: params.modal && numeric,
+          paths,
         })
       ).filter((data) => data.path === path)[0];
     },

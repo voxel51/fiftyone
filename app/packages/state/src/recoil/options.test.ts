@@ -57,7 +57,7 @@ describe("Resolves configured sidebar mode priority", () => {
 
   it("resolves to all", () => {
     setMockAtoms({
-      appConfigDefault: (params) => null,
+      configData: { config: { sidebarMode: null } },
       datasetAppConfig: { sidebarMode: "best" },
       sidebarMode: (modal) => "all",
     });
@@ -65,7 +65,7 @@ describe("Resolves configured sidebar mode priority", () => {
   });
   it("resolves to fast", () => {
     setMockAtoms({
-      appConfigDefault: (params) => "best",
+      configData: { config: { sidebarMode: "best" } },
       datasetAppConfig: { sidebarMode: "fast" },
       sidebarMode: (modal) => null,
     });
@@ -74,7 +74,7 @@ describe("Resolves configured sidebar mode priority", () => {
 
   it("resolves to all", () => {
     setMockAtoms({
-      appConfigDefault: (params) => "all",
+      configData: { config: { sidebarMode: "all" } },
       datasetAppConfig: { sidebarMode: null },
       sidebarMode: (modal) => null,
     });
@@ -82,7 +82,7 @@ describe("Resolves configured sidebar mode priority", () => {
   });
 });
 
-describe("Resolves to resolved sidebar bar and translates best correctly", () => {
+describe("Resolves sidebar mode", () => {
   const test = <TestSelectorFamily<typeof options.resolvedSidebarMode>>(
     (<unknown>options.resolvedSidebarMode(false))
   );
@@ -90,6 +90,9 @@ describe("Resolves to resolved sidebar bar and translates best correctly", () =>
   it("resolves to all", () => {
     setMockAtoms({
       configuredSidebarModeDefault: (modal) => "all",
+      datasetSampleCount: 1,
+      sidebarEntries: () => [],
+      isVideoDataset: false,
     });
     expect(test()).toBe("all");
   });
