@@ -4,17 +4,19 @@ export const CLIPS_VIEWS =
 export const COLOR_SCHEME =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
 
+export const EVALUATION_PATCHES =
+  "https://docs.voxel51.com/user_guide/app.html#app-evaluation-patches";
+
 export const INDEXES_PLUGIN =
   "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes";
 
 export const LIGHTNING_MODE =
   "https://docs.voxel51.com/user_guide/app.html#lightning-mode";
 
+export const NAME_COLORSCALE = "https://plotly.com/python/colorscales/";
+
 export const OBJECT_PATCHES =
   "https://docs.voxel51.com/user_guide/app.html#app-object-patches";
-
-export const EVALUATION_PATCHES =
-  "https://docs.voxel51.com/user_guide/app.html#app-evaluation-patches";
 
 export const SIDEBAR_MODE =
   "https://docs.voxel51.com/user_guide/app.html#sidebar-mode";
