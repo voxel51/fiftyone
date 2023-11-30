@@ -42,9 +42,9 @@ export const oneBound = selectorFamily({
   get:
     (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return (
-        get(hasBounds(params)) &&
+      return get(hasBounds(params)) &&
         get(boundsAtom(params))[0] === get(boundsAtom(params))[1]
-      );
+        ? get(boundsAtom(params))[0]
+        : null;
     },
 });
