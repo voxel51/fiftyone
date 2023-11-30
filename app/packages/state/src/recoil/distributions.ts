@@ -29,7 +29,7 @@ import { selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { extendedSelection } from "./atoms";
 import { filters } from "./filters";
-import { groupSlice, groupStatistics } from "./groups";
+import { groupId, groupSlice, groupStatistics } from "./groups";
 import { RelayEnvironmentKey } from "./relay";
 import { field, fieldPaths } from "./schema";
 import { datasetName } from "./selectors";
@@ -46,11 +46,13 @@ export type AggregationResponseFrom<
 const extendedViewForm = selector({
   key: "extendedViewForm",
   get: ({ get }) => {
+    const mixed = get(groupStatistics(false)) === "group";
+
     return {
       sampleIds: get(extendedSelection)?.selection,
       filters: get(filters),
-      slice: get(groupSlice),
-      mixed: get(groupStatistics(false)) === "group",
+      slice: mixed ? "" : get(groupSlice),
+      mixed,
     };
   },
 });

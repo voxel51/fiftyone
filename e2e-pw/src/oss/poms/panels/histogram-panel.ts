@@ -5,6 +5,7 @@ import { SelectorPom } from "../selector";
 export class HistogramPom {
   readonly assert: HistogramAsserter;
   readonly locator: Locator;
+  readonly bars: Locator;
   readonly selector: SelectorPom;
 
   constructor(
@@ -15,6 +16,18 @@ export class HistogramPom {
 
     this.locator = this.page.getByTestId("histograms-container");
     this.selector = new SelectorPom(this.locator, eventUtils, "histograms");
+  }
+
+  bar(nth: number) {
+    return this.page.locator('[class="recharts-rectangle"]').nth(nth);
+  }
+
+  async barTooltipText(nth: number) {
+    await this.bar(nth).hover();
+    await this.page.locator(".recharts-tooltip-wrapper").waitFor();
+
+    const tooltip = this.page.locator(".recharts-tooltip-wrapper").first();
+    return await tooltip.innerText();
   }
 
   async selectField(field: string) {
