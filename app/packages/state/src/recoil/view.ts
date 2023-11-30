@@ -8,7 +8,7 @@ import {
   viewFragment$key,
 } from "@fiftyone/relay";
 import { Stage } from "@fiftyone/utilities";
-import { atom, selector, selectorFamily } from "recoil";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
 import { dynamicGroupParameters, groupByFieldValue } from "./groups";
 import { State } from "./types";
 import { getSanitizedGroupByExpression } from "./utils";
@@ -35,7 +35,35 @@ export const view = graphQLSyncFragmentAtom<viewFragment$key, State.Stage[]>(
       return data?.stages || [];
     },
     default: [],
-    selectorEffect: true,
+    selectorEffect: ({ get }, newView) => {
+      const current = get(view);
+
+      if (newView instanceof DefaultValue) {
+        return [];
+      }
+
+      if (Array.isArray(newView) && Array.isArray(current)) {
+        const oldTakes = current.reduce((acc, cur) => {
+          if (cur._cls === TAKE_VIEW_STAGE && cur._uuid) {
+            acc[cur._uuid] = cur;
+          }
+          return acc;
+        }, {} as { [key: string]: State.Stage });
+
+        newView.forEach((stage) => {
+          if (stage._cls !== TAKE_VIEW_STAGE) return;
+
+          const old = oldTakes[stage._uuid];
+          if (!old) return;
+
+          if (stage.kwargs[1][1] !== old.kwargs[1][1]) {
+            stage.kwargs = stage.kwargs.slice(0, 2);
+          }
+        });
+      }
+
+      return newView;
+    },
   },
   {
     key: "view",
