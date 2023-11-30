@@ -5,7 +5,6 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import asyncio
 import collections
 import inspect
@@ -249,14 +248,14 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except Exception as e:
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except Exception as e:
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )

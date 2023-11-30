@@ -5,7 +5,8 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form, Property, PromptView
+from .types import Object, PromptView
+
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
