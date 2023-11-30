@@ -183,10 +183,10 @@ class Operator(object):
         return definition
 
     def resolve_delegation(self, ctx):
-        """Returns the resolved delegation flag.
+        """Returns the resolved forced delegation flag.
 
-        Subclasses can implement this method to define the logic which decides
-        if the operation should be queued for delegation.
+        Subclasses can implement this method to decide if delegated execution
+        should be *forced* for the given operation.
 
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
@@ -212,12 +212,13 @@ class Operator(object):
         """
         from .executor import ExecutionOptions
 
+        # Defer to forced delegation, if implemented
         # pylint: disable=assignment-from-none
-        resolved_delegation = self.resolve_delegation(ctx)
-        if resolved_delegation is not None:
+        delegate = self.resolve_delegation(ctx)
+        if delegate is not None:
             return ExecutionOptions(
-                allow_immediate_execution=not resolved_delegation,
-                allow_delegated_execution=resolved_delegation,
+                allow_immediate_execution=not delegate,
+                allow_delegated_execution=delegate,
             )
 
         return ExecutionOptions(

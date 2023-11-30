@@ -199,10 +199,19 @@ async def execute_or_delegate_operator(
         operator, executor, ctx = prepared
 
     execution_options = operator.resolve_execution_options(ctx)
-    if ctx.requesting_delegated_execution or operator.resolve_delegation(ctx):
-        if execution_options.allow_delegated_execution:
-            should_delegate = True
-        else:
+    if (
+        not execution_options.allow_immediate_execution
+        and not execution_options.allow_delegated_execution
+    ):
+        raise RuntimeError(
+            "This operation does not support immediate OR delegated execution"
+        )
+
+    should_delegate = (
+        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
+    )
+    if should_delegate:
+        if not execution_options.allow_delegated_execution:
             logger.warning(
                 (
                     "This operation does not support delegated execution; it "
@@ -211,9 +220,7 @@ async def execute_or_delegate_operator(
             )
             should_delegate = False
     else:
-        if execution_options.allow_immediate_execution:
-            should_delegate = False
-        else:
+        if not execution_options.allow_immediate_execution:
             logger.warning(
                 (
                     "This operation does not support immediate execution; it "
@@ -513,12 +520,12 @@ class ExecutionContext(object):
 
     @property
     def delegated(self):
-        """Whether the operation's execution was delegated to an orchestrator."""
+        """Whether delegated execution has been forced for the operation."""
         return self.request_params.get("delegated", False)
 
     @property
     def requesting_delegated_execution(self):
-        """Whether the invocation requested delegated execution."""
+        """Whether delegated execution has been requested for the operation."""
         return self.request_params.get("request_delegation", False)
 
     @property
