@@ -571,9 +571,9 @@ operator's input form in the App:
     ctx = {
         "view": dataset.take(10),
         "params": dict(
-            export_dir=dict(absolute_path="/tmp/coco"),
             export_type="LABELS_ONLY",
             dataset_type="COCO",
+            labels_path=dict(absolute_path="/tmp/coco/labels.json"),
             label_field="ground_truth",
             delegate=False,
         )

@@ -92,7 +92,7 @@ const setFilter = (
     ...filter,
     [key]: value,
   };
-  const bounds = get(boundsAtom({ path }));
+  const bounds = get(boundsAtom({ modal, path }));
   const isDefault = meetsDefault(check, bounds);
 
   const rangeIsNull = !filter.range || filter.range.every((r) => r === null);
@@ -128,7 +128,7 @@ const setVisibility = (
     ...visibility,
     [key]: value,
   };
-  const bounds = get(boundsAtom({ path }));
+  const bounds = get(boundsAtom({ modal, path }));
   const isDefault = meetsDefault(check, bounds);
 
   const rangeIsNull =
@@ -148,18 +148,20 @@ const setVisibility = (
 export const boundsAtom = selectorFamily<
   Range,
   {
+    modal: boolean;
     path: string;
   }
 >({
   key: "numericFieldBounds",
   get:
-    ({ path }) =>
+    (params) =>
     ({ get }) => {
-      const lightning = get(isLightningPath(path));
+      const lightning = get(isLightningPath(params.path));
 
-      const atom = lightning
-        ? pathData.lightningBounds(path)
-        : pathData.bounds({ path, extended: false, modal: false });
+      const atom =
+        lightning && !params.modal
+          ? pathData.lightningBounds(params.path)
+          : pathData.bounds({ ...params, extended: false });
       const bounds = get(atom);
 
       if (!bounds) {
@@ -190,7 +192,7 @@ export const rangeAtom = selectorFamily<
         return range;
       }
 
-      return get(boundsAtom({ path }));
+      return get(boundsAtom({ modal, path }));
     },
   set:
     ({ modal, path }) =>

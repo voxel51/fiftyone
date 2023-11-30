@@ -1,15 +1,23 @@
 import { useTheme } from "@fiftyone/components";
-import {
-  granularSidebarExpanded,
-  lightningPaths,
-  useLightingUnlocked,
-} from "@fiftyone/state";
+import { granularSidebarExpanded, lightningPaths } from "@fiftyone/state";
 import React, { Suspense } from "react";
 import { useRecoilValue } from "recoil";
+import Container from "./Container";
 import FilterItem from "./FilterItem";
 import Loading from "./Loading";
 import Tune from "./Tune";
+import { hasMoreFilters } from "./state";
 import useFilterData from "./useFilterData";
+
+const IfEmpty = ({ path }: { path: string }) => {
+  const more = useRecoilValue(hasMoreFilters(path));
+
+  if (more) {
+    return null;
+  }
+
+  return <Container>No results</Container>;
+};
 
 const LightningFilterablePathEntries = ({
   modal,
@@ -25,7 +33,6 @@ const LightningFilterablePathEntries = ({
   const { data, removed } = useFilterData(modal, path, (path) =>
     paths.has(path)
   );
-  const unlocked = useLightingUnlocked();
   const granularOpen = useRecoilValue(granularSidebarExpanded(path));
   const theme = useTheme();
 
@@ -35,10 +42,10 @@ const LightningFilterablePathEntries = ({
       {data.map((props) => (
         <FilterItem key={props.path} {...events} {...props} />
       ))}
-      {unlocked && granular > 0 && (
+      {granular > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between" }}>
           <span style={{ color: theme.text.secondary, marginLeft: 3 }}>
-            see more
+            see more...
           </span>
           <div
             style={{
@@ -49,17 +56,17 @@ const LightningFilterablePathEntries = ({
           >
             <Tune
               expanded={granularSidebarExpanded(path)}
-              disabled={!unlocked}
               color={theme.text.secondary}
             />
           </div>
         </div>
       )}
-      {unlocked && granularOpen && (
+      {granularOpen && (
         <Suspense fallback={<Loading />}>
           {removed.map((props) => (
             <FilterItem key={props.path} {...events} {...props} />
           ))}
+          <IfEmpty path={path} />
         </Suspense>
       )}
     </>

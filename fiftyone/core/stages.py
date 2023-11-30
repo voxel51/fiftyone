@@ -8513,6 +8513,12 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     MatchTags,
     Select,
     SelectBy,
+    SelectGroupSlices,
     Skip,
     Take,
+}
+
+# Registry of select stages that should select first
+_STAGES_THAT_SELECT_FIRST = {
+    SelectGroupSlices,
 }

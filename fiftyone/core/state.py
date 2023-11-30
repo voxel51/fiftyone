@@ -158,7 +158,12 @@ class StateDescription(etas.Serializable):
         view_name = d.get("view_name", None)
         if dataset is not None:
             if view_name:
-                view = dataset.load_saved_view(view_name)
+                try:
+                    view = dataset.load_saved_view(view_name)
+                except Exception as e:
+                    dataset.reload()
+                    view = dataset.load_saved_view(view_name)
+
             elif stages:
                 try:
                     view = fov.DatasetView._build(dataset, stages)

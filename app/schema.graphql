@@ -137,8 +137,8 @@ type ColorScheme {
 }
 
 input ColorSchemeInput {
-  id: ID
   colorPool: [String!]!
+  id: ID = null
   colorBy: String = null
   fields: [CustomizeColorInput!] = null
   labelTags: LabelTagColorInput = null
