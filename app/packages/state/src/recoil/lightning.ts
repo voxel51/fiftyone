@@ -189,13 +189,12 @@ export const lightningThresholdConfig = selector({
   get: ({ get }) => get(config).lightningThreshold,
 });
 
-const lightningThresholdAtom = atomFamily<null | number, string>({
+const lightningThresholdAtom = atomFamily<string, string>({
   key: "lightningThresholdAtom",
   default: undefined,
   effects: (datasetId) => [
-    getBrowserStorageEffectForKey(`lightningThresholdAto-${datasetId}`, {
+    getBrowserStorageEffectForKey(`lightningThresholdAtom-${datasetId}`, {
       sessionStorage: true,
-      valueClass: "number",
     }),
   ],
 });
@@ -207,10 +206,15 @@ export const lightningThreshold = selector<null | number>({
     if (setting === undefined) {
       return get(lightningThresholdConfig);
     }
-    return setting ?? null;
+
+    if (setting === "null") {
+      return null;
+    }
+
+    return Number(setting);
   },
   set: ({ get, set }, value) =>
-    set(lightningThresholdAtom(get(datasetId)), value),
+    set(lightningThresholdAtom(get(datasetId)), String(value)),
 });
 
 export const lightning = selector({
