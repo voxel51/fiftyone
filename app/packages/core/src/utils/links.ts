@@ -4,6 +4,9 @@ export const CLIPS_VIEWS =
 export const COLOR_SCHEME =
   "https://docs.voxel51.com/user_guide/app.html#app-color-schemes";
 
+export const INDEXES_PLUGIN =
+  "https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes";
+
 export const LIGHTNING_MODE =
   "https://docs.voxel51.com/user_guide/app.html#lightning-mode";
 

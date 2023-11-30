@@ -6,7 +6,7 @@ import Launch from "@mui/icons-material/Launch";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import { LIGHTNING_MODE } from "../../../../utils/links";
+import { INDEXES_PLUGIN } from "../../../../utils/links";
 
 export default ({
   color,
@@ -30,7 +30,7 @@ export default ({
         text={
           <ExternalLink
             style={{ color: theme.text.primary, padding: "0.25rem" }}
-            href={LIGHTNING_MODE}
+            href={INDEXES_PLUGIN}
           >
             add an index <Launch style={{ height: "1rem", marginTop: 7.5 }} />
           </ExternalLink>

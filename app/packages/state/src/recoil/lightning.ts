@@ -184,6 +184,11 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
+export const lightningThresholdConfig = selector({
+  key: "lightningThresholdConfig",
+  get: ({ get }) => get(config).lightningThreshold,
+});
+
 const lightningThresholdAtom = atomFamily<null | number, string>({
   key: "lightningThresholdAtom",
   default: null,
@@ -199,7 +204,7 @@ export const lightningThreshold = selector<null | number>({
   key: "lightningThreshold",
   get: ({ get }) =>
     get(lightningThresholdAtom(get(datasetId))) ??
-    get(config).lightningThreshold,
+    get(lightningThresholdConfig),
   set: ({ get, set }, value) =>
     set(lightningThresholdAtom(get(datasetId)), value),
 });
