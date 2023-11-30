@@ -219,7 +219,8 @@ const Lightning = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
-          onClick: () => (value === "disable" ? reset() : setThreshold(count)),
+          onClick: () =>
+            setThreshold(value === "disable" ? null : config ?? count),
         }))}
       />
       {threshold !== null && (
