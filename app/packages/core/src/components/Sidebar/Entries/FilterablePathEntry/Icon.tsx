@@ -7,12 +7,11 @@ const Lightning = ({ path }: { path: string }) => {
   const lightning = useRecoilValue(fos.isLightningPath(path));
   const expandedPath = useRecoilValue(fos.expandPath(path));
   const color = useRecoilValue(fos.pathColor(path));
-  const unlocked = fos.useLightingUnlocked();
 
   return (
     <Arrow
       color={!lightning ? undefined : color}
-      disabled={!lightning && !unlocked}
+      unindexed={!lightning}
       expanded={fos.sidebarExpanded({ modal: false, path: expandedPath })}
       id={path}
     />

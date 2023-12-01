@@ -13,6 +13,7 @@ export default r(graphql`
       datasetName: $datasetName
       colorScheme: $colorScheme
     ) {
+      id
       ...colorSchemeFragment
     }
   }

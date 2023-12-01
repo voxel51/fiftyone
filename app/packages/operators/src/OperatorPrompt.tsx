@@ -40,6 +40,11 @@ function ActualOperatorPrompt() {
 
   const paletteProps: OperatorPaletteProps = {
     submitButtonText: "Execute",
+    submitButtonOptions: operatorPrompt.submitOptions.options,
+    submitButtonLoading: operatorPrompt.submitOptions.isLoading,
+    hasSubmitButtonOptions: operatorPrompt.submitOptions.hasOptions,
+    showWarning: operatorPrompt.submitOptions.showWarning,
+    warningMessage: operatorPrompt.submitOptions.warningMessage,
     cancelButtonText: "Cancel",
   };
 
@@ -51,7 +56,7 @@ function ActualOperatorPrompt() {
   }
 
   if (operatorPrompt.showPrompt) {
-    paletteProps.onSubmit = operatorPrompt.execute;
+    paletteProps.onSubmit = operatorPrompt.onSubmit;
     paletteProps.onCancel = operatorPrompt.cancel;
   } else if (showResultOrError) {
     paletteProps.onCancel = operatorPrompt.close;

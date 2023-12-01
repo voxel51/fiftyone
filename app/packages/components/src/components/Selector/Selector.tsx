@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import React, {
   Suspense,
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -20,7 +19,7 @@ export interface SelectorProps<T> {
   onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
   useSearch?: UseSearch<T>;
-  component: React.FC<{ value: T; className?: string }>;
+  component?: React.FC<{ value: T; className?: string }>;
   toKey?: (value: T) => string;
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
@@ -75,7 +74,7 @@ function Selector<T>(props: SelectorProps<T>) {
     };
   }, [active, onSelect, toKey, valuesRef]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setSearch(value || "");
     local.current = value || "";
   }, [value]);
@@ -169,6 +168,8 @@ function Selector<T>(props: SelectorProps<T>) {
         onMouseEnter={onMouseEnter}
       />
       {useSearch &&
+        component &&
+        onResults &&
         renderLayer(
           editing && (
             <AnimatePresence>

@@ -15,15 +15,16 @@ export type ResultsAtom = RecoilValue<{
   count: number | null;
 }>;
 
-const showSearchSelector = selectorFamily({
+export const showSearchSelector = selectorFamily({
   key: "showSearch",
   get:
-    (path: string) =>
+    ({ modal, path }: { modal: boolean; path: string }) =>
     ({ get }) => {
-      return (
-        (get(fos.isObjectIdField(path)) || get(fos.isLightningPath(path))) &&
-        !get(isBooleanField(path))
-      );
+      if (!modal && get(fos.isLightningPath(path))) {
+        return !get(isBooleanField(path));
+      }
+
+      return get(fos.isObjectIdField(path)) && !get(isBooleanField(path));
     },
 });
 
@@ -42,7 +43,7 @@ export default function (
   resultsAtom: ResultsAtom
 ) {
   const resultsLoadable = useRecoilValueLoadable(resultsAtom);
-  const showSearch = useRecoilValue(showSearchSelector(path));
+  const showSearch = useRecoilValue(showSearchSelector({ modal, path }));
   const useSearch = useUseSearch({ modal, path });
 
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
