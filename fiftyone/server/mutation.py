@@ -91,7 +91,9 @@ class Mutation(SetColorScheme):
         state.color_scheme = build_color_scheme(
             None, state.dataset, state.config
         )
-        state.group_slice = state.dataset.group_slice
+        if state.dataset is not None:
+            state.group_slice = state.dataset.group_slice
+
         await dispatch_event(subscription, StateUpdate(state=state))
         return True
 

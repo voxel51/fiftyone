@@ -42,12 +42,13 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
   const color = useRecoilValue(fos.pathColor(path));
   const ftype = useRecoilValue(fos.fieldType({ path }));
   const field = fos.useAssertedRecoilValue(fos.field(path));
-  const hasBounds = useRecoilValue(state.hasBounds(path));
+  const hasBounds = useRecoilValue(state.hasBounds({ path, modal }));
   const lightning = useRecoilValue(fos.isLightningPath(path));
 
   const key = path.replace(/[ ,.]/g, "-");
   const excluded = useRecoilValue(fos.numericExcludeAtom({ modal, path }));
   const defaultRange = useRecoilValue(state.hasDefaultRange({ modal, path }));
+  const one = useRecoilValue(state.oneBound({ path, modal }));
 
   if (named && !lightning && !hasBounds) {
     return null;
@@ -72,21 +73,26 @@ const NumericFieldFilter = ({ modal, path, named = true }: Props) => {
         style={{ cursor: "default" }}
         data-cy={`numeric-slider-container-${key}`}
       >
-        {hasBounds && !(excluded && defaultRange) && (
-          <RangeSlider
-            showBounds={false}
-            fieldType={ftype}
-            valueAtom={fos.rangeAtom({
-              modal,
-              path,
-              withBounds: true,
-            })}
-            boundsAtom={fos.boundsAtom({
-              path,
-            })}
-            color={color}
-          />
-        )}
+        {hasBounds &&
+          !(excluded && defaultRange) &&
+          (one !== null ? (
+            one
+          ) : (
+            <RangeSlider
+              showBounds={false}
+              fieldType={ftype}
+              valueAtom={fos.rangeAtom({
+                modal,
+                path,
+                withBounds: true,
+              })}
+              boundsAtom={fos.boundsAtom({
+                path,
+                modal,
+              })}
+              color={color}
+            />
+          ))}
         {defaultRange && <Nonfinites modal={modal} path={path} />}
         <FilterOption modal={modal} path={path} />
         <Reset modal={modal} path={path} />

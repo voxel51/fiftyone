@@ -11,8 +11,6 @@ import inspect
 import logging
 import os
 import traceback
-import types as python_types
-import typing
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -25,6 +23,9 @@ from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 from .decorators import coroutine_timeout
 from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
+
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionRunState(object):
@@ -55,16 +56,15 @@ class InvocationRequest(object):
         }
 
 
-class ExecutionProgress:
+class ExecutionProgress(object):
     """Represents the status of an operator execution.
 
-    at least one of progress or label must be provided
     Args:
         progress (None): an optional float between 0 and 1 (0% to 100%)
         label (None): an optional label to display
     """
 
-    def __init__(self, progress: float = None, label: str = None):
+    def __init__(self, progress=None, label=None):
         self.progress = progress
         self.label = label
         self.updated_at = None
@@ -110,43 +110,38 @@ class Executor(object):
         }
 
 
-def execute_operator(operator_uri, ctx, params=None):
+def execute_operator(operator_uri, ctx=None, **kwargs):
     """Executes the operator with the given name.
 
     Args:
         operator_uri: the URI of the operator
-        ctx: a dictionary of parameters defining the execution context. The
-            supported keys are:
+        ctx (None): a dictionary of parameters defining the execution context.
+            The supported keys are:
 
             -   ``dataset``: a :class:`fiftyone.core.dataset.Dataset` or the
                 name of a dataset to process. This is required unless a
                 ``view`` is provided
-            -   ``view``: an optional :class:`fiftyone.core.view.DatasetView`
-                to process
-            -   ``selected``: an optional list of selected sample IDs
-            -   ``selected_labels``: an optional list of selected labels in the
-                format returned by
+            -   ``view`` (None): an optional
+                :class:`fiftyone.core.view.DatasetView` to process
+            -   ``selected`` ([]): an optional list of selected sample IDs
+            -   ``selected_labels`` ([]): an optional list of selected labels
+                in the format returned by
                 :attr:`fiftyone.core.session.Session.selected_labels`
+            -   ``current_sample`` (None): an optional ID of the current sample
+                being processed
             -   ``params``: a dictionary of parameters for the operator.
                 Consult the operator's documentation for details
-        params (None): you can optionally provide the ``ctx.params`` dict as
-            a separate argument
+            -   ``request_delegation`` (False): whether to request delegated
+                execution, if supported by the operator
+            -   ``delegation_target`` (None): an optional orchestrator on which
+                to schedule the operation, if it is delegated
+        **kwargs: you can optionally provide any of the supported ``ctx`` keys
+            as keyword arguments rather than including them in ``ctx``
 
     Returns:
         an :class:`ExecutionResult`
     """
-    dataset_name, view_stages, selected, selected_labels, params = _parse_ctx(
-        ctx, params=params
-    )
-
-    request_params = dict(
-        operator_uri=operator_uri,
-        dataset_name=dataset_name,
-        view=view_stages,
-        selected=selected,
-        selected_labels=selected_labels,
-        params=params,
-    )
+    request_params = _parse_ctx(ctx=ctx, **kwargs)
 
     return asyncio.run(
         execute_or_delegate_operator(
@@ -155,14 +150,13 @@ def execute_operator(operator_uri, ctx, params=None):
     )
 
 
-def _parse_ctx(ctx, params=None):
-    dataset = ctx.get("dataset", None)
-    view = ctx.get("view", None)
-    selected = ctx.get("selected", None)
-    selected_labels = ctx.get("selected_labels", None)
+def _parse_ctx(ctx=None, **kwargs):
+    if ctx is None:
+        ctx = {}
 
-    if params is None:
-        params = ctx.get("params", {})
+    ctx = {**ctx, **kwargs}  # don't modify input `ctx` in-place
+    dataset = ctx.pop("dataset", None)
+    view = ctx.pop("view", None)
 
     if dataset is None and isinstance(view, fov.DatasetView):
         dataset = view._root_dataset
@@ -173,14 +167,14 @@ def _parse_ctx(ctx, params=None):
 
         view = dataset.view()
 
-    view_stages = view._serialize()
+    view = view._serialize()
 
     if isinstance(dataset, fod.Dataset):
         dataset_name = dataset.name
     else:
         dataset_name = dataset
 
-    return dataset_name, view_stages, selected, selected_labels, params
+    return dict(dataset_name=dataset_name, view=view, **ctx)
 
 
 @coroutine_timeout(seconds=fo.config.operator_timeout)
@@ -203,14 +197,45 @@ async def execute_or_delegate_operator(
     else:
         operator, executor, ctx = prepared
 
-    if operator.resolve_delegation(ctx):
+    execution_options = operator.resolve_execution_options(ctx)
+    if (
+        not execution_options.allow_immediate_execution
+        and not execution_options.allow_delegated_execution
+    ):
+        raise RuntimeError(
+            "This operation does not support immediate OR delegated execution"
+        )
+
+    should_delegate = (
+        operator.resolve_delegation(ctx) or ctx.requesting_delegated_execution
+    )
+    if should_delegate:
+        if not execution_options.allow_delegated_execution:
+            logger.warning(
+                (
+                    "This operation does not support delegated execution; it "
+                    "will be executed immediately"
+                )
+            )
+            should_delegate = False
+    else:
+        if not execution_options.allow_immediate_execution:
+            logger.warning(
+                (
+                    "This operation does not support immediate execution; it "
+                    "will be delegated"
+                )
+            )
+            should_delegate = True
+
+    if should_delegate:
         try:
             from .delegated import DelegatedOperationService
 
             op = DelegatedOperationService().queue_operation(
                 operator=operator.uri,
                 context=ctx.serialize(),
-                delegation_target=operator.delegation_target,
+                delegation_target=ctx.delegation_target,
                 label=operator.name,
             )
 
@@ -223,14 +248,14 @@ async def execute_or_delegate_operator(
                 else None
             )
             return execution
-        except Exception as e:
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
     else:
         try:
             result = await do_execute_operator(operator, ctx, exhaust=exhaust)
-        except Exception as e:
+        except:
             return ExecutionResult(
                 executor=executor, error=traceback.format_exc()
             )
@@ -258,6 +283,7 @@ async def prepare_operator_executor(
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+
     await ctx.resolve_secret_values(operator._plugin_secrets)
     inputs = operator.resolve_input(ctx)
     validation_ctx = ValidationContext(ctx, inputs, operator)
@@ -319,6 +345,32 @@ def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
+def resolve_execution_options(registry, operator_uri, request_params):
+    """Resolves the execution options of the operator with the given name.
+
+    Args:
+        registry: an :class:`fiftyone.operators.registry.OperatorRegistry`
+        operator_uri: the URI of the operator
+        request_params: a dictionary of request parameters
+
+    Returns:
+        a :class:`fiftyone.operators.executor.ExecutionOptions` or None
+    """
+    if registry.operator_exists(operator_uri) is False:
+        raise ValueError("Operator '%s' does not exist" % operator_uri)
+
+    operator = registry.get_operator(operator_uri)
+    ctx = ExecutionContext(
+        request_params,
+        operator_uri=operator_uri,
+        required_secrets=operator._plugin_secrets,
+    )
+    try:
+        return operator.resolve_execution_options(ctx)
+    except Exception as e:
+        return ExecutionResult(error=traceback.format_exc())
+
+
 def resolve_placement(operator, request_params):
     """Resolves the placement of the operator with the given name.
 
@@ -365,7 +417,7 @@ class ExecutionContext(object):
         set_progress=None,
         delegated_operation_id=None,
         operator_uri=None,
-        required_secrets: typing.List[str] = None,
+        required_secrets=None,
     ):
         self.request_params = request_params or {}
         self.params = self.request_params.get("params", {})
@@ -467,24 +519,26 @@ class ExecutionContext(object):
 
     @property
     def delegated(self):
-        """Whether the operation's execution was delegated to an orchestrator.
-
-        This property is only available for methods that are invoked after an
-        operator is executed, e.g. :meth:`resolve_output`.
-        """
+        """Whether delegated execution has been forced for the operation."""
         return self.request_params.get("delegated", False)
 
     @property
-    def results(self):
-        """A ``dict`` of results for the current operation.
+    def requesting_delegated_execution(self):
+        """Whether delegated execution has been requested for the operation."""
+        return self.request_params.get("request_delegation", False)
 
-        This property is only available for methods that are invoked after an
-        operator is executed, e.g. :meth:`resolve_output`.
-        """
+    @property
+    def delegation_target(self):
+        """The orchestrator to which the operation was delegated (if any)."""
+        return self.request_params.get("delegation_target", None)
+
+    @property
+    def results(self):
+        """A ``dict`` of results for the current operation."""
         return self.request_params.get("results", {})
 
     @property
-    def secrets(self) -> SecretsDictionary:
+    def secrets(self):
         """A read-only mapping of keys to their resolved values."""
         return SecretsDictionary(
             self._secrets,
@@ -576,7 +630,7 @@ class ExecutionContext(object):
             k: v for k, v in self.__dict__.items() if not k.startswith("_")
         }
 
-    def set_progress(self, progress: float = None, label: str = None):
+    def set_progress(self, progress=None, label=None):
         """Sets the progress of the current operation.
 
         Args:
@@ -895,3 +949,66 @@ class ValidationContext(object):
                 return False
 
         return value is not None
+
+
+class ExecutionOptions(object):
+    """Represents the execution options of an operation.
+
+    Args:
+        allow_immediate_execution (True): whether the operation can be executed
+            immediately
+        allow_delegated_execution (False): whether the operation can be
+            delegated to an orchestrator
+        default_choice_to_delegated (False): whether to default to delegated
+            execution, if allowed
+    """
+
+    def __init__(
+        self,
+        allow_immediate_execution=True,
+        allow_delegated_execution=False,
+        default_choice_to_delegated=False,
+    ):
+        self._allow_immediate_execution = allow_immediate_execution
+        self._allow_delegated_execution = allow_delegated_execution
+        self._default_choice_to_delegated = default_choice_to_delegated
+        self._available_orchestrators = []
+
+        if not allow_delegated_execution and not allow_immediate_execution:
+            self._allow_immediate_execution = True
+
+    @property
+    def allow_immediate_execution(self):
+        return self._allow_immediate_execution
+
+    @property
+    def allow_delegated_execution(self):
+        return self._allow_delegated_execution
+
+    @property
+    def default_choice_to_delegated(self):
+        return self._default_choice_to_delegated
+
+    @property
+    def available_orchestrators(self):
+        return self._available_orchestrators or []
+
+    @property
+    def orchestrator_registration_enabled(self):
+        return bool(
+            os.environ.get("FIFTYONE_ENABLE_ORCHESTRATOR_REGISTRATION", False)
+        )
+
+    def update(self, available_orchestrators=None):
+        self._available_orchestrators = available_orchestrators
+
+    def to_dict(self):
+        return {
+            "allow_immediate_execution": self._allow_immediate_execution,
+            "allow_delegated_execution": self._allow_delegated_execution,
+            "default_choice_to_delegated": self._default_choice_to_delegated,
+            "orchestrator_registration_enabled": self.orchestrator_registration_enabled,
+            "available_orchestrators": [
+                x.__dict__ for x in self.available_orchestrators
+            ],
+        }
