@@ -335,9 +335,9 @@ def get_default_path_for_filesystem(fs):
     elif fs == fos.FileSystem.GCS:
         return fos.GCS_PREFIX
     elif fs == fos.FileSystem.AZURE:
-        return "/"
+        return None
     elif fs == fos.FileSystem.MINIO:
-        return "/"
+        return None
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -362,9 +362,9 @@ def list_files(dirpath):
             {
                 "name": name,
                 "type": "directory",
-                "absolute_path": fos.join(dirpath, name),
+                "absolute_path": name,
             }
-            for name in fos.list_buckets(fs)
+            for name in fos.list_buckets(fs, abs_paths=True)
         ]
         return dirs
 
