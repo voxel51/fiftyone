@@ -2096,7 +2096,7 @@ def list_buckets(fs, abs_paths=False):
         else:
             credentials_path = fo.media_cache_config.aws_config_file
             profile = fo.media_cache_config.aws_profile
-            credentials = S3StorageClient.load_credentials(
+            credentials, _ = S3StorageClient.load_credentials(
                 credentials_path=credentials_path, profile=profile
             )
             client = S3StorageClient(credentials=credentials)
