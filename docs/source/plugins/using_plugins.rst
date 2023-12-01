@@ -582,8 +582,8 @@ operator can be invoked like so:
     dataset = foz.load_zoo_dataset("quickstart")
     compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
 
-    # Schedule a delegated operation to compute metadata
-    compute_metadata(dataset, overwrite=True, num_workers=1, delegate=True)
+    # Schedule a delegated operation to (re)compute metadata for the dataset
+    compute_metadata(dataset, overwrite=True, delegate=True)
 
 .. note::
 
