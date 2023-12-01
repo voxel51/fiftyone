@@ -325,17 +325,17 @@ def list_available_file_systems():
 
 
 def _get_available_file_systems():
-    file_systems = []
+    file_systems = set()
 
     if not fi.is_internal_service():
-        file_systems.append(FileSystem.LOCAL)
+        file_systems.add(FileSystem.LOCAL)
 
     for fs in _FILE_SYSTEMS_WITH_BUCKETS:
         clients = _get_all_clients_for_fs(fs)
         if clients:
-            file_systems.append(fs)
+            file_systems.add(fs)
 
-    return file_systems
+    return list(file_systems)
 
 
 def _get_all_clients_for_fs(fs):
