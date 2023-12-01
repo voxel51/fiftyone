@@ -279,7 +279,8 @@ export const PainterFactory = (requestColor) => ({
           ].intTarget;
         } else {
           // assign an arbitrary uint8 value here; this isn't used anywhere but absence of it affects tooltip behavior
-          targets[i] = r;
+          // having this line caused the mask to corrupt
+          // targets[i] = r;
         }
       }
 
