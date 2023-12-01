@@ -255,7 +255,10 @@ export const dynamicGroupViewQuery = selectorFamily<
                         {
                           $toString: "$$expr",
                         },
-                        [groupByFieldValueExplicit ?? get(groupByFieldValue)],
+                        [
+                          String(groupByFieldValueExplicit) ??
+                            String(get(groupByFieldValue)),
+                        ],
                       ],
                     },
                   },
