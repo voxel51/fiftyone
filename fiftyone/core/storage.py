@@ -96,7 +96,7 @@ def init_storage():
     if creds_manager:
         # get the paths for all minio creds
         minio_creds_path_list = creds_manager.get_all_credentials_for_provider(
-            "MINIO"
+            FILESYSTEM_TO_PROVIDER[FileSystem.MINIO]
         )
 
         # add the actual creds to the list
@@ -110,7 +110,7 @@ def init_storage():
 
         # get the paths for all azure creds
         azure_creds_path_list = creds_manager.get_all_credentials_for_provider(
-            "AZURE"
+            FILESYSTEM_TO_PROVIDER[FileSystem.AZURE]
         )
 
         # add the actual creds to the list
@@ -196,6 +196,13 @@ class FileSystem(object):
     HTTP = "http"
     LOCAL = "local"
 
+
+FILESYSTEM_TO_PROVIDER = {
+    FileSystem.S3: "AWS",
+    FileSystem.GCS: "GCP",
+    FileSystem.AZURE: "AZURE",
+    FileSystem.MINIO: "MINIO",
+}
 
 _FILE_SYSTEMS_WITH_BUCKETS = [
     FileSystem.S3,
@@ -1861,7 +1868,7 @@ def list_buckets(fs, abs_paths=False):
 
         if creds_manager:
             creds_file_list = creds_manager.get_all_credentials_for_provider(
-                "AWS"
+                FILESYSTEM_TO_PROVIDER[fs]
             )
             for creds_file in creds_file_list:
 
@@ -1907,7 +1914,7 @@ def list_buckets(fs, abs_paths=False):
 
         if creds_manager:
             creds_file_list = creds_manager.get_all_credentials_for_provider(
-                "GCP"
+                FILESYSTEM_TO_PROVIDER[fs]
             )
             for creds_file in creds_file_list:
                 credentials, _ = GoogleCloudStorageClient.load_credentials(
@@ -1951,7 +1958,7 @@ def list_buckets(fs, abs_paths=False):
 
         if creds_manager:
             creds_file_list = creds_manager.get_all_credentials_for_provider(
-                "AZURE"
+                FILESYSTEM_TO_PROVIDER[fs]
             )
             for creds_file in creds_file_list:
                 credentials, _ = AzureStorageClient.load_credentials(
@@ -2036,7 +2043,7 @@ def list_buckets(fs, abs_paths=False):
 
         if creds_manager:
             creds_file_list = creds_manager.get_all_credentials_for_provider(
-                "MINIO"
+                FILESYSTEM_TO_PROVIDER[fs]
             )
             for creds_file in creds_file_list:
                 credentials, _ = MinIOStorageClient.load_credentials(
@@ -2468,7 +2475,7 @@ def _get_regional_client(fs, bucket):
         bucket_regions[fs][bucket] = region
 
     # try to get from the central client cache
-    client = _get_client_from_cache(fs, bucket)
+    client = _get_client_from_cache(FILESYSTEM_TO_PROVIDER[fs], bucket)
 
     if client is None:
         if region == _UNKNOWN_REGION:
@@ -2504,27 +2511,31 @@ def _get_default_client(fs, bucket):
     global client_cache
 
     if fs == FileSystem.S3:
-        s3_client = _get_client_from_cache("AWS", bucket)
+        s3_client = _get_client_from_cache(FILESYSTEM_TO_PROVIDER[fs], bucket)
         if s3_client is None:
             s3_client = _make_client(fs, bucket)
         return s3_client
 
     if fs == FileSystem.GCS:
-        gcs_client = _get_client_from_cache("GCP", bucket)
+        gcs_client = _get_client_from_cache(FILESYSTEM_TO_PROVIDER[fs], bucket)
         if gcs_client is None:
             gcs_client = _make_client(fs, bucket)
 
         return gcs_client
 
     if fs == FileSystem.AZURE:
-        azure_client = _get_client_from_cache("AZURE", bucket)
+        azure_client = _get_client_from_cache(
+            FILESYSTEM_TO_PROVIDER[fs], bucket
+        )
         if azure_client is None:
             azure_client = _make_client(fs, bucket)
 
         return azure_client
 
     if fs == FileSystem.MINIO:
-        minio_client = _get_client_from_cache("MINIO", bucket)
+        minio_client = _get_client_from_cache(
+            FILESYSTEM_TO_PROVIDER[fs], bucket
+        )
         if minio_client is None:
             minio_client = _make_client(fs, bucket)
 
@@ -2542,7 +2553,16 @@ def _get_default_client(fs, bucket):
 
 
 def _get_region(fs, bucket):
-    client = _get_default_client(fs, bucket)
+    if fs == FileSystem.S3:
+        client = _get_client_from_cache(FILESYSTEM_TO_PROVIDER[fs], bucket)
+        if client is None:
+            credentials = _load_s3_credentials(bucket)
+            client = S3StorageClient(credentials=credentials)
+    elif fs == FileSystem.MINIO:
+        client = _get_client_from_cache(FILESYSTEM_TO_PROVIDER[fs], bucket)
+        if client is None:
+            credentials = _load_minio_credentials(bucket)
+            client = MinIOStorageClient(credentials=credentials)
 
     try:
         # HeadBucket is the AWS recommended way to determine a bucket's region
@@ -2583,25 +2603,26 @@ def _make_client(fs, bucket, num_workers=None):
     if fs == FileSystem.S3:
         credentials = _load_s3_credentials(bucket)
         client = S3StorageClient(credentials=credentials, **kwargs)
-        client_cache[f"AWS-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
         return client
 
     if fs == FileSystem.GCS:
         credentials = _load_gcs_credentials(bucket)
         client = GoogleCloudStorageClient(credentials=credentials, **kwargs)
-        client_cache[f"GCP-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
         return client
 
     if fs == FileSystem.AZURE:
         credentials = _load_azure_credentials(bucket)
         client = AzureStorageClient(credentials=credentials, **kwargs)
-        client_cache[f"AZURE-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
         return client
 
     if fs == FileSystem.MINIO:
         credentials = _load_minio_credentials(bucket)
         client = MinIOStorageClient(credentials=credentials, **kwargs)
-        client_cache[f"MINIO-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
+        return client
 
     if fs == FileSystem.HTTP:
         return HTTPStorageClient(**kwargs)
@@ -2622,14 +2643,14 @@ def _make_regional_client(fs, region, bucket, num_workers=None):
         credentials = _load_s3_credentials(bucket) or {}
         credentials["region"] = region
         client = S3StorageClient(credentials=credentials, **kwargs)
-        client_cache[f"AWS-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
         return client
 
     if fs == FileSystem.MINIO:
         credentials = _load_minio_credentials(bucket) or {}
         credentials["region"] = region
         client = MinIOStorageClient(credentials=credentials, **kwargs)
-        client_cache[f"MINIO-{bucket}"] = client
+        client_cache[f"{FILESYSTEM_TO_PROVIDER[fs]}-{bucket}"] = client
         return client
 
     raise ValueError("Unsupported file system '%s'" % fs)
@@ -2651,7 +2672,9 @@ def _get_managed_credentials(provider, bucket):
 
 
 def _load_s3_credentials(bucket):
-    credentials_path = _get_managed_credentials("AWS", bucket)
+    credentials_path = _get_managed_credentials(
+        FILESYSTEM_TO_PROVIDER[FileSystem.S3], bucket
+    )
     profile = None
 
     if credentials_path:
@@ -2669,8 +2692,9 @@ def _load_s3_credentials(bucket):
 
 
 def _load_gcs_credentials(bucket):
-    credentials_path = _get_managed_credentials("GCP", bucket)
-
+    credentials_path = _get_managed_credentials(
+        FILESYSTEM_TO_PROVIDER[FileSystem.GCS], bucket
+    )
     if credentials_path:
         logger.debug("Loaded GCP creds from Teams DB")
     else:
@@ -2685,7 +2709,9 @@ def _load_gcs_credentials(bucket):
 
 
 def _load_azure_credentials(bucket):
-    credentials_path = _get_managed_credentials("AZURE", bucket)
+    credentials_path = _get_managed_credentials(
+        FILESYSTEM_TO_PROVIDER[FileSystem.AZURE], bucket
+    )
     profile = None
 
     if credentials_path:
@@ -2703,7 +2729,9 @@ def _load_azure_credentials(bucket):
 
 
 def _load_minio_credentials(bucket):
-    credentials_path = _get_managed_credentials("MINIO", bucket)
+    credentials_path = _get_managed_credentials(
+        FILESYSTEM_TO_PROVIDER[FileSystem.MINIO], bucket
+    )
     profile = None
 
     if credentials_path:

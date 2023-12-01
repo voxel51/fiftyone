@@ -86,6 +86,9 @@ class CloudCredentialsManager(object):
         return self._creds_cache.get(provider, None)
 
     def _refresh_credentials(self):
+        # clear the creds cache
+        self._creds_cache.clear()
+
         creds_list = foo.get_cloud_credentials()
         for credentials in creds_list:
             try:
@@ -274,4 +277,4 @@ def _write_default_gcp_json_file(raw_creds_dict, creds_path):
 
 
 def _serialize_prefixes(prefixes):
-    return "-".join([prefix[prefix.find("//") + 2 :] for prefix in prefixes])
+    return "-".join([prefix[prefix.find("//") + 1 :] for prefix in prefixes])
