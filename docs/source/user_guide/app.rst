@@ -308,7 +308,7 @@ Lightning mode is a performant sidebar setting for larger datasets that is be
 enabled through the `lightning_threshold`
 :ref:`App config <configuring-fiftyone-app>` option, or through the options
 dropdown. The threshold is a dataset sample count, above which the sidebar is
-restricted to indexed sample or frame fields. The setting can only be enabled
+restricted to indexed sample or frame fields. The setting is only be enabled
 when no view is present.
 
 .. note::
@@ -334,7 +334,7 @@ as well as an index on `metadata.size_bytes`.
 
     import fiftyone as fo
 
-    dataset = fo.load_dataset("quickstart")
+    dataset = fo.load_dataset("bdd100k")
     dataset.create_index("$**")
     dataset.create_index("metadata.size_bytes")
 
