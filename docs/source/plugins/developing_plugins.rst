@@ -987,8 +987,10 @@ process.
 There are a variety of options available for configuring whether a given
 operation should be delegated or executed immediately.
 
-Operator configuration
-~~~~~~~~~~~~~~~~~~~~~~
+.. _operator-delegation-configuration:
+
+Delegation configuration
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can provide the optional properties described below in the
 :ref:`operator's config <operator-config>` to specify the available execution
@@ -1026,6 +1028,8 @@ user to choose between the supported options if there are multiple:
 .. image:: /images/plugins/operators/operator-execute-button.png
     :align: center
 
+.. _operator-execution-options:
+
 Execution options
 ~~~~~~~~~~~~~~~~~
 
@@ -1057,6 +1061,8 @@ execution context:
 If implemented, this method will override any static execution parameters
 included in the :ref:`operator's config <operator-config>` as described in the
 previous section.
+
+.. _operator-forced-delegation:
 
 Forced delegation
 ~~~~~~~~~~~~~~~~~
@@ -1126,6 +1132,8 @@ Alternatively, you could simply ask the user to decide:
 .. image:: /images/plugins/operators/operator-user-delegation.png
     :align: center
 
+.. _operator-reporting-progress:
+
 Reporting progress
 ~~~~~~~~~~~~~~~~~~
 
@@ -1143,7 +1151,7 @@ on their execution context from within
     def execute(self, ctx):
         images_dir = ctx.params["images_dir"]
 
-        filepaths = fos.list_files(images_dir)
+        filepaths = fos.list_files(images_dir, abs_paths=True, recursive=True)
 
         num_added = 0
         num_total = len(filepaths)
