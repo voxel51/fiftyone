@@ -373,8 +373,9 @@ def _get_all_clients_for_fs(fs):
             credentials, _ = S3StorageClient.load_credentials(
                 credentials_path=credentials_path, profile=profile
             )
-            client = S3StorageClient(credentials=credentials)
-            clients.append(client)
+            if credentials:
+                client = S3StorageClient(credentials=credentials)
+                clients.append(client)
 
         return clients
 
@@ -405,8 +406,9 @@ def _get_all_clients_for_fs(fs):
             credentials, _ = GoogleCloudStorageClient.load_credentials(
                 credentials_path=credentials_path
             )
-            client = GoogleCloudStorageClient(credentials=credentials)
-            clients.append(client)
+            if credentials:
+                client = GoogleCloudStorageClient(credentials=credentials)
+                clients.append(client)
 
         return clients
 
@@ -473,9 +475,9 @@ def _get_all_clients_for_fs(fs):
                 )
                 azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
-            client = AzureStorageClient(credentials=credentials)
-
-            clients.append(client)
+            if credentials:
+                client = AzureStorageClient(credentials=credentials)
+                clients.append(client)
 
         return clients
 
@@ -531,8 +533,9 @@ def _get_all_clients_for_fs(fs):
                     credentials["endpoint_url"].rstrip("/") + "/"
                 )
 
-            client = MinIOStorageClient(credentials=credentials)
-            clients.append(client)
+            if credentials:
+                client = MinIOStorageClient(credentials=credentials)
+                clients.append(client)
 
         return clients
 
