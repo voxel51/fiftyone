@@ -458,24 +458,27 @@ def _get_all_clients_for_fs(fs):
             credentials, _ = AzureStorageClient.load_credentials(
                 credentials_path=credentials_path, profile=profile
             )
-            azure_alias_prefix = None
-            azure_endpoint_prefix = None
-
-            if "alias" in credentials:
-                azure_alias_prefix = credentials["alias"] + "://"
-
-            if "account_url" in credentials:
-                azure_endpoint_prefix = (
-                    credentials["account_url"].rstrip("/") + "/"
-                )
-            elif "conn_str" in credentials or "account_name" in credentials:
-                account_url = AzureStorageClient._to_account_url(
-                    conn_str=credentials.get("conn_str", None),
-                    account_name=credentials.get("account_name", None),
-                )
-                azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
             if credentials:
+                azure_alias_prefix = None
+                azure_endpoint_prefix = None
+
+                if "alias" in credentials:
+                    azure_alias_prefix = credentials["alias"] + "://"
+
+                if "account_url" in credentials:
+                    azure_endpoint_prefix = (
+                        credentials["account_url"].rstrip("/") + "/"
+                    )
+                elif (
+                    "conn_str" in credentials or "account_name" in credentials
+                ):
+                    account_url = AzureStorageClient._to_account_url(
+                        conn_str=credentials.get("conn_str", None),
+                        account_name=credentials.get("account_name", None),
+                    )
+                    azure_endpoint_prefix = account_url.rstrip("/") + "/"
+
                 client = AzureStorageClient(credentials=credentials)
                 clients.append(client)
 
@@ -483,8 +486,6 @@ def _get_all_clients_for_fs(fs):
 
     elif fs == FileSystem.MINIO:
         _local_client_prefix_dict = {}
-        # cause it's a bucket list!
-        bucket_list = set()
 
         if creds_manager:
             creds_file_list = creds_manager.get_all_credentials_for_provider(
@@ -522,18 +523,18 @@ def _get_all_clients_for_fs(fs):
                 credentials_path=credentials_path, profile=profile
             )
 
-            minio_alias_prefix = None
-            minio_endpoint_prefix = None
-
-            if "alias" in credentials:
-                minio_alias_prefix = credentials["alias"] + "://"
-
-            if "endpoint_url" in credentials:
-                minio_endpoint_prefix = (
-                    credentials["endpoint_url"].rstrip("/") + "/"
-                )
-
             if credentials:
+                minio_alias_prefix = None
+                minio_endpoint_prefix = None
+
+                if "alias" in credentials:
+                    minio_alias_prefix = credentials["alias"] + "://"
+
+                if "endpoint_url" in credentials:
+                    minio_endpoint_prefix = (
+                        credentials["endpoint_url"].rstrip("/") + "/"
+                    )
+
                 client = MinIOStorageClient(credentials=credentials)
                 clients.append(client)
 
