@@ -115,6 +115,20 @@ export default <T extends AbstractLooker>(
 
         let sampleMediaFilePath = urls[mediaField];
 
+        if (constructor === PcdLooker) {
+          const orthographicProjectionField = Object.entries(sample)
+            .find(
+              (el) =>
+                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+            )
+            ?.at(0) as string | undefined;
+          if (orthographicProjectionField) {
+            sampleMediaFilePath = urls[
+              `${orthographicProjectionField}.filepath`
+            ] as string;
+          }
+        }
+
         const config: ConstructorParameters<T>[1] = {
           fieldSchema: {
             ...fieldSchema,
@@ -144,20 +158,6 @@ export default <T extends AbstractLooker>(
             name: sample.group.name,
             id: sample.group._id,
           };
-        }
-
-        if (constructor === PcdLooker) {
-          const orthographicProjectionField = Object.entries(sample)
-            .find(
-              (el) =>
-                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
-            )
-            ?.at(0) as string | undefined;
-          if (orthographicProjectionField) {
-            sampleMediaFilePath = urls[
-              `${orthographicProjectionField}.filepath`
-            ] as string;
-          }
         }
 
         if (constructor === ImaVidLooker) {
