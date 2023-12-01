@@ -276,24 +276,16 @@ def get_file_system(path):
     for prefix_set in minio_prefixes:
         minio_alias_prefix = prefix_set[0]
         minio_endpoint_prefix = prefix_set[1]
-        if (
-            minio_alias_prefix is not None
-            and path.startswith(minio_alias_prefix)
-        ) or (
-            minio_endpoint_prefix is not None
-            and path.startswith(minio_endpoint_prefix)
+        if (minio_alias_prefix is not None and minio_alias_prefix in path) or (
+            minio_endpoint_prefix is not None and minio_endpoint_prefix in path
         ):
             return FileSystem.MINIO
 
     for prefix_set in azure_prefixes:
         azure_alias_prefix = prefix_set[0]
         azure_endpoint_prefix = prefix_set[1]
-        if (
-            azure_alias_prefix is not None
-            and path.startswith(azure_alias_prefix)
-        ) or (
-            azure_endpoint_prefix is not None
-            and path.startswith(azure_endpoint_prefix)
+        if (azure_alias_prefix is not None and azure_alias_prefix in path) or (
+            azure_endpoint_prefix is not None and azure_endpoint_prefix in path
         ):
             return FileSystem.AZURE
 
@@ -572,12 +564,10 @@ def split_prefix(path):
         minio_alias_prefix = prefix_set[0]
         minio_endpoint_prefix = prefix_set[1]
         prefix = None
-        if minio_alias_prefix is not None and path.startswith(
-            minio_alias_prefix
-        ):
+        if minio_alias_prefix is not None and minio_alias_prefix in path:
             prefix = minio_alias_prefix
-        elif minio_endpoint_prefix is not None and path.startswith(
-            minio_endpoint_prefix
+        elif (
+            minio_endpoint_prefix is not None and minio_endpoint_prefix in path
         ):
             prefix = minio_endpoint_prefix
 
@@ -588,12 +578,10 @@ def split_prefix(path):
         azure_alias_prefix = prefix_set[0]
         azure_endpoint_prefix = prefix_set[1]
         prefix = None
-        if azure_alias_prefix is not None and path.startswith(
-            azure_alias_prefix
-        ):
+        if azure_alias_prefix is not None and azure_alias_prefix in path:
             prefix = azure_alias_prefix
-        elif azure_endpoint_prefix is not None and path.startswith(
-            azure_endpoint_prefix
+        elif (
+            azure_endpoint_prefix is not None and azure_endpoint_prefix in path
         ):
             prefix = azure_endpoint_prefix
 
