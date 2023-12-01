@@ -164,7 +164,7 @@ const Checkboxes = ({
   });
 
   const show = useRecoilValue(showSearchSelector({ modal, path }));
-  const s = useRecoilValue(isInKeypointsField(path));
+  const keypoints = useRecoilValue(isInKeypointsField(path));
 
   if (loading) {
     return <LoadingDots text={"Loading"} />;
@@ -190,7 +190,7 @@ const Checkboxes = ({
             name={value === null ? "None" : value}
             loading={loading}
             count={
-              typeof count !== "number" || !isFilterMode || s
+              typeof count !== "number" || !isFilterMode || keypoints
                 ? undefined
                 : selectedMap.current.get(value) ?? count
             }
