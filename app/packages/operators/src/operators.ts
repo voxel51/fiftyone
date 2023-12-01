@@ -445,7 +445,6 @@ async function executeOperatorAsGenerator(
       params: ctx.params,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
-      delegate_execution: currentContext.delegateExecution,
       extended: currentContext.extended,
       view: currentContext.view,
       filters: currentContext.filters,
@@ -454,6 +453,7 @@ async function executeOperatorAsGenerator(
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
+      request_delegation: ctx.requestDelegation,
     },
     "json-stream"
   );
