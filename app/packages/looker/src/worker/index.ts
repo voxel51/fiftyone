@@ -311,7 +311,7 @@ const processSample = ({
 
   let bufferPromises = [];
 
-  if (sample._media_type === "point-cloud") {
+  if (sample?._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
     bufferPromises = [
