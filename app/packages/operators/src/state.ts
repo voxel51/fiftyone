@@ -24,6 +24,7 @@ import {
   getInvocationRequestQueue,
   getLocalOrRemoteOperator,
   listLocalAndRemoteOperators,
+  resolveExecutionOptions,
 } from "./operators";
 import { Places } from "./types";
 import { ValidationContext } from "./validation";
@@ -35,14 +36,16 @@ export const promptingOperatorState = atom({
 
 export const currentOperatorParamsSelector = selectorFamily({
   key: "currentOperatorParamsSelector",
-  get: () => ({ get }) => {
-    const promptingOperator = get(promptingOperatorState);
-    if (!promptingOperator) {
-      return {};
-    }
-    const { params } = promptingOperator;
-    return params;
-  },
+  get:
+    () =>
+    ({ get }) => {
+      const promptingOperator = get(promptingOperatorState);
+      if (!promptingOperator) {
+        return {};
+      }
+      const { params } = promptingOperator;
+      return params;
+    },
 });
 
 export const showOperatorPromptSelector = selector({
@@ -95,14 +98,16 @@ const globalContextSelector = selector({
 
 const currentContextSelector = selectorFamily({
   key: "currentContextSelector",
-  get: (operatorName) => ({ get }) => {
-    const globalContext = get(globalContextSelector);
-    const params = get(currentOperatorParamsSelector(operatorName));
-    return {
-      ...globalContext,
-      params,
-    };
-  },
+  get:
+    (operatorName) =>
+    ({ get }) => {
+      const globalContext = get(globalContextSelector);
+      const params = get(currentOperatorParamsSelector(operatorName));
+      return {
+        ...globalContext,
+        params,
+      };
+    },
 });
 
 const useExecutionContext = (operatorName, hooks = {}) => {
@@ -145,6 +150,139 @@ const useExecutionContext = (operatorName, hooks = {}) => {
   return ctx;
 };
 
+function useExecutionOptions(operatorURI, ctx, isRemote) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [executionOptions, setExecutionOptions] = useState(null);
+
+  const fetch = useCallback(
+    debounce(async (ctxOverride = null) => {
+      if (!isRemote) return;
+      if (!ctxOverride) setIsLoading(true); // only show loading if loading the first time
+      const options = await resolveExecutionOptions(
+        operatorURI,
+        ctxOverride || ctx
+      );
+      setExecutionOptions(options);
+      setIsLoading(false);
+    }),
+    [operatorURI, ctx, isRemote]
+  );
+
+  useEffect(() => {
+    fetch();
+  }, []);
+
+  return { isLoading, executionOptions, fetch };
+}
+
+const useOperatorPromptSubmitOptions = (operatorURI, execDetails, execute) => {
+  let options = [];
+  const persistUnderKey = `operator-prompt-${operatorURI}`;
+  const availableOrchestrators =
+    execDetails.executionOptions?.availableOrchestrators || [];
+  const hasAvailableOrchestators = availableOrchestrators.length > 0;
+  const executionOptions = execDetails.executionOptions || {};
+  const defaultToExecute = executionOptions.allowDelegatedExecution
+    ? !executionOptions.defaultChoiceToDelegated
+    : true;
+  const defaultToSchedule = executionOptions.allowDelegatedExecution
+    ? executionOptions.defaultChoiceToDelegated
+    : false;
+  if (executionOptions.allowImmediateExecution) {
+    options.push({
+      label: "Execute",
+      id: "execute",
+      default: defaultToExecute,
+      description: "Run this operation now",
+      onSelect() {
+        setSelectedID("execute");
+      },
+      onClick() {
+        execute();
+      },
+    });
+  }
+  if (
+    executionOptions.allowDelegatedExecution &&
+    !executionOptions.orchestratorRegistrationEnabled
+  ) {
+    options.push({
+      label: "Schedule",
+      id: "schedule",
+      default: defaultToSchedule,
+      description: "Schedule this operation to run later",
+      onSelect() {
+        setSelectedID("schedule");
+      },
+      onClick() {
+        execute({ requestDelegation: true });
+      },
+    });
+  }
+
+  if (
+    executionOptions.allowDelegatedExecution &&
+    hasAvailableOrchestators &&
+    executionOptions.orchestratorRegistrationEnabled
+  ) {
+    for (let orc of execDetails.executionOptions.availableOrchestrators) {
+      options.push({
+        label: "Schedule",
+        choiceLabel: `Schedule on "${orc.instanceID}"`,
+        id: orc.id,
+        description: `Run this operation on ${orc.instanceID}`,
+        onSelect() {
+          setSelectedID(orc.id);
+        },
+        onClick() {
+          execute({
+            delegationTarget: orc.instanceID,
+            requestDelegation: true,
+          });
+        },
+      });
+    }
+  }
+
+  const defaultID =
+    options.find((option) => option.default)?.id || options[0]?.id || "execute";
+  let [selectedID, setSelectedID] = fos.useBrowserStorage(
+    persistUnderKey,
+    defaultID
+  );
+  const selectedOption = options.find((option) => option.id === selectedID);
+
+  useEffect(() => {
+    if (options.length === 1) {
+      setSelectedID(options[0].id);
+    }
+  }, [options]);
+
+  const handleSubmit = useCallback(() => {
+    const selectedOption = options.find((option) => option.id === selectedID);
+    if (selectedOption) {
+      selectedOption.onClick();
+    }
+  }, [options, selectedID]);
+
+  if (selectedOption) selectedOption.selected = true;
+  const showWarning =
+    executionOptions.orchestratorRegistrationEnabled &&
+    !hasAvailableOrchestators;
+  const warningMessage =
+    "There are no available orchestrators to schedule this operation. Please contact your administrator to add an orchestrator.";
+
+  return {
+    showWarning,
+    warningTitle: "No available orchestrators",
+    warningMessage,
+    options,
+    hasOptions: options.length > 0,
+    isLoading: execDetails.isLoading,
+    handleSubmit,
+  };
+};
+
 export const useOperatorPrompt = () => {
   const [promptingOperator, setPromptingOperator] = useRecoilState(
     promptingOperatorState
@@ -153,7 +291,8 @@ export const useOperatorPrompt = () => {
   const resolveTypeError = useRef();
   const { operatorName } = promptingOperator;
   const ctx = useExecutionContext(operatorName);
-  const operator = getLocalOrRemoteOperator(operatorName).operator;
+  const { operator, isRemote } = getLocalOrRemoteOperator(operatorName);
+  const execDetails = useExecutionOptions(operatorName, ctx, isRemote);
   const hooks = operator.useHooks(ctx);
   const executor = useOperatorExecutor(promptingOperator.operatorName);
   const [inputFields, setInputFields] = useState();
@@ -166,6 +305,9 @@ export const useOperatorPrompt = () => {
       async (ctx) => {
         try {
           setResolving(true);
+          if (operator.config.resolveExecutionOptionsOnChange) {
+            execDetails.fetch(ctx);
+          }
           const resolved = await operator.resolveInput(ctx);
           validateThrottled(ctx, resolved);
           if (resolved) {
@@ -243,39 +385,35 @@ export const useOperatorPrompt = () => {
   }, [executor.result]);
 
   const setFieldValue = useRecoilTransaction_UNSTABLE(
-    ({ get, set }) => (fieldName, value) => {
-      const state = get(promptingOperatorState);
-      set(promptingOperatorState, {
-        ...state,
-        params: {
-          ...state.params,
-          [fieldName]: value,
-        },
-      });
-    }
+    ({ get, set }) =>
+      (fieldName, value) => {
+        const state = get(promptingOperatorState);
+        set(promptingOperatorState, {
+          ...state,
+          params: {
+            ...state.params,
+            [fieldName]: value,
+          },
+        });
+      }
   );
-  const execute = useCallback(async () => {
-    const resolved = await operator.resolveInput(ctx);
-    const { invalid, errors } = await validate(ctx, resolved);
-    if (invalid) {
-      return;
-    }
-    executor.execute(promptingOperator.params);
-  }, [operator, promptingOperator]);
+  const execute = useCallback(
+    async (options = null) => {
+      const resolved = await operator.resolveInput(ctx);
+      const { invalid, errors } = await validate(ctx, resolved);
+      if (invalid) {
+        return;
+      }
+      executor.execute(promptingOperator.params, options);
+    },
+    [operator, promptingOperator]
+  );
   const close = () => {
     setPromptingOperator(null);
     setInputFields(null);
     setOutputFields(null);
     executor.clear();
   };
-
-  const onSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-      execute();
-    },
-    [execute]
-  );
 
   const autoExec = async () => {
     const needsInput = operator && (await operator.needsUserInput(ctx));
@@ -311,10 +449,24 @@ export const useOperatorPrompt = () => {
     notify,
   ]);
 
-  const pendingResolve = useMemo(() => ctx.params != resolvedCtx?.params, [
-    ctx.params,
-    resolvedCtx?.params,
-  ]);
+  const pendingResolve = useMemo(
+    () => ctx.params != resolvedCtx?.params,
+    [ctx.params, resolvedCtx?.params]
+  );
+
+  const submitOptions = useOperatorPromptSubmitOptions(
+    operator.uri,
+    execDetails,
+    execute
+  );
+
+  const onSubmit = useCallback(
+    (e) => {
+      if (e) e.preventDefault();
+      submitOptions.handleSubmit();
+    },
+    [submitOptions?.handleSubmit]
+  );
 
   if (!promptingOperator) return null;
 
@@ -340,6 +492,8 @@ export const useOperatorPrompt = () => {
     resolveError,
     resolving,
     pendingResolve,
+    execDetails,
+    submitOptions,
   };
 };
 
@@ -652,6 +806,11 @@ export function useOperatorBrowser() {
   };
 }
 
+type OperatorExecutorOptions = {
+  delegationTarget?: string;
+  requestDelegation?: boolean;
+};
+
 export function useOperatorExecutor(uri, handlers: any = {}) {
   if (!uri.includes("/")) {
     uri = `@voxel51/operators/${uri}`;
@@ -678,7 +837,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   }, [setIsExecuting, setError, setResult, setHasExecuted, setNeedsOutput]);
 
   const execute = useRecoilCallback(
-    (state) => async (paramOverrides) => {
+    (state) => async (paramOverrides, options?: OperatorExecutorOptions) => {
+      const { delegationTarget, requestDelegation } = options || {};
       setIsExecuting(true);
       const { params, ...currentContext } = await state.snapshot.getPromise(
         currentContextSelector(uri)
@@ -690,6 +850,8 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
         hooks
       );
       ctx.state = state;
+      ctx.delegationTarget = delegationTarget;
+      ctx.requestDelegation = requestDelegation;
       try {
         ctx.hooks = hooks;
         ctx.state = state;
@@ -733,12 +895,10 @@ export function useExecutorQueue() {}
 export function useInvocationRequestQueue() {
   const ref = useRef<InvocationRequestQueue>();
   const [requests, setRequests] = useState([]);
-  const [itemToExecute, setItemToExecute] = useState(null);
 
   useEffect(() => {
     const queue = (ref.current = getInvocationRequestQueue());
     const subscriber = (updatedQueue) => {
-      const queue = ref.current;
       setRequests(updatedQueue.toJSON());
     };
     queue.subscribe(subscriber);
@@ -797,14 +957,16 @@ export const operatorPlacementsAtom = atom({
 
 export const placementsForPlaceSelector = selectorFamily({
   key: "operatorsForPlaceSelector",
-  get: (place: Places) => ({ get }) => {
-    const placements = get(operatorPlacementsAtom);
-    return placements
-      .filter(
-        (p) => p.placement.place === place && p.operator?.config?.canExecute
-      )
-      .map(({ placement, operator }) => ({ placement, operator }));
-  },
+  get:
+    (place: Places) =>
+    ({ get }) => {
+      const placements = get(operatorPlacementsAtom);
+      return placements
+        .filter(
+          (p) => p.placement.place === place && p.operator?.config?.canExecute
+        )
+        .map(({ placement, operator }) => ({ placement, operator }));
+    },
 });
 
 export function useOperatorPlacements(place: Places) {

@@ -8,7 +8,7 @@ import style from "./Tooltip.module.css";
 const Tooltip: React.FC<{
   children: React.ReactNode;
   placement: PlacementType;
-  text: string;
+  text: string | React.ReactNode;
 }> = ({ children, text, placement = "top-center" }) => {
   const theme = useTheme();
   const [isOver, hoverProps] = useHover({ delayEnter: 100, delayLeave: 100 });
@@ -47,6 +47,7 @@ const Tooltip: React.FC<{
               transition={{ duration: 0.1 }}
               data-cy={`tooltip-${text}`}
               {...layerProps}
+              {...hoverProps}
             >
               {text}
               <Arrow

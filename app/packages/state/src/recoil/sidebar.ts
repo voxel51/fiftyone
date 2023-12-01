@@ -34,9 +34,9 @@ import {
   useRecoilValueLoadable,
 } from "recoil";
 import { collapseFields, getCurrentEnvironment } from "../utils";
-import * as aggregationAtoms from "./aggregations";
 import * as atoms from "./atoms";
 import { isLargeVideo } from "./options";
+import { cumulativeValues, values } from "./pathData";
 import {
   buildSchema,
   fieldPaths,
@@ -101,12 +101,12 @@ export const readableTags = selectorFamily<
 
       return get(
         group === "label tags"
-          ? aggregationAtoms.cumulativeValues({
+          ? cumulativeValues({
               extended: false,
               modal,
               ...MATCH_LABEL_TAGS,
             })
-          : aggregationAtoms.values({ extended: false, modal, path: "tags" })
+          : values({ extended: false, modal, path: "tags" })
       );
     },
 });

@@ -5,16 +5,17 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
 import { isLabelPath } from "./labels";
 import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
-import { datasetName } from "./selectors";
+import { datasetId, datasetName } from "./selectors";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -79,7 +80,7 @@ const indexesByPath = selector({
           ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
           space,
         })
-      ).map((p) => get(schemaAtoms.dbPath(p)));
+      );
 
     const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
 
@@ -183,9 +184,37 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
-export const lightningThreshold = selector({
-  key: "lightningThreshold",
+export const lightningThresholdConfig = selector({
+  key: "lightningThresholdConfig",
   get: ({ get }) => get(config).lightningThreshold,
+});
+
+const lightningThresholdAtom = atomFamily<string, string>({
+  key: "lightningThresholdAtom",
+  default: undefined,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`lightningThresholdAtom-${datasetId}`, {
+      sessionStorage: true,
+    }),
+  ],
+});
+
+export const lightningThreshold = selector<null | number>({
+  key: "lightningThreshold",
+  get: ({ get }) => {
+    const setting = get(lightningThresholdAtom(get(datasetId)));
+    if (setting === undefined) {
+      return get(lightningThresholdConfig);
+    }
+
+    if (setting === "null") {
+      return null;
+    }
+
+    return Number(setting);
+  },
+  set: ({ get, set }, value) =>
+    set(lightningThresholdAtom(get(datasetId)), String(value)),
 });
 
 export const lightning = selector({

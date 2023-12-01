@@ -121,7 +121,6 @@ export const modalSampleIndex = selector<number>({
   key: "modalSampleIndex",
   get: ({ get }) => {
     const current = get(currentModalSample);
-
     if (!current) {
       throw new Error("modal sample is not defined");
     }
@@ -180,6 +179,7 @@ export const modalSample = graphQLSelector<
   },
   variables: ({ get }) => {
     const current = get(currentModalSample);
+
     if (current === null) return null;
 
     const slice = get(groupSlice);

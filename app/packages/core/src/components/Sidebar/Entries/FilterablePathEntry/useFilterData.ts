@@ -24,7 +24,7 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
 
-const getFilterItemsProps = (
+export const getFilterItemsProps = (
   path: string,
   modal: boolean,
   parent: Field | null,

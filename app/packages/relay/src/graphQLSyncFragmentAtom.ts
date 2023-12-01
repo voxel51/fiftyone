@@ -71,21 +71,35 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
         };
 
         const run = (
-          { data, preloadedQuery }: PageQuery<OperationType>,
+          page: PageQuery<OperationType>,
           transactionInterface?: TransactionInterface_UNSTABLE
         ): Disposable | undefined => {
+          const preloadedQuery = page.preloadedQuery;
+          let data = page.data;
           try {
-            fragmentOptions.fragments.forEach((fragment, i) => {
+            for (let i = 0; i < fragmentOptions.fragments.length; i++) {
+              const fragment = fragmentOptions.fragments[i];
+
               if (fragmentOptions.keys && fragmentOptions.keys[i]) {
                 // @ts-ignore
                 data = data[fragmentOptions.keys[i]];
+              }
+
+              if (!data) {
+                const unlisten = ctx.FragmentResource.subscribe(
+                  ctx.result,
+                  () => {
+                    run(page);
+                    unlisten();
+                  }
+                );
               }
 
               // @ts-ignore
               ctx = loadContext(fragment, preloadedQuery.environment, data);
               parent = data;
               data = ctx.result.data;
-            });
+            }
             setter(data, transactionInterface);
             disposable?.dispose();
 
@@ -96,6 +110,7 @@ export function graphQLSyncFragmentAtom<T extends KeyType, K = T[" $data"]>(
                 parent
               ).result.data;
               setter(update);
+              !update && run(page);
             });
           } catch (e) {
             setter(null, transactionInterface);
