@@ -42,9 +42,12 @@ export const PARSER = {
       ["true", "false"].indexOf(convert(value).toLowerCase()) >= 0,
   },
   float: {
-    castFrom: (value) => String(value),
-    castTo: (value) => +value,
+    castFrom: (value) => PARSER.float.parse(String(value)),
+    castTo: (value) => {
+      return +value.replaceAll(",", "");
+    },
     parse: (value) => {
+      value = value.replaceAll(",", "");
       const stripped = value.replace(/[\s]/g, "");
       const [integer, fractional] = stripped.split(".");
       return (
@@ -53,7 +56,7 @@ export const PARSER = {
       );
     },
     validate: (value) => {
-      const stripped = convert(value).replace(/[\s]/g, "");
+      const stripped = convert(value).replace(/[\s]/g, "").replaceAll(",", "");
       return stripped !== "" && !isNaN(+stripped);
     },
   },
