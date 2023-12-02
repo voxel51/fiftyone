@@ -327,10 +327,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.framesController.totalFrameCount
     );
 
-    if (isNaN(frameRangeMax)) {
-      return [currentFrameNumber, currentFrameNumber + 1] as const;
-    }
-
     return [currentFrameNumber, frameRangeMax] as const;
   }
 
@@ -339,10 +335,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * This method is not blocking, it merely enqueues a fetch job.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
+    if (!this.framesController.totalFrameCount) {
+      return;
+    }
+
     let shouldEnqueueFetch = false;
     const necessaryFrameRange = this.getLookAheadFrameRange(
       state.currentFrameNumber
     );
+
+    if (necessaryFrameRange[1] < necessaryFrameRange[0]) {
+      return;
+    }
+
     const rangeAvailable =
       this.framesController.storeBufferManager.containsRange(
         necessaryFrameRange
@@ -368,6 +373,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
       if (unprocessedBufferRange) {
         this.framesController.enqueueFetch(unprocessedBufferRange);
+        console.log("mark: fetch enqueued for range", unprocessedBufferRange);
         this.framesController.resumeFetch();
       }
     }
