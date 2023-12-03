@@ -316,7 +316,6 @@ class ListFiles(foo.Operator):
         path = ctx.params.get("path", None)
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
-            # this should
             return {"filesystems": list_fileystems()}
 
         if path:
@@ -335,9 +334,17 @@ def get_default_path_for_filesystem(fs):
     elif fs == fos.FileSystem.GCS:
         return fos.GCS_PREFIX
     elif fs == fos.FileSystem.AZURE:
-        return None
+        if not fos.azure_prefixes:
+            return None
+
+        azure_alias_prefix, azure_endpoint_prefix = fos.azure_prefixes[0]
+        return azure_alias_prefix or azure_endpoint_prefix
     elif fs == fos.FileSystem.MINIO:
-        return None
+        if not fos.minio_prefixes:
+            return None
+
+        minio_alias_prefix, minio_endpoint_prefix = fos.minio_prefixes[0]
+        return minio_alias_prefix or minio_endpoint_prefix
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
@@ -362,9 +369,9 @@ def list_files(dirpath):
             {
                 "name": name,
                 "type": "directory",
-                "absolute_path": name,
+                "absolute_path": fos.join(dirpath, name),
             }
-            for name in fos.list_buckets(fs, abs_paths=True)
+            for name in fos.list_buckets(fs)
         ]
         return dirs
 
