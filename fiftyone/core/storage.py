@@ -1833,6 +1833,9 @@ def list_buckets(fs, abs_paths=False):
         root = os.path.abspath(os.sep)
         return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
 
+    if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
+        raise ValueError("Unsupported file system '%s'" % fs)
+
     buckets = set()
 
     # Always include buckets with specific credentials
