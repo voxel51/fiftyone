@@ -2348,8 +2348,6 @@ def _do_get_region(fs, bucket):
 
 
 def _make_client(fs, bucket=None, region=None, num_workers=None):
-    print(f"Making client: fs={fs}, bucket={bucket}, region={region}")
-
     if region is not None and fs not in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
         region = None
         logger.debug("Ignoring region for non-regional file system '%s'", fs)
