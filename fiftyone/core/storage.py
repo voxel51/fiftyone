@@ -86,7 +86,7 @@ def init_storage():
 def _load_minio_prefixes():
     minio_creds = []
 
-    # Check Teams DB for credentials
+    # Check database for credentials
     if creds_manager is not None:
         creds_paths = creds_manager.get_all_credentials_for_file_system(
             FileSystem.MINIO
@@ -122,6 +122,7 @@ def _load_minio_prefixes():
                 credentials["endpoint_url"].rstrip("/") + "/"
             )
 
+        # Maintain order so default credentials are first, if multiple
         prefixes = (minio_alias_prefix, minio_endpoint_prefix)
         if prefixes not in minio_prefixes:
             minio_prefixes.append(prefixes)
@@ -130,7 +131,7 @@ def _load_minio_prefixes():
 def _load_azure_prefixes():
     azure_creds = []
 
-    # Check Teams DB for credentials
+    # Check database for credentials
     if creds_manager is not None:
         creds_paths = creds_manager.get_all_credentials_for_file_system(
             FileSystem.AZURE
@@ -172,6 +173,7 @@ def _load_azure_prefixes():
             )
             azure_endpoint_prefix = account_url.rstrip("/") + "/"
 
+        # Maintain order so default credentials are first, if multiple
         prefixes = (azure_alias_prefix, azure_endpoint_prefix)
         if prefixes not in azure_prefixes:
             azure_prefixes.append(prefixes)
@@ -2435,11 +2437,11 @@ def _load_s3_credentials(bucket=None):
     profile = None
 
     if credentials_path:
-        logger.debug("Loaded S3 creds from Teams DB")
+        logger.debug("Loaded S3 credentials from database")
     else:
         credentials_path = fo.media_cache_config.aws_config_file
         profile = fo.media_cache_config.aws_profile
-        logger.debug("Loaded S3 creds from ENV")
+        logger.debug("Loaded S3 credentials from environment")
 
     credentials, _ = S3StorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
@@ -2452,10 +2454,10 @@ def _load_gcs_credentials(bucket=None):
     credentials_path = _get_managed_credentials(FileSystem.GCS, bucket=bucket)
 
     if credentials_path:
-        logger.debug("Loaded GCP creds from Teams DB")
+        logger.debug("Loaded GCP credentials from database")
     else:
         credentials_path = fo.media_cache_config.google_application_credentials
-        logger.debug("Loaded GCP creds from ENV")
+        logger.debug("Loaded GCP credentials from environment")
 
     credentials, _ = GoogleCloudStorageClient.load_credentials(
         credentials_path=credentials_path
@@ -2471,11 +2473,11 @@ def _load_azure_credentials(bucket=None):
     profile = None
 
     if credentials_path:
-        logger.debug("Loaded AZURE creds from Teams DB")
+        logger.debug("Loaded Azure credentials from database")
     else:
         credentials_path = fo.media_cache_config.azure_credentials_file
         profile = fo.media_cache_config.azure_profile
-        logger.debug("Loaded AZURE creds from ENV")
+        logger.debug("Loaded Azure credentials from environment")
 
     credentials, _ = AzureStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
@@ -2491,11 +2493,11 @@ def _load_minio_credentials(bucket=None):
     profile = None
 
     if credentials_path:
-        logger.debug("Loaded MINIO creds from Teams DB")
+        logger.debug("Loaded MinIO credentials from database")
     else:
         credentials_path = fo.media_cache_config.minio_config_file
         profile = fo.media_cache_config.minio_profile
-        logger.debug("Loaded MINIO creds from ENV")
+        logger.debug("Loaded MinIO credentials from environment")
 
     credentials, _ = MinIOStorageClient.load_credentials(
         credentials_path=credentials_path, profile=profile
