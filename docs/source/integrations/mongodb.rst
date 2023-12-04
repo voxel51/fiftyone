@@ -83,6 +83,7 @@ First let's load a dataset into FiftyOne and compute embeddings for the samples:
     # Steps 2 and 3: Compute embeddings and create a similarity index
     mongodb_index = fob.compute_similarity(
         dataset, 
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
     )
@@ -93,7 +94,7 @@ by specifying the `brain_key`:
 .. code-block:: python
     :linenos:
 
-    # Verify that the newly created index is ready for querying
+    # Wait for the index to be ready for querying...
     assert mongodb_index.ready
 
     # Step 4: Query your data
@@ -350,6 +351,7 @@ possibilities:
     fob.compute_similarity(
         dataset,
         model=model_name,
+        embeddings="embeddings",  # the field in which to store the embeddings
         backend="mongodb",
         brain_key=brain_key,
     )
@@ -358,26 +360,18 @@ possibilities:
     fob.compute_similarity(
         dataset,
         model=model,
+        embeddings="embeddings",  # the field in which to store the embeddings
         backend="mongodb",
         brain_key=brain_key,
     )
 
-    # Option 3: Pass precomputed embeddings as a numpy array
-    embeddings = dataset.compute_embeddings(model)
-    fob.compute_similarity(
-        dataset,
-        embeddings=embeddings,
-        backend="mongodb",
-        brain_key=brain_key,
-    )
-
-    # Option 4: Pass precomputed embeddings by field name
+    # Option 3: Pass precomputed embeddings by field name
     # Note that MongoDB vector indexes require list fields
     embeddings = dataset.compute_embeddings(model)
     dataset.set_values("embeddings", embeddings.tolist())
     fob.compute_similarity(
         dataset,
-        embeddings="embeddings",
+        embeddings="embeddings",  # the field that contains the embeddings
         backend="mongodb",
         brain_key=brain_key,
     )
@@ -394,8 +388,8 @@ Create a patch similarity index
 
 .. warning::
 
-    The MongoDB backend does not yet support indexing object patches. Check
-    back soon!
+    The MongoDB backend does not yet support indexing object patches, so the
+    code below will not yet run. Check back soon!
 
 You can also create a similarity index for
 :ref:`object patches <brain-object-similarity>` within your dataset by
@@ -415,6 +409,7 @@ including the `patches_field` argument to
         dataset, 
         patches_field="ground_truth",
         model="clip-vit-base32-torch",
+        embeddings="embeddings",  # the attribute in which to store the embeddings
         backend="mongodb",
         brain_key="mongodb_patches",
     )
@@ -480,6 +475,7 @@ to update the Mongodb index to reflect these changes:
     mongodb_index = fob.compute_similarity(
         dataset,
         model="clip-vit-base32-torch",
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
     )
@@ -525,6 +521,7 @@ to retrieve embeddings from a Mongodb index by ID:
     mongodb_index = fob.compute_similarity(
         dataset, 
         model="clip-vit-base32-torch",
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
     )
@@ -566,12 +563,16 @@ stage to any dataset or view. The query can be any of the following:
 
     dataset = foz.load_zoo_dataset("quickstart")
 
-    fob.compute_similarity(
+    mongodb_index = fob.compute_similarity(
         dataset, 
         model="clip-vit-base32-torch",
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
     )
+
+    # Wait for the index to be ready for querying...
+    assert mongodb_index.ready
 
     # Query by vector
     query = np.random.rand(512)  # matches the dimension of CLIP embeddings
@@ -620,12 +621,12 @@ created vector search index is ready for querying:
     mongodb_index = fob.compute_similarity(
         dataset,
         model="clip-vit-base32-torch",
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
     )
 
-    # Wait for the index to be created
-
+    # Wait for the index to be ready for querying...
     assert mongodb_index.ready
 
 .. _mongodb-manual-index:
@@ -691,6 +692,9 @@ Now we can define the similarity index in FiftyOne:
 
     print(index.total_index_size)  # 200
 
+    # Wait for index to be ready for querying...
+    assert mongodb_index.ready
+
     view = dataset.sort_by_similarity("kites high in the sky", k=5)
 
 .. _mongodb-advanced-usage:
@@ -716,20 +720,22 @@ similarity, and populate the index for only a subset of our dataset:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom MongoDB index
+    view1 = dataset[:10]
     mongodb_index = fob.compute_similarity(
-        dataset,
+        view1,
         model="clip-vit-base32-torch",
-        embeddings=False,  # we'll add embeddings below
+        embeddings="embeddings",  # the field in which to store the embeddings
         brain_key="mongodb_index",
         backend="mongodb",
         index_name="custom-quickstart-index",
         metric="dotproduct",
     )
 
-    # Add embeddings for a subset of the dataset
-    view = dataset.take(10)
-    embeddings, sample_ids, _ = mongodb_index.compute_embeddings(view)
+    # Add some more embeddings
+    view2 = dataset[10:20]
+    embeddings, sample_ids, _ = mongodb_index.compute_embeddings(view2)
     mongodb_index.add_to_index(embeddings, sample_ids)
 
-    assert mongodb_index.ready
-    print(mongodb_index.total_index_size)
+    print(mongodb_index.total_index_size)  # 20
+    print(mongodb_index.config.index_name)  # custom-quickstart-index
+    print(mongodb_index.config.metric)  # dotproduct
