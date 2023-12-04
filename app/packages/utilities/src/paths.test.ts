@@ -109,6 +109,15 @@ describe("paths", () => {
       expect(paths.resolveParent("min.io://bucket/./")).toBe(
         "min.io://bucket/"
       );
+      expect(
+        paths.resolveParent(
+          "https://computervisionteam.blob.core.windows.net/voxel51-test/"
+        )
+      ).toBe("https://computervisionteam.blob.core.windows.net/");
+      expect(paths.resolveParent("min.io://bucket/folder/")).toBe(
+        "min.io://bucket/"
+      );
+      expect(paths.resolveParent("min.io://voxel51-test/")).toBe("min.io://");
     });
   });
 

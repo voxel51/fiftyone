@@ -58,7 +58,9 @@ export function resolveParent(path: string): string {
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
     const [protocol, rest] = parseURL(path);
-    const parts = rest.split("/");
+    // remove trailing slash before split
+    const restWithoutTrailingSlash = rest.replace(/\/$/, "");
+    const parts = restWithoutTrailingSlash.split("/");
     parts.pop();
     let joined = pathUtils.join(...parts);
     if (!joined.endsWith("/") && parts.length > 0) {
