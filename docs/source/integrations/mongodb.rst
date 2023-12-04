@@ -365,7 +365,17 @@ possibilities:
         brain_key=brain_key,
     )
 
-    # Option 3: Pass precomputed embeddings by field name
+    # Option 3: Pass precomputed embeddings as a numpy array
+    embeddings = dataset.compute_embeddings(model)
+    fob.compute_similarity(
+        dataset,
+        embeddings=embeddings,
+        embeddings_field="embeddings",  # the field in which to store the embeddings
+        backend="mongodb",
+        brain_key=brain_key,
+    )
+
+    # Option 4: Pass precomputed embeddings by field name
     # Note that MongoDB vector indexes require list fields
     embeddings = dataset.compute_embeddings(model)
     dataset.set_values("embeddings", embeddings.tolist())
@@ -720,20 +730,20 @@ similarity, and populate the index for only a subset of our dataset:
     dataset = foz.load_zoo_dataset("quickstart")
 
     # Create a custom MongoDB index
-    view1 = dataset[:10]
     mongodb_index = fob.compute_similarity(
-        view1,
+        dataset,
         model="clip-vit-base32-torch",
-        embeddings="embeddings",  # the field in which to store the embeddings
+        embeddings_field="embeddings",  # the field in which to store the embeddings
+        embeddings=False,               # add embeddings later
         brain_key="mongodb_index",
         backend="mongodb",
         index_name="custom-quickstart-index",
         metric="dotproduct",
     )
 
-    # Add some more embeddings
-    view2 = dataset[10:20]
-    embeddings, sample_ids, _ = mongodb_index.compute_embeddings(view2)
+    # Add embeddings for a subset of the dataset
+    view = dataset[:20]
+    embeddings, sample_ids, _ = mongodb_index.compute_embeddings(view)
     mongodb_index.add_to_index(embeddings, sample_ids)
 
     print(mongodb_index.total_index_size)  # 20
