@@ -251,6 +251,8 @@ def get_file_system(path):
     Returns:
         a :class:`FileSystem` value
     """
+    _refresh_managed_credentials_if_necessary()
+
     if not path:
         return FileSystem.LOCAL
 
@@ -296,6 +298,8 @@ def list_available_file_systems():
     Returns:
         a list of :class:`FileSystem` values
     """
+    _refresh_managed_credentials_if_necessary()
+
     global available_file_systems
 
     if available_file_systems is None:
@@ -310,7 +314,7 @@ def _get_available_file_systems():
     if not fi.is_internal_service():
         file_systems.add(FileSystem.LOCAL)
 
-    managed_file_systems = _get_managed_file_systems_with_credentials()
+    managed_file_systems = _get_file_systems_with_managed_credentials()
     if managed_file_systems:
         file_systems.update(managed_file_systems)
 
@@ -1829,6 +1833,8 @@ def list_buckets(fs, abs_paths=False):
     Returns:
         a list of buckets
     """
+    _refresh_managed_credentials_if_necessary()
+
     if fs == FileSystem.LOCAL:
         root = os.path.abspath(os.sep)
         return etau.list_subdirs(root, abs_paths=abs_paths, recursive=False)
@@ -1839,7 +1845,7 @@ def list_buckets(fs, abs_paths=False):
     buckets = set()
 
     # Always include buckets with specific credentials
-    managed_buckets = _get_managed_buckets_with_credentials(fs)
+    managed_buckets = _get_buckets_with_managed_credentials(fs)
     if managed_buckets:
         buckets.update(managed_buckets)
 
@@ -2216,7 +2222,7 @@ def run(fcn, tasks, num_workers=None, progress=False):
 
 
 def _get_client(fs=None, path=None):
-    _check_managed_credentials()
+    _refresh_managed_credentials_if_necessary()
 
     if path is not None:
         fs = get_file_system(path)
@@ -2231,7 +2237,7 @@ def _get_client(fs=None, path=None):
     if not bucket:
         return _get_default_client(fs)
 
-    if _has_bucket_credentials(fs, bucket):
+    if _has_managed_credentials(fs, bucket):
         return _get_bucket_client(fs, bucket)
 
     if fs in _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS:
@@ -2318,7 +2324,7 @@ def _get_region(fs, bucket):
 
 
 def _do_get_region(fs, bucket):
-    if _has_bucket_credentials(fs, bucket):
+    if _has_managed_credentials(fs, bucket):
         # We make a new client here and *don't* cache it because the cached
         # client will need to have region information stored on it, which we
         # don't have yet
@@ -2399,7 +2405,7 @@ def _make_client(fs, bucket=None, region=None, num_workers=None):
     raise ValueError("Unsupported file system '%s'" % fs)
 
 
-def _check_managed_credentials():
+def _refresh_managed_credentials_if_necessary():
     if creds_manager is None:
         return
 
@@ -2407,7 +2413,21 @@ def _check_managed_credentials():
         init_storage()
 
 
-def _has_bucket_credentials(fs, bucket):
+def _get_buckets_with_managed_credentials(fs):
+    if creds_manager is None:
+        return None
+
+    return creds_manager.get_buckets_with_credentials(fs)
+
+
+def _get_file_systems_with_managed_credentials():
+    if creds_manager is None:
+        return None
+
+    return creds_manager.get_file_systems_with_credentials()
+
+
+def _has_managed_credentials(fs, bucket):
     if creds_manager is None:
         return False
 
@@ -2419,20 +2439,6 @@ def _get_managed_credentials(fs, bucket=None):
         return None
 
     return creds_manager.get_credentials(fs, bucket=bucket)
-
-
-def _get_managed_buckets_with_credentials(fs):
-    if creds_manager is None:
-        return None
-
-    return creds_manager.get_buckets_with_credentials(fs)
-
-
-def _get_managed_file_systems_with_credentials():
-    if creds_manager is None:
-        return None
-
-    return creds_manager.get_file_systems_with_credentials()
 
 
 def _load_s3_credentials(bucket=None):
