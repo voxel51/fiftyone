@@ -5,7 +5,6 @@ import {
   FrameState,
   ImaVidState,
   ImageState,
-  Optional,
   VideoState,
 } from "../state";
 
@@ -36,16 +35,11 @@ export const LookerUtils = {
     ) {
       reloadSample = true;
     } else if (
-      !_.isEmpty(_.xor(next.coloring?.scale, current.coloring?.scale)) ||
-      current.coloring?.scale?.length !== next.coloring?.scale?.length
-    ) {
-      reloadSample = true;
-    } else if (
       !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
       current.selectedLabelTags?.length !== next.selectedLabelTags?.length
     ) {
       reloadSample = true;
-    } else if (_.isEqual(next.labelTagColors, current.labelTagColors)) {
+    } else if (!_.isEqual(next.labelTagColors, current.labelTagColors)) {
       reloadSample = true;
     } else if (
       next.coloring &&
@@ -53,6 +47,11 @@ export const LookerUtils = {
         current.coloring.defaultMaskTargetsColors,
         next.coloring.defaultMaskTargetsColors
       )
+    ) {
+      reloadSample = true;
+    } else if (
+      !_.isEqual(next.coloring?.scale, current.coloring?.scale) ||
+      current.coloring?.scale?.length !== next.coloring?.scale?.length
     ) {
       reloadSample = true;
     }
