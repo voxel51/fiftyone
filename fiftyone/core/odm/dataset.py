@@ -245,16 +245,16 @@ class ColorScheme(EmbeddedDocument):
             -   `valueColors` (optional): a list of dicts specifying colors to
                 use for individual values of this field
             -   `maskTargetsColors` (optional): a list of dicts specifying
-                index and color for 2D masks
+                index and color for 2D masks. e.g [{"intTarget": 1, "color":"#FEC0AA"}, {"intTarget": 2, "color":"#EC4E20"}]
         default_mask_targets_colors (None): a list of dicts specifying index
             and color for 2D masks of the dataset
-        default_colorscale (None):
-            - `name` (optional): a named plotly colorscale
-            - `list` (optional): a list of dicts of manually defined colorscale
-                -   `value`: a float number between 0 and 1
+        default_colorscale (None): default colorscale that will be used for rendering heatmaps and float fields in embeddings plot. It can be specified by either providing a named colorscale or defining a colorscale through a list. When both provided, we will use the name to generate colorscale.
+            - `name` (optional): a named plotly colorscale, e.g. "sunset", "hsv", "rdbu", and etc. See https://plotly.com/python/builtin-colorscales/ for more options;
+            - `list` (optional): a list of dicts of manually defined colorscale. A valid list must have at least defined colors for 0 and 1.
+                -   `value`: a float number between 0 and 1.
                 -   `color`: a rgb color string
         colorscales (None): an optional list of per-field custom colorscale for
-            heatmaps. Each element should be a dict with the following keys:
+            heatmaps or embeddings plot. Each element should be a dict with the following keys:
             -   `path` (required): the fully-qualified path to the field you're
                 customizing. use "dataset" if you are setting the default
                 colorscale for dataset
@@ -267,7 +267,7 @@ class ColorScheme(EmbeddedDocument):
             tags with the following keys:
             -   `fieldColor` (optional): a color to assign to all label tags
             -   `valueColors` (optional): a list of dicts specifying colors to
-                specific label tags
+                specific label tags.
     """
 
     # strict=False lets this class ignore unknown fields from other versions

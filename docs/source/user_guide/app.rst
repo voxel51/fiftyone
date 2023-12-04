@@ -742,11 +742,11 @@ in detail:
     |                 |                               | must also specify an attribute of each object. For example,   |
     |                 |                               | color all                                                     |
     |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
-    |                 |                               | instances whose `label` is `"car"` in `#FF0000`               |
+    |                 |                               | instances whose `label` is `"car"` in `#FF0000`;               |
     |                 |                               | :class:`Segmentation <fiftyone.core.labels.Segmentation>`     |
-    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`    |
+    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`;    |
     |                 |                               | :class:`Heatmap <fiftyone.core.labels.Heatmap>`               |
-    |                 |                               | instances using `hsv` colorscale                              |
+    |                 |                               | instances using `hsv` colorscale.                              |
     +-----------------+-------------------------------+---------------------------------------------------------------+
 
 .. _app-color-schemes-python:
@@ -795,7 +795,7 @@ You can also programmatically configure a session's color scheme by creating
             {
                 "path": "heatmap_2", # field definition overrides the default_colorscale
                 "name": None, # if name is defined, it will override the list
-                "list": [{"value": 0.0, "color": "#ff0000"}, {"value": 1.0, "color": "#00ff00"}],
+                "list": [{"value": 0.0, "color": "rgb(0,255,255)"},{"value": 0.5, "color": "rgb(255,0,0)"}, {"value": 1.0, "color": "rgb(0,0,255)"}],
             }
         ],
     )
