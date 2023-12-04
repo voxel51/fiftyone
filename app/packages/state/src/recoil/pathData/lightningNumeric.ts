@@ -8,6 +8,20 @@ export const lightningNumericResults = selectorFamily({
     ({ get }) => {
       const [data] = get(lightningQuery([{ path }]));
 
+      if (data.__typename === "DateLightningResult") {
+        return {
+          max: data.dateMax,
+          min: data.dateMin,
+        };
+      }
+
+      if (data.__typename === "DateTimeLightningResult") {
+        return {
+          max: data.datetimeMax,
+          min: data.datetimeMin,
+        };
+      }
+
       if (data.__typename === "IntLightningResult") {
         return {
           max: data.intMax,
