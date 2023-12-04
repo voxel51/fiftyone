@@ -2,7 +2,10 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { StateUpdate, VideoState } from "../state";
+import { playbackRate, volume as volumeIcon, volumeMuted } from "../icons";
+import lockIcon from "../icons/lock.svg";
+import lockOpenIcon from "../icons/lockOpen.svg";
+import { VideoState } from "../state";
 import { BaseElement, Events } from "./base";
 import {
   muteUnmute,
@@ -11,10 +14,12 @@ import {
   supportLock,
 } from "./common/actions";
 import {
-  lookerControlActive,
   lookerClickable,
+  lookerControlActive,
   lookerTime,
 } from "./common/controls.module.css";
+import { lookerLoader } from "./common/looker.module.css";
+import { dispatchTooltipEvent } from "./common/util";
 import {
   acquirePlayer,
   acquireThumbnailer,
@@ -23,22 +28,15 @@ import {
   getFullTimeString,
   getTime,
 } from "./util";
-
 import {
   bufferingCircle,
   bufferingPath,
-  lookerSeekBar,
-  lookerVolume,
   lookerPlaybackRate,
+  lookerSeekBar,
   lookerThumb,
   lookerThumbSeeking,
+  lookerVolume,
 } from "./video.module.css";
-import lockIcon from "../icons/lock.svg";
-import lockOpenIcon from "../icons/lockOpen.svg";
-
-import { lookerLoader } from "./common/looker.module.css";
-import { dispatchTooltipEvent } from "./common/util";
-import { volume as volumeIcon, volumeMuted, playbackRate } from "../icons";
 
 export class LoaderBar extends BaseElement<VideoState> {
   private buffering = false;

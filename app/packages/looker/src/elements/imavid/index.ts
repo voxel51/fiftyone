@@ -276,14 +276,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         }
 
         setTimeout(() => {
-          requestAnimationFrame(() =>
-            this.drawFrame(
-              Math.min(
-                frameNumberToDraw + 1,
-                this.framesController.totalFrameCount
-              )
-            )
-          );
+          requestAnimationFrame(() => {
+            const next = frameNumberToDraw + 1;
+
+            if (next > this.framesController.totalFrameCount) {
+              this.update(({ options: { loop } }) => {
+                // how to loop?
+                return { playing: false };
+              });
+              return;
+            }
+
+            this.drawFrame(next);
+          });
         }, this.setTimeoutDelay);
       }
       // });
