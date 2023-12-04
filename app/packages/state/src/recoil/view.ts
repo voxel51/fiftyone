@@ -238,6 +238,10 @@ export const dynamicGroupViewQuery = selectorFamily<
       // todo: sanitize expressions
       const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
+      const groupByValue = groupByFieldValueExplicit
+        ? String(groupByFieldValueExplicit)
+        : String(get(groupByFieldValue));
+
       const viewStages: State.Stage[] = [
         {
           _cls: MATCH_VIEW_STAGE,
@@ -255,10 +259,7 @@ export const dynamicGroupViewQuery = selectorFamily<
                         {
                           $toString: "$$expr",
                         },
-                        [
-                          String(groupByFieldValueExplicit) ??
-                            String(get(groupByFieldValue)),
-                        ],
+                        [groupByValue],
                       ],
                     },
                   },
