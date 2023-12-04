@@ -316,7 +316,6 @@ class ListFiles(foo.Operator):
         path = ctx.params.get("path", None)
         list_filesystems = ctx.params.get("list_filesystems", False)
         if list_filesystems:
-            # this should
             return {"filesystems": list_fileystems()}
 
         if path:
@@ -330,10 +329,6 @@ def get_default_path_for_filesystem(fs):
     if fs == fos.FileSystem.LOCAL:
         HOME = os.environ.get("HOME", None)
         return os.environ.get("FIFTYONE_DEFAULT_LOCAL_PATH", HOME)
-    # elif fs == fos.FileSystem.GCS:
-    #     return "gs://"
-    # elif fs == fos.FileSystem.S3:
-    #     return "s3://"
     else:
         raise ValueError("Unsupported file system '%s'" % fs)
 
