@@ -1842,6 +1842,9 @@ def list_buckets(fs, abs_paths=False):
     if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
         raise ValueError("Unsupported file system '%s'" % fs)
 
+    # @todo when `abs_paths=True`, this needs to be updated to prepend the
+    # correct MinIO/Azure prefix for each bucket, in case there are multiple
+    # different prefixes
     buckets = set()
 
     # Always include buckets with specific credentials
