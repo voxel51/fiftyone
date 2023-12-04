@@ -109,7 +109,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.canvas.height = this.element.naturalHeight;
 
         this.ctx = this.canvas.getContext("2d");
-        this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
         this.imageSource = this.canvas;
@@ -250,6 +249,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
       // thisSampleOverlayPrepared.then((overlay) => {
+      this.ctx.imageSmoothingEnabled = false;
       this.ctx.drawImage(image, 0, 0);
 
       if (animate && !this.waitingToPause) {
@@ -375,15 +375,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   renderSelf(state: Readonly<ImaVidState>) {
     const {
-      options: { loop, playbackRate },
+      options: { playbackRate },
       config: { thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
       hovering,
       playing,
-      bufferManager,
       loaded,
-      buffering,
       destroyed,
     } = state;
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
@@ -396,7 +394,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return;
     }
 
-    this.isBuffering = buffering;
     this.isPlaying = playing;
     this.isSeeking = seeking;
     this.frameNumber = currentFrameNumber;
