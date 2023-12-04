@@ -144,7 +144,7 @@ export const pathIndex = selectorFamily({
     ({ get }) => {
       const indexes = get(indexesByPath);
 
-      return indexes.has(get(schemaAtoms.dbPath(path)));
+      return indexes.has(path);
     },
 });
 
