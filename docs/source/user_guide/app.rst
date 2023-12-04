@@ -742,11 +742,11 @@ in detail:
     |                 |                               | must also specify an attribute of each object. For example,   |
     |                 |                               | color all                                                     |
     |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
-    |                 |                               | instances whose `label` is `"car"` in `#FF0000`;               |
+    |                 |                               | instances whose `label` is `"car"` in `#FF0000`;              |
     |                 |                               | :class:`Segmentation <fiftyone.core.labels.Segmentation>`     |
-    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`;    |
+    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`;   |
     |                 |                               | :class:`Heatmap <fiftyone.core.labels.Heatmap>`               |
-    |                 |                               | instances using `hsv` colorscale.                              |
+    |                 |                               | instances using `hsv` colorscale.                             |
     +-----------------+-------------------------------+---------------------------------------------------------------+
 
 .. _app-color-schemes-python:
@@ -768,23 +768,29 @@ You can also programmatically configure a session's color scheme by creating
                 "path": "ground_truth",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                     # false negatives: blue
+                    {"value": "fn", "color": "#0000ff"},
+                    # true positives: green
+                    {"value": "tp", "color": "#00ff00"},
                 ]
             },
             {
                 "path": "predictions",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fp", "color": "#ff0000"},  # false positives: red
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                    # false positives: red
+                    {"value": "fp", "color": "#ff0000"},
+                     # true positives: green
+                    {"value": "tp", "color": "#00ff00"}, 
                 ]
             },
             {
                 "path": "segmentations",
                 "maskTargetsColors": [
-                    {"intTarget": 12, "color": "#ff0000"},  # 12: red
-                    {"intTarget": 15, "color": "#00ff00"},  # 15: green
+                     # 12: red
+                    {"intTarget": 12, "color": "#ff0000"},
+                     # 15: green
+                    {"intTarget": 15, "color": "#00ff00"},
                 ]
             }
         ],
@@ -793,9 +799,15 @@ You can also programmatically configure a session's color scheme by creating
         default_colorscale= { "name": "rdbu", "list": None },
         colorscales=[
             {
-                "path": "heatmap_2", # field definition overrides the default_colorscale
-                "name": None, # if name is defined, it will override the list
-                "list": [{"value": 0.0, "color": "rgb(0,255,255)"},{"value": 0.5, "color": "rgb(255,0,0)"}, {"value": 1.0, "color": "rgb(0,0,255)"}],
+                 # field definition overrides the default_colorscale
+                "path": "heatmap_2",
+                 # if name is defined, it will override the list
+                "name": None,
+                "list": [
+                    {"value": 0.0, "color": "rgb(0,255,255)"},
+                    {"value": 0.5, "color": "rgb(255,0,0)"},
+                    {"value": 1.0, "color": "rgb(0,0,255)"},
+                ],
             }
         ],
     )
