@@ -254,6 +254,7 @@ export const PainterFactory = (requestColor) => ({
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
     if (maskData.channels > 2) {
+      console.log("rendering rgb mask");
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 
@@ -279,8 +280,7 @@ export const PainterFactory = (requestColor) => ({
           ].intTarget;
         } else {
           // assign an arbitrary uint8 value here; this isn't used anywhere but absence of it affects tooltip behavior
-          // having this line caused the mask to corrupt
-          // targets[i] = r;
+          targets[i] = r;
         }
       }
 
