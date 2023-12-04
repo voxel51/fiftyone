@@ -123,7 +123,6 @@ export class CanvasElement<State extends BaseState> extends BaseElement<
 
               const xs = (x - px) / scale;
               const ys = (y - py) / scale;
-              console.log(zoomPad);
               const newScale = clampScale(
                 [width, height],
                 dimensions,
