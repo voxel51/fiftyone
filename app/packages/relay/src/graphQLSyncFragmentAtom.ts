@@ -22,7 +22,7 @@ export type GraphQLSyncFragmentSyncAtomOptions<T extends KeyType, K> = {
   selectorEffect?:
     | "write"
     | boolean
-    | ((newValue: Parameters<ReadWriteSelectorOptions<K>["set"]>[1]) => void);
+    | ((...params: Parameters<ReadWriteSelectorOptions<K>["set"]>) => K);
 };
 
 const isTest = typeof process !== "undefined" && process.env.MODE === "test";

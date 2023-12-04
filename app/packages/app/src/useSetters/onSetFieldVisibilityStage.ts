@@ -7,6 +7,7 @@ import { State, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
+import { resolveURL } from "../utils";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetFieldVisibilityStage: RegisteredSetter =
@@ -30,13 +31,10 @@ const onSetFieldVisibilityStage: RegisteredSetter =
     });
 
     // reload page query with new extended view
-    router.history.replace(
-      `${router.history.location.pathname}${router.history.location.search}`,
-      {
-        ...router.get().state,
-        fieldVisibility: stage,
-      }
-    );
+    router.history.replace(resolveURL(router), {
+      ...router.get().state,
+      fieldVisibility: stage,
+    });
 
     // send event as side effect
     commitMutation<setFieldVisibilityStageMutation>(environment, {

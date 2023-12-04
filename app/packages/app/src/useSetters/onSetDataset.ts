@@ -11,6 +11,7 @@ import {
 import { env } from "@fiftyone/utilities";
 import { commitMutation } from "relay-runtime";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
+import { resolveURL } from "../utils";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetDataset: RegisteredSetter =
@@ -25,44 +26,20 @@ const onSetDataset: RegisteredSetter =
         },
       });
 
-    const params = new URLSearchParams(router.get().search);
-    params.delete("view");
-
-    let search = params.toString();
-    if (search.length) {
-      search = `?${search}`;
-    }
-
     subscribeBefore<DatasetPageQuery>((entry) => {
       sessionRef.current.selectedLabels = [];
       sessionRef.current.selectedSamples = new Set();
       sessionRef.current.sessionSpaces = SPACES_DEFAULT;
       sessionRef.current.fieldVisibilityStage = undefined;
-      sessionRef.current.colorScheme = entry.data.dataset?.appConfig
-        ?.colorScheme ?? {
-        id: sessionRef.current.colorScheme?.id,
-        colorBy: entry.data.config.colorBy,
-        colorPool: entry.data.config.colorPool,
-        fields: [],
-        labelTags: {
-          fieldColor: null,
-          valueColors: [],
-        },
-        defaultMaskTargetsColors: [],
-        defaultColorscale: {
-          name: entry.data.config.colorscale ?? "viridis",
-          list: [],
-        },
-        colorscales: [],
-        multicolorKeypoints: false,
-        opacity: 0.7,
-        showSkeletons: true,
-      };
+      sessionRef.current.colorScheme = ensureColorScheme(
+        entry.data.dataset?.appConfig,
+        entry.data.config
+      );
       sessionRef.current.sessionGroupSlice =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });
 
-    router.history.push(`/datasets/${datasetName}${search}`, {
+    router.history.push(resolveURL(router, datasetName || null), {
       view: [],
     });
   };
