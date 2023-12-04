@@ -31,6 +31,7 @@ Bugs
 
 - Fixed clips, frames, and patches views for grouped datasets in the App
 - Fixed cloud credential initialization during deployment restarts
+- Fixed snapshot diff computation in large datasets with MongoDB < v6.0
 
 .. _release-notes-v0.22.3:
 
