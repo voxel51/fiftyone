@@ -82,6 +82,12 @@ fragment snapshotFrag on DatasetSnapshot {
 }
 """
 
+_ARCHIVE_SNAPSHOT_QUERY = """
+mutation ($dataset: String!, $snapshot: String!) {
+    offloadDatasetSnapshot(datasetIdentifier: $dataset, snapshotName: $snapshot)
+}
+"""
+
 _CALCULATE_LATEST_CHANGES_QUERY = """
 mutation ($dataset: String!) {
     calculateDatasetLatestChanges(datasetIdentifier: $dataset) {
@@ -171,10 +177,55 @@ query($dataset: String!, $after: String) {
 }
 """
 
+_UNARCHIVE_SNAPSHOT_QUERY = """
+mutation ($dataset: String!, $snapshot: String!) {
+    loadDatasetSnapshot(datasetIdentifier: $dataset, snapshotName: $snapshot)
+}
+"""
+
 
 MATERIALIZE_SNAPSHOT_TIMEOUT = 60 * 60  # 1 hour should be more than enough
 DELETE_SNAPSHOT_TIMEOUT = 60 * 10  # 10 minutes
-CALCULATE_CHANGES_TIMEOUT = 60
+CALCULATE_CHANGES_TIMEOUT = 60 * 60
+
+
+def archive_snapshot(dataset_name: str, snapshot_name: str) -> None:
+    """Archive snapshot to the configured cold storage location.
+
+    .. note::
+
+        Only users with ``MANAGE`` access can create a snapshot
+
+    .. warning::
+
+        Archiving a snapshot will make it unavailable for browsing to any
+        user, even if they are currently using/browsing.
+
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.management as fom
+
+        snapshot_name = "v0.1"
+        # We don't use this regularly, archive it!
+        fom.archive_snapshot(dataset.name, snapshot_name)
+
+        fo.load_dataset(dataset.name, snapshot_name) # throws error, can't load!
+
+    Args:
+        dataset_name: the dataset name
+        snapshot_name: the snapshot name
+    """
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_ARCHIVE_SNAPSHOT_QUERY,
+        variables={
+            "dataset": dataset_name,
+            "snapshot": snapshot_name,
+        },
+        timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
+    )
 
 
 def calculate_dataset_latest_changes_summary(
@@ -524,3 +575,37 @@ def revert_dataset_to_snapshot(dataset_name: str, snapshot_name: str):
                 raise og_err
         except ValueError:
             raise og_err
+
+
+def unarchive_snapshot(dataset_name: str, snapshot_name: str) -> None:
+    """Unarchive snapshot from the configured cold storage location.
+
+    Examples::
+
+        import fiftyone as fo
+        import fiftyone.management as fom
+
+        snapshot_name = "v0.1"
+        description = "Initial dataset snapshot"
+
+        # We don't use this regularly, archive it!
+        fom.archive_snapshot(dataset.name, snapshot_name)
+        fo.load_dataset(dataset.name, snapshot_name) # throws error, can't load!
+
+        # Oops we need it now, unarchive it!
+        fom.unarchive_snapshot(dataset.name, snapshot_name)
+        fo.load_dataset(dataset.name, snapshot_name) # works now!
+
+    Args:
+        dataset_name: the dataset name
+        snapshot_name: the snapshot name
+    """
+    client = connection.APIClientConnection().client
+    client.post_graphql_request(
+        query=_UNARCHIVE_SNAPSHOT_QUERY,
+        variables={
+            "dataset": dataset_name,
+            "snapshot": snapshot_name,
+        },
+        timeout=MATERIALIZE_SNAPSHOT_TIMEOUT,
+    )

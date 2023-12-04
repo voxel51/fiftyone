@@ -403,6 +403,8 @@ def download_plugin(plugin_name: str, download_dir: str) -> str:
     Returns:
         the path to the downloaded plugin
     """
+    os.makedirs(download_dir, exist_ok=True)
+
     client = connection.APIClientConnection().client
     return_value = client.post_graphql_request(
         query=_DOWNLOAD_PLUGIN_QUERY, variables={"name": plugin_name}
@@ -411,6 +413,7 @@ def download_plugin(plugin_name: str, download_dir: str) -> str:
     file_token = return_value["downloadPlugin"]
     resp = client.get(f"file/{file_token}")
     outpath = os.path.join(download_dir, file_token)
+
     with open(outpath, "wb") as f:
         f.write(resp.content)
 
