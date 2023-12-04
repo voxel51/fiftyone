@@ -3,6 +3,8 @@
 Dataset Versioning
 ==================
 
+.. versionadded:: Teams 1.4.0
+
 .. default-role:: code
 
 FiftyOne Teams provides native support for versioning your datasets!
@@ -121,13 +123,14 @@ choices and user actions.
         the MongoDB database. The Snapshot is "ready to go" and be loaded
         instantly for analysis and visualization.
 
-    Offloaded Snapshot
-        A materialized Snapshot that has been offloaded to cold storage to
+    Archived Snapshot
+        A materialized Snapshot that has been archived to cold storage to
         free up working space in the MongoDB instance. The Snapshot cannot be
         loaded by users until it is re-materialized into MongoDB. Since it is
-        stored in its materialized form already though, an offloaded Snapshot
+        stored in its materialized form already though, an archived Snapshot
         can be re-materialized easily, at merely the cost of network transfer
-        and MongoDB write latencies.
+        and MongoDB write latencies. See :ref:`here <dataset-versioning-snapshot-archival>`
+        for more.
 
     Virtual Snapshot
         A Snapshot whose state and contents are stored by the pluggable backend
@@ -138,7 +141,7 @@ choices and user actions.
         versioning backend.
 
 For a given Snapshot, the virtual form always exists. It may also be
-materialized, offloaded, or both (in the case that an offloaded Snapshot has
+materialized, archived, or both (in the case that an archived Snapshot has
 been re-materialized but kept in cold storage also).
 
 .. note::
@@ -147,6 +150,80 @@ been re-materialized but kept in cold storage also).
     there is no distinction between materialized and virtual Snapshots since by
     definition the implementation uses materialized Snapshots as its method of
     storage.
+
+.. _dataset-versioning-snapshot-archival:
+
+Snapshot Archival
+-----------------
+
+.. versionadded:: Teams 1.5.0
+
+Snapshot your datasets easier knowing your database won't be overrun!
+
+If your snapshots are important for historical significance but aren't used
+very often, then you can consider archiving snapshots. This is especially
+helpful with the :ref:`internal duplication backend <internal-duplication-backend>`
+where creating snapshots causes database storage to grow quickly!
+
+When a snapshot is archived, all of its contents are stored in an archive in
+the configured cold storage location: either a mounted filesystem or cloud
+storage folder (using :ref:`your loaded cloud credentials <teams-cloud-credentials>`).
+While the snapshot is archived, you cannot browse it in the UI or load with the SDK.
+
+.. _dataset-versioning-snapshot-automatic-archival:
+
+Automatic Archival
+~~~~~~~~~~~~~~~~~~
+
+If snapshot archival is enabled, snapshots will automatically be archived
+to make room for newer snapshots. This can be triggered when a snapshot is
+created or unarchived, which would then put the number of snapshots in the
+database above one of the :ref:`configured limits <dataset-versioning-configuration>`.
+
+If the total materialized snapshots limit is exceeded, then the snapshot
+that was least-recently loaded will be archived.
+
+If the materialized snapshots per dataset limit is exceeded, then the snapshot
+*within the dataset* that was least-recently loaded will be archived.
+
+.. note::
+
+    Some snapshots will not be chosen for automatic archival, even if they were
+    loaded the longest ago, such as: the latest snapshot for a dataset, and
+    those that have been loaded within the configured age requirement.
+
+In either case, if no snapshot can be automatically archived then the
+triggering event will report an error and fail. This can be fixed by deleting
+snapshots, manually archiving snapshots, or changing deployment configuration
+values.
+
+Manual Archival
+~~~~~~~~~~~~~~~
+
+Dataset Managers can manually archive select snapshots
+:ref:`via UI or management SDK <dataset-versioning-archive-snapshot>`.
+
+Unarchival
+~~~~~~~~~~
+
+While the snapshot is archived, you cannot browse it in the UI or load with
+the SDK. To enable browsing or loading again, the snapshot can be unarchived
+:ref:`via UI or management SDK <dataset-versioning-unarchive-snapshot>`.
+
+Usage Notes
+~~~~~~~~~~~
+
+.. note::
+
+    If the most recent snapshot is archived then the latest changes in HEAD
+    cannot be calculated and may be reported as unknown.
+
+.. note::
+
+    If a snapshot is deleted, then normally the change summary for the following
+    snapshot must be recomputed against the previous snapshot. However, if either
+    of these are archived then the change summary cannot be recomputed and may
+    be reported as unknown.
 
 .. _dataset-versioning-snapshot-permissions:
 
@@ -171,7 +248,7 @@ required to perform different Snapshot-related operations:
 +----------------------------+----------+----------+------------+
 | Archive Snapshot           |          |          |     ✅     |
 +----------------------------+----------+----------+------------+
-| Unarchive Snapshot         |          |          |     ✅     |
+| Unarchive Snapshot         |    ✅    |    ✅    |     ✅     |
 +----------------------------+----------+----------+------------+
 | Revert dataset to Snapshot |          |          |     ✅     |
 +----------------------------+----------+----------+------------+
@@ -522,7 +599,10 @@ Archive snapshot
 ----------------
 
 To avoid exceeding the maximum total snapshot and maximum snapshots per-dataset
-limitation, you can archive snapshots to a 
+limitations with more precision than the
+:ref:`automatic archival process <dataset-versioning-snapshot-automatic-archival>`,
+users with Can Manage permissions can manually archive a snapshot
+to a configured cold storage location.
 
 .. note::
 
@@ -533,33 +613,75 @@ limitation, you can archive snapshots to a
 Teams UI
 ~~~~~~~~
 
-To archive a snapshot, click the 3-dot (kebab) menu in the History tab for a
+To manually archive a snapshot, click the 3-dot (kebab) menu in the History tab for a
 snapshot you want to archive and select "Archive snapshot". This will begin the
-archival process and the browse button will be replaced with "Archiving" spinner
+archival process and the browse button will be replaced with an "Archiving" spinner.
 
 .. image:: /images/teams/versioning/archive-snapshot.png
     :alt: archive-snapshot
     :align: center
+
+SDK
+~~~
+
+You can also use the
+:meth:`archive_snapshot() <fiftyone.management.snapshot.archive_snapshot>`
+method in the Management SDK.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.management as fom
+
+    snapshot_name = "v0.1"
+    # We don't use this regularly, archive it!
+    fom.archive_snapshot(dataset.name, snapshot_name)
+
+    fo.load_dataset(dataset.name, snapshot_name) # throws error, can't load!
 
 .. _dataset-versioning-unarchive-snapshot:
 
 Unarchive snapshot
 ----------------
 
-To make an archived snapshot browseable again, you can unarchive a snapshot you
+To make an archived snapshot browse-able again, you can unarchive a snapshot you
 want to browse.
 
 Teams UI
 ~~~~~~~~
 
-To unarchive a snapshot, click the "Unarchive" button on History tab for a
+To unarchive a snapshot, click the "Unarchive" button in the History tab for a
 snapshot you want to unarchive. This will begin the unarchival process and the
-archive button will be replaced with "Unarchiving" spinner.
+archive button will be replaced with an "Unarchiving" spinner.
 
 .. image:: /images/teams/versioning/unarchive-snapshot.png
     :alt: unarchive-snapshot
     :align: center
 
+SDK
+~~~
+
+You can also use the
+:meth:`unarchive_snapshot() <fiftyone.management.snapshot.unarchive_snapshot>`
+method in the Management SDK.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.management as fom
+
+    snapshot_name = "v0.1"
+    description = "Initial dataset snapshot"
+
+    # We don't use this regularly, archive it!
+    fom.archive_snapshot(dataset.name, snapshot_name)
+    fo.load_dataset(dataset.name, snapshot_name) # throws error, can't load!
+
+    # Oops we need it now, unarchive it!
+    fom.unarchive_snapshot(dataset.name, snapshot_name)
+    fo.load_dataset(dataset.name, snapshot_name) # works now!
 
 .. _dataset-versioning-backends:
 
@@ -593,8 +715,6 @@ Creating a Snapshot should take roughly the same amount of time as cloning the
 dataset, and so is proportional to the size of the dataset being versioned.
 
 At this time, Snapshots are stored in the same database as the original dataset.
-In the future, support will be implemented for offloading Snapshots to a separate
-data store, such as cloud storage, to reduce the load on the FiftyOne database.
 
 These requirements should be taken into consideration when using Snapshots and
 when determining values for the
@@ -623,7 +743,7 @@ Additionally, change summary calculation can be slow.
 
 The amount of storage required scales with the number of Snapshots created, not
 the volume of changes. Since it is stored in the same database as normal
-datasets, creating too many Snapshots without the ability to offload them
+datasets, creating too many Snapshots without the ability to archive them
 could fill up the database.
 
 Strengths
@@ -674,7 +794,7 @@ following advice:
 -   Delete old snapshots you don't need anymore.
 -   Set the :ref:`versioning configuration <dataset-versioning-configuration>`
     to the highest your deployment can comfortably support, to better enable
-    user workflows with breaking the (MongoDB) bank.
+    user workflows without breaking the (MongoDB) bank.
 
 .. _dataset-versioning-configuration:
 
@@ -691,13 +811,25 @@ The configurations allowed are described in the table below. Adjusting these
 defaults should be done in consideration with the needs of the team and the
 storage requirements necessary.
 
-+-------------------------------+----------------------------------------+-------------------------------------------------------------------------------------+
-| Config name                   | Environment variable                   | Default | Description                                                               |
-+===============================+========================================+=========+===========================================================================+
-| Maximum total Snapshots       | ``FIFTYONE_SNAPSHOTS_MAX_IN_DB``       | 100     | The max total number of Snapshots allowed at once. -1 for no limit.       |
-+-------------------------------+----------------------------------------+---------+---------------------------------------------------------------------------+
-| Maximum Snapshots per-dataset | ``FIFTYONE_SNAPSHOTS_MAX_PER_DATASET`` | 20      | The max number of Snapshots allowed per dataset. -1 for no limit.         |
-+-------------------------------+----------------------------------------+---------+---------------------------------------------------------------------------+
++-------------------------------+--------------------------------------------+---------------------------------------------------------------------------------------+
+| Config name                   | Environment variable                       | Default | Description                                                                 |
++===============================+============================================+=========+=============================================================================+
+| Maximum total Snapshots       | ``FIFTYONE_SNAPSHOTS_MAX_IN_DB``           | 100     | The max total number of Snapshots allowed at once. -1 for no limit. If this |
+|                               |                                            |         | limit is exceeded then automatic archival is triggered if enabled,          |
+|                               |                                            |         | otherwise an error is raised.                                               |
++-------------------------------+--------------------------------------------+---------+-----------------------------------------------------------------------------+
+| Maximum Snapshots per-dataset | ``FIFTYONE_SNAPSHOTS_MAX_PER_DATASET``     | 20      | The max number of Snapshots allowed per dataset. -1 for no limit. If this   |
+|                               |                                            |         | limit is exceeded then automatic archival is triggered if enabled,          |
+|                               |                                            |         | otherwise an error is raised.                                               |
++-------------------------------+--------------------------------------------+---------+-----------------------------------------------------------------------------+
+| Snapshot Archive Path         | ``FIFTYONE_SNAPSHOTS_ARCHIVE_PATH``        |``None`` | Full path to network-mounted file system or a cloud storage path to use for |
+|                               |                                            |         | snapshot archive storage. The default ``None`` means archival is disabled.  |
++-------------------------------+--------------------------------------------+---------+-----------------------------------------------------------------------------+
+| Automatic Archival Min Age    | ``FIFTYONE_SNAPSHOTS_MIN_LAST_LOADED_SEC`` | 86400   | The minimum last-loaded age in seconds (as defined by ``now-last_loaded_at``|
+|                               |                                            |         | ) a snapshot must meet to be considered for automatic archival. This limit  |
+|                               |                                            |         | is intended to help curtail automatic archival of a snapshot a user is      |
+|                               |                                            |         | actively working with. The default value is 1 day.                          |
++-------------------------------+--------------------------------------------+---------+-----------------------------------------------------------------------------+
 
 .. _dataset-versioning-roadmap:
 
@@ -710,8 +842,6 @@ versions for these additional features!
 
 **Near term**
 
--   Add support for applying :ref:`Operators <using-operators>` to Snapshots
--   Offload least-used Snapshots to external cold storage
 -   Optimize diff computation for larger datasets (over 200k samples) and add
     support for modification summaries for these datasets
 
