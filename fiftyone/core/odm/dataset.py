@@ -234,8 +234,7 @@ class ColorScheme(EmbeddedDocument):
         opacity (None): transparency of the annotation, between 0 and 1
         show_skeletons (None): whether to show skeletons of keypoints
         fields (None): an optional list of per-field custom colors.
-            -   `path` (required): the fully-qualified path to the field you're
-                customizing
+            -   `path` (required): the fully-qualified path to the field you're customizing
             -   `fieldColor` (optional): a color to assign to the field in the
                 App sidebar
             -   `colorByAttribute` (optional): the attribute to use to assign
@@ -248,7 +247,7 @@ class ColorScheme(EmbeddedDocument):
         default_mask_targets_colors (None): a list of dicts specifying index
             and color for 2D masks of the dataset. If a field does not have
             field specific mask targets colors, this list will be used
-        default_colorscale (None): default colorscale that will be used for rendering heatmaps and ranges in embeddings plot. It can be specified by either providing a named colorscale or defining a colorscale list. When both are provided, we will use the name to generate colorscale
+        default_colorscale (None): default colorscale that will be used for rendering heatmaps and ranges in embeddings plot. It can be specified by either providing a named colorscale or defining a colorscale list. When both are provided, we will use the name to generate colorscale.
             -   `name` (optional): a named plotly colorscale, e.g. "hsv", "rdbu", and etc. See https://plotly.com/python/builtin-colorscales/ for more options;
             -   `list` (optional): a list of dicts of manually defined colorscale. A valid list must have at least defined colors for 0 and 1
                 -   `value`: a float number between 0 and 1

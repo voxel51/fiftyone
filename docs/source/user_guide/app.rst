@@ -837,17 +837,6 @@ You can also dynamically edit your current color scheme by modifying it:
     session.color_scheme.color_pool = [...]
     session.refresh()
 
-You can reset the color scheme to its default value (the dataset's default
-color scheme, if any, else the global default) by setting
-:meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>` to
-None:
-
-.. code-block:: python
-    :linenos:
-
-    # Reset color scheme
-    session.color_scheme = None
-
 .. note::
 
     Did you know? You can also configure default color schemes for
