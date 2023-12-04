@@ -281,12 +281,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
   const view = useRecoilValue(fos.view);
 
   return (
-    <Popout
-      style={{ minWidth: "250px" }}
-      modal={modal}
-      fixed
-      anchorRef={anchorRef}
-    >
+    <Popout modal={modal} fixed anchorRef={anchorRef}>
       {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
