@@ -16,8 +16,8 @@ from fiftyone.operators.executor import (
     do_execute_operator,
     ExecutionResult,
     ExecutionRunState,
-    ExecutionProgress,
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,28 +54,30 @@ class DelegatedOperationService(object):
             context=context,
         )
 
-    def set_progress(self, doc_id, progress: ExecutionProgress):
+    def set_progress(self, doc_id, progress):
         """Sets the progress of the given delegated operation.
 
         Args:
             doc_id: the ID of the delegated operation
-            progress: the progress of the operation
+            progress: the
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
         """
         return self._repo.update_progress(_id=doc_id, progress=progress)
 
-    def set_running(
-        self, doc_id, progress: ExecutionProgress = None, run_link: str = None
-    ):
+    def set_running(self, doc_id, progress=None, run_link=None):
         """Sets the given delegated operation to running state.
 
         Args:
             doc_id: the ID of the delegated operation
-            run_link (None): an optional run link to orchestrator specific run
-                information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -91,8 +93,8 @@ class DelegatedOperationService(object):
         self,
         doc_id,
         result=None,
-        progress: ExecutionProgress = None,
-        run_link: str = None,
+        progress=None,
+        run_link=None,
     ):
         """Sets the given delegated operation to completed state.
 
@@ -101,9 +103,11 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            run_link (None): the optional run link to orchestrator specific run
-                information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -120,8 +124,8 @@ class DelegatedOperationService(object):
         self,
         doc_id,
         result=None,
-        progress: ExecutionProgress = None,
-        run_link: str = None,
+        progress=None,
+        run_link=None,
     ):
         """Sets the given delegated operation to failed state.
 
@@ -130,9 +134,11 @@ class DelegatedOperationService(object):
             result (None): the
                 :class:`fiftyone.operators.executor.ExecutionResult` of the
                 operation
-            run_link (None): the optional run link to orchestrator specific run
-                information
-            progress (None): the optional progress of the operation
+            progress (None): an optional
+                :class:`fiftyone.operators.executor.ExecutionProgress` of the
+                operation
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
 
         Returns:
             a :class:`fiftyone.factory.repos.DelegatedOperationDocument`
@@ -331,8 +337,8 @@ class DelegatedOperationService(object):
                 :class:`fiftyone.factory.repos.DelegatedOperationDocument`
             log (False): the optional boolean flag to log the execution of the
                 delegated operations
-            run_link (None): the optional run link to orchestrator specific run
-                information
+            run_link (None): an optional link to orchestrator-specific
+                information about the operation
         """
         try:
             self.set_running(doc_id=operation.id, run_link=run_link)
@@ -348,7 +354,7 @@ class DelegatedOperationService(object):
             self.set_completed(doc_id=operation.id, result=result)
             if log:
                 logger.info("Operation %s complete", operation.id)
-        except Exception as e:
+        except:
             result = ExecutionResult(error=traceback.format_exc())
 
             self.set_failed(doc_id=operation.id, result=result)

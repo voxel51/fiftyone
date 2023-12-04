@@ -6,4 +6,4 @@ FiftyOne internal classes and utilities.
 |
 """
 
-from .util import is_internal_service
+from .util import is_internal_service, has_encryption_key

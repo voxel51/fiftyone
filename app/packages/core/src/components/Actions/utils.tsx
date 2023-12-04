@@ -175,6 +175,9 @@ export const tagParameters = ({
       if (groupData?.slices) {
         return null;
       }
+      if (targetLabels && selectedLabels.length) {
+        return [...new Set(selectedLabels.map((l) => l.sampleId))];
+      }
       return [sampleId];
     } else if (selectedSamples.size) {
       return [...selectedSamples];

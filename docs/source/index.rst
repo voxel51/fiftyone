@@ -97,6 +97,11 @@ learn how:
     :image_title: Qdrant
 
 .. customimagelink::
+    :image_link: integrations/redis.html
+    :image_src: https://voxel51.com/images/integrations/redis-128.png
+    :image_title: Redis
+
+.. customimagelink::
     :image_link: integrations/pinecone.html
     :image_src: https://voxel51.com/images/integrations/pinecone-128.png
     :image_title: Pinecone

@@ -5,122 +5,197 @@ FiftyOne Teams internal cloud credential management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import configparser
 from datetime import datetime, timedelta
 import json
 import logging
 import os
-import pathlib
 
 from cryptography.fernet import Fernet
 
+import eta.core.utils as etau
+
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.storage as fos
 from fiftyone.internal.constants import (
     ENCRYPTION_KEY_ENV_VAR,
     TTL_CACHE_LIFETIME_SECONDS,
 )
 
+
+PROVIDER_TO_FILE_SYSTEM = {
+    "AWS": fos.FileSystem.S3,
+    "GCP": fos.FileSystem.GCS,
+    "AZURE": fos.FileSystem.AZURE,
+    "MINIO": fos.FileSystem.MINIO,
+}
+
 logger = logging.getLogger(__name__)
 
 
 class CloudCredentialsManager(object):
-    """Class for managing cloud credentials.
-
-    Credentials are cached for ``TTL_CACHE_LIFETIME_SECONDS`` and are
-    automatically reloaded when necessary.
-    """
+    """Class for managing cloud credentials."""
 
     def __init__(self):
-        self._creds_cache = {}
-        self._creds_cache_exp = datetime.utcnow()
-        self._encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
-        self._creds_dir = str(
-            pathlib.Path(foc.locate_config()).parent.absolute()
-        )
-        self._fernet = Fernet(self._encryption_key)
-        self._refresh_credentials()
+        self._default_creds = {}
+        self._bucket_creds = defaultdict(dict)
+        self._creds_dir = os.path.dirname(foc.locate_config())
+        self._expiration_time = None
+        self._fernet = None
 
-        # make that path if it's not there
-        if not os.path.exists(pathlib.Path(self._creds_dir)):
-            os.mkdir(pathlib.Path(self._creds_dir))
+        encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
+        if encryption_key is not None:
+            self._fernet = Fernet(encryption_key)
+
+        etau.ensure_dir(self._creds_dir)
+        self._refresh_credentials()
 
     @property
     def expiration_time(self):
         """The ``datetime`` at which the cache expires."""
-        return self._creds_cache_exp
+        return self._expiration_time
 
     @property
     def is_expired(self):
         """Whether the cache is expired."""
-        return datetime.utcnow() > self._creds_cache_exp
+        return datetime.utcnow() > self._expiration_time
 
-    def get_all_credentials_for_provider(self, provider):
-        if self.is_expired:
-            self._refresh_credentials()
-
-        return [
-            self._creds_cache[key]
-            for key in self._creds_cache
-            if key.startswith(provider)
-        ]
-
-    def get_stored_credentials_per_bucket(self, provider, bucket):
-        """Returns the credentials for the given provider, if any.
-
-        The cache is automatically refreshed, if necessary.
+    def has_default_credentials(self, fs):
+        """Determines whether we have default credentials for the given file
+        system.
 
         Args:
-            provider: the cloud provider
+            fs: a :class:`fiftyone.core.storage.FileSystem`
 
         Returns:
-            the credentials string, or None
+            True/False
         """
-        if self.is_expired:
-            self._refresh_credentials()
+        return fs in self._default_creds
 
-        for key in self._creds_cache:
-            if bucket in key and key.startswith(provider):
-                return self._creds_cache.get(f"{provider}-{bucket}")
-        # if no matching bucket specific creds are found, return default if available
-        return self._creds_cache.get(provider, None)
+    def has_bucket_credentials(self, fs, bucket):
+        """Determines whether there are bucket-specific credentials for the
+        given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+            bucket: a bucket name
+
+        Returns:
+            True/False
+        """
+        return bucket in self._bucket_creds[fs]
+
+    def get_file_systems_with_credentials(self):
+        """Returns the list of file systems with at least one set of
+        bucket-specific credentials.
+
+        Returns:
+            a list of :class:`fiftyone.core.storage.FileSystem` values
+        """
+        file_systems = set(self._default_creds.keys())
+        for fs, creds_dict in self._bucket_creds.items():
+            if creds_dict:
+                file_systems.add(fs)
+
+        return list(file_systems)
+
+    def get_buckets_with_credentials(self, fs):
+        """Returns the list of buckets with bucket-specific credentials for the
+        given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of buckets
+        """
+        return list(self._bucket_creds[fs].keys())
+
+    def get_credentials(self, fs, bucket=None):
+        """Retrieves the specified credentials.
+
+        If no bucket-specific credentials are available, default credentials
+        for the file system are returned, if available.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+            bucket (None): an optional bucket name
+
+        Returns:
+            the credentials path, or ``None``
+        """
+        creds_path = None
+
+        if bucket is not None:
+            creds_path = self._bucket_creds[fs].get(bucket, None)
+
+        if creds_path is None:
+            creds_path = self._default_creds.get(fs, None)
+
+        return creds_path
+
+    def get_all_credentials_for_file_system(self, fs):
+        """Returns all credentials for the given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of credential paths
+        """
+        creds_paths = []
+
+        creds_path = self._default_creds.get(fs, None)
+        if creds_path:
+            creds_paths.append(creds_path)
+
+        for creds_path in self._bucket_creds[fs].values():
+            creds_paths.append(creds_path)
+
+        return creds_paths
 
     def _refresh_credentials(self):
-        # clear the creds cache
-        self._creds_cache.clear()
+        self._bucket_creds.clear()
+        self._default_creds.clear()
 
-        creds_list = foo.get_cloud_credentials()
-        for credentials in creds_list:
+        for credentials in foo.get_cloud_credentials():
+            provider = credentials.get("provider", "")
+            fs = PROVIDER_TO_FILE_SYSTEM.get(provider, None)
+            if fs is None:
+                logger.warning(
+                    "Ignoring credentials for unsupported provider '%s'",
+                    provider,
+                )
+                continue
+
             try:
                 creds_path = self._make_creds_path(credentials)
                 raw_creds = self._get_raw_creds(credentials)
                 # if raw creds returned None, then the file was already written
                 if raw_creds:
-                    self._write_creds(
-                        credentials["provider"], raw_creds, creds_path
-                    )
+                    self._write_creds(provider, raw_creds, creds_path)
             except Exception as e:
                 creds_path = None
+
                 logger.warning(
-                    "Failed to parse credentials for provider '%s' with prefixes '%s': %s",
-                    credentials["provider"],
-                    credentials.get("prefixes", "No prefixes"),
+                    (
+                        "Failed to parse credentials for provider '%s' with "
+                        "prefixes '%s': %s"
+                    ),
+                    provider,
+                    credentials.get("prefixes", ""),
                     e,
                 )
 
-            # make an entry in the creds cache for every bucket name
-            # since the requesting URL is only coming in with one
-            # bucket name at a time
             if credentials.get("prefixes"):
-                for bucket_name in credentials["prefixes"]:
-                    self._creds_cache[
-                        f'{credentials["provider"]}-{bucket_name}'
-                    ] = creds_path
+                for bucket in credentials["prefixes"]:
+                    self._bucket_creds[fs][bucket] = creds_path
             else:
-                # default, no prefix
-                self._creds_cache[credentials["provider"]] = creds_path
+                self._default_creds[fs] = creds_path
 
-        self._creds_cache_exp = datetime.utcnow() + timedelta(
+        self._expiration_time = datetime.utcnow() + timedelta(
             seconds=TTL_CACHE_LIFETIME_SECONDS
         )
 
@@ -163,8 +238,12 @@ class CloudCredentialsManager(object):
         return os.path.join(self._creds_dir, filename)
 
     def _get_raw_creds(self, credentials):
-        raw_creds = self._fernet.decrypt(credentials["credentials"]).decode()
+        raw_creds = credentials["credentials"]
+        if self._fernet is not None:
+            raw_creds = self._fernet.decrypt(raw_creds).decode()
+
         provider = credentials["provider"]
+
         # special case: if the passed creds are already a file, just write it
         if "ini-file" in raw_creds:
             creds_path = self._make_creds_path(credentials)
@@ -196,8 +275,6 @@ class CloudCredentialsManager(object):
             _write_default_minio_ini_file(raw_creds, creds_path)
         elif provider == "GCP":
             _write_default_gcp_json_file(raw_creds, creds_path)
-        else:
-            ...
 
 
 def _write_default_aws_ini_file(creds_dict, creds_path):

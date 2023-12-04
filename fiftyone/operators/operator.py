@@ -5,7 +5,8 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from .types import Object, Form, Property, PromptView
+from .types import Object, PromptView
+
 
 BUILTIN_OPERATOR_PREFIX = "@voxel51/operators"
 
@@ -31,9 +32,15 @@ class OperatorConfig(object):
             when app is in the light mode
         dark_icon (None): icon to show for the operator in the Operator Browser
             when app is in the dark mode
-        allow_immediate_execution (True): whether the operator should allow immediate execution
-        allow_delegated_execution (False): whether the operator should allow delegated execution
-        resolve_execution_options_on_change (None): whether the execution options are resolved on change
+        allow_immediate_execution (True): whether the operator should allow
+            immediate execution
+        allow_delegated_execution (False): whether the operator should allow
+            delegated execution
+        default_choice_to_delegated (False): whether to default to delegated
+            execution, if allowed
+        resolve_execution_options_on_change (None): whether to resolve
+            execution options dynamically when inputs change. By default, this
+            behavior will match the ``dynamic`` setting
     """
 
     def __init__(
@@ -176,43 +183,49 @@ class Operator(object):
 
         return definition
 
-    def resolve_delegation(self, ctx) -> bool:
-        """Returns the resolved delegation flag.
+    def resolve_delegation(self, ctx):
+        """Returns the resolved *forced* delegation flag.
 
-        Subclasses can implement this method to define the logic which decides
-        if the operation should be queued for delegation
+        Subclasses can implement this method to decide if delegated execution
+        should be *forced* for the given operation.
 
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
-            a boolean indicating whether the operation should be delegated or `None`
-            to allow the default logic to be used
+            whether the operation should be delegated (True), run immediately
+            (False), or None to defer to :meth:`resolve_execution_options` to
+            specify the available options
         """
         return None
 
     def resolve_execution_options(self, ctx):
         """Returns the resolved execution options.
 
-        Subclasses can implement this method to define the execution options. This
-        defines the behavior of the Execute button in the FiftyOne App.
+        Subclasses can implement this method to define the execution options
+        available for the operation.
+
+        Args:
+            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
 
         Returns:
             a :class:`fiftyone.operators.executor.ExecutionOptions` instance
         """
         from .executor import ExecutionOptions
 
-        resolved_delegation = self.resolve_delegation(ctx)
-        if resolved_delegation is None:
-            # legacy behavior
+        # Defer to forced delegation, if implemented
+        # pylint: disable=assignment-from-none
+        delegate = self.resolve_delegation(ctx)
+        if delegate is not None:
             return ExecutionOptions(
-                allow_immediate_execution=self.config.allow_immediate_execution,
-                allow_delegated_execution=self.config.allow_delegated_execution,
+                allow_immediate_execution=not delegate,
+                allow_delegated_execution=delegate,
             )
 
         return ExecutionOptions(
-            allow_immediate_execution=not resolved_delegation,
-            allow_delegated_execution=resolved_delegation,
+            allow_immediate_execution=self.config.allow_immediate_execution,
+            allow_delegated_execution=self.config.allow_delegated_execution,
+            default_choice_to_delegated=self.config.default_choice_to_delegated,
         )
 
     def execute(self, ctx):
