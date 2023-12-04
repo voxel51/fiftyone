@@ -652,6 +652,9 @@ The FiftyOne App can be configured in the ways described below:
 | `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
 |                           |                                        |                             | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `lightning_threshold`     | `FIFTYONE_APP_LIGHTNING_THRESHOLD`     | `None`                      | A dataset sample count threshold that enables performant sidebar filtering on indexed     |
+|                           |                                        |                             | fields. See :ref:`this section <app-lightning-mode>` for more details.                    |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
@@ -725,6 +728,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
@@ -773,6 +777,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,

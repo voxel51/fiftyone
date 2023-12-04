@@ -1,5 +1,10 @@
-import { field, isInListField, parentField } from "@fiftyone/state";
-import { BOOLEAN_FIELD, KEYPOINTS_FIELD } from "@fiftyone/utilities";
+import { field, parentField } from "@fiftyone/state";
+import {
+  BOOLEAN_FIELD,
+  KEYPOINTS_POINTS_FIELD,
+  KEYPOINT_FIELD,
+  LIST_FIELD,
+} from "@fiftyone/utilities";
 import { selectorFamily } from "recoil";
 
 export const isBooleanField = selectorFamily({
@@ -18,8 +23,9 @@ export const isInKeypointsField = selectorFamily({
     (path: string) =>
     ({ get }) => {
       return (
-        get(isInListField(path)) &&
-        get(parentField(path))?.embeddedDocType === KEYPOINTS_FIELD
+        [KEYPOINTS_POINTS_FIELD, LIST_FIELD].includes(
+          get(field(path))?.ftype || ""
+        ) && get(parentField(path))?.embeddedDocType === KEYPOINT_FIELD
       );
     },
 });

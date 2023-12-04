@@ -9,7 +9,7 @@ export const lightningStringResults = selectorFamily<
   get:
     (params) =>
     ({ get }) => {
-      const [data] = get(lightningQuery([{ ...params, first: 25 }]));
+      const [data] = get(lightningQuery([params]));
 
       if (data.__typename !== "StringLightningResult") {
         throw new Error("bad");

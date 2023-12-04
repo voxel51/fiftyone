@@ -11,11 +11,16 @@ import { ResponseFrom } from "../utils";
 import { config } from "./config";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
+import { filters } from "./filters";
 import { isLabelPath } from "./labels";
 import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
 import { datasetId, datasetName } from "./selectors";
+import {
+  granularSidebarExpandedStore,
+  sidebarExpandedStore,
+} from "./sidebarExpanded";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -139,7 +144,7 @@ export const pathIndex = selectorFamily({
     ({ get }) => {
       const indexes = get(indexesByPath);
 
-      return indexes.has(get(schemaAtoms.dbPath(path)));
+      return indexes.has(path);
     },
 });
 
@@ -163,7 +168,7 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
             })
           )
             .map((p) => `${expanded}.${p}`)
-            .filter((p) => indexes.has(get(schemaAtoms.dbPath(p))))
+            .filter((p) => indexes.has(p))
         );
       }
 
@@ -213,8 +218,12 @@ export const lightningThreshold = selector<null | number>({
 
     return Number(setting);
   },
-  set: ({ get, set }, value) =>
-    set(lightningThresholdAtom(get(datasetId)), String(value)),
+  set: ({ get, reset, set }, value) => {
+    set(lightningThresholdAtom(get(datasetId)), String(value));
+    reset(granularSidebarExpandedStore);
+    reset(sidebarExpandedStore(false));
+    reset(filters);
+  },
 });
 
 export const lightning = selector({

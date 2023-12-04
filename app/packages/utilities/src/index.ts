@@ -318,6 +318,7 @@ export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
 export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
+export const KEYPOINTS_POINTS_FIELD = "fiftyone.core.fields.KeypointsField";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
 
