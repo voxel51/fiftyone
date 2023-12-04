@@ -80,26 +80,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private playBackRate = DEFAULT_PLAYBACK_RATE;
-  private loop = false;
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
-  private posterFrame: number;
   private mediaField: string;
-  private requestCallback: (callback: (time: number) => void) => void;
-  private release: () => void;
   private thumbnailSrc: string;
   /**
    * This frame number is the authoritaive frame number that is drawn on the canvas.
    * `frameNumber` or `currentFrameNumber`, on the other hand, are suggestive
    */
   private canvasFrameNumber: number;
-  private isBuffering: boolean;
   private isPlaying: boolean;
   private isSeeking: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
-  private waitingToRelease = false;
 
   public framesController: ImaVidFramesController;
 
@@ -192,7 +186,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   resetWaitingFlags() {
     this.waitingToPause = false;
-    this.waitingToRelease = false;
   }
 
   pause(shouldUpdatePlaying = true) {
@@ -281,8 +274,18 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
             if (next > this.framesController.totalFrameCount) {
               this.update(({ options: { loop } }) => {
-                // how to loop?
-                return { playing: false };
+                if (loop) {
+                  this.drawFrame(1);
+                  return {
+                    playing: true,
+                    currentFrameNumber: 1,
+                  };
+                }
+
+                return {
+                  playing: false,
+                  currentFrameNumber: this.framesController.totalFrameCount,
+                };
               });
               return;
             }
