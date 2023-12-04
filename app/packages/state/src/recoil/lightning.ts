@@ -5,7 +5,7 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
@@ -220,28 +220,9 @@ export const lightningThreshold = selector<null | number>({
   },
   set: ({ get, reset, set }, value) => {
     set(lightningThresholdAtom(get(datasetId)), String(value));
-    if (value !== null && !(value instanceof DefaultValue)) {
-      reset(granularSidebarExpandedStore);
-      const newFilters = Object.assign({}, get(filters));
-      const paths = get(lightningPaths(""));
-      for (const p in newFilters) {
-        if (!paths.has(p)) {
-          delete newFilters[p];
-        }
-      }
-      set(sidebarExpandedStore(false), (current) => {
-        const next = { ...current };
-
-        for (const parent in next) {
-          if (![...paths].some((p) => p.startsWith(parent))) {
-            delete next[parent];
-          }
-        }
-
-        return next;
-      });
-      set(filters, newFilters);
-    }
+    reset(granularSidebarExpandedStore);
+    reset(sidebarExpandedStore(false));
+    reset(filters);
   },
 });
 
