@@ -329,6 +329,7 @@ another supported backend:
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
 -   **redis**: a :ref:`Redis backend <redis-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
@@ -717,6 +718,7 @@ The relevant classes for the builtin similarity backends are:
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
 -   **redis**: :class:`fiftyone.brain.internal.core.redis.RedisSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
@@ -1729,6 +1731,9 @@ and the CLI:
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
                 },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
+                },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
                 }
@@ -1761,6 +1766,9 @@ and the CLI:
                 },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
                 },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
