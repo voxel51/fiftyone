@@ -193,7 +193,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
-          return { playing: false };
+          return { playing: false, disabled: false, disableOverlays: false };
         }
         return {};
       });
@@ -303,6 +303,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.isAnimationActive) {
       return;
     }
+
+    this.update(() => ({ disabled: true, disableOverlays: true }));
 
     requestAnimationFrame(() => this.drawFrame(this.frameNumber));
   }
