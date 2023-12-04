@@ -50,7 +50,9 @@ export default function (
   const results =
     resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
   const length = results?.results?.length ?? 0;
-  const shown = showSearch || length > CHECKBOX_LIMIT;
+  const shown =
+    resultsLoadable.state !== "loading" &&
+    (showSearch || length > CHECKBOX_LIMIT);
 
   return {
     results,

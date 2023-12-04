@@ -123,6 +123,9 @@ export const counts = selectorFamily({
       }
 
       const data = get(aggregation(params));
+      if (!data) {
+        return {};
+      }
 
       if (data.__typename === "StringAggregation") {
         return Object.fromEntries(
