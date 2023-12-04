@@ -11,9 +11,9 @@ export const FLOAT_NONFINITES: Nonfinite[] = ["inf", "ninf", "nan"];
 export const hasBounds = selectorFamily({
   key: "hasBounds",
   get:
-    (path: string) =>
+    (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return Boolean(get(boundsAtom({ path }))?.every((b) => b !== null));
+      return Boolean(get(boundsAtom(params))?.every((b) => b !== null));
     },
 });
 
@@ -29,10 +29,10 @@ export const hasDefaultRange = selectorFamily({
 export const hasNonfinites = selectorFamily({
   key: "hasNonfinites",
   get:
-    (path: string) =>
+    (params: { path: string; modal: boolean }) =>
     ({ get }) => {
       return FLOAT_NONFINITES.every((key) =>
-        get(nonfiniteAtom({ path, key, modal: false }))
+        get(nonfiniteAtom({ key, ...params }))
       );
     },
 });
@@ -40,11 +40,11 @@ export const hasNonfinites = selectorFamily({
 export const oneBound = selectorFamily({
   key: "oneBound",
   get:
-    (path: string) =>
+    (params: { path: string; modal: boolean }) =>
     ({ get }) => {
-      return (
-        get(hasBounds(path)) &&
-        get(boundsAtom({ path }))[0] === get(boundsAtom({ path }))[1]
-      );
+      return get(hasBounds(params)) &&
+        get(boundsAtom(params))[0] === get(boundsAtom(params))[1]
+        ? get(boundsAtom(params))[0]
+        : null;
     },
 });

@@ -74,7 +74,7 @@ const TabOption = ({
 
   return (
     <TabOptionDiv
-      style={style}
+      style={{ ...style, minWidth: `${6 * options.length || 1}rem` }}
       onMouseEnter={() => set({ background: theme.background.body })}
       onMouseLeave={() => set({ background: theme.background.level1 })}
     >

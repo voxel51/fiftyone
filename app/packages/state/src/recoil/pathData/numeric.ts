@@ -30,7 +30,11 @@ export const nonfiniteData = selectorFamily({
   get:
     (params: { extended: boolean; path: string; modal: boolean }) =>
     ({ get }) => {
-      if (get(lightning) && get(isLightningPath(params.path))) {
+      if (
+        !params.modal &&
+        get(lightning) &&
+        get(isLightningPath(params.path))
+      ) {
         return get(lightningNonfinites(params.path));
       }
 

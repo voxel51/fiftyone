@@ -30,7 +30,7 @@ export function selectorWithEffect<T>(
     ...options
   }: ReadOnlySelectorOptions<T> & {
     set?:
-      | ((newValue: Parameters<ReadWriteSelectorOptions<T>["set"]>[1]) => void)
+      | ((...params: Parameters<ReadWriteSelectorOptions<T>["set"]>) => T)
       | boolean;
     state?: RecoilState<T>;
   },
@@ -44,7 +44,10 @@ export function selectorWithEffect<T>(
       if (!isTest && !set) {
         throw new Error(`No setter for selector '${key}' found`);
       }
-      options.set instanceof Function && options.set(params[1]);
+
+      if (options.set instanceof Function) {
+        params[1] = options.set(...params);
+      }
 
       set && set(...params);
       state && params[0].set(state, params[1]);

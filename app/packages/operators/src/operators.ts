@@ -445,7 +445,6 @@ async function executeOperatorAsGenerator(
       params: ctx.params,
       dataset_name: currentContext.datasetName,
       delegation_target: currentContext.delegationTarget,
-      delegate_execution: currentContext.delegateExecution,
       extended: currentContext.extended,
       view: currentContext.view,
       filters: currentContext.filters,
@@ -454,6 +453,7 @@ async function executeOperatorAsGenerator(
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
+      request_delegation: ctx.requestDelegation,
     },
     "json-stream"
   );
@@ -462,21 +462,26 @@ async function executeOperatorAsGenerator(
   const abortQueue = getAbortableOperationQueue();
   abortQueue.add(operator.uri, ctx.params, parser);
 
-  let result = null;
-  let triggerPromises = [];
+  const result = { result: {} };
   const onChunk = (chunk) => {
+    if (chunk?.delegated) {
+      result.delegated = chunk?.delegated;
+    }
+    if (chunk?.error) {
+      result.error = chunk?.error;
+    }
     const message = GeneratedMessage.fromJSON(chunk);
     if (message.cls == InvocationRequest) {
       executeOperator(message.body.operator_uri, message.body.params);
     } else if (message.cls == ExecutionResult) {
-      result = message.body;
+      result.result = message.body;
     }
   };
   await parser.parse(onChunk);
   abortQueue.remove(operator.uri);
   // Should we wait for all triggered operators finish execution?
   // e.g. await Promise.all(triggerPromises)
-  return result || {};
+  return result;
 }
 
 export function resolveOperatorURI(operatorURI) {
@@ -507,7 +512,10 @@ export async function executeOperatorWithContext(
   if (isRemote) {
     if (operator.config.executeAsGenerator) {
       try {
-        result = await executeOperatorAsGenerator(operator, ctx);
+        const serverResult = await executeOperatorAsGenerator(operator, ctx);
+        result = serverResult.result;
+        delegated = serverResult.delegated;
+        error = serverResult.error;
       } catch (e) {
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;

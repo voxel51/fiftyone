@@ -166,6 +166,9 @@ def get_url(
     else:
         _url = f"http://{address}:{port}/"
 
+    if "proxy" in kwargs:
+        kwargs["polling"] = "true"
+
     params = "&".join([f"{k}={v}" for k, v in kwargs.items()])
     if params:
         _url = f"{_url}?{params}"

@@ -216,3 +216,8 @@ export const ChromePickerWrapper = styled.div`
   left: 0;
   z-index: 10001;
 `;
+
+export const Guide = styled.div`
+  display: flex;
+  flex-direction: row;
+`;
