@@ -247,34 +247,29 @@ class ColorScheme(EmbeddedDocument):
                 index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts specifying index
             and color for 2D masks of the dataset. If a field does not have
-            field specific mask targets colors, this list will be used
-        default_colorscale (None): default colorscale that will be used for
-        rendering heatmaps and ranges in embeddings plot. It can be specified by
-         either providing a named colorscale or defining a colorscale list. When
-          both are provided, we will use the name to generate colorscale.
-            -   `name` (optional): a named plotly colorscale, e.g. "hsv", "rdbu"
-            , and etc. See https://plotly.com/python/builtin-colorscales/ for
-            more options;
-            -   `list` (optional): a list of dicts of manually defined
-            colorscale. A valid list must have at least defined colors for 0
-            and 1
-                -   `value`: a float number between 0 and 1
-                -   `color`: a rgb color string
-        colorscales (None): an optional list of per-field custom colorscale for
-            heatmaps or embeddings plot.
+            field specific mask targets colors, this list will be used.
+            -   `intTarget`: integer target value
+            -   `color`: a color string
+        default_colorscale (None): dataset default colorscale
+            -   `name` (optional): a named plotly colorscale, e.g. "hsv".
+                See https://plotly.com/python/builtin-colorscales/
+            -   `list` (optional): a list of dicts of colorscale values
+                -   `value`: a float number between 0 and 1. A valid list must
+                have have colors defined for 0 and 1.
+                -   `color`: a rgb color string.
+        colorscales (None): an optional list of per-field custom colorscale
             -   `path` (required): the fully-qualified path to the field you're
                 customizing. use "dataset" if you are setting the default
                 colorscale for dataset
             -   `name` (optional): a named colorscale plotly recognizes
-            -   `list` (optional): a list of dicts of manually defined
-                colorscale
-                -   `value`: a float number between 0 and 1
-                -   `color`: a rgb color string
+            -   `list` (optional): a list of dicts of colorscale values
+                -   `value`: a float number between 0 and 1. A valid list must
+                have have colors defined for 0 and 1.
+                -   `color`: a rgb color string.
         label_tags (None): an optional dict specifying custom colors for label
             tags with the following keys:
             -   `fieldColor` (optional): a color to assign to all label tags
-            -   `valueColors` (optional): a list of dicts specifying colors to
-            specific label tags.
+            -   `valueColors` (optional): a list of dicts
     """
 
     # strict=False lets this class ignore unknown fields from other versions
