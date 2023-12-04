@@ -254,7 +254,6 @@ export const PainterFactory = (requestColor) => ({
     const isRgbMaskTargets_ = isRgbMaskTargets(maskTargets);
 
     if (maskData.channels > 2) {
-      console.log("rendering rgb mask");
       for (let i = 0; i < overlay.length; i++) {
         const [r, g, b] = getRgbFromMaskData(targets, maskData.channels, i);
 
