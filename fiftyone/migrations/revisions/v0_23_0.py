@@ -30,7 +30,7 @@ def up(db, dataset_name):
                 "default_mask_targets_colors", []
             )
             color_scheme["default_colorscale"] = color_scheme.get(
-                "default_colorscale", {"name": "viridus", "list": None}
+                "default_colorscale", {"name": "viridis", "list": None}
             )
             color_scheme["label_tags"] = color_scheme.get(
                 "label_tags", {"fieldColor": None, "valueColors": []}
