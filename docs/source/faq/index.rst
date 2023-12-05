@@ -200,6 +200,15 @@ FiftyOne officially supports the latest versions of MacOS and Windows, as well
 as Amazon Linux 2 and 2023, Debian 9+ (x86_64 only), Ubuntu 18.04+, and
 RHEL/CentOS 7+.
 
+.. note::
+
+    If installing on Ubuntu 22.04+, Debian, or RHEL/CentOS,
+    ``fiftyone-db==0.4.3`` must be requested.
+
+    .. code-block:: shell
+
+        pip install fiftyone-db==0.4.3 fiftyone
+
 .. _faq-image-types:
 
 What image file types are supported?
