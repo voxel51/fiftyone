@@ -484,13 +484,19 @@ the credential data and store it in your Teams database.
 Once stored, the appropriate credentials will be dynamically used when attempting to load
 media for the associated provider.
 
-All credentials are globally scoped and all users have access to all credentials.
+All credentials are globally scoped and all users. This means that if a user of a Fiftyone
+Teams deployment tries to access media that is available based on the credentials
+provided, then that user will be able to see the media.
+
+Users cannot access the stored credentials. They will not know which ones are being used,
+and the credentials remain encrypted until they were used directly in the Fiftyone Teams
+core SDK. 
 
 Users do not select credentials they want to use at any given time, the credentials are
 automatically loaded and referenced as necessary once they have been uploaded.
 
 Any deployed Teams servers have an internal credentials cache which refreshes every 120 seconds.
-This means that the maximum possible lag between uploading a credential and seeing that
+Therefore the maximum possible lag between uploading a credential and seeing that
 credential being used is 120 seconds. 
 
 
@@ -508,8 +514,8 @@ appropriately created with the provider.
 
 For example, if you have cloud media across three buckets: `bucketA`, `bucketB`, and
 `bucketC`, you can provide credentials for that provider with no bucket names. This will act
-as the default set of credentials and will be used when users try to access media in any of
-those buckets.
+as the default set of credentials for that provider and will be used when users try to 
+access media in any of those buckets.
 
 If an Administrator then uploads a second set of credentials for the same provider and includes
 `bucketD` in the bucket prefix list, that set of credentials will be used when a user
@@ -520,9 +526,12 @@ Additionally, an Administrator could upload a set of credentials for `bucketE,bu
 the same pattern of behavior would follow when a user tries to access media in one of those
 three buckets.
 
-If a user tries to access media in `bucketZ`, it will not load, as none of the credentials provided
-(either default or bucket-scoped) have permissions to access that bucket.
-
 Additionally, it is possible to only upload bucket-scoped credentials without a default. Doing this
 would mean that users trying to load any media that is not included in the buckets that have
 credentials will not be able to interact with that media.
+
+As an example, say an Administrator removes the default credentials.
+
+If a user tries to access media in `bucketA`, `bucketB` or `bucketC` it will not load, as 
+none of the credentials provided (there are only bucket-scoped credentials remaining) have 
+permissions to access that bucket. However, buckets D-G would still be accessible.
