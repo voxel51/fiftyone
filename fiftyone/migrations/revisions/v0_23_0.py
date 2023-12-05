@@ -85,7 +85,7 @@ def down(db, dataset_name):
             # Handle nested fields within 'fields'
             fields = color_scheme.get("fields", [])
             if fields:
-                for field in color_scheme.get("fields", []):
+                for field in fields:
                     if field is not None:
                         field.pop("maskTargetsColors", None)
 
