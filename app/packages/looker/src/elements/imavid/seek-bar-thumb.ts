@@ -1,6 +1,5 @@
 import { ImaVidState } from "../../state";
 import { BaseElement, Events } from "../base";
-import { getFrameNumber } from "../util";
 
 import { lookerThumb, lookerThumbSeeking } from "../video.module.css";
 

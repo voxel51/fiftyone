@@ -446,7 +446,7 @@ input LightningPathInput {
   exclude these values from results
   """
   exclude: [String!] = null
-  first: Int = null
+  first: Int = 200
   search: String = null
 }
 

@@ -42,8 +42,6 @@ export class PlayButtonElement extends BaseElement<
   private play: SVGElement;
   private pause: SVGElement;
   private buffering: SVGElement;
-  private locked: boolean = null;
-  private singleFrame: boolean = null;
 
   getEvents(): Events<ImaVidState> {
     return {

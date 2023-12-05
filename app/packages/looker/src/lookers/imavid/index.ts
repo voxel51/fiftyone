@@ -1,18 +1,16 @@
 import { getImaVidElements } from "../../elements";
 import { VIDEO_SHORTCUTS } from "../../elements/common";
 import { ImaVidElement } from "../../elements/imavid";
-import { Overlay } from "../../overlays/base";
-import { ImaVidOptions, ImaVidState, LabelData, Sample } from "../../state";
-
+import {
+  DEFAULT_BASE_OPTIONS,
+  ImaVidOptions,
+  ImaVidState,
+  Sample,
+} from "../../state";
 import { AbstractLooker } from "../abstract";
 import { LookerUtils } from "../shared";
 import { BufferManager } from "./buffer-manager";
 import { DEFAULT_PLAYBACK_RATE } from "./constants";
-
-interface ImaVidFrame {
-  sample: Sample;
-  overlays: Overlay<ImaVidState>[];
-}
 
 /**
  * Looker for image samples in an ordered dynamic group that are to be rendered as a video.
@@ -121,8 +119,9 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     );
   }
 
-  getDefaultOptions() {
+  getDefaultOptions(): ImaVidOptions {
     return {
+      ...DEFAULT_BASE_OPTIONS,
       loop: false,
       playbackRate: DEFAULT_PLAYBACK_RATE,
     } as ImaVidOptions;

@@ -7251,6 +7251,8 @@ def _parse_similarity_query(query):
             except:
                 # Query prompts
                 is_prompt = True
+        else:
+            is_prompt = False
 
         return query, query, is_prompt
 
