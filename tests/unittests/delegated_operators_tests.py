@@ -742,7 +742,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
             for j in range(25):
                 doc = self.svc.queue_operation(
                     operator=operator,
-                    label=mock_get_operator.return_value.name,
+                    label=f"test_{i}_{j}",
                     delegation_target=delegation_target,
                     context=ExecutionContext(
                         request_params={
@@ -756,30 +756,75 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                 )  # ensure that the queued_at times are different
                 self.docs_to_delete.append(doc)
 
+        paging = DelegatedOperationPagingParams(
+            skip=0,
+            limit=5000,
+            sort_by=SortByField.QUEUED_AT,
+            sort_direction=SortDirection.ASCENDING,
+        )
+
         # test paging - get a page of everything
         docs = self.svc.list_operations(
-            search={"operator/test": {"operator"}},
-            paging=DelegatedOperationPagingParams(
-                skip=0,
-                limit=5000,
-                sort_by=SortByField.QUEUED_AT,
-                sort_direction=SortDirection.DESCENDING,
-            ),
+            search={"operator/test": {"operator"}}, paging=paging
         )
 
         self.assertEqual(len(docs), 100)
 
         docs = self.svc.list_operations(
-            search={"test_0": {"operator"}},
-            paging=DelegatedOperationPagingParams(
-                skip=0,
-                limit=5000,
-                sort_by=SortByField.QUEUED_AT,
-                sort_direction=SortDirection.ASCENDING,
-            ),
+            search={"test_0": {"operator"}}, paging=paging
         )
 
         self.assertEqual(len(docs), 25)
+
+        docs = self.svc.list_operations(
+            search={"test_0": {"operator", "label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 25)
+
+        doc = self.svc.queue_operation(
+            operator="@voxel51/test/foo_baz",
+            label=f"I am a label",
+            delegation_target=delegation_target,
+            context=ExecutionContext(
+                request_params={
+                    "foo": "bar",
+                    "dataset_name": dataset_name,
+                }
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        doc = self.svc.queue_operation(
+            operator="@voxel51/test/operator",
+            label=f"foo_baz",
+            delegation_target=delegation_target,
+            context=ExecutionContext(
+                request_params={
+                    "foo": "bar",
+                    "dataset_name": dataset_name,
+                }
+            ),
+        )
+        self.docs_to_delete.append(doc)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"operator", "label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 2)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"label"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 1)
+
+        docs = self.svc.list_operations(
+            search={"foo_baz": {"operator"}}, paging=paging
+        )
+
+        self.assertEqual(len(docs), 1)
 
     @patch(
         "fiftyone.core.dataset.load_dataset",

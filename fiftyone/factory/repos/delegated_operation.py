@@ -343,13 +343,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging = DelegatedOperationPagingParams(**paging)
 
         if search:
-            for term in search:
-                for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
-                        raise ValueError(
-                            "Invalid search field: {}".format(field)
-                        )
-                    query[field] = {"$regex": term}
+            query.update(self._extract_search_query(search))
 
         docs = self._collection.find(query)
         if paging.sort_by:
@@ -378,13 +372,30 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def count(self, filters: dict = None, search: dict = None) -> int:
         if filters is None and search is not None:
             filters = {}
+        query = filters
+
+        if "dataset_name" in query:
+            query["context.request_params.dataset_name"] = query[
+                "dataset_name"
+            ]
+            del query["dataset_name"]
         if search:
+            query.update(self._extract_search_query(search))
+
+        return self._collection.count_documents(filter=query)
+
+    def _extract_search_query(self, search):
+        if search:
+            or_query = {"$or": []}
             for term in search:
                 for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
+                    if field not in (
+                        "operator",
+                        "delegated_operation",
+                        "label",
+                    ):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
-                    filters[field] = {"$regex": term}
-
-        return self._collection.count_documents(filter=filters)
+                    or_query["$or"].append({field: {"$regex": term}})
+            return or_query
