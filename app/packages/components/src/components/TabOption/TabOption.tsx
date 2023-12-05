@@ -27,6 +27,7 @@ const TabOptionDiv = animated(styled.div`
   & > div > div {
     display: flex;
     justify-content: center;
+    padding: 0 1rem;
   }
 `);
 
@@ -74,7 +75,7 @@ const TabOption = ({
 
   return (
     <TabOptionDiv
-      style={{ ...style, minWidth: `${6 * options.length || 1}rem` }}
+      style={style}
       onMouseEnter={() => set({ background: theme.background.body })}
       onMouseLeave={() => set({ background: theme.background.level1 })}
     >
