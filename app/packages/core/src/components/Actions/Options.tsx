@@ -1,16 +1,27 @@
-import React, { MutableRefObject } from "react";
-import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-
-import { PopoutSectionTitle, TabOption } from "@fiftyone/components";
-import Checkbox from "../Common/Checkbox";
-
+import {
+  PopoutSectionTitle,
+  Selector,
+  TabOption,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import {
   configuredSidebarModeDefault,
   groupStatistics,
   sidebarMode,
 } from "@fiftyone/state";
+import React, { RefObject, useMemo } from "react";
+import {
+  useRecoilState,
+  useRecoilValue,
+  useResetRecoilState,
+  useSetRecoilState,
+} from "recoil";
+import { LIGHTNING_MODE, SIDEBAR_MODE } from "../../utils/links";
+import Checkbox from "../Common/Checkbox";
 import RadioGroup from "../Common/RadioGroup";
+import { Button } from "../utils";
+import { ActionOption } from "./Common";
 import Popout from "./Popout";
 
 const SortFilterResults = ({ modal }) => {
@@ -103,13 +114,27 @@ const GroupStatistics = ({ modal }) => {
   );
 };
 
-const SidebarMode = ({ modal }) => {
-  const mode = useRecoilValue(configuredSidebarModeDefault(modal));
-  const setMode = useSetRecoilState(sidebarMode(modal));
+const SidebarMode = () => {
+  const mode = useRecoilValue(configuredSidebarModeDefault(false));
+  const setMode = useSetRecoilState(sidebarMode(false));
+  const theme = useTheme();
 
   return (
     <>
-      <PopoutSectionTitle>Sidebar mode</PopoutSectionTitle>
+      <ActionOption
+        id="sidebar-mode"
+        text="Sidebar mode"
+        href={SIDEBAR_MODE}
+        title={"More on sidebar mode"}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+
       <TabOption
         active={mode}
         options={["fast", "best", "all"].map((value) => ({
@@ -122,21 +147,147 @@ const SidebarMode = ({ modal }) => {
   );
 };
 
+const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
+  const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
+  const isImaVidLookerAvailable = useRecoilValue(fos.isImaVidLookerAvailable);
+
+  const tabOptions = useMemo(() => {
+    const options = [
+      {
+        text: "carousel",
+        title: "Sequential Access",
+        onClick: () => setMode("carousel"),
+      },
+      {
+        text: "pagination",
+        title: "Random Access",
+        onClick: () => setMode("pagination"),
+      },
+    ];
+
+    if (isImaVidLookerAvailable) {
+      options.push({
+        text: "video",
+        title: "Video",
+        onClick: () => setMode("video"),
+      });
+    }
+
+    return options;
+  }, [isImaVidLookerAvailable]);
+
+  return (
+    <>
+      <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
+      {modal ? (
+        <TabOption active={mode} options={tabOptions} />
+      ) : (
+        <Checkbox
+          name={"Render frames as video"}
+          value={mode === "video"}
+          setValue={(value) => setMode(value ? "video" : "pagination")}
+        />
+      )}
+    </>
+  );
+};
+
+const Lightning = () => {
+  const [threshold, setThreshold] = useRecoilState(fos.lightningThreshold);
+  const config = useRecoilValue(fos.lightningThresholdConfig);
+  const reset = useResetRecoilState(fos.lightningThreshold);
+  const count = useRecoilValue(fos.datasetSampleCount);
+  const theme = useTheme();
+
+  return (
+    <>
+      <ActionOption
+        id="lightning-mode"
+        text="Lightning mode"
+        href={LIGHTNING_MODE}
+        title={"More on lightning mode"}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <TabOption
+        active={threshold === null ? "disable" : "enable"}
+        options={["disable", "enable"].map((value) => ({
+          text: value,
+          title: value,
+          onClick: () =>
+            setThreshold(value === "disable" ? null : config ?? count),
+        }))}
+      />
+      {threshold !== null && (
+        <>
+          <Selector
+            placeholder="sample threshold"
+            onSelect={async (text) => {
+              if (text === "") {
+                reset();
+                return "";
+              }
+              const value = parseInt(text);
+
+              if (!isNaN(value)) {
+                setThreshold(value);
+                return text;
+              }
+
+              return "";
+            }}
+            inputStyle={{
+              fontSize: "1rem",
+              textAlign: "right",
+              float: "right",
+              width: "100%",
+            }}
+            key={threshold}
+            value={threshold === null ? "" : String(threshold)}
+            containerStyle={{ display: "flex", justifyContent: "right" }}
+          />
+          {config !== threshold && config !== null && (
+            <Button
+              style={{
+                margin: "0.25rem -0.5rem",
+                height: "2rem",
+                borderRadius: 0,
+                textAlign: "center",
+              }}
+              text={"Reset"}
+              onClick={reset}
+            />
+          )}
+        </>
+      )}
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
-  anchorRef: MutableRefObject<HTMLElement>;
+  anchorRef: RefObject<HTMLElement>;
 };
 
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
+  const view = useRecoilValue(fos.view);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
+      {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
-      {!modal && <SidebarMode modal={modal} />}
+      {!view?.length && <Lightning />}
+      {!modal && <SidebarMode />}
       <SortFilterResults modal={modal} />
     </Popout>
   );

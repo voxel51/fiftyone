@@ -43,6 +43,7 @@ foa = fou.lazy_import("fiftyone.core.annotation")
 fob = fou.lazy_import("fiftyone.core.brain")
 fod = fou.lazy_import("fiftyone.core.dataset")
 foe = fou.lazy_import("fiftyone.core.evaluation")
+fors = fou.lazy_import("fiftyone.core.runs")
 
 
 logger = logging.getLogger(__name__)
@@ -240,7 +241,7 @@ def establish_db_conn(config):
 
             except fos.ServiceExecutableNotFound:
                 raise FiftyOneConfigError(
-                    "MongoDB is not supported on your system. Please "
+                    "MongoDB could not be installed on your system. Please "
                     "define a `database_uri` in your "
                     "`fiftyone.core.config.FiftyOneConfig` to connect to your"
                     "own MongoDB instance or cluster"
@@ -283,13 +284,19 @@ def _connect():
         mongoengine.connect(_database_name, **_connection_kwargs)
 
 
-def _async_connect():
+def _async_connect(use_global=False):
     global _async_client
-    if _async_client is None:
-        global _async_mongo_client_cls
+    if not use_global or _async_client is None:
         global _connection_kwargs
+        global _async_mongo_client_cls
+        client = _async_mongo_client_cls(**_connection_kwargs)
 
-        _async_client = _async_mongo_client_cls(**_connection_kwargs)
+        if use_global:
+            _async_client = client
+    else:
+        client = _async_client
+
+    return client
 
 
 def _at_exit_internal():
@@ -452,14 +459,16 @@ def get_db_conn():
     return _apply_options(db)
 
 
-def get_async_db_client():
+def get_async_db_client(use_global=False):
     """Returns an async database client.
+
+    Args:
+        use_global: whether to use the global client singleton
 
     Returns:
         a ``motor.motor_asyncio.AsyncIOMotorClient``
     """
-    _async_connect()
-    return _async_client
+    return _async_connect(use_global)
 
 
 def get_async_db_conn():
@@ -995,6 +1004,24 @@ def patch_evaluations(dataset_name, dry_run=False):
     )
 
 
+def patch_runs(dataset_name, dry_run=False):
+    """Ensures that the runs in the ``runs`` collection for the given dataset
+    exactly match the values in its dataset document.
+
+    Args:
+        dataset_name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _patch_runs(
+        dataset_name,
+        "runs",
+        fors.Run,
+        "run",
+        dry_run=dry_run,
+    )
+
+
 def _patch_runs(dataset_name, runs_field, run_cls, run_str, dry_run=False):
     conn = get_db_conn()
     _logger = _get_logger(dry_run=dry_run)
@@ -1398,6 +1425,58 @@ def get_cloud_credentials():
     return list(conn["cloud.creds"].find({}))
 
 
+def delete_run(name, run_key, dry_run=False):
+    """Deletes the run with the given key from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_run`, which is
+    helpful if a dataset's backing document or collections are corrupted and
+    cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        run_key: the run key
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _delete_run(
+        name,
+        run_key,
+        "runs",
+        "run",
+        dry_run=dry_run,
+    )
+
+
+def delete_runs(name, dry_run=False):
+    """Deletes all runs from the dataset with the given name.
+
+    This is a low-level implementation of deletion that does not call
+    :meth:`fiftyone.core.dataset.load_dataset` or
+    :meth:`fiftyone.core.collections.SampleCollection.delete_runs`, which is
+    helpful if a dataset's backing document or collections are corrupted and
+    cannot be loaded via the normal pathways.
+
+    Note that, as this method does not load :class:`fiftyone.core.runs.Run`
+    instances, it does not call :meth:`fiftyone.core.runs.Run.cleanup`.
+
+    Args:
+        name: the name of the dataset
+        dry_run (False): whether to log the actions that would be taken but not
+            perform them
+    """
+    _delete_runs(
+        name,
+        "runs",
+        "run",
+        dry_run=dry_run,
+    )
+
+
 def _get_logger(dry_run=False):
     if dry_run:
         return _DryRunLoggerAdapter(logger, {})
@@ -1562,4 +1641,4 @@ def _delete_run_results(conn, result_ids):
     conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
 
 
-_RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations"]
+_RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations", "runs"]

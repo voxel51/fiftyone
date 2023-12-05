@@ -5,145 +5,276 @@ FiftyOne Teams internal cloud credential management.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from collections import defaultdict
 import configparser
 from datetime import datetime, timedelta
 import json
 import logging
 import os
-import pathlib
 
 from cryptography.fernet import Fernet
 
+import eta.core.utils as etau
+
 import fiftyone.core.config as foc
 import fiftyone.core.odm as foo
+import fiftyone.core.storage as fos
 from fiftyone.internal.constants import (
     ENCRYPTION_KEY_ENV_VAR,
     TTL_CACHE_LIFETIME_SECONDS,
 )
 
+
+PROVIDER_TO_FILE_SYSTEM = {
+    "AWS": fos.FileSystem.S3,
+    "GCP": fos.FileSystem.GCS,
+    "AZURE": fos.FileSystem.AZURE,
+    "MINIO": fos.FileSystem.MINIO,
+}
+
 logger = logging.getLogger(__name__)
 
 
 class CloudCredentialsManager(object):
-    """Class for managing cloud credentials.
-
-    Credentials are cached for ``TTL_CACHE_LIFETIME_SECONDS`` and are
-    automatically reloaded when necessary.
-    """
+    """Class for managing cloud credentials."""
 
     def __init__(self):
-        self._creds_cache = {}
-        self._creds_cache_exp = datetime.utcnow()
-        self._encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
+        self._default_creds = {}
+        self._bucket_creds = defaultdict(dict)
+        self._creds_dir = os.path.dirname(foc.locate_config())
+        self._expiration_time = None
+        self._fernet = None
+
+        encryption_key = os.environ.get(ENCRYPTION_KEY_ENV_VAR)
+        if encryption_key is not None:
+            self._fernet = Fernet(encryption_key)
+
+        etau.ensure_dir(self._creds_dir)
         self._refresh_credentials()
 
     @property
     def expiration_time(self):
         """The ``datetime`` at which the cache expires."""
-        return self._creds_cache_exp
+        return self._expiration_time
 
     @property
     def is_expired(self):
         """Whether the cache is expired."""
-        return datetime.utcnow() > self._creds_cache_exp
+        return datetime.utcnow() > self._expiration_time
 
-    def get_stored_credentials(self, provider):
-        """Returns the credentials for the given provider, if any.
-
-        The cache is automatically refreshed, if necessary.
+    def has_default_credentials(self, fs):
+        """Determines whether we have default credentials for the given file
+        system.
 
         Args:
-            provider: the cloud provider
+            fs: a :class:`fiftyone.core.storage.FileSystem`
 
         Returns:
-            the credentials string, or None
+            True/False
         """
-        if self.is_expired:
-            self._refresh_credentials()
+        return fs in self._default_creds
 
-        return self._creds_cache.get(provider, None)
+    def has_bucket_credentials(self, fs, bucket):
+        """Determines whether there are bucket-specific credentials for the
+        given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+            bucket: a bucket name
+
+        Returns:
+            True/False
+        """
+        return bucket in self._bucket_creds[fs]
+
+    def get_file_systems_with_credentials(self):
+        """Returns the list of file systems with at least one set of
+        bucket-specific credentials.
+
+        Returns:
+            a list of :class:`fiftyone.core.storage.FileSystem` values
+        """
+        file_systems = set(self._default_creds.keys())
+        for fs, creds_dict in self._bucket_creds.items():
+            if creds_dict:
+                file_systems.add(fs)
+
+        return list(file_systems)
+
+    def get_buckets_with_credentials(self, fs):
+        """Returns the list of buckets with bucket-specific credentials for the
+        given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of buckets
+        """
+        return list(self._bucket_creds[fs].keys())
+
+    def get_credentials(self, fs, bucket=None):
+        """Retrieves the specified credentials.
+
+        If no bucket-specific credentials are available, default credentials
+        for the file system are returned, if available.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+            bucket (None): an optional bucket name
+
+        Returns:
+            the credentials path, or ``None``
+        """
+        creds_path = None
+
+        if bucket is not None:
+            creds_path = self._bucket_creds[fs].get(bucket, None)
+
+        if creds_path is None:
+            creds_path = self._default_creds.get(fs, None)
+
+        return creds_path
+
+    def get_all_credentials_for_file_system(self, fs):
+        """Returns all credentials for the given file system.
+
+        Args:
+            fs: a :class:`fiftyone.core.storage.FileSystem`
+
+        Returns:
+            a list of credential paths
+        """
+        creds_paths = []
+
+        creds_path = self._default_creds.get(fs, None)
+        if creds_path:
+            creds_paths.append(creds_path)
+
+        for creds_path in self._bucket_creds[fs].values():
+            creds_paths.append(creds_path)
+
+        return creds_paths
 
     def _refresh_credentials(self):
-        creds_list = foo.get_cloud_credentials()
-        creds_dir = str(pathlib.Path(foc.locate_config()).parent.absolute())
-        fernet = Fernet(self._encryption_key)
+        self._bucket_creds.clear()
+        self._default_creds.clear()
 
-        # make that path if it's not there
-        os.makedirs(pathlib.Path(creds_dir), exist_ok=True)
-        for provider in ("AWS", "GCP", "AZURE", "MINIO"):
-            try:
-                creds = _parse_credentials(
-                    creds_list, creds_dir, fernet, provider
-                )
-            except Exception as e:
-                creds = None
+        for credentials in foo.get_cloud_credentials():
+            provider = credentials.get("provider", "")
+            fs = PROVIDER_TO_FILE_SYSTEM.get(provider, None)
+            if fs is None:
                 logger.warning(
-                    "Failed to parse credentials for provider '%s': %s",
+                    "Ignoring credentials for unsupported provider '%s'",
                     provider,
+                )
+                continue
+
+            try:
+                creds_path = self._make_creds_path(credentials)
+                raw_creds = self._get_raw_creds(credentials)
+                # if raw creds returned None, then the file was already written
+                if raw_creds:
+                    self._write_creds(provider, raw_creds, creds_path)
+            except Exception as e:
+                creds_path = None
+
+                logger.warning(
+                    (
+                        "Failed to parse credentials for provider '%s' with "
+                        "prefixes '%s': %s"
+                    ),
+                    provider,
+                    credentials.get("prefixes", ""),
                     e,
                 )
 
-            self._creds_cache[provider] = creds
+            if credentials.get("prefixes"):
+                for bucket in credentials["prefixes"]:
+                    self._bucket_creds[fs][bucket] = creds_path
+            else:
+                self._default_creds[fs] = creds_path
 
-        self._creds_cache_exp = datetime.utcnow() + timedelta(
+        self._expiration_time = datetime.utcnow() + timedelta(
             seconds=TTL_CACHE_LIFETIME_SECONDS
         )
 
+    def _make_creds_path(self, credentials):
+        provider = credentials["provider"]
+        prefixes = credentials.get("prefixes", None)
+        filename = None
 
-def _parse_credentials(creds_list, creds_dir, fernet, provider):
-    creds = next((c for c in creds_list if c["provider"] == provider), None)
-    if not creds:
-        return None
+        # if the prefixes list is empty, we are handling the
+        # default credentials
+        if not prefixes or prefixes == []:
+            if provider == "AWS":
+                filename = "aws_creds.ini"
+            elif provider == "GCP":
+                filename = "gcp_creds.json"
+            elif provider == "AZURE":
+                filename = "azure_creds.ini"
+            elif provider == "MINIO":
+                filename = "minio_creds.ini"
+            else:
+                filename = "creds.ini"
 
-    if provider == "AWS":
-        filename = "aws_creds.ini"
-    elif provider == "GCP":
-        filename = "gcp_creds.json"
-    elif provider == "AZURE":
-        filename = "azure_creds.ini"
-    elif provider == "MINIO":
-        filename = "minio_creds.ini"
-    else:
-        filename = "creds.ini"
+        # if the prefixes list is not empty, make a unique
+        # filename for the associated creds
+        else:
+            if provider == "AWS":
+                filename = f"aws_creds-{_serialize_prefixes(prefixes)}.ini"
+            elif provider == "GCP":
+                filename = f"gcp_creds-{_serialize_prefixes(prefixes)}.json"
+            elif provider == "AZURE":
+                filename = f"azure_creds-{_serialize_prefixes(prefixes)}.ini"
+            elif provider == "MINIO":
+                filename = f"minio_creds-{_serialize_prefixes(prefixes)}.ini"
+            else:
+                filename = f"creds-{_serialize_prefixes(prefixes)}.ini"
 
-    raw_creds = fernet.decrypt(creds["credentials"]).decode()
+        if not filename:
+            return None
 
-    if "ini-file" in raw_creds:
-        creds_path = os.path.join(creds_dir, filename)
-        creds_str = json.loads(raw_creds)["ini-file"]
-        with open(creds_path, "w") as f:
-            f.write(creds_str)
+        return os.path.join(self._creds_dir, filename)
 
-        return creds_path
+    def _get_raw_creds(self, credentials):
+        raw_creds = credentials["credentials"]
+        if self._fernet is not None:
+            raw_creds = self._fernet.decrypt(raw_creds).decode()
 
-    if provider == "AWS":
-        raw_creds_dict = json.loads(raw_creds)
-        creds_path = os.path.join(creds_dir, filename)
-        _write_default_aws_ini_file(raw_creds_dict, creds_path)
-        return creds_path
+        provider = credentials["provider"]
 
-    if provider == "AZURE":
-        raw_creds_dict = json.loads(raw_creds)
-        creds_path = os.path.join(creds_dir, filename)
-        _write_default_azure_ini_file(raw_creds_dict, creds_path)
-        return creds_path
+        # special case: if the passed creds are already a file, just write it
+        if "ini-file" in raw_creds:
+            creds_path = self._make_creds_path(credentials)
+            creds_str = json.loads(raw_creds)["ini-file"]
+            with open(creds_path, "w") as f:
+                f.write(creds_str)
 
-    if provider == "MINIO":
-        raw_creds_dict = json.loads(raw_creds)
-        creds_path = os.path.join(creds_dir, filename)
-        _write_default_minio_ini_file(raw_creds_dict, creds_path)
-        return creds_path
+            return None
 
-    if "service-account-file" in raw_creds:
-        raw_creds_json = json.loads(raw_creds)
-        creds_dict = json.loads(raw_creds_json["service-account-file"])
-        creds_path = os.path.join(creds_dir, filename)
-        with open(creds_path, "w") as f:
-            json.dump(creds_dict, f)
+        if provider in ("AWS", "AZURE", "MINIO"):
+            return json.loads(raw_creds)
+        elif provider == "GCP":
+            raw_creds_json = json.loads(raw_creds)
+            if isinstance(raw_creds_json["service-account-file"], str):
+                return json.loads(raw_creds_json["service-account-file"])
+            else:
+                return raw_creds_json["service-account-file"]
+        else:
+            raise ValueError(
+                f'Provider {credentials["provider"]} not supported'
+            )
 
-        return creds_path
-
-    return None
+    def _write_creds(self, provider, raw_creds, creds_path):
+        if provider == "AWS":
+            _write_default_aws_ini_file(raw_creds, creds_path)
+        elif provider == "AZURE":
+            _write_default_azure_ini_file(raw_creds, creds_path)
+        elif provider == "MINIO":
+            _write_default_minio_ini_file(raw_creds, creds_path)
+        elif provider == "GCP":
+            _write_default_gcp_json_file(raw_creds, creds_path)
 
 
 def _write_default_aws_ini_file(creds_dict, creds_path):
@@ -215,3 +346,12 @@ def _write_default_minio_ini_file(creds_dict, creds_path):
 
     with open(creds_path, "w") as f:
         config.write(f)
+
+
+def _write_default_gcp_json_file(raw_creds_dict, creds_path):
+    with open(creds_path, "w") as f:
+        json.dump(raw_creds_dict, f)
+
+
+def _serialize_prefixes(prefixes):
+    return "-".join([prefix[prefix.find("//") + 1 :] for prefix in prefixes])

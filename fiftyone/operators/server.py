@@ -17,8 +17,8 @@ from .executor import (
     execute_or_delegate_operator,
     resolve_type,
     resolve_placement,
+    resolve_execution_options,
     ExecutionContext,
-    is_snapshot,  # teams-only
 )
 from .message import GeneratedMessage
 from .permissions import PermissionedOperatorRegistry
@@ -56,7 +56,7 @@ def resolve_dataset_name(request_params: dict):
 class ListOperators(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict):
-        dataset_name = data.get("dataset_name", None)
+        dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
         registry = await _get_operator_registry_for_route(
             self.__class__, request, is_list=True, dataset_ids=dataset_ids
@@ -64,16 +64,20 @@ class ListOperators(HTTPEndpoint):
         role_scoped_registry = await _get_operator_registry_for_route(
             self.__class__, request, is_list=True
         )
-        ctx = ExecutionContext()
-        operators_as_json = [
-            operator.to_json(ctx)
-            for operator in role_scoped_registry.list_operators()
-            if role_scoped_registry.can_execute(operator.uri)
-        ]
 
-        for operator in operators_as_json:
-            config = operator["config"]
-            config["can_execute"] = registry.can_execute(operator["uri"])
+        operators_as_json = []
+        for operator in role_scoped_registry.list_operators():
+            if role_scoped_registry.can_execute(operator.uri):
+                ctx = ExecutionContext(
+                    operator_uri=operator.uri,
+                    required_secrets=operator._plugin_secrets,
+                )
+                serialized_op = operator.to_json(ctx)
+                config = serialized_op["config"]
+                config["can_execute"] = registry.can_execute(
+                    serialized_op["uri"]
+                )
+                operators_as_json.append(serialized_op)
 
         return {
             "operators": operators_as_json,
@@ -93,11 +97,6 @@ class ResolvePlacements(HTTPEndpoint):
             ResolvePlacements, request, dataset_ids=dataset_ids
         )
         placements = []
-
-        # teams-only
-        dataset_raw_name = data.get("dataset_name", None)
-        if is_snapshot(dataset_raw_name):
-            return {"placements": placements}
 
         for operator in registry.list_operators():
             # teams-only
@@ -119,7 +118,6 @@ class ResolvePlacements(HTTPEndpoint):
 class ExecuteOperator(HTTPEndpoint):
     @route
     async def post(self, request: Request, data: dict) -> dict:
-
         user = request.get("user", None)
         dataset_name = resolve_dataset_name(data)
         dataset_ids = [dataset_name]
@@ -249,10 +247,37 @@ class ResolveType(HTTPEndpoint):
         return result.to_json() if result else {}
 
 
+class ResolveExecutionOptions(HTTPEndpoint):
+    @route
+    async def post(self, request: Request, data: dict) -> dict:
+        dataset_name = resolve_dataset_name(data)
+        dataset_ids = [dataset_name]
+        operator_uri = data.get("operator_uri", None)
+        if operator_uri is None:
+            raise ValueError("Operator URI must be provided")
+
+        registry = await _get_operator_registry_for_route(
+            self.__class__, request, dataset_ids=dataset_ids
+        )
+        if registry.can_execute(operator_uri) is False:
+            return create_permission_error(operator_uri)
+
+        if registry.operator_exists(operator_uri) is False:
+            error_detail = {
+                "message": "Operator '%s' does not exist" % operator_uri,
+                "loading_errors": registry.list_errors(),
+            }
+            raise HTTPException(status_code=404, detail=error_detail)
+
+        result = resolve_execution_options(registry, operator_uri, data)
+        return result.to_dict() if result else {}
+
+
 OperatorRoutes = [
     ("/operators", ListOperators),
     ("/operators/execute", ExecuteOperator),
     ("/operators/execute/generator", ExecuteOperatorAsGenerator),
     ("/operators/resolve-type", ResolveType),
     ("/operators/resolve-placements", ResolvePlacements),
+    ("/operators/resolve-execution-options", ResolveExecutionOptions),
 ]

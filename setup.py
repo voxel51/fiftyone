@@ -15,6 +15,7 @@ import os
 import re
 from setuptools import setup, find_packages
 
+
 INSTALL_REQUIRES = [
     # third-party packages
     "aiofiles",
@@ -73,9 +74,10 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain~=0.13.2",
+    "fiftyone-brain>=0.14,<0.15",
+    # fiftyone-db>=1.0 is not used for Teams SDK
     "fiftyone-db~=0.4",
-    "voxel51-eta~=0.12",
+    "voxel51-eta>=0.12,<0.13",
 ]
 
 
@@ -112,7 +114,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.22"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.23"]}
 
 
 with open("README.md", "r") as fh:
@@ -121,7 +123,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.14.5",
+    version="0.15.0rc19",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

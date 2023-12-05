@@ -1,5 +1,11 @@
-import * as fos from "@fiftyone/state";
-import { isEmpty, xor } from "lodash";
+import { isValidColor } from "@fiftyone/looker/src/overlays/util";
+import {
+  ColorSchemeInput,
+  ColorscaleListInput,
+  MaskColorInput,
+} from "@fiftyone/relay";
+import colorString from "color-string";
+import { inRange, isEmpty, xor } from "lodash";
 
 // Masataka Okabe and Kei Ito have proposed a palette of 8 colors on their
 // website Color Universal Design (CUD). This palette is a “Set of colors that
@@ -16,30 +22,14 @@ export const colorBlindFriendlyPalette = [
   "#cc79a7", // reddish purple
 ];
 
-export const fiftyoneDefaultColorPalette = [
-  "#ee0000",
-  "#ee6600",
-  "#993300",
-  "#996633",
-  "#999900",
-  "#009900",
-  "#003300",
-  "#009999",
-  "#000099",
-  "#0066ff",
-  "#6600ff",
-  "#cc33cc",
-  "#777799",
-];
-
-export const ACTIVE_FIELD = {
-  ["json"]: "JSON editor",
-  ["global"]: "Global settings",
-  ["_label_tags"]: "label tags",
-};
+export enum ACTIVE_FIELD {
+  JSON = "JSON editor",
+  GLOBAL = "Global settings",
+  LABEL_TAGS = "label_tags",
+}
 
 // disregard the order
-export const isSameArray = (a: any[], b: any[]) => {
+export const isSameArray = (a: readonly unknown[], b: readonly unknown[]) => {
   return isEmpty(xor(a, b));
 };
 
@@ -60,12 +50,13 @@ const getValidLabelColors = (labelColors: unknown[]) => {
 };
 
 // should return a valid customize color object that can be used to setCustomizeColor
-export const validateJSONSetting = (json: unknown[]) => {
-  const filtered = json?.filter(
-    (s) => s && isObject(s) && isString(s["path"])
-  ) as {}[];
+export const validateJSONSetting = (
+  json: ColorSchemeInput["fields"]
+): ColorSchemeInput["fields"] => {
+  const filtered =
+    json?.filter((s) => s && isObject(s) && isString(s["path"])) || [];
 
-  const f = filtered?.map((input) => ({
+  const f = filtered.map((input) => ({
     path: input["path"],
     fieldColor: input["fieldColor"] ?? null,
     colorByAttribute: isString(input["colorByAttribute"])
@@ -73,31 +64,276 @@ export const validateJSONSetting = (json: unknown[]) => {
       : null,
     valueColors: Array.isArray(input["valueColors"])
       ? getValidLabelColors(input["valueColors"])
-      : null,
-  })) as fos.CustomizeColor[];
+      : [],
+    maskTargetsColors: Array.isArray(input["maskTargetsColors"])
+      ? getValidMaskColors(input.maskTargetsColors)
+      : [],
+  }));
 
-  // remove default settings
   return f.filter((x) => {
     const hasFieldSetting = x.fieldColor;
     const hasAttributeColor = x.colorByAttribute;
-    const hasLabelColors = x.valueColors && x.valueColors.length > 0;
-    return hasFieldSetting || hasAttributeColor || hasLabelColors;
-  }) as fos.CustomizeColor[];
+    const hasLabelColors = x.valueColors?.length > 0;
+    const hasTargetMasks =
+      x.maskTargetsColors && x.maskTargetsColors?.length > 0;
+
+    return (
+      hasFieldSetting || hasAttributeColor || hasLabelColors || hasTargetMasks
+    );
+  });
 };
 
-export const isDefaultSetting = (savedSetting: fos.ColorScheme) => {
-  return (
-    isSameArray(
-      savedSetting.colorPool,
-      fos.DEFAULT_APP_COLOR_SCHEME.colorPool
-    ) &&
-    (savedSetting.fields?.length == 0 || !savedSetting.fields)
-  );
+export const validateLabelTags = (
+  obj: ColorSchemeInput["labelTags"]
+): ColorSchemeInput["labelTags"] => {
+  if (typeof obj === "object" && obj !== null) {
+    const f = {
+      fieldColor: obj["fieldColor"] ?? null,
+      valueColors: Array.isArray(obj["valueColors"])
+        ? getValidLabelColors(obj["valueColors"])
+        : [],
+    };
+
+    return f.fieldColor || f.valueColors?.length > 0 ? f : null;
+  }
 };
 
-export const getDisplayName = (path: string) => {
-  if (path === "tags") {
-    return "sample tags";
+const getValidMaskColors = (maskColors: unknown[]) => {
+  const r = maskColors
+    ?.filter((input) => {
+      return (
+        input &&
+        isObject(input) &&
+        typeof Number(input["intTarget"]) == "number" &&
+        inRange(Number(input["intTarget"]), 1, 255) &&
+        isString(input["color"]) &&
+        isValidColor(input?.color)
+      );
+    })
+    .map((item) => ({
+      intTarget: Number(item?.intTarget),
+      color: item?.color,
+    })) as MaskColorInput[];
+
+  return r.length > 0 ? r : null;
+};
+
+export const validateMaskColor = (
+  arr: any
+): ColorSchemeInput["defaultMaskTargetsColors"] => {
+  return Array.isArray(arr) ? getValidMaskColors(arr) : null;
+};
+
+const getValidColorscaleList = (list: unknown[]) => {
+  const r = list
+    ?.filter((x: unknown) => {
+      return (
+        x &&
+        isObject(x) &&
+        typeof Number(x["value"]) == "number" &&
+        isString(x["color"]) &&
+        isValidColor(x["color"]) &&
+        isString(x["color"])
+      );
+    })
+    .map((y) => ({
+      value: Number(y?.value),
+      color: convertToRGB(y?.color),
+      path: y?.path,
+    })) as ColorscaleListInput[];
+
+  return r.length > 0 ? r : null;
+};
+
+export const validateDefaultColorscale = (
+  obj: any
+): ColorSchemeInput["defaultColorscale"] => {
+  if (typeof obj === "object" && obj !== null) {
+    const list = Array.isArray(obj["list"])
+      ? getValidColorscaleList(obj["list"])
+      : null;
+
+    const name =
+      isString(obj["name"]) && namedColorScales.includes(obj["name"])
+        ? obj["name"]
+        : null;
+
+    return (
+      name || list ? { name, list } : null
+    ) as ColorSchemeInput["defaultColorscale"];
+  }
+};
+
+export const validateColorscales = (
+  arr: any
+): ColorSchemeInput["colorscales"] => {
+  const result = Array.isArray(arr)
+    ? arr
+        .map((x) => {
+          if (typeof x === "object" && x !== null) {
+            const list = Array.isArray(x["list"])
+              ? getValidColorscaleList(x["list"])
+              : null;
+
+            const name = isString(x["name"]) ? x["name"] : null;
+
+            return name || list ? { name, list, path: x["path"] } : null;
+          }
+        })
+        .filter((x) => x !== null)
+    : [];
+
+  return (result.length > 0 ? result : null) as ColorSchemeInput["colorscales"];
+};
+
+export const getDisplayName = (path: ACTIVE_FIELD | { path: string }) => {
+  if (typeof path === "object") {
+    if (path.path === "tags") {
+      return "sample tags";
+    }
+    if (path.path === "_label_tags") {
+      return "label tags";
+    }
+    return path.path;
   }
   return path;
 };
+
+export const getRandomColorFromPool = (pool: readonly string[]): string =>
+  pool[Math.floor(Math.random() * pool.length)];
+
+export const validateIntMask = (value: number) => {
+  if (!value || !Number.isInteger(value) || !inRange(value, 1, 255)) {
+    return false;
+  }
+  return true;
+};
+
+export const getRGBColorFromPool = (pool: readonly string[]): string => {
+  const color = getRandomColorFromPool(pool);
+  const rgb = colorString.get.rgb(color).slice(0, 3);
+  return colorString.to.rgb(rgb);
+};
+
+export const convertToRGB = (color: string) => {
+  if (!isValidColor(color)) return "";
+  const rgb = colorString.get.rgb(color).slice(0, 3);
+  return colorString.to.rgb(rgb);
+};
+
+export const isValidMaskInput = (input: MaskColorInput[]) => {
+  let result = true;
+  input.forEach((item: MaskColorInput) => {
+    if (!item || [null, undefined].includes(item.intTarget)) {
+      result = false;
+    }
+  });
+  return result;
+};
+
+export const isValidFloatInput = (input: ColorscaleListInput[]) => {
+  let result = true;
+  input.forEach((item) => {
+    if (!item || [null, undefined].includes(item.value)) {
+      result = false;
+    }
+  });
+  return result;
+};
+
+export const namedColorScales = [
+  "aggrnyl",
+  "agsunset",
+  "blackbody",
+  "bluered",
+  "blues",
+  "blugrn",
+  "bluyl",
+  "brwnyl",
+  "bugn",
+  "bupu",
+  "burg",
+  "burgyl",
+  "cividis",
+  "darkmint",
+  "electric",
+  "emrld",
+  "gnbu",
+  "greens",
+  "greys",
+  "hot",
+  "inferno",
+  "jet",
+  "magenta",
+  "magma",
+  "mint",
+  "orrd",
+  "oranges",
+  "oryel",
+  "peach",
+  "pinkyl",
+  "plasma",
+  "plotly3",
+  "pubu",
+  "pubugn",
+  "purd",
+  "purp",
+  "purples",
+  "purpor",
+  "rainbow",
+  "rdbu",
+  "rdpu",
+  "redor",
+  "reds",
+  "sunset",
+  "sunsetdark",
+  "teal",
+  "tealgrn",
+  "turbo",
+  "viridis",
+  "ylgn",
+  "ylgnbu",
+  "ylorbr",
+  "ylorrd",
+  "algae",
+  "amp",
+  "deep",
+  "dense",
+  "gray",
+  "haline",
+  "ice",
+  "matter",
+  "solar",
+  "speed",
+  "tempo",
+  "thermal",
+  "turbid",
+  "armyrose",
+  "brbg",
+  "earth",
+  "fall",
+  "geyser",
+  "prgn",
+  "piyg",
+  "picnic",
+  "portland",
+  "puor",
+  "rdgy",
+  "rdylbu",
+  "rdylgn",
+  "spectral",
+  "tealrose",
+  "temps",
+  "tropic",
+  "balance",
+  "curl",
+  "delta",
+  "oxy",
+  "edge",
+  "hsv",
+  "icefire",
+  "phase",
+  "twilight",
+  "mrybm",
+  "mygbm",
+];

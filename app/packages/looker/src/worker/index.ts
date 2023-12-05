@@ -22,9 +22,11 @@ import { OverlayMask } from "../numpy";
 import {
   BaseConfig,
   Coloring,
+  Colorscale,
   CustomizeColor,
   FrameChunk,
   FrameSample,
+  LabelTagColor,
   Sample,
 } from "../state";
 import { DeserializerFactory } from "./deserializer";
@@ -102,6 +104,7 @@ const imputeOverlayFromPath = async (
   label: Record<string, any>,
   coloring: Coloring,
   customizeColorSetting: CustomizeColor[],
+  colorscale: Colorscale,
   buffers: ArrayBuffer[],
   sources: { [path: string]: string }
 ) => {
@@ -113,6 +116,7 @@ const imputeOverlayFromPath = async (
         detection,
         coloring,
         customizeColorSetting,
+        colorscale,
         buffers,
         {}
       )
@@ -190,7 +194,10 @@ const processLabels = async (
   coloring: ProcessSample["coloring"],
   prefix = "",
   sources: { [key: string]: string },
-  customizeColorSetting: ProcessSample["customizeColorSetting"]
+  customizeColorSetting: ProcessSample["customizeColorSetting"],
+  colorscale: ProcessSample["colorscale"],
+  labelTagColors: ProcessSample["labelTagColors"],
+  selectedLabelTags: ProcessSample["selectedLabelTags"]
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -207,10 +214,11 @@ const processLabels = async (
 
       if (DENSE_LABELS.has(label._cls)) {
         await imputeOverlayFromPath(
-          field,
+          `${prefix || ""}${field}`,
           label,
           coloring,
           customizeColorSetting,
+          colorscale,
           buffers,
           sources
         );
@@ -221,13 +229,17 @@ const processLabels = async (
       }
 
       if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(label._cls)) {
-        processLabels(
+        const moreBuffers = await processLabels(
           label,
           coloring,
-          `${prefix}${field}.`,
+          `${prefix ? prefix : ""}${field}.`,
           sources,
-          customizeColorSetting
+          customizeColorSetting,
+          colorscale,
+          labelTagColors,
+          selectedLabelTags
         );
+        buffers.push(...moreBuffers);
       }
 
       if (ALL_VALID_LABELS.has(label._cls)) {
@@ -246,7 +258,10 @@ const processLabels = async (
             prefix ? prefix + field : field,
             label,
             coloring,
-            customizeColorSetting
+            customizeColorSetting,
+            colorscale,
+            labelTagColors,
+            selectedLabelTags
           )
         );
       }
@@ -274,6 +289,9 @@ export interface ProcessSample {
   sample: Sample & FrameSample;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  labelTagColors: LabelTagColor;
+  colorscale: Colorscale;
+  selectedLabelTags: string[];
   sources: { [path: string]: string };
 }
 
@@ -285,16 +303,28 @@ const processSample = ({
   coloring,
   sources,
   customizeColorSetting,
+  colorscale,
+  selectedLabelTags,
+  labelTagColors,
 }: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
 
-  if (sample._media_type === "point-cloud") {
+  if (sample?._media_type === "point-cloud") {
     process3DLabels(sample);
   } else {
     bufferPromises = [
-      processLabels(sample, coloring, null, sources, customizeColorSetting),
+      processLabels(
+        sample,
+        coloring,
+        null,
+        sources,
+        customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags
+      ),
     ];
   }
 
@@ -308,7 +338,10 @@ const processSample = ({
             coloring,
             "frames.",
             sources,
-            customizeColorSetting
+            customizeColorSetting,
+            colorscale,
+            labelTagColors,
+            selectedLabelTags
           )
         )
         .flat(),
@@ -323,6 +356,9 @@ const processSample = ({
         coloring,
         uuid,
         customizeColorSetting,
+        colorscale,
+        labelTagColors,
+        selectedLabelTags,
       },
       // @ts-ignore
       buffers.flat()
@@ -341,12 +377,18 @@ interface FrameStream {
 interface FrameChunkResponse extends FrameChunk {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
 }
 
 const createReader = ({
   chunkSize,
   coloring,
   customizeColorSetting,
+  colorscale,
+  labelTagColors,
+  selectedLabelTags,
   frameCount,
   frameNumber,
   sampleId,
@@ -357,6 +399,9 @@ const createReader = ({
   chunkSize: number;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -399,6 +444,9 @@ const createReader = ({
               range,
               coloring,
               customizeColorSetting,
+              colorscale,
+              labelTagColors,
+              selectedLabelTags,
             });
             frameNumber = range[1] + 1;
           } catch (error) {
@@ -438,7 +486,10 @@ const getSendChunk =
             value.coloring,
             "frames.",
             {},
-            value.customizeColorSetting
+            value.customizeColorSetting,
+            value.colorscale,
+            value.labelTagColors,
+            value.selectedLabelTags
           )
         )
       ).then((buffers) => {
@@ -471,6 +522,9 @@ const requestFrameChunk = ({ uuid }: RequestFrameChunk) => {
 interface SetStream {
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  colorscale: Colorscale;
+  labelTagColors: LabelTagColor;
+  selectedLabelTags: string[];
   frameCount: number;
   frameNumber: number;
   sampleId: string;
@@ -485,6 +539,9 @@ type SetStreamMethod = ReaderMethod & SetStream;
 const setStream = ({
   coloring,
   customizeColorSetting,
+  colorscale,
+  selectedLabelTags,
+  labelTagColors,
   frameCount,
   frameNumber,
   sampleId,
@@ -499,6 +556,9 @@ const setStream = ({
   stream = createReader({
     coloring,
     customizeColorSetting,
+    colorscale,
+    selectedLabelTags,
+    labelTagColors,
     chunkSize: CHUNK_SIZE,
     frameCount: frameCount,
     frameNumber: frameNumber,

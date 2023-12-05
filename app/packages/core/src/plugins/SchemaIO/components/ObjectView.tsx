@@ -25,9 +25,10 @@ export default function ObjectView(props) {
       >
         {propertiesAsArray.map((property, i) => {
           const space = property?.view?.space || 12;
+          const { id } = property;
           return (
             <Grid
-              key={property.id}
+              key={id}
               item
               xs={space}
               {...getComponentProps(props, "gridItem")}
@@ -35,8 +36,10 @@ export default function ObjectView(props) {
               <DynamicIO
                 {...props}
                 schema={property}
-                path={getPath(path, property.id)}
-                data={data?.[property.id]}
+                path={getPath(path, id)}
+                data={data?.[id]}
+                parentSchema={schema}
+                relativePath={id}
               />
             </Grid>
           );

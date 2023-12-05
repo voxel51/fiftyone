@@ -1,14 +1,24 @@
+import {
+  ExternalLink,
+  InfoIcon,
+  scrollable,
+  scrollableSm,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
 import CloseIcon from "@mui/icons-material/Close";
+import Typography from "@mui/material/Typography";
+import { Resizable } from "re-resizable";
 import React, { Fragment, useCallback, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Draggable from "react-draggable";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue, useResetRecoilState } from "recoil";
+import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import ColorFooter from "./ColorFooter";
 import FieldSetting from "./FieldSetting";
 import GlobalSetting from "./GlobalSetting";
 import JSONViewer from "./JSONViewer";
+import LabelTag from "./LabelTag";
 import {
   Container,
   Display,
@@ -16,12 +26,8 @@ import {
   DraggableModalTitle,
   ModalWrapper,
 } from "./ShareStyledDiv";
-
-import { ExternalLink, InfoIcon, useTheme } from "@fiftyone/components";
-import Typography from "@mui/material/Typography";
-import { Resizable } from "re-resizable";
-import { resizeHandle } from "./../Sidebar/Sidebar.module.css";
 import SidebarList from "./SidebarList";
+import { activeColorEntry } from "./state";
 import { ACTIVE_FIELD } from "./utils";
 
 const CUSTOM_COLOR_DOCUMENTATION_LINK =
@@ -29,12 +35,10 @@ const CUSTOM_COLOR_DOCUMENTATION_LINK =
 
 const ColorModal = () => {
   const theme = useTheme();
-  const field = useRecoilValue(fos.activeColorField);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const targetContainer = document.getElementById("colorModal");
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.activeColorField
-  );
+  const activeEntry = useRecoilValue(activeColorEntry);
+  const resetEntry = useResetRecoilState(activeColorEntry);
   const [width, setWidth] = useState(860);
   const [height, setHeight] = useState(680);
 
@@ -47,10 +51,10 @@ const ColorModal = () => {
         }
       }
       if (e.key === "Escape") {
-        setActiveColorModalField(null);
+        resetEntry();
       }
     },
-    [setActiveColorModalField]
+    [resetEntry]
   );
 
   fos.useEventHandler(document, "keydown", keyboardHandler);
@@ -61,8 +65,7 @@ const ColorModal = () => {
         <ModalWrapper
           ref={wrapperRef}
           onClick={(event) =>
-            event.target === wrapperRef.current &&
-            setActiveColorModalField(null)
+            event.target === wrapperRef.current && resetEntry()
           }
           aria-labelledby="draggable-color-modal"
         >
@@ -129,19 +132,27 @@ const ColorModal = () => {
                     <InfoIcon />
                   </ExternalLink>
                   <CloseIcon
-                    onClick={() => setActiveColorModalField(null)}
+                    onClick={() => resetEntry()}
                     onMouseDown={(e) => e.stopPropagation()}
                     style={{ margin: "auto 4px", cursor: "pointer" }}
+                    data-cy="close-color-modal"
                   />
                 </DraggableModalTitle>
                 <DraggableContent height={height} width={width}>
                   <SidebarList />
-                  <Display>
-                    {field === ACTIVE_FIELD.global && <GlobalSetting />}
-                    {field === ACTIVE_FIELD.json && <JSONViewer />}
-                    {typeof field !== "string" && field && (
-                      <FieldSetting prop={activeColorModalField} />
-                    )}
+                  <Display className={`${scrollable} ${scrollableSm}`}>
+                    {activeEntry === ACTIVE_FIELD.GLOBAL && <GlobalSetting />}
+                    {activeEntry === ACTIVE_FIELD.JSON && <JSONViewer />}
+                    {typeof activeEntry === "object" &&
+                      activeEntry?.path === "_label_tags" && <LabelTag />}
+                    {typeof activeEntry === "object" &&
+                      activeEntry?.path &&
+                      activeEntry.path !== "_label_tags" && (
+                        <FieldSetting
+                          key={activeEntry.path}
+                          path={activeEntry.path}
+                        />
+                      )}
                   </Display>
                 </DraggableContent>
                 <ColorFooter />

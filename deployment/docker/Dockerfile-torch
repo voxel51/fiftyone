@@ -21,7 +21,7 @@ RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
 COPY --chown=voxel51:voxel51 __models__ fiftyone/__models__
 
 # run as the voxel51 user
-USER voxel51
+USER 1000:1000
 
 #
 # Serve the app

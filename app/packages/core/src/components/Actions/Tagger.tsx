@@ -1,4 +1,8 @@
-import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
+import {
+  LoadingDots,
+  PopoutSectionTitle,
+  useTheme,
+} from "@fiftyone/components";
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
@@ -21,7 +25,6 @@ import {
   useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
 import { Button } from "../utils";
 import Checker, { CheckState } from "./Checker";
 import Popout from "./Popout";
@@ -312,7 +315,7 @@ const useTagCallback = (
 
   const finalize = [
     () => setLabels([]),
-    () => setSamples([]),
+    () => setSamples(new Set()),
     () => setAggs((cur) => cur + 1),
     ...[
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
@@ -339,7 +342,7 @@ const useTagCallback = (
               ? {
                   id: modal ? await snapshot.getPromise(groupId) : null,
                   slices,
-                  slice: await snapshot.getPromise(fos.groupSlice(false)),
+                  slice: await snapshot.getPromise(fos.groupSlice),
                   mode: await snapshot.getPromise(groupStatistics(modal)),
                 }
               : null,
@@ -347,7 +350,7 @@ const useTagCallback = (
             sampleId: modal
               ? await snapshot.getPromise(fos.sidebarSampleId)
               : null,
-            selectedLabels: await snapshot.getPromise(fos.selectedLabelList),
+            selectedLabels: await snapshot.getPromise(fos.selectedLabels),
             selectedSamples: await snapshot.getPromise(fos.selectedSamples),
             targetLabels,
             view: await snapshot.getPromise(fos.view),

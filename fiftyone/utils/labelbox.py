@@ -63,6 +63,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
             level of the editor (False) or whether to show the label field at
             the top level and annotate the class as a required attribute of
             each object (True)
+        upload_media (True): whether to download cloud media to your local
+            cache and upload it to Labelbox (True) or to just pass the cloud
+            paths directly (False)
     """
 
     def __init__(
@@ -75,6 +78,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         project_name=None,
         members=None,
         classes_as_attrs=True,
+        upload_media=True,
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -83,6 +87,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.project_name = project_name
         self.members = members
         self.classes_as_attrs = classes_as_attrs
+        self.upload_media = upload_media
 
         # store privately so these aren't serialized
         self._api_key = api_key
@@ -430,32 +435,49 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         """
         return self._client.get_project(project_id)
 
-    def delete_project(self, project_id, delete_datasets=True):
+    def delete_project(
+        self, project_id, delete_batches=False, delete_ontologies=True
+    ):
         """Deletes the given project from the Labelbox server.
 
         Args:
             project_id: the project ID
-            delete_datasets: whether to delete the attached datasets as well
+            delete_batches (False): whether to delete the attached batches as
+                well
+            delete_ontologies (True): whether to delete the attached
+                ontologies as well
         """
         project = self._client.get_project(project_id)
 
         logger.info("Deleting project '%s'...", project_id)
 
-        if delete_datasets:
-            for dataset in project.datasets():
-                dataset.delete()
+        if delete_batches:
+            for batch in project.batches():
+                batch.delete_labels()
+                lb.DataRow.bulk_delete(
+                    data_rows=list(
+                        batch.export_data_rows(include_metadata=False)
+                    )
+                )
+                batch.delete()
+
+        ontology = project.ontology()
 
         project.delete()
 
-    def delete_projects(self, project_ids, delete_datasets=True):
+        if delete_ontologies:
+            self._client.delete_unused_ontology(ontology.uid)
+
+    def delete_projects(self, project_ids, delete_batches=False):
         """Deletes the given projects from the Labelbox server.
 
         Args:
             project_ids: an iterable of project IDs
-            delete_datasets: whether to delete the attached datasets as well
+            delete_batches (False): whether to delete the attached batches as
+                well
         """
         for project_id in project_ids:
-            self.delete_project(project_id, delete_datasets=delete_datasets)
+            self.delete_project(project_id, delete_batches=delete_batches)
 
     def delete_unused_ontologies(self):
         """Deletes unused ontologies from the Labelbox server."""
@@ -482,7 +504,67 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         webbrowser.open(url, new=2)
 
-    def upload_data(self, samples, lb_dataset, media_field="filepath"):
+    def _convert_s3_path(self, path):
+        client = fos.get_client(path=path)
+        region = client._session.region_name
+
+        _, path = fos.split_prefix(path)
+        bucket, key = path.split("/", 1)
+        return "https://%s.s3.%s.amazonaws.com/%s" % (bucket, region, key)
+
+    def _convert_cloud_paths(self, paths):
+        converted_paths = []
+        paths_to_download = []
+        unsupported_fs = set()
+        for path in paths:
+            fs = fos.get_file_system(path)
+            if fs == fos.FileSystem.S3:
+                path = self._convert_s3_path(path)
+            elif fs != fos.FileSystem.LOCAL:
+                paths_to_download.append(path)
+                path = foc.media_cache.get_local_path(path, download=False)
+                unsupported_fs.add(fs)
+
+            converted_paths.append(path)
+
+        if paths_to_download:
+            _ = foc.media_cache.get_local_paths(paths_to_download)
+            logger.warning(
+                "Only S3 media can be uploaded directly with "
+                "upload_media=False, but found %s media as well. These files "
+                "will be downloaded to the local media cache and uploaded"
+                % unsupported_fs
+            )
+
+        return converted_paths
+
+    def _skip_existing_global_keys(self, media_paths, sample_ids):
+        lb_logger = logging.getLogger("labelbox.client")
+        lb_logger_level = lb_logger.level
+        lb_logger.setLevel(logging.ERROR)
+        response = self._client.get_data_row_ids_for_global_keys(sample_ids)
+        lb_logger.setLevel(lb_logger_level)
+
+        results = response["results"]
+        new_media_paths = []
+        new_sample_ids = []
+        for i, result in enumerate(results):
+            if result == "":
+                new_media_paths.append(media_paths[i])
+                new_sample_ids.append(sample_ids[i])
+        num_existing_samples = len(media_paths) - len(new_media_paths)
+        if num_existing_samples:
+            logger.info(
+                "Found %d data row(s) with a global key matching a sample id. "
+                "These samples will not be reuploaded..."
+                % num_existing_samples
+            )
+
+        return new_media_paths, new_sample_ids
+
+    def upload_data(
+        self, samples, dataset_name, media_field="filepath", upload_media=True
+    ):
         """Uploads the media for the given samples to Labelbox.
 
         This method uses ``labelbox.schema.dataset.Dataset.create_data_rows()``
@@ -492,19 +574,34 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
                 containing the media to upload
-            lb_dataset: a ``labelbox.schema.dataset.Dataset`` to which to
-                add the media
+            dataset_name: the name of the Labelbox dataset created if data
+                needs to be uploaded
             media_field ("filepath"): string field name containing the paths to
                 media files on disk to upload
+            upload_media (True): whether to download cloud media to your local
+                cache and upload it to Labelbox (True) or to just pass the
+                cloud paths directly (False)
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
-        media_paths = foc.media_cache.get_local_paths(media_paths)
+        if upload_media:
+            # Ensure all media exists locally, this downloads cloud media
+            media_paths = foc.media_cache.get_local_paths(media_paths)
+        else:
+            media_paths = self._convert_cloud_paths(media_paths)
+
+        media_paths, sample_ids = self._skip_existing_global_keys(
+            media_paths, sample_ids
+        )
 
         upload_info = []
 
         with fou.ProgressBar(iters_str="samples") as pb:
             for media_path, sample_id in pb(zip(media_paths, sample_ids)):
-                item_url = self._client.upload_file(media_path)
+                if fos.is_local(media_path):
+                    item_url = self._client.upload_file(media_path)
+                else:
+                    item_url = media_path
+
                 upload_info.append(
                     {
                         lb.DataRow.row_data: item_url,
@@ -512,8 +609,14 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     }
                 )
 
-        task = lb_dataset.create_data_rows(upload_info)
-        task.wait_till_done()
+        if upload_info:
+            lb_dataset = self._client.create_dataset(name=dataset_name)
+            task = lb_dataset.create_data_rows(upload_info)
+            task.wait_till_done()
+            if task.errors:
+                logger.warning(
+                    "Datarow creation failed with error: %s" % task.errors
+                )
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to Labelbox according to the given
@@ -530,6 +633,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         config = backend.config
         label_schema = config.label_schema
         media_field = config.media_field
+        upload_media = config.upload_media
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
@@ -547,11 +651,16 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             _dataset_name = samples._root_dataset.name.replace(" ", "_")
             project_name = "FiftyOne_%s" % _dataset_name
 
-        dataset = self._client.create_dataset(name=project_name)
-        self.upload_data(samples, dataset, media_field=media_field)
+        self.upload_data(
+            samples,
+            project_name,
+            media_field=media_field,
+            upload_media=upload_media,
+        )
+        global_keys = samples.values("id")
 
         project = self._setup_project(
-            project_name, dataset, label_schema, classes_as_attrs, is_video
+            project_name, global_keys, label_schema, classes_as_attrs, is_video
         )
 
         if members:
@@ -704,17 +813,21 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return frame_id_map
 
     def _setup_project(
-        self, project_name, dataset, label_schema, classes_as_attrs, is_video
+        self,
+        project_name,
+        global_keys,
+        label_schema,
+        classes_as_attrs,
+        is_video,
     ):
         media_type = lb.MediaType.Video if is_video else lb.MediaType.Image
         project = self._client.create_project(
             name=project_name,
             media_type=media_type,
-            queue_mode=lb.QueueMode.Batch,
         )
         project.create_batch(
             name=str(uuid4()),
-            data_rows=dataset.data_rows(),
+            global_keys=global_keys,
         )
 
         self._setup_editor(project, label_schema, classes_as_attrs)

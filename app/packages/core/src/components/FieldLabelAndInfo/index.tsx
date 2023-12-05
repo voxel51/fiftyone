@@ -1,7 +1,8 @@
 import { InfoIcon, useTheme } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import { activeColorField, coloring } from "@fiftyone/state";
+import { coloring } from "@fiftyone/state";
 import { Field, formatDate, formatDateTime } from "@fiftyone/utilities";
+import Bolt from "@mui/icons-material/Bolt";
 import PaletteIcon from "@mui/icons-material/Palette";
 import React, {
   MutableRefObject,
@@ -19,6 +20,8 @@ import {
 } from "recoil";
 import styled from "styled-components";
 import { ExternalLink } from "../../utils/generic";
+import { LIGHTNING_MODE } from "../../utils/links";
+import { activeColorEntry } from "../ColorModal/state";
 
 const selectedFieldInfo = atom<string | null>({
   key: "selectedFieldInfo",
@@ -106,6 +109,7 @@ const FieldInfoIcon = (props) => <InfoIcon {...props} style={{ opacity: 1 }} />;
 
 type FieldLabelAndInfo = {
   nested?: boolean;
+  path?: string;
   field: Field;
   color: string;
   expandedPath?: string;
@@ -117,6 +121,7 @@ const FieldLabelAndInfo = ({
   field,
   color,
   expandedPath,
+  path,
   template,
 }: FieldLabelAndInfo) => {
   const fieldInfo = useFieldInfo(field, nested, { expandedPath, color });
@@ -124,9 +129,7 @@ const FieldLabelAndInfo = ({
   return (
     <>
       {template({ ...fieldInfo, FieldInfoIcon })}
-      {field.path !== "_label_tags" && fieldInfo.open && (
-        <FieldInfoExpanded {...fieldInfo} />
-      )}
+      {fieldInfo.open && <FieldInfoExpanded {...fieldInfo} path={path} />}
     </>
   );
 };
@@ -240,6 +243,7 @@ function FieldInfoExpanded({
   color,
   close,
   expandedPath,
+  path,
   expandedRef,
 }) {
   const el = expandedRef;
@@ -249,7 +253,7 @@ function FieldInfoExpanded({
     descTooLong || tooManyInfoKeys
   );
 
-  const setIsCustomizingColor = useSetRecoilState(activeColorField);
+  const setIsCustomizingColor = useSetRecoilState(activeColorEntry);
   const updatePosition = () => {
     if (!el.current || !hoverTarget.current) return;
     el.current.style.visibility = "visible";
@@ -262,7 +266,7 @@ function FieldInfoExpanded({
   const colorBy = colorSettings.by;
   const onClickCustomizeColor = () => {
     // open the color customization modal based on colorBy status
-    setIsCustomizingColor({ field, expandedPath });
+    setIsCustomizingColor({ path: path || field.path });
   };
 
   useEffect(updatePosition, [field, isCollapsed]);
@@ -286,14 +290,13 @@ function FieldInfoExpanded({
             colorBy={colorBy}
           />
         )}
-        {/* <FieldInfoTitle color={color}><span>{field.path}</span></FieldInfoTitle> */}
+        <Lightning color={color} path={field.path} />
         {field.description && (
           <ExpFieldInfoDesc
             collapsed={descTooLong && isCollapsed}
             description={field.description}
           />
         )}
-        {/* {field.description && <BorderDiv color={color} />} */}
         <FieldInfoTable
           {...field}
           collapsed={tooManyInfoKeys && isCollapsed}
@@ -318,6 +321,42 @@ function FieldInfoExpanded({
   );
 }
 
+type LightningProp = {
+  color: string;
+  path: string;
+};
+
+const Lightning: React.FunctionComponent<LightningProp> = ({ color, path }) => {
+  const lightning = useRecoilValue(fos.lightning);
+  const lightnigPath = useRecoilValue(fos.lightningPaths(path)).size > 0;
+  const theme = useTheme();
+  if (!lightning || !lightnigPath) {
+    return null;
+  }
+
+  return (
+    <FieldInfoTableContainer color={color}>
+      <tbody>
+        <tr>
+          <td>
+            <Bolt sx={{ color }} fontSize={"small"} />
+          </td>
+          <td>
+            <ContentValue>
+              <ExternalLink
+                style={{ color: theme.text.primary }}
+                href={LIGHTNING_MODE}
+              >
+                Lightning indexed
+              </ExternalLink>
+            </ContentValue>
+          </td>
+        </tr>
+      </tbody>
+    </FieldInfoTableContainer>
+  );
+};
+
 type CustomizeColorProp = {
   color: string;
   onClick: () => void;
@@ -337,7 +376,7 @@ const CustomizeColor: React.FunctionComponent<CustomizeColorProp> = ({
           <td>
             <ContentValue>
               Customize colors by{" "}
-              {props.colorBy == "field" ? "field" : "attribute value"}
+              {props.colorBy == "value" ? "attribute value" : props.colorBy}
             </ContentValue>
           </td>
         </tr>

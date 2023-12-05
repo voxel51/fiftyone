@@ -14,10 +14,12 @@ from fiftyone.factory.repos.delegated_operation import (
     DelegatedOperationRepo,
     MongoDelegatedOperationRepo,
 )
+from fiftyone.factory.repos.orchestrator import (
+    OrchestratorRepo,
+    MongoOrchestratorRepo,
+)
 
-
-db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
-db: Database = db_client[fo.config.database_name]
+db: Database = foo.get_db_conn()
 
 
 class RepositoryFactory(object):
@@ -38,3 +40,17 @@ class RepositoryFactory(object):
         return RepositoryFactory.repos[
             MongoDelegatedOperationRepo.COLLECTION_NAME
         ]
+
+    @staticmethod
+    def orchestrator_repo() -> OrchestratorRepo:
+        if (
+            MongoOrchestratorRepo.COLLECTION_NAME
+            not in RepositoryFactory.repos
+        ):
+            RepositoryFactory.repos[
+                MongoOrchestratorRepo.COLLECTION_NAME
+            ] = MongoOrchestratorRepo(
+                collection=db[MongoOrchestratorRepo.COLLECTION_NAME]
+            )
+
+        return RepositoryFactory.repos[MongoOrchestratorRepo.COLLECTION_NAME]

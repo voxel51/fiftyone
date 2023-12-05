@@ -110,14 +110,26 @@ Can I use FiftyOne in a notebook?
 ---------------------------------
 
 Yes! FiftyOne supports `Jupyter Notebooks <https://jupyter.org>`_,
-`Google Colab Notebooks <https://colab.research.google.com>`_, and
-`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
+`Google Colab Notebooks <https://colab.research.google.com>`_,
+`Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_,
+ and `SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_.
 
 All the usual FiftyOne commands can be run in notebook environments, and the
 App will launch/update in the output of your notebook cells!
 
 Check out the :ref:`notebook environment guide <notebooks>` for more
 information about running FiftyOne in notebooks.
+
+.. _faq-cloud-notebook-support:
+
+Why isn't the App loading in my cloud notebook?
+-----------------------------------------------
+
+Except for `Google Colab <https://colab.research.google.com>`_ and
+`Databricks <https://docs.databricks.com/en/notebooks/index.html>`_ which have
+built-in App configuration, when working in a cloud notebook a
+`proxy_url <configuring-proxy-url>` should be set in your
+`FiftyOne App config <configuring-fiftyone-app>`.
 
 .. _faq-remote-notebook-support:
 
@@ -185,7 +197,8 @@ What operating systems does FiftyOne support?
 ---------------------------------------------
 
 FiftyOne officially supports the latest versions of MacOS and Windows, as well
-as Debian 9+ (x86_64 only), Ubuntu 18.04+, and RHEL/CentOS 7+.
+as Amazon Linux 2 and 2023, Debian 9+ (x86_64 only), Ubuntu 18.04+, and
+RHEL/CentOS 7+.
 
 .. note::
 

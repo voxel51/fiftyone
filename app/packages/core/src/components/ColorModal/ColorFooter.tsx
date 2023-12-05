@@ -1,21 +1,11 @@
-import * as fos from "@fiftyone/state";
-import React, { useMemo } from "react";
-import {
-  atom,
-  useRecoilState,
-  useRecoilValue,
-  useSetRecoilState,
-} from "recoil";
-
 import { Button } from "@fiftyone/components";
+import * as foq from "@fiftyone/relay";
+import * as fos from "@fiftyone/state";
+import React, { useEffect, useMemo } from "react";
+import { useMutation } from "react-relay";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { ButtonGroup, ModalActionButtonContainer } from "./ShareStyledDiv";
-import { isDefaultSetting } from "./utils";
-
-// this reset is used to trigger a sync of local state input with the session color values
-export const resetColor = atom<number>({
-  key: "resetColor",
-  default: 0,
-});
+import { activeColorEntry } from "./state";
 
 const ColorFooter: React.FC = () => {
   const isReadOnly = useRecoilValue(fos.readOnly);
@@ -25,34 +15,39 @@ const ColorFooter: React.FC = () => {
     [canEditCustomColors, isReadOnly]
   );
   const setColorScheme = fos.useSetSessionColorScheme();
-  const [activeColorModalField, setActiveColorModalField] = useRecoilState(
-    fos.activeColorField
+  const [activeColorModalField, setActiveColorModalField] =
+    useRecoilState(activeColorEntry);
+  const [setDatasetColorScheme] =
+    useMutation<foq.setDatasetColorSchemeMutation>(foq.setDatasetColorScheme);
+  const colorScheme = useRecoilValue(fos.colorScheme);
+  const datasetName = useRecoilValue(fos.datasetName);
+  const configDefault = useRecoilValue(fos.config);
+  const id = fos.useAssertedRecoilValue(fos.dataset).id;
+  const datasetDefault = useRecoilValue(fos.datasetColorScheme);
+  const subscription = useRecoilValue(fos.stateSubscription);
+
+  useEffect(
+    () => foq.subscribe(() => setActiveColorModalField(null)),
+    [setActiveColorModalField]
   );
-  const savedSettings = useRecoilValue(fos.datasetAppConfig).colorScheme;
-  const colorScheme = useRecoilValue(fos.sessionColorScheme);
-  const setReset = useSetRecoilState(resetColor);
-
-  const hasSavedSettings = useMemo(() => {
-    if (!savedSettings) return false;
-    if (isDefaultSetting(savedSettings)) return false;
-    return true;
-  }, [savedSettings]);
-
-  // set to be true only for teams
-  const isTeams = useRecoilValue(fos.compactLayout);
-  const datasetDefault =
-    useRecoilValue(fos.datasetAppConfig)?.colorScheme ?? null;
-
   if (!activeColorModalField) return null;
-
+  if (!datasetName) {
+    throw new Error("dataset not defined");
+  }
   return (
     <ModalActionButtonContainer>
       <ButtonGroup style={{ marginRight: "4px" }}>
         <Button
           title={`Clear session settings and revert to default settings`}
           onClick={() => {
-            setColorScheme(false, isTeams ? datasetDefault : null);
-            setReset((prev) => prev + 1);
+            const { id: _, ...update } = fos.ensureColorScheme(
+              datasetDefault,
+              configDefault
+            );
+            setColorScheme({
+              id: colorScheme.id,
+              ...update,
+            });
           }}
         >
           Reset
@@ -60,23 +55,85 @@ const ColorFooter: React.FC = () => {
         <Button
           title={
             canEdit
-              ? `Save to dataset appConfig`
+              ? "Save to dataset app config"
               : "Can not save to dataset appConfig in read-only mode"
           }
           onClick={() => {
-            setColorScheme(true, colorScheme);
+            // remove rgb list from defaultColorscale and colorscales
+            const { rgb, ...rest } = colorScheme.defaultColorscale;
+            const newDefaultColorscale = rest;
+            const newColorscales = colorScheme.colorscales?.length
+              ? colorScheme.colorscales?.map(({ rgb, ...rest }) => rest)
+              : [];
+
+            setDatasetColorScheme({
+              variables: {
+                subscription,
+                datasetName,
+                colorScheme: {
+                  ...colorScheme,
+                  id: datasetDefault?.id ?? null,
+                  colorBy: colorScheme.colorBy ?? "field",
+                  colorPool: colorScheme.colorPool ?? [],
+                  colorscales: colorScheme.colorscales ? newColorscales : [],
+                  defaultMaskTargetsColors:
+                    colorScheme.defaultMaskTargetsColors ?? [],
+                  defaultColorscale: newDefaultColorscale ?? {
+                    name: "virdis",
+                    list: [],
+                  },
+                  fields: colorScheme.fields ?? [],
+                  labelTags: colorScheme.labelTags ?? {},
+                  multicolorKeypoints: colorScheme.multicolorKeypoints ?? false,
+                  showSkeletons: colorScheme.showSkeletons ?? true,
+                },
+              },
+              updater: (store, { setDatasetColorScheme }) => {
+                const datasetRecord = store.get(id);
+                const config = datasetRecord?.getLinkedRecord("appConfig");
+                if (!config) {
+                  console.error(
+                    "dataset.appConfig record not found and thus can not be updated"
+                  );
+                  return;
+                }
+                if (!datasetDefault && setDatasetColorScheme) {
+                  const record = store.get(setDatasetColorScheme.id);
+                  record && config!.setLinkedRecord(record, "colorScheme");
+                }
+              },
+            });
             setActiveColorModalField(null);
           }}
           disabled={!canEdit}
         >
           Save as default
         </Button>
-        {hasSavedSettings && (
+        {datasetDefault && (
           <Button
             title={canEdit ? "Clear" : "Can not clear in read-only mode"}
             onClick={() => {
-              setColorScheme(true, null);
-              setReset((prev) => prev + 1);
+              setDatasetColorScheme({
+                variables: { subscription, datasetName, colorScheme: null },
+                updater: (store) => {
+                  store.delete(datasetDefault.id);
+                },
+              });
+              setColorScheme((cur) => ({
+                ...cur,
+                colorPool: configDefault.colorPool,
+                colorBy: configDefault.colorBy ?? "field",
+                colorscales: [],
+                defaultColorscale: {
+                  name: configDefault.colorscale ?? "virdis",
+                  list: [],
+                },
+                defaultMaskTargetsColors: [],
+                fields: [],
+                labelTags: {},
+                multicolorKeypoints: configDefault.multicolorKeypoints ?? false,
+                showSkeletons: configDefault.showSkeletons ?? true,
+              }));
             }}
             disabled={!canEdit}
           >

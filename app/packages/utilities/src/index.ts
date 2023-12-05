@@ -88,7 +88,7 @@ export const removeKeys = <T>(
   );
 };
 
-export interface BaseField {
+export interface Field {
   ftype: string;
   dbField: string | null;
   description: string | null;
@@ -96,14 +96,12 @@ export interface BaseField {
   name: string;
   embeddedDocType: string | null;
   subfield: string | null;
+  path: string;
+  fields?: Schema;
 }
 
-export interface StrictField extends BaseField {
+export interface StrictField extends Omit<Field, "fields"> {
   fields?: StrictField[];
-}
-
-export interface Field extends BaseField {
-  fields: Schema;
 }
 
 export interface Schema {
@@ -320,6 +318,7 @@ export const VECTOR_FIELD = "fiftyone.core.fields.VectorField";
 export const DETECTION_FILED = "fiftyone.core.labels.Detection";
 export const KEYPOINT_FIELD = "fiftyone.core.labels.Keypoint";
 export const KEYPOINTS_FIELD = "fiftyone.core.labels.Keypoints";
+export const KEYPOINTS_POINTS_FIELD = "fiftyone.core.fields.KeypointsField";
 export const REGRESSION_FIELD = "fiftyone.core.labels.Regression";
 export const GROUP = "fiftyone.core.groups.Group";
 
@@ -696,7 +695,7 @@ export const toSlug = (name: string) => {
   if (matches.length) {
     slug = matches.join("")?.replace(replace_symbols, "-");
     if (slug.length && slug !== "-") {
-      return slug.length ? trim.exec(slug)?.groups?.slug : "";
+      return slug.length ? trim.exec(slug)?.groups?.slug || "" : "";
     }
   }
   return "";
@@ -728,4 +727,10 @@ export function humanReadableBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + units[i];
+}
+
+export enum COLOR_BY {
+  "VALUE" = "value",
+  "INSTANCE" = "instance",
+  "FIELD" = "field",
 }

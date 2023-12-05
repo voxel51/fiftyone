@@ -50,10 +50,11 @@ export function createElementsTree<
   config: Readonly<State["config"]>,
   root: ElementsTemplate<State, Element>,
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void
+  dispatchEvent: (eventType: string, details?: any) => void,
+  batchUpdate?: (cb: () => unknown) => void
 ): Element {
   const element = new root.node();
-  element.boot(config, update, dispatchEvent);
+  element.boot(config, update, dispatchEvent, batchUpdate);
 
   if (!element.isShown(config)) {
     return element;
@@ -62,7 +63,13 @@ export function createElementsTree<
   let children = new Array<BaseElement<State>>();
   children = root.children
     ? root.children.map((child) =>
-        createElementsTree<State>(config, child, update, dispatchEvent)
+        createElementsTree<State>(
+          config,
+          child,
+          update,
+          dispatchEvent,
+          batchUpdate
+        )
       )
     : children;
 
@@ -233,7 +240,9 @@ const makeAcquirer = (
 
       if (VIDEOS.length < maxVideos) {
         const video = document.createElement("video");
-        // video.crossOrigin = "Anonymous";
+        if (window.LOOKER_CROSS_ORIGIN_MEDIA) {
+          video.crossOrigin = "Anonymous";
+        }
         video.preload = "metadata";
         video.muted = true;
         video.loop = false;

@@ -79,7 +79,7 @@ describe("paths", () => {
         paths.resolveParent(
           "https://cloud.com/bucket/data/folder1/folder2/file.txt"
         )
-      ).toBe("https://cloud.com/bucket/data/folder1/folder2");
+      ).toBe("https://cloud.com/bucket/data/folder1/folder2/");
       expect(paths.resolveParent("/home/user/docs/notes.txt")).toBe(
         "/home/user/docs"
       );
@@ -91,6 +91,33 @@ describe("paths", () => {
       expect(paths.resolveParent("/")).toBe(null);
       expect(paths.resolveParent("/my-path")).toBe("/");
       expect(paths.resolveParent("s3://")).toBe(null);
+      expect(paths.resolveParent("min.io://voxel51-test")).toBe("min.io://");
+      expect(paths.resolveParent("http://localhost:9000/voxel51-test")).toBe(
+        "http://localhost:9000/"
+      );
+      expect(
+        paths.resolveParent(
+          "https://computervisionteam.blob.core.windows.net/voxel51-test"
+        )
+      ).toBe("https://computervisionteam.blob.core.windows.net/");
+      expect(paths.resolveParent("az://")).toBe(null);
+      expect(paths.resolveParent("min.io://")).toBe(null);
+      expect(paths.resolveParent("min.io://bucket/folder")).toBe(
+        "min.io://bucket/"
+      );
+      expect(paths.resolveParent("min.io://bucket//")).toBe("min.io://bucket/");
+      expect(paths.resolveParent("min.io://bucket/./")).toBe(
+        "min.io://bucket/"
+      );
+      expect(
+        paths.resolveParent(
+          "https://computervisionteam.blob.core.windows.net/voxel51-test/"
+        )
+      ).toBe("https://computervisionteam.blob.core.windows.net/");
+      expect(paths.resolveParent("min.io://bucket/folder/")).toBe(
+        "min.io://bucket/"
+      );
+      expect(paths.resolveParent("min.io://voxel51-test/")).toBe("min.io://");
     });
   });
 

@@ -4,8 +4,8 @@
 
 import {
   crop,
-  fullscreen as fullscreenIcon,
   fullscreenExit,
+  fullscreen as fullscreenIcon,
   help as helpIcon,
   json as jsonIcon,
   minus,

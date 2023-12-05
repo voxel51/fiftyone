@@ -1,24 +1,33 @@
 import { LabelData } from "@fiftyone/looker";
 import {
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtomFamily,
+} from "@fiftyone/relay";
+import {
   DETECTION,
   DETECTIONS,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
-  LABEL_LIST,
-  LABEL_LISTS,
-  LABEL_LISTS_MAP,
   LABELS,
   LABELS_MAP,
   LABELS_PATH,
+  LABEL_LIST,
+  LABEL_LISTS,
+  LABEL_LISTS_MAP,
   LIST_FIELD,
-  meetsFieldType,
+  OBJECT_ID_FIELD,
+  STRING_FIELD,
   Schema,
   StrictField,
+  VALID_NUMERIC_TYPES,
   VALID_PRIMITIVE_TYPES,
+  meetsFieldType,
   withPath,
 } from "@fiftyone/utilities";
-import { atomFamily, RecoilState, selector, selectorFamily } from "recoil";
+import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
+import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
@@ -52,48 +61,18 @@ export const filterPaths = (
     : [];
 };
 
-export const buildFlatExtendedSchema = (schema: Schema): Schema => {
-  const flatSchema = {} as Schema;
-  const fieldsQueue = [];
-  for (const fieldName in schema) {
-    const field = schema[fieldName];
-    fieldsQueue.push(field);
-  }
-  while (fieldsQueue?.length) {
-    const ff = fieldsQueue.shift();
-    const ffNest = ff?.fields;
-    const fieldPath = ff?.path;
-
-    if (ffNest) {
-      for (const fNested in ffNest) {
-        fieldsQueue.push(ffNest[fNested]);
-      }
-    }
-
-    flatSchema[fieldPath] = {
-      ...ff,
-      visible: false,
-    };
-  }
-
-  return flatSchema;
-};
-
 export const buildSchema = (
   sampleFields: StrictField[],
-  frameFields: StrictField[],
-  flat = false
+  frameFields: StrictField[]
 ): Schema => {
   const schema = sampleFields.reduce(schemaReduce, {});
 
-  // TODO: mixed datasets - test video
   if (frameFields && frameFields.length) {
     schema.frames = {
+      path: "frames",
       ftype: LIST_FIELD,
       name: "frames",
-      fields: flat
-        ? buildFlatExtendedSchema(frameFields.reduce(schemaReduce, {}))
-        : frameFields.reduce(schemaReduce, {}),
+      fields: frameFields.reduce(schemaReduce, {}),
       dbField: null,
       description: null,
       info: null,
@@ -102,38 +81,24 @@ export const buildSchema = (
     };
   }
 
-  if (flat) {
-    return buildFlatExtendedSchema(sampleFields.reduce(schemaReduce, {}));
-  }
-
   return schema;
 };
 
-export const fieldSchema = selectorFamily<
-  Schema,
-  { space: State.SPACE; flat?: boolean }
->({
+export const fieldSchema = selectorFamily<Schema, { space: State.SPACE }>({
   key: "fieldSchema",
   get:
-    ({ space, flat = false }) =>
+    ({ space }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
+      const dataset = get(datasetAtom);
 
       if (!dataset) {
         return {};
       }
 
-      if (flat) {
-        return buildFlatExtendedSchema(
-          (space === State.SPACE.FRAME
-            ? dataset.frameFields
-            : dataset.sampleFields
-          ).reduce(schemaReduce, {})
-        );
-      }
-
       return (
-        space === State.SPACE.FRAME ? dataset.frameFields : dataset.sampleFields
+        space === State.SPACE.FRAME
+          ? get(atoms.frameFields)
+          : get(atoms.sampleFields)
       ).reduce(schemaReduce, {});
     },
 });
@@ -188,8 +153,9 @@ export const fullSchema = selector<Schema>({
           embeddedDocType: null,
           subfield: "Frame",
           dbField: null,
-          description: null,
           info: null,
+          path: "frames",
+          description: null,
         },
       } as Schema;
     }
@@ -215,18 +181,15 @@ export const fieldPaths = selectorFamily<
         throw new Error("path and space provided");
       }
 
-      // use { flat: true } to get schema's dynamic fields included
-      const sampleFields = get(
-        fieldSchema({ space: State.SPACE.SAMPLE, flat: true })
-      );
-      const frameFields = get(
-        fieldSchema({ space: State.SPACE.FRAME, flat: true })
-      );
+      const sampleFields = get(atoms.flatSampleFields);
+      const frameFields = get(atoms.flatFrameFields);
 
-      const sampleLabels = Object.keys(sampleFields)
+      const sample = sampleFields
+        .map(({ path }) => path)
         .filter((l) => !l.startsWith("_"))
         .sort();
-      const frameLabels = Object.keys(frameFields)
+      const frame = frameFields
+        .map(({ path }) => path)
         .filter((l) => !l.startsWith("_"))
         .map((l) => "frames." + l)
         .sort();
@@ -237,15 +200,15 @@ export const fieldPaths = selectorFamily<
         );
 
       if (space === State.SPACE.SAMPLE) {
-        return f(sampleLabels);
+        return f(sample);
       }
 
       if (space === State.SPACE.FRAME) {
-        return f(frameLabels);
+        return f(frame);
       }
 
       if (!space && !path) {
-        return f(sampleLabels.concat(frameLabels).sort());
+        return f(sample.concat(frame).sort());
       }
 
       const fieldValue = get(field(path));
@@ -299,6 +262,7 @@ export const field = selectorFamily<Field | null, string>({
 
         let schema = get(fieldSchema({ space: State.SPACE.FRAME }));
         let field: Field = {
+          path: "frames",
           name: "frames",
           ftype: LIST_FIELD,
           subfield: EMBEDDED_DOCUMENT_FIELD,
@@ -321,6 +285,7 @@ export const field = selectorFamily<Field | null, string>({
 
       let field: Field = null;
       let schema = get(fieldSchema({ space: State.SPACE.SAMPLE }));
+
       for (const name of path.split(".")) {
         if (schema[name]) {
           field = schema[name];
@@ -334,22 +299,36 @@ export const field = selectorFamily<Field | null, string>({
     },
 });
 
+export const dbPath = selectorFamily({
+  key: "dbPath",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const fieldData = get(field(path));
+      if (!fieldData?.dbField) {
+        return path;
+      }
+
+      const keys = path.split(".");
+      keys[keys.length - 1] = fieldData.dbField;
+      return keys.join(".");
+    },
+});
+
 export const labelFields = selectorFamily<string[], { space?: State.SPACE }>({
   key: "labelFields",
   get:
     ({ space }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
-
       if (space) {
         return space === State.SPACE.FRAME
-          ? getLabelFields(dataset.frameFields, "frames.")
-          : getLabelFields(dataset.sampleFields);
+          ? getLabelFields(get(atoms.frameFields), "frames.")
+          : getLabelFields(get(atoms.sampleFields));
       }
 
       return [
-        ...getLabelFields(dataset.sampleFields),
-        ...getLabelFields(dataset.frameFields, "frames."),
+        ...getLabelFields(get(atoms.sampleFields)),
+        ...getLabelFields(get(atoms.frameFields), "frames."),
       ];
     },
 });
@@ -470,20 +449,67 @@ export const labelPath = selectorFamily<string, string>({
     },
 });
 
-export const _activeFields = atomFamily<string[], { modal: boolean }>({
-  key: "_activeFields",
-  default: null,
-});
+export const _activeFields = (() => {
+  let data: { activeFields: string[]; datasetId: string };
+  try {
+    data = JSON.parse(sessionStorage.getItem("activeFields"));
+  } catch {}
+
+  let { activeFields: current, datasetId } = data || {};
+  let modalCurrent: string[] = null;
+
+  return graphQLSyncFragmentAtomFamily<
+    datasetFragment$key,
+    null | string[],
+    { modal: boolean }
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: null,
+      read: (dataset, _, { modal }) => {
+        if (
+          dataset?.datasetId === undefined ||
+          dataset?.datasetId !== datasetId
+        ) {
+          datasetId = dataset?.datasetId;
+          sessionStorage.removeItem("activeFields");
+          modalCurrent = null;
+          current = null;
+        }
+
+        return modal ? modalCurrent : current;
+      },
+    },
+    {
+      key: "_activeFields",
+      effects: ({ modal }) => [
+        ({ onSet }) => {
+          onSet((newValue) => {
+            if (modal) {
+              modalCurrent = newValue;
+            } else {
+              current = newValue;
+              sessionStorage.setItem(
+                "activeFields",
+                JSON.stringify({ datasetId, activeFields: current })
+              );
+            }
+          });
+        },
+      ],
+    }
+  );
+})();
 
 export const activeFields = selectorFamily<string[], { modal: boolean }>({
   key: "activeFields",
   get:
     ({ modal }) =>
     ({ get }) => {
-      const dataset = get(atoms.dataset);
       return filterPaths(
         get(_activeFields({ modal })) || get(labelFields({})),
-        buildSchema(dataset.sampleFields, dataset.frameFields)
+        buildSchema(get(atoms.sampleFields), get(atoms.frameFields))
       );
     },
   set:
@@ -634,22 +660,13 @@ export const filterFields = selectorFamily<string[], string>({
       const label = LABELS.includes(topParent?.embeddedDocType);
       const excluded = EXCLUDED[topParent?.embeddedDocType] || [];
 
-      if (label && path.endsWith(".tags")) {
-        return [[parentPath, "tags"].join(".")];
-      }
-
-      return Object.entries(parent.fields)
-        .map(([name, data]) => ({ ...data, name }))
+      return get(fields({ path: parentPath }))
         .filter(({ name, ftype, subfield }) => {
           if (ftype === LIST_FIELD) {
             ftype = subfield;
           }
 
           if (name.startsWith("_")) {
-            return false;
-          }
-
-          if (label && name === "tags") {
             return false;
           }
 
@@ -666,3 +683,69 @@ const EXCLUDED = {
   [withPath(LABELS_PATH, DETECTION)]: ["bounding_box"],
   [withPath(LABELS_PATH, DETECTIONS)]: ["bounding_box"],
 };
+
+export const isInListField = selectorFamily({
+  key: "isInListField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = get(parentField(path));
+
+      return (
+        parent?.ftype === LIST_FIELD &&
+        parent?.subfield === EMBEDDED_DOCUMENT_FIELD
+      );
+    },
+});
+
+export const isListField = selectorFamily({
+  key: "string",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return get(field(path))?.ftype === LIST_FIELD;
+    },
+});
+
+export const isStringField = selectorFamily({
+  key: "isStringField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === STRING_FIELD || f?.subfield === STRING_FIELD;
+    },
+});
+
+export const isNumericField = selectorFamily({
+  key: "isNumericField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return (
+        VALID_NUMERIC_TYPES.includes(f?.ftype) ||
+        VALID_NUMERIC_TYPES.includes(f?.subfield)
+      );
+    },
+});
+
+export const isObjectIdField = selectorFamily({
+  key: "isObjectIdField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const f = get(field(path));
+      return f?.ftype === OBJECT_ID_FIELD || f?.subfield === OBJECT_ID_FIELD;
+    },
+});
+
+export const parentField = selectorFamily({
+  key: "parentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const parent = path.split(".").slice(0, -1).join(".");
+      return get(field(parent));
+    },
+});

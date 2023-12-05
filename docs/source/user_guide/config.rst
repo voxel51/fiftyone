@@ -652,6 +652,9 @@ The FiftyOne App can be configured in the ways described below:
 | `grid_zoom`               | `FIFTYONE_APP_GRID_ZOOM`               | `5`                         | The zoom level of the App's sample grid. Larger values result in larger samples (and thus |
 |                           |                                        |                             | fewer samples in the grid). Supported values are `{0, 1, ..., 10}`.                       |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
+| `lightning_threshold`     | `FIFTYONE_APP_LIGHTNING_THRESHOLD`     | `None`                      | A dataset sample count threshold that enables performant sidebar filtering on indexed     |
+|                           |                                        |                             | fields. See :ref:`this section <app-lightning-mode>` for more details.                    |
++---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `loop_videos`             | `FIFTYONE_APP_LOOP_VIDEOS`             | `False`                     | Whether to loop videos by default in the expanded sample view.                            |
 +---------------------------+----------------------------------------+-----------------------------+-------------------------------------------------------------------------------------------+
 | `multicolor_keypoints`    | `FIFTYONE_APP_MULTICOLOR_KEYPOINTS`    | `False`                     | Whether to independently coloy keypoint points by their index                             |
@@ -725,6 +728,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
@@ -773,6 +777,7 @@ You can print your App config at any time via the Python library and the CLI:
             ],
             "colorscale": "viridis",
             "grid_zoom": 5,
+            "lightning_threshold": null,
             "loop_videos": false,
             "multicolor_keypoints": false,
             "notebook_height": 800,
@@ -947,3 +952,25 @@ system:
 
     You can also store dataset-specific plugin settings by storing any subset
     of the above values on a :ref:`dataset's App config <dataset-app-config>`.
+
+.. _configuring-proxy-url:
+
+Configuring a proxy URL
+-----------------------
+
+When running FiftyOne in a cloud machine, such as a
+`SageMaker Notebook <https://aws.amazon.com/sagemaker/notebooks/>`_, a
+`proxy_url` should be set in your
+`FiftyOne App config <configuring-fiftyone-app>` before launching the App in
+order for browser windows or notebook cells to point to a correct App URL. For
+`SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_, the below
+code snippet shows how to configure the proxy based on your instance.
+
+.. code-block:: python
+
+    import fiftyone as fo
+
+    # before launching the App, configure a proxy_url
+    fo.app_config.proxy_url = "https://<myinstance>.notebook.<region>.sagemaker.aws/proxy/<port>/"
+
+    session = fo.launch_app(port=<port>)

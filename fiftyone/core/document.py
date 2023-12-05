@@ -14,6 +14,7 @@ import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
+from fiftyone.core.readonly import mutates_data
 from fiftyone.core.singletons import DocumentSingleton
 
 
@@ -89,6 +90,11 @@ class _Document(object):
         """
         _id = self._doc.id
         return ObjectId(_id) if _id is not None else None
+
+    @property
+    def _readonly(self):
+        """Whether this document is read-only."""
+        return getattr(self._dataset, "_readonly", False)
 
     @property
     def in_dataset(self):
@@ -169,6 +175,7 @@ class _Document(object):
 
         return value
 
+    @mutates_data
     def set_field(
         self,
         field_name,
@@ -199,6 +206,7 @@ class _Document(object):
             dynamic=dynamic,
         )
 
+    @mutates_data
     def update_fields(
         self,
         fields_dict,
@@ -230,6 +238,7 @@ class _Document(object):
                 dynamic=dynamic,
             )
 
+    @mutates_data
     def clear_field(self, field_name):
         """Clears the value of a field of the document.
 
@@ -266,6 +275,7 @@ class _Document(object):
                     if isinstance(_value, fol.Label):
                         yield name + "." + _name, _value
 
+    @mutates_data
     def merge(
         self,
         document,
@@ -435,6 +445,7 @@ class _Document(object):
         """
         return etas.json_to_str(self.to_dict(), pretty_print=pretty_print)
 
+    @mutates_data
     def save(self):
         """Saves the document to the database."""
         self._save()
@@ -757,6 +768,7 @@ class DocumentView(_Document):
 
         return value
 
+    @mutates_data
     def set_field(
         self,
         field_name,
@@ -791,6 +803,7 @@ class DocumentView(_Document):
             if self._selected_fields is not None:
                 self._selected_fields.add(field_name)
 
+    @mutates_data
     def clear_field(self, field_name):
         # Ensures field exists
         _ = self.get_field(field_name)
@@ -830,6 +843,7 @@ class DocumentView(_Document):
             **{v: deepcopy(self[k]) for k, v in fields.items()}
         )
 
+    @mutates_data
     def save(self):
         """Saves the document view to the database."""
         self._save()

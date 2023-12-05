@@ -88,7 +88,14 @@ class Client:
                                     "capture_notebook_cell",
                                     "close_session",
                                     "reactivate_notebook_cell",
+                                    "refresh",
                                     "reload_session",
+                                    "select_labels",
+                                    "select_samples",
+                                    "set_color_scheme",
+                                    "set_dataset_color_scheme",
+                                    "set_group_slice",
+                                    "set_spaces",
                                     "state_update",
                                 ],
                                 initializer=state,
@@ -109,7 +116,7 @@ class Client:
                     self._connected = True
                     subscribe()
                 except Exception as e:
-                    if logger.level == logging.DEBUG:
+                    if logger.level == logging.DEBUG or foc.DEV_INSTALL:
                         raise e
 
                 if self._closed.is_set():

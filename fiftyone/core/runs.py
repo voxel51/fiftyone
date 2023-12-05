@@ -16,20 +16,21 @@ import eta.core.utils as etau
 
 import fiftyone.constants as foc
 from fiftyone.core.config import Config, Configurable
+from fiftyone.core.odm import patch_runs
 from fiftyone.core.odm.runs import RunDocument
-
+from fiftyone.core.readonly import mutates_data
 
 logger = logging.getLogger(__name__)
 
 
-class RunInfo(Config):
+class BaseRunInfo(Config):
     """Information about a run on a dataset.
 
     Args:
         key: the run key
         version (None): the version of FiftyOne when the run was executed
         timestamp (None): the UTC ``datetime`` of the run
-        config (None): the :class:`RunConfig` for the run
+        config (None): the :class:`BaseRunConfig` for the run
     """
 
     def __init__(self, key, version=None, timestamp=None, config=None):
@@ -40,7 +41,7 @@ class RunInfo(Config):
 
     @classmethod
     def config_cls(cls):
-        """The :class:`RunConfig` class associated with this class."""
+        """The :class:`BaseRunConfig` class associated with this class."""
         raise NotImplementedError("subclass must implement config_cls")
 
     @classmethod
@@ -53,8 +54,8 @@ class RunInfo(Config):
         )
 
 
-class RunConfig(Config):
-    """Base class for configuring :class:`Run` instances.
+class BaseRunConfig(Config):
+    """Base class for configuring :class:`BaseRun` instances.
 
     Args:
         **kwargs: any leftover keyword arguments after subclasses have done
@@ -62,12 +63,13 @@ class RunConfig(Config):
     """
 
     def __init__(self, **kwargs):
-        if kwargs:
-            logger.warning(
-                "Ignoring unsupported parameters %s for %s",
-                set(kwargs.keys()),
-                type(self),
-            )
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    @property
+    def type(self):
+        """The type of run."""
+        raise NotImplementedError("subclass must implement type")
 
     @property
     def method(self):
@@ -76,12 +78,12 @@ class RunConfig(Config):
 
     @property
     def cls(self):
-        """The fully-qualified name of this :class:`RunConfig` class."""
+        """The fully-qualified name of this :class:`BaseRunConfig` class."""
         return etau.get_class_name(self)
 
     @property
     def run_cls(self):
-        """The :class:`Run` class associated with this config."""
+        """The :class:`BaseRun` class associated with this config."""
         return etau.get_class(self.cls[: -len("Config")])
 
     def load_credentials(self, **kwargs):
@@ -94,10 +96,10 @@ class RunConfig(Config):
         pass
 
     def build(self):
-        """Builds the :class:`Run` instance associated with this config.
+        """Builds the :class:`BaseRun` instance associated with this config.
 
         Returns:
-            a :class:`Run` instance
+            a :class:`BaseRun` instance
         """
         return self.run_cls(self)
 
@@ -108,26 +110,89 @@ class RunConfig(Config):
         Returns:
             a list of attributes
         """
-        return ["method", "cls"] + super().attributes()
+        return ["type", "method", "cls"] + super().attributes()
 
     @classmethod
     def from_dict(cls, d):
-        """Constructs a :class:`RunConfig` from a serialized JSON dict
+        """Constructs a :class:`BaseRunConfig` from a serialized JSON dict
         representation of it.
 
         Args:
             d: a JSON dict
 
         Returns:
-            a :class:`RunConfig`
+            a :class:`BaseRunConfig`
         """
-        d = copy(d)
-        d.pop("method")
-        config_cls = etau.get_class(d.pop("cls"))
+        config_cls = d.pop("cls", None)
+        type = d.pop("type", None)
+        d.pop("method", None)
+
+        try:
+            config_cls = etau.get_class(config_cls)
+        except:
+            logger.debug(
+                "Unable to load '%s'; falling back to base class", config_cls
+            )
+            config_cls = cls.base_config_cls(type)
+
         return config_cls(**d)
 
+    @staticmethod
+    def base_config_cls(type):
+        """Returns the config class for the given run type.
 
-class Run(Configurable):
+        Args:
+            type: a :attr:`BaseRunConfig.type`
+
+        Returns:
+            a :class:`BaseRunConfig` subclass
+        """
+        import fiftyone.core.annotation as foa
+        import fiftyone.core.brain as fob
+        import fiftyone.core.evaluation as foe
+        import fiftyone.utils.eval as foue
+
+        # pylint: disable=import-error,no-name-in-module
+        import fiftyone.brain.similarity as fbs
+        import fiftyone.brain.visualization as fbv
+        import fiftyone.brain.internal.core.hardness as fbh
+        import fiftyone.brain.internal.core.mistakenness as fbm
+        import fiftyone.brain.internal.core.uniqueness as fbu
+
+        if type == "annotation":
+            return foa.AnnotationMethodConfig
+        if type == "brain":
+            return fob.BrainMethodConfig
+        if type == "evaluation":
+            return foe.EvaluationMethodConfig
+        if type == "run":
+            return RunConfig
+
+        if type == "regression":
+            return foue.RegressionEvaluationConfig
+        if type == "classification":
+            return foue.ClassificationEvaluationConfig
+        if type == "detection":
+            return foue.DetectionEvaluationConfig
+        if type == "segmentation":
+            return foue.SegmentationEvaluationConfig
+
+        if type == "similarity":
+            return fbs.SimilarityConfig
+        if type == "visualization":
+            return fbv.VisualizationConfig
+        if type == "hardness":
+            return fbh.HardnessConfig
+        if type == "mistakenness":
+            return fbm.MistakennessMethodConfig
+        if type == "uniqueness":
+            return fbu.UniquenessConfig
+
+        logger.debug("Unrecognized run type '%s'", type)
+        return RunConfig
+
+
+class BaseRun(Configurable):
     """Base class for methods that can be run on a dataset.
 
     Subclasses will typically declare an interface method that handles
@@ -135,12 +200,12 @@ class Run(Configurable):
     how to validate that a run is valid and how to cleanup after a run.
 
     Args:
-        config: a :class:`RunConfig`
+        config: a :class:`BaseRunConfig`
     """
 
     @classmethod
     def run_info_cls(cls):
-        """The :class:`RunInfo` class associated with this class."""
+        """The :class:`BaseRunInfo` class associated with this class."""
         raise NotImplementedError("subclass must implement run_info_cls()")
 
     @classmethod
@@ -201,6 +266,8 @@ class Run(Configurable):
         """
         return []
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def rename(self, samples, key, new_key):
         """Performs any necessary operations required to rename this run's key.
 
@@ -211,6 +278,8 @@ class Run(Configurable):
         """
         pass
 
+    # Implementations of this method may mutate data, but this method is only
+    # called internally behind other methods that enforce mutation protection
     def cleanup(self, samples, key):
         """Cleans up the results of the run with the given key from the
         collection.
@@ -221,6 +290,7 @@ class Run(Configurable):
         """
         pass
 
+    @mutates_data(data_obj_param="samples")
     def register_run(self, samples, key, overwrite=True):
         """Registers a run of this method under the given key on the given
         collection.
@@ -302,7 +372,7 @@ class Run(Configurable):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
-            existing_info: a :class:`RunInfo`
+            existing_info: a :class:`BaseRunInfo`
 
         Raises:
             ValueError: if the run is invalid
@@ -328,13 +398,19 @@ class Run(Configurable):
             )
 
     @classmethod
-    def list_runs(cls, samples, type=None, **kwargs):
+    def list_runs(cls, samples, type=None, method=None, **kwargs):
         """Returns the list of run keys on the given collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            type (None): a :class:`fiftyone.core.runs.Run` type. If provided,
-                only runs that are a subclass of this type are included
+            type (None): a specific run type to match, which can be:
+
+                -   a string :attr:`fiftyone.core.runs.BaseRunConfig.type`
+                -   a :class:`fiftyone.core.runs.BaseRun` class or its
+                    fully-qualified class name string
+
+            method (None): a specific
+                :attr:`fiftyone.core.runs.BaseRunConfig.method` string to match
             **kwargs: optional config parameters to match
 
         Returns:
@@ -343,38 +419,51 @@ class Run(Configurable):
         run_docs = cls._get_run_docs(samples)
 
         if etau.is_str(type):
-            type = etau.get_class(type)
+            try:
+                type = etau.get_class(type)
+            except:
+                pass
 
-        if type is not None or kwargs:
-            keys = []
-            for key in run_docs.keys():
-                try:
-                    run_info = cls.get_run_info(samples, key)
-                    config = run_info.config
-                except:
-                    logger.warning(
-                        "Failed to load info for %s with key '%s'",
-                        cls._run_str(),
-                        key,
-                    )
+        if type is None and method is None and not kwargs:
+            return sorted(run_docs.keys())
+
+        keys = []
+        for key in run_docs.keys():
+            try:
+                run_info = cls.get_run_info(samples, key)
+                config = run_info.config
+            except:
+                logger.warning(
+                    "Failed to load info for %s with key '%s'",
+                    cls._run_str(),
+                    key,
+                )
+                continue
+
+            if type is not None:
+                if etau.is_str(type):
+                    if config.type != type:
+                        continue
+                else:
+                    if not issubclass(config.run_cls, type):
+                        continue
+
+            if method is not None:
+                if config.method != method:
                     continue
 
-                if type is not None and not issubclass(config.run_cls, type):
-                    continue
+            if kwargs and any(
+                getattr(config, key, None) != value
+                for key, value in kwargs.items()
+            ):
+                continue
 
-                if kwargs and any(
-                    getattr(config, key, None) != value
-                    for key, value in kwargs.items()
-                ):
-                    continue
-
-                keys.append(key)
-        else:
-            keys = run_docs.keys()
+            keys.append(key)
 
         return sorted(keys)
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def update_run_key(cls, samples, key, new_key):
         """Replaces the key for the given run with a new key.
 
@@ -420,14 +509,14 @@ class Run(Configurable):
 
     @classmethod
     def get_run_info(cls, samples, key):
-        """Gets the :class:`RunInfo` for the given key on the collection.
+        """Gets the :class:`BaseRunInfo` for the given key on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
 
         Returns:
-            a :class:`RunInfo`
+            a :class:`BaseRunInfo`
         """
         run_doc = cls._get_run_doc(samples, key)
         run_info_cls = cls.run_info_cls()
@@ -456,12 +545,13 @@ class Run(Configurable):
             ) from e
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def save_run_info(cls, samples, run_info, overwrite=True):
         """Saves the run information on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
-            run_info: a :class:`RunInfo`
+            run_info: a :class:`BaseRunInfo`
             overwrite (True): whether to overwrite an existing run with the
                 same key
         """
@@ -497,13 +587,15 @@ class Run(Configurable):
         dataset.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def update_run_config(cls, samples, key, config):
-        """Updates the :class:`RunConfig` for the given run on the collection.
+        """Updates the :class:`BaseRunConfig` for the given run on the
+        collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
-            config: a :class:`RunConfig`
+            config: a :class:`BaseRunConfig`
         """
         if key is None:
             return
@@ -513,6 +605,7 @@ class Run(Configurable):
         run_doc.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def save_run_results(
         cls, samples, key, run_results, overwrite=True, cache=True
     ):
@@ -521,7 +614,7 @@ class Run(Configurable):
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
-            run_results: a :class:`RunResults`, or None
+            run_results: a :class:`BaseRunResults`, or None
             overwrite (True): whether to overwrite an existing result with the
                 same key
             cache (True): whether to cache the results on the collection
@@ -561,7 +654,8 @@ class Run(Configurable):
     def load_run_results(
         cls, samples, key, cache=True, load_view=True, **kwargs
     ):
-        """Loads the :class:`RunResults` for the given key on the collection.
+        """Loads the :class:`BaseRunResults` for the given key on the
+        collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -570,10 +664,10 @@ class Run(Configurable):
             load_view (True): whether to load the run view in the results
                 (True) or the full dataset (False)
             **kwargs: keyword arguments for the run's
-                :meth:`RunConfig.load_credentials` method
+                :meth:`BaseRunConfig.load_credentials` method
 
         Returns:
-            a :class:`RunResults`, or None if the run did not save results
+            a :class:`BaseRunResults`, or None if the run did not save results
         """
         dataset = samples._root_dataset
 
@@ -604,7 +698,7 @@ class Run(Configurable):
         d = json_util.loads(run_doc.results.read().decode())
 
         try:
-            run_results = RunResults.from_dict(d, run_samples, config, key)
+            run_results = BaseRunResults.from_dict(d, run_samples, config, key)
         except Exception as e:
             if run_doc.version == foc.VERSION:
                 raise e
@@ -631,8 +725,8 @@ class Run(Configurable):
 
     @classmethod
     def has_cached_run_results(cls, samples, key):
-        """Determines whether :class:`RunResults` for the given key are cached
-        on the collection.
+        """Determines whether :class:`BaseRunResults` for the given key are
+        cached on the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
@@ -695,6 +789,7 @@ class Run(Configurable):
         return view
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def delete_run(cls, samples, key):
         """Deletes the results associated with the given run key from the
         collection.
@@ -738,6 +833,7 @@ class Run(Configurable):
         dataset.save()
 
     @classmethod
+    @mutates_data(data_obj_param="samples")
     def delete_runs(cls, samples):
         """Deletes all runs from the collection.
 
@@ -783,14 +879,14 @@ class Run(Configurable):
         return run.get_fields(samples, key)
 
 
-class RunResults(etas.Serializable):
+class BaseRunResults(etas.Serializable):
     """Base class for storing the results of a run.
 
     Args:
         samples: the :class:`fiftyone.core.collections.SampleCollection` used
-        config: the :class:`RunConfig` used
+        config: the :class:`BaseRunConfig` used
         key: the key for the run
-        backend (None): a :class:`Run` instance. If not provided, one is
+        backend (None): a :class:`BaseRun` instance. If not provided, one is
             instantiated from ``config``
     """
 
@@ -806,7 +902,7 @@ class RunResults(etas.Serializable):
 
     @property
     def cls(self):
-        """The fully-qualified name of this :class:`RunResults` class."""
+        """The fully-qualified name of this :class:`BaseRunResults` class."""
         return etau.get_class_name(self)
 
     @property
@@ -818,12 +914,12 @@ class RunResults(etas.Serializable):
 
     @property
     def config(self):
-        """The :class:`RunConfig` for these results."""
+        """The :class:`BaseRunConfig` for these results."""
         return self._config
 
     @property
     def backend(self):
-        """The :class:`Run` for these results."""
+        """The :class:`BaseRun` for these results."""
         return self._backend
 
     @property
@@ -831,6 +927,7 @@ class RunResults(etas.Serializable):
         """The run key for these results."""
         return self._key
 
+    @mutates_data(data_obj_param="self.samples")
     def save(self):
         """Saves the results to the database."""
         # Only cache if the results are already cached
@@ -844,6 +941,7 @@ class RunResults(etas.Serializable):
             cache=cache,
         )
 
+    @mutates_data(data_obj_param="self.samples")
     def save_config(self):
         """Saves these results config to the database."""
         self.backend.update_run_config(self.samples, self.key, self.config)
@@ -859,22 +957,32 @@ class RunResults(etas.Serializable):
 
     @classmethod
     def from_dict(cls, d, samples, config, key):
-        """Builds a :class:`RunResults` from a JSON dict representation of it.
+        """Builds a :class:`BaseRunResults` from a JSON dict representation of
+        it.
 
         Args:
             d: a JSON dict
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
-            config: the :class:`RunConfig` for the run
+            config: the :class:`BaseRunConfig` for the run
             key: the run key
 
         Returns:
-            a :class:`RunResults`
+            a :class:`BaseRunResults`
         """
         if d is None:
             return None
 
-        run_results_cls = etau.get_class(d["cls"])
+        run_results_cls = d.pop("cls", None)
+        try:
+            run_results_cls = etau.get_class(run_results_cls)
+        except:
+            logger.debug(
+                "Unable to load '%s'; falling back to base class",
+                run_results_cls,
+            )
+            run_results_cls = cls.base_results_cls(config.type)
+
         return run_results_cls._from_dict(d, samples, config, key)
 
     @classmethod
@@ -885,10 +993,145 @@ class RunResults(etas.Serializable):
             d: a JSON dict
             samples: the :class:`fiftyone.core.collections.SampleCollection`
                 for the run
-            config: the :class:`RunConfig` for the run
+            config: the :class:`BaseRunConfig` for the run
             key: the run key
 
         Returns:
-            a :class:`RunResults`
+            a :class:`BaseRunResults`
         """
         raise NotImplementedError("subclass must implement _from_dict()")
+
+    @staticmethod
+    def base_results_cls(type):
+        """Returns the results class for the given run type.
+
+        Args:
+            type: a :attr:`BaseRunConfig.type`
+
+        Returns:
+            a :class:`BaseRunResults` subclass
+        """
+        import fiftyone.core.annotation as foa
+        import fiftyone.core.brain as fob
+        import fiftyone.core.evaluation as foe
+        import fiftyone.utils.eval as foue
+
+        # pylint: disable=import-error,no-name-in-module
+        import fiftyone.brain.similarity as fbs
+        import fiftyone.brain.visualization as fbv
+
+        if type == "annotation":
+            return foa.AnnotationResults
+        if type == "brain":
+            return fob.BrainResults
+        if type == "evaluation":
+            return foe.EvaluationResults
+        if type == "run":
+            return RunResults
+
+        if type == "regression":
+            return foue.RegressionResults
+        if type == "classification":
+            return foue.ClassificationResults
+        if type == "detection":
+            return foue.DetectionResults
+        if type == "segmentation":
+            return foue.SegmentationResults
+
+        if type == "similarity":
+            return fbs.SimilarityIndex
+        if type == "visualization":
+            return fbv.VisualizationResults
+        if type == "hardness":
+            return None
+        if type == "mistakenness":
+            return None
+        if type == "uniqueness":
+            return None
+
+        logger.debug("Unrecognized run type '%s'", type)
+        return RunResults
+
+
+class RunInfo(BaseRunInfo):
+    """Information about a run on a dataset.
+
+    Args:
+        key: the run key
+        timestamp (None): the UTC ``datetime`` when the run was initiated
+        config (None): the :class:`RunConfig` for the run
+    """
+
+    @classmethod
+    def config_cls(cls):
+        return RunConfig
+
+
+class RunConfig(BaseRunConfig):
+    """Class for configuring :class:`Run` instances.
+
+    Args:
+        **kwargs: JSON serializable config parameters
+    """
+
+    def __init__(self, **kwargs):
+        for name, value in kwargs.items():
+            setattr(self, name, value)
+
+    @property
+    def type(self):
+        return "run"
+
+    @property
+    def method(self):
+        return None
+
+
+class Run(BaseRun):
+    """Class for runs.
+
+    Args:
+        config: a :class:`RunConfig`
+    """
+
+    @classmethod
+    def run_info_cls(cls):
+        return RunInfo
+
+    @classmethod
+    def _runs_field(cls):
+        return "runs"
+
+    @classmethod
+    def _run_str(cls):
+        return "run"
+
+    @classmethod
+    def _results_cache_field(cls):
+        return "_run_cache"
+
+    @classmethod
+    def _patch_function(cls):
+        return patch_runs
+
+
+class RunResults(BaseRunResults):
+    """Class for run results.
+
+    Args:
+        samples: the :class:`fiftyone.core.collections.SampleCollection` used
+        config: the :class:`RunConfig` used
+        key: the key for the run
+        backend (None): a :class:`Run` instance. If not provided, one is
+            instantiated from ``config``
+        **kwargs: JSON serializable data to store on the results
+    """
+
+    def __init__(self, samples, config, key, backend=None, **kwargs):
+        super().__init__(samples, config, key, backend=backend)
+        for name, value in kwargs.items():
+            setattr(self, name, value)
+
+    @classmethod
+    def _from_dict(cls, d, samples, config, key):
+        return cls(samples, config, key, **d)

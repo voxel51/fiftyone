@@ -409,15 +409,20 @@ class ManagementSdkTests(unittest.TestCase):
             variables={"name": self.PLUGIN_NAME},
         )
 
-    @mock.patch("fiftyone.management.plugin.open")
-    def test_download_plugin(self, open_mock):
+    @mock.patch.object(fom.plugin, "open")
+    @mock.patch.object(fom.plugin.os, "makedirs")
+    def test_download_plugin(self, makedirs_mock, open_mock):
         download_dir = "/path/to/local/"
         file_token = "download_12345.zip"
         self.client.post_graphql_request.return_value = {
             "downloadPlugin": file_token
         }
 
+        #####
         local_path = fom.download_plugin(self.PLUGIN_NAME, download_dir)
+        #####
+
+        makedirs_mock.assert_called_with(download_dir, exist_ok=True)
 
         self.client.post_graphql_request.assert_called_with(
             query=fom.plugin._DOWNLOAD_PLUGIN_QUERY,
@@ -627,6 +632,7 @@ class ManagementSdkTests(unittest.TestCase):
         )
 
     ######################### Snapshots
+
     now = datetime.datetime.utcnow()
     SNAPSHOT_DATA = [
         {
@@ -684,6 +690,18 @@ class ManagementSdkTests(unittest.TestCase):
         ),
     ]
 
+    def test_archive_snapshot(self):
+        fom.archive_snapshot(self.DATASET_NAME, self.SNAPSHOT_NAME)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._ARCHIVE_SNAPSHOT_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+            },
+            timeout=fom.snapshot.MATERIALIZE_SNAPSHOT_TIMEOUT,
+        )
+
     def test_calculate_dataset_latest_changes_summary(self):
         change_summary = self.SNAPSHOT_DATA[0]["linearChangeSummary"]
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -705,6 +723,7 @@ class ManagementSdkTests(unittest.TestCase):
             variables={
                 "dataset": self.DATASET_NAME,
             },
+            timeout=fom.snapshot.CALCULATE_CHANGES_TIMEOUT,
         )
 
     def test_create_snapshot(self):
@@ -724,6 +743,7 @@ class ManagementSdkTests(unittest.TestCase):
                 "snapshot": self.SNAPSHOT_NAME,
                 "description": self.SNAPSHOT_DESCRIPTION,
             },
+            timeout=fom.snapshot.MATERIALIZE_SNAPSHOT_TIMEOUT,
         )
         self.assertEqual(return_value, expected_snap)
 
@@ -735,6 +755,7 @@ class ManagementSdkTests(unittest.TestCase):
                 "dataset": self.DATASET_NAME,
                 "snapshot": self.SNAPSHOT_NAME,
             },
+            timeout=fom.snapshot.DELETE_SNAPSHOT_TIMEOUT,
         )
 
     def test_get_dataset_latest_changes_summary(self):
@@ -850,6 +871,19 @@ class ManagementSdkTests(unittest.TestCase):
                 "dataset": self.DATASET_NAME,
                 "snapshot": self.SNAPSHOT_NAME,
             },
+            timeout=fom.snapshot.MATERIALIZE_SNAPSHOT_TIMEOUT,
+        )
+
+    def test_unarchive_snapshot(self):
+        fom.unarchive_snapshot(self.DATASET_NAME, self.SNAPSHOT_NAME)
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.snapshot._UNARCHIVE_SNAPSHOT_QUERY,
+            variables={
+                "dataset": self.DATASET_NAME,
+                "snapshot": self.SNAPSHOT_NAME,
+            },
+            timeout=fom.snapshot.MATERIALIZE_SNAPSHOT_TIMEOUT,
         )
 
     ######################### Users

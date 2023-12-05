@@ -4,6 +4,7 @@
 import {
   BaseState,
   FrameState,
+  ImaVidState,
   ImageState,
   PcdState,
   StateUpdate,
@@ -15,11 +16,13 @@ import * as image from "./image";
 import * as pcd from "./pcd";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
+import * as imavid from "./imavid";
 
 export type GetElements<State extends BaseState> = (
   config: Readonly<State["config"]>,
   update: StateUpdate<State>,
-  dispatchEvent: (eventType: string, details?: any) => void
+  dispatchEvent: (eventType: string, details?: any) => void,
+  batchUpdate?: (cb: () => unknown) => void | undefined
 ) => common.LookerElement<State>;
 
 export const getFrameElements: GetElements<FrameState> = (
@@ -198,6 +201,72 @@ export const getVideoElements: GetElements<VideoState> = (
     elements,
     update,
     dispatchEvent
+  );
+};
+
+export const getImaVidElements: GetElements<ImaVidState> = (
+  config,
+  update,
+  dispatchEvent,
+  batchUpdate
+) => {
+  const elements = {
+    node: withEvents(common.LookerElement, imavid.withImaVidLookerEvents()),
+    children: [
+      {
+        node: imavid.ImaVidElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
+      },
+      {
+        node: imavid.LoaderBar,
+      },
+      {
+        node: common.ControlsElement,
+        children: [
+          { node: imavid.SeekBarElement },
+          { node: imavid.SeekBarThumbElement },
+          { node: imavid.PlayButtonElement },
+          { node: imavid.FrameCountElement },
+          imavid.IMAVID_PLAYBACK_RATE,
+          { node: common.PlusElement },
+          { node: common.MinusElement },
+          { node: common.CropToContentButtonElement },
+          { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
+          { node: common.JSONButtonElement },
+          { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
+        ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.LoopVideoOptionElement },
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<ImaVidState, common.LookerElement<ImaVidState>>(
+    config,
+    elements,
+    update,
+    dispatchEvent,
+    batchUpdate
   );
 };
 

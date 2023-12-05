@@ -5,12 +5,13 @@ import autoFocus from "../utils/auto-focus";
 import AlertView from "./AlertView";
 import FieldWrapper from "./FieldWrapper";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
+import { useKey } from "../hooks";
 
 const MULTI_SELECT_TYPES = ["string", "array"];
 
 export default function DropdownView(props) {
   const { onChange, schema, path, data } = props;
-  const { default: defaultValue, view = {}, type } = schema;
+  const { view = {}, type } = schema;
   const {
     choices,
     multiple: multiSelect,
@@ -18,6 +19,7 @@ export default function DropdownView(props) {
     separator = ",",
     readOnly,
   } = view;
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   if (multiSelect && !MULTI_SELECT_TYPES.includes(type))
     return (
@@ -37,7 +39,7 @@ export default function DropdownView(props) {
   const isArrayType = type === "array";
   const multiple = multiSelect || isArrayType;
   const fallbackDefaultValue = multiple ? [] : "";
-  const rawDefaultValue = data ?? defaultValue ?? fallbackDefaultValue;
+  const rawDefaultValue = data ?? fallbackDefaultValue;
   const computedDefaultValue =
     multiple && !Array.isArray(rawDefaultValue)
       ? rawDefaultValue.toString().split(separator)
@@ -51,6 +53,7 @@ export default function DropdownView(props) {
   return (
     <FieldWrapper {...props}>
       <Select
+        key={key}
         disabled={readOnly}
         autoFocus={autoFocus(props)}
         defaultValue={computedDefaultValue}
@@ -73,6 +76,7 @@ export default function DropdownView(props) {
               ? value.join(separator)
               : value;
           onChange(path, computedValue);
+          setUserChanged();
         }}
         multiple={multiple}
         {...getComponentProps(props, "select")}

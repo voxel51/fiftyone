@@ -5,14 +5,18 @@ Segmentation evaluation.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from copy import deepcopy
 import logging
+import inspect
 import warnings
 
 import numpy as np
 import sklearn.metrics as skm
 
 import eta.core.image as etai
+import eta.core.utils as etau
 
+import fiftyone as fo
 import fiftyone.core.evaluation as foe
 import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
@@ -31,7 +35,7 @@ def evaluate_segmentations(
     gt_field="ground_truth",
     eval_key=None,
     mask_targets=None,
-    method="simple",
+    method=None,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -45,7 +49,7 @@ def evaluate_segmentations(
     configured by passing additional parameters for the method's config class
     as ``kwargs``.
 
-    The supported ``method`` values and their associated configs are:
+    The natively provided ``method`` values and their associated configs are:
 
     -   ``"simple"``: :class:`SimpleEvaluationConfig`
 
@@ -78,8 +82,10 @@ def evaluate_segmentations(
         eval_key (None): an evaluation key to use to refer to this evaluation
         mask_targets (None): a dict mapping pixel values or RGB hex strings to
             labels. If not provided, the observed values are used as labels
-        method ("simple"): a string specifying the evaluation method to use.
-            Supported values are ``("simple")``
+        method (None): a string specifying the evaluation method to use. The
+            supported values are
+            ``fo.evaluation_config.segmentation_backends.keys()`` and the
+            default is ``fo.evaluation_config.default_segmentation_backend``
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -122,6 +128,10 @@ class SegmentationEvaluationConfig(foe.EvaluationMethodConfig):
         self.pred_field = pred_field
         self.gt_field = gt_field
         self.compute_dice = compute_dice
+
+    @property
+    def type(self):
+        return "segmentation"
 
 
 class SegmentationEvaluation(foe.EvaluationMethod):
@@ -491,12 +501,36 @@ class SegmentationResults(BaseEvaluationResults):
 
 def _parse_config(pred_field, gt_field, method, **kwargs):
     if method is None:
-        method = "simple"
+        method = fo.evaluation_config.default_segmentation_backend
 
-    if method == "simple":
-        return SimpleEvaluationConfig(pred_field, gt_field, **kwargs)
+    if inspect.isclass(method):
+        return method(pred_field, gt_field, **kwargs)
 
-    raise ValueError("Unsupported evaluation method '%s'" % method)
+    backends = fo.evaluation_config.segmentation_backends
+
+    if method not in backends:
+        raise ValueError(
+            "Unsupported segmentation evaluation method '%s'. The available "
+            "methods are %s" % (method, sorted(backends.keys()))
+        )
+
+    params = deepcopy(backends[method])
+
+    config_cls = kwargs.pop("config_cls", None)
+
+    if config_cls is None:
+        config_cls = params.pop("config_cls", None)
+
+    if config_cls is None:
+        raise ValueError(
+            "Segmentation evaluation method '%s' has no `config_cls`" % method
+        )
+
+    if etau.is_str(config_cls):
+        config_cls = etau.get_class(config_cls)
+
+    params.update(**kwargs)
+    return config_cls(pred_field, gt_field, **params)
 
 
 def _compute_pixel_confusion_matrix(

@@ -9,12 +9,20 @@ const datasetName = getUniqueDatasetNameWithPrefix(
 const normalPcd = `/tmp/test-pcd1-${datasetName}.pcd`;
 const pcdWithNaN = `/tmp/test-pcd2-${datasetName}.pcd`;
 
+/**
+ * Hide these elements when taking screenshots
+ */
+const getScreenshotMasks = (modal: ModalPom) => [
+  modal.locator.getByTestId("looker3d-action-bar"),
+  modal.locator.getByTestId("selectable-bar"),
+];
+
 const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
 });
 
@@ -63,11 +71,13 @@ test.describe("orthographic projections", () => {
     modal,
     grid,
   }) => {
+    const mask = getScreenshotMasks(modal);
+
     await expect(grid.firstFlashlightSection).toHaveScreenshot(
       "orthographic-projection-grid-cuboids.png",
       {
+        mask,
         animations: "allow",
-        mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
 
@@ -77,8 +87,8 @@ test.describe("orthographic projections", () => {
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-1.png",
       {
+        mask,
         animations: "allow",
-        mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
     // pan to the left and check that pcds are rendered correctly
@@ -87,8 +97,8 @@ test.describe("orthographic projections", () => {
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-1-left-pan.png",
       {
+        mask,
         animations: "allow",
-        mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
 
@@ -97,8 +107,8 @@ test.describe("orthographic projections", () => {
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-2.png",
       {
+        mask,
         animations: "allow",
-        mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
 
@@ -108,8 +118,8 @@ test.describe("orthographic projections", () => {
     await expect(modal.modalContainer).toHaveScreenshot(
       "orthographic-projection-modal-cuboid-2-right-pan.png",
       {
+        mask,
         animations: "allow",
-        mask: [modal.locator.getByTestId("looker3d-action-bar")],
       }
     );
   });

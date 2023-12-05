@@ -4310,6 +4310,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             files, open_files = self._parse_local_files(paths)
 
+        if self._server_version >= Version("2.4.6"):
+            data["sorting_method"] = "predefined"
+
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
         except Exception as e:
@@ -4373,10 +4376,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             # Image task
             for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
+                filename = os.path.basename(path)
+                if self._server_version < Version("2.4.6"):
+                    # IMPORTANT: older versions of CVAT organizes media within
+                    # a task alphabetically by filename, so we must give CVAT
+                    # filenames whose alphabetical order matches the order of `paths`
+                    filename = "%06d_%s" % (idx, os.path.basename(path))
 
                 if self._server_version >= Version("2.3"):
                     with open(path, "rb") as f:
@@ -6962,9 +6967,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "File system %s is not a valid CVAT cloud storage provider."
                 % str(file_system)
             )
-        endpoint = None
+        endpoints = []
         if file_system == fos.FileSystem.MINIO:
-            endpoint = fos.minio_endpoint_prefix
+            endpoints = [p[1] for p in fos.minio_prefixes]
 
         provider_type = _CLOUD_PROVIDER_MAP[file_system]
         prefix, _ = fos.split_prefix(cloud_manifest)
@@ -6973,12 +6978,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         manifest_filename = _to_rel_url(cloud_manifest, root_dir)
 
         cloud_storage_id = self._get_cloud_storage_id(
-            provider_type, resource, manifest_filename, endpoint=endpoint
+            provider_type, resource, manifest_filename, endpoints=endpoints
         )
         return root_dir, manifest_filename, cloud_storage_id
 
     def _get_cloud_storage_id(
-        self, provider_type, resource, manifest_filename, endpoint=None
+        self, provider_type, resource, manifest_filename, endpoints=None
     ):
         cloud_storages_search_url = self.cloud_storages_search_url(
             provider_type=provider_type, resource=resource
@@ -6997,7 +7002,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
             if (
                 manifest_filename in result["manifests"]
-                and endpoint == result_endpoint
+                and result_endpoint in endpoints
             ):
                 cloud_storage_id = result["id"]
 

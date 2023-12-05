@@ -2,10 +2,6 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-export type Optional<T> = {
-  [P in keyof T]?: Optional<T[P]>;
-};
-
 export interface Section {
   getTop: () => number;
   getBottom: () => number;
@@ -43,7 +39,8 @@ export type ItemIndexMap = { [key: string]: number };
 export type OnItemClick = (
   next: () => Promise<void>,
   id: string,
-  itemIndexMap: ItemIndexMap
+  itemIndexMap: ItemIndexMap,
+  event: MouseEvent
 ) => void;
 
 export type Render = (
@@ -62,7 +59,7 @@ export interface Options {
   selectedMediaFieldName: string;
 }
 
-export type OnResize = (width: number) => Optional<Options>;
+export type OnResize = (width: number) => Partial<Options>;
 
 export interface State<K> {
   get: Get<K>;

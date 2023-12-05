@@ -1,17 +1,14 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-
-import { Option, Select } from "@mui/joy";
-import styled from "styled-components";
-
-import { useOutsideClick, DEFAULT_SELECTED } from "@fiftyone/state";
-import SelectionOption from "./Option";
 import { IconButton, useTheme } from "@fiftyone/components";
-import { DatasetViewOption } from "./Option";
+import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
+import { CloseRounded } from "@mui/icons-material";
+import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import styled from "styled-components";
+import { JoyThemeProvider } from "../ThemeProvider";
+import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { CloseRounded } from "@mui/icons-material";
-import { JoyThemeProvider } from "../ThemeProvider";
 
 const Box = styled.div`
   display: flex;
@@ -132,7 +129,7 @@ function Selection(props: SelectionProps) {
         value={selectedId}
         defaultValue={selectedId}
         listboxOpen={isOpen}
-        componentsProps={{
+        slotProps={{
           startDecorator: {
             sx: {
               margin: 0,
@@ -145,6 +142,7 @@ function Selection(props: SelectionProps) {
             },
           },
           listbox: {
+            disablePortal: true,
             sx: {
               "--List-decorator-size": "24px",
               padding: "0px",
@@ -193,10 +191,9 @@ function Selection(props: SelectionProps) {
               <IconButton
                 data-cy={`${id}-btn-selection-clear`}
                 size="small"
-                onMouseDown={(e) => {
+                onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
-                }}
-                onClick={() => {
                   setIsOpen(false);
                   onClear();
                 }}
@@ -235,7 +232,7 @@ function Selection(props: SelectionProps) {
                 key={id + label}
                 value={id}
                 label={label}
-                onClick={() => {
+                onClick={(e) => {
                   setSelected(itemProps);
                   setIsOpen(false);
                 }}

@@ -23,6 +23,7 @@ import strawberry as gql
 import eta.core.serial as etas
 import eta.core.utils as etau
 import eta.core.video as etav
+import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
@@ -534,16 +535,21 @@ async def _create_media_urls(
             media_urls.append(dict(field=field, url=cache[path]))
             continue
 
-        if local_only or foc.media_cache.is_local_or_cached(path):
-            # Get local path to media on disk, downloading any uncached remote
-            # files if necessary
-            url = await foc.media_cache._async_get_local_path(
-                path, session, download=True
-            )
-        else:
-            # Get a URL to use to retrieve metadata (if necessary) and for the App
-            # to use to serve the media
-            url = foc.media_cache.get_url(path, method="GET", hours=24)
+        try:
+            if local_only or foc.media_cache.is_local_or_cached(path):
+                # Get local path to media on disk, downloading any uncached
+                # remote files if necessary
+                url = await foc.media_cache._async_get_local_path(
+                    path, session, download=True
+                )
+            else:
+                # Get a URL to use to retrieve metadata (if necessary) and for
+                # the App to use to serve the media
+                url = foc.media_cache.get_url(path, method="GET", hours=24)
+        except:
+            # Gracefully continue so that missing cloud credentials do not
+            # cause fatal App errors
+            url = path
 
         cache[path] = url
         media_urls.append(dict(field=field, url=url))
@@ -563,9 +569,14 @@ def _get_additional_media_fields(
     additional = []
     opm_field = None
     for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
-        for field_name in collection.get_field_schema(
-            embedded_doc_type=cls, flat=True
-        ):
+        for field_name, field in collection.get_field_schema(
+            flat=True
+        ).items():
+            if not isinstance(field, fof.EmbeddedDocumentField) or (
+                cls != field.document_type
+            ):
+                continue
+
             if cls == OrthographicProjectionMetadata:
                 opm_field = field_name
 

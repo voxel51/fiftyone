@@ -6,8 +6,8 @@ export enum PathType {
 import pathUtils from "path";
 
 export function determinePathType(path: string): PathType {
-  // http://, https://, s3://, etc. - consider it a URL
-  if (/^\w+:\/\//.test(path)) {
+  // http://, https://, s3://, min.io:// etc. - consider it a URL
+  if (/^\S+:\/\//.test(path)) {
     return PathType.URL;
   }
   // backslashes = windows
@@ -58,9 +58,14 @@ export function resolveParent(path: string): string {
   const pathType = determinePathType(path);
   if (pathType === PathType.URL) {
     const [protocol, rest] = parseURL(path);
-    const parts = rest.split("/");
+    // remove trailing slash before split
+    const restWithoutTrailingSlash = rest.replace(/\/$/, "");
+    const parts = restWithoutTrailingSlash.split("/");
     parts.pop();
-    const joined = pathUtils.join(...parts);
+    let joined = pathUtils.join(...parts);
+    if (!joined.endsWith("/") && parts.length > 0) {
+      joined += "/";
+    }
     return joinURL(protocol, joined);
   }
   const parsed =

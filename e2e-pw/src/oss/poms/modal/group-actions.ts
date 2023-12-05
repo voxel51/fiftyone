@@ -57,6 +57,30 @@ export class ModalGroupActionsPom {
       .nth(index)
       .click();
   }
+
+  async setDynamicGroupsNavigationMode(
+    mode: "carousel" | "pagination" | "video"
+  ) {
+    await this.modal.toggleDisplayOptionsButton.click();
+
+    switch (mode) {
+      case "carousel":
+        await this.modal.locator
+          .getByTestId("tab-option-Sequential Access")
+          .click();
+        break;
+      case "pagination":
+        await this.modal.locator
+          .getByTestId("tab-option-Random Access")
+          .click();
+        break;
+      case "video":
+        await this.modal.locator.getByTestId("tab-option-Video").click();
+        break;
+      default:
+        throw new Error(`Unknown mode: ${mode}`);
+    }
+  }
 }
 
 class ModalGroupActionsAsserter {
@@ -65,5 +89,25 @@ class ModalGroupActionsAsserter {
   async assertGroupPinnedText(text: string) {
     const pinnedText = await this.groupActionsPom.getGroupPinnedText();
     expect(pinnedText).toBe(text);
+  }
+
+  async assertIsCarouselVisible() {
+    await expect(this.groupActionsPom.modal.carousel).toBeVisible();
+  }
+
+  async assertIsCarouselNotVisible() {
+    await expect(this.groupActionsPom.modal.carousel).toBeHidden();
+  }
+
+  async assertIsPaginationBarVisible() {
+    await expect(
+      this.groupActionsPom.dynamicGroupPagination.locator
+    ).toBeVisible();
+  }
+
+  async assertIsPaginationBarNotVisible() {
+    await expect(
+      this.groupActionsPom.dynamicGroupPagination.locator
+    ).toBeHidden();
   }
 }

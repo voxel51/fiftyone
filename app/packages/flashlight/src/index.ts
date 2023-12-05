@@ -10,12 +10,14 @@ import {
   OnItemClick,
   OnItemResize,
   OnResize,
-  Optional,
   Options,
   Render,
   RowData,
   State,
 } from "./state";
+import { createScrollReader } from "./zooming";
+export type { Render, Response } from "./state";
+
 import {
   flashlight,
   flashlightContainer,
@@ -23,10 +25,8 @@ import {
 } from "./styles.module.css";
 import tile from "./tile";
 import { argMin, getDims } from "./util";
-import { createScrollReader } from "./zooming";
-export type { Render, Response } from "./state";
 
-export type FlashlightOptions = Optional<Options>;
+export type FlashlightOptions = Partial<Options>;
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
@@ -220,7 +220,7 @@ export default class Flashlight<K> {
     }
   }
 
-  updateOptions(options: Optional<Options>, newWidth?: boolean) {
+  updateOptions(options: Partial<Options>, newWidth?: boolean) {
     const retile = Object.entries(options).some(
       ([k, v]) => this.state.options[k] != v
     );
@@ -276,9 +276,9 @@ export default class Flashlight<K> {
         this.state.height += sectionElement.getHeight();
       });
       if (this.config.horizontal) {
-        newContainer.style.width = `${this.state.height}px`;
+        newContainer.style.minWidth = `${this.state.height}px`;
       } else {
-        newContainer.style.height = `${this.state.height}px`;
+        newContainer.style.minHeight = `${this.state.height}px`;
       }
 
       for (const section of this.state.sections) {
@@ -302,9 +302,9 @@ export default class Flashlight<K> {
         this.state.height += section.getHeight();
       });
       if (this.config.horizontal) {
-        this.container.style.width = `${this.state.height}px`;
+        this.container.style.minWidth = `${this.state.height}px`;
       } else {
-        this.container.style.height = `${this.state.height}px`;
+        this.container.style.minHeight = `${this.state.height}px`;
       }
       const activeSection = this.state.sections[this.state.activeSection];
       if (activeSection) {
@@ -391,9 +391,9 @@ export default class Flashlight<K> {
 
         if (sections.length) {
           if (this.config.horizontal) {
-            this.container.style.width = `${this.state.height}px`;
+            this.container.style.minWidth = `${this.state.height}px`;
           } else {
-            this.container.style.height = `${this.state.height}px`;
+            this.container.style.minHeight = `${this.state.height}px`;
           }
         }
 
@@ -592,15 +592,20 @@ export default class Flashlight<K> {
     return state;
   }
 
-  private getOnItemClick(): (id: string) => void | null {
+  private getOnItemClick(): (id: string, event: MouseEvent) => void | null {
     if (!this.state.onItemClick) {
       return null;
     }
 
-    return (id) =>
-      this.state.onItemClick(() => this.get(), id, {
-        ...this.state.itemIndexMap,
-      });
+    return (id, event) =>
+      this.state.onItemClick(
+        () => this.get(),
+        id,
+        {
+          ...this.state.itemIndexMap,
+        },
+        event
+      );
   }
 
   private createContainer(): HTMLDivElement {

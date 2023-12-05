@@ -14,7 +14,6 @@ import {
   CustomizeColor,
   Dimensions,
   DispatchEvent,
-  Optional,
 } from "./state";
 
 import {
@@ -25,6 +24,8 @@ import {
   ServerError,
 } from "@fiftyone/utilities";
 import LookerWorker from "./worker/index.ts?worker&inline";
+import { BufferManager } from "./lookers/imavid/buffer-manager";
+import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
 
 /**
  * Shallow data-object comparison for equality
@@ -254,6 +255,14 @@ export const ensureCanvasSize = (
   canvas.height = dimensions[1];
 };
 
+export const getMillisecondsFromPlaybackRate = (
+  playbackRate: number
+): number => {
+  const normalizedPlaybackRate =
+    playbackRate > 1 ? playbackRate * 1.5 : playbackRate;
+  return 1000 / (DEFAULT_FRAME_RATE * normalizedPlaybackRate);
+};
+
 /**
  * Get the smallest box that contains all points
  */
@@ -398,9 +407,9 @@ export const clampScale = (
 };
 
 export const mergeUpdates = <State extends BaseState>(
-  state: State,
-  updates: Optional<State>
-): State => {
+  state: Partial<State>,
+  updates: Partial<State>
+): Partial<State> => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
       return n;
@@ -416,6 +425,9 @@ export const mergeUpdates = <State extends BaseState>(
     }
     if (n === null || o === null) {
       return n;
+    }
+    if (o.constructor.name !== "Object" || n.constructor.name !== "Object") {
+      return n ?? o;
     }
     return mergeWith(merger, o, n);
   };
@@ -551,8 +563,8 @@ export const isFloatArray = (arr) =>
 
 // go through customizedColor array and check if any item.fieldColor has changed;
 export const hasColorChanged = (
-  prevColorScheme: CustomizeColor[],
-  nextColorScheme: CustomizeColor[]
+  prevColorScheme: Object[],
+  nextColorScheme: Object[]
 ) => {
   if (prevColorScheme?.length !== nextColorScheme?.length) {
     return true;

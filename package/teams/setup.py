@@ -13,7 +13,7 @@ from setuptools import setup
 
 INSTALL_REQUIRES = [
     "python-jose>=3.3.0,<4",
-    "fiftyone~=0.14",
+    "fiftyone>0.14,<0.16",
 ]
 
 
@@ -47,7 +47,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone-teams-app",
-    version="1.4.5",
+    version="1.5.0rc19",
     description=("FiftyOne Teams"),
     author="Voxel51, Inc.",
     author_email="info@voxel51.com",

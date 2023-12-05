@@ -1,17 +1,17 @@
+import { LoadingDots } from "@fiftyone/components";
 import React, { Suspense } from "react";
-import { RecoilValue, useRecoilValue } from "recoil";
-import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { RecoilValue, constSelector, useRecoilValue } from "recoil";
 
 const EntryCounts = ({
-  countAtom,
-  subcountAtom,
+  countAtom = constSelector(null),
+  subcountAtom = constSelector(null),
 }: {
-  countAtom?: RecoilValue<number>;
-  subcountAtom?: RecoilValue<number>;
+  countAtom?: RecoilValue<number | null>;
+  subcountAtom?: RecoilValue<number | null>;
 }) => {
   const [count, subcount] = [
-    countAtom ? useRecoilValue(countAtom) : null,
-    subcountAtom ? useRecoilValue(subcountAtom) : null,
+    useRecoilValue(countAtom),
+    useRecoilValue(subcountAtom),
   ];
 
   if (typeof count !== "number") {
@@ -41,8 +41,8 @@ export const SuspenseEntryCounts = ({
   countAtom,
   subcountAtom,
 }: {
-  countAtom: RecoilValue<number>;
-  subcountAtom: RecoilValue<number>;
+  countAtom?: RecoilValue<number>;
+  subcountAtom?: RecoilValue<number>;
 }) => {
   return (
     <Suspense fallback={<EntryCounts />}>

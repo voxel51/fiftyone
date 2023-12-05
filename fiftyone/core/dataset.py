@@ -40,6 +40,7 @@ from fiftyone.core.odm.dataset import SampleFieldDocument
 from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
+from fiftyone.core.readonly import mutates_data
 import fiftyone.core.sample as fos
 from fiftyone.core.singletons import DatasetSingleton
 import fiftyone.core.storage as fost
@@ -291,7 +292,7 @@ def _delete_non_persistent_datasets(min_age=None, verbose=False):
             and not dataset.deleted
             and is_old_enough(dataset.created_at)
         ):
-            dataset.delete()
+            dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -357,6 +358,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache = cachetools.LRUCache(5)
         self._brain_cache = cachetools.LRUCache(5)
         self._evaluation_cache = cachetools.LRUCache(5)
+        self._run_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
@@ -468,6 +470,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.media_type
 
     @media_type.setter
+    @mutates_data
     def media_type(self, media_type):
         if media_type == self._doc.media_type:
             return
@@ -671,6 +674,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_group_slice
 
     @default_group_slice.setter
+    @mutates_data
     def default_group_slice(self, slice_name):
         if self.media_type != fom.GROUP:
             raise ValueError("Dataset has no groups")
@@ -697,6 +701,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.name
 
     @name.setter
+    @mutates_data
     def name(self, name):
         _name = self._doc.name
 
@@ -722,6 +727,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._snapshot_name
 
     @property
+    def _readonly(self):
+        return self.is_snapshot
+
+    @property
     def slug(self):
         """The slug of the dataset."""
         return self._doc.slug
@@ -744,6 +753,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.persistent
 
     @persistent.setter
+    @mutates_data
     def persistent(self, value):
         self._doc.persistent = value
         self.save()
@@ -769,6 +779,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.tags
 
     @tags.setter
+    @mutates_data
     def tags(self, value):
         self._doc.tags = value
         self.save()
@@ -789,6 +800,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.description
 
     @description.setter
+    @mutates_data
     def description(self, description):
         self._doc.description = description
         self.save()
@@ -813,6 +825,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.info
 
     @info.setter
+    @mutates_data
     def info(self, info):
         self._doc.info = info
         self.save()
@@ -852,6 +865,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.app_config
 
     @app_config.setter
+    @mutates_data
     def app_config(self, config):
         if config is None:
             config = DatasetAppConfig()
@@ -883,6 +897,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.classes
 
     @classes.setter
+    @mutates_data
     def classes(self, classes):
         self._doc.classes = classes
         self.save()
@@ -909,6 +924,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_classes
 
     @default_classes.setter
+    @mutates_data
     def default_classes(self, classes):
         self._doc.default_classes = classes
         self.save()
@@ -966,6 +982,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.mask_targets
 
     @mask_targets.setter
+    @mutates_data
     def mask_targets(self, targets):
         self._doc.mask_targets = targets
         self.save()
@@ -1014,6 +1031,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_mask_targets
 
     @default_mask_targets.setter
+    @mutates_data
     def default_mask_targets(self, targets):
         self._doc.default_mask_targets = targets
         self.save()
@@ -1050,6 +1068,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.skeletons
 
     @skeletons.setter
+    @mutates_data
     def skeletons(self, skeletons):
         self._doc.skeletons = skeletons
         self.save()
@@ -1083,6 +1102,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.default_skeleton
 
     @default_skeleton.setter
+    @mutates_data
     def default_skeleton(self, skeleton):
         self._doc.default_skeleton = skeleton
         self.save()
@@ -1345,6 +1365,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return schema
 
+    @mutates_data
     def add_sample_field(
         self,
         field_name,
@@ -1433,6 +1454,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    @mutates_data
     def add_dynamic_sample_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
@@ -1485,6 +1507,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for _schema in _handle_nested_fields(schema):
             self._merge_sample_field_schema(_schema)
 
+    @mutates_data
     def add_frame_field(
         self,
         field_name,
@@ -1575,6 +1598,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if expanded:
             self._reload()
 
+    @mutates_data
     def add_dynamic_frame_fields(
         self, fields=None, recursive=True, add_mixed=False
     ):
@@ -1633,6 +1657,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for _schema in _handle_nested_fields(schema):
             self._merge_frame_field_schema(_schema)
 
+    @mutates_data
     def add_group_field(
         self, field_name, default=None, description=None, info=None
     ):
@@ -1682,6 +1707,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return True
 
+    @mutates_data
     def rename_sample_field(self, field_name, new_field_name):
         """Renames the sample field to the given new name.
 
@@ -1694,6 +1720,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_sample_fields({field_name: new_field_name})
 
+    @mutates_data
     def rename_sample_fields(self, field_mapping):
         """Renames the sample fields to the given new names.
 
@@ -1705,6 +1732,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_sample_fields(field_mapping)
 
+    @mutates_data
     def rename_frame_field(self, field_name, new_field_name):
         """Renames the frame-level field to the given new name.
 
@@ -1719,6 +1747,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._rename_frame_fields({field_name: new_field_name})
 
+    @mutates_data
     def rename_frame_fields(self, field_mapping):
         """Renames the frame-level fields to the given new names.
 
@@ -1764,6 +1793,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
+    @mutates_data
     def clone_sample_field(self, field_name, new_field_name):
         """Clones the given sample field into a new field of the dataset.
 
@@ -1776,6 +1806,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_sample_fields({field_name: new_field_name})
 
+    @mutates_data
     def clone_sample_fields(self, field_mapping):
         """Clones the given sample fields into new fields of the dataset.
 
@@ -1788,6 +1819,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_sample_fields(field_mapping)
 
+    @mutates_data
     def clone_frame_field(self, field_name, new_field_name):
         """Clones the frame-level field into a new field.
 
@@ -1802,6 +1834,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clone_frame_fields({field_name: new_field_name})
 
+    @mutates_data
     def clone_frame_fields(self, field_mapping):
         """Clones the frame-level fields into new fields.
 
@@ -1838,6 +1871,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         fofr.Frame._reload_docs(self._frame_collection_name)
         self._reload()
 
+    @mutates_data
     def clear_sample_field(self, field_name):
         """Clears the values of the field from all samples in the dataset.
 
@@ -1852,6 +1886,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_sample_fields(field_name)
 
+    @mutates_data
     def clear_sample_fields(self, field_names):
         """Clears the values of the fields from all samples in the dataset.
 
@@ -1866,6 +1901,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_sample_fields(field_names)
 
+    @mutates_data
     def clear_frame_field(self, field_name):
         """Clears the values of the frame-level field from all samples in the
         dataset.
@@ -1883,6 +1919,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._clear_frame_fields(field_name)
 
+    @mutates_data
     def clear_frame_fields(self, field_names):
         """Clears the values of the frame-level fields from all samples in the
         dataset.
@@ -1920,6 +1957,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         fofr.Frame._reload_docs(self._frame_collection_name)
 
+    @mutates_data
     def delete_sample_field(self, field_name, error_level=0):
         """Deletes the field from all samples in the dataset.
 
@@ -1936,6 +1974,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_name, error_level)
 
+    @mutates_data
     def delete_sample_fields(self, field_names, error_level=0):
         """Deletes the fields from all samples in the dataset.
 
@@ -1952,6 +1991,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_sample_fields(field_names, error_level)
 
+    @mutates_data
     def remove_dynamic_sample_field(self, field_name, error_level=0):
         """Removes the dynamic embedded sample field from the dataset's schema.
 
@@ -1967,6 +2007,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_sample_fields(field_name, error_level)
 
+    @mutates_data
     def remove_dynamic_sample_fields(self, field_names, error_level=0):
         """Removes the dynamic embedded sample fields from the dataset's
         schema.
@@ -1983,6 +2024,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_sample_fields(field_names, error_level)
 
+    @mutates_data
     def delete_frame_field(self, field_name, error_level=0):
         """Deletes the frame-level field from all samples in the dataset.
 
@@ -2001,6 +2043,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_name, error_level)
 
+    @mutates_data
     def delete_frame_fields(self, field_names, error_level=0):
         """Deletes the frame-level fields from all samples in the dataset.
 
@@ -2019,6 +2062,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_frame_fields(field_names, error_level)
 
+    @mutates_data
     def remove_dynamic_frame_field(self, field_name, error_level=0):
         """Removes the dynamic embedded frame field from the dataset's schema.
 
@@ -2034,6 +2078,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._remove_dynamic_frame_fields(field_name, error_level)
 
+    @mutates_data
     def remove_dynamic_frame_fields(self, field_names, error_level=0):
         """Removes the dynamic embedded frame fields from the dataset's schema.
 
@@ -2115,6 +2160,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self._reload()
 
+    @mutates_data
     def add_group_slice(self, name, media_type):
         """Adds a group slice with the given media type to the dataset, if
         necessary.
@@ -2155,6 +2201,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @mutates_data
     def rename_group_slice(self, name, new_name):
         """Renames the group slice with the given name.
 
@@ -2182,6 +2229,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @mutates_data
     def delete_group_slice(self, name):
         """Deletes all samples in the given group slice from the dataset.
 
@@ -2208,6 +2256,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         self.save()
 
+    @mutates_data(condition_param="autosave")
     def iter_samples(self, progress=False, autosave=False, batch_size=None):
         """Returns an iterator over the samples in the dataset.
 
@@ -2307,6 +2356,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return make_sample
 
+    @mutates_data(condition_param="autosave")
     def iter_groups(
         self,
         group_slices=None,
@@ -2497,6 +2547,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 % (group_id, group_field)
             )
 
+    @mutates_data
     def add_sample(
         self,
         sample,
@@ -2528,6 +2579,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return ids[0]
 
+    @mutates_data
     def add_samples(
         self,
         samples,
@@ -2587,6 +2639,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return sample_ids
 
+    @mutates_data
     def add_collection(
         self,
         sample_collection,
@@ -2780,6 +2833,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             overwrite_info=overwrite_info,
         )
 
+    @mutates_data
     def merge_sample(
         self,
         sample,
@@ -2887,6 +2941,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
             existing_sample.save()
 
+    @mutates_data
     def merge_samples(
         self,
         samples,
@@ -3086,6 +3141,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             num_samples=num_samples,
         )
 
+    @mutates_data
     def delete_samples(self, samples_or_ids):
         """Deletes the given sample(s) from the dataset.
 
@@ -3107,6 +3163,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_ids = _get_sample_ids(samples_or_ids)
         self._clear(sample_ids=sample_ids)
 
+    @mutates_data
     def delete_frames(self, frames_or_ids):
         """Deletes the given frames(s) from the dataset.
 
@@ -3134,6 +3191,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         frame_ids = _get_frame_ids(frames_or_ids)
         self._clear_frames(frame_ids=frame_ids)
 
+    @mutates_data
     def delete_groups(self, groups_or_ids):
         """Deletes the given groups(s) from the dataset.
 
@@ -3159,6 +3217,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         group_ids = _get_group_ids(groups_or_ids)
         self._clear_groups(group_ids=group_ids)
 
+    @mutates_data
     def delete_labels(
         self, labels=None, ids=None, tags=None, view=None, fields=None
     ):
@@ -3411,6 +3470,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
     @deprecated(reason="Use delete_samples() instead")
+    @mutates_data
     def remove_sample(self, sample_or_id):
         """Removes the given sample from the dataset.
 
@@ -3432,6 +3492,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self.delete_samples(sample_or_id)
 
     @deprecated(reason="Use delete_samples() instead")
+    @mutates_data
     def remove_samples(self, samples_or_ids):
         """Removes the given samples from the dataset.
 
@@ -3456,6 +3517,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self.delete_samples(samples_or_ids)
 
+    @mutates_data
     def save(self):
         """Saves the dataset to the database.
 
@@ -3521,6 +3583,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         return [view_doc.name for view_doc in self._doc.get_saved_views()]
 
+    @mutates_data
     def save_view(
         self,
         name,
@@ -3605,6 +3668,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         view_doc = self._get_saved_view_doc(name)
         return {f: view_doc[f] for f in view_doc._EDITABLE_FIELDS}
 
+    @mutates_data
     def update_saved_view_info(self, name, info):
         """Updates the editable information for the saved view with the given
         name.
@@ -3682,6 +3746,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return view
 
+    @mutates_data
     def delete_saved_view(self, name):
         """Deletes the saved view with the given name.
 
@@ -3690,6 +3755,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._delete_saved_view(name)
 
+    @mutates_data
     def delete_saved_views(self):
         """Deletes all saved views from this dataset."""
         for view_doc in self._doc.saved_views:
@@ -3783,6 +3849,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return _clone_dataset_or_view(sample_collection, name, persistent)
 
+    @mutates_data
     def clear(self):
         """Removes all samples from the dataset.
 
@@ -3871,6 +3938,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if del_frame_fields:
                 self.delete_frame_fields(del_frame_fields)
 
+    @mutates_data
     def clear_frames(self):
         """Removes all frame labels from the dataset.
 
@@ -3971,6 +4039,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 self._frame_collection_name, sample_id, fns, keep=True
             )
 
+    @mutates_data
     def ensure_frames(self):
         """Ensures that the video dataset contains frame instances for every
         frame of each sample's source video.
@@ -4022,6 +4091,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             ]
         )
 
+    @mutates_data
     def delete(self):
         """Deletes the dataset.
 
@@ -4031,6 +4101,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
+        self._delete()
+
+    def _delete(self):
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
@@ -4045,6 +4118,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         _delete_dataset_doc(self._doc)
         self._deleted = True
 
+    @mutates_data
     def add_dir(
         self,
         dataset_dir=None,
@@ -4169,6 +4243,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
+    @mutates_data
     def merge_dir(
         self,
         dataset_dir=None,
@@ -4375,6 +4450,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
+    @mutates_data
     def add_archive(
         self,
         archive_path,
@@ -4492,6 +4568,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             **kwargs,
         )
 
+    @mutates_data
     def merge_archive(
         self,
         archive_path,
@@ -4691,6 +4768,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             **kwargs,
         )
 
+    @mutates_data
     def add_importer(
         self,
         dataset_importer,
@@ -4746,6 +4824,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
+    @mutates_data
     def merge_importer(
         self,
         dataset_importer,
@@ -4884,6 +4963,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             add_info=add_info,
         )
 
+    @mutates_data
     def add_images(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given images to the dataset.
 
@@ -4914,6 +4994,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self, paths_or_samples, sample_parser, tags=tags
         )
 
+    @mutates_data
     def add_labeled_images(
         self,
         samples,
@@ -4968,6 +5049,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic=dynamic,
         )
 
+    @mutates_data
     def add_images_dir(self, images_dir, tags=None, recursive=True):
         """Adds the given directory of images to the dataset.
 
@@ -4989,6 +5071,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser = foud.ImageSampleParser()
         return self.add_images(image_paths, sample_parser, tags=tags)
 
+    @mutates_data
     def add_images_patt(self, images_patt, tags=None):
         """Adds the given glob pattern of images to the dataset.
 
@@ -5007,6 +5090,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser = foud.ImageSampleParser()
         return self.add_images(image_paths, sample_parser, tags=tags)
 
+    @mutates_data
     def ingest_images(
         self,
         paths_or_samples,
@@ -5056,6 +5140,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_importer(dataset_ingestor, tags=tags)
 
+    @mutates_data
     def ingest_labeled_images(
         self,
         samples,
@@ -5123,6 +5208,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic=dynamic,
         )
 
+    @mutates_data
     def add_videos(self, paths_or_samples, sample_parser=None, tags=None):
         """Adds the given videos to the dataset.
 
@@ -5153,6 +5239,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self, paths_or_samples, sample_parser, tags=tags
         )
 
+    @mutates_data
     def add_labeled_videos(
         self,
         samples,
@@ -5209,6 +5296,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             dynamic=dynamic,
         )
 
+    @mutates_data
     def add_videos_dir(self, videos_dir, tags=None, recursive=True):
         """Adds the given directory of videos to the dataset.
 
@@ -5230,6 +5318,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
+    @mutates_data
     def add_videos_patt(self, videos_patt, tags=None):
         """Adds the given glob pattern of videos to the dataset.
 
@@ -5248,6 +5337,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         sample_parser = foud.VideoSampleParser()
         return self.add_videos(video_paths, sample_parser, tags=tags)
 
+    @mutates_data
     def ingest_videos(
         self,
         paths_or_samples,
@@ -5291,6 +5381,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return self.add_importer(dataset_ingestor, tags=tags)
 
+    @mutates_data
     def ingest_labeled_videos(
         self,
         samples,
@@ -6648,6 +6739,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
+        self._run_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -6685,7 +6777,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self.save()
+        self._save()
 
 
 def _get_random_characters(n):
@@ -6987,6 +7079,15 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
+    for run_doc in dataset_doc.runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+        run_doc.delete()
+
     from fiftyone.operators.delegated import DelegatedOperationService
 
     DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
@@ -7048,6 +7149,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
+    dataset_doc.runs.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -7095,6 +7197,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
+        or dataset.has_runs
     ):
         _clone_extras(dataset, clone_dataset)
 
@@ -7468,6 +7571,14 @@ def _clone_extras(src_dataset, dst_dataset):
 
         dst_doc.evaluations[eval_key] = run_doc
 
+    # Clone other runs
+    for run_key, _run_doc in src_doc.get_runs().items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save(upsert=True)
+
+        dst_doc.runs[run_key] = run_doc
+
     dst_doc.save()
 
 
@@ -7677,14 +7788,16 @@ def _merge_samples_python(
     dynamic=False,
     num_samples=None,
 ):
+    if dataset.media_type == fom.GROUP:
+        dst = dataset.select_group_slices(_allow_mixed=True)
+    else:
+        dst = dataset
+
     if (
         isinstance(samples, foc.SampleCollection)
         and samples.media_type == fom.GROUP
     ):
         samples = samples.select_group_slices(_allow_mixed=True)
-        dst = dataset.select_group_slices(_allow_mixed=True)
-    else:
-        dst = dataset
 
     if num_samples is None:
         try:

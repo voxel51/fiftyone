@@ -3,8 +3,8 @@ import { Overlay } from "../overlays/base";
 import {
   BaseState,
   FrameState,
+  ImaVidState,
   ImageState,
-  Optional,
   VideoState,
 } from "../state";
 
@@ -20,7 +20,7 @@ import { hasColorChanged } from "../util";
 export const LookerUtils = {
   shouldReloadSample: (
     current: Readonly<BaseState["options"]>,
-    next: Readonly<Optional<BaseState["options"]>>
+    next: Readonly<Partial<BaseState["options"]>>
   ): boolean => {
     let reloadSample = false;
 
@@ -34,12 +34,34 @@ export const LookerUtils = {
       hasColorChanged(next.customizeColorSetting, current.customizeColorSetting)
     ) {
       reloadSample = true;
+    } else if (
+      !_.isEmpty(_.xor(next.selectedLabelTags, current.selectedLabelTags)) ||
+      current.selectedLabelTags?.length !== next.selectedLabelTags?.length
+    ) {
+      reloadSample = true;
+    } else if (!_.isEqual(next.labelTagColors, current.labelTagColors)) {
+      reloadSample = true;
+    } else if (
+      next.coloring &&
+      hasColorChanged(
+        current.coloring.defaultMaskTargetsColors,
+        next.coloring.defaultMaskTargetsColors
+      )
+    ) {
+      reloadSample = true;
+    } else if (
+      !_.isEqual(next.coloring?.scale, current.coloring?.scale) ||
+      current.coloring?.scale?.length !== next.coloring?.scale?.length
+    ) {
+      reloadSample = true;
     }
 
     return reloadSample;
   },
 
-  toggleZoom: <State extends FrameState | ImageState | VideoState>(
+  toggleZoom: <
+    State extends FrameState | ImageState | VideoState | ImaVidState
+  >(
     state: State,
     overlays: Overlay<State>[]
   ) => {

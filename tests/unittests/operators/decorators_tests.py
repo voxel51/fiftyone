@@ -5,8 +5,8 @@ Unit tests for operators/decorators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import os
 import asyncio
+import os
 import shutil
 import tempfile
 import unittest
@@ -84,6 +84,9 @@ class DirStateTests(unittest.TestCase):
             for p in plugin_paths:
                 time.sleep(0.01)
                 os.makedirs(os.path.join(tmpdirname, p))
+
+            # add wait for test to pass on older systems/python versions
+            time.sleep(0.01)
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
