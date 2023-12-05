@@ -304,46 +304,71 @@ attribute names in the App's sidebar:
 Lightning mode
 --------------
 
-Lightning mode is a performant sidebar setting for larger datasets that is be
-enabled through the `lightning_threshold`
-:ref:`App config <configuring-fiftyone-app>` option, or through the options
-dropdown. The threshold is a dataset sample count, above which the sidebar is
-restricted to indexed sample or frame fields. The setting is only be enabled
-when no view is present.
+Lightning mode is a performant sidebar setting for larger datasets that can be
+enabled either by adding a `lightning_threshold` to your
+:ref:`App config <configuring-fiftyone-app>`, or for a particular dataset by
+clicking on the "Gear" icon above the sample grid in the App.
 
 .. note::
 
-    When setting the lightning threshold in the App, the value is persisted
-    in your browser per dataset
+    When lightning mode is enabled through the "Gear" icon in the App, the
+    setting is persisted in your browser for that dataset.
 
-After filtering below the configured threshold using indexed fields, other fields
-become available for filtering and counts are presented. Note that base counts
-are with respect to the indexed field filters.
+The lightning threshold specifies a dataset/view size (sample count) above
+which filters can *only* be applied to fields that have been **indexed**. After
+applying filters that bring the current view size below the lightning
+threshold, all fields become available for filtering and additional information
+like value counts are presented.
 
 .. image:: /images/app/app-lightning-mode.gif
     :alt: app-lightning-mode
     :align: center
 
-The above shows the :ref:`BDD100K dataset <dataset-zoo-bdd100k>` train split
-with a
-`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_,
-as well as an index on `metadata.size_bytes`.
+The above GIF shows lightning mode in action on the train split of the
+:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with a
+`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_
+and a specific index on the `metadata.size_bytes` field:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
+    import fiftyone.zoo as foz
 
-    dataset = fo.load_dataset("bdd100k")
+    # The path to the source files that you manually downloaded
+    source_dir = "/path/to/dir-with-bdd100k-files"
+
+    dataset = foz.load_zoo_dataset(
+        "bdd100k",
+        split="train",
+        source_dir=source_dir,
+    )
+
     dataset.create_index("$**")
     dataset.create_index("metadata.size_bytes")
 
+    session = fo.launch_app(dataset)
+
+The SDK provides a number of useful utilities for managing indexes on your
+datasets:
+
+-   :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>` -
+    list all existing indexes
+-   :meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>` -
+    create a new index
+-   :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>` -
+    drop an existing index
+-   :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>` -
+    get information about the existing indexes
+
 .. note::
 
-    Numeric field filters are not supported by wildcard indexes
+    Did you know? You can manage dataset indexes via the App by installing the
+    `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
+    plugin!
 
 For datasets with a relatively small number of fields, the easiest option for
-taking advantage of lightning mode is to create a global wildcard index
+taking advantage of lightning mode is to create a global wildcard index:
 
 .. code-block:: python
     :linenos:
@@ -353,11 +378,18 @@ taking advantage of lightning mode is to create a global wildcard index
 
     dataset = foz.load_zoo_dataset("quickstart")
     dataset.create_index("$**")
-    
-    fo.app_config.lightning_threshold = len(dataset) # for illustration
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
     session = fo.launch_app(dataset)
 
-For video datasets, a separate wildcard index for frame fields is necessary
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes.
+
+For video datasets with frame-level fields, a separate wildcard index for frame
+fields is also necessary:
 
 .. code-block:: python
     :linenos:
@@ -366,39 +398,45 @@ For video datasets, a separate wildcard index for frame fields is necessary
     import fiftyone.zoo as foz
 
     dataset = foz.load_zoo_dataset("quickstart-video")
+
     dataset.create_index("$**")
     dataset.create_index("frames.$**")
     
-    fo.app_config.lightning_threshold = len(dataset) # for illustration
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
     session = fo.launch_app(dataset)
 
-For large datasets with a large number fields, adding individual and/or selective
-wildcard indexes is recommended.
+For datasets with a large number fields, adding individual and/or selective
+wildcard indexes is recommended:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
-    import fiftyone.zoo as foz
 
-    dataset = fo.Dataset("my-large-dataset")
+    dataset = fo.Dataset()
 
-    # it is best to create indexes before adding samples
+    # Index specific top-level fields
     dataset.create_index("camera_id")
     dataset.create_index("recorded_at")
     dataset.create_index("annotated_at")
     dataset.create_index("annotated_by")
 
-    # wildcard on ground truth frame detections
-    dataset.create_index("frames.ground_truth.detections.$**")  
+    # Wildcard index for all attributes of ground truth detections
+    dataset.create_index("ground_truth.detections.$**")
 
-    # ... add samples
+    # Note: it is faster to declare indexes before adding samples
+    dataset.add_samples(...)
 
-    fo.app_config.lightning_threshold = 10000
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
     session = fo.launch_app(dataset)
 
-For group datasets, it is recommended to create compound indexes that include
-the group `name` for performant sample grid results
+For :ref:`grouped datasets <groups>`, you should create two indexes for each
+field you wish to filter by in lightning mode: the field itself and a compound
+index that includes the group slice name:
 
 .. code-block:: python
     :linenos:
@@ -408,13 +446,13 @@ the group `name` for performant sample grid results
 
     dataset = foz.load_zoo_dataset("quickstart-groups")
 
+    # Index a specific field
     dataset.create_index("ground_truth.detections.label")
-    # include compound index
-    dataset.create_index(
-        [("group.name", 1), ("ground_truth.detections.label", 1)]
-    ) 
-    
-    fo.app_config.lightning_threshold = len(dataset) # for illustration
+    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
     session = fo.launch_app(dataset)
 
 .. _app-sidebar-mode:
