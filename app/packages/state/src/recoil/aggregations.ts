@@ -133,18 +133,21 @@ export const aggregation = selectorFamily({
     }) =>
     ({ get }) => {
       let paths = get(schemaAtoms.filterFields(path));
+      let mixed = params.mixed;
       const numeric = get(schemaAtoms.isNumericField(path));
       if (params.modal) {
         paths = paths.filter((p) => {
           const n = get(schemaAtoms.isNumericField(p));
           return numeric ? n : !n;
         });
+        // mixed only when in a group dataset
+        mixed ||= Boolean(get(groupId) && numeric);
       }
 
       return get(
         aggregations({
           ...params,
-          mixed: params.modal && numeric,
+          mixed,
           paths,
         })
       ).filter((data) => data.path === path)[0];
