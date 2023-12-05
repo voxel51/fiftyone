@@ -446,3 +446,83 @@ alias:
 
     # For example
     filepath = "minio://test-bucket/image.jpg"
+
+Cloud Credentials Settings Page
+_______________________________
+
+Credentials can also be configured via the Settings page of Teams. Note that
+only users with the Administrator role have access to this page.
+
+From the Settings page, navigate to `Cloud Storage`
+
+This page lists all of the credentials that have been added to the Teams database
+via the UI. Credentials provided via environment variables to local machines
+or directly to deployed containers will not be displayed in this menu.
+
+To provide a new credential to users, click the `Add credential` button. This will
+bring up a modal that gives you options to add credentials for the four providers
+described above (GCP, AWS, Azure, and MinIO).
+
+.. image:: /images/teams/cloud_creds_modal_blank.png
+   :alt: blank-cloud-creds-modal
+   :align: center
+   :width: 300
+
+For each of the providers, the appropriate options are listed for fields to populate.
+
+Google Cloud Platform credentials are expected to be provided as a JSON file.
+
+AWS and MinIO credentials can be provided as an `.ini` file upload or by manually supplying the
+Access Keys and region.
+
+Azure credentials can be provided as an `.ini` file, with account keys, a connection string,
+or with the client secret fields.
+
+After the files or fields are populated, you can click `Save credential`. This will encrypt
+the credential data and store it in your Teams database.
+
+Once stored, the appropriate credentials will be dynamically used when attempting to load
+media for the associated provider.
+
+All credentials are globally scoped and all users have access to all credentials.
+
+Users do not select credentials they want to use at any given time, the credentials are
+automatically loaded and referenced as necessary once they have been uploaded.
+
+Any deployed Teams servers have an internal credentials cache which refreshes every 120 seconds.
+This means that the maximum possible lag between uploading a credential and seeing that
+credential being used is 120 seconds. 
+
+
+Cloud Credentials Bucket Prefixes
+_________________________________
+
+As of Teams version 1.5.0, cloud credentials loaded through the App can optionally supply
+a comma-delimited list of bucket names that are to be associated with the credential.
+
+Providing an empty list of bucket names (leaving the field blank) will create a default
+set of credentials that will be used if no other bucket-scoped credentials match. 
+
+In the following example, it is assumed that the credentials being supplied were
+appropriately created with the provider.
+
+For example, if you have cloud media across three buckets: `bucketA`, `bucketB`, and
+`bucketC`, you can provide credentials for that provider with no bucket names. This will act
+as the default set of credentials and will be used when users try to access media in any of
+those buckets.
+
+If an Administrator then uploads a second set of credentials for the same provider and includes
+`bucketD` in the bucket prefix list, that set of credentials will be used when a user
+tries to access media in the `bucketD` bucket. Media in the `bucketA`, `bucketB` and `bucketC` buckets
+will still be available via the default credential.
+
+Additionally, an Administrator could upload a set of credentials for `bucketE,bucketF,bucketG`, and
+the same pattern of behavior would follow when a user tries to access media in one of those
+three buckets.
+
+If a user tries to access media in `bucketZ`, it will not load, as none of the credentials provided
+(either default or bucket-scoped) have permissions to access that bucket.
+
+Additionally, it is possible to only upload bucket-scoped credentials without a default. Doing this
+would mean that users trying to load any media that is not included in the buckets that have
+credentials will not be able to interact with that media.
