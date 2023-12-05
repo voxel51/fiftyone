@@ -14,14 +14,13 @@ Includes all updates from :ref:`FiftyOne 0.23.0 <release-notes-v0.23.0>`, plus:
 Features
 
 - Added support for archiving older
-  :ref:`dataset snapshots <dataset_versioning>` to cold storage
-
+  :ref:`dataset snapshots <dataset-versioning-snapshot-archival>` to cold
+  storage
 - Added support for executing operators on
   :ref:`dataset snapshots <dataset_versioning>`
-
-- Added support for uploading :ref:`multiple sets <teams-cloud-credentials>` of
-  cloud credentials, each of which only applies to data in certain bucket(s)
-
+- Added support for uploading
+  :ref:`multiple sets of cloud credentials <teams-cloud-storage-page>`, some of
+  which may only apply to data in certain bucket(s)
 - Added support for uploading media :ref:`to Labelbox <labelbox-integration>`
   directly from S3 buckets
 - Added support for executing the builtin ``open_dataset`` operator in the
