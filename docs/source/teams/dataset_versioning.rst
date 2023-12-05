@@ -3,8 +3,6 @@
 Dataset Versioning
 ==================
 
-.. versionadded:: Teams 1.4.0
-
 .. default-role:: code
 
 FiftyOne Teams provides native support for versioning your datasets!
@@ -153,64 +151,73 @@ been re-materialized but kept in cold storage also).
 
 .. _dataset-versioning-snapshot-archival:
 
-Snapshot Archival
+Snapshot archival
 -----------------
-
-.. versionadded:: Teams 1.5.0
 
 Snapshot your datasets easier knowing your database won't be overrun!
 
 If your snapshots are important for historical significance but aren't used
 very often, then you can consider archiving snapshots. This is especially
-helpful with the :ref:`internal duplication backend <internal-duplication-backend>`
-where creating snapshots causes database storage to grow quickly!
+helpful with the
+:ref:`internal duplication backend <internal-duplication-backend>` where
+creating snapshots causes database storage to grow quickly!
 
 When a snapshot is archived, all of its contents are stored in an archive in
 the configured cold storage location: either a mounted filesystem or cloud
-storage folder (using :ref:`your loaded cloud credentials <teams-cloud-credentials>`).
-While the snapshot is archived, you cannot browse it in the UI or load with the SDK.
+storage folder (using your deployment's
+:ref:`cloud credentials <teams-cloud-credentials>`).
 
-.. _dataset-versioning-snapshot-automatic-archival:
+.. note::
 
-Automatic Archival
+    Snapshots must be unarchived in order to browse them in the UI or load them
+    with the SDK.
+
+.. _dataset-versioning-automatic-archival:
+
+Automatic archival
 ~~~~~~~~~~~~~~~~~~
 
 If snapshot archival is enabled, snapshots will automatically be archived
-to make room for newer snapshots. This can be triggered when a snapshot is
-created or unarchived, which would then put the number of snapshots in the
-database above one of the :ref:`configured limits <dataset-versioning-configuration>`.
+to make room for newer snapshots as necessary. This can be triggered when a
+snapshot is created or unarchived, which would then put the number of snapshots
+in the database above one of the
+:ref:`configured limits <dataset-versioning-configuration>`.
 
 If the total materialized snapshots limit is exceeded, then the snapshot
-that was least-recently loaded will be archived.
+that was least-recently loaded will be automatically archived.
 
-If the materialized snapshots per dataset limit is exceeded, then the snapshot
+If the materialized snapshots per-dataset limit is exceeded, then the snapshot
 *within the dataset* that was least-recently loaded will be archived.
 
 .. note::
 
-    Some snapshots will not be chosen for automatic archival, even if they were
-    loaded the longest ago, such as: the latest snapshot for a dataset, and
-    those that have been loaded within the configured age requirement.
+    Some snapshots will not be chosen for automatic archival, even if they
+    would otherwise qualify based on their last load time: the most recent
+    snapshot for each dataset, and those that have been loaded within the
+    configured age requirement.
 
-In either case, if no snapshot can be automatically archived then the
-triggering event will report an error and fail. This can be fixed by deleting
-snapshots, manually archiving snapshots, or changing deployment configuration
-values.
+If no snapshot can be automatically archived then the triggering event will
+report an error and fail. This can be fixed by deleting snapshots, manually
+archiving snapshots, or changing deployment configuration values.
 
-Manual Archival
+.. _dataset-versioning-manual-archival:
+
+Manual archival
 ~~~~~~~~~~~~~~~
 
-Dataset Managers can manually archive select snapshots
-:ref:`via UI or management SDK <dataset-versioning-archive-snapshot>`.
+Users with Can Manage permissions to a dataset can manually archive snapshots
+:ref:`via the UI or management SDK <dataset-versioning-archive-snapshot>`.
 
 Unarchival
 ~~~~~~~~~~
 
-While the snapshot is archived, you cannot browse it in the UI or load with
-the SDK. To enable browsing or loading again, the snapshot can be unarchived
-:ref:`via UI or management SDK <dataset-versioning-unarchive-snapshot>`.
+While a snapshot is archived, you cannot browse it in the UI or load with
+the SDK.
 
-Usage Notes
+To enable browsing or loading again, the snapshot can be unarchived
+:ref:`via the UI or management SDK <dataset-versioning-unarchive-snapshot>`.
+
+Usage notes
 ~~~~~~~~~~~
 
 .. note::
@@ -220,10 +227,10 @@ Usage Notes
 
 .. note::
 
-    If a snapshot is deleted, then normally the change summary for the following
-    snapshot must be recomputed against the previous snapshot. However, if either
-    of these are archived then the change summary cannot be recomputed and may
-    be reported as unknown.
+    If a snapshot is deleted, the change summary for the following snapshot
+    must be recomputed against the previous snapshot. However, if either of
+    these snapshots are currently archived then the change summary cannot be
+    recomputed and may be reported as unknown.
 
 .. _dataset-versioning-snapshot-permissions:
 
@@ -598,24 +605,23 @@ method in the Management SDK.
 Archive snapshot
 ----------------
 
-To avoid exceeding the maximum total snapshot and maximum snapshots per-dataset
-limitations with more precision than the
-:ref:`automatic archival process <dataset-versioning-snapshot-automatic-archival>`,
-users with Can Manage permissions can manually archive a snapshot
-to a configured cold storage location.
+Users with Can Manage permissions to a dataset can manually
+:ref:`archive snapshots <dataset-versioning-automatic-archival>` to the
+configured cold storage location via the UI or the Management SDK.
 
 .. note::
 
-    Once a snapshot is archived, you will no longer have an option to instantly
-    browse an archived snapshot. To browse archived snapshot, you must first
-    unarchive the snapshot.
+    Users cannot browse archived snapshots via the UI or load them via the SDK.
+    The snapshot must first be
+    :ref:`unarchived <dataset-versioning-unarchive-snapshot>`.
 
 Teams UI
 ~~~~~~~~
 
-To manually archive a snapshot, click the 3-dot (kebab) menu in the History tab for a
-snapshot you want to archive and select "Archive snapshot". This will begin the
-archival process and the browse button will be replaced with an "Archiving" spinner.
+To manually archive a snapshot, click the 3-dot (kebab) menu in the History tab
+for a snapshot you want to archive and select "Archive snapshot". This will
+begin the archival process and the browse button will be replaced with an
+"Archiving" spinner":
 
 .. image:: /images/teams/versioning/archive-snapshot.png
     :alt: archive-snapshot
@@ -626,7 +632,7 @@ SDK
 
 You can also use the
 :meth:`archive_snapshot() <fiftyone.management.snapshot.archive_snapshot>`
-method in the Management SDK.
+method in the Management SDK:
 
 .. code-block:: python
     :linenos:
@@ -635,6 +641,7 @@ method in the Management SDK.
     import fiftyone.management as fom
 
     snapshot_name = "v0.1"
+
     # We don't use this regularly, archive it!
     fom.archive_snapshot(dataset.name, snapshot_name)
 
@@ -645,15 +652,15 @@ method in the Management SDK.
 Unarchive snapshot
 ----------------
 
-To make an archived snapshot browse-able again, you can unarchive a snapshot you
-want to browse.
+To make an archived snapshot browseable again, users with Can Manage
+permissions to the dataset can unarchive it via the UI or Management SDK.
 
 Teams UI
 ~~~~~~~~
 
 To unarchive a snapshot, click the "Unarchive" button in the History tab for a
 snapshot you want to unarchive. This will begin the unarchival process and the
-archive button will be replaced with an "Unarchiving" spinner.
+archive button will be replaced with an "Unarchiving" spinner:
 
 .. image:: /images/teams/versioning/unarchive-snapshot.png
     :alt: unarchive-snapshot
@@ -664,7 +671,7 @@ SDK
 
 You can also use the
 :meth:`unarchive_snapshot() <fiftyone.management.snapshot.unarchive_snapshot>`
-method in the Management SDK.
+method in the Management SDK:
 
 .. code-block:: python
     :linenos:

@@ -716,6 +716,8 @@ delegated operations scheduled against that dataset.
     The Runs page only tracks operations that are *delegated* to your Team's
     orchestrator, not operations that are executed immediately in the App.
 
+.. _teams-runs-page:
+
 Runs page
 ---------
 
@@ -730,6 +732,8 @@ sort, search and filter runs listed to refine the list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
+.. _teams-runs-sorting:
+
 Sorting
 ^^^^^^^
 
@@ -739,23 +743,23 @@ name of the operator:
 
 .. image:: /images/plugins/operators/runs/sort.png
 
+.. _teams-runs-filtering:
+
 Filtering
 ^^^^^^^^^
 
-You can also filter the runs table to see a subset of runs:
-
-**Showing only your runs**
+You can also filter the runs table to see a subset of runs.
 
 Use the "My runs" radio button to see only the runs that you scheduled:
 
 .. image:: /images/plugins/operators/runs/my_runs.png
 
-**By status**
-
 You can further refine the list of runs using the status dropdown to select one
 or more status you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
+
+.. _teams-runs-searching:
 
 Searching
 ^^^^^^^^^
@@ -764,13 +768,15 @@ You can also use the search functionality to filter the list of runs by
 keyword. As you type your query in the search box, the list of runs will be
 updated to show only the runs matching your query:
 
+.. image:: /images/plugins/operators/runs/search_by_name.png
+
 .. note::
 
     Search is case-sensitive and you can currently only search by operator
-    name. For example, searches will not match against operator label
-    **Demo: Export to GCP** in the image below.
+    name, not label. For example, searches will not match against
+    **Demo: Export to GCP** in the image above.
 
-.. image:: /images/plugins/operators/runs/search_by_name.png
+.. _teams-runs-re-running:
 
 Re-running
 ^^^^^^^^^^
@@ -780,14 +786,16 @@ three-dots to open actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
 
+.. _teams-runs-pinning:
+
 Pinning
 ^^^^^^^
 
-Pinned runs are displayed to the right of runs table. By default, five pinned
-runs will be displayed. However, if there are more than five pinned runs, you
-will see a button to expand the list.
+Pinned runs are displayed to the right of the runs table. By default, five
+pinned runs will be displayed. However, if there are more than five pinned
+runs, you will see a button to expand the list.
 
-To pin a run, hover over a run in runs table and click the pin icon that
+To pin a run, hover over its row in the runs table and click the pin icon that
 appears beside the operator label:
 
 .. image:: /images/plugins/operators/runs/pinning.png
@@ -797,59 +805,62 @@ appears beside the operator label:
     Pinned runs are stored at the dataset-level and will be visible to all
     users with access to the dataset.
 
+.. _teams-runs-renaming:
+
 Renaming
 ^^^^^^^^
 
-When an operator is delegated multiple times, it can be challenging to find a
-specific run of an operator as they all have identical label on runs page. With
-the edit label functionality in the app, you can rename the label for an
-operator run to a label you can easily identify.
+When delegating an operator multiple times on the same dataset, you may wish to
+give the runs custom labels so that you can easily identify each run later.
 
-To edit label of an operator run, move your mouse cursor over a operator run in
-the runs table you are interested and click the pencil button as indicated with
-indicator "1". This will present an input field indicated with indicator "2"
-where you can update label to text of you choice. Once you are ready to apply
-changes, click the save button indicated with indicator "3" to save changes.
+To edit the label of an operator run, move your mouse cursor over the label of
+interest and click the pencil button as indicated by "1" below. This will
+present an input field indicated by "2" where you can update label to text of
+your choice. Once you are ready to apply changes, click the save button
+indicated by "3".
 
 .. image:: /images/plugins/operators/runs/edit_label.png
 
-.. note::
-
-    Searching by custom label is not currently supported.
+.. _teams-runs-mark-as-failed:
 
 Mark as failed
 ^^^^^^^^^^^^^^
 
 If a delegated operation run terminates unexpectedly without reporting failure,
-you can manually mark an in progress run on the runs page as failed.
+you can manually mark it as failed from the Runs page.
 
-To mark a run as failed, click the 3-dot (kebab) menu indicated by "1". Then, in
-the menu, click "Mark as failed" as indicated by "2". The run status will be
+To mark a run as failed, click the three dots indicated by "1". Then, in the
+menu, click "Mark as failed" as indicated by "2". The run status will be
 updated and will now display as failed.
 
 .. image:: /images/plugins/operators/runs/mark_as_failed.png
 
 .. note::
 
-    If the delegated operation is still in progress in your orchestrator,
-    marking a run as failed will **not** terminate the execution of operation.
+    If the delegated operation is, in fact, still in progress in your
+    orchestrator, marking the run as failed will **not** terminate the
+    execution of operation.
+
+.. _teams-runs-monitoring-progress:
 
 Monitoring progress
 ^^^^^^^^^^^^^^^^^^^
 
-During the execution of a delegation operation, it can report back it's progress
-to display in the runs table. If a progress is available for a run, it will be
-displayed besides "Running" tag as indicated with indicator "2". By default, the
-progress of running operations will be automatically refreshed. You can disable
-auto-refresh of running operations by toggling auto refresh indicated with
-indicator "1".
+Delegated operations can optionally
+:ref:`report their progress <operator-reporting-progress>` during execution.
+
+If a progress is available for a run, it will be displayed in the Runs table
+as indicated by "2". By default, the progress of running operations is
+automatically refreshed. You can disable auto-refresh of running operations by
+toggling the auto refresh setting indicated by "1".
 
 .. image:: /images/plugins/operators/runs/run_progress.png
 
 .. note::
 
-    Only the progress of running operations will be automatically refreshed.
+    Only the progress of running operations is automatically refreshed.
 
+.. _teams-run-page:
 
 Run page
 --------
