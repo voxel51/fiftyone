@@ -44,8 +44,9 @@ def up(db, dataset_name):
             )
 
             # Handle nested fields within 'fields'
-            for field in color_scheme["fields"]:
-                field.setdefault("maskTargetsColors", [])
+            for field in color_scheme.get("fields", []):
+                if field is not None:
+                    field.setdefault("maskTargetsColors", [])
 
     db.datasets.replace_one(match_d, dataset_dict)
 
@@ -81,6 +82,7 @@ def down(db, dataset_name):
 
             # Handle nested fields within 'fields'
             for field in color_scheme.get("fields", []):
-                field.pop("maskTargetsColors", None)
+                if field is not None:
+                    field.pop("maskTargetsColors", None)
 
     db.datasets.replace_one(match_d, dataset_dict)
