@@ -40,7 +40,6 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
 
     const totalFrames = frameStoreController.totalFrameCount;
     const storeBuffer = frameStoreController.storeBufferManager;
-    const fetchBuffer = frameStoreController.fetchBufferManager;
 
     if (totalFrames === 0) {
       this.element.style.display = "none";

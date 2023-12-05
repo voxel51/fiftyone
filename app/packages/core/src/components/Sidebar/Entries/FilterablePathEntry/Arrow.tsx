@@ -1,12 +1,11 @@
-import { ExternalLink, Tooltip } from "@fiftyone/components";
+import { Tooltip } from "@fiftyone/components";
 import useLightningUnlocked from "@fiftyone/state/src/hooks/useLightningUnlocked";
 import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
-import Launch from "@mui/icons-material/Launch";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
-import { LIGHTNING_MODE } from "../../../../utils/links";
+import AddIndex from "./AddIndex";
 
 export default ({
   color,
@@ -26,17 +25,7 @@ export default ({
 
   if (unindexed && !unlocked) {
     return (
-      <Tooltip
-        text={
-          <ExternalLink
-            style={{ color: theme.text.primary, padding: "0.25rem" }}
-            href={LIGHTNING_MODE}
-          >
-            add an index <Launch style={{ height: "1rem", marginTop: 7.5 }} />
-          </ExternalLink>
-        }
-        placement="top-center"
-      >
+      <Tooltip text={<AddIndex />} placement="top-center">
         <Arrow
           data-cy={`sidebar-field-arrow-${id}`}
           style={{ margin: 0, color: theme.text.secondary }}

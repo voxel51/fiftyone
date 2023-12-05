@@ -193,7 +193,7 @@ const FieldSetting = ({ path }: { path: string }) => {
               setInput(colorMap(path));
             }}
           />
-          {state?.useFieldColor && input && (
+          {state?.useFieldColor && ![null, undefined].includes(input) && (
             <div
               data-cy="field-color-div"
               style={{

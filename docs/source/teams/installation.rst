@@ -446,3 +446,117 @@ alias:
 
     # For example
     filepath = "minio://test-bucket/image.jpg"
+
+Cloud Credentials Settings Page
+_______________________________
+
+Credentials can also be configured via the Settings page of Teams. Note that
+only users with the Administrator role have access to this page.
+
+From the Settings page, navigate to ``Cloud storage``
+
+This page lists all of the credentials that have been added to the Teams database
+via the UI.
+
+.. note::
+
+    Credentials provided via environment variables to local machines
+    or directly to deployed containers will not be displayed in this menu.
+
+.. image:: /images/teams/cloud_creds_add_btn.png
+    :alt: cloud-creds-add-credentials-button
+    :align: center
+
+To provide a new credential to users, click the ``Add credential`` button. This will
+bring up a modal that gives you options to add credentials for the four providers
+described above (GCP, AWS, Azure, and MinIO).
+
+.. image:: /images/teams/cloud_creds_modal_blank.png
+    :alt: blank-cloud-creds-modal
+    :align: center
+    :width: 50%
+
+
+For each of the providers, the appropriate options are listed for fields to populate.
+
++--------------+--------------------------+
+| Provider     | Configuration options    |
++==============+==========================+
+| Google Cloud | - JSON file              |
++--------------+--------------------------+
+| AWS          | - ``.ini`` file          |
+|              | - Access Keys and region |
++--------------+--------------------------+
+| MinIO        | - ``.ini`` file          |
+|              | - Access Keys and region |
++--------------+--------------------------+
+| Azure        | - ``.ini`` file          |
+|              | - Account Keys           |
+|              | - Connection string      |
+|              | - Client Secret fields   |
++--------------+--------------------------+
+
+After the files or fields are populated, you can click ``Save credential``. This will encrypt
+the credential data and store it in your Teams database.
+
+Once stored, the appropriate credentials will be dynamically and automatically used
+when attempting to load media for the associated provider. Users cannot select
+credentials they want to use at a given time.
+
+.. note::
+
+    Users cannot access the stored credentials. They will not know which ones are being used,
+    and the credentials are only decrypted when they are used directly in the Fiftyone Teams
+    core SDK.
+
+.. note::
+
+    Any deployed Teams servers have an internal credentials cache which refreshes every 120 seconds.
+    Therefore the maximum possible lag between uploading a credential and seeing that
+    credential being used is 120 seconds.
+
+.. warning::
+
+    Unlike :ref:`dataset permissions <teams-roles-and-permissions>`, all cloud
+    credentials are globally scoped and
+    available for all users. This means that if a user of a Fiftyone Teams
+    deployment tries to access media that is available based on the credentials
+    provided, then that user will be able to see the media.
+
+Cloud Credentials Bucket Prefixes
+_________________________________
+
+.. versionadded:: Teams 1.5.0
+
+Cloud credentials loaded through the App can optionally supply
+a comma-delimited list of bucket names that are to be associated with the credential.
+
+Providing an empty list of bucket names (leaving the field blank) will create a default
+set of credentials that will be used if no other bucket-scoped credentials match. 
+
+In the following example, it is assumed that the credentials being supplied were
+appropriately created with the provider.
+
+For example, if you have cloud media across three buckets: ``bucketA``, ``bucketB``, and
+``bucketC``, you can provide credentials for that provider with no bucket names. This will act
+as the default set of credentials for that provider and will be used when users try to 
+access media in any of those buckets.
+
+If an Administrator then uploads a second set of credentials for the same provider and includes
+``bucketD`` in the bucket prefix list, that set of credentials will be used when a user
+tries to access media in the ``bucketD`` bucket. Media in the ``bucketA``, ``bucketB`` and ``bucketC`` buckets
+will still be available via the default credential.
+
+Additionally, an Administrator could upload a set of credentials for ``bucketE,bucketF,bucketG``, and
+the same pattern of behavior would follow when a user tries to access media in one of those
+three buckets.
+
+Finally, it is possible to only upload bucket-scoped credentials without a default. Doing this
+would mean that users trying to load any media that is not included in the buckets that have
+credentials will not be able to interact with that media.
+
+As an example, say an Administrator removes the default credentials.
+
+If a user tries to access media in ``bucketA``, ``bucketB`` or ``bucketC``, it will not load, as
+none of the credentials provided (there are only bucket-scoped credentials remaining) have 
+permissions to access that bucket. However, buckets D-G would still be accessible.

@@ -98,6 +98,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: MongoDB
+    :description: Use our MongoDB vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: mongodb.html
+    :image: ../_static/images/integrations/mongodb.jpg
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Milvus
     :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: milvus.html
@@ -159,6 +166,7 @@ on the cards below to see how!
     Qdrant <qdrant.rst>
     Redis <redis.rst>
     Pinecone <pinecone.rst>
+    MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
     Ultralytics <ultralytics.rst>

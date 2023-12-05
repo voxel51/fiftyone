@@ -8,6 +8,10 @@ import { Overlay } from "./overlays/base";
 
 import { AppError, COLOR_BY, Schema, Stage } from "@fiftyone/utilities";
 
+export type Optional<T> = {
+  [P in keyof T]?: Optional<T[P]>;
+};
+
 // vite won't import these from fou
 export type RGB = [number, number, number];
 export type RGBA = [number, number, number, number];
@@ -400,9 +404,7 @@ export interface Point {
 export type NONFINITE = "-inf" | "inf" | "nan";
 
 export type StateUpdate<State extends BaseState> = (
-  stateOrUpdater:
-    | Partial<State>
-    | ((previousState: Partial<State>) => Partial<State>),
+  stateOrUpdater: Optional<State> | ((previousState: State) => Optional<State>),
   postUpdate?: (
     state: Readonly<State>,
     overlays: Readonly<Overlay<State>[]>,
@@ -410,7 +412,7 @@ export type StateUpdate<State extends BaseState> = (
   ) => void
 ) => void;
 
-const DEFAULT_BASE_OPTIONS: BaseOptions = {
+export const DEFAULT_BASE_OPTIONS: BaseOptions = {
   highlight: false,
   isPointcloudDataset: false,
   activePaths: [],
@@ -450,8 +452,6 @@ const DEFAULT_BASE_OPTIONS: BaseOptions = {
   showOverlays: true,
   pointFilter: (path: string, point: Point) => true,
   attributeVisibility: {},
-  showHelp: null,
-  isPointcloudDataset: null,
 };
 
 export const DEFAULT_FRAME_OPTIONS: FrameOptions = {

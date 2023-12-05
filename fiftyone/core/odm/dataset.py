@@ -233,10 +233,9 @@ class ColorScheme(EmbeddedDocument):
             keypoints
         opacity (None): transparency of the annotation, between 0 and 1
         show_skeletons (None): whether to show skeletons of keypoints
-        fields (None): an optional list of per-field custom colors. Each
-            element should be a dict with the following keys:
+        fields (None): an optional list of per-field custom colors.
             -   `path` (required): the fully-qualified path to the field you're
-                customizing
+            customizing
             -   `fieldColor` (optional): a color to assign to the field in the
                 App sidebar
             -   `colorByAttribute` (optional): the attribute to use to assign
@@ -247,27 +246,30 @@ class ColorScheme(EmbeddedDocument):
             -   `maskTargetsColors` (optional): a list of dicts specifying
                 index and color for 2D masks
         default_mask_targets_colors (None): a list of dicts specifying index
-            and color for 2D masks of the dataset
-        default_colorscale (None):
-            - `name` (optional): a named plotly colorscale
-            - `list` (optional): a list of dicts of manually defined colorscale
-                -   `value`: a float number between 0 and 1
-                -   `color`: a rgb color string
-        colorscales (None): an optional list of per-field custom colorscale for
-            heatmaps. Each element should be a dict with the following keys:
+            and color for 2D masks of the dataset. If a field does not have
+            field specific mask targets colors, this list will be used.
+            -   `intTarget`: integer target value
+            -   `color`: a color string
+        default_colorscale (None): dataset default colorscale
+            -   `name` (optional): a named plotly colorscale, e.g. "hsv".
+                See https://plotly.com/python/builtin-colorscales/
+            -   `list` (optional): a list of dicts of colorscale values
+                -   `value`: a float number between 0 and 1. A valid list must
+                have have colors defined for 0 and 1.
+                -   `color`: a rgb color string.
+        colorscales (None): an optional list of per-field custom colorscale
             -   `path` (required): the fully-qualified path to the field you're
                 customizing. use "dataset" if you are setting the default
                 colorscale for dataset
             -   `name` (optional): a named colorscale plotly recognizes
-            -   `list` (optional): a list of dicts of manually defined
-                colorscale
-                -   `value`: a float number between 0 and 1
-                -   `color`: a rgb color string
+            -   `list` (optional): a list of dicts of colorscale values
+                -   `value`: a float number between 0 and 1. A valid list must
+                have have colors defined for 0 and 1.
+                -   `color`: a rgb color string.
         label_tags (None): an optional dict specifying custom colors for label
             tags with the following keys:
             -   `fieldColor` (optional): a color to assign to all label tags
-            -   `valueColors` (optional): a list of dicts specifying colors to
-                specific label tags
+            -   `valueColors` (optional): a list of dicts
     """
 
     # strict=False lets this class ignore unknown fields from other versions
