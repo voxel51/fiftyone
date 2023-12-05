@@ -617,10 +617,12 @@ class ExecutionContext(object):
         Example::
 
             def execute(self, ctx):
-                # Trigger the `reload_dataset` operator after this operator finishes executing
+                # Trigger the `reload_dataset` operator after this operator
+                # finishes executing
                 ctx.trigger("reload_dataset")
 
-                # Immediately trigger the `reload_dataset` operator while a generator operator is executing
+                # Immediately trigger the `reload_dataset` operator while a
+                # generator operator is executing
                 yield ctx.trigger("reload_dataset")
 
         Args:
@@ -628,7 +630,8 @@ class ExecutionContext(object):
             params (None): a dictionary of parameters for the operator
 
         Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage` See :func:`fiftyone.operators.executor.Executor.trigger`
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to invoke the operator
         """
         if self.executor is None:
             raise ValueError("No executor available")
@@ -640,14 +643,15 @@ class ExecutionContext(object):
 
         .. note::
 
-            This method is only available to non-delegated operators. You can only
-            use this method during the execution of an operator.
+            This method is only available to non-delegated operators. You can
+            only use this method during the execution of an operator.
 
         Args:
             message: a message to log
 
         Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage` See :func:`fiftyone.operators.executor.Executor.trigger`
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to invoke the operator
         """
         return self.trigger("console_log", {"message": message})
 
