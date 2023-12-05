@@ -75,6 +75,7 @@ INSTALL_REQUIRES = [
     "wcmatch",
     # internal packages
     "fiftyone-brain~=0.13.2",
+    # fiftyone-db>=1.0 is not used for Teams SDK
     "fiftyone-db~=0.4",
     "voxel51-eta~=0.12",
 ]
