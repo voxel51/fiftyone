@@ -1,4 +1,4 @@
-import { Locator, Page } from "src/oss/fixtures";
+import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { DisplayOptionsPom } from "./display-options";
 import { DynamicGroupPom } from "./dynamic-group";
@@ -6,6 +6,7 @@ import { DynamicGroupPom } from "./dynamic-group";
 export class GridActionsRowPom {
   readonly page: Page;
   readonly gridActionsRow: Locator;
+  readonly assert: GridActionsRowAsserter;
 
   readonly displayActions: DisplayOptionsPom;
   readonly dynamicGroup: DynamicGroupPom;
@@ -13,6 +14,7 @@ export class GridActionsRowPom {
   constructor(page: Page, eventUtils: EventUtils) {
     this.page = page;
     this.gridActionsRow = page.getByTestId("fo-grid-actions");
+    this.assert = new GridActionsRowAsserter(this);
 
     this.displayActions = new DisplayOptionsPom(page);
     this.dynamicGroup = new DynamicGroupPom(page, eventUtils);
@@ -21,6 +23,16 @@ export class GridActionsRowPom {
   private async openAction(actionTestId: string) {
     const selector = this.page.getByTestId(actionTestId);
     return selector.click();
+  }
+
+  get filtersBookmark() {
+    return this.gridActionsRow.getByTestId(
+      "action-convert-filters-to-view-stages"
+    );
+  }
+
+  async bookmarkFilters() {
+    await this.filtersBookmark.click();
   }
 
   async toggleDisplayOptions() {
@@ -69,5 +81,13 @@ export class GridActionsRowPom {
 
   toPatchesByLabelField(fieldName: string) {
     return this.page.getByTestId(`item-action-${fieldName}`);
+  }
+}
+
+class GridActionsRowAsserter {
+  constructor(private readonly gridPom: GridActionsRowPom) {}
+
+  async hasFiltersBookmark() {
+    await expect(this.gridPom.filtersBookmark).toBeVisible();
   }
 }

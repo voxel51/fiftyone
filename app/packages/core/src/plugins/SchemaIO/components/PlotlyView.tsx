@@ -7,24 +7,22 @@ import { getComponentProps } from "../utils";
 
 export default function PlotlyView(props) {
   const { data, schema } = props;
-  const { default: defaultData, view = {} } = schema;
-  const { config = {}, layout = {}, onSelectionChange } = view;
+  const { view = {} } = schema;
+  const { config = {}, layout = {} } = view;
   const theme = useTheme();
 
-  // todo: ...
-  function handleSelectionChange(selection) {
-    // invoke operator in onSelectionChange
-    // onSelectionChange.execute(selection)
+  function handleSelectionChange() {
+    // invoke operator name in view.onSelectionChange
   }
 
   return (
     <Box {...getComponentProps(props, "container")}>
       <HeaderView {...props} nested />
       <Plot
-        data={data || defaultData}
+        data={data}
         style={{ zIndex: 1 }}
         onSelected={handleSelectionChange}
-        onDeselect={() => handleSelectionChange(null)}
+        onDeselect={() => handleSelectionChange()}
         config={{
           scrollZoom: true,
           displaylogo: false,

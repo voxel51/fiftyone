@@ -1,4 +1,4 @@
-import * as foo from "@fiftyone/operators";
+import { useOperators } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
 import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
@@ -7,7 +7,7 @@ import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
 import { wrapCustomComponent } from "./components";
 import "./externalize";
-import { availableOperatorsRefreshCount } from "@fiftyone/operators/src/state";
+import { pluginsLoaderAtom } from "./state";
 
 declare global {
   interface Window {
@@ -102,7 +102,7 @@ export async function loadPlugins() {
       const name = plugin.name;
       const scriptPath = plugin.jsBundleServerPath;
       if (usingRegistry().hasScript(name)) {
-        console.log(`Plugin "${name}": already loaded`);
+        console.debug(`Plugin "${name}": already loaded`);
         continue;
       }
       try {
@@ -115,12 +115,12 @@ export async function loadPlugins() {
   }
 }
 async function loadScript(name, url) {
-  console.log(`Plugin "${name}": loading script...`);
+  console.debug(`Plugin "${name}": loading script...`);
   return new Promise<void>((resolve, reject) => {
     const onDone = (e) => {
       script.removeEventListener("load", onDone);
       script.removeEventListener("error", onDone);
-      console.log(`Plugin "${name}": loaded!`);
+      console.debug(`Plugin "${name}": loaded!`);
       if (e?.type === "load") {
         resolve();
       } else {
@@ -142,11 +142,9 @@ async function loadScript(name, url) {
  * A react hook for loading the plugin system.
  */
 export function usePlugins() {
-  const [state, setState] = useState("loading");
   const datasetName = recoil.useRecoilValue(fos.datasetName);
-  const setAvailableOperatorsRefreshCount = recoil.useSetRecoilState(
-    availableOperatorsRefreshCount
-  );
+  const [state, setState] = recoil.useRecoilState(pluginsLoaderAtom);
+  const operatorsReady = useOperators(datasetName === null);
 
   useEffect(() => {
     loadPlugins()
@@ -156,21 +154,12 @@ export function usePlugins() {
       .then(() => {
         setState("ready");
       });
-  }, []);
-
-  useEffect(() => {
-    if (fou.isPrimitiveString(datasetName)) {
-      foo.loadOperators(datasetName).then(() => {
-        // trigger force refresh
-        setAvailableOperatorsRefreshCount((count) => count + 1);
-      });
-    }
-  }, [datasetName]);
+  }, [setState]);
 
   return {
-    isLoading: state === "loading",
+    isLoading: state === "loading" || !operatorsReady,
     hasError: state === "error",
-    ready: state === "ready",
+    ready: state === "ready" && operatorsReady,
   };
 }
 
@@ -376,3 +365,5 @@ export function usePluginSettings<T>(
 
   return settings as T;
 }
+
+export * from "./state";

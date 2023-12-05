@@ -1,7 +1,17 @@
+import {
+  datasetFragment,
+  datasetFragment$key,
+  graphQLSyncFragmentAtom,
+} from "@fiftyone/relay";
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
-import { atom, selectorFamily } from "recoil";
-import { expandPath, fields } from "./schema";
+import { DefaultValue, atom, selector, selectorFamily } from "recoil";
+import { lightning, lightningPaths, lightningUnlocked } from "./lightning";
+import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
+import {
+  granularSidebarExpandedStore,
+  sidebarExpandedStore,
+} from "./sidebarExpanded";
 import { State } from "./types";
 
 export const modalFilters = atom<State.Filters>({
@@ -9,13 +19,47 @@ export const modalFilters = atom<State.Filters>({
   default: {},
 });
 
-export const filters = atom<State.Filters>({
-  key: "filters",
-  default: {},
+export const filters = (() => {
+  let current: State.Filters = {};
+  return graphQLSyncFragmentAtom<datasetFragment$key, State.Filters>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      default: {},
+      read: (data, previous) => {
+        if (data.id !== previous?.id) {
+          current = {};
+        }
+        return current;
+      },
+    },
+    {
+      key: "filters",
+    }
+  );
+})();
+
+export const lightningFilters = selector({
+  key: "lightningFilters",
+  get: ({ get }) => {
+    if (!get(lightning)) {
+      return {};
+    }
+
+    const f = { ...get(filters) };
+    const paths = get(lightningPaths(""));
+    for (const p in f) {
+      if (!paths.has(get(dbPath(p)))) {
+        delete f[p];
+      }
+    }
+
+    return f;
+  },
 });
 
 export const filter = selectorFamily<
-  State.Filters,
+  State.Filter,
   { path: string; modal: boolean }
 >({
   key: "filter",
@@ -32,19 +76,41 @@ export const filter = selectorFamily<
     },
   set:
     ({ path, modal }) =>
-    ({ get, set }, filter) => {
+    ({ get, reset, set }, filter) => {
       const atom = modal ? modalFilters : filters;
       const newFilters = Object.assign({}, get(atom));
-      if (filter === null) {
+
+      if (!modal && get(lightningUnlocked)) {
+        const paths = get(lightningPaths(""));
+
+        if (paths.has(path)) {
+          for (const p in newFilters) {
+            if (!paths.has(p)) {
+              delete newFilters[p];
+            }
+          }
+          reset(granularSidebarExpandedStore);
+          set(sidebarExpandedStore(false), (current) => {
+            const next = { ...current };
+
+            for (const parent in next) {
+              if (![...paths].some((p) => p.startsWith(parent))) {
+                delete next[parent];
+              }
+            }
+
+            return next;
+          });
+        }
+      }
+
+      if (filter === null || filter instanceof DefaultValue) {
         delete newFilters[path];
       } else {
         newFilters[path] = filter;
       }
       set(atom, newFilters);
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const hasFilters = selectorFamily<boolean, boolean>({
@@ -57,9 +123,6 @@ export const hasFilters = selectorFamily<boolean, boolean>({
 
       return f || hidden;
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });
 
 export const fieldIsFiltered = selectorFamily<
@@ -85,7 +148,4 @@ export const fieldIsFiltered = selectorFamily<
         paths.some(({ name }) => f[`${expandedPath}.${name}`])
       );
     },
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
 });

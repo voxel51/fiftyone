@@ -32,9 +32,11 @@ import fiftyone.core.view as fov
 
 import fiftyone.server.aggregate as fosa
 from fiftyone.server.aggregations import aggregate_resolver
+from fiftyone.server.color import ColorBy, ColorScheme
 from fiftyone.server.data import Info
 from fiftyone.server.dataloader import get_dataloader_resolver
-import fiftyone.server.events as fose
+from fiftyone.server.indexes import Index, from_dict as indexes_from_dict
+from fiftyone.server.lightning import lightning_resolver
 from fiftyone.server.metadata import MediaType
 from fiftyone.server.paginator import Connection, get_paginator_resolver
 from fiftyone.server.samples import (
@@ -43,6 +45,7 @@ from fiftyone.server.samples import (
     paginate_samples,
 )
 from fiftyone.server.scalars import BSON, BSONArray, JSON
+from fiftyone.server.stage_definitions import stage_definitions
 from fiftyone.server.utils import from_dict
 
 
@@ -193,26 +196,6 @@ class SidebarGroup:
 
 
 @gql.type
-class LabelSetting:
-    value: str
-    color: str
-
-
-@gql.type
-class CustomizeColor:
-    path: str
-    field_color: t.Optional[str]
-    color_by_attribute: t.Optional[str]
-    value_colors: t.Optional[t.List[LabelSetting]]
-
-
-@gql.type
-class ColorScheme:
-    color_pool: t.Optional[t.List[str]] = None
-    fields: t.Optional[t.List[CustomizeColor]] = None
-
-
-@gql.type
 class KeypointSkeleton:
     labels: t.Optional[t.List[str]]
     edges: t.List[t.List[int]]
@@ -232,26 +215,27 @@ class SidebarMode(Enum):
 
 @gql.type
 class DatasetAppConfig:
+    color_scheme: t.Optional[ColorScheme]
     media_fields: t.Optional[t.List[str]]
     plugins: t.Optional[JSON]
     sidebar_groups: t.Optional[t.List[SidebarGroup]]
     sidebar_mode: t.Optional[SidebarMode]
-    modal_media_field: t.Optional[str] = gql.field(default="filepath")
-    grid_media_field: t.Optional[str] = "filepath"
     spaces: t.Optional[JSON]
-    color_scheme: t.Optional[ColorScheme]
+
+    grid_media_field: str = "filepath"
+    modal_media_field: str = "filepath"
 
 
 @gql.type
 class Dataset:
     id: gql.ID
+    dataset_id: gql.ID
     name: str
     created_at: t.Optional[date]
     last_loaded_at: t.Optional[datetime]
     persistent: bool
     group_media_types: t.Optional[t.List[Group]]
     group_field: t.Optional[str]
-    group_slice: t.Optional[str]
     default_group_slice: t.Optional[str]
     media_type: t.Optional[MediaType]
     parent_media_type: t.Optional[MediaType]
@@ -271,20 +255,44 @@ class Dataset:
     app_config: t.Optional[DatasetAppConfig]
     info: t.Optional[JSON]
 
+    estimated_frame_count: t.Optional[int]
+    estimated_sample_count: t.Optional[int]
+    frame_indexes: t.Optional[t.List[Index]]
+    sample_indexes: t.Optional[t.List[Index]]
+
+    frame_collection_name: gql.Private[t.Optional[str]]
+    sample_collection_name: gql.Private[t.Optional[str]]
+
     @gql.field
-    def stages(self, slug: t.Optional[str] = None) -> t.Optional[BSONArray]:
-        if not slug:
-            return None
+    def stages(
+        self, slug: t.Optional[str] = None, view: t.Optional[BSONArray] = None
+    ) -> t.Optional[BSONArray]:
+        if slug:
+            for view in self.saved_views:
+                if view.slug == slug:
+                    return view.stage_dicts()
 
-        for view in self.saved_views:
-            if view.slug == slug:
-                return view.stage_dicts()
+        return view or []
 
-        return None
+    @gql.field
+    async def estimated_sample_count(self, info: Info = None) -> int:
+        return await info.context.db[
+            self.sample_collection_name
+        ].estimated_document_count()
+
+    @gql.field
+    async def estimated_frame_count(
+        self, info: Info = None
+    ) -> t.Optional[int]:
+        if self.frame_collection_name:
+            return await info.context.db[
+                self.frame_collection_name
+            ].estimated_document_count()
 
     @staticmethod
     def modifier(doc: dict) -> dict:
         doc["id"] = doc.pop("_id")
+        doc["dataset_id"] = doc["id"]
         doc["default_mask_targets"] = _convert_targets(
             doc.get("default_mask_targets", {})
         )
@@ -308,15 +316,16 @@ class Dataset:
             for name, media_type in doc.get("group_media_types", {}).items()
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
+
         return doc
 
     @classmethod
     async def resolver(
         cls,
         name: str,
-        view: t.Optional[BSONArray],
-        info: Info,
+        info: Info = None,
         saved_view_slug: t.Optional[str] = gql.UNSET,
+        view: t.Optional[BSONArray] = None,
     ) -> t.Optional["Dataset"]:
         return await serialize_dataset(
             dataset_name=name,
@@ -332,13 +341,6 @@ dataset_dataloader = get_dataloader_resolver(
 
 
 @gql.enum
-class ColorBy(Enum):
-    field = "field"
-    instance = "instance"
-    value = "value"
-
-
-@gql.enum
 class Theme(Enum):
     browser = "browser"
     dark = "dark"
@@ -351,7 +353,9 @@ class AppConfig:
     color_pool: t.List[str]
     colorscale: str
     grid_zoom: int
+    lightning_threshold: t.Optional[int]
     loop_videos: bool
+    multicolor_keypoints: bool
     notebook_height: int
     plugins: t.Optional[JSON]
     show_confidence: bool
@@ -375,6 +379,7 @@ class SchemaResult:
 @gql.type
 class Query(fosa.AggregateQuery):
     aggregations = gql.field(resolver=aggregate_resolver)
+    lightning = gql.field(resolver=lightning_resolver)
 
     @gql.field
     def colorscale(self) -> t.Optional[t.List[t.List[int]]]:
@@ -385,8 +390,7 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def config(self) -> AppConfig:
-        config = fose.get_state().config
-        d = config.serialize()
+        d = fo.app_config.serialize()
         d["timezone"] = fo.config.timezone
         return from_dict(AppConfig, d)
 
@@ -453,6 +457,8 @@ class Query(fosa.AggregateQuery):
 
         return None
 
+    stage_definitions = gql.field(stage_definitions)
+
     @gql.field
     def teams_submission(self) -> bool:
         isfile = os.path.isfile(foc.TEAMS_PATH)
@@ -473,11 +479,14 @@ class Query(fosa.AggregateQuery):
 
     @gql.field
     def saved_views(self, dataset_name: str) -> t.Optional[t.List[SavedView]]:
-        ds = fod.load_dataset(dataset_name)
-        return [
-            SavedView.from_doc(view_doc)
-            for view_doc in ds._doc.get_saved_views()
-        ]
+        try:
+            ds = fod.load_dataset(dataset_name)
+            return [
+                SavedView.from_doc(view_doc)
+                for view_doc in ds._doc.saved_views
+            ]
+        except:
+            return None
 
     @gql.field
     def schema_for_view_stages(
@@ -523,7 +532,6 @@ class Query(fosa.AggregateQuery):
                 frame_field_schema=[],
             )
         except Exception as e:
-            print("failed to get schema for view stages", str(e))
             return SchemaResult(
                 field_schema=[],
                 frame_field_schema=[],
@@ -564,6 +572,9 @@ async def serialize_dataset(
     dicts=True,
 ) -> Dataset:
     def run():
+        if not fod.dataset_exists(dataset_name):
+            return None
+
         dataset = fod.load_dataset(dataset_name)
         dataset.reload()
         view_name = None
@@ -586,14 +597,18 @@ async def serialize_dataset(
 
         collection = dataset.view()
         if view is not None:
+            # unique id for for the relay global store
+            #
+            # until a schema is with respect to a view and not a dataset this
+            # is required
+            data.id = ObjectId()
             if view._dataset != dataset:
                 d = view._dataset._serialize()
                 data.media_type = d["media_type"]
                 data.view_cls = etau.get_class_name(view)
 
-            if view.media_type != data.media_type:
-                data.parent_media_type = view._parent_media_type
-                data.media_type = view.media_type
+            data.parent_media_type = view._parent_media_type
+            data.media_type = view.media_type
 
             collection = view
 
@@ -604,9 +619,6 @@ async def serialize_dataset(
         data.frame_fields = serialize_fields(
             collection.get_frame_field_schema(flat=True)
         )
-
-        if dataset.media_type == fom.GROUP:
-            data.group_slice = collection.group_slice
 
         if dicts:
             saved_views = []
@@ -644,6 +656,30 @@ async def serialize_dataset(
                 supports_least_similarity,
             )
 
+        _assign_estimated_counts(data, dataset)
+        _assign_lightning_info(data, dataset)
+
         return data
 
     return await run_sync_task(run)
+
+
+def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
+    setattr(
+        dataset,
+        "estimated_sample_count",
+        fo_dataset._sample_collection.estimated_document_count(),
+    )
+    setattr(
+        dataset,
+        "estimated_frame_count",
+        fo_dataset._frame_collection.estimated_document_count()
+        if fo_dataset._frame_collection_name
+        else None,
+    )
+
+
+def _assign_lightning_info(dataset: Dataset, fo_dataset: fo.Dataset):
+    dataset.sample_indexes, dataset.frame_indexes = indexes_from_dict(
+        fo_dataset.get_index_information()
+    )

@@ -24,7 +24,7 @@ export default <T extends fos.Lookers>(store: fos.LookerStore<T>) => {
         }
 
         set(
-          fos.groupSlice(true),
+          fos.modalGroupSlice,
           getPath(sample.sample, groupField).name as string
         );
       },

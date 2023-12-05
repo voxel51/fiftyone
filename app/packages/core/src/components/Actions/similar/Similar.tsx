@@ -1,3 +1,6 @@
+import { useExternalLink } from "@fiftyone/components";
+import * as fos from "@fiftyone/state";
+import { useBrowserStorage } from "@fiftyone/state";
 import React, {
   MutableRefObject,
   useCallback,
@@ -7,18 +10,14 @@ import React, {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue } from "recoil";
-
-import { useExternalLink } from "@fiftyone/components";
-import * as fos from "@fiftyone/state";
-import { useBrowserStorage } from "@fiftyone/state";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import Input from "../../Common/Input";
 import RadioGroup from "../../Common/RadioGroup";
 import { Button } from "../../utils";
 import Popout from "../Popout";
 import GroupButton, { ButtonDetail } from "./GroupButton";
-import MaxKWarning from "./MaxKWarning";
 import Helper from "./Helper";
+import MaxKWarning from "./MaxKWarning";
 import {
   availableSimilarityKeys,
   currentBrainConfig,
@@ -50,7 +49,7 @@ const SortBySimilarity = ({
   anchorRef,
 }: SortBySimilarityProps) => {
   const current = useRecoilValue(fos.similarityParameters);
-  const datasetId = useRecoilValue(fos.dataset).id;
+  const datasetId = fos.useAssertedRecoilValue(fos.datasetId);
   const [lastUsedBrainKeys] = useBrowserStorage("lastUsedBrainKeys");
 
   const lastUsedBrainkey = useMemo(() => {
@@ -64,7 +63,7 @@ const SortBySimilarity = ({
     () =>
       current || {
         brainKey: lastUsedBrainkey,
-        distField: null,
+        distField: undefined,
         reverse: false,
         k: DEFAULT_K,
       }

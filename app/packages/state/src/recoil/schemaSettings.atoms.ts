@@ -4,8 +4,15 @@ import {
   EMBEDDED_DOCUMENT_FIELD,
   LIST_FIELD,
 } from "@fiftyone/utilities";
-import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { disabledField, skipField } from "../hooks/useSchemaSettings.utils";
+import { sessionAtom } from "../session";
 
 export const TAB_OPTIONS_MAP = {
   SELECTION: "Selection",
@@ -66,31 +73,9 @@ export const includeNestedFieldsState = atom({
   default: true,
 });
 
-export const affectedPathCountState = atom({
-  key: "affectedPathCountState",
-  default: 0,
-});
-
 export const searchMetaFilterState = atom({
   key: "searchMetaFilterState",
   default: {},
-});
-
-export const lastAppliedPathsState = atom({
-  key: "lastAppliedExcludedPathsState",
-  default: {
-    excluded: [],
-    selected: [],
-  },
-});
-
-// tracks action and value - currently used for (un)select all action
-export const lastActionToggleSelectionState = atom<Record<
-  string,
-  boolean
-> | null>({
-  key: "lastActionToggleSelectionState",
-  default: null,
 });
 
 const getRawPath = (path: string) =>
@@ -130,50 +115,33 @@ export const schemaSearchResults = atom<string[]>({
   default: [],
 });
 
-export const selectedPathsState = atomFamily({
-  key: "selectedPathsState",
-  default: (param: {}) => param,
-  effects: [
-    ({ onSet, getPromise, setSelf }) => {
-      onSet(async (newPathsMap) => {
-        const dataset = await getPromise(fos.dataset);
-        const viewSchema = await getPromise(viewSchemaState);
-        const fieldSchema = await getPromise(fieldSchemaState);
-        const combinedSchema = { ...fieldSchema, ...viewSchema };
-        const isImage = dataset.mediaType === "image";
-        const isVideo = dataset.mediaType === "video";
-
-        const mapping = {};
-        Object.keys(combinedSchema).forEach((path) => {
-          if (isImage) {
-            mapping[path] = path;
-          }
-          if (isVideo && viewSchema) {
-            Object.keys(viewSchema).forEach((path) => {
-              mapping[path] = `frames.${path}`;
-            });
-          }
-        });
-
-        const newPaths = newPathsMap?.[dataset?.name] || [];
-        const greenPaths = [...newPaths]
-          .filter((path) => {
-            const skip = skipField(path, combinedSchema);
-            return !!path && !skip;
-          })
-          .map((path) => mapping?.[path] || path);
-
-        setSelf({
-          [dataset?.name]: new Set(greenPaths),
-        });
-      });
-    },
-  ],
-});
+const isTopLevelField = (isVideo: boolean, path: string) => {
+  return isVideo
+    ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
+        !path.includes(".")
+    : !path.includes(".");
+};
 
 export const excludedPathsState = atomFamily({
   key: "excludedPathsState",
-  default: (param: {}) => param,
+  default: selectorFamily({
+    key: "excludedPathsStateDefault",
+    get:
+      () =>
+      ({ get }) => {
+        const dataset = get(fos.dataset);
+        const fvStage = get(fieldVisibilityStage);
+
+        if (dataset) {
+          return {
+            [dataset?.name]: fvStage
+              ? new Set(fvStage.kwargs?.field_names)
+              : new Set(),
+          };
+        }
+        return null;
+      },
+  }),
   effects: [
     ({ onSet, getPromise, setSelf }) => {
       onSet(async (newPathsMap) => {
@@ -185,9 +153,13 @@ export const excludedPathsState = atomFamily({
         const isFrameView = await getPromise(fos.isFramesView);
         const isClipsView = await getPromise(fos.isClipsView);
         const isPatchesView = await getPromise(fos.isPatchesView);
-        const isVideo = dataset.mediaType === "video";
-        const isImage = dataset.mediaType === "image";
+        const mediaType = await getPromise(fos.mediaType);
+        const isImage = mediaType === "image";
+        const isVideo = mediaType === "video";
         const isInSearchMode = !!searchResults?.length;
+        const includeNestedFields = await getPromise(
+          fos.includeNestedFieldsState
+        );
 
         if (!dataset) {
           return;
@@ -206,7 +178,7 @@ export const excludedPathsState = atomFamily({
           }
         });
 
-        const newPaths = newPathsMap?.[dataset?.name] || [];
+        const newPaths = newPathsMap?.[dataset.name] || [];
         const greenPaths = [...newPaths]
           .filter((path) => {
             const rawPath = path.replace("frames.", "");
@@ -231,14 +203,11 @@ export const excludedPathsState = atomFamily({
         let finalGreenPaths = greenPaths;
         if (!showNestedField && !isInSearchMode) {
           finalGreenPaths = greenPaths.filter((path) =>
-            isVideo
-              ? (path.split(".").length === 2 && path.startsWith("frames.")) ||
-                !path.includes(".")
-              : !path.includes(".")
+            isTopLevelField(isVideo, path)
           );
         }
 
-        const shouldFilterTopLevelFields = showNestedField || isInSearchMode;
+        const shouldFilterTopLevelFields = !showNestedField || isInSearchMode;
         finalGreenPaths = shouldFilterTopLevelFields
           ? finalGreenPaths.filter((path) => {
               const isEmbeddedOrListType = [
@@ -251,34 +220,14 @@ export const excludedPathsState = atomFamily({
                 DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
               ].includes(combinedSchema[path]?.embeddedDocType);
 
-              const isTopLevelPath = isVideo
-                ? !(
-                    path.split(".").length === 2 && path.startsWith("frames.")
-                  ) || !path.includes(".")
-                : !path.includes(".");
-
-              return !(
-                isEmbeddedOrListType &&
-                hasDynamicEmbeddedDocument &&
-                isTopLevelPath
-              );
+              return !(isEmbeddedOrListType && hasDynamicEmbeddedDocument);
             })
           : finalGreenPaths;
 
-        // filter out subpaths if a parent (or higher) path is also in the list
-        const finalGreenPathsSet = new Set(finalGreenPaths);
-        if (showNestedField) {
-          finalGreenPaths = finalGreenPaths.filter((path) => {
-            let tmp = path;
-            while (tmp.indexOf(".") > 0) {
-              const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
-              if (finalGreenPathsSet.has(parentPath) || path === parentPath) {
-                return false;
-              }
-              tmp = parentPath;
-            }
-            return true;
-          });
+        if (isInSearchMode && !includeNestedFields) {
+          finalGreenPaths = finalGreenPaths.filter((path: string) =>
+            isTopLevelField(isVideo, path)
+          );
         }
 
         setSelf({
@@ -289,33 +238,47 @@ export const excludedPathsState = atomFamily({
   ],
 });
 
-export const selectedFieldsStageState = atom<any>({
-  key: "selectedFieldsStageState",
-  default: undefined,
-  effects: [
-    ({ onSet }) => {
-      onSet((value) => {
-        const context = fos.getContext();
-        if (context.loaded) {
-          context.history.replace(
-            `${context.history.location.pathname}${context.history.location.search}`,
-            {
-              ...context.history.location.state,
-              selectedFieldsStage: value || null,
-            }
-          );
+export const excludedPathsStrippedState = selector({
+  key: "excludedPathsStrippedState",
+  get: ({ get }) => {
+    const datasetName = get(fos.datasetName);
+    const showNestedFields = get(fos.showNestedFieldsState);
+    const fields = get(excludedPathsState({}));
+    if (!datasetName || !fields[datasetName]) {
+      return [];
+    }
+
+    let finalGreenPaths = [...fields[datasetName]];
+
+    if (showNestedFields) {
+      finalGreenPaths = finalGreenPaths.filter((path) => {
+        let tmp = path;
+        while (tmp.indexOf(".") > 0) {
+          const parentPath = tmp.substring(0, tmp.lastIndexOf("."));
+          if (fields[datasetName].has(parentPath) || path === parentPath) {
+            return false;
+          }
+          tmp = parentPath;
         }
+        return true;
       });
-    },
-  ],
+    }
+
+    return finalGreenPaths;
+  },
+});
+
+export const fieldVisibilityStage = sessionAtom({
+  key: "fieldVisibilityStage",
+  default: null,
 });
 
 export const isFieldVisibilityActive = selector({
   key: "isClearFieldVisibilityVisible",
   get: ({ get }) => {
-    const isSelectedFieldsStageActive = get(fos.selectedFieldsStageState);
-    const affectedCount = get(fos.affectedPathCountState);
+    const affectedCount =
+      get(fieldVisibilityStage)?.kwargs?.field_names?.length || 0;
 
-    return isSelectedFieldsStageActive && affectedCount > 0;
+    return affectedCount > 0;
   },
 });

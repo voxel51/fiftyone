@@ -11,11 +11,10 @@ science.
 
 .. note::
 
-    The FiftyOne Brain is a separate Python package that is bundled with
-    FiftyOne. Although it is closed-source, it is licensed as freeware, and you
-    have permission to use it for commercial or non-commercial purposes. See
-    `the license <https://github.com/voxel51/fiftyone/blob/develop/package/brain/LICENSE>`_
-    for more details.
+    Did you know? You can execute Brain methods from the FiftyOne App by
+    installing the
+    `@voxel51/brain <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/brain>`_
+    plugin!
 
 The FiftyOne Brain methods are useful across the stages of the machine learning
 workflow:
@@ -328,7 +327,9 @@ another supported backend:
 -   **sklearn** (*default*): a `scikit-learn <https://scikit-learn.org>`_
     backend
 -   **qdrant**: a :ref:`Qdrant backend <qdrant-integration>`
+-   **redis**: a :ref:`Redis backend <redis-integration>`
 -   **pinecone**: a :ref:`Pinecone backend <pinecone-integration>`
+-   **mongodb**: a :ref:`MongoDB backend <mongodb-integration>`
 -   **milvus**: a :ref:`Milvus backend <milvus-integration>`
 -   **lancedb**: a :ref:`LanceDB backend <lancedb-integration>`
 
@@ -715,7 +716,9 @@ The relevant classes for the builtin similarity backends are:
 
 -   **sklearn**: :class:`fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig`
 -   **qdrant**: :class:`fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig`
+-   **redis**: :class:`fiftyone.brain.internal.core.redis.RedisSimilarityConfig`
 -   **pinecone**: :class:`fiftyone.brain.internal.core.pinecone.PineconeSimilarityConfig`
+-   **mongodb**: :class:`fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig`
 -   **milvus**: :class:`fiftyone.brain.internal.core.milvus.MilvusSimilarityConfig`
 -   **lancedb**: :class:`fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig`
 
@@ -984,13 +987,8 @@ to add new embeddings or overwrite existing embeddings in an index at any time:
     When using the default ``sklearn`` backend, you must manually call
     :meth:`save() <fiftyone.brain.similarity.SimilarityIndex.save>` after
     adding or removing embeddings from an index in order to save the index to
-    the database.
-
-    This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>`,
-    :ref:`Pinecone <pinecone-integration>`,
-    :ref:`Milvus <milvus-integration>`, and
-    :ref:`LanceDB <lancedb-integration>`
+    the database. This is not required when using external vector databases
+    like :ref:`Qdrant <qdrant-integration>`.
 
 .. note::
 
@@ -1097,17 +1095,13 @@ to delete embeddings from an index by their ID:
     the database.
 
     This is not required when using external vector databases like
-    like :ref:`Qdrant <qdrant-integration>`,
-    :ref:`Pinecone <pinecone-integration>`,
-    :ref:`Milvus <milvus-integration>`, and
-    :ref:`LanceDB <lancedb-integration>`
+    :ref:`Qdrant <qdrant-integration>`.
 
 Deleting an index
 ~~~~~~~~~~~~~~~~~
 
-When working with backends like :ref:`Qdrant <qdrant-integration>`,
-:ref:`Pinecone <pinecone-integration>`, and :ref:`Milvus <milvus-integration>`
-that leverage external vector databases, you can call
+When working with backends like :ref:`Qdrant <qdrant-integration>` that
+leverage external vector databases, you can call
 :meth:`cleanup() <fiftyone.brain.similarity.SimilarityIndex.cleanup>` to delete
 the external index/collection:
 
@@ -1731,8 +1725,14 @@ and the CLI:
                 "qdrant": {
                     "config_cls": "fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig"
                 },
+                "redis": {
+                    "config_cls": "fiftyone.brain.internal.core.redis.RedisSimilarityConfig"
+                },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
                 },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
@@ -1761,8 +1761,14 @@ and the CLI:
                 "qdrant": {
                     "config_cls": "fiftyone.brain.internal.core.qdrant.QdrantSimilarityConfig"
                 },
+                "redis": {
+                    "config_cls": "fiftyone.brain.internal.core.redis.RedisSimilarityConfig"
+                },
                 "sklearn": {
                     "config_cls": "fiftyone.brain.internal.core.sklearn.SklearnSimilarityConfig"
+                },
+                "mongodb": {
+                    "config_cls": "fiftyone.brain.internal.core.mongodb.MongoDBSimilarityConfig"
                 },
                 "lancedb": {
                     "config_cls": "fiftyone.brain.internal.core.lancedb.LanceDBSimilarityConfig"
@@ -1830,25 +1836,41 @@ Brain config settings may be customized on a per-session basis by setting the
 `FIFTYONE_BRAIN_XXX` environment variable(s) for the desired config settings.
 
 The `FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND` environment variable allows you
-to configure your default similarity backend, and
-`FIFTYONE_BRAIN_SIMILARITY_BACKENDS` can be set to a `list,of,backends` that
-you want to expose in your session, which may exclude native backends and/or
-declare additional custom backends whose parameters are defined via additional
-config modifications of any kind.
+to configure your default similarity backend:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_DEFAULT_SIMILARITY_BACKEND=qdrant
 
 You can declare parameters for specific similarity backends by setting
 environment variables of the form
 `FIFTYONE_BRAIN_SIMILARITY_<BACKEND>_<PARAMETER>`. Any settings that you
 declare in this way will be passed as keyword arguments to methods like
 :meth:`compute_similarity() <fiftyone.brain.compute_similarity>` whenever the
-corresponding backend is in use.
-
-For example, you can configure the URL of your
+corresponding backend is in use. For example, you can configure the URL of your
 :ref:`Qdrant server <qdrant-integration>` as follows:
 
 .. code-block:: shell
 
     export FIFTYONE_BRAIN_SIMILARITY_QDRANT_URL=http://localhost:8080
+
+The `FIFTYONE_BRAIN_SIMILARITY_BACKENDS` environment variable can be set to a
+`list,of,backends` that you want to expose in your session, which may exclude
+native backends and/or declare additional custom backends whose parameters are
+defined via additional config modifications of any kind:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=custom,sklearn,qdrant
+
+When declaring new backends, you can include `*` to append new backend(s)
+without omitting or explicitly enumerating the builtin backends. For example,
+you can add a `custom` similarity backend as follows:
+
+.. code-block:: shell
+
+    export FIFTYONE_BRAIN_SIMILARITY_BACKENDS=*,custom
+    export FIFTYONE_BRAIN_SIMILARITY_CUSTOM_CONFIG_CLS=your.custom.SimilarityConfig
 
 Modifying your config in code
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -1650,18 +1650,26 @@ def is_32_bit():
     return struct.calcsize("P") * 8 == 32
 
 
-def is_docker():
-    """Determines if we're currently running in a Docker container.
+def is_container():
+    """Determines if we're currently running as a container.
 
     Returns:
         True/False
     """
+    return _is_docker() or _is_podman()
+
+
+def _is_docker():
     path = "/proc/self/cgroup"
     return (
         os.path.exists("/.dockerenv")
         or os.path.isfile(path)
         and any("docker" in line for line in open(path))
     )
+
+
+def _is_podman():
+    return os.path.exists("/run/.containerenv")
 
 
 def get_multiprocessing_context():

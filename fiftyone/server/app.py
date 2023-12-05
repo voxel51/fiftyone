@@ -5,9 +5,9 @@ FiftyOne Server app.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from datetime import date, datetime
 import os
 import pathlib
+import stat
 
 import eta.core.utils as etau
 from starlette.applications import Starlette
@@ -19,7 +19,7 @@ from starlette.middleware.base import (
 )
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
-from starlette.responses import FileResponse, Response
+from starlette.responses import FileResponse, RedirectResponse, Response
 from starlette.routing import Mount, Route
 from starlette.staticfiles import NotModifiedResponse, PathLike, StaticFiles
 from starlette.types import Scope
@@ -27,12 +27,12 @@ import strawberry as gql
 
 import fiftyone as fo
 import fiftyone.constants as foc
+from fiftyone.server.constants import SCALAR_OVERRIDES
 from fiftyone.server.context import GraphQL
 from fiftyone.server.extensions import EndSession
 from fiftyone.server.mutation import Mutation
 from fiftyone.server.query import Query
 from fiftyone.server.routes import routes
-from fiftyone.server.scalars import Date, DateTime
 
 
 etau.ensure_dir(os.path.join(os.path.dirname(__file__), "static"))
@@ -64,15 +64,19 @@ class Static(StaticFiles):
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
-
         if response.status_code == 404:
-            path = pathlib.Path(
-                *pathlib.Path(path).parts[2:]
-            )  # strip dataset/{name}
-            response = await super().get_response(path, scope)
-            if response.status_code == 404:
-                full_path, stat_result = self.lookup_path("index.html")
-                return self.file_response(full_path, stat_result, scope)
+            parts = pathlib.Path(path).parts
+            path = pathlib.Path(*parts[1:])
+            if parts and parts[0] == "datasets":
+                full_path, stat_result = self.lookup_path(path)
+                if stat_result and stat.S_ISREG(stat_result.st_mode):
+                    return self.file_response(full_path, stat_result, scope)
+
+                if len(parts) == 2:
+                    full_path, stat_result = self.lookup_path("index.html")
+                    return self.file_response(full_path, stat_result, scope)
+
+            return RedirectResponse(url="/")
 
         return response
 
@@ -90,10 +94,7 @@ schema = gql.Schema(
     mutation=Mutation,
     query=Query,
     extensions=[EndSession],
-    scalar_overrides={
-        date: Date,
-        datetime: DateTime,
-    },
+    scalar_overrides=SCALAR_OVERRIDES,
 )
 
 
@@ -111,7 +112,7 @@ app = Starlette(
         ),
         Middleware(HeadersMiddleware),
     ],
-    debug=foc.DEV_INSTALL,
+    debug=True,
     routes=[Route(route, endpoint) for route, endpoint in routes]
     + [
         Route(

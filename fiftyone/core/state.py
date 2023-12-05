@@ -19,13 +19,14 @@ import eta.core.utils as etau
 
 import fiftyone as fo
 import fiftyone.core.clips as foc
-
+from fiftyone.core.config import AppConfig
 import fiftyone.core.dataset as fod
 from fiftyone.core.odm.dataset import ColorScheme
 import fiftyone.core.media as fom
+import fiftyone.core.odm as foo
+from fiftyone.core.spaces import Space
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-from fiftyone.core.spaces import Space
 from fiftyone.server.scalars import JSON
 
 
@@ -58,18 +59,26 @@ class StateDescription(etas.Serializable):
         color_scheme=None,
         view=None,
         view_name=None,
+        field_visibility_stage=None,
+        group_slice=None,
     ):
         self.config = config or fo.app_config.copy()
         self.dataset = dataset
         self.selected = selected or []
         self.selected_labels = selected_labels or []
+        if dataset is not None:
+            dataset.reload()
         self.view = (
             dataset.load_saved_view(view_name)
             if dataset is not None and view_name
             else view
         )
         self.spaces = spaces
-        self.color_scheme = color_scheme
+        self.color_scheme = color_scheme or build_color_scheme()
+        self.field_visibility_stage = field_visibility_stage
+        if group_slice is None and view is not None:
+            group_slice = view.group_slice
+        self.group_slice = group_slice
 
     def serialize(self, reflective=True):
         with fou.disable_progress_bars():
@@ -107,10 +116,6 @@ class StateDescription(etas.Serializable):
                     )
                 ]
 
-                view = self.view if self.view is not None else self.dataset
-                if view.media_type == fom.GROUP:
-                    d["group_slice"] = view.group_slice
-
             d["config"]["timezone"] = fo.config.timezone
 
             if self.config.colorscale:
@@ -120,7 +125,10 @@ class StateDescription(etas.Serializable):
                 d["spaces"] = self.spaces.to_json()
 
             if isinstance(self.color_scheme, ColorScheme):
-                d["color_scheme"] = self.color_scheme.to_json()
+                d["color_scheme"] = self.color_scheme.to_dict(False)
+
+            if self.field_visibility_stage:
+                d["field_visibility_stage"] = self.field_visibility_stage
 
             return d
 
@@ -153,21 +161,18 @@ class StateDescription(etas.Serializable):
         view_name = d.get("view_name", None)
         if dataset is not None:
             if view_name:
-                view = dataset.load_saved_view(view_name)
+                try:
+                    view = dataset.load_saved_view(view_name)
+                except Exception as e:
+                    dataset.reload()
+                    view = dataset.load_saved_view(view_name)
+
             elif stages:
                 try:
                     view = fov.DatasetView._build(dataset, stages)
                 except:
                     dataset.reload()
                     view = fov.DatasetView._build(dataset, stages)
-
-        group_slice = d.get("group_slice", None)
-        if group_slice:
-            if dataset is not None:
-                dataset.group_slice = group_slice
-
-            if view is not None:
-                view.group_slice = group_slice
 
         config = with_config or fo.app_config.copy()
         for field, value in d.get("config", {}).items():
@@ -181,7 +186,7 @@ class StateDescription(etas.Serializable):
 
         color_scheme = d.get("color_scheme", None)
         if color_scheme:
-            color_scheme = ColorScheme.from_dict(json_util.loads(color_scheme))
+            color_scheme = ColorScheme.from_dict(color_scheme)
 
         return cls(
             config=config,
@@ -191,6 +196,8 @@ class StateDescription(etas.Serializable):
             view=view,
             spaces=spaces,
             color_scheme=color_scheme,
+            field_visibility_stage=d.get("field_visibility_stage", None),
+            group_slice=d.get("group_slice", None),
         )
 
 
@@ -256,3 +263,35 @@ def _convert_mongoengine_data(data):
         return [_convert_mongoengine_data(v) for v in data]
 
     return data
+
+
+def build_color_scheme(
+    color_scheme: t.Optional[foo.ColorScheme] = None,
+    dataset: t.Optional[fod.Dataset] = None,
+    app_config: t.Optional[AppConfig] = None,
+) -> foo.ColorScheme:
+    if color_scheme is None:
+        if dataset is not None and dataset.app_config.color_scheme is not None:
+            color_scheme = dataset.app_config.color_scheme.copy()
+        else:
+            color_scheme = foo.ColorScheme()
+
+    if app_config is None:
+        app_config = fo.app_config
+
+    if not color_scheme.color_by:
+        color_scheme.color_by = app_config.color_by
+
+    if not color_scheme.color_pool:
+        color_scheme.color_pool = app_config.color_pool
+
+    if color_scheme.multicolor_keypoints is None:
+        color_scheme.multicolor_keypoints = app_config.multicolor_keypoints
+
+    if color_scheme.opacity is None:
+        color_scheme.opacity = 0.7
+
+    if color_scheme.show_skeletons is None:
+        color_scheme.show_skeletons = app_config.show_skeletons
+
+    return color_scheme

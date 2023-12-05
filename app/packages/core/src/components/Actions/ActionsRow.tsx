@@ -7,13 +7,9 @@ import {
 import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
 import { OperatorPlacements, types } from "@fiftyone/operators";
 import { useOperatorBrowser } from "@fiftyone/operators/src/state";
+import { subscribe } from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import {
-  affectedPathCountState,
-  useEventHandler,
-  useOutsideClick,
-  useSetView,
-} from "@fiftyone/state";
+import { useEventHandler, useOutsideClick } from "@fiftyone/state";
 import {
   Bookmark,
   Check,
@@ -40,10 +36,10 @@ import {
   useRecoilCallback,
   useRecoilState,
   useRecoilValue,
-  useSetRecoilState,
 } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../components/src/components/Loading/LoadingDots";
+import { activeColorEntry } from "../ColorModal/state";
 import { ACTIVE_FIELD } from "../ColorModal/utils";
 import { DynamicGroupAction } from "./DynamicGroupAction";
 import { GroupMediaVisibilityContainer } from "./GroupMediaVisibilityContainer";
@@ -52,6 +48,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ActionDiv } from "./utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -61,7 +58,12 @@ export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
     const selectedSampleSet = get(fos.selectedSamples);
     const isSimilarityOn = get(fos.similarityParameters);
 
-    const affectedPathCount = get(affectedPathCountState);
+    const excludedFields = get(fos.excludedPathsState({}));
+    const datasetName = get(fos.datasetName);
+    const affectedPathCount = datasetName
+      ? excludedFields?.[datasetName]?.size
+      : 0;
+
     const isAttributeVisibilityOn = affectedPathCount > 0;
 
     const isExtendedSelectionOn =
@@ -80,10 +82,6 @@ const Loading = () => {
   const theme = useTheme();
   return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
-
-export const ActionDiv = styled.div`
-  position: relative;
-`;
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
@@ -170,8 +168,9 @@ const Tag = ({
   const tagging = useRecoilValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-
-  const disabled = tagging;
+  const lightning = useRecoilValue(fos.lightning);
+  const unlocked = fos.useLightingUnlocked();
+  const disabled = tagging || (lightning && !modal && !unlocked);
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {
@@ -196,7 +195,7 @@ const Tag = ({
             ? "default"
             : "pointer",
         }}
-        icon={disabled ? <Loading /> : <LocalOffer />}
+        icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && available && !readOnly && setOpen(!open)}
         highlight={(selected || open) && available}
@@ -299,11 +298,11 @@ const Options = ({ modal }) => {
 const Colors = () => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const [activeField, setActiveField] = useRecoilState(fos.activeColorField);
+  const [activeField, setActiveField] = useRecoilState(activeColorEntry);
 
   const onOpen = () => {
     setOpen(!open);
-    setActiveField(ACTIVE_FIELD.global);
+    setActiveField(ACTIVE_FIELD.GLOBAL);
   };
 
   useEffect(() => {
@@ -351,39 +350,51 @@ const Hidden = () => {
 
 const SaveFilters = () => {
   const loading = useRecoilValue(fos.savingFilters);
-  const onComplete = useRecoilCallback(({ set, reset }) => () => {
-    set(fos.savingFilters, false);
-    reset(fos.similarityParameters);
-    reset(fos.extendedSelection);
-  });
-  const setView = useSetView(true, false, onComplete);
 
   const saveFilters = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
         const loading = await snapshot.getPromise(fos.savingFilters);
         const selected = await snapshot.getPromise(fos.selectedSamples);
+        const fvStage = await snapshot.getPromise(fos.fieldVisibilityStage);
 
         if (loading) {
           return;
         }
 
+        const unsubscribe = subscribe((_, { set, reset }) => {
+          set(fos.savingFilters, false);
+          reset(fos.extendedSelection);
+          reset(fos.viewStateForm_INTERNAL);
+          unsubscribe();
+        });
+
         set(fos.savingFilters, true);
+        set(fos.viewStateForm_INTERNAL, {
+          filters: await snapshot.getPromise(fos.filters),
+          extended: await snapshot.getPromise(fos.extendedStages),
+        });
         if (selected.size > 0) {
-          setView(
-            (v) => [
-              ...v,
-              {
-                _cls: "fiftyone.core.stages.Select",
-                kwargs: [["sample_ids", [...selected]]],
-              },
-            ],
-            undefined,
-            undefined,
-            true
-          );
+          set(fos.view, (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.Select",
+              kwargs: [["sample_ids", [...selected]]],
+            } as fos.State.Stage,
+          ]);
         } else {
-          setView((v) => v);
+          set(fos.view, (v) => v);
+        }
+
+        const fvFieldNames = fvStage?.kwargs?.field_names;
+        if (fvFieldNames) {
+          set(fos.view, (v) => [
+            ...v,
+            {
+              _cls: "fiftyone.core.stages.ExcludeFields",
+              kwargs: [["field_names", [...fvFieldNames]]],
+            } as fos.State.Stage,
+          ]);
         }
       },
     []
@@ -470,29 +481,7 @@ export const BrowseOperations = () => {
 };
 
 export const GridActionsRow = () => {
-  const datasetColorScheme = useRecoilValue(fos.datasetAppConfig)?.colorScheme;
-  const setSessionColor = useSetRecoilState(fos.sessionColorScheme);
-  const isUsingSessionColorScheme = useRecoilValue(
-    fos.isUsingSessionColorScheme
-  );
   const actionsRowDivRef = useRef<HTMLDivElement>();
-
-  // In teams environment if the session color scheme is not applied to the dataset,
-  // check to see if dataset.appConfig has applicable settings
-  useEffect(() => {
-    if (!isUsingSessionColorScheme && datasetColorScheme) {
-      const colorPool =
-        datasetColorScheme.colorPool?.length > 0
-          ? datasetColorScheme.colorPool
-          : fos.DEFAULT_APP_COLOR_SCHEME.colorPool;
-      const fields =
-        datasetColorScheme.fields ?? fos.DEFAULT_APP_COLOR_SCHEME.fields;
-      setSessionColor({
-        colorPool,
-        fields,
-      });
-    }
-  }, [isUsingSessionColorScheme, datasetColorScheme, setSessionColor]);
 
   useEffect(() => {
     const actionsRowDivElem = actionsRowDivRef.current;
@@ -562,6 +551,7 @@ export const ModalActionsRow = ({
       <Tag modal={true} lookerRef={lookerRef} />
       <Options modal={true} />
       {isGroup && <GroupMediaVisibilityContainer modal={true} />}
+      <BrowseOperations />
       <OperatorPlacements place={types.Places.SAMPLES_VIEWER_ACTIONS} />
       <ToggleSidebar modal={true} />
     </ActionsRowDiv>

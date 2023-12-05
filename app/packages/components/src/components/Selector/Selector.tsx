@@ -10,60 +10,16 @@ import React, {
 import Input from "react-input-autosize";
 import { UseLayerOptions, useLayer } from "react-laag";
 import LoadingDots from "../Loading/LoadingDots";
-import Results from "../Results/Results";
+import SearchResults, { UseSearch } from "./SearchResults";
 import style from "./Selector.module.css";
-
-interface UseSearch<T> {
-  (search: string): { values: T[]; total?: number };
-}
-
-type Props<T> = {
-  active?: number;
-  cy?: string;
-  search: string;
-  useSearch: UseSearch<T>;
-  onSelect: (value: T) => void;
-  onResults: (results: T[]) => void;
-  component: React.FC<{ value: T; className: string }>;
-  toKey?: (value: T) => string;
-};
-
-const SelectorResults = <T extends unknown>({
-  active,
-  component,
-  cy,
-  onResults,
-  onSelect,
-  search,
-  toKey = (value) => String(value),
-  useSearch,
-}: Props<T>) => {
-  const { values, total } = useSearch(search);
-
-  useLayoutEffect(() => {
-    onResults(values);
-  }, [values, onResults]);
-
-  return (
-    <Results
-      toKey={toKey}
-      active={active}
-      component={component}
-      results={values}
-      onSelect={onSelect}
-      total={total}
-      cy={cy}
-    />
-  );
-};
 
 export interface SelectorProps<T> {
   id?: string;
   value?: string;
-  onSelect: (value: T) => void;
+  onSelect: (search: string, v?: T) => Promise<string> | void;
   placeholder: string;
-  useSearch: UseSearch<T>;
-  component: React.FC<{ value: T; className: string }>;
+  useSearch?: UseSearch<T>;
+  component?: React.FC<{ value: T; className?: string }>;
   toKey?: (value: T) => string;
   inputClassName?: string;
   inputStyle?: React.CSSProperties;
@@ -73,9 +29,10 @@ export interface SelectorProps<T> {
   overflowContainer?: boolean;
   onMouseEnter?: React.MouseEventHandler;
   cy?: string;
+  noResults?: string;
 }
 
-const Selector = <T extends unknown>(props: SelectorProps<T>) => {
+function Selector<T>(props: SelectorProps<T>) {
   const {
     id,
     value,
@@ -92,6 +49,7 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
     overflowContainer = false,
     onMouseEnter,
     cy,
+    noResults,
     ...otherProps
   } = props;
 
@@ -99,15 +57,30 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
   const [active, setActive] = useState<number>();
-  const ref = useRef<HTMLInputElement | null>(null);
-  const hovering = useRef(false);
+  const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
-    return (value: T) => {
-      onSelect(value);
+    return async (search: string) => {
+      const value =
+        active !== undefined
+          ? valuesRef.current[active]
+          : valuesRef.current.find((v) => toKey(v) === search);
+
+      const result = await onSelect(value ? toKey(value) : search, value);
+      if (result !== undefined) {
+        local.current = result;
+      }
       setEditing(false);
     };
-  }, [onSelect]);
+  }, [active, onSelect, toKey, valuesRef]);
+
+  useLayoutEffect(() => {
+    setSearch(value || "");
+    local.current = value || "";
+  }, [value]);
+
+  const ref = useRef<HTMLInputElement | null>();
+  const hovering = useRef(false);
 
   useLayoutEffect(() => {
     if (!editing) {
@@ -120,11 +93,10 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
 
   const onResults = useCallback((results: T[]) => {
     valuesRef.current = results;
-    setActive(results.length ? 0 : undefined);
   }, []);
 
   const { renderLayer, triggerProps, layerProps, triggerBounds } = useLayer({
-    isOpen: editing,
+    isOpen: Boolean(useSearch && editing),
     overflowContainer,
     auto: true,
     snap: true,
@@ -154,10 +126,10 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
         spellCheck={false}
         inputRef={(node) => {
           ref.current = node;
-          triggerProps.ref(node);
+          useSearch && triggerProps.ref(node);
         }}
         className={style.input}
-        value={editing ? search : value || ""}
+        value={editing ? search : local.current}
         placeholder={placeholder}
         data-cy={`selector-${cy || placeholder}`}
         onFocus={() => setEditing(true)}
@@ -177,21 +149,16 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            const found = valuesRef.current
-              .map((v) => toKey(v))
-              .indexOf(search);
-            found >= 0 && onSelectWrapper(valuesRef.current[found]);
-            active !== undefined && onSelectWrapper(valuesRef.current[active]);
+            onSelectWrapper(search);
             return;
           }
-          const length = valuesRef.current.length;
           switch (e.key) {
             case "Escape":
               editing && setEditing(false);
               break;
             case "ArrowDown":
               active !== undefined &&
-                setActive(Math.min(active + 1, length - 1));
+                setActive(Math.min(active + 1, valuesRef.current.length - 1));
               break;
             case "ArrowUp":
               active !== undefined && setActive(Math.max(active - 1, 0));
@@ -200,47 +167,53 @@ const Selector = <T extends unknown>(props: SelectorProps<T>) => {
         }}
         onMouseEnter={onMouseEnter}
       />
-      {renderLayer(
-        editing && (
-          <AnimatePresence>
-            <motion.div
-              className={style.resultsContainer}
-              id={id}
-              initial={{ opacity: 0, height: 0 }}
-              animate={{
-                opacity: 1,
-                height: "auto",
-              }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              key={"results"}
-              {...layerProps}
-              style={{
-                ...layerProps.style,
-                width: overflow ? "auto" : triggerBounds?.width,
-                minWidth: triggerBounds?.width,
-              }}
-            >
-              <Suspense fallback={<LoadingDots text="Loading" />}>
-                <SelectorResults
-                  active={active}
-                  search={search}
-                  useSearch={useSearch}
-                  onSelect={(value) => {
-                    onSelectWrapper(value);
-                  }}
-                  component={component}
-                  onResults={onResults}
-                  toKey={toKey}
-                  cy={cy}
-                />
-              </Suspense>
-            </motion.div>
-          </AnimatePresence>
-        )
-      )}
+      {useSearch &&
+        component &&
+        onResults &&
+        renderLayer(
+          editing && (
+            <AnimatePresence>
+              <motion.div
+                className={style.resultsContainer}
+                id={id}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  height: "auto",
+                }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                key={"results"}
+                {...layerProps}
+                style={{
+                  ...layerProps.style,
+                  width: overflow ? "auto" : triggerBounds?.width,
+                  minWidth: triggerBounds?.width,
+                }}
+              >
+                <Suspense
+                  fallback={
+                    <LoadingDots style={{ float: "right" }} text="Loading" />
+                  }
+                >
+                  <SearchResults
+                    active={active}
+                    noResults={noResults}
+                    search={search}
+                    useSearch={useSearch}
+                    onSelect={(value) => onSelectWrapper(toKey(value))}
+                    component={component}
+                    onResults={onResults}
+                    toKey={toKey}
+                    cy={cy}
+                  />
+                </Suspense>
+              </motion.div>
+            </AnimatePresence>
+          )
+        )}
     </div>
   );
-};
+}
 
 export default Selector;

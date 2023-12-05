@@ -1,8 +1,27 @@
-import { clone, Field, Schema, StrictField } from "@fiftyone/utilities";
-import { useCallback, useRef } from "react";
+import { savedViewsFragment$key } from "@fiftyone/relay";
+import {
+  clone,
+  Field,
+  getFetchFunction,
+  Schema,
+  StrictField,
+} from "@fiftyone/utilities";
+import React, { MutableRefObject, useCallback, useRef } from "react";
+import {
+  Environment,
+  GraphQLResponse,
+  Network,
+  RecordSource,
+  Store,
+} from "relay-runtime";
 import { State } from "./recoil";
 
-import { matchPath, RoutingContext } from "./routing";
+export const deferrer =
+  (initialized: MutableRefObject<boolean>) =>
+  (fn: (...args: any[]) => void) =>
+  (...args: any[]): void => {
+    if (initialized.current) fn(...args);
+  };
 
 export const useDeferrer = () => {
   const initialized = useRef(false);
@@ -75,6 +94,20 @@ export const collapseFields = (paths): StrictField[] => {
   return Object.entries(schema).map(([_, field]) => toStrictField(field));
 };
 
+export const getStandardizedUrls = (
+  urls: Array<{ field: string; url: string }> | { [field: string]: string }
+) => {
+  let standardizedUrls: { [field: string]: string } = {};
+  if (Array.isArray(urls)) {
+    for (const { field, url } of urls) {
+      standardizedUrls[field] = url;
+    }
+  } else {
+    standardizedUrls = urls;
+  }
+  return standardizedUrls;
+};
+
 const convertTargets = (
   targets: {
     target: string;
@@ -111,60 +144,46 @@ export const transformDataset = (dataset: any): Readonly<State.Dataset> => {
     brainMethods: [...dataset.brainMethods],
     evaluations: [...dataset.evaluations],
     maskTargets: targets,
-    mediaType: dataset.mediaType,
   };
-};
-
-export const getDatasetName = (context: RoutingContext<any>): string => {
-  const result = matchPath(
-    context.pathname,
-    {
-      path: "/datasets/:name",
-      exact: true,
-    },
-    {},
-    ""
-  );
-
-  if (result) {
-    return decodeURIComponent(result.variables.name);
-  }
-
-  return null;
 };
 
 export type ResponseFrom<TQuery extends { response: unknown }> =
   TQuery["response"];
 
-export const getSavedViewName = (context: RoutingContext<any>): string => {
-  const datasetName = getDatasetName(context);
-  const queryString = datasetName
-    ? context.history.location.search
-    : window.location.search;
-  const params = new URLSearchParams(queryString);
-  const viewName = params.get("view");
-  if (viewName) {
-    return decodeURIComponent(viewName);
-  }
-
-  return null;
+export const getCurrentEnvironment = () => {
+  return currentEnvironment;
 };
 
-export const DEFAULT_APP_COLOR_SCHEME = {
-  colorPool: [
-    "#ee0000",
-    "#ee6600",
-    "#993300",
-    "#996633",
-    "#999900",
-    "#009900",
-    "#003300",
-    "#009999",
-    "#000099",
-    "#0066ff",
-    "#6600ff",
-    "#cc33cc",
-    "#777799",
-  ],
-  fields: [],
+export const setCurrentEnvironment = (environment: Environment) => {
+  currentEnvironment = environment;
 };
+
+async function fetchGraphQL(
+  text: string | null | undefined,
+  variables: object
+): Promise<GraphQLResponse> {
+  return await getFetchFunction()<unknown, GraphQLResponse>(
+    "POST",
+    "/graphql",
+    {
+      query: text,
+      variables,
+    }
+  );
+}
+
+const fetchRelay = async (params, variables) => {
+  return fetchGraphQL(params.text, variables);
+};
+
+export const getEnvironment = () =>
+  new Environment({
+    network: Network.create(fetchRelay),
+    store: new Store(new RecordSource()),
+  });
+
+let currentEnvironment: Environment = getEnvironment();
+
+export const datasetQueryContext = React.createContext<
+  savedViewsFragment$key | undefined
+>(undefined);

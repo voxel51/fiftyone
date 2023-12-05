@@ -212,6 +212,10 @@ def delete_non_persistent_datasets(verbose=False):
     Args:
         verbose (False): whether to log the names of deleted datasets
     """
+    _delete_non_persistent_datasets(verbose=verbose)
+
+
+def _delete_non_persistent_datasets(verbose=False):
     conn = foo.get_db_conn()
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
@@ -223,7 +227,7 @@ def delete_non_persistent_datasets(verbose=False):
             continue
 
         if not dataset.persistent and not dataset.deleted:
-            dataset.delete()
+            dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
 
@@ -284,6 +288,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache = cachetools.LRUCache(5)
         self._brain_cache = cachetools.LRUCache(5)
         self._evaluation_cache = cachetools.LRUCache(5)
+        self._run_cache = cachetools.LRUCache(5)
 
         self._deleted = False
 
@@ -3932,6 +3937,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         If reference to a sample exists in memory, the sample will be updated
         such that ``sample.in_dataset`` is False.
         """
+        self._delete()
+
+    def _delete(self):
         self._sample_collection.drop()
         fos.Sample._reset_docs(self._sample_collection_name)
 
@@ -6548,6 +6556,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
+        self._run_cache.clear()
 
     def _reload(self, hard=False):
         if not hard:
@@ -6585,7 +6594,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self.save()
+        self._save()
 
 
 def _get_random_characters(n):
@@ -6887,6 +6896,15 @@ def _delete_dataset_doc(dataset_doc):
 
         run_doc.delete()
 
+    for run_doc in dataset_doc.runs.values():
+        if isinstance(run_doc, DBRef):
+            continue
+
+        if run_doc.results is not None:
+            run_doc.results.delete()
+
+        run_doc.delete()
+
     from fiftyone.operators.delegated import DelegatedOperationService
 
     DelegatedOperationService().delete_for_dataset(dataset_id=dataset_doc.id)
@@ -6948,6 +6966,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.annotation_runs.clear()
     dataset_doc.brain_methods.clear()
     dataset_doc.evaluations.clear()
+    dataset_doc.runs.clear()
 
     if view is not None:
         # Respect filtered sample fields, if any
@@ -6995,6 +7014,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         or dataset.has_annotation_runs
         or dataset.has_brain_runs
         or dataset.has_evaluations
+        or dataset.has_runs
     ):
         _clone_extras(dataset, clone_dataset)
 
@@ -7368,6 +7388,14 @@ def _clone_extras(src_dataset, dst_dataset):
 
         dst_doc.evaluations[eval_key] = run_doc
 
+    # Clone other runs
+    for run_key, _run_doc in src_doc.get_runs().items():
+        run_doc = _clone_run(_run_doc)
+        run_doc.dataset_id = dst_doc.id
+        run_doc.save(upsert=True)
+
+        dst_doc.runs[run_key] = run_doc
+
     dst_doc.save()
 
 
@@ -7577,14 +7605,16 @@ def _merge_samples_python(
     dynamic=False,
     num_samples=None,
 ):
+    if dataset.media_type == fom.GROUP:
+        dst = dataset.select_group_slices(_allow_mixed=True)
+    else:
+        dst = dataset
+
     if (
         isinstance(samples, foc.SampleCollection)
         and samples.media_type == fom.GROUP
     ):
         samples = samples.select_group_slices(_allow_mixed=True)
-        dst = dataset.select_group_slices(_allow_mixed=True)
-    else:
-        dst = dataset
 
     if num_samples is None:
         try:

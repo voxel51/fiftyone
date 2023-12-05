@@ -16,7 +16,6 @@ from pymongo.errors import CursorNotFound
 
 import eta.core.utils as etau
 
-import fiftyone.core.aggregations as foa
 import fiftyone.core.collections as foc
 import fiftyone.core.expressions as foe
 import fiftyone.core.fields as fof
@@ -1821,6 +1820,10 @@ def make_optimized_select_view(
     else:
         if view.media_type == fom.GROUP and view.group_slices and flatten:
             view = view.select_group_slices(_allow_mixed=True)
+        else:
+            for stage in stages:
+                if type(stage) in fost._STAGES_THAT_SELECT_FIRST:
+                    view = view._add_view_stage(stage, validate=False)
 
         view = view.select(sample_ids, ordered=ordered)
 

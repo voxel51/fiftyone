@@ -84,10 +84,24 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Redis
+    :description: Use our Redis vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: redis.html
+    :image: ../_static/images/integrations/redis.jpg
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Pinecone
     :description: Use our Pinecone integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: pinecone.html
     :image: ../_static/images/integrations/pinecone.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: MongoDB
+    :description: Use our MongoDB vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: mongodb.html
+    :image: ../_static/images/integrations/mongodb.jpg
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
@@ -150,7 +164,9 @@ on the cards below to see how!
     Label Studio <labelstudio.rst>
     Labelbox <labelbox.rst>
     Qdrant <qdrant.rst>
+    Redis <redis.rst>
     Pinecone <pinecone.rst>
+    MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
     Ultralytics <ultralytics.rst>

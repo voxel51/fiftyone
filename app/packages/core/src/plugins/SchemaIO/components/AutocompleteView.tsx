@@ -4,6 +4,7 @@ import FieldWrapper from "./FieldWrapper";
 import autoFocus from "../utils/auto-focus";
 import { getComponentProps } from "../utils";
 import ChoiceMenuItemBody from "./ChoiceMenuItemBody";
+import { useKey } from "../hooks";
 
 export default function AutocompleteView(props) {
   const { onChange, path, schema, data } = props;
@@ -11,17 +12,22 @@ export default function AutocompleteView(props) {
   const { choices = [], readOnly } = view;
 
   const multiple = schema.type === "array";
+  const [key, setUserChanged] = useKey(path, schema, data, true);
 
   return (
     <FieldWrapper {...props}>
       <Autocomplete
+        key={key}
         disabled={readOnly}
         autoHighlight
         clearOnBlur={multiple}
-        defaultValue={getDefaultValue(data ?? schema?.default, choices)}
+        defaultValue={getDefaultValue(data, choices)}
         freeSolo
         size="small"
-        onChange={(e, choice) => onChange(path, choice?.value || choice)}
+        onChange={(e, choice) => {
+          onChange(path, choice?.value || choice);
+          setUserChanged();
+        }}
         options={choices.map((choice) => ({
           id: choice.value,
           label: choice.label || choice.value,
@@ -41,6 +47,7 @@ export default function AutocompleteView(props) {
         onInputChange={(e) => {
           if (!multiple && e) {
             onChange(path, e.target.value);
+            setUserChanged();
           }
         }}
         isOptionEqualToValue={() => false} // allow duplicates

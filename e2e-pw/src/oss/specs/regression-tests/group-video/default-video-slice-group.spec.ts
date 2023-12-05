@@ -19,8 +19,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
 });
 
@@ -74,11 +74,7 @@ test.describe("default video slice group", () => {
     fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("video as default slice renders", async ({
-    grid,
-    modal,
-    eventUtils,
-  }) => {
+  test("video as default slice renders", async ({ grid, modal }) => {
     await grid.sliceSelector.assert.verifyHasSlices(["video", "image"]);
     await grid.sliceSelector.assert.verifyActiveSlice("video");
     await grid.assert.isLookerCountEqualTo(1);
@@ -89,12 +85,9 @@ test.describe("default video slice group", () => {
     await modal.assert.verifyCarouselLength(2);
     await modal.close();
 
-    const imgLoadedPromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "sample-loaded",
-      (e) => e.detail.sampleFilepath === testImgPath
-    );
+    const promise = grid.getWaitForGridRefreshPromise();
     await grid.selectSlice("image");
-    await imgLoadedPromise;
+    await promise;
 
     await grid.assert.isLookerCountEqualTo(2);
     await grid.openFirstSample();

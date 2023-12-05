@@ -1,4 +1,7 @@
 // Auto generate SchemaIO compatible schema based on a value
+
+import { isPrimitiveType } from "@fiftyone/utilities";
+
 // todo: add support for OneOfView, TupleView, and MapView
 export function generateSchema(value, options?) {
   const type = getType(value);
@@ -16,7 +19,7 @@ export function generateSchema(value, options?) {
           readOnly: true,
         },
       };
-    } else if (primitives.includes(dominantType) && readOnly) {
+    } else if (isPrimitiveType(dominantType) && readOnly) {
       return {
         type,
         view: {
@@ -87,7 +90,7 @@ function getDominantType(array) {
     } else if (count > dominantTypeCount) {
       dominantType = type;
       dominantTypeCount = count;
-    } else if (count === dominantTypeCount && primitives.includes(type)) {
+    } else if (count === dominantTypeCount && isPrimitiveType(type)) {
       dominantType = type;
     }
   }
@@ -116,5 +119,3 @@ function getTableColumns(array) {
   const [firstItem] = array;
   return Object.keys(firstItem).map((key) => ({ key, label: key }));
 }
-
-const primitives = ["string", "number", "boolean"];

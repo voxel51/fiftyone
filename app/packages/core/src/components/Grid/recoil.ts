@@ -37,7 +37,7 @@ export const gridCropCallback = selector({
 export const pageParameters = selector({
   key: "paginateGridVariables",
   get: ({ get }) => {
-    const slice = get(fos.groupSlice(false));
+    const slice = get(fos.groupSlice);
     const params = {
       dataset: get(fos.datasetName),
       view: get(fos.view),

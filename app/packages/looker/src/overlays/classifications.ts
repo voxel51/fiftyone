@@ -4,7 +4,6 @@
 
 import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
 
-import { getColor } from "@fiftyone/utilities";
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
   BaseState,
@@ -21,7 +20,7 @@ import {
   SelectData,
   isShown,
 } from "./base";
-import { isValidColor, sizeBytes } from "./util";
+import { getLabelColor, sizeBytes } from "./util";
 
 export type Classification = RegularLabel;
 
@@ -49,54 +48,19 @@ export class ClassificationsOverlay<
   }
 
   getColor(state: Readonly<State>, field: string, label: Label): string {
-    let key =
-      label._cls === REGRESSION
-        ? field
-        : state.options.coloring.by === "value"
-        ? label.label
-        : field;
-    const { coloring, customizeColorSetting } = state.options;
-    const f = field.startsWith("frames.")
-      ? field.slice("frames.".length)
-      : field;
-    const setting = customizeColorSetting.find((s) => s.path === f);
+    const { coloring, customizeColorSetting, labelTagColors } = state.options;
+    const isTagged =
+      (state.options.selectedLabelTags?.length == 0 && label.tags.length > 0) ||
+      state.options.selectedLabelTags?.some((tag) => label.tags.includes(tag));
 
-    // check if the field has a customized color, use it if it is a valid color
-    if (
-      coloring.by === "field" &&
-      setting?.fieldColor &&
-      isValidColor(setting.fieldColor)
-    ) {
-      return setting.fieldColor;
-    }
-
-    if (coloring.by !== "field") {
-      key = setting?.colorByAttribute ?? key;
-
-      // check if this label has a assigned color, use it if it is a valid color
-      const valueColor = setting?.valueColors?.find((l) => {
-        if (["none", "null", "undefined"].includes(l.value?.toLowerCase())) {
-          return typeof label[key] === "string"
-            ? l.value?.toLowerCase === label[key]
-            : !label[key];
-        }
-        if (["True", "False"].includes(l.value?.toString())) {
-          return (
-            l.value?.toString().toLowerCase() ==
-            label[key]?.toString().toLowerCase()
-          );
-        }
-        return l.value?.toString() == label[key]?.toString();
-      })?.color;
-
-      if (isValidColor(valueColor)) {
-        return valueColor;
-      }
-
-      // fallback to use label as default attribute
-      key = label.label;
-    }
-    return getColor(coloring.pool, coloring.seed, key);
+    return getLabelColor({
+      coloring: coloring,
+      path: field,
+      label,
+      isTagged,
+      labelTagColors,
+      customizeColorSetting,
+    });
   }
 
   isShown(state: Readonly<State>): boolean {

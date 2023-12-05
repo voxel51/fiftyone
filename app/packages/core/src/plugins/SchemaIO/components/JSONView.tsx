@@ -8,7 +8,7 @@ import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
 
 export default function JSONView(props) {
-  const { data, schema } = props;
+  const { data } = props;
   const { mode } = useColorScheme();
   const isDarkMode = mode === "dark";
 
@@ -17,7 +17,7 @@ export default function JSONView(props) {
       <HeaderView {...props} nested />
       <ReactJSONContainer {...getComponentProps(props, "jsonContainer")}>
         <ReactJSON
-          src={data ?? schema?.default}
+          src={data}
           theme={`ashes${!isDarkMode ? ":inverted" : ""}`}
           style={{
             padding: "1rem",

@@ -1,30 +1,59 @@
 import { Sample } from "@fiftyone/looker/src/state";
-import { SpaceNodeJSON } from "@fiftyone/spaces";
-import { Field } from "@fiftyone/utilities";
 import {
-  AtomEffect,
-  atom,
-  atomFamily,
-  selector,
-  useRecoilCallback,
-} from "recoil";
+  MediaType,
+  datasetFragment,
+  datasetFragment$key,
+  frameFieldsFragment,
+  frameFieldsFragment$data,
+  frameFieldsFragment$key,
+  graphQLSyncFragmentAtom,
+  mediaTypeFragment,
+  mediaTypeFragment$key,
+  sampleFieldsFragment,
+  sampleFieldsFragment$data,
+  sampleFieldsFragment$key,
+} from "@fiftyone/relay";
+import { StrictField } from "@fiftyone/utilities";
+import { DefaultValue, atom, atomFamily, selector } from "recoil";
+import { ModalSample } from "..";
+import { SPACES_DEFAULT, sessionAtom } from "../session";
+import { collapseFields } from "../utils";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { groupMediaTypesSet } from "./groups";
-import { ColorSchemeSetting, State } from "./types";
+import { State } from "./types";
 
 export const refresher = atom<number>({
   key: "refresher",
   default: 0,
 });
 
-export const useRefresh = () => {
-  return useRecoilCallback(
-    ({ set }) =>
-      () => {
-        set(refresher, (cur) => cur + 1);
+export const modal = (() => {
+  let modal: ModalSample | null = null;
+  return graphQLSyncFragmentAtom<datasetFragment$key, ModalSample | null>(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id) {
+          modal = null;
+        }
+
+        return modal;
       },
-    []
+      default: null,
+    },
+    {
+      key: "modal",
+      effects: [
+        ({ onSet }) => {
+          onSet((value) => {
+            modal = value;
+          });
+        },
+      ],
+    }
   );
-};
+})();
 
 export interface SortResults {
   count: boolean;
@@ -63,21 +92,6 @@ export const teams = atom({
   },
 });
 
-export const IMAGE_FILTERS = {
-  brightness: {
-    default: 100,
-    bounds: [0, 200],
-  },
-};
-
-export const imageFilters = atomFamily<
-  number,
-  { modal: boolean; filter: string }
->({
-  key: "imageFilters",
-  default: ({ filter }) => IMAGE_FILTERS[filter].default,
-});
-
 export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
@@ -88,6 +102,11 @@ export const loading = atom<boolean>({
   default: false,
 });
 
+export const snackbarErrors = atom<string[]>({
+  key: "snackbarErrors",
+  default: [],
+});
+
 // labels: whether label tag or sample tag
 export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   {
@@ -96,14 +115,59 @@ export const tagging = atomFamily<boolean, { modal: boolean; labels: boolean }>(
   }
 );
 
-/**
- * The state of the current dataset. Contains informations about the dataset, and the samples contained in it.
- *
- * See :py:class:\`fiftyone.core.dataset.Dataset\` for python documentation.
- */
-export const dataset = atom<State.Dataset>({
-  key: "dataset",
-  default: null,
+export const mediaType = graphQLSyncFragmentAtom<
+  mediaTypeFragment$key,
+  MediaType | null
+>(
+  {
+    fragments: [datasetFragment, mediaTypeFragment],
+    keys: ["dataset"],
+    read: (data) => data.mediaType,
+    default: null,
+  },
+  {
+    key: "mediaType",
+  }
+);
+
+export const flatSampleFields = graphQLSyncFragmentAtom<
+  sampleFieldsFragment$key,
+  sampleFieldsFragment$data["sampleFields"]
+>(
+  {
+    fragments: [datasetFragment, sampleFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => data.sampleFields,
+    default: [],
+  },
+  {
+    key: "flatSampleFields",
+  }
+);
+
+export const sampleFields = selector<StrictField[]>({
+  key: "sampleFields",
+  get: ({ get }) => collapseFields(get(flatSampleFields) || []),
+});
+
+export const flatFrameFields = graphQLSyncFragmentAtom<
+  frameFieldsFragment$key,
+  frameFieldsFragment$data["frameFields"]
+>(
+  {
+    fragments: [datasetFragment, frameFieldsFragment],
+    keys: ["dataset"],
+    read: (data) => data.frameFields,
+    default: [],
+  },
+  {
+    key: "flatFrameFields",
+  }
+);
+
+export const frameFields = selector<StrictField[]>({
+  key: "frameFields",
+  get: ({ get }) => collapseFields(get(flatFrameFields) || []),
 });
 
 export const selectedViewName = atom<string>({
@@ -111,15 +175,14 @@ export const selectedViewName = atom<string>({
   default: null,
 });
 
-// only used in extended view, for tagging purpose
-export const selectedLabels = atom<State.SelectedLabelMap>({
+export const selectedLabels = sessionAtom({
   key: "selectedLabels",
-  default: {},
+  default: [],
 });
 
-export const selectedSamples = atom<Set<string>>({
+export const selectedSamples = sessionAtom({
   key: "selectedSamples",
-  default: new Set(),
+  default: new Set<string>(),
 });
 
 export const selectedSampleObjects = atom<Map<string, Sample>>({
@@ -144,11 +207,6 @@ export const viewCounter = atom({
 });
 
 export const DEFAULT_ALPHA = 0.7;
-
-export const alpha = atom<number>({
-  key: "alpha",
-  default: DEFAULT_ALPHA,
-});
 
 export const colorSeed = atom<number>({
   key: "colorSeed",
@@ -189,10 +247,37 @@ export const extendedSelectionOverrideStage = atom<any>({
   default: null,
 });
 
-export const similarityParameters = atom<State.SortBySimilarityParameters>({
-  key: "similarityParameters",
-  default: null,
-});
+export const similarityParameters = (() => {
+  let update = false;
+  let parameters: State.SortBySimilarityParameters | null = null;
+
+  return graphQLSyncFragmentAtom<
+    datasetFragment$key,
+    State.SortBySimilarityParameters | null
+  >(
+    {
+      fragments: [datasetFragment],
+      keys: ["dataset"],
+      read: (data, previous) => {
+        if (data.id !== previous?.id && !update) {
+          parameters = null;
+        }
+        update = false;
+
+        return parameters;
+      },
+      default: null,
+      selectorEffect: (_, newValue) => {
+        update = true;
+        parameters = newValue instanceof DefaultValue ? null : newValue;
+        return parameters;
+      },
+    },
+    {
+      key: "similarityParameters",
+    }
+  );
+})();
 
 export const modalTopBarVisible = atom<boolean>({
   key: "modalTopBarVisible",
@@ -217,102 +302,6 @@ export const lookerPanels = atom({
   },
 });
 
-// recoil effect that syncs state with local storage
-export const getBrowserStorageEffectForKey =
-  <T>(
-    key: string,
-    props: {
-      map?: (value: unknown) => unknown;
-      sessionStorage?: boolean;
-      valueClass?: "string" | "stringArray" | "number" | "boolean";
-      prependDatasetNameInKey?: boolean;
-      useJsonSerialization?: boolean;
-    } = {
-      sessionStorage: false,
-      valueClass: "string",
-      prependDatasetNameInKey: false,
-      useJsonSerialization: false,
-    }
-  ): AtomEffect<T> =>
-  ({ setSelf, onSet, getPromise }) => {
-    (async () => {
-      const {
-        valueClass,
-        sessionStorage,
-        useJsonSerialization,
-        prependDatasetNameInKey,
-      } = props;
-
-      const storage = sessionStorage
-        ? window.sessionStorage
-        : window.localStorage;
-
-      if (prependDatasetNameInKey) {
-        const datasetName = (await getPromise(dataset))?.name;
-        key = `${datasetName}_${key}`;
-      }
-
-      const value = storage.getItem(key);
-      let procesedValue;
-
-      if (useJsonSerialization) {
-        procesedValue = JSON.parse(value);
-      } else if (valueClass === "number") {
-        procesedValue = Number(value);
-      } else if (valueClass === "boolean") {
-        procesedValue = value === "true";
-      } else if (valueClass === "stringArray") {
-        if (value?.length > 0) {
-          procesedValue = value?.split(",");
-        } else {
-          procesedValue = [];
-        }
-      } else {
-        procesedValue = value;
-      }
-
-      if (value != null) setSelf(procesedValue);
-
-      onSet((newValue, _oldValue, isReset) => {
-        if (props.map) {
-          newValue = props.map(newValue) as T;
-        }
-        if (isReset || newValue === undefined) {
-          storage.removeItem(key);
-        } else {
-          storage.setItem(
-            key,
-            useJsonSerialization
-              ? JSON.stringify(newValue)
-              : (newValue as string)
-          );
-        }
-      });
-    })();
-  };
-
-export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
-  key: "groupMediaIsCarouselVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIsCarouselVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const groupMedia3dVisibleSetting = atom<boolean>({
-  key: "groupMediaIs3dVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIs3DVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
 export const onlyPcd = selector<boolean>({
   key: "onlyPcd",
   get: ({ get }) => {
@@ -322,97 +311,34 @@ export const onlyPcd = selector<boolean>({
   },
 });
 
-export const groupMediaIs3dVisible = selector<boolean>({
-  key: "groupMedia3dVisible",
-  get: ({ get }) => {
-    const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return get(groupMedia3dVisibleSetting) && hasPcd;
-  },
-});
-
-export const groupMediaIsMainVisibleSetting = atom<boolean>({
-  key: "groupMediaIsMainVisibleSetting",
-  default: true,
-  effects: [
-    getBrowserStorageEffectForKey("groupMediaIsMainVisible", {
-      sessionStorage: true,
-      valueClass: "boolean",
-    }),
-  ],
-});
-
-export const groupMediaIsMainVisible = selector<boolean>({
-  key: "groupMediaIsMainVisible",
-  get: ({ get }) => {
-    const set = get(groupMediaTypesSet);
-    const hasPcd = set.has("point_cloud");
-    return get(groupMediaIsMainVisibleSetting) && (!hasPcd || set.size > 1);
-  },
-});
-
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",
   effects: [getBrowserStorageEffectForKey("mui-mode")],
 });
 
-export const canEditSavedViews = atom({
+export const canEditSavedViews = sessionAtom({
   key: "canEditSavedViews",
   default: true,
 });
 
-export const canEditCustomColors = atom({
+export const canEditCustomColors = sessionAtom({
   key: "canEditCustomColors",
   default: true,
 });
 
-export const compactLayout = atom({
-  key: "compactLayout",
-  default: false,
-});
-
-export const readOnly = atom({
+export const readOnly = sessionAtom({
   key: "readOnly",
   default: false,
 });
 
-export const sessionSpaces = atom<SpaceNodeJSON>({
+export const sessionSpaces = sessionAtom({
   key: "sessionSpaces",
-  default: {
-    id: "root",
-    children: [
-      {
-        id: "default-samples-node",
-        children: [],
-        type: "Samples",
-        pinned: true,
-      },
-    ],
-    type: "panel-container",
-    activeChild: "default-samples-node",
-  },
+  default: SPACES_DEFAULT,
 });
 
-// the active field for customize color modal
-export const activeColorField = atom<
-  { field: Field; expandedPath: string } | string | null
->({
-  key: "activeColorField",
-  default: null,
-});
-
-export const sessionColorScheme = atom<ColorSchemeSetting>({
-  key: "sessionColorScheme",
-  default: {
-    colorPool: [],
-    fields: [],
-  },
-});
-
-export const isUsingSessionColorScheme = atom<boolean>({
-  key: "isUsingSessionColorScheme",
-  default: false,
+export const colorScheme = sessionAtom({
+  key: "colorScheme",
 });
 
 // sidebar filter vs. visibility mode

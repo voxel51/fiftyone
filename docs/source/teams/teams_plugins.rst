@@ -439,9 +439,12 @@ executes them.
 .. note::
 
     This section describes how to configure an
-    `Apache Airflow <https://airflow.apache.org>`_ orchestrator, but other
-    options are available, such as `Flyte <https://flyte.org>`_. Delegated
-    operations in FiftyOne Teams are designed to be workflow tool-agnostic.
+    `Apache Airflow <https://airflow.apache.org>`_ orchestrator in a
+    development environment.
+
+    Want to run delegated operations at scale? Contact your Voxel51 support
+    team to discuss adding a production-grade cluster to your FiftyOne Teams
+    deployment.
 
 To set up Airflow as an orchestrator to run delegated operations, you will need
 to:
@@ -457,7 +460,7 @@ to:
     to the Orchestrator, either by installing them on the same machine or by
     making them available via a shared filesystem
 -   Ensure that the required environment variables are set (see below)
--   Install the
+-   Install a
     `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_
 -   You're all set. Schedule those operations!
 
@@ -668,7 +671,7 @@ the appropriate values for your deployment.
     export FIFTYONE_API_KEY=...
     export API_URL=...
 
-**Add the Airflow DAG**
+**Add Airflow DAG**
 
 Check the default DAGs path by running the following command:
 
@@ -680,7 +683,7 @@ Check the default DAGs path by running the following command:
 
     The default DAG folder path is `/home/<user>/airflow/dags`.
 
-Navigate to the DAG folder and add the
+Navigate to the DAG folder and add a
 `FiftyOne Airflow DAG <https://github.com/voxel51/fiftyone-plugins/tree/main/orchestrators/airflow>`_.
 
 Open the Airflow interface and ensure that the DAG is visible. Any issues
@@ -713,6 +716,8 @@ delegated operations scheduled against that dataset.
     The Runs page only tracks operations that are *delegated* to your Team's
     orchestrator, not operations that are executed immediately in the App.
 
+.. _teams-runs-page:
+
 Runs page
 ---------
 
@@ -727,6 +732,8 @@ sort, search and filter runs listed to refine the list as you like:
 
 .. image:: /images/plugins/operators/runs/runs_page.png
 
+.. _teams-runs-sorting:
+
 Sorting
 ^^^^^^^
 
@@ -736,23 +743,23 @@ name of the operator:
 
 .. image:: /images/plugins/operators/runs/sort.png
 
+.. _teams-runs-filtering:
+
 Filtering
 ^^^^^^^^^
 
-You can also filter the runs table to see a subset of runs:
-
-**Showing only your runs**
+You can also filter the runs table to see a subset of runs.
 
 Use the "My runs" radio button to see only the runs that you scheduled:
 
 .. image:: /images/plugins/operators/runs/my_runs.png
 
-**By status**
-
 You can further refine the list of runs using the status dropdown to select one
 or more status you would like to filter by:
 
 .. image:: /images/plugins/operators/runs/filter_by_status.png
+
+.. _teams-runs-searching:
 
 Searching
 ^^^^^^^^^
@@ -761,13 +768,15 @@ You can also use the search functionality to filter the list of runs by
 keyword. As you type your query in the search box, the list of runs will be
 updated to show only the runs matching your query:
 
+.. image:: /images/plugins/operators/runs/search_by_name.png
+
 .. note::
 
     Search is case-sensitive and you can currently only search by operator
-    name. For example, searches will not match against operator label
-    **Demo: Export to GCP** in the image below.
+    name, not label. For example, searches will not match against
+    **Demo: Export to GCP** in the image above.
 
-.. image:: /images/plugins/operators/runs/search_by_name.png
+.. _teams-runs-re-running:
 
 Re-running
 ^^^^^^^^^^
@@ -777,14 +786,16 @@ three-dots to open actions menu and then clicking "Re-run":
 
 .. image:: /images/plugins/operators/runs/re_run.png
 
+.. _teams-runs-pinning:
+
 Pinning
 ^^^^^^^
 
-Pinned runs are displayed to the right of runs table. By default, five pinned
-runs will be displayed. However, if there are more than five pinned runs, you
-will see a button to expand the list.
+Pinned runs are displayed to the right of the runs table. By default, five
+pinned runs will be displayed. However, if there are more than five pinned
+runs, you will see a button to expand the list.
 
-To pin a run, hover over a run in runs table and click the pin icon that
+To pin a run, hover over its row in the runs table and click the pin icon that
 appears beside the operator label:
 
 .. image:: /images/plugins/operators/runs/pinning.png
@@ -793,6 +804,63 @@ appears beside the operator label:
 
     Pinned runs are stored at the dataset-level and will be visible to all
     users with access to the dataset.
+
+.. _teams-runs-renaming:
+
+Renaming
+^^^^^^^^
+
+When delegating an operator multiple times on the same dataset, you may wish to
+give the runs custom labels so that you can easily identify each run later.
+
+To edit the label of an operator run, move your mouse cursor over the label of
+interest and click the pencil button as indicated by "1" below. This will
+present an input field indicated by "2" where you can update label to text of
+your choice. Once you are ready to apply changes, click the save button
+indicated by "3".
+
+.. image:: /images/plugins/operators/runs/edit_label.png
+
+.. _teams-runs-mark-as-failed:
+
+Mark as failed
+^^^^^^^^^^^^^^
+
+If a delegated operation run terminates unexpectedly without reporting failure,
+you can manually mark it as failed from the Runs page.
+
+To mark a run as failed, click the three dots indicated by "1". Then, in the
+menu, click "Mark as failed" as indicated by "2". The run status will be
+updated and will now display as failed.
+
+.. image:: /images/plugins/operators/runs/mark_as_failed.png
+
+.. note::
+
+    If the delegated operation is, in fact, still in progress in your
+    orchestrator, marking the run as failed will **not** terminate the
+    execution of operation.
+
+.. _teams-runs-monitoring-progress:
+
+Monitoring progress
+^^^^^^^^^^^^^^^^^^^
+
+Delegated operations can optionally
+:ref:`report their progress <operator-reporting-progress>` during execution.
+
+If a progress is available for a run, it will be displayed in the Runs table
+as indicated by "2". By default, the progress of running operations is
+automatically refreshed. You can disable auto-refresh of running operations by
+toggling the auto refresh setting indicated by "1".
+
+.. image:: /images/plugins/operators/runs/run_progress.png
+
+.. note::
+
+    Only the progress of running operations is automatically refreshed.
+
+.. _teams-run-page:
 
 Run page
 --------
@@ -846,3 +914,4 @@ The View tab on the Run page lets you see the dataset view on which the run was
 scheduled:
 
 .. image:: /images/plugins/operators/runs/view.png
+

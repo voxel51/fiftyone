@@ -7,8 +7,8 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   grid: async ({ page, eventUtils }, use) => {
     await use(new GridPom(page, eventUtils));
   },
-  modal: async ({ page }, use) => {
-    await use(new ModalPom(page));
+  modal: async ({ page, eventUtils }, use) => {
+    await use(new ModalPom(page, eventUtils));
   },
 });
 
@@ -47,7 +47,7 @@ test.beforeAll(async ({ fiftyoneLoader }) => {
 });
 
 extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
-  test(`${extension} dynamic group`, async ({
+  test(`${extension} dynamic group smoke test`, async ({
     page,
     fiftyoneLoader,
     grid,
@@ -64,5 +64,28 @@ extensionDatasetNamePairs.forEach(([extension, datasetName]) => {
     await modal.scrollCarousel();
     await modal.navigateCarousel(4, true);
     await modal.sidebar.assert.verifySidebarEntryText("dynamic_group", "0");
+  });
+
+  test(`${extension} dynamic group pagination bar`, async ({
+    page,
+    fiftyoneLoader,
+    grid,
+    modal,
+  }) => {
+    await fiftyoneLoader.waitUntilGridVisible(page, datasetName, {
+      savedView: "dynamic-group",
+    });
+    await grid.openFirstSample();
+
+    await modal.group.assert.assertIsCarouselVisible();
+    await modal.group.assert.assertIsPaginationBarNotVisible();
+
+    await modal.group.setDynamicGroupsNavigationMode("pagination");
+
+    await modal.group.assert.assertIsPaginationBarVisible();
+    await modal.group.assert.assertIsCarouselNotVisible();
+
+    await modal.group.dynamicGroupPagination.assert.verifyPage(1);
+    await modal.group.dynamicGroupPagination.assert.verifyPage(10);
   });
 });

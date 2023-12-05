@@ -2,15 +2,20 @@ import { Tooltip, useTheme } from "@fiftyone/components/src/components";
 import PopoutDiv from "@fiftyone/components/src/components/Popout/PopoutDiv";
 import * as fos from "@fiftyone/state";
 import { useOutsideClick } from "@fiftyone/state";
-import { Field } from "@fiftyone/utilities";
+import {
+  BOOLEAN_FIELD,
+  INT_FIELD,
+  LIST_FIELD,
+  STRING_FIELD,
+} from "@fiftyone/utilities";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import KeyboardArrowUpOutlinedIcon from "@mui/icons-material/KeyboardArrowUpOutlined";
 import { cloneDeep } from "lodash";
 import React from "react";
-import useMeasure from "react-use-measure";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
+import Item from "../../Filters/FilterOption/FilterItem";
+import { activeColorPath } from "../state";
 
 const ActionDiv = styled.div`
   position: relative;
@@ -27,42 +32,52 @@ const SelectButton = styled.div`
 `;
 
 type Prop = {
-  eligibleFields: Field[];
   style: React.CSSProperties;
 };
 
-type Option = {
-  value: string;
-  onClick: () => void;
-};
-
-const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
+const ColorAttribute: React.FC<Prop> = ({ style }) => {
   const theme = useTheme();
-  const ref = React.useRef<HTMLDivElement>();
+  const VALID_COLOR_ATTRIBUTE_TYPES = [BOOLEAN_FIELD, INT_FIELD, STRING_FIELD];
+  const path = useRecoilValue(activeColorPath);
+
+  const expandedPath = useRecoilValue(fos.expandPath(path));
+
+  const subfields = useRecoilValue(
+    fos.fields({
+      path: expandedPath,
+      ftype: [...VALID_COLOR_ATTRIBUTE_TYPES, LIST_FIELD],
+    })
+  ).filter((field) =>
+    [...VALID_COLOR_ATTRIBUTE_TYPES, null].includes(field.subfield)
+  );
+  const ref = React.useRef<HTMLDivElement>(null);
   const [open, setOpen] = React.useState(false);
   useOutsideClick(ref, () => open && setOpen(false));
-  const [mRef, bounds] = useMeasure();
 
   const setColorScheme = fos.useSetSessionColorScheme();
-  const activeField = useRecoilValue(fos.activeColorField).field as Field;
-  const { colorPool, fields } = useRecoilValue(fos.sessionColorScheme);
-  const index = fields.findIndex((s) => s.path == activeField.path);
+  const currentColorScheme = useRecoilValue(fos.colorScheme);
 
-  const options = eligibleFields.map((field) => ({
-    value: field.path?.split(".").slice(-1),
-    onClick: (e) => {
-      e.preventDefault();
-      const copy = cloneDeep(fields);
-      if (index > -1) {
-        copy[index].colorByAttribute = field.path?.split(".").slice(-1)[0];
-        setColorScheme(false, { colorPool, fields: copy });
-        setOpen(false);
-      }
-    },
-  }));
+  const index = currentColorScheme.fields.findIndex((s) => s.path == path);
+
+  const options = subfields.map((field) => {
+    const value = field.path?.split(".").slice(-1)[0];
+    return {
+      value,
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        const copy = cloneDeep(currentColorScheme.fields);
+        if (index > -1) {
+          copy[index].colorByAttribute = value;
+          setColorScheme({ ...currentColorScheme, fields: copy });
+          setOpen(false);
+        }
+      },
+    };
+  });
 
   const selected =
-    fields[index]?.colorByAttribute ?? "Please select an attribute";
+    currentColorScheme.fields[index]?.colorByAttribute ??
+    "Please select an attribute";
 
   return (
     <div style={style}>
@@ -72,12 +87,12 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
           text={
             "You can select StringField, BooleanField or IntField attribute for annotation's color"
           }
-          placement={"bottom-center"}
+          placement={"top-center"}
         >
           <SelectButton
             onClick={() => setOpen((o) => !o)}
-            ref={mRef}
             theme={theme}
+            data-cy="custom-colors-select-attribute"
           >
             <div>{selected}</div>
             {open ? (
@@ -89,7 +104,7 @@ const ColorAttribute: React.FC<Prop> = ({ eligibleFields, style }) => {
         </Tooltip>
         {open && (
           <PopoutDiv style={{ zIndex: 1000000001, opacity: 1, width: "100%" }}>
-            {options.map((option: Option) => (
+            {options.map((option) => (
               <Item key={option.value} {...option} />
             ))}
           </PopoutDiv>

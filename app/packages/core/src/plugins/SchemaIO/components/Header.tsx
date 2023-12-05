@@ -25,7 +25,15 @@ export default function Header(props: HeaderProps) {
     tertiary: "body2" as const,
   };
 
-  if (!label && !description && (!caption || omitCaption)) return null;
+  if (
+    !label &&
+    !description &&
+    (!caption || omitCaption) &&
+    (errors.length === 0 || omitErrors) &&
+    !Actions
+  ) {
+    return null;
+  }
 
   const viewProps = { schema: { view: { componentsProps } } };
 
@@ -106,6 +114,6 @@ export type HeaderProps = {
   omitCaption?: boolean;
   omitErrors?: boolean;
   descriptionView?: "inline" | "tooltip";
-  errors: object;
+  errors: [];
   componentsProps?: unknown;
 };

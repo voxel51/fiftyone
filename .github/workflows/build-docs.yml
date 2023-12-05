@@ -44,9 +44,9 @@ jobs:
       FIFTYONE_DO_NOT_TRACK: true
     steps:
       - name: Clone fiftyone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Checkout fiftyone-teams
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: voxel51/fiftyone-teams
           path: fiftyone-teams
@@ -88,7 +88,7 @@ jobs:
         run: |
           ./docs/generate_docs.bash -t fiftyone-teams
       - name: Upload docs
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: docs
           path: docs/build/html/
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Download docs
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: docs
           path: docs-download/

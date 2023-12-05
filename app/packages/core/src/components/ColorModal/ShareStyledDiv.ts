@@ -1,4 +1,5 @@
 import styled from "styled-components";
+import DeleteIcon from "@material-ui/icons/Delete";
 
 export const ModalWrapper = styled.div`
   position: fixed;
@@ -179,4 +180,44 @@ export const Slider = styled.span`
     transition: 0.4s;
     border-radius: 50%;
   }
+`;
+
+export const RowContainer = styled.div`
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  column-count: 2;
+`;
+
+export const AddContainer = styled.div`
+  display: flex;
+  justify-content: start;
+  align-items: center;
+  margin-bottom: 0.5rem;
+`;
+
+export const DeleteButton = styled(DeleteIcon)`
+  cursor: pointer;
+`;
+
+export const ColorSquare = styled.div<{ color: string }>`
+  position: relative;
+  width: 30px;
+  height: 30px;
+  margin-left: 1rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  background-color: ${(props) => props.color || "#ddd"};
+`;
+
+export const ChromePickerWrapper = styled.div`
+  position: absolute;
+  top: 60px;
+  left: 0;
+  z-index: 10001;
+`;
+
+export const Guide = styled.div`
+  display: flex;
+  flex-direction: row;
 `;

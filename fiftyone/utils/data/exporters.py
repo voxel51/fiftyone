@@ -1732,6 +1732,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._runs_dir = None
         self._frame_labels_dir = None
         self._metadata_path = None
         self._samples_path = None
@@ -1747,6 +1748,7 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
         self._anno_dir = os.path.join(self.export_dir, "annotations")
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
+        self._runs_dir = os.path.join(self.export_dir, "runs")
         self._frame_labels_dir = os.path.join(self.export_dir, "frames")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
         self._samples_path = os.path.join(self.export_dir, "samples.json")
@@ -1849,6 +1851,13 @@ class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
                 for k, v in dataset._doc.get_evaluations().items()
             }
             _export_evaluation_results(dataset, self._eval_dir)
+
+        if dataset.has_runs and self.export_runs:
+            self._metadata["runs"] = {
+                k: json_util.dumps(v.to_dict())
+                for k, v in dataset._doc.get_runs().items()
+            }
+            _export_run_results(dataset, self._runs_dir)
 
     def export_sample(self, sample):
         out_filepath, _ = self._media_exporter.export(sample.filepath)
@@ -2008,6 +2017,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._anno_dir = None
         self._brain_dir = None
         self._eval_dir = None
+        self._runs_dir = None
         self._metadata_path = None
         self._samples_path = None
         self._frames_path = None
@@ -2021,6 +2031,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         self._anno_dir = os.path.join(self.export_dir, "annotations")
         self._brain_dir = os.path.join(self.export_dir, "brain")
         self._eval_dir = os.path.join(self.export_dir, "evaluations")
+        self._runs_dir = os.path.join(self.export_dir, "runs")
         self._metadata_path = os.path.join(self.export_dir, "metadata.json")
 
         if self.use_dirs:
@@ -2118,11 +2129,13 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
             )
 
         dataset = sample_collection._dataset
+        dataset._doc.reload()
         dataset_dict = dataset._doc.to_dict()
         dataset_dict["saved_views"] = []
         dataset_dict["annotation_runs"] = {}
         dataset_dict["brain_methods"] = {}
         dataset_dict["evaluations"] = {}
+        dataset_dict["runs"] = {}
 
         #
         # Exporting saved views/runs only makes sense if the entire dataset is
@@ -2165,6 +2178,12 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
                 for k, v in dataset._doc.get_evaluations().items()
             }
             _export_evaluation_results(dataset, self._eval_dir)
+
+        if _export_runs and dataset.has_runs:
+            dataset_dict["runs"] = {
+                k: v.to_dict() for k, v in dataset._doc.get_runs().items()
+            }
+            _export_run_results(dataset, self._runs_dir)
 
         foo.export_document(dataset_dict, self._metadata_path)
 
@@ -2240,6 +2259,14 @@ def _export_evaluation_results(sample_collection, eval_dir):
     for eval_key in sample_collection.list_evaluations():
         results_path = os.path.join(eval_dir, eval_key + ".json")
         results = sample_collection.load_evaluation_results(eval_key)
+        if results is not None:
+            etas.write_json(results, results_path)
+
+
+def _export_run_results(sample_collection, runs_dir):
+    for run_key in sample_collection.list_runs():
+        results_path = os.path.join(runs_dir, run_key + ".json")
+        results = sample_collection.load_run_results(run_key)
         if results is not None:
             etas.write_json(results, results_path)
 

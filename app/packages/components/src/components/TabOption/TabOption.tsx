@@ -27,6 +27,7 @@ const TabOptionDiv = animated(styled.div`
   & > div > div {
     display: flex;
     justify-content: center;
+    padding: 0 1rem;
   }
 `);
 
@@ -34,6 +35,7 @@ type TabOption = {
   title: string;
   text: string;
   onClick: () => void;
+  dataCy?: string;
 };
 
 export type TabOptionProps = {
@@ -77,9 +79,9 @@ const TabOption = ({
       onMouseEnter={() => set({ background: theme.background.body })}
       onMouseLeave={() => set({ background: theme.background.level1 })}
     >
-      {options.map(({ text, title, onClick }, i) => (
+      {options.map(({ text, title, onClick, dataCy }, i) => (
         <Tab
-          data-cy={`tab-option-${title}`}
+          data-cy={dataCy || `tab-option-${title}`}
           onClick={() => {
             !disabled && onClick();
           }}

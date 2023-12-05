@@ -30,7 +30,7 @@ const pageParams = selector({
   get: ({ get }) => {
     const params = {
       dataset: get(fos.datasetName),
-      view: get(fos.dynamicGroupViewQuery),
+      view: get(fos.dynamicGroupViewQuery({})),
     };
     return (page: number, pageSize: number) => {
       return {
@@ -55,13 +55,15 @@ export const DynamicGroupsFlashlightWrapper = () => {
     [modalSampleId]
   );
 
+  const cursor = useRecoilValue(fos.dynamicGroupIndex);
+
   const createLooker = fos.useCreateLooker(
     false,
     true,
     {
       ...opts,
       thumbnailTitle: (sample) =>
-        field.orderBy ? get(sample, field.orderBy) : null,
+        field?.orderBy ? get(sample, field.orderBy) : null,
     },
     highlight
   );
@@ -135,11 +137,6 @@ export const DynamicGroupsFlashlightWrapper = () => {
       horizontal: true,
       containerId: DYNAMIC_GROUPS_FLASHLIGHT_CONTAINER_ID,
       elementId: DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID,
-      enableHorizontalKeyNavigation: {
-        navigationCallback,
-        previousKey: "<",
-        nextKey: ">",
-      },
       initialRequestKey: 0,
       onItemClick: (_, id) => setSample(id),
       options: {
