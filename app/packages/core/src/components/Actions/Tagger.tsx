@@ -3,7 +3,12 @@ import {
   PopoutSectionTitle,
   useTheme,
 } from "@fiftyone/components";
-import { FrameLooker, ImageLooker, VideoLooker } from "@fiftyone/looker";
+import {
+  FrameLooker,
+  ImaVidLooker,
+  ImageLooker,
+  VideoLooker,
+} from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Lookers, groupId, groupStatistics, refresher } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
@@ -320,6 +325,7 @@ const useTagCallback = (
     ...[
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: false })),
       useRecoilRefresher_UNSTABLE(tagStatistics({ modal, labels: true })),
+      useRecoilRefresher_UNSTABLE(fos.activeModalSidebarSample),
     ],
   ];
 
@@ -327,6 +333,13 @@ const useTagCallback = (
     ({ snapshot, set, reset }) =>
       async ({ changes }) => {
         const isGroup = await snapshot.getPromise(fos.isGroup);
+        const isNonNestedDynamicGroup = await snapshot.getPromise(
+          fos.isNonNestedDynamicGroup
+        );
+        const isImaVidLookerActive = await snapshot.getPromise(
+          fos.isImaVidLookerAvailable
+        );
+
         const slices = await snapshot.getPromise(fos.currentSlices(modal));
         const { samples } = await getFetchFunction()("POST", "/tag", {
           ...tagParameters({
@@ -338,14 +351,15 @@ const useTagCallback = (
               modal ? fos.modalFilters : fos.filters
             ),
             hiddenLabels: await snapshot.getPromise(fos.hiddenLabelsArray),
-            groupData: isGroup
-              ? {
-                  id: modal ? await snapshot.getPromise(groupId) : null,
-                  slices,
-                  slice: await snapshot.getPromise(fos.groupSlice),
-                  mode: await snapshot.getPromise(groupStatistics(modal)),
-                }
-              : null,
+            groupData:
+              isGroup && !isNonNestedDynamicGroup
+                ? {
+                    id: modal ? await snapshot.getPromise(groupId) : null,
+                    slices,
+                    slice: await snapshot.getPromise(fos.groupSlice),
+                    mode: await snapshot.getPromise(groupStatistics(modal)),
+                  }
+                : null,
             modal,
             sampleId: modal
               ? await snapshot.getPromise(fos.sidebarSampleId)
@@ -373,6 +387,18 @@ const useTagCallback = (
         } else if (samples) {
           set(fos.refreshGroupQuery, (cur) => cur + 1);
           updateSamples(samples.map((sample) => [sample._id, sample]));
+
+          if (isImaVidLookerActive) {
+            // assuming we're working with only one sample
+            (
+              lookerRef?.current as unknown as ImaVidLooker
+            )?.frameStoreController.store?.updateSample(
+              samples[0]._id,
+              samples[0]
+            );
+
+            lookerRef?.current?.updateSample(samples[0]);
+          }
         }
 
         set(fos.anyTagging, false);
