@@ -373,7 +373,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
       if (unprocessedBufferRange) {
         this.framesController.enqueueFetch(unprocessedBufferRange);
-        console.log("mark: fetch enqueued for range", unprocessedBufferRange);
         this.framesController.resumeFetch();
       }
     }
