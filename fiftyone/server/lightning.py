@@ -18,6 +18,7 @@ import strawberry as gql
 import fiftyone as fo
 import fiftyone.core.fields as fof
 
+import fiftyone.server.constants as foc
 from fiftyone.server.data import Info
 from fiftyone.server.utils import meets_type
 
@@ -29,7 +30,7 @@ class LightningPathInput:
     exclude: t.Optional[t.List[str]] = gql.field(
         description="exclude these values from results", default=None
     )
-    first: t.Optional[int] = None
+    first: t.Optional[int] = foc.LIST_LIMIT
     search: t.Optional[str] = None
 
 

@@ -91,7 +91,7 @@ class Executor(object):
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
-            the result of the invocation
+            instructions for the FiftyOne App to invoke the operator
         """
         inv_req = InvocationRequest(operator_name, params=params)
         self._requests.append(inv_req)
@@ -592,13 +592,24 @@ class ExecutionContext(object):
         This method is only available when the operator is invoked via the
         FiftyOne App. You can check this via ``ctx.executor``.
 
+        Example::
+
+            def execute(self, ctx):
+                # Trigger the `reload_dataset` operator after this operator
+                # finishes executing
+                ctx.trigger("reload_dataset")
+
+                # Immediately trigger the `reload_dataset` operator while a
+                # generator operator is executing
+                yield ctx.trigger("reload_dataset")
+
         Args:
             operator_name: the name of the operator
             params (None): a dictionary of parameters for the operator
 
         Returns:
             a :class:`fiftyone.operators.message.GeneratedMessage` containing
-            the result of the invocation
+            instructions for the FiftyOne App to invoke the operator
         """
         if self.executor is None:
             raise ValueError("No executor available")
@@ -608,10 +619,19 @@ class ExecutionContext(object):
     def log(self, message):
         """Logs a message to the browser console.
 
+        .. note::
+
+            This method is only available to non-delegated operators. You can
+            only use this method during the execution of an operator.
+
         Args:
             message: a message to log
+
+        Returns:
+            a :class:`fiftyone.operators.message.GeneratedMessage` containing
+            instructions for the FiftyOne App to invoke the operator
         """
-        self.trigger("console_log", {"message": message})
+        return self.trigger("console_log", {"message": message})
 
     def serialize(self):
         """Serializes the execution context.

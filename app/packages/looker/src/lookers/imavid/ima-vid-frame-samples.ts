@@ -1,10 +1,11 @@
+import { ModalSample } from "@fiftyone/state";
 import LRUCache from "lru-cache";
-import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
-import { SampleId, SampleResponse } from "./types";
 import { BufferManager } from "./buffer-manager";
+import { MAX_FRAME_SAMPLES_CACHE_SIZE } from "./constants";
+import { SampleId } from "./types";
 
 export class ImaVidFrameSamples {
-  public readonly samples: LRUCache<SampleId, SampleResponse>;
+  public readonly samples: LRUCache<SampleId, ModalSample>;
   public readonly frameIndex: Map<number, SampleId>;
   public readonly reverseFrameIndex: Map<SampleId, number>;
 
@@ -13,7 +14,7 @@ export class ImaVidFrameSamples {
   constructor(storeBufferManager: BufferManager) {
     this.storeBufferManager = storeBufferManager;
 
-    this.samples = new LRUCache<SampleId, SampleResponse>({
+    this.samples = new LRUCache<SampleId, ModalSample>({
       max: MAX_FRAME_SAMPLES_CACHE_SIZE,
       dispose: (sampleId) => {
         // remove it from the frame index
@@ -39,6 +40,7 @@ export class ImaVidFrameSamples {
     if (sampleId === undefined) {
       return undefined;
     }
+
     return this.samples.get(sampleId);
   }
 

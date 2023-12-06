@@ -45,13 +45,18 @@ export default function (
   const resultsLoadable = useRecoilValueLoadable(resultsAtom);
   const showSearch = useRecoilValue(showSearchSelector({ modal, path }));
   const useSearch = useUseSearch({ modal, path });
+  const lightningOn = useRecoilValue(fos.lightning);
+  const lightning =
+    useRecoilValue(fos.isLightningPath(path)) && !modal && lightningOn;
 
   if (resultsLoadable.state === "hasError") throw resultsLoadable.contents;
   const results =
     resultsLoadable.state === "hasValue" ? resultsLoadable.contents : null;
   const length = results?.results?.length ?? 0;
-  const shown = showSearch || length > CHECKBOX_LIMIT;
 
+  const shown =
+    (resultsLoadable.state !== "loading" || lightning) &&
+    (showSearch || length > CHECKBOX_LIMIT);
   return {
     results,
     useSearch: useRecoilValue(hasSearchResultsSelector(path))

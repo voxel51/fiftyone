@@ -446,3 +446,68 @@ alias:
 
     # For example
     filepath = "minio://test-bucket/image.jpg"
+
+.. _teams-cloud-storage-page:
+
+Cloud storage page
+__________________
+
+Admins can also configure cloud credentials via the Settings > Cloud storage
+page.
+
+Credentials configured via this page are stored (encrypted) in the Teams
+database, rather than needing to be configured through environment variables in
+your Teams deployment.
+
+.. note::
+
+    Any credentials configured via environment variables in your deployment
+    will not be displayed in this page.
+
+To upload a new credential, click the ``Add credential`` button:
+
+.. image:: /images/teams/cloud_creds_add_btn.png
+    :alt: cloud-creds-add-credentials-button
+    :align: center
+
+This will open a modal that you can use to add a credential for any of the
+available providers:
+
+.. image:: /images/teams/cloud_creds_modal_blank.png
+    :alt: blank-cloud-creds-modal
+    :align: center
+
+After the appropriate files or fields are populated, click ``Save credential``
+to store the (encrypted) credential.
+
+As depicted in the screenshot above, a credential can optionally be restricted
+to a specific list of bucket(s):
+
+-   If one or more buckets are provided, the credentials are
+    **bucket-specific credentials** that will only be used to read/write media
+    within the specified bucket(s)
+-   If no buckets are provided, the credentials are **default credentials**
+    that will be used whenever trying to read/write any media for the provider
+    that does not belong to a bucket with bucket-specific credentials
+
+.. note::
+
+    Bucket-specific credentials are useful in situations where you cannot or
+    do not wish to provide a single set of credentials to cover all buckets
+    that your team plans to use within a given cloud storage provider.
+
+Any cloud credentials uploaded via this method will automatically be used by
+the Teams UI when any user attempts to load media associated with the
+appropriate provider or specific bucket.
+
+.. note::
+
+    By default, Teams servers refresh their credentials every 120 seconds, so
+    you may need to wait up to two minutes after modifying your credentials via
+    this page in order for the changes to take effect.
+
+.. note::
+
+    Users cannot access stored credentials directly, either via the Teams UI or
+    by using the Teams SDK locally. The credentials are only decrypted and
+    used internally by the Teams servers.
