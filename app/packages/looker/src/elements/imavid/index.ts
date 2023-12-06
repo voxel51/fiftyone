@@ -22,6 +22,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
           if (thumbnail) {
             return {
               playing: true,
+              disableOverlays: true,
             };
           }
           return {};
@@ -278,12 +279,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
                   this.drawFrame(1);
                   return {
                     playing: true,
+                    disableOverlays: true,
                     currentFrameNumber: 1,
                   };
                 }
 
                 return {
                   playing: false,
+                  disableOverlays: false,
                   currentFrameNumber: this.framesController.totalFrameCount,
                 };
               });
@@ -303,8 +306,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.isAnimationActive) {
       return;
     }
-
-    this.update(() => ({ disabled: true, disableOverlays: true }));
 
     requestAnimationFrame(() => this.drawFrame(this.frameNumber));
   }
