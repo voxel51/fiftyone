@@ -63,8 +63,7 @@ class PluginSecretsResolver(object):
             return None
 
         # pylint: disable=no-member
-        resolved_secret = await self.client.get(key, **kwargs)
-        return resolved_secret
+        return await self.client.get(key, **kwargs)
 
     def get_secret_sync(self, key, operator_uri, **kwargs):
         """Gets the value of a secret.

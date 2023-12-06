@@ -420,6 +420,7 @@ class ExecutionContext(object):
         self._secrets_dict = {}
         self._secrets_client = None
         self._secrets = None
+        self._resolved_secrets = False
 
         if operator.has_secrets:
             self._secrets_client = PluginSecretsResolver()
@@ -530,6 +531,7 @@ class ExecutionContext(object):
     def secrets(self):
         """A read-only mapping of keys to their resolved values."""
         if self._secrets is None:
+            self._resolve_secrets_sync()
             self._secrets = SecretsDictionary(self._secrets_dict)
 
         return self._secrets
@@ -541,6 +543,14 @@ class ExecutionContext(object):
             **kwargs: additional keyword arguments to pass to the secrets
                 client for authentication
         """
+        await self._resolve_secrets_async(**kwargs)
+
+    async def _resolve_secrets_async(self, **kwargs):
+        if self._resolved_secrets:
+            return
+
+        self._resolved_secrets = True
+
         if not self.operator.has_secrets:
             return
 
@@ -548,6 +558,23 @@ class ExecutionContext(object):
         for key in self.operator.secrets:
             secret = await self._secrets_client.get_secret(
                 key, self.operator.uri, **kwargs
+            )
+            if secret:
+                self._secrets_dict[secret.key] = secret.value
+
+    def _resolve_secrets_sync(self):
+        if self._resolved_secrets:
+            return
+
+        self._resolved_secrets = True
+
+        if not self.operator.has_secrets:
+            return
+
+        self._secrets_dict.clear()
+        for key in self.operator.secrets:
+            secret = self._secrets_client.get_secret_sync(
+                key, self.operator.uri
             )
             if secret:
                 self._secrets_dict[secret.key] = secret.value

@@ -33,6 +33,20 @@ class MockOperator(Operator):
         return OperatorConfig(name="mock_operator")
 
 
+class TestOperator:
+    def test_operator_register_secrets(self):
+        op = MockOperator()
+        secrets = [SECRET_KEY1, SECRET_KEY2]
+
+        assert not op.has_secrets
+        assert op.secrets is None
+
+        op.register_secrets(secrets)
+
+        assert op.has_secrets
+        assert op.secrets == secrets
+
+
 class TestExecutionContext:
     @pytest.fixture
     def secrets(self):
@@ -50,56 +64,42 @@ class TestExecutionContext:
         mock.get_secret.side_effect = lambda key, operator: MockSecret(
             key, secrets.get(key)
         )
+        mock.get_secret_sync.side_effect = lambda key, operator: MockSecret(
+            key, secrets.get(key)
+        )
         mock.config_cache = {operator.uri: operator.secrets}
         return mock
 
-    def test_secret(self, operator):
-        context = ExecutionContext(operator=operator)
-        context._secrets_dict = {SECRET_KEY1: SECRET_VALUE1}
+    def test_secrets_existing_key(self, operator, secrets_resolver):
+        ctx = ExecutionContext(operator=operator)
+        ctx._secrets_client = secrets_resolver
 
-        result = context.secrets[SECRET_KEY1]
+        result = ctx.secrets[SECRET_KEY1]
 
         assert result == SECRET_VALUE1
 
-    def test_secret_non_existing_key(self, operator):
-        context = ExecutionContext(operator=operator)
-        context._secrets_dict = {SECRET_KEY1: SECRET_VALUE1}
+    def test_secrets_non_existing_key(self, operator, secrets_resolver):
+        ctx = ExecutionContext(operator=operator)
+        ctx._secrets_client = secrets_resolver
 
-        result = context.secrets["NON_EXISTENT_SECRET"]
+        result = ctx.secrets["NON_EXISTENT_SECRET"]
 
         assert result is None
 
-    def test_secrets_property(self, operator):
-        context = ExecutionContext(operator=operator)
-        context._secrets_dict = {
-            SECRET_KEY1: SECRET_VALUE1,
-            SECRET_KEY2: SECRET_VALUE2,
-        }
+    def test_secrets_dict(self, operator, secrets_resolver):
+        ctx = ExecutionContext(operator=operator)
+        ctx._secrets_client = secrets_resolver
 
-        assert dict(context.secrets) == context._secrets_dict
+        assert dict(ctx.secrets) == ctx._secrets_dict
 
     @pytest.mark.asyncio
     async def test_resolve_secret_values(self, operator, secrets_resolver):
-        context = ExecutionContext(operator=operator)
-        context._secrets_client = secrets_resolver
+        ctx = ExecutionContext(operator=operator)
+        ctx._secrets_client = secrets_resolver
 
-        await context.resolve_secret_values()
+        await ctx.resolve_secret_values()
 
-        assert dict(context.secrets) == context._secrets_dict
-
-
-class TestOperatorSecrets:
-    def test_operator_register_secrets(self):
-        op = MockOperator()
-        secrets = [SECRET_KEY1, SECRET_KEY2]
-
-        assert not op.has_secrets
-        assert op.secrets is None
-
-        op.register_secrets(secrets)
-
-        assert op.has_secrets
-        assert op.secrets == secrets
+        assert dict(ctx.secrets) == ctx._secrets_dict
 
 
 class TestPluginSecretResolver:
