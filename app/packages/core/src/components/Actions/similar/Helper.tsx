@@ -1,9 +1,9 @@
 import { PopoutSectionTitle, useTheme } from "@fiftyone/components";
 import React from "react";
 
+import useSimilarityType from "@fiftyone/state/src/hooks/similaritySearch/useSimilarityType";
 import { SORT_BY_SIMILARITY } from "../../../utils/links";
 import { ActionOption } from "../Common";
-import useSimilarityType from "@fiftyone/state/src/hooks/similaritySearch/useSimilarityType";
 
 interface Props {
   hasSimilarityKeys: boolean;

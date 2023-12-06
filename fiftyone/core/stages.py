@@ -7251,6 +7251,8 @@ def _parse_similarity_query(query):
             except:
                 # Query prompts
                 is_prompt = True
+        else:
+            is_prompt = False
 
         return query, query, is_prompt
 
@@ -8513,6 +8515,12 @@ _STAGES_THAT_SELECT_OR_REORDER = {
     MatchTags,
     Select,
     SelectBy,
+    SelectGroupSlices,
     Skip,
     Take,
+}
+
+# Registry of select stages that should select first
+_STAGES_THAT_SELECT_FIRST = {
+    SelectGroupSlices,
 }

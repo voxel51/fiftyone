@@ -26,7 +26,7 @@ const compilePath = (path: string): CompilePathResult => {
 export type LocationState<T extends OperationType> = {
   view?: State.Stage[];
   savedViewSlug?: string;
-  fieldVisibility?: State.Stage;
+  fieldVisibility?: State.FieldVisibilityStage;
 } & VariablesOf<T>;
 
 interface MatchPathOptions<T extends OperationType> {
@@ -52,6 +52,13 @@ export const matchPath = <T extends OperationType>(
 ): MatchPathResult<T> | null => {
   const { path, searchParams = {}, transform } = options;
 
+  const params = new URLSearchParams(search);
+
+  const proxy = params.get("proxy");
+  if (proxy) {
+    pathname = pathname.replace(proxy, "").replace("//", "/");
+  }
+
   const { regexp, keys } = compilePath(path);
   const match = regexp.exec(pathname);
 
@@ -62,7 +69,6 @@ export const matchPath = <T extends OperationType>(
     return { ...acc, [key.name]: decodeURIComponent(values[i]) };
   }, state);
 
-  const params = new URLSearchParams(search);
   Object.entries(searchParams).forEach(([param, variable]) => {
     if (params.has(param)) {
       all = {

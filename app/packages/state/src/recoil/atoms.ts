@@ -267,9 +267,10 @@ export const similarityParameters = (() => {
         return parameters;
       },
       default: null,
-      selectorEffect: (newValue) => {
+      selectorEffect: (_, newValue) => {
         update = true;
         parameters = newValue instanceof DefaultValue ? null : newValue;
+        return parameters;
       },
     },
     {

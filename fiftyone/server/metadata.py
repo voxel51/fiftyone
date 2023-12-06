@@ -535,16 +535,21 @@ async def _create_media_urls(
             media_urls.append(dict(field=field, url=cache[path]))
             continue
 
-        if local_only or foc.media_cache.is_local_or_cached(path):
-            # Get local path to media on disk, downloading any uncached remote
-            # files if necessary
-            url = await foc.media_cache._async_get_local_path(
-                path, session, download=True
-            )
-        else:
-            # Get a URL to use to retrieve metadata (if necessary) and for the App
-            # to use to serve the media
-            url = foc.media_cache.get_url(path, method="GET", hours=24)
+        try:
+            if local_only or foc.media_cache.is_local_or_cached(path):
+                # Get local path to media on disk, downloading any uncached
+                # remote files if necessary
+                url = await foc.media_cache._async_get_local_path(
+                    path, session, download=True
+                )
+            else:
+                # Get a URL to use to retrieve metadata (if necessary) and for
+                # the App to use to serve the media
+                url = foc.media_cache.get_url(path, method="GET", hours=24)
+        except:
+            # Gracefully continue so that missing cloud credentials do not
+            # cause fatal App errors
+            url = path
 
         cache[path] = url
         media_urls.append(dict(field=field, url=url))

@@ -5,16 +5,22 @@ import {
   STRING_FIELD,
   VALID_PRIMITIVE_TYPES,
 } from "@fiftyone/utilities";
-import { selector, selectorFamily } from "recoil";
+import { atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { ResponseFrom } from "../utils";
 import { config } from "./config";
+import { getBrowserStorageEffectForKey } from "./customEffects";
 import { datasetSampleCount } from "./dataset";
+import { filters } from "./filters";
 import { isLabelPath } from "./labels";
 import { count } from "./pathData";
 import { RelayEnvironmentKey } from "./relay";
 import * as schemaAtoms from "./schema";
-import { datasetName } from "./selectors";
+import { datasetId, datasetName } from "./selectors";
+import {
+  granularSidebarExpandedStore,
+  sidebarExpandedStore,
+} from "./sidebarExpanded";
 import { State } from "./types";
 import { view } from "./view";
 
@@ -79,7 +85,7 @@ const indexesByPath = selector({
           ftype: [BOOLEAN_FIELD, OBJECT_ID_FIELD, STRING_FIELD],
           space,
         })
-      ).map((p) => get(schemaAtoms.dbPath(p)));
+      );
 
     const { sampleIndexes: samples, frameIndexes: frames } = get(indexes);
 
@@ -138,7 +144,7 @@ export const pathIndex = selectorFamily({
     ({ get }) => {
       const indexes = get(indexesByPath);
 
-      return indexes.has(get(schemaAtoms.dbPath(path)));
+      return indexes.has(path);
     },
 });
 
@@ -162,7 +168,7 @@ export const lightningPaths = selectorFamily<Set<string>, string>({
             })
           )
             .map((p) => `${expanded}.${p}`)
-            .filter((p) => indexes.has(get(schemaAtoms.dbPath(p))))
+            .filter((p) => indexes.has(p))
         );
       }
 
@@ -183,9 +189,41 @@ export const pathIsLocked = selectorFamily({
     },
 });
 
-export const lightningThreshold = selector({
-  key: "lightningThreshold",
+export const lightningThresholdConfig = selector({
+  key: "lightningThresholdConfig",
   get: ({ get }) => get(config).lightningThreshold,
+});
+
+const lightningThresholdAtom = atomFamily<string, string>({
+  key: "lightningThresholdAtom",
+  default: undefined,
+  effects: (datasetId) => [
+    getBrowserStorageEffectForKey(`lightningThresholdAtom-${datasetId}`, {
+      sessionStorage: true,
+    }),
+  ],
+});
+
+export const lightningThreshold = selector<null | number>({
+  key: "lightningThreshold",
+  get: ({ get }) => {
+    const setting = get(lightningThresholdAtom(get(datasetId)));
+    if (setting === undefined) {
+      return get(lightningThresholdConfig);
+    }
+
+    if (setting === "null") {
+      return null;
+    }
+
+    return Number(setting);
+  },
+  set: ({ get, reset, set }, value) => {
+    set(lightningThresholdAtom(get(datasetId)), String(value));
+    reset(granularSidebarExpandedStore);
+    reset(sidebarExpandedStore(false));
+    reset(filters);
+  },
 });
 
 export const lightning = selector({

@@ -1,7 +1,7 @@
 import { getImageElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
 import { Overlay } from "../overlays/base";
-import { DEFAULT_IMAGE_OPTIONS, ImageState, Optional } from "../state";
+import { DEFAULT_IMAGE_OPTIONS, ImageState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 

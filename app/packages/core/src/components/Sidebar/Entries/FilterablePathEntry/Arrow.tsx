@@ -1,27 +1,31 @@
 import { Tooltip } from "@fiftyone/components";
-import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
+import useLightningUnlocked from "@fiftyone/state/src/hooks/useLightningUnlocked";
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
+import KeyboardArrowUp from "@mui/icons-material/KeyboardArrowUp";
 import React from "react";
 import { RecoilState, useRecoilState } from "recoil";
 import { useTheme } from "styled-components";
+import AddIndex from "./AddIndex";
 
 export default ({
   color,
-  disabled,
   expanded,
   id,
+  unindexed,
 }: {
   color?: string;
-  disabled?: boolean;
+  unindexed?: boolean;
   expanded: RecoilState<boolean>;
   id: string;
 }) => {
   const [isExpanded, setExpanded] = useRecoilState(expanded);
   const Arrow = isExpanded ? KeyboardArrowUp : KeyboardArrowDown;
   const theme = useTheme();
+  const unlocked = useLightningUnlocked();
 
-  if (disabled) {
+  if (unindexed && !unlocked) {
     return (
-      <Tooltip text="disabled" placement="top-center">
+      <Tooltip text={<AddIndex />} placement="top-center">
         <Arrow
           data-cy={`sidebar-field-arrow-${id}`}
           style={{ margin: 0, color: theme.text.secondary }}

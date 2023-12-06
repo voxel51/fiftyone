@@ -241,7 +241,7 @@ def establish_db_conn(config):
 
             except fos.ServiceExecutableNotFound:
                 raise FiftyOneConfigError(
-                    "MongoDB is not supported on your system. Please "
+                    "MongoDB could not be installed on your system. Please "
                     "define a `database_uri` in your "
                     "`fiftyone.core.config.FiftyOneConfig` to connect to your"
                     "own MongoDB instance or cluster"

@@ -6,7 +6,7 @@ import {
 import { VALID_PRIMITIVE_TYPES } from "@fiftyone/utilities";
 import { DefaultValue, atom, selector, selectorFamily } from "recoil";
 import { lightning, lightningPaths, lightningUnlocked } from "./lightning";
-import { expandPath, fields } from "./schema";
+import { dbPath, expandPath, fields } from "./schema";
 import { hiddenLabelIds } from "./selectors";
 import {
   granularSidebarExpandedStore,
@@ -49,7 +49,7 @@ export const lightningFilters = selector({
     const f = { ...get(filters) };
     const paths = get(lightningPaths(""));
     for (const p in f) {
-      if (!paths.has(p)) {
+      if (!paths.has(get(dbPath(p)))) {
         delete f[p];
       }
     }
