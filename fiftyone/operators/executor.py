@@ -422,7 +422,7 @@ class ExecutionContext(object):
         self._secrets = None
         self._resolved_secrets = False
 
-        if operator.has_secrets:
+        if operator is not None and operator.has_secrets:
             self._secrets_client = PluginSecretsResolver()
             self._secrets_client.register_operator(
                 operator_uri=operator.uri, secrets=operator.secrets
@@ -551,7 +551,7 @@ class ExecutionContext(object):
 
         self._resolved_secrets = True
 
-        if not self.operator.has_secrets:
+        if self.operator is None or not self.operator.has_secrets:
             return
 
         self._secrets_dict.clear()
@@ -568,7 +568,7 @@ class ExecutionContext(object):
 
         self._resolved_secrets = True
 
-        if not self.operator.has_secrets:
+        if self.operator is None or not self.operator.has_secrets:
             return
 
         self._secrets_dict.clear()
