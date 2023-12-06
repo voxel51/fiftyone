@@ -16,11 +16,16 @@ const useStateUpdate: EventHandlerHook = ({
     (payload: any) => {
       const state = processState(session.current, payload.state);
       const stateless = env().VITE_NO_STATE;
-      const path = resolveURL(
-        router,
-        stateless ? getDatasetName() : payload.state.dataset,
-        stateless ? getSavedViewName() : payload.state.saved_view_slug
-      );
+      const path = resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+        nextDataset: stateless
+          ? getDatasetName()
+          : payload.state.dataset ?? null,
+        nextView: stateless
+          ? getSavedViewName()
+          : payload.state.saved_view_slug,
+      });
       if (readyStateRef.current !== AppReadyState.OPEN) {
         router.history.replace(path, state);
         router.load().then(() => setReadyState(AppReadyState.OPEN));

@@ -33,9 +33,17 @@ const onSetViewName: RegisteredSetter =
     sessionRef.current.selectedLabels = [];
     sessionRef.current.selectedSamples = new Set();
     sessionRef.current.fieldVisibilityStage = undefined;
-    router.history.push(resolveURL(router, dataset, slug || undefined), {
-      view: [],
-    });
+    router.history.push(
+      resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+        nextDataset: dataset,
+        nextView: slug || undefined,
+      }),
+      {
+        view: [],
+      }
+    );
   };
 
 export default onSetViewName;
