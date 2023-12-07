@@ -107,6 +107,9 @@ export class PlayButtonElement extends BaseElement<
     element.style.height = "24px";
     element.style.width = "24px";
     element.style.gridArea = "2 / 2 / 2 / 2";
+
+    element.setAttribute("data-cy", "looker-video-play-button");
+
     return element;
   }
 
@@ -129,7 +132,6 @@ export class PlayButtonElement extends BaseElement<
         this.element.appendChild(this.play);
         this.element.title = "Play (space)";
         this.element.style.cursor = "pointer";
-        this.element.setAttribute("data-cy", "looker-video-play-button");
       }
       this.isPlaying = playing;
       this.isBuffering = !loaded;
