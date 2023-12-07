@@ -110,6 +110,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.canvas.height = this.element.naturalHeight;
 
         this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
         this.imageSource = this.canvas;
@@ -249,9 +250,9 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
-      // thisSampleOverlayPrepared.then((overlay) => {
-      this.ctx.imageSmoothingEnabled = false;
-      this.ctx.drawImage(image, 0, 0);
+      if (this.isPlaying || this.isSeeking) {
+        this.ctx.drawImage(image, 0, 0);
+      }
 
       if (animate && !this.waitingToPause) {
         if (frameNumberToDraw <= this.framesController.totalFrameCount) {
@@ -259,7 +260,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
             if (playing) {
               return {
                 currentFrameNumber: Math.min(
-                  frameNumberToDraw + 1,
+                  frameNumberToDraw,
                   this.framesController.totalFrameCount
                 ),
               };
@@ -297,7 +298,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           });
         }, this.setTimeoutDelay);
       }
-      // });
     });
     image.src = src;
   }
