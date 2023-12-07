@@ -179,6 +179,7 @@ const fetchRelay: FetchFunction = async (
     }
   );
 
+  // mutation errors are handled by the calling component or hook
   if (params.operationKind !== "mutation" && "errors" in data && data.errors) {
     throw new GraphQLError({
       errors: data.errors,
