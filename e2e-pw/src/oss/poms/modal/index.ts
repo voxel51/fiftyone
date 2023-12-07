@@ -128,6 +128,10 @@ export class ModalPom {
     await this.page.mouse.up();
   }
 
+  async toggleTagSampleOrLabels() {
+    await this.locator.getByTestId("action-tag-sample-labels").click();
+  }
+
   async waitForCarouselToLoad() {
     await this.groupCarousel
       .getByTestId("looker")
