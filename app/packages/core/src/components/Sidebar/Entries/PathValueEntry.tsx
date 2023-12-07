@@ -28,6 +28,8 @@ const ScalarDiv = styled.div`
     padding: 0 3px;
     overflow: hidden;
     text-overflow: ellipsis;
+    user-select: all;
+    white-space: nowrap;
   }
 `;
 
