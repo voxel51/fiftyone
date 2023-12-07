@@ -494,13 +494,20 @@ class ExecutionContext(object):
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` being operated on."""
-        if self._view is not None:
+        # since the context.dataset may have been changed, we should only
+        # return the current view if the current DatasetView's root dataset
+        # matches the dataset in the context
+        if self._view and self._view._root_dataset.name == self.dataset.name:
             return self._view
 
-        # Forces a dataset reload if necessary
-        _ = self.dataset
+        # Always derive the view from the context's dataset
+        dataset = self.dataset
+        if not dataset:
+            raise RuntimeError(
+                "Cannot create a view without setting the dataset in the context first."
+            )
 
-        dataset_name = self.request_params.get("dataset_name", None)
+        dataset_name = dataset.name
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
