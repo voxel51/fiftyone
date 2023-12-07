@@ -28,11 +28,9 @@ export class ModalVideoControlsPom {
     this.speedButton = this.controls.getByTestId("looker-video-speed-button");
   }
 
-  private async play() {
-    await this.modal.locator.press("Space");
-  }
-
-  private async pause() {
+  private async togglePlay() {
+    // this is to clear popups, if any
+    this.controls.click();
     await this.modal.locator.press("Space");
   }
 
@@ -57,7 +55,7 @@ export class ModalVideoControlsPom {
   }
 
   async playUntilDuration(durationText: string) {
-    await this.play();
+    await this.togglePlay();
 
     await this.page.waitForFunction((durationText_) => {
       const time = document.querySelector(
@@ -66,11 +64,11 @@ export class ModalVideoControlsPom {
       return time.startsWith(durationText_);
     }, durationText);
 
-    await this.pause();
+    await this.togglePlay();
   }
 
   async playUntilFrames(frameText: string) {
-    await this.play();
+    await this.togglePlay();
 
     await this.page.waitForFunction((frameText_) => {
       const frames = document.querySelector(
@@ -79,7 +77,7 @@ export class ModalVideoControlsPom {
       return frames.startsWith(frameText_);
     }, frameText);
 
-    await this.pause();
+    await this.togglePlay();
   }
 
   async setSpeedTo(config: "low" | "middle" | "high") {
