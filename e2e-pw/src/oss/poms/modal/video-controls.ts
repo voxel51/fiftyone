@@ -31,7 +31,6 @@ export class ModalVideoControlsPom {
   private async togglePlay() {
     // this is to clear popups, if any
     this.controls.click();
-    await this.modal.locator.press("Space");
   }
 
   private async clickSettings() {
