@@ -22,6 +22,16 @@ export default defineConfig({
       path: "path-browserify",
     },
   },
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.code === "MODULE_LEVEL_DIRECTIVE") {
+          return;
+        }
+        warn(warning);
+      },
+    },
+  },
   server: {
     port: parseInt(process.env.FIFTYONE_DEFAULT_APP_PORT || "5173"),
     proxy: {
