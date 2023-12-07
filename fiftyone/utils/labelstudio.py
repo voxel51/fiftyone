@@ -448,7 +448,6 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             labeled_tasks, results.uploaded_tasks
         )
         annotations = defaultdict(lambda: defaultdict(dict))
-        # TODO: where to fix label type for "instances" to convert segm -> detection?
         for task_id, task_labels in all_labels.items():
             for label_id, (label_field, label) in task_labels.items():
                 annotations[label_field][task_id][label_id] = label
@@ -457,6 +456,17 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         final_annotations = {}
         for label_field, label_info in results.config.label_schema.items():
             return_type = foua._RETURN_TYPES_MAP[label_info["type"]]
+            # need to convert masks to detections
+            if label_info["type"] == "instances":
+                new_label_field = defaultdict(dict)
+                for task_id, task_labels in annotations[label_field].items():
+                    for label_id, label in task_labels.items():
+                        detections = label.to_detections(
+                            {255: label.label}
+                        ).detections
+                        detections = detections[0] if detections else None
+                        new_label_field[task_id][label_id] = detections
+                annotations[label_field] = new_label_field
             final_annotations[label_field] = {
                 return_type: annotations[label_field]
             }
@@ -889,11 +899,6 @@ def _from_brushlabels(result):
 
     label = label_values[0]
     segmentation = fol.Segmentation(label=label, mask=mask)
-
-    # if label_type == "instances":
-    #     detections = segmentation.to_detections({255: label}).detections
-    #     return detections[0] if detections else None
-
     return segmentation
 
 
