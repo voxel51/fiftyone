@@ -3,6 +3,41 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.5.1:
+
+FiftyOne Teams 1.5.1
+--------------------
+*Released December 8, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.23.1 <release-notes-v0.23.1>`
+
+.. _release-notes-v0.23.1:
+
+FiftyOne 0.23.1
+---------------
+*Released December 8, 2023*
+
+App
+
+- Fixed Python 3.8 installations
+  `#3905 <https://github.com/voxel51/fiftyone/pull/3905>`_
+- Fixed App error pages
+  `#3903 <https://github.com/voxel51/fiftyone/pull/3903>`_
+- Fixed `session.dataset = None`
+  `#3890 <https://github.com/voxel51/fiftyone/pull/3890>`_
+
+Core
+
+- Fixed inferring doubly-nested dynamic list field types
+  `#3900 <https://github.com/voxel51/fiftyone/pull/3900>`_
+- Fixed
+  :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
+  when `Pillow<7` is installed
+  `#3897 <https://github.com/voxel51/fiftyone/pull/3897>`_
+- Fixed default group indexes creation when importing a
+  :ref:`FiftyOneDataset <FiftyOneDataset-import>`
+  `#3894 <https://github.com/voxel51/fiftyone/pull/3894>`_
+
 .. _release-notes-teams-v1.5.0:
 
 FiftyOne Teams 1.5.0
