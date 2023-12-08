@@ -321,6 +321,9 @@ class Dataset:
         ]
         doc["default_skeletons"] = doc.get("default_skeletons", None)
 
+        # gql private fields must always be present
+        doc.setdefault("frame_collection_name", None)
+
         return doc
 
     @classmethod
