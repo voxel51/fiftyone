@@ -7,7 +7,7 @@ FiftyOne Release Notes
 
 FiftyOne Teams 1.5.1
 --------------------
-*Released December --, 2023*
+*Released December 8, 2023*
 
 Includes all updates from :ref:`FiftyOne 0.23.1 <release-notes-v0.23.1>`
 
@@ -15,7 +15,7 @@ Includes all updates from :ref:`FiftyOne 0.23.1 <release-notes-v0.23.1>`
 
 FiftyOne 0.23.1
 ---------------
-*Released December --, 2023*
+*Released December 8, 2023*
 
 App
 
