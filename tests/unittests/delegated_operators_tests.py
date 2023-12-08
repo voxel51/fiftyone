@@ -9,6 +9,8 @@ import time
 import unittest
 from unittest.mock import patch
 
+import pytest
+
 import fiftyone
 from bson import ObjectId
 
@@ -496,6 +498,113 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         doc = self.svc.get(doc_id=rerun_doc.id)
         self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+
+    def test_rerun_with_renamed_dataset(self, get_op_mock, op_exists_mock):
+        # setup
+        uid = str(ObjectId())
+        dataset_name = f"test_dataset_{uid}"
+        dataset = Dataset(dataset_name, _create=True, persistent=True)
+        dataset.save()
+
+        get_op_mock.return_value = MockOperator(success=True)
+
+        ctx = ExecutionContext(
+            request_params={
+                "dataset_id": str(dataset._doc.id),
+                "dataset_name": dataset.name,
+            }
+        )
+        # Queue operation using original dataset name
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            label=get_op_mock.return_value.name,
+            delegation_target=f"test_target",
+            context=ctx.serialize(),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        # Execute once with original dataset name
+        self.svc.execute_queued_operations(delegation_target="test_target")
+        doc = self.svc.get(doc_id=doc.id)
+        self.assertEqual(doc.run_state, ExecutionRunState.FAILED)
+
+        # set the mock back to a successful operation
+        get_op_mock.return_value = MockOperator()
+
+        # Rename dataset and save
+        dataset.name = f"renamed_dataset_{uid}"
+        dataset.save()
+
+        try:
+            # Rerun failed operation after the dataset is renamed
+            rerun_doc = self.svc.rerun_operation(doc.id)
+            self.docs_to_delete.append(rerun_doc)
+            self.assertNotEqual(doc.id, rerun_doc.id)
+            self.assertIsNotNone(rerun_doc.delegation_target)
+            self.assertEqual(
+                rerun_doc.delegation_target, doc.delegation_target
+            )
+            self.assertEqual(rerun_doc.run_state, ExecutionRunState.QUEUED)
+            self.assertIsNotNone(rerun_doc.queued_at)
+            self.assertIsNone(rerun_doc.started_at)
+            self.assertIsNone(rerun_doc.completed_at)
+            self.assertIsNone(rerun_doc.result)
+
+            self.svc.execute_queued_operations(delegation_target="test_target")
+
+            doc = self.svc.get(doc_id=rerun_doc.id)
+            self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+
+        except:
+            pytest.fail(
+                "Should not fail when rerunning failed operation with renamed dataset"
+            )
+        finally:
+            dataset.delete()
+
+    def test_execute_with_renamed_dataset(self, get_op_mock, op_exists_mock):
+        # setup
+        uid = str(ObjectId())
+        dataset_name = f"test_dataset_{uid}"
+        dataset = Dataset(dataset_name, _create=True, persistent=True)
+        dataset.save()
+
+        get_op_mock.return_value = MockOperator(success=True)
+
+        ctx = ExecutionContext(
+            request_params={
+                "dataset_id": str(dataset._doc.id),
+                "dataset_name": dataset.name,
+            }
+        )
+        # Queue operation using original dataset name
+        doc = self.svc.queue_operation(
+            operator="@voxelfiftyone/operator/foo",
+            label=get_op_mock.return_value.name,
+            delegation_target=f"test_target",
+            context=ctx.serialize(),
+        )
+
+        self.docs_to_delete.append(doc)
+        self.assertEqual(doc.run_state, ExecutionRunState.QUEUED)
+
+        # Rename dataset
+        dataset.name = f"renamed_dataset_{uid}"
+        dataset.save()
+
+        # Execute queued operation after saving the new dataset name
+        try:
+            self.svc.execute_queued_operations(delegation_target="test_target")
+            doc = self.svc.get(doc_id=doc.id)
+            self.assertEqual(doc.run_state, ExecutionRunState.COMPLETED)
+        except:
+            pytest.fail(
+                "Should not fail when executing queued operation with renamed dataset"
+            )
+        finally:
+            dataset.delete()
 
     @patch(
         "fiftyone.core.dataset.load_dataset",

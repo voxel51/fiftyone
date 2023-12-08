@@ -17,6 +17,7 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
+    ExecutionContext,
     ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
@@ -161,17 +162,19 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
-        dataset_name = None
-        if isinstance(op.context, dict):
-            dataset_name = op.context.get("request_params", {}).get(
-                "dataset_name"
-            )
-        elif "dataset_name" in op.context.request_params:
-            dataset_name = op.context.request_params["dataset_name"]
-
-        if dataset_name and not op.dataset_id:
-            dataset = fod.load_dataset(dataset_name)
-            op.dataset_id = dataset._doc.id
+        if not op.dataset_id:
+            # For consistency, set the dataset_id using the ExecutionContext.dataset
+            # rather than calling load_dataset() on a potentially stale
+            # dataset_name in the request_params
+            context = None
+            if isinstance(op.context, dict):
+                context = ExecutionContext(
+                    request_params=op.context.get("request_params", {})
+                )
+            elif isinstance(op.context, ExecutionContext):
+                context = op.context
+            if context:
+                op.dataset_id = context.dataset._doc.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
