@@ -28,6 +28,8 @@ App
 
 Core
 
+- Fixed inferring doubly-nested dynamic list field types
+  `#3900 <https://github.com/voxel51/fiftyone/pull/3900>`_
 - Fixed
   :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`
   when `Pillow<7` is installed
