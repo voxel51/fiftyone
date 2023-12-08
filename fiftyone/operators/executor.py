@@ -11,22 +11,18 @@ import inspect
 import logging
 import os
 import traceback
-from bson import ObjectId
-from bson.errors import InvalidId
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.odm as foo
+import fiftyone.core.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+import fiftyone.server.view as fosv
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
-
 from .decorators import coroutine_timeout
-from .registry import OperatorRegistry
 from .message import GeneratedMessage, MessageType
-
+from .registry import OperatorRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -206,7 +202,8 @@ async def execute_or_delegate_operator(
         and not execution_options.allow_delegated_execution
     ):
         raise RuntimeError(
-            "This operation does not support immediate OR delegated execution"
+            "This operation does not support immediate OR delegated "
+            "execution"
         )
 
     should_delegate = (
@@ -216,7 +213,8 @@ async def execute_or_delegate_operator(
         if not execution_options.allow_delegated_execution:
             logger.warning(
                 (
-                    "This operation does not support delegated execution; it "
+                    "This operation does not support delegated "
+                    "execution; it "
                     "will be executed immediately"
                 )
             )
@@ -225,7 +223,8 @@ async def execute_or_delegate_operator(
         if not execution_options.allow_immediate_execution:
             logger.warning(
                 (
-                    "This operation does not support immediate execution; it "
+                    "This operation does not support immediate "
+                    "execution; it "
                     "will be delegated"
                 )
             )
@@ -446,34 +445,16 @@ class ExecutionContext(object):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
             return self._dataset
-        dataset_name = None
-        # since the dataset may have been renamed, if we have the
-        # dataset_id, get the current dataset_name from the db
-        if self.request_params.get("dataset_id", None) is not None:
-            db = foo.get_db_conn()
-            try:
-                oid = ObjectId(self.request_params.get("dataset_id", None))
-                dataset_name = db.datasets.find({"_id": oid}, {"name": 1})[0][
-                    "name"
-                ]
-            except InvalidId:
-                raise ValueError("Invalid dataset_id " % oid)
-            except:
-                raise ValueError("Dataset with id= '%s' does not exist" % oid)
-
-        if not dataset_name:
-            dataset_name = self.request_params.get("dataset_name", None)
-        else:
-            # set the dataset_name in the context to the name resolved from
-            # the db so downstream calls to load_dataset will work
-            self.request_params["dataset_name"] = dataset_name
-
-        if dataset_name:
-            # loading the dataset like this prevents triggering db
-            # migration check and logging last_loaded_at
-            self._dataset = fod.Dataset(
-                dataset_name, _create=False, _virtual=True
-            )
+        # Since dataset may have been renamed, always resolve the dataset by
+        # id if it is available
+        uid = self.request_params.get("dataset_id", None)
+        if not uid:
+            uid = self.request_params.get("dataset_name", None)
+        if uid:
+            self._dataset = focu.load_dataset(uid)
+            # Set the dataset_name using the dataset object in case the dataset
+            # has been renamed or changed since the context was created
+            self.request_params["dataset_name"] = self._dataset.name
 
         return self._dataset
 
@@ -504,7 +485,8 @@ class ExecutionContext(object):
         dataset = self.dataset
         if not dataset:
             raise RuntimeError(
-                "Cannot create a view without setting the dataset in the context first."
+                "Cannot create a view without setting the dataset in the "
+                "context first."
             )
 
         dataset_name = dataset.name
