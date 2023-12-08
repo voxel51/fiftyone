@@ -173,7 +173,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
                 )
             elif isinstance(op.context, ExecutionContext):
                 context = op.context
-            if context:
+            if context and context.dataset:
                 op.dataset_id = context.dataset._doc.id
 
         doc = self._collection.insert_one(op.to_pymongo())
