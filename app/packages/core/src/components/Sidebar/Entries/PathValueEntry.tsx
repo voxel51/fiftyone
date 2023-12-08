@@ -23,7 +23,6 @@ import { makePseudoField } from "./utils";
 
 const ScalarDiv = styled.div`
   & > div {
-    user-select: text;
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;
@@ -115,7 +114,7 @@ const ScalarValueEntry = ({
   );
 };
 
-const ListContainer = styled.div`
+const ListContainer = styled(ScalarDiv)`
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
@@ -230,7 +229,9 @@ const ListLoadable = ({ path }: { path: string }) => {
   return (
     <ListContainer>
       {values.map((v, i) => (
-        <div key={i}>{v}</div>
+        <div key={i} title={typeof v === "string" ? v : undefined}>
+          {v}
+        </div>
       ))}
       {values.length == 0 && <>No results</>}
     </ListContainer>
@@ -358,7 +359,11 @@ const Loadable = ({ path }: { path: string }) => {
   const formatted = format({ ftype, value, timeZone });
 
   return (
-    <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
+    <div
+      data-cy={`sidebar-entry-${path}`}
+      title={typeof formatted === "string" ? formatted : undefined}
+      style={none ? { color } : {}}
+    >
       {none ? "None" : formatted}
     </div>
   );
