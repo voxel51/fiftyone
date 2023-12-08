@@ -76,7 +76,6 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.14,<0.15",
     # fiftyone-db>=1.0 is not used for Teams SDK
-    "fiftyone-db~=0.4",
     "voxel51-eta>=0.12,<0.13",
 ]
 
@@ -114,7 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.23"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.23.1"]}
 
 
 with open("README.md", "r") as fh:
@@ -123,7 +122,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.15.0",
+    version="0.15.1rc2",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

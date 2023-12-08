@@ -1397,8 +1397,9 @@ class SampleCollection(object):
             else:
                 fields = list(fields)
 
+        unwind_cache = []
         dynamic_schema = self._do_get_dynamic_field_schema(
-            schema, frames=frames, fields=fields
+            schema, unwind_cache, frames=frames, fields=fields
         )
 
         # Recurse into new dynamic fields
@@ -1406,7 +1407,7 @@ class SampleCollection(object):
             s = dynamic_schema
             while True:
                 s = self._do_get_dynamic_field_schema(
-                    s, frames=frames, new=True
+                    s, unwind_cache, frames=frames, new=True
                 )
                 if s:
                     dynamic_schema.update(s)
@@ -1440,7 +1441,7 @@ class SampleCollection(object):
         return dynamic_schema
 
     def _do_get_dynamic_field_schema(
-        self, schema, frames=False, fields=None, new=False
+        self, schema, unwind_cache, frames=False, fields=None, new=False
     ):
         if frames:
             prefix = self._FRAMES_PREFIX
@@ -1461,6 +1462,14 @@ class SampleCollection(object):
         for path, field in schema.items():
             _path = prefix + path
 
+            # When recursively getting schemas, we may have previously needed
+            # to manually unwind an undeclared list field at a higher level.
+            # This injects any matching unwinds so that we can properly handle
+            # the shape of the data
+            for _clean_path, _unwind_path in unwind_cache:
+                if _path.startswith(_clean_path):
+                    _path = _unwind_path + _path[len(_clean_path) :]
+
             is_list_field = False
             while isinstance(field, fof.ListField):
                 field = field.field
@@ -1469,6 +1478,12 @@ class SampleCollection(object):
             if isinstance(field, fof.EmbeddedDocumentField):
                 if is_list_field and not _path.endswith("[]"):
                     _path += "[]"
+
+                    # Cache the manual unwind in case we need it recursively
+                    # Insert rather than append so that nested paths are found
+                    # first when using this cache
+                    _clean_path = _path.replace("[]", "")
+                    unwind_cache.insert(0, (_clean_path, _path))
 
                 if new:
                     # This field hasn't been declared yet, so we must provide
@@ -1480,11 +1495,12 @@ class SampleCollection(object):
 
                 agg = foa.Schema(_path, dynamic_only=True, _doc_type=_doc_type)
             elif is_list_field:
-                # Processing untyped default list fields is not allowed
                 _clean_path = _path.replace("[]", "")
                 if field is None and not self._is_default_field(_clean_path):
                     agg = foa.ListSchema(_path)
                 else:
+                    # Found a default list field with no element type declared.
+                    # Don't infer types here; the elements must stay untyped
                     agg = None
             else:
                 agg = None

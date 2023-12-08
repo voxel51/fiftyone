@@ -24,10 +24,16 @@ const useSetFieldVisibilityStage: EventHandlerHook = () => {
           unsubscribe();
         });
 
-        router.history.replace(resolveURL(router), {
-          ...router.get().state,
-          fieldVisibility: stage,
-        });
+        router.history.replace(
+          resolveURL({
+            currentPathname: router.history.location.pathname,
+            currentSearch: router.history.location.search,
+          }),
+          {
+            ...router.get().state,
+            fieldVisibility: stage,
+          }
+        );
       },
     [session, setter]
   );

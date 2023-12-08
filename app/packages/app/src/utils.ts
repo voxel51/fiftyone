@@ -1,4 +1,3 @@
-import { Router } from "./makeRoutes";
 import { matchPath } from "./routing";
 
 export const getDatasetName = (pathname?: string) => {
@@ -28,33 +27,42 @@ export const getSavedViewName = (search?: string) => {
   return null;
 };
 
-export function resolveURL(router: Router): string;
-export function resolveURL(
-  router: Router,
-  dataset: string | null,
-  view?: string
-): string;
-export function resolveURL(
-  router: Router,
-  dataset?: string | null,
-  view?: string
-): string {
-  const params = new URLSearchParams(router.history.location.search);
+export function resolveURL(params: {
+  currentSearch: string;
+  currentPathname: string;
+  nextDataset?: string | null;
+  nextView?: string;
+}): string {
+  const searchParams = new URLSearchParams(params.currentSearch);
 
-  if (dataset === undefined) {
-    return `${window.location.pathname}${params.toString()}`;
+  if (!params.nextDataset && params.nextView) {
+    throw new Error("a view cannot be provided without a dataset");
   }
 
-  view ? params.set("view", encodeURIComponent(view)) : params.delete("view");
-  let search = params.toString();
-  if (search.length) {
-    search = `?${search}`;
+  if (params.nextDataset) {
+    params.nextView
+      ? searchParams.set("view", encodeURIComponent(params.nextView))
+      : searchParams.delete("view");
   }
 
-  const path = decodeURIComponent(params.get("proxy") ?? "");
-  if (dataset) {
-    return `${path}/datasets/${encodeURIComponent(dataset)}${search}`;
+  let newSearch = searchParams.toString();
+  if (newSearch.length) {
+    newSearch = `?${newSearch}`;
   }
 
-  return `${path.length ? path : "/"}${search}`;
+  if (params.nextDataset === undefined) {
+    // update search params only
+    return `${params.currentPathname}${newSearch}`;
+  }
+
+  const path = decodeURIComponent(searchParams.get("proxy") ?? "");
+  if (params.nextDataset === null) {
+    // go to index page
+    return `${path.length ? path : "/"}${newSearch}`;
+  }
+
+  // go to dataset
+  return `${path}/datasets/${encodeURIComponent(
+    params.nextDataset
+  )}${newSearch}`;
 }
