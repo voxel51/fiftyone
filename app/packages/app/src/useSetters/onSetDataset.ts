@@ -39,9 +39,16 @@ const onSetDataset: RegisteredSetter =
         entry.data.dataset?.defaultGroupSlice || undefined;
     });
 
-    router.history.push(resolveURL(router, datasetName || null), {
-      view: [],
-    });
+    router.history.push(
+      resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+        nextDataset: datasetName || null,
+      }),
+      {
+        view: [],
+      }
+    );
   };
 
 export default onSetDataset;
