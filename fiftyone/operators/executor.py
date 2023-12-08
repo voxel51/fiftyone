@@ -202,8 +202,7 @@ async def execute_or_delegate_operator(
         and not execution_options.allow_delegated_execution
     ):
         raise RuntimeError(
-            "This operation does not support immediate OR delegated "
-            "execution"
+            "This operation does not support immediate OR delegated execution"
         )
 
     should_delegate = (
@@ -212,21 +211,15 @@ async def execute_or_delegate_operator(
     if should_delegate:
         if not execution_options.allow_delegated_execution:
             logger.warning(
-                (
-                    "This operation does not support delegated "
-                    "execution; it "
-                    "will be executed immediately"
-                )
+                "This operation does not support delegated "
+                "execution; it will be executed immediately"
             )
             should_delegate = False
     else:
         if not execution_options.allow_immediate_execution:
             logger.warning(
-                (
-                    "This operation does not support immediate "
-                    "execution; it "
-                    "will be delegated"
-                )
+                "This operation does not support immediate "
+                "execution; it will be delegated"
             )
             should_delegate = True
 
