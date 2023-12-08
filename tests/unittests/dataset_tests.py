@@ -4538,6 +4538,66 @@ class DynamicFieldTests(unittest.TestCase):
         self.assertIsInstance(field.field, fo.Field)
 
     @drop_datasets
+    def test_dynamic_fields_nested_lists(self):
+        dataset = fo.Dataset()
+
+        detection = fo.Detection(list_attr=["one", "two", "three"])
+        detections = fo.Detections(detections=[detection])
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            ground_truth=detections,
+            embedded_field=fo.DynamicEmbeddedDocument(detections=detections),
+        )
+
+        dataset.add_sample(sample)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+        self.assertSetEqual(
+            set(dynamic_schema.keys()),
+            {
+                "ground_truth.detections.list_attr",
+                "embedded_field.detections",
+                "embedded_field.detections.detections.list_attr",
+            },
+        )
+
+        list_field1 = dynamic_schema["ground_truth.detections.list_attr"]
+        self.assertIsInstance(list_field1, fo.ListField)
+        self.assertIsInstance(list_field1.field, fo.StringField)
+
+        list_field2 = dynamic_schema[
+            "embedded_field.detections.detections.list_attr"
+        ]
+        self.assertIsInstance(list_field2, fo.ListField)
+        self.assertIsInstance(list_field2.field, fo.StringField)
+
+        dataset.add_dynamic_sample_fields()
+
+        new_paths = [
+            "ground_truth.detections.list_attr",
+            "embedded_field.detections",
+            "embedded_field.detections.detections.list_attr",
+        ]
+        schema = dataset.get_field_schema(flat=True)
+        for path in new_paths:
+            self.assertIn(path, schema)
+
+        list_field1 = dataset.get_field("ground_truth.detections.list_attr")
+        self.assertIsInstance(list_field1, fo.ListField)
+        self.assertIsInstance(list_field1.field, fo.StringField)
+
+        list_field2 = dataset.get_field(
+            "embedded_field.detections.detections.list_attr"
+        )
+        self.assertIsInstance(list_field2, fo.ListField)
+        self.assertIsInstance(list_field2.field, fo.StringField)
+
+        dynamic_schema = dataset.get_dynamic_field_schema()
+
+        self.assertDictEqual(dynamic_schema, {})
+
+    @drop_datasets
     def test_dynamic_frame_fields_nested(self):
         sample = fo.Sample(filepath="video.mp4")
         sample.frames[1] = fo.Frame(
