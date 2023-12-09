@@ -1,6 +1,6 @@
 """
 Script for generating the model zoo docs page contents
-``docs/source/user_guide/model_zoo/models.rst``.
+``docs/source/fiftyone/user_guide/model_zoo/models.rst``.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -235,9 +235,7 @@ def _render_model_content(template, model_name):
 
     if zoo_model.size_bytes is not None:
         size_str = etau.to_human_bytes_str(zoo_model.size_bytes, decimals=2)
-        size_str = (
-            size_str[:-2] + " " + size_str[-2:]
-        )  # 123.45 MB, not 123.45MB
+        size_str = size_str[:-2] + " " + size_str[-2:]  # 123.45 MB, not 123.45MB
     else:
         size_str = None
 
@@ -324,11 +322,7 @@ def _render_card_model_content(template, model_name):
 
 
 def _generate_section(template, all_models, print_source, header_name):
-    content = [
-        _render_section_content(
-            template, all_models, print_source, header_name
-        )
-    ]
+    content = [_render_section_content(template, all_models, print_source, header_name)]
 
     for _, source, model_content in all_models:
         if source == print_source:
@@ -360,15 +354,11 @@ def main():
     content = [_HEADER]
     content.append(_CARD_SECTION_START)
     for model_name in foz.list_zoo_models():
-        card_content = _render_card_model_content(
-            card_model_template, model_name
-        )
+        card_content = _render_card_model_content(card_model_template, model_name)
         content.append(card_content)
 
     content.append(_CARD_SECTION_END)
-    content.extend(
-        _generate_section(section_template, models, "torch", "Torch")
-    )
+    content.extend(_generate_section(section_template, models, "torch", "Torch"))
     content.extend(
         _generate_section(section_template, models, "tensorflow", "TensorFlow")
     )
@@ -376,7 +366,7 @@ def main():
     # Write docs page
 
     docs_dir = "/".join(os.path.realpath(__file__).split("/")[:-2])
-    outpath = os.path.join(docs_dir, "source/user_guide/model_zoo/models.rst")
+    outpath = os.path.join(docs_dir, "source/fiftyone/user_guide/model_zoo/models.rst")
 
     print("Writing '%s'" % outpath)
     etau.write_file("\n".join(content), outpath)

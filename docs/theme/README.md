@@ -114,7 +114,7 @@ make html
 make html
 ```
 
-Once these are successful, navigate to the `conf.py` file in each project. In the Docs these are at `./docs/source`. The Tutorials one can be found in the root directory.
+Once these are successful, navigate to the `conf.py` file in each project. In the Docs these are at `./docs/source/fiftyone`. The Tutorials one can be found in the root directory.
 
 In `conf.py` change the html theme to `pytorch_sphinx_theme` and point the html theme path to this repo's local folder, which will end up looking something like:
 
@@ -128,7 +128,7 @@ Next create a file `.env.json` in the root of this repo with some keys/values re
 ```
 {
   "TUTORIALS_DIR": "../tutorials",
-  "DOCS_DIR": "../pytorch/docs/source"
+  "DOCS_DIR": "../pytorch/docs/source/fiftyone"
 }
 
 ```
@@ -155,7 +155,7 @@ There are a couple of stylesheets and fonts inside the Docs and Tutorials repos 
 #### Docs
 
 ```
-# ./docs/source/conf.py
+# ./docs/source/fiftyone/conf.py
 
 html_context = {
     # 'css_files': [

@@ -101,7 +101,7 @@ echo "Generating API docs"
 # sphinx-apidoc [OPTIONS] -o <OUTPUT_PATH> <MODULE_PATH> [EXCLUDE_PATTERN, ...]
 sphinx-apidoc --force --no-toc --separate --follow-links \
     --templatedir=docs/templates/apidoc \
-    -o docs/source/api fiftyone \
+    -o docs/source/fiftyone/api fiftyone \
         fiftyone/brain/internal \
         fiftyone/server \
         fiftyone/service \
