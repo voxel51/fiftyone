@@ -11,8 +11,8 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useMemo, useState } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -357,6 +357,13 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
+  const [noneValued, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+
+  useEffect(() => {
+    if (none && path && !noneValued.has(path)) {
+      setNoneValued(new Set([...noneValued]).add(path));
+    }
+  }, [noneValued, none, path, setNoneValued]);
 
   return (
     <div

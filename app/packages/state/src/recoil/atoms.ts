@@ -346,3 +346,13 @@ export const isSidebarFilterMode = atom<boolean>({
   key: "isSidebarFilterMode",
   default: true,
 });
+
+export const hideNoneValuedFields = atom<boolean>({
+  key: "hideNoneValuedFields",
+  default: false,
+});
+
+export const noneValuedPaths = atom<Set<string>>({
+  key: "noneValuedPaths",
+  default: new Set(),
+});

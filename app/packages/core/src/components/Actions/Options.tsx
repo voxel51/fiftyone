@@ -269,6 +269,36 @@ const Lightning = () => {
   );
 };
 
+const HideFieldSetting = () => {
+  const [hideNone, setHideNone] = useRecoilState(fos.hideNoneValuedFields);
+  const theme = useTheme();
+
+  return (
+    <>
+      <ActionOption
+        id="hide-none-valued-field-setting"
+        text="Hide None fields"
+        title={"More on hiding none fields"}
+        style={{
+          background: "unset",
+          color: theme.text.primary,
+          paddingTop: 0,
+          paddingBottom: 0,
+        }}
+        svgStyles={{ height: "1rem", marginTop: 7.5 }}
+      />
+      <TabOption
+        active={hideNone ? "enable" : "disable"}
+        options={["disable", "enable"].map((value) => ({
+          text: value,
+          title: value,
+          onClick: () => setHideNone(value === "enable" ? true : false),
+        }))}
+      />
+    </>
+  );
+};
+
 type OptionsProps = {
   modal: boolean;
   anchorRef: RefObject<HTMLElement>;
@@ -282,6 +312,7 @@ const Options = ({ modal, anchorRef }: OptionsProps) => {
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
+      {modal && <HideFieldSetting />}
       {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
