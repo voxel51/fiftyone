@@ -468,10 +468,7 @@ class ExecutionContext(object):
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` being operated on."""
-        # since the context.dataset may have been changed, we should only
-        # return the current view if the current DatasetView's root dataset
-        # matches the dataset in the context
-        if self._view and self._view._root_dataset.name == self.dataset.name:
+        if self._view:
             return self._view
 
         # Always derive the view from the context's dataset
