@@ -482,18 +482,19 @@ class ExecutionContext(object):
                 "context first."
             )
 
-        dataset_name = dataset.name
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
-        self._view = fosv.get_view(
-            dataset_name,
-            stages=stages,
-            filters=filters,
-            extended_stages=extended,
-            reload=False,
-        )
+        if stages:
+            view = fov.DatasetView._build(dataset, stages)
+        else:
+            view = dataset.view()
+        if filters or extended:
+            view = fosv.get_extended_view(
+                view, filters=filters, extended_stages=extended
+            )
+        self._view = view
 
         return self._view
 
