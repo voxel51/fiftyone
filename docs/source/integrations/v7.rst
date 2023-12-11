@@ -1,0 +1,703 @@
+.. _v7-integration:
+
+V7 Integration
+==============
+
+.. default-role:: code
+
+`V7 <https://www.v7labs.com>`_ is one of the leading image and video annotation
+tools available, and we've made it easy to upload your data directly from
+FiftyOne to V7 for labeling.
+
+Create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
+these :ref:`simple setup instructions <v7-setup>` to get up and running.
+
+.. note::
+
+    Did you know? You can request, manage, and import annotations from within
+    the FiftyOne App by installing the
+    `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
+    plugin!
+
+FiftyOne provides an API to upload data, define label schemas,
+and download annotations using V7, all programmatically in Python. All of the
+following label types are supported, for both image and video datasets:
+
+- :ref:`Classifications <classification>`
+- :ref:`Detections <object-detection>`
+- :ref:`Polygons <polylines>`
+- :ref:`Keypoints <keypoints>`
+
+.. image:: /images/integrations/v7-hero.jpg
+   :alt: v7-hero
+   :align: center
+
+.. _v7-basic-recipe:
+
+Basic recipe
+____________
+
+The basic workflow to use V7 to add or edit labels on your FiftyOne datasets is
+as follows:
+
+1) Load a :ref:`labeled or unlabeled dataset <loading-datasets>` into FiftyOne
+
+2) Explore the dataset using the :ref:`App <fiftyone-app>` or
+   :ref:`dataset views <using-views>` to locate either unlabeled samples that
+   you wish to annotate or labeled samples whose annotations you want to edit
+
+3) Use the
+   :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+   method on your dataset or view to upload the samples and optionally their
+   existing labels to V7 by setting the parameter `backend="darwin"`
+
+4) In V7, perform the necessary annotation work
+
+5) Back in FiftyOne, load your dataset and use the
+   :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+   method to merge the annotations back into your FiftyOne dataset
+
+6) If desired, delete the V7 project and the record of the annotation run from
+   your FiftyOne dataset
+
+|br|
+The example below demonstrates this workflow.
+
+.. note::
+
+    You must create an account at
+    `https://www.v7labs.com/sign-up <https://www.v7labs.com/sign-up>`_ and
+    follow the simple setup instructions in
+    :ref:`this section <v7-setup>` in order to run this example.
+
+First, we create the annotation tasks in V7:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    from fiftyone import ViewField as F
+
+    # Step 1: Load your data into FiftyOne
+
+    dataset = foz.load_zoo_dataset(
+        "quickstart", dataset_name="v7-annotation-example"
+    )
+    dataset.persistent = True
+
+    dataset.evaluate_detections(
+        "predictions", gt_field="ground_truth", eval_key="eval"
+    )
+
+    # Step 2: Locate a subset of your data requiring annotation
+
+    # Create a view that contains only high confidence false positive model
+    # predictions, with samples containing the most false positives first
+    most_fp_view = (
+        dataset
+        .filter_labels("predictions", (F("confidence") > 0.8) & (F("eval") == "fp"))
+        .sort_by(F("predictions.detections").length(), reverse=True)
+    )
+
+    # Retrieve the sample with the most high confidence false positives
+    sample_id = most_fp_view.first().id
+    view = dataset.select(sample_id)
+
+    # Step 3: Send samples to V7
+
+    # A unique identifier for this run
+    anno_key = "v7_basic_recipe"
+
+    label_schema = {
+        "new_ground_truth": {
+            "type": "detections",
+            "classes": dataset.distinct("ground_truth.detections.label"),
+        },
+    }
+
+    view.annotate(
+        anno_key,
+        backend="darwin",
+        label_schema=label_schema,
+        launch_editor=True,
+        dataset_name=anno_key,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Step 4: Perform annotation in V7 and save the tasks
+
+Then, once the annotation work is complete, we merge the annotations back into
+FiftyOne:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    anno_key = "v7_basic_recipe"
+
+    # Step 5: Merge annotations back into FiftyOne dataset
+
+    dataset = fo.load_dataset("v7-annotation-example")
+    dataset.load_annotations(anno_key)
+
+    # Load the view that was annotated in the App
+    view = dataset.load_annotation_view(anno_key)
+    session = fo.launch_app(view=view)
+
+    # Step 6: Cleanup
+
+    # Delete tasks from V7
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+
+    # Delete run record (not the labels) from FiftyOne
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
+    See :ref:`this section <v7-examples>` to see a variety of common V7
+    annotation patterns.
+
+.. _v7-setup:
+
+Setup
+_____
+
+You can get started with V7 by
+`creating an account <https://www.v7labs.com/sign-up>`_ and downloading an
+API key.
+
+Installing the V7 backend
+-------------------------
+
+In order to use the V7 backend, you must install the ``darwin_fiftyone`` Python
+package:
+
+.. code-block:: shell
+
+    pip install darwin_fiftyone
+
+and register the ``darwin`` backend with FiftyOne, which you can do either by
+setting the following environment variables:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_BACKENDS=*,darwin
+    export FIFTYONE_DARWIN_CONFIG_CLS=darwin_fiftyone.DarwinBackendConfig
+    export FIFTYONE_DARWIN_API_KEY=XXXXXXXXX
+
+or by adding the following parameters to your
+:ref:`annotation config <annotation-config>` located at
+`~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "darwin": {
+                "config_cls": "darwin_fiftyone.DarwinBackendConfig",
+                "api_key": "XXXXXXXXX"
+            }
+        }
+    }
+
+Note that this file may not exist if you haven't previously customized your
+annotation backends.
+
+Using the V7 backend
+--------------------
+
+By default, calling
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` will
+use the :ref:`CVAT backend <cvat-integration>`.
+
+To use the V7 backend, simply set the optional `backend` parameter of
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+`"darwin"`:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(anno_key, backend="darwin", ...)
+
+Alternatively, you can permanently configure FiftyOne to use the V7 backend by
+setting the `FIFTYONE_ANNOTATION_DEFAULT_BACKEND` environment variable:
+
+.. code-block:: shell
+
+    export FIFTYONE_ANNOTATION_DEFAULT_BACKEND=darwin
+
+or by setting the `default_backend` parameter of your
+:ref:`annotation config <annotation-config>` located at
+`~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "default_backend": "darwin"
+    }
+
+Authentication
+--------------
+
+In order to connect to V7, you must provide your API key, which can be done in
+a variety of ways.
+
+**Environment variables (recommended)**
+
+The recommended way to configure your V7 API key is to store it in the
+`FIFTYONE_DARWIN_API_KEY` environment variable. This is automatically accessed
+by FiftyOne whenever a connection to V7 is made.
+
+.. code-block:: shell
+
+    export FIFTYONE_DARWIN_API_KEY=...
+
+**FiftyOne annotation config**
+
+You can also store your credentials in your
+:ref:`annotation config <annotation-config>` located at
+`~/.fiftyone/annotation_config.json`:
+
+.. code-block:: text
+
+    {
+        "backends": {
+            "darwin": {
+                "api_key": ...,
+            }
+        }
+    }
+
+Note that this file will not exist until you create it.
+
+**Keyword arguments**
+
+You can manually provide your API key as a keyword argument each time you call
+methods like
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+that require connections to V7:
+
+.. code:: python
+    :linenos:
+
+    view.annotate(
+        anno_key,
+        backend="darwin",
+        label_field="ground_truth",
+        dataset_name="dataset_slug",
+        api_key=...,
+    )
+
+.. _v7-requesting-annotations:
+
+Requesting annotations
+______________________
+
+Use the
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` method
+to send the samples and optionally existing labels in a |Dataset| or
+|DatasetView| to V7 for annotation.
+
+The basic syntax is:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+    view.annotate(anno_key, backend="darwin", ...)
+
+The `anno_key` argument defines a unique identifier for the annotation run, and
+you will provide it to methods like
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+:meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`,
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`, and
+:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+to manage the run in the future.
+
+.. note::
+
+    Calling
+    :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+    will upload the source media files to the V7 server.
+
+
+In addition,
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+provides various parameters that you can use to customize the annotation tasks
+that you wish to be performed.
+
+The following parameters are supported by all annotation backends:
+
+-   **backend** (*None*): the annotation backend to use. Use `"darwin"` for
+    the V7 backend. The supported values are
+    `fiftyone.annotation_config.backends.keys()` and the default is
+    `fiftyone.annotation_config.default_backend`
+-   **media_field** (*"filepath"*): the sample field containing the path to the
+    source media to upload
+-   **launch_editor** (*False*): whether to launch the annotation backend's
+    editor after uploading the samples
+
+The following parameters allow you to configure the labeling schema to use for
+your annotation tasks. See :ref:`this section <v7-label-schema>` for more
+details:
+
+-   **label_schema** (*None*): a dictionary defining the label schema to use.
+    If this argument is provided, it takes precedence over `label_field` and
+    `label_type`
+-   **label_field** (*None*): a string indicating a new or existing label field
+    to annotate
+-   **label_type** (*None*): a string indicating the type of labels to
+    annotate. The possible label types are:
+
+    -   ``"classification"``: a single classification stored in
+        |Classification| fields
+    -   ``"classifications"``: multilabel classifications stored in
+        |Classifications| fields
+    -   ``"detections"``: object detections stored in |Detections| fields
+    -   ``"polygons"``: polygons stored in |Polylines| fields with their
+        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
+        `True`
+    -   ``"keypoints"``: keypoints stored in |Keypoints| fields
+
+    All new label fields must have their type specified via this argument or in
+    `label_schema`
+-   **classes** (*None*): a list of strings indicating the class options for
+    `label_field` or all fields in `label_schema` without classes specified.
+    All new label fields must have a class list provided via one of the
+    supported methods. For existing label fields, if classes are not provided
+    by this argument nor `label_schema`, the observed labels on your dataset
+    are used
+-   **allow_additions** (*True*): whether to allow new labels to be added. Only
+    applicable when editing existing label fields
+-   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
+    applicable when editing existing label fields
+-   **allow_label_edits** (*True*): whether to allow the `label` attribute of
+    existing labels to be modified. Only applicable when editing existing
+    fields with `label` attributes
+-   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
+    properties (bounding boxes, vertices, keypoints, etc) of labels.
+    Only applicable when editing existing spatial label fields
+
+|br|
+In addition, the following V7-specific parameters can also be provided:
+
+-   **dataset_name** (*None*): the name of the dataset to use or create in
+    Darwin. This is currently mandatory
+-   **external_storage** (*None*): the sluggified name of a Darwin external
+    storage to use. If provided, indicates that all files should be treated as
+    external storage
+
+.. _v7-label-schema:
+
+Label schema
+------------
+
+The `label_schema`, `label_field`, `label_type`, and `classes` parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
+you to define the annotation schema that you wish to be used.
+
+The label schema may define new label field(s) that you wish to populate, and
+it may also include existing label field(s), in which case you can add, delete,
+or edit the existing labels on your FiftyOne dataset.
+
+The `label_schema` argument is the most flexible way to define how to construct
+tasks in V7. In its most verbose form, it is a dictionary that defines
+the label type, annotation type, and possible classes for each label field:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_schema = {
+        "new_field": {
+            "type": "classifications",
+            "classes": ["class1", "class2"],
+        },
+    }
+
+    dataset.annotate(
+        anno_key, 
+        backend="darwin", 
+        label_schema=label_schema, 
+        dataset_name="dataset_slug",
+    )
+
+Alternatively, if you are only editing or creating a single label field, you
+can use the `label_field`, `label_type`, and `classes`  parameters to specify
+the components of the label schema individually:
+
+.. code:: python
+    :linenos:
+
+    anno_key = "..."
+
+    label_field = "new_field",
+    label_type = "classifications"
+    classes = ["class1", "class2"]
+
+    dataset.annotate(
+        anno_key,
+        backend="darwin",
+        label_field=label_field,
+        label_type=label_type,
+        classes=classes,
+        dataset_name="dataset_slug",
+    )
+
+When you are annotating existing label fields, you can omit some of these
+parameters from
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`, as
+FiftyOne can infer the appropriate values to use:
+
+-   **label_type**: if omitted, the |Label| type of the field will be used to
+    infer the appropriate value for this parameter
+-   **classes**: if omitted, the observed labels on your dataset will be used
+    to construct a classes list
+
+.. warning::
+
+    Annotating multiple fields is not yet supported by the `darwin` backend.
+    Please check back soon!
+
+.. _v7-label-attributes:
+
+Label attributes
+----------------
+
+.. warning::
+
+    Label attributes are not yet supported by the `darwin` backend. Please
+    check back soon!
+
+.. _v7-loading-annotations:
+
+Loading annotations
+___________________
+
+After your annotations tasks in the annotation backend are complete, you can
+use the
+:meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+method to download them and merge them back into your FiftyOne dataset.
+
+.. code:: python
+    :linenos:
+
+    view.load_annotations(anno_key)
+
+The `anno_key` parameter is the unique identifier for the annotation run that
+you provided when calling
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`. You
+can use
+:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
+to see the available keys on a dataset.
+
+.. note::
+
+    By default, calling
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    will not delete any information for the run from the annotation backend.
+
+    However, you can pass `cleanup=True` to delete the V7 dataset associated
+    with the run after the annotations are downloaded.
+
+.. warning::
+
+    The `dest_field` parameter of
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
+    is not yet supported by the `darwin` backend. Check back soon!
+
+.. _v7-managing-annotation-runs:
+
+Managing annotation runs
+________________________
+
+FiftyOne provides a variety of methods that you can use to manage in-progress
+or completed annotation runs.
+
+For example, you can call
+:meth:`list_annotation_runs() <fiftyone.core.collections.SampleCollection.list_annotation_runs>`
+to see the available annotation keys on a dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.list_annotation_runs()
+
+Or, you can use
+:meth:`get_annotation_info() <fiftyone.core.collections.SampleCollection.get_annotation_info>`
+to retrieve information about the configuration of an annotation run:
+
+.. code:: python
+    :linenos:
+
+    info = dataset.get_annotation_info(anno_key)
+    print(info)
+
+Use :meth:`load_annotation_results() <fiftyone.core.collections.SampleCollection.load_annotation_results>`
+to load the :class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
+instance for an annotation run.
+
+All results objects provide a :class:`cleanup() <fiftyone.utils.annotations.AnnotationResults.cleanup>`
+method that you can use to delete all information associated with a run from
+the annotation backend.
+
+.. code:: python
+    :linenos:
+
+    results = dataset.load_annotation_results(anno_key)
+    results.cleanup()
+
+You can use
+:meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
+to rename the annotation key associated with an existing annotation run:
+
+.. code:: python
+    :linenos:
+
+    dataset.rename_annotation_run(anno_key, new_anno_key)
+
+Finally, you can use
+:meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+to delete the record of an annotation run from your FiftyOne dataset:
+
+.. code:: python
+    :linenos:
+
+    dataset.delete_annotation_run(anno_key)
+
+.. note::
+
+    Calling
+    :meth:`delete_annotation_run() <fiftyone.core.collections.SampleCollection.delete_annotation_run>`
+    only deletes the **record** of the annotation run from your FiftyOne
+    dataset; it will not delete any annotations loaded onto your dataset via
+    :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`,
+    nor will it delete any associated information from the annotation backend.
+
+.. _v7-examples:
+
+Examples
+________
+
+This section demonstrates how to perform some common annotation workflows on a
+FiftyOne dataset using the V7 backend.
+
+.. note::
+
+    All of the examples below assume you have configured your V7 backend as
+    described in :ref:`this section <v7-setup>`.
+
+.. _v7-new-label-fields:
+
+Adding new label fields
+-----------------------
+
+In order to annotate a new label field, you can provide the `label_field`,
+`label_type`, and `classes` parameters to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` to
+define the annotation schema for the field:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "v7_new_field"
+
+    view.annotate(
+        anno_key,
+        backend="darwin",
+        label_field="new_classifications",
+        label_type="classifications",
+        classes=["dog", "cat", "person"],
+        dataset_name="dataset_slug",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in V7
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+Alternatively, you can use the `label_schema` argument to define the same
+labeling task:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "v7_new_field"
+
+    label_schema = {
+        "new_classifications": {
+            "type": "classifications",
+            "classes": ["dog", "cat", "person"],
+        }
+    }
+
+    view.annotate(
+        anno_key,
+        backend="darwin",
+        label_schema=label_schema,
+        dataset_name="dataset_slug",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Create annotations in V7
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
+
+.. _v7-editing-labels:
+
+Editing existing labels
+-----------------------
+
+A common use case is to fix annotation mistakes that you discovered in your
+datasets through FiftyOne.
+
+You can easily edit the labels in an existing field of your FiftyOne dataset
+by simply passing the name of the field via the `label_field` parameter of
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
+
+.. code:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    view = dataset.take(1)
+
+    anno_key = "v7_existing_field"
+
+    view.annotate(
+        anno_key,
+        backend="darwin",
+        label_field="ground_truth",
+        dataset_name="dataset_slug",
+        launch_editor=True,
+    )
+    print(dataset.get_annotation_info(anno_key))
+
+    # Modify/add/delete bounding boxes and their attributes in V7
+
+    dataset.load_annotations(anno_key, cleanup=True)
+    dataset.delete_annotation_run(anno_key)
