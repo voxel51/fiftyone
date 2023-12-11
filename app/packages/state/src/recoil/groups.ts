@@ -53,6 +53,16 @@ export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   ],
 });
 
+export const groupMediaIsCarouselVisible = selector<boolean>({
+  key: "groupMediaIsCarouselVisible",
+  get: ({ get }) => {
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+
+    return get(groupMediaIsCarouselVisibleSetting) && !isImaVidInNestedGroup;
+  },
+});
+
 export const groupMedia3dVisibleSetting = atom<boolean>({
   key: "groupMediaIs3dVisibleSetting",
   default: true,
@@ -69,7 +79,9 @@ export const groupMediaIs3dVisible = selector<boolean>({
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
     const hasPcd = set.has("point_cloud");
-    return get(groupMedia3dVisibleSetting) && hasPcd;
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+    return get(groupMedia3dVisibleSetting) && hasPcd && !isImaVidInNestedGroup;
   },
 });
 
