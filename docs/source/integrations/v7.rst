@@ -9,7 +9,7 @@ V7 Integration
 tools available, and we've made it easy to upload your data directly from
 FiftyOne to V7 for labeling.
 
-You can create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
+Create a `V7 account <https://www.v7labs.com/sign-up>`_ and follow
 these :ref:`simple setup instructions <v7-setup>` to get up and running.
 
 .. note::
@@ -19,17 +19,14 @@ these :ref:`simple setup instructions <v7-setup>` to get up and running.
     `@voxel51/annotation <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/annotation>`_
     plugin!
 
-FiftyOne provides an API to create projects, upload data, define label schemas,
+FiftyOne provides an API to upload data, define label schemas,
 and download annotations using V7, all programmatically in Python. All of the
 following label types are supported, for both image and video datasets:
 
 - :ref:`Classifications <classification>`
 - :ref:`Detections <object-detection>`
-- :ref:`Instance segmentations <instance-segmentation>`
-- :ref:`Polygons and polylines <polylines>`
+- :ref:`Polygons <polylines>`
 - :ref:`Keypoints <keypoints>`
-- :ref:`Scalar fields <adding-sample-fields>`
-- :ref:`Semantic segmentation <semantic-segmentation>`
 
 .. image:: /images/integrations/v7-hero.jpg
    :alt: v7-hero
@@ -116,12 +113,6 @@ First, we create the annotation tasks in V7:
         "new_ground_truth": {
             "type": "detections",
             "classes": dataset.distinct("ground_truth.detections.label"),
-            "attributes": {
-                "iscrowd": {
-                    "type": "radio",
-                    "values": [True, False],
-                },
-            },
         },
     }
 
@@ -130,6 +121,7 @@ First, we create the annotation tasks in V7:
         backend="darwin",
         label_schema=label_schema,
         launch_editor=True,
+        dataset_slug=anno_key
     )
     print(dataset.get_annotation_info(anno_key))
 
@@ -180,12 +172,12 @@ API key.
 Installing the V7 backend
 -------------------------
 
-In order to use the V7 backend, you must install the ``fiftyone_darwin`` Python
+In order to use the V7 backend, you must install the ``darwin_fiftyone`` Python
 package:
 
 .. code-block:: shell
 
-    pip install fiftyone_darwin
+    pip install darwin_fiftyone
 
 and register the ``darwin`` backend with FiftyOne, which you can do either by
 setting the following environment variables:
@@ -297,29 +289,9 @@ that require connections to V7:
         backend="darwin",
         label_field="ground_truth",
         api_key=...,
+        dataset_name="dataset_slug"
     )
 
-**Command line prompt**
-
-If you have not stored your API key via another method, you will be prompted to
-enter it interactively in your shell each time you call a method that requires
-a connection to V7:
-
-.. code:: python
-    :linenos:
-
-    view.annotate(
-        anno_key,
-        backend="darwin",
-        label_field="ground_truth",
-        launch_editor=True,
-    )
-
-.. code-block:: text
-
-    Please enter your API key.
-    You can avoid this in the future by setting your `FIFTYONE_DARWIN_API_KEY` environment variable.
-    API key: ...
 
 .. _v7-requesting-annotations:
 
@@ -354,6 +326,7 @@ to manage the run in the future.
     :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
     will upload the source media files to the V7 server.
 
+
 In addition,
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
 provides various parameters that you can use to customize the annotation tasks
@@ -387,20 +360,10 @@ details:
     -   ``"classifications"``: multilabel classifications stored in
         |Classifications| fields
     -   ``"detections"``: object detections stored in |Detections| fields
-    -   ``"instances"``: instance segmentations stored in |Detections| fields
-        with their :attr:`mask <fiftyone.core.labels.Detection.mask>`
-        attributes populated
-    -   ``"polylines"``: polylines stored in |Polylines| fields with their
-        :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
-        `False`
     -   ``"polygons"``: polygons stored in |Polylines| fields with their
         :attr:`filled <fiftyone.core.labels.Polyline.filled>` attributes set to
         `True`
     -   ``"keypoints"``: keypoints stored in |Keypoints| fields
-    -   ``"segmentation"``: semantic segmentations stored in |Segmentation|
-        fields
-    -   ``"scalar"``: scalar labels stored in |IntField|, |FloatField|,
-        |StringField|, or |BooleanField| fields
 
     All new label fields must have their type specified via this argument or in
     `label_schema`
@@ -423,26 +386,11 @@ details:
     If a `label_schema` is also provided, this parameter determines which
     attributes are included for all fields that do not explicitly define their
     per-field attributes (in addition to any per-class attributes)
--   **mask_targets** (*None*): a dict mapping pixel values to semantic label
-    strings. Only applicable when annotating semantic segmentations
--   **allow_additions** (*True*): whether to allow new labels to be added. Only
-    applicable when editing existing label fields
--   **allow_deletions** (*True*): whether to allow labels to be deleted. Only
-    applicable when editing existing label fields
--   **allow_label_edits** (*True*): whether to allow the `label` attribute of
-    existing labels to be modified. Only applicable when editing existing
-    fields with `label` attributes
--   **allow_index_edits** (*True*): whether to allow the `index` attribute
-    of existing video tracks to be modified. Only applicable when editing
-    existing frame fields with `index` attributes
--   **allow_spatial_edits** (*True*): whether to allow edits to the spatial
-    properties (bounding boxes, vertices, keypoints, masks, etc) of labels.
-    Only applicable when editing existing spatial label fields
 
 |br|
 In addition, the following V7-specific parameters can also be provided:
 
--   **dataset_name** (*None*): a name of a dataset to use or create in Darwin
+-   **dataset_name** (*None*): a name of a dataset to use or create in Darwin. Currently mandatory
 -   **external_storage** (*None*): the sluggified name of a Darwin external
     storage to use. If provided, indicates that all files should be treated as
     external storage
@@ -452,8 +400,7 @@ In addition, the following V7-specific parameters can also be provided:
 Label schema
 ------------
 
-The `label_schema`, `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to
+The `label_schema`, `label_field`, `label_type`, `classes`, and `attributes` parameters to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` allow
 you to define the annotation schema that you wish to be used.
 
@@ -475,70 +422,20 @@ each label field:
         "new_field": {
             "type": "classifications",
             "classes": ["class1", "class2"],
-            "attributes": {
-                "attr1": {
-                    "type": "select",
-                    "values": ["val1", "val2"],
-                },
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                }
-            },
-        },
-        "existing_field": {
-            "classes": ["class3", "class4"],
-            "attributes": {
-                "attr3": {
-                    "type": "text",
-                }
-            }
         },
     }
 
-    dataset.annotate(anno_key, backend="darwin", label_schema=label_schema)
+    dataset.annotate(
+        anno_key, 
+        backend="darwin", 
+        label_schema=label_schema, 
+        dataset_name="dataset_slug"
+    )
 
-You can also define class-specific attributes by setting elements of the
-`classes` list to dicts that specify groups of `classes` and their
-corresponding `attributes`. For example, in the configuration below, `attr1`
-only applies to `class1` and `class2` while `attr2` applies to all classes:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    label_schema = {
-        "new_field": {
-            "type": "detections",
-            "classes": [
-                {
-                    "classes": ["class1", "class2"],
-                    "attributes": {
-                        "attr1": {
-                            "type": "select",
-                            "values": ["val1", "val2"],
-                        }
-                     }
-                },
-                "class3",
-                "class4",
-            ],
-            "attributes": {
-                "attr2": {
-                    "type": "radio",
-                    "values": [True, False],
-                }
-            },
-        },
-    }
-
-    dataset.annotate(anno_key, backend="darwin", label_schema=label_schema)
 
 Alternatively, if you are only editing or creating a single label field, you
-can use the `label_field`, `label_type`, `classes`, `attributes`, and
-`mask_targets` parameters to specify the components of the label schema
-individually:
+can use the `label_field`, `label_type`, and `classes`  
+parameters to specify the components of the label schema individually:
 
 .. code:: python
     :linenos:
@@ -549,25 +446,13 @@ individually:
     label_type = "classifications"
     classes = ["class1", "class2"]
 
-    # These are optional
-    attributes = {
-        "attr1": {
-            "type": "select",
-            "values": ["val1", "val2"],
-        },
-        "attr2": {
-            "type": "radio",
-            "values": [True, False],
-        }
-    }
-
     dataset.annotate(
         anno_key,
         backend="darwin",
         label_field=label_field,
         label_type=label_type,
         classes=classes,
-        attributes=attributes,
+        dataset_name="dataset_slug"
     )
 
 When you are annotating existing label fields, you can omit some of these
@@ -580,10 +465,22 @@ FiftyOne can infer the appropriate values to use:
 -   **classes**: if omitted for a non-semantic segmentation field, the observed
     labels on your dataset will be used to construct a classes list
 
+
+.. warning::
+
+    The v7 annotation backend does not yet support annotating multiple fields. 
+    Please check back soon!
+
+
 .. _v7-label-attributes:
 
 Label attributes
 ----------------
+
+.. warning::
+    
+    Attributes are not yet supported with the `darwin` backend. Please check back soon!
+
 
 The `attributes` parameter allows you to configure whether
 :ref:`custom attributes <using-labels>` beyond the default `label` attribute
@@ -619,16 +516,11 @@ attribute that you wish to label:
         label_type="detections",
         classes=["dog", "cat", "person"],
         attributes=attributes,
+        dataset_name="dataset_slug"
     )
 
 You can always omit this parameter if you do not require attributes beyond the
 default `label`.
-
-For V7, the following `type` values are supported:
-
-.. note::
-
-    TODO add any supported attribute types here
 
 When you are annotating existing label fields, the `attributes` parameter can
 take additional values:
@@ -643,48 +535,6 @@ take additional values:
 Note that only scalar-valued label attributes are supported. Other attribute
 types like lists, dictionaries, and arrays will be omitted.
 
-.. _v7-video-label-attributes:
-
-Video label attributes
-----------------------
-
-When annotating spatiotemporal objects in videos, each object attribute
-specification can include a `mutable` property that controls whether the
-attribute's value can change between frames for each object:
-
-.. code:: python
-    :linenos:
-
-    anno_key = "..."
-
-    attributes = {
-        "type": {
-            "type": "select",
-            "values": ["sedan", "suv", "truck"],
-            "mutable": False,
-        },
-        "occluded": {
-            "type": "radio",
-            "values": [True, False],
-            "mutable": True,
-        },
-    }
-
-    view.annotate(
-        anno_key,
-        backend="darwin",
-        label_field="frames.new_field",
-        label_type="detections",
-        classes=["vehicle"],
-        attributes=attributes,
-    )
-
-The meaning of the `mutable` attribute is defined as follows:
-
--   `True` (default): the attribute is dynamic and can have a different value
-    for every frame in which the object track appears
--   `False`: the attribute is static and is the same for every frame in which
-    the object track appears
 
 .. _v7-loading-annotations:
 
@@ -714,10 +564,15 @@ to see the available keys on a dataset.
     :meth:`load_annotations() <fiftyone.core.collections.SampleCollection.load_annotations>`
     will not delete any information for the run from the annotation backend.
 
-    However, you can pass `cleanup=True` to delete all information associated
-    with the run from the backend after the annotations are downloaded.
+    However, you can pass `cleanup=True` to delete the v7 dataset associated
+    with the run after the annotations are downloaded.
     Specifically, it will delete the project, data rows, and ontology
     associated with this annotation run.
+
+.. warning::
+
+    The v7 annotation backend does not yet support the `dest_field` parameter, so 
+    this option is not yet available. Check back soon!
 
 You can use the optional `dest_field` parameter to override the task's
 label schema and instead load annotations into different field name(s) of your
@@ -766,11 +621,6 @@ the annotation backend.
 
     results = dataset.load_annotation_results(anno_key)
     results.cleanup()
-
-In addition, the
-:class:`AnnotationResults <fiftyone.utils.annotations.AnnotationResults>`
-subclasses for each backend may provide additional utilities such as support
-for programmatically monitoring the status of the annotation tasks in the run.
 
 You can use
 :meth:`rename_annotation_run() <fiftyone.core.collections.SampleCollection.rename_annotation_run>`
@@ -839,6 +689,7 @@ define the annotation schema for the field:
         label_field="new_classifications",
         label_type="classifications",
         classes=["dog", "cat", "person"],
+        dataset_name="dataset_slug",
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -873,6 +724,7 @@ labeling task:
         anno_key,
         backend="darwin",
         label_schema=label_schema,
+        dataset_name="dataset_slug",
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -909,60 +761,12 @@ by simply passing the name of the field via the `label_field` parameter of
         anno_key,
         backend="darwin",
         label_field="ground_truth",
+        dataset_name="dataset_slug",
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
 
     # Modify/add/delete bounding boxes and their attributes in V7
-
-    dataset.load_annotations(anno_key, cleanup=True)
-    dataset.delete_annotation_run(anno_key)
-
-.. _v7-multiple-fields:
-
-Annotating multiple fields
---------------------------
-
-The `label_schema` argument allows you to define annotation tasks for multiple
-fields at once:
-
-.. code:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    view = dataset.take(1)
-
-    anno_key = "v7_multiple_fields"
-
-    label_schema = {
-        "people": {
-            "type": "detections",
-            "classes": ["person"],
-        },
-        "keypoints": {
-            "type": "keypoints",
-            "classes": ["person", "cat", "dog", "food"],
-            "attributes": {
-                "occluded": {
-                    "type": "select",
-                    "values": [True, False],
-                }
-            }
-        }
-    }
-
-    view.annotate(
-        anno_key,
-        backend="darwin",
-        label_schema=label_schema,
-        launch_editor=True,
-    )
-    print(dataset.get_annotation_info(anno_key))
-
-    # Add annotations in V7...
 
     dataset.load_annotations(anno_key, cleanup=True)
     dataset.delete_annotation_run(anno_key)
