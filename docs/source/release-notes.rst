@@ -3,6 +3,17 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.5.2:
+
+FiftyOne Teams 1.5.2
+--------------------
+*Released December 11, 2023*
+
+Bugs
+
+- Avoid creating non-existent database indexes on API startup
+- Avoid errors when archiving snapshots with corrupted run results
+
 .. _release-notes-teams-v1.5.1:
 
 FiftyOne Teams 1.5.1
@@ -105,6 +116,8 @@ News
   image searches on FiftyOne datasets!
 - Released a :ref:`MongoDB integration <mongodb-integration>` for native text
   and image searches on FiftyOne datasets!
+- Released a :ref:`V7 integration <v7-integration>` for annotating FiftyOne
+  datasets!
 
 App
 
