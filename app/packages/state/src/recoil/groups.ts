@@ -447,20 +447,11 @@ export const isNonNestedDynamicGroup = selector<boolean>({
   },
 });
 
-export const isImaVidLookerAvailable = selector<boolean>({
-  key: "isImaVidLookerAvailable",
-  get: ({ get }) => {
-    const isOrderedDynamicGroup_ = get(isOrderedDynamicGroup);
-    const isNonNestedDynamicGroup_ = get(isNonNestedDynamicGroup);
-    return isOrderedDynamicGroup_ && isNonNestedDynamicGroup_;
-  },
-});
-
 export const shouldRenderImaVidLooker = selector<boolean>({
   key: "shouldRenderImaVidLooker",
   get: ({ get }) => {
     return (
-      get(isImaVidLookerAvailable) &&
+      get(isOrderedDynamicGroup) &&
       get(nonNestedDynamicGroupsViewMode) === "video"
     );
   },

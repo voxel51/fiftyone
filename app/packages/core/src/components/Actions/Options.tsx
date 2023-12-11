@@ -149,7 +149,7 @@ const SidebarMode = () => {
 
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
   const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
-  const isImaVidLookerAvailable = useRecoilValue(fos.isImaVidLookerAvailable);
+  const isImaVidLookerAvailable = useRecoilValue(fos.isOrderedDynamicGroup);
 
   const tabOptions = useMemo(() => {
     const options = [

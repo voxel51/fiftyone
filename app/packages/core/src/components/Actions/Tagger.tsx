@@ -337,7 +337,7 @@ const useTagCallback = (
           fos.isNonNestedDynamicGroup
         );
         const isImaVidLookerActive = await snapshot.getPromise(
-          fos.isImaVidLookerAvailable
+          fos.isOrderedDynamicGroup
         );
 
         const slices = await snapshot.getPromise(fos.currentSlices(modal));
