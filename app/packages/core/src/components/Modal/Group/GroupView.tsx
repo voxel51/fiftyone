@@ -19,9 +19,7 @@ export const GroupView = () => {
   const theme = useTheme();
   const key = useRecoilValue(groupId);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
-  const isCarouselVisible = useRecoilValue(
-    fos.groupMediaIsCarouselVisibleSetting
-  );
+  const isCarouselVisible = useRecoilValue(fos.groupMediaIsCarouselVisible);
   const is3dVisible = useRecoilValue(fos.groupMediaIs3dVisible);
   const isMainVisible = useRecoilValue(fos.groupMediaIsMainVisible);
   const [width, setWidth] = useBrowserStorage(
