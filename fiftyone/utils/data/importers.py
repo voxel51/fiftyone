@@ -1823,7 +1823,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 sample_collection_name=doc.sample_collection_name,
                 frame_collection_name=doc.frame_collection_name,
             )
-            if doc.description:
+            if doc.description and not dataset_dict.get("description", None):
                 keep_fields["description"] = doc.description
 
             if doc.tags:
