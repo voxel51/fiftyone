@@ -34,7 +34,7 @@ import {
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
-import { nonNestedDynamicGroupsViewMode } from "./options";
+import { dynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -447,13 +447,17 @@ export const isNonNestedDynamicGroup = selector<boolean>({
   },
 });
 
+export const isNestedDynamicGroup = selector<boolean>({
+  key: "isNestedDynamicGroup",
+  get: ({ get }) => {
+    return get(isDynamicGroup) && get(hasGroupSlices);
+  },
+});
+
 export const shouldRenderImaVidLooker = selector<boolean>({
   key: "shouldRenderImaVidLooker",
   get: ({ get }) => {
-    return (
-      get(isOrderedDynamicGroup) &&
-      get(nonNestedDynamicGroupsViewMode) === "video"
-    );
+    return get(isOrderedDynamicGroup) && get(dynamicGroupsViewMode) === "video";
   },
 });
 
@@ -492,9 +496,17 @@ export const dynamicGroupPageSelector = selectorFamily<
         ),
       };
 
+      const filter = get(hasGroupSlices)
+        ? {
+            group: {
+              slice: get(groupSlice),
+            },
+          }
+        : {};
+
       return (cursor: number, pageSize: number) => ({
         ...params,
-        filter: {},
+        filter,
         after: cursor ? String(cursor) : null,
         count: pageSize,
       });
