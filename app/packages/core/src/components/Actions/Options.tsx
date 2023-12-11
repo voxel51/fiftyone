@@ -82,7 +82,7 @@ const MediaFields = ({ modal }) => {
   );
   const mediaFields = useRecoilValue(fos.mediaFields);
 
-  if (mediaFields.length <= 1) return null;
+  if (mediaFields?.length <= 1) return null;
 
   return (
     <>
@@ -307,13 +307,13 @@ type OptionsProps = {
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
-  const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
+  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
   const view = useRecoilValue(fos.view);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
       {modal && <HideFieldSetting />}
-      {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
+      {isOrderedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
