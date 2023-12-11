@@ -164,10 +164,9 @@ export default <T extends AbstractLooker>(
           const { groupBy, orderBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
             .valueMaybe();
-          const groupByFieldValue = get(
-            sample,
-            getSanitizedGroupByExpression(groupBy)
-          ) as string;
+          const groupByFieldValue = String(
+            get(sample, getSanitizedGroupByExpression(groupBy))
+          );
           const totalFrameCountPromise = getPromise(
             dynamicGroupsElementCount(groupByFieldValue)
           );
