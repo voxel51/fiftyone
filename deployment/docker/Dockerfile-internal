@@ -8,7 +8,6 @@ FROM python:${PYTHON_VERSION} as wheelhouse
 
 RUN pip wheel --wheel-dir=/tmp/wheels sentence_transformers pyperclip
 
-
 FROM ${GPT_PLUGIN_IMAGE_NAME} as internalrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
