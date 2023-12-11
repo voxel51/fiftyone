@@ -65,7 +65,7 @@ export const sidebarMode = atomFamily<"all" | "best" | "fast" | null, boolean>({
 
 export const dynamicGroupsViewMode = atom<"carousel" | "pagination" | "video">({
   key: "dynamicGroupsViewMode",
-  default: "carousel",
+  default: "pagination",
   effects: [getBrowserStorageEffectForKey("dynamicGroupsViewMode")],
 });
 
