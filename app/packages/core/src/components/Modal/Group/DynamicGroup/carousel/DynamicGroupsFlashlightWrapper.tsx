@@ -11,12 +11,7 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  selector,
-  useRecoilCallback,
-  useRecoilValue,
-  useRecoilValueLoadable,
-} from "recoil";
+import { selector, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import useFlashlightPager from "../../../../../useFlashlightPager";
 import useSetDynamicGroupSample from "./useSetDynamicGroupSample";
 
@@ -55,8 +50,6 @@ export const DynamicGroupsFlashlightWrapper = () => {
     [modalSampleId]
   );
 
-  const cursor = useRecoilValue(fos.dynamicGroupIndex);
-
   const createLooker = fos.useCreateLooker(
     false,
     true,
@@ -73,62 +66,8 @@ export const DynamicGroupsFlashlightWrapper = () => {
   const flashlightRef = useRef<Flashlight<number>>();
   selectSample.current = select;
 
-  const getScrollParams = useCallback(() => {
-    const flashlight = flashlightRef.current;
-
-    if (!flashlight) {
-      return;
-    }
-
-    const containerWidth = flashlight.element.clientWidth;
-    // elementWidth represents the width of the first element in the flashlight
-    const elementWidth =
-      flashlight.element.firstElementChild?.firstElementChild?.clientWidth ??
-      100;
-
-    const elementsCount = Math.ceil(containerWidth / elementWidth!);
-
-    return { elementWidth, elementsCount, containerWidth };
-  }, []);
-
   const setSample = useSetDynamicGroupSample();
   const { init, deferred } = fos.useDeferrer();
-  const navigationCallback = useRecoilCallback(
-    ({ snapshot }) =>
-      async (isPrevious) => {
-        const flashlight = flashlightRef.current;
-
-        if (!flashlight) {
-          return;
-        }
-
-        const id = await snapshot.getPromise(fos.modalSampleId);
-        const currentSampleIndex = flashlight.itemIndexes[id];
-        const nextSampleIndex = currentSampleIndex + (isPrevious ? -1 : 1);
-        const nextSampleId = store.indices.get(nextSampleIndex);
-
-        if (!nextSampleId) {
-          return;
-        }
-
-        setSample(id);
-
-        // todo: implement better scrolling logic
-        if (flashlightRef.current) {
-          const { elementWidth } = getScrollParams()!;
-
-          const newLeft = isPrevious
-            ? flashlightRef.current?.element.scrollLeft - elementWidth
-            : flashlightRef.current?.element.scrollLeft + elementWidth;
-
-          flashlightRef.current?.element.scroll({
-            left: newLeft,
-            behavior: "smooth",
-          });
-        }
-      },
-    [store, store, setSample]
-  );
 
   const { page, reset } = useFlashlightPager(store, pageParams);
 
