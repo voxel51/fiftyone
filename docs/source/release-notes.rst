@@ -105,6 +105,8 @@ News
   image searches on FiftyOne datasets!
 - Released a :ref:`MongoDB integration <mongodb-integration>` for native text
   and image searches on FiftyOne datasets!
+- Released a :ref:`V7 integration <v7-integration>` for annotating FiftyOne
+  datasets!
 
 App
 
