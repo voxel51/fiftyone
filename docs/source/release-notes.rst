@@ -11,7 +11,7 @@ FiftyOne Teams 1.5.2
 
 Bugs
 
-- Avoid creating non-exisistent database indexes on API startup
+- Avoid creating non-existent database indexes on API startup
 - Avoid errors when archiving snapshots with corrupted run results
 
 .. _release-notes-teams-v1.5.1:
