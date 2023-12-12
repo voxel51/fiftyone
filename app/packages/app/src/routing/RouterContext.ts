@@ -66,7 +66,8 @@ export interface Router<T extends OperationType> {
 
 export const createRouter = <T extends OperationType>(
   environment: Environment,
-  routes: RouteDefinition<T>[]
+  routes: RouteDefinition<T>[],
+  handleError?: (error: unknown) => void
 ): Router<T> => {
   const history =
     isElectron() || isNotebook()
@@ -90,7 +91,9 @@ export const createRouter = <T extends OperationType>(
       nextCurrentEntryResource = getEntryResource<T>(
         environment,
         routes,
-        location as FiftyOneLocation
+        location as FiftyOneLocation,
+        false,
+        handleError
       );
 
       const loadingResource = nextCurrentEntryResource;
@@ -120,7 +123,8 @@ export const createRouter = <T extends OperationType>(
           environment,
           routes,
           history.location as FiftyOneLocation,
-          hard
+          hard,
+          handleError
         );
       }
       runUpdate && update(history.location as FiftyOneLocation);
@@ -156,7 +160,8 @@ const getEntryResource = <T extends OperationType>(
   environment: Environment,
   routes: RouteDefinition<T>[],
   location: FiftyOneLocation,
-  hard = false
+  hard = false,
+  handleError?: (error: unknown) => void
 ): Resource<Entry<T>> => {
   let route: RouteDefinition<T>;
   let matchResult: MatchPathResult<T>;
@@ -194,10 +199,8 @@ const getEntryResource = <T extends OperationType>(
         );
 
         let resolveEntry: (entry: Entry<T>) => void;
-        let rejectEntry: (reason?: any) => void;
         const promise = new Promise<Entry<T>>((resolve, reject) => {
           resolveEntry = resolve;
-          rejectEntry = reject;
         });
         const subscription = fetchQuery(
           environment,
@@ -219,8 +222,7 @@ const getEntryResource = <T extends OperationType>(
               },
             });
           },
-
-          error: (error) => rejectEntry(error),
+          error: (error) => handleError(error),
         });
 
         return promise;

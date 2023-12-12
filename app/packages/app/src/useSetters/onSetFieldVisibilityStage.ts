@@ -31,10 +31,16 @@ const onSetFieldVisibilityStage: RegisteredSetter =
     });
 
     // reload page query with new extended view
-    router.history.replace(resolveURL(router), {
-      ...router.get().state,
-      fieldVisibility: stage,
-    });
+    router.history.replace(
+      resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+      }),
+      {
+        ...router.get().state,
+        fieldVisibility: stage,
+      }
+    );
 
     // send event as side effect
     commitMutation<setFieldVisibilityStageMutation>(environment, {
