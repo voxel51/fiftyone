@@ -198,7 +198,7 @@ FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_,
 App support is also available in
 `SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_ and any
 cloud notebook that has an accessible network proxy via configured
-`proxy_url <configuring-proxy-url>`.
+:ref:`proxy_url <configuring-proxy-url>`.
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 
