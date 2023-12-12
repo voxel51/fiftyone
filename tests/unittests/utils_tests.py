@@ -315,7 +315,7 @@ class ConfigTests(unittest.TestCase):
 
 
 from bson import ObjectId
-from fiftyone.core.utils import load_dataset
+from fiftyone.core.odm.utils import load_dataset
 
 
 class TestLoadDataset(unittest.TestCase):

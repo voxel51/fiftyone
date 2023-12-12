@@ -85,7 +85,7 @@ def get_view(
 
     Args:
         dataset: the dataset name or :class:`fiftyone.core.dataset.Dataset`
-        instance
+            instance
         view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances

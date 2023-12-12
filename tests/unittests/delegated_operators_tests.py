@@ -137,7 +137,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
                     self.svc.delete_operation(doc_id=doc.id)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_delegate_operation(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
@@ -419,7 +419,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.run_link, "http://run.info")
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_full_run_fail(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
@@ -455,7 +455,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.failed_at)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_rerun_failed(
         self, mock_load_dataset, get_op_mock, op_exists_mock
@@ -754,7 +754,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset.delete()
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_gets_dataset_id_from_name(
         self, mock_load_dataset, mock_get_operator, *args
@@ -778,7 +778,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.dataset_id, dataset_id)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_deletes_by_dataset_id(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
@@ -833,7 +833,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(len(ops), 0)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_search(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
@@ -889,7 +889,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(len(docs), 25)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_count(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists
@@ -940,7 +940,7 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(docs, 25)
 
     @patch(
-        "fiftyone.core.utils.load_dataset",
+        "fiftyone.core.odm.utils.load_dataset",
     )
     def test_rename_operation(
         self, mock_load_dataset, mock_get_operator, mock_operator_exists

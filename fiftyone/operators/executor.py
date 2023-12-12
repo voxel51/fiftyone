@@ -14,7 +14,7 @@ import traceback
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
-import fiftyone.core.utils as focu
+import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
 import fiftyone.operators.types as types
@@ -468,7 +468,7 @@ class ExecutionContext(object):
     @property
     def view(self):
         """The :class:`fiftyone.core.view.DatasetView` being operated on."""
-        if self._view:
+        if self._view is not None:
             return self._view
 
         # Always derive the view from the context's dataset
