@@ -31,6 +31,9 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+
+from bson import ObjectId
+from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 from concurrent.futures import ThreadPoolExecutor
 
@@ -1992,3 +1995,26 @@ def validate_hex_color(value):
 
 
 fos = lazy_import("fiftyone.core.storage")
+
+
+def load_dataset(identifier):
+    """Loads the dataset from the database with the given name or id."""
+    import fiftyone.core.odm as foo
+    import fiftyone.core.dataset as fod
+
+    db = foo.get_db_conn()
+    try:
+        query_key = "_id"
+        query_val = ObjectId(identifier)
+
+    except:
+        query_key = "name"
+        query_val = identifier
+
+    res = db.datasets.find_one({query_key: query_val})
+    if not res:
+        raise ValueError(
+            f"Dataset with {query_key}={query_val} does not " f"exist"
+        )
+    dataset_doc = foo.DatasetDocument.from_dict(res)
+    return fod.Dataset(_doc=dataset_doc, _create=False, _virtual=True)

@@ -13,9 +13,8 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.labels as fol
 import fiftyone.core.odm as foo
 import fiftyone.core.sample as fos
-from fiftyone.server.query import Dataset
-from fiftyone.server.samples import paginate_samples
 import fiftyone.server.view as fosv
+from fiftyone.server.samples import paginate_samples
 
 from decorators import drop_datasets
 from utils.groups import make_disjoint_groups_dataset
@@ -899,6 +898,6 @@ class AysncServerViewTests(unittest.IsolatedAsyncioTestCase):
 
 class ServerDocTests(unittest.TestCase):
     def test_dataset_doc(self):
-        doc = Dataset.modifier({"_id": "id"})
+        doc = fod.Dataset.modifier({"_id": "id"})
         self.assertIn("frame_collection_name", doc)
         self.assertEqual(doc["frame_collection_name"], None)
