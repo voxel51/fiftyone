@@ -121,7 +121,7 @@ First, we create the annotation tasks in V7:
         backend="darwin",
         label_schema=label_schema,
         launch_editor=True,
-        dataset_name=anno_key,
+        dataset_slug=anno_key,
     )
     print(dataset.get_annotation_info(anno_key))
 
@@ -288,7 +288,7 @@ that require connections to V7:
         anno_key,
         backend="darwin",
         label_field="ground_truth",
-        dataset_name="dataset_slug",
+        dataset_slug=anno_key,
         api_key=...,
     )
 
@@ -386,7 +386,7 @@ details:
 |br|
 In addition, the following V7-specific parameters can also be provided:
 
--   **dataset_name** (*None*): the name of the dataset to use or create in
+-   **dataset_slug** (*None*): the name of the dataset to use or create in
     Darwin. This is currently mandatory
 -   **external_storage** (*None*): the sluggified name of a Darwin external
     storage to use. If provided, indicates that all files should be treated as
@@ -425,7 +425,7 @@ the label type, annotation type, and possible classes for each label field:
         anno_key, 
         backend="darwin", 
         label_schema=label_schema, 
-        dataset_name="dataset_slug",
+        dataset_slug="dataset_slug",
     )
 
 Alternatively, if you are only editing or creating a single label field, you
@@ -447,7 +447,7 @@ the components of the label schema individually:
         label_field=label_field,
         label_type=label_type,
         classes=classes,
-        dataset_name="dataset_slug",
+        dataset_slug="dataset_slug",
     )
 
 When you are annotating existing label fields, you can omit some of these
@@ -620,7 +620,7 @@ define the annotation schema for the field:
         label_field="new_classifications",
         label_type="classifications",
         classes=["dog", "cat", "person"],
-        dataset_name="dataset_slug",
+        dataset_slug=anno_key,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -655,7 +655,7 @@ labeling task:
         anno_key,
         backend="darwin",
         label_schema=label_schema,
-        dataset_name="dataset_slug",
+        dataset_slug=anno_key,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
@@ -692,7 +692,7 @@ by simply passing the name of the field via the `label_field` parameter of
         anno_key,
         backend="darwin",
         label_field="ground_truth",
-        dataset_name="dataset_slug",
+        dataset_slug=anno_key,
         launch_editor=True,
     )
     print(dataset.get_annotation_info(anno_key))
