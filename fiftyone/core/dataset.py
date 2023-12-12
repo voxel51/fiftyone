@@ -262,11 +262,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         overwrite=False,
         _create=True,
         _virtual=False,
-        _doc=None,
         **kwargs,
     ):
-        if _doc:
-            name = _doc.name
         if name is None and _create:
             name = get_default_dataset_name()
 
@@ -279,7 +276,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self, name, virtual=_virtual, doc=_doc
+                self,
+                name,
+                virtual=_virtual,
             )
 
         self._doc = doc
@@ -6811,13 +6810,15 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(obj, name, virtual=False, doc=None):
+def _load_dataset(
+    obj,
+    name,
+    virtual=False,
+):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
     try:
-        if doc:
-            return _do_load_dataset_from_doc(obj, doc)
         return _do_load_dataset(obj, name)
     except Exception as e:
         try:
@@ -6841,13 +6842,6 @@ def _do_load_dataset(obj, name):
         dataset_doc = foo.DatasetDocument.objects.get(name=name)
     except moe.DoesNotExist:
         raise ValueError("Dataset '%s' not found" % name)
-
-    return _do_load_dataset_from_doc(obj, dataset_doc)
-
-
-def _do_load_dataset_from_doc(obj, dataset_doc):
-    if isinstance(dataset_doc, dict):
-        dataset_doc = foo.DatasetDocument(**dataset_doc)
 
     sample_collection_name = dataset_doc.sample_collection_name
     frame_collection_name = dataset_doc.frame_collection_name

@@ -673,10 +673,9 @@ def load_dataset(identifier):
         query_key = "name"
         query_val = identifier
 
-    res = db.datasets.find_one({query_key: query_val})
+    res = db.datasets.find_one({query_key: query_val}, {"name": True})
     if not res:
         raise ValueError(
             f"Dataset with {query_key}={query_val} does not " f"exist"
         )
-    dataset_doc = foo.DatasetDocument.from_dict(res)
-    return fod.Dataset(_doc=dataset_doc, _create=False, _virtual=True)
+    return fod.Dataset(res.get("name"), _create=False)
