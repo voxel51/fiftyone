@@ -6,7 +6,6 @@ import { OperatorCore } from "@fiftyone/operators";
 import "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { datasetQueryContext } from "@fiftyone/state";
-import { NotFoundError } from "@fiftyone/utilities";
 import React, { useEffect } from "react";
 import { usePreloadedQuery } from "react-relay";
 import { useRecoilValue } from "recoil";
@@ -109,10 +108,6 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
       .getElementById("modal")
       ?.classList.toggle("modalon", isModalActive);
   }, [isModalActive]);
-
-  if (!data.dataset?.name) {
-    throw new NotFoundError({ path: `/datasets/${prepared.variables.name}` });
-  }
 
   return (
     <>

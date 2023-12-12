@@ -11,7 +11,7 @@ import multiprocessing.dummy
 import os
 import requests
 
-from PIL import ExifTags, Image
+from PIL import Image
 
 import eta.core.utils as etau
 import eta.core.video as etav
@@ -299,7 +299,12 @@ def _image_has_flipped_dimensions(img):
     Returns:
         True if image width/height should be flipped
     """
-    exif_orientation = img.getexif().get(ExifTags.Base.Orientation)
+    # Value from PIL.ExifTags.Base.Orientation == 274
+    #   We hard-code the value directly here so we can support older Pillow
+    #   versions that don't have ExifTags.Base.
+    #   It's ok because this value will never change.
+    orientation_tag = 0x0112
+    exif_orientation = img.getexif().get(orientation_tag)
     # 5, 6, 7, 8 --> TRANSPOSE, ROTATE_270, TRANSVERSE, ROTATE_90
     is_rotated = exif_orientation in {5, 6, 7, 8}
     return is_rotated
