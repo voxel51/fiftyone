@@ -6,14 +6,13 @@ ARG PYTHON_VERSION=3.10
 
 FROM python:${PYTHON_VERSION} as wheelhouse
 
-RUN pip wheel --wheel-dir=/tmp/wheels sentence_transformers
-
+RUN pip wheel --wheel-dir=/tmp/wheels sentence_transformers pyperclip
 
 FROM ${GPT_PLUGIN_IMAGE_NAME} as internalrelease
 
 RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
     pip --no-cache-dir install -q --no-index \
-    --find-links=/wheelhouse/tmp/wheels sentence_transformers
+    --find-links=/wheelhouse/tmp/wheels sentence_transformers pyperclip
 
 # run as the voxel51 user
 USER 1000:1000
