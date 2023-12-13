@@ -1263,9 +1263,8 @@ class MediaExporter(object):
                     if self._tmpdir is None:
                         self._tmpdir = fos.make_temp_dir()
 
-                    local_path = os.path.join(
-                        self._tmpdir, os.path.basename(outpath)
-                    )
+                    rel_basename = fou.safe_relpath(outpath, self.export_path)
+                    local_path = os.path.join(self._tmpdir, rel_basename)
 
                     self._inpaths.append(local_path)
                     self._outpaths.append(outpath)
