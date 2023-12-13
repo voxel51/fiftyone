@@ -5,6 +5,7 @@ Core utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import abc
 import atexit
 from base64 import b64encode, b64decode
 from collections import defaultdict
@@ -955,68 +956,12 @@ class ProgressBar(etau.ProgressBar):
         super().__init__(*args, **kwargs)
 
 
-class DynamicBatcher(object):
-    """Class for iterating over the elements of an iterable with a dynamic
-    batch size to achieve a desired latency.
-
-    The batch sizes emitted when iterating over this object are dynamically
-    scaled such that the latency between ``next()`` calls is as close as
-    possible to a specified target latency.
-
-    This class is often used in conjunction with a :class:`ProgressBar` to keep
-    the user appraised on the status of a long-running task.
-
-    Example usage::
-
-        import fiftyone.core.utils as fou
-
-        elements = range(int(1e7))
-
-        batcher = fou.DynamicBatcher(
-            elements, target_latency=0.1, max_batch_beta=2.0
-        )
-
-        for batch in batcher:
-            print("batch size: %d" % len(batch))
-
-        batcher = fou.DynamicBatcher(
-            elements,
-            target_latency=0.1,
-            max_batch_beta=2.0,
-            progress=True,
-        )
-
-        with batcher:
-            for batch in batcher:
-                print("batch size: %d" % len(batch))
-
-    Args:
-        iterable: an iterable
-        target_latency (0.2): the target latency between ``next()``
-            calls, in seconds
-        init_batch_size (1): the initial batch size to use
-        min_batch_size (1): the minimum allowed batch size
-        max_batch_size (None): an optional maximum allowed batch size
-        max_batch_beta (None): an optional lower/upper bound on the ratio
-            between successive batch sizes
-        return_views (False): whether to return each batch as a
-            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
-            iterable is a :class:`fiftyone.core.collections.SampleCollection`
-        progress (False): whether to render a progress bar tracking the
-            consumption of the batches
-        total (None): the length of ``iterable``. Only applicable when
-            ``progress=True``. If not provided, it is computed via
-            ``len(iterable)``, if possible
-    """
+class Batcher(abc.ABC):
+    """Base class for iterating over the elements of an iterable in batches"""
 
     def __init__(
         self,
         iterable,
-        target_latency=0.2,
-        init_batch_size=1,
-        min_batch_size=1,
-        max_batch_size=None,
-        max_batch_beta=None,
         return_views=False,
         progress=False,
         total=None,
@@ -1027,17 +972,11 @@ class DynamicBatcher(object):
             return_views = False
 
         self.iterable = iterable
-        self.target_latency = target_latency
-        self.init_batch_size = init_batch_size
-        self.min_batch_size = min_batch_size
-        self.max_batch_size = max_batch_size
-        self.max_batch_beta = max_batch_beta
         self.return_views = return_views
         self.progress = progress
         self.total = total
 
         self._iter = None
-        self._last_time = None
         self._last_batch_size = None
         self._pb = None
         self._in_context = False
@@ -1117,6 +1056,89 @@ class DynamicBatcher(object):
 
         return batch
 
+    @abc.abstractmethod
+    def _compute_batch_size(self):
+        """Return next batch size. Concrete classes must implement."""
+
+
+class DynamicBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired latency.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the latency between ``next()`` calls is as close as
+    possible to a specified target latency.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.DynamicBatcher(
+            elements, target_latency=0.1, max_batch_beta=2.0
+        )
+
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.DynamicBatcher(
+            elements,
+            target_latency=0.1,
+            max_batch_beta=2.0,
+            progress=True,
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable
+        target_latency (0.2): the target latency between ``next()``
+            calls, in seconds
+        init_batch_size (1): the initial batch size to use
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        max_batch_beta (None): an optional lower/upper bound on the ratio
+            between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_latency=0.2,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+
+        self.target_latency = target_latency
+        self.init_batch_size = init_batch_size
+        self.min_batch_size = min_batch_size
+        self.max_batch_size = max_batch_size
+        self.max_batch_beta = max_batch_beta
+
+        self._last_time = None
+
     def _compute_batch_size(self):
         current_time = timeit.default_timer()
 
@@ -1147,6 +1169,90 @@ class DynamicBatcher(object):
         self._last_time = current_time
 
         return batch_size
+
+
+class StaticBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a static
+    batch size.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.StaticBatcher(
+            elements, batch_size=100
+        )
+
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        batcher = fou.StaticBatcher(
+            elements,
+            batch_size=100,
+            progress=True,
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+
+    Args:
+        iterable: an iterable
+        batch_size: size of batches to generate
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    def __init__(
+        self,
+        iterable,
+        batch_size,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+
+        self.batch_size = batch_size
+
+    def _compute_batch_size(self):
+        return self.batch_size
+
+
+def get_default_batcher(iterable, progress=True, total=None):
+    default_batcher = fo.config.default_batcher
+    if default_batcher == "dynamic":
+        return DynamicBatcher(
+            iterable,
+            target_latency=0.2,
+            init_batch_size=1,
+            max_batch_beta=2.0,
+            max_batch_size=100000,
+            progress=progress,
+            total=total,
+        )
+    elif default_batcher == "static":
+        batch_size = fo.config.default_database_batch_size
+        return StaticBatcher(
+            iterable, batch_size=batch_size, progress=progress, total=total
+        )
+    else:
+        raise ValueError(
+            f"Invalid fo.config.default_batcher: '{default_batcher}'"
+        )
 
 
 @contextmanager

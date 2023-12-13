@@ -757,14 +757,8 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
     ids = []
 
     try:
-        batcher = fou.DynamicBatcher(
-            docs,
-            target_latency=0.2,
-            init_batch_size=1,
-            max_batch_beta=2.0,
-            max_batch_size=100000,  # mongodb limit
-            progress=progress,
-            total=num_docs,
+        batcher = fou.get_default_batcher(
+            docs, progress=progress, total=num_docs
         )
 
         with batcher:

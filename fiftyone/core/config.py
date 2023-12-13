@@ -160,6 +160,18 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_BULK_WRITE_BATCH_SIZE",
             default=100_000,  # mongodb limit
         )
+        self.default_database_batch_size = self.parse_int(
+            d,
+            "default_database_batch_size",
+            env_var="FIFTYONE_DEFAULT_DATABASE_BATCH_SIZE",
+            default=100,
+        )
+        self.default_batcher = self.parse_string(
+            d,
+            "default_batcher",
+            env_var="FIFTYONE_DEFAULT_BATCHER",
+            default="dynamic",
+        )
         self.default_sequence_idx = self.parse_string(
             d,
             "default_sequence_idx",
