@@ -332,51 +332,67 @@ class TestLoadDataset(unittest.TestCase):
         }
 
         # Test
-        result = load_dataset(identifier)
+        result = load_dataset(_id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()
         mock_db.datasets.find_one.assert_called_once_with(
-            {"_id": ObjectId(identifier)}
+            {"_id": ObjectId(identifier)}, {"name": True}
         )
 
         self.assertEqual(result, mock_dataset.return_value)
 
     @patch("fiftyone.core.odm.get_db_conn")
     @patch("fiftyone.core.dataset.Dataset")
-    def test_load_dataset_by_name(self, mock_dataset, mock_get_db_conn):
+    def test_load_dataset_by_alt_id(self, mock_dataset, mock_get_db_conn):
         # Setup
-        identifier = "test_dataset"
+        identifier = "alt_id"
         mock_db = MagicMock()
         mock_get_db_conn.return_value = mock_db
         mock_db.datasets.find_one.return_value = {
-            "_id": ObjectId(),
-            "name": identifier,
+            "_id": "identifier",
+            "name": "dataset_name",
         }
 
         # Test
-        result = load_dataset(identifier)
+        result = load_dataset(_id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()
-        mock_db.datasets.find_one.assert_called_once_with({"name": identifier})
+        mock_db.datasets.find_one.assert_called_once_with(
+            {"_id": identifier}, {"name": True}
+        )
+        self.assertEqual(result, mock_dataset.return_value)
+
+    @patch("fiftyone.core.dataset.Dataset")
+    def test_load_dataset_by_name(self, mock_dataset):
+        # Setup
+        identifier = "test_dataset"
+        mock_dataset.return_value = {"_id": ObjectId(), "name": identifier}
+
+        # Test
+        result = load_dataset(name=identifier)
+
+        # Assertions
         self.assertEqual(result, mock_dataset.return_value)
 
     @patch("fiftyone.core.odm.get_db_conn")
     def test_load_dataset_nonexistent(self, mock_get_db_conn):
         # Setup
-        identifier = "nonexistent_dataset"
+        identifier = ObjectId()
         mock_db = MagicMock()
         mock_db.datasets.find_one.return_value = None
         mock_get_db_conn.return_value = mock_db
 
         # Call the function and expect a ValueError
         with self.assertRaises(ValueError) as context:
-            load_dataset(identifier)
+            load_dataset(_id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()
-        mock_db.datasets.find_one.assert_called_once_with({"name": identifier})
+        mock_db.datasets.find_one.assert_called_once_with(
+            {"_id": identifier}, {"name": True}
+        )
 
 
 if __name__ == "__main__":

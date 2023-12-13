@@ -441,14 +441,15 @@ class ExecutionContext(object):
         # Since dataset may have been renamed, always resolve the dataset by
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
-        if not uid:
-            uid = self.request_params.get("dataset_name", None)
         if uid:
-            self._dataset = focu.load_dataset(uid)
+            self._dataset = focu.load_dataset(_id=uid)
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
             self.request_params["dataset_name"] = self._dataset.name
-
+        else:
+            uid = self.request_params.get("dataset_name", None)
+            if uid:
+                self._dataset = focu.load_dataset(name=uid)
         return self._dataset
 
     @property

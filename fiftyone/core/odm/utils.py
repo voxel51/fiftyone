@@ -659,23 +659,26 @@ class DocumentRegistryError(Exception):
 _document_registry = DocumentRegistry()
 
 
-def load_dataset(identifier):
-    """Loads the dataset from the database with the given name or id."""
+def load_dataset(_id=None, name=None):
+    """Loads the dataset from the database by _id or name."""
     import fiftyone.core.odm as foo
     import fiftyone.core.dataset as fod
 
+    if name:
+        return fod.Dataset(name, _create=False)
+
+    if not _id:
+        raise ValueError("Must provide either id or name")
+
     db = foo.get_db_conn()
     try:
-        query_key = "_id"
-        query_val = ObjectId(identifier)
-
+        uid = ObjectId(_id)
     except:
-        query_key = "name"
-        query_val = identifier
+        # Although _id is an ObjectId by default, it's possible to set it to
+        # something else
+        uid = _id
 
-    res = db.datasets.find_one({query_key: query_val}, {"name": True})
+    res = db.datasets.find_one({"_id": uid}, {"name": True})
     if not res:
-        raise ValueError(
-            f"Dataset with {query_key}={query_val} does not " f"exist"
-        )
+        raise ValueError(f"Dataset with _id={uid} does not exist")
     return fod.Dataset(res.get("name"), _create=False)
