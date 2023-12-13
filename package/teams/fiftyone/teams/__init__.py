@@ -5,7 +5,6 @@ FiftyOne Teams
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-
 import fiftyone.teams.config as fotc
 
 teams_config = fotc.load_config()

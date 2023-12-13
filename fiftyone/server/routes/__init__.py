@@ -9,14 +9,12 @@ from .aggregate import Aggregate
 from .embeddings import EmbeddingsRoutes
 from .event import Event
 from .events import Events
-from .export import Export
 from .fiftyone import FiftyOne
 from .frames import Frames
 from .media import Media
 from .plugins import Plugins
-from .select import Select
-from .sort import Sort
 from .screenshot import Screenshot
+from .sort import Sort
 from .tag import Tag
 from .tagging import Tagging
 from .values import Values
@@ -30,12 +28,10 @@ routes = (
         ("/aggregate", Aggregate),
         ("/event", Event),
         ("/events", Events),
-        ("/export", Export),
         ("/fiftyone", FiftyOne),
         ("/frames", Frames),
         ("/media", Media),
         ("/plugins", Plugins),
-        ("/select", Select),
         ("/sort", Sort),
         ("/screenshot/{img:str}", Screenshot),
         ("/tag", Tag),

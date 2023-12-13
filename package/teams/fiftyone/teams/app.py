@@ -10,25 +10,17 @@ from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
-from starlette.types import Scope
 
 import fiftyone.constants as foc
 import fiftyone as fo
 from fiftyone.server.routes import routes
 
-from fiftyone.teams.authentication import (
-    authenticate_route,
-    middleware as auth_middleware,
-    on_shutdown,
-    on_startup,
-)
+from fiftyone.teams.authorize import authorize
 from fiftyone.teams.context import GraphQL
 from fiftyone.teams.schema import schema
 
 
-routes = [
-    Route(route, authenticate_route(endpoint)) for route, endpoint in routes
-]
+routes = [Route(route, authorize(endpoint)) for route, endpoint in routes]
 
 
 app = stra.Starlette(
@@ -44,10 +36,7 @@ app = stra.Starlette(
                 "content-type",
             ],
         )
-    ]
-    + auth_middleware,
-    on_shutdown=[on_shutdown],
-    on_startup=[on_startup],
+    ],
     routes=routes
     + [
         Route("/graphql", GraphQL(schema, graphiql=foc.DEV_INSTALL)),
