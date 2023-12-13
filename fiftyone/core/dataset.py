@@ -6831,11 +6831,12 @@ def _load_dataset(obj, name, virtual=False):
 
 
 def _do_load_dataset(obj, name):
-    try:
-        # pylint: disable=no-member
-        dataset_doc = foo.DatasetDocument.objects.get(name=name)
-    except moe.DoesNotExist:
+    # pylint: disable=no-member
+    db = foo.get_db_conn()
+    res = db.datasets.find_one({"name": name})
+    if not res:
         raise ValueError("Dataset '%s' not found" % name)
+    dataset_doc = foo.DatasetDocument.from_dict(res)
 
     sample_collection_name = dataset_doc.sample_collection_name
     frame_collection_name = dataset_doc.frame_collection_name
