@@ -19,7 +19,8 @@ export const DynamicGroup = () => {
   );
 
   useEffect(() => {
-    if (shouldRenderImaVid) {
+    // checking for integer because it is initialized to a float random value in useInitializeImaVidSubscriptions
+    if (shouldRenderImaVid && Number.isInteger(imaVidIndex)) {
       setDynamicGroupCurrentElementIndex(imaVidIndex);
     }
   }, [shouldRenderImaVid, imaVidIndex, setDynamicGroupCurrentElementIndex]);

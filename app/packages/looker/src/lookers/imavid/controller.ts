@@ -10,19 +10,20 @@ import { ImaVidStore } from "./store";
 const BUFFER_METADATA_FETCHING = "fetching";
 
 export class ImaVidFramesController {
-  public storeBufferManager = new BufferManager([[1, 1]]);
   public fetchBufferManager = new BufferManager();
   private frameRate = DEFAULT_FRAME_RATE;
 
   public totalFrameCount: number;
   private timeoutId: number;
   public isFetching = false;
+  public storeBufferManager: BufferManager;
   private subscription: Subscription;
   private updateImaVidState: StateUpdate<ImaVidState>;
 
   constructor(
     private readonly config: {
       environment: Environment;
+      firstFrameNumber: number;
       // todo: see if we can do without it
       orderBy: string;
       // todo: remove any
@@ -31,6 +32,9 @@ export class ImaVidFramesController {
       totalFrameCountPromise: Promise<number>;
     }
   ) {
+    this.storeBufferManager = new BufferManager([
+      [config.firstFrameNumber, config.firstFrameNumber],
+    ]);
     config.totalFrameCountPromise.then((frameCount) => {
       this.totalFrameCount = frameCount;
     });

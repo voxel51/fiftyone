@@ -56,6 +56,12 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     const currentBufferRange = storeBuffer.buffers.at(
       storeBuffer.getRangeIndexForFrame(currentFrameNumber)
     );
+
+    if (!currentBufferRange) {
+      this.element.style.display = "none";
+      return this.element;
+    }
+
     const bufferValue = (currentBufferRange[1] / totalFrames) * 100;
 
     this.element.style.setProperty(

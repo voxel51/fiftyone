@@ -129,7 +129,7 @@ export default <T extends AbstractLooker>(
           }
         }
 
-        const config: ConstructorParameters<T>[1] = {
+        let config: ConstructorParameters<T>[1] = {
           fieldSchema: {
             ...fieldSchema,
             frames: {
@@ -174,6 +174,12 @@ export default <T extends AbstractLooker>(
             .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
             .valueMaybe();
 
+          const firstFrameNumber = isModal
+            ? snapshot
+                .getLoadable(groupAtoms.dynamicGroupCurrentElementIndex)
+                .valueMaybe() ?? 1
+            : 1;
+
           const thisSampleId = sample._id as string;
           if (!ImaVidFramesControllerStore.has(thisSampleId)) {
             ImaVidFramesControllerStore.set(
@@ -181,6 +187,7 @@ export default <T extends AbstractLooker>(
               new ImaVidFramesController({
                 environment,
                 orderBy,
+                firstFrameNumber,
                 page,
                 totalFrameCountPromise,
                 posterSample: sample,
@@ -188,13 +195,16 @@ export default <T extends AbstractLooker>(
             );
           }
 
-          (config as ImaVidConfig).frameStoreController = (
-            config as ImaVidConfig
-          ).frameStoreController =
-            ImaVidFramesControllerStore.get(thisSampleId);
-
-          // todo
-          (config as ImaVidConfig).frameRate = 24;
+          config = {
+            ...config,
+            frameStoreController: ImaVidFramesControllerStore.get(thisSampleId),
+            frameRate: 24,
+            firstFrameNumber: isModal
+              ? snapshot
+                  .getLoadable(groupAtoms.dynamicGroupCurrentElementIndex)
+                  .valueMaybe() ?? 1
+              : 1,
+          } as ImaVidConfig;
         }
 
         const looker = new constructor(sample, config, {
