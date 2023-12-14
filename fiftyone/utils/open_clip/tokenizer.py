@@ -161,7 +161,7 @@ class SimpleTokenizer(object):
         special = "|".join(special_tokens)
         self.pat = re.compile(
             special
-            + r"""|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+"""
+            + r"""|'s|'t|'re|'ve|'m|'ll|'d|[\p{L}]+|[\p{N}]|[^\s\p{L}\p{N}]+""",
         )
         self.vocab_size = len(self.encoder)
         self.all_special_ids = [self.encoder[t] for t in special_tokens]
@@ -268,7 +268,8 @@ class SimpleTokenizer(object):
 
         if self.reduction_fn is not None:
             # use reduction strategy for tokenize if set, otherwise default to truncation below
-            return simple_mask_tokenize(
+            # pylint: disable=not-callable
+            return self.reduction_fn(
                 texts,
                 context_length=context_length,
                 sot_token_id=self.sot_token_id,
@@ -453,11 +454,9 @@ class HFTokenizer:
         from transformers import AutoTokenizer
 
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        try:
-            set_lang_fn = self.tokenizer.set_src_lang_special_tokens
-        except AttributeError:
-            set_lang_fn = None
-
+        set_lang_fn = getattr(
+            self.tokenizer, "set_src_lang_special_tokens", None
+        )
         if callable(set_lang_fn):
             self.set_lang_fn = set_lang_fn
         if language is not None:
@@ -504,6 +503,7 @@ class HFTokenizer:
 
     def set_language(self, src_lang):
         if hasattr(self, "set_lang_fn"):
+            # pylint: disable=not-callable
             self.set_lang_fn(src_lang)
         else:
             warnings.warn("Cannot set language for the tokenizer.")
