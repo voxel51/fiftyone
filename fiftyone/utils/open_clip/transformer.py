@@ -344,8 +344,6 @@ class CustomResidualAttentionBlock(nn.Module):
     def forward(
         self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
     ):
-        if attn_mask is not None and not isinstance(attn_mask, torch.Tensor):
-            raise TypeError("attn_mask must be a torch.Tensor or None")
         x = x + self.ls_1(
             self.ln_attn(self.attn(self.ln_1(x), attn_mask=attn_mask))
         )
