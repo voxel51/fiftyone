@@ -60,7 +60,9 @@ export class BufferManager {
     }
 
     if (range[1] < range[0]) {
-      throw new Error("invalid range: range[1] must be >= range[0]");
+      throw new Error(
+        `invalid range: range[1] (value = ${range[1]}) must be >= range[0] (value = ${range[0]})`
+      );
     }
 
     // add the new range to the buffer

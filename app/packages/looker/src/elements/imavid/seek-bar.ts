@@ -27,6 +27,7 @@ export class SeekBarElement extends BaseElement<ImaVidState, HTMLInputElement> {
     element.setAttribute("min", "0");
     element.setAttribute("max", "100");
     element.classList.add(lookerSeekBar);
+    element.attributes["data-cy"] = "imavid-seek-bar";
     return element;
   }
 
