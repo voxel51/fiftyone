@@ -350,9 +350,14 @@ export const isSidebarFilterMode = atom<boolean>({
 export const hideNoneValuedFields = atom<boolean>({
   key: "hideNoneValuedFields",
   default: false,
+  effects: [
+    getBrowserStorageEffectForKey("hideNoneValuedFields", {
+      valueClass: "boolean",
+    }),
+  ],
 });
 
-export const noneValuedPaths = atom<Set<string>>({
+export const noneValuedPaths = atom<Record<string, Set<string>>>({
   key: "noneValuedPaths",
-  default: new Set(),
+  default: {},
 });

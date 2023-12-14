@@ -66,6 +66,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
+  const sampleId = useRecoilValue(fos.currentSampleId);
 
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
@@ -91,7 +92,7 @@ const SampleModal = () => {
     [eventHandler]
   );
 
-  const noneValuedPaths = useRecoilValue(fos.noneValuedPaths);
+  const noneValuedPaths = useRecoilValue(fos.noneValuedPaths)?.[sampleId];
   const hideNoneFields = useRecoilValue(fos.hideNoneValuedFields);
 
   const renderEntry = useCallback(
@@ -115,7 +116,7 @@ const SampleModal = () => {
           const isFieldPrimitive =
             !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
 
-          if (hideNoneFields && noneValuedPaths.has(entry?.path)) {
+          if (hideNoneFields && noneValuedPaths?.has(entry?.path)) {
             return { children: null };
           }
 

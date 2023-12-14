@@ -357,13 +357,19 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
-  const [noneValued, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const noneValued = noneValuedPaths?.[sampleId];
 
   useEffect(() => {
-    if (none && path && !noneValued.has(path)) {
-      setNoneValued(new Set([...noneValued]).add(path));
+    if (none && path && !noneValued?.has(path) && sampleId) {
+      setNoneValued({
+        [sampleId]: noneValued
+          ? new Set([...noneValued]).add(path)
+          : new Set([]),
+      });
     }
-  }, [noneValued, none, path, setNoneValued]);
+  }, [noneValued, none, path, setNoneValued, sampleId]);
 
   return (
     <div
