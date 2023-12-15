@@ -84,7 +84,7 @@ export function tracesToData(
 }
 
 const addLineBreaks = ([key, trace]) => {
-  // split the key into chunks of <maxLegendLineLength>> characters or less, respecting word boundaries.
+  // split the key into chunks of <maxLegendLineLength> characters or less, respecting word boundaries.
   // (\s|$) forces match termination on whitespace or the end of the string.
   // {1,35}(\s|$) will match up to 35 characters followed by a whitespace character,
   // then we can join the result on <br /> to get a line break.
