@@ -638,7 +638,7 @@ def _compute_polyline_ious(
 ):
     is_symmetric = preds is gts
 
-    are_all_filled = np.sum([p["filled"] for p in preds])
+    are_all_filled = np.sum([gt["filled"] for gt in gts])
     if are_all_filled > 0:
         # are_all_filled = True for atleast one polyline instance, i.e., polygons/solid shape
         ious = polygon_iou_matrix(
