@@ -24,18 +24,44 @@ from decorators import drop_datasets
 class BatcherTests(unittest.TestCase):
     def test_get_default_batcher(self):
         iterable = list(range(100))
-        with patch.object(fo.config, "default_batcher", "dynamic"):
-            batcher = fou.get_default_batcher(iterable)
-            self.assertTrue(isinstance(batcher, fou.DynamicBatcher))
+
+        target_latency = 0.25
+        with patch.object(fo.config, "default_batcher", "latency"):
+            with patch.object(
+                fo.config,
+                "default_dynamic_batcher_target_latency",
+                target_latency,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(isinstance(batcher, fou.DynamicBatcher))
+                self.assertEqual(batcher.target_measurement, target_latency)
 
         static_batch_size = 1000
         with patch.object(fo.config, "default_batcher", "static"):
             with patch.object(
-                fo.config, "default_database_batch_size", static_batch_size
+                fo.config,
+                "default_database_static_batch_size",
+                static_batch_size,
             ):
                 batcher = fou.get_default_batcher(iterable)
                 self.assertTrue(isinstance(batcher, fou.StaticBatcher))
                 self.assertEqual(batcher.batch_size, static_batch_size)
+
+        target_size = 2**16
+        with patch.object(fo.config, "default_batcher", "size"):
+            with patch.object(
+                fo.config,
+                "default_dynamic_batcher_target_size",
+                target_size,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(
+                    isinstance(batcher, fou.BsonSizeDynamicBatcher)
+                )
+                self.assertEqual(batcher.target_measurement, target_size)
+
+        with patch.object(fo.config, "default_batcher", "invalid"):
+            self.assertRaises(ValueError, fou.get_default_batcher, iterable)
 
     def test_static_batcher(self):
         iterable = list(range(105))

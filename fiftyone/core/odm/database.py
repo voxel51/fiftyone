@@ -757,6 +757,11 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
     ids = []
 
     try:
+        # Get default batcher:
+        # dynamic - Dynamically size batches so that they are as large as
+        #   possible while still achieving a nice frame rate on the progress bar
+        # size - Dynamically size batches to reach a target bson content size
+        # static - fixed size batches
         batcher = fou.get_default_batcher(
             docs, progress=progress, total=num_docs
         )
@@ -766,6 +771,9 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
                 batch = list(batch)
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
+                if batcher.manual_backpressure:
+                    batcher.apply_backpressure(batch)
+
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe

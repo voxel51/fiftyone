@@ -7,6 +7,7 @@ Core utilities.
 """
 import abc
 import atexit
+from bson import json_util
 from base64 import b64encode, b64decode
 from collections import defaultdict
 from contextlib import contextmanager
@@ -959,6 +960,8 @@ class ProgressBar(etau.ProgressBar):
 class Batcher(abc.ABC):
     """Base class for iterating over the elements of an iterable in batches"""
 
+    manual_backpressure = False
+
     def __init__(
         self,
         iterable,
@@ -982,6 +985,7 @@ class Batcher(abc.ABC):
         self._in_context = False
         self._last_offset = None
         self._num_samples = None
+        self._manually_applied_backpressure = True
 
     def __enter__(self):
         self._in_context = True
@@ -1024,6 +1028,15 @@ class Batcher(abc.ABC):
         return self
 
     def __next__(self):
+        if (
+            self.manual_backpressure
+            and not self._manually_applied_backpressure
+        ):
+            raise ValueError(
+                "Backpressure value not registered for this batcher"
+            )
+        self._manually_applied_backpressure = False
+
         if self.progress and self._last_batch_size is not None:
             self._pb.update(count=self._last_batch_size)
 
@@ -1056,12 +1069,90 @@ class Batcher(abc.ABC):
 
         return batch
 
+    def apply_backpressure(self, *args, **kwargs):
+        """Apply backpressure needed to rightsize the next batch.
+
+        Required to be implemented and called every iteration, if
+            ``self.manual_backpressure == True``
+
+        Subclass defines arguments and behavior of this method.
+        """
+
     @abc.abstractmethod
     def _compute_batch_size(self):
         """Return next batch size. Concrete classes must implement."""
 
 
-class DynamicBatcher(Batcher):
+class BaseDynamicBatcher(Batcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired target measurement.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the measurement between ``next()`` calls is as close as
+    possible to a specified target.
+
+    Concrete base classes define the target measurement and method of
+    calculation.
+    """
+
+    def __init__(
+        self,
+        iterable,
+        target_measurement,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable, return_views=return_views, progress=progress, total=total
+        )
+
+        self.target_measurement = target_measurement
+        self.init_batch_size = init_batch_size
+        self.min_batch_size = min_batch_size
+        self.max_batch_size = max_batch_size
+        self.max_batch_beta = max_batch_beta
+
+    def _compute_batch_size(self):
+        current_measurement = self._get_measurement()
+
+        if self._last_batch_size is None:
+            batch_size = self.init_batch_size
+        else:
+            # Compute optimal batch size
+            try:
+                beta = self.target_measurement / current_measurement
+            except ZeroDivisionError:
+                beta = 1e6
+
+            if self.max_batch_beta is not None:
+                if beta >= 1:
+                    beta = min(beta, self.max_batch_beta)
+                else:
+                    beta = max(beta, 1 / self.max_batch_beta)
+
+            batch_size = int(round(beta * self._last_batch_size))
+
+            if self.min_batch_size is not None:
+                batch_size = max(batch_size, self.min_batch_size)
+
+            if self.max_batch_size is not None:
+                batch_size = min(batch_size, self.max_batch_size)
+
+        self._last_batch_size = batch_size
+
+        return batch_size
+
+    @abc.abstractmethod
+    def _get_measurement(self):
+        """Get backpressure measurement for current batch"""
+
+
+class LatencyDynamicBatcher(BaseDynamicBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired latency.
 
@@ -1078,18 +1169,18 @@ class DynamicBatcher(Batcher):
 
         elements = range(int(1e7))
 
-        batcher = fou.DynamicBatcher(
+        batcher = fou.LatencyDynamicBatcher(
             elements, target_latency=0.1, max_batch_beta=2.0
         )
 
         for batch in batcher:
             print("batch size: %d" % len(batch))
 
-        batcher = fou.DynamicBatcher(
+        batcher = fou.LatencyDynamicBatcher(
             elements,
             target_latency=0.1,
             max_batch_beta=2.0,
-            progress=True,
+            progress=True
         )
 
         with batcher:
@@ -1128,47 +1219,134 @@ class DynamicBatcher(Batcher):
         total=None,
     ):
         super().__init__(
-            iterable, return_views=return_views, progress=progress, total=total
+            iterable,
+            target_latency,
+            init_batch_size=init_batch_size,
+            min_batch_size=min_batch_size,
+            max_batch_size=max_batch_size,
+            max_batch_beta=max_batch_beta,
+            return_views=return_views,
+            progress=progress,
+            total=total,
         )
-
-        self.target_latency = target_latency
-        self.init_batch_size = init_batch_size
-        self.min_batch_size = min_batch_size
-        self.max_batch_size = max_batch_size
-        self.max_batch_beta = max_batch_beta
 
         self._last_time = None
 
-    def _compute_batch_size(self):
+    def _get_measurement(self):
         current_time = timeit.default_timer()
+        time_delta = 0
+        if self._last_time is not None:
+            time_delta = current_time - self._last_time
 
-        if self._last_batch_size is None:
-            batch_size = self.init_batch_size
-        else:
-            # Compute optimal batch size
-            try:
-                beta = self.target_latency / (current_time - self._last_time)
-            except ZeroDivisionError:
-                beta = 1e6
-
-            if self.max_batch_beta is not None:
-                if beta >= 1:
-                    beta = min(beta, self.max_batch_beta)
-                else:
-                    beta = max(beta, 1 / self.max_batch_beta)
-
-            batch_size = int(round(beta * self._last_batch_size))
-
-            if self.min_batch_size is not None:
-                batch_size = max(batch_size, self.min_batch_size)
-
-            if self.max_batch_size is not None:
-                batch_size = min(batch_size, self.max_batch_size)
-
-        self._last_batch_size = batch_size
         self._last_time = current_time
+        return time_delta
 
-        return batch_size
+
+# Define this for backwards compatibility in case someone was using this
+#   batcher directly
+DynamicBatcher = LatencyDynamicBatcher
+
+
+class BsonSizeDynamicBatcher(BaseDynamicBatcher):
+    """Class for iterating over the elements of an iterable with a dynamic
+    batch size to achieve a desired BSON content size.
+
+    The batch sizes emitted when iterating over this object are dynamically
+    scaled such that the total BSON size of the batch is as close as
+    possible to a specified target size.
+
+    This batcher requires that backpressure feedback be manually provided,
+    so that the provided list is BSON-able in order to calculate an accurate
+    estimate of total batch content size to adjust next batch size.
+
+    This class is often used in conjunction with a :class:`ProgressBar` to keep
+    the user appraised on the status of a long-running task.
+
+    Example usage::
+
+        import fiftyone.core.utils as fou
+
+        elements = range(int(1e7))
+
+        batcher = fou.BsonSizeDynamicBatcher(
+            elements, target_size=2**20, max_batch_beta=2.0
+        )
+
+        # Raises ValueError after first batch, we forgot to apply backpressure
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+
+        # Now it works
+        for batch in batcher:
+            print("batch size: %d" % len(batch))
+            batcher.apply_backpressure(batch)
+
+        batcher = fou.BsonSizeDynamicBatcher(
+            elements,
+            target_size=2**20,
+            max_batch_beta=2.0,
+            progress=True
+        )
+
+        with batcher:
+            for batch in batcher:
+                print("batch size: %d" % len(batch))
+                batcher.apply_backpressure(batch)
+
+    Args:
+        iterable: an iterable
+        target_size (1048576): the target batch bson content size, in bytes
+        init_batch_size (1): the initial batch size to use
+        min_batch_size (1): the minimum allowed batch size
+        max_batch_size (None): an optional maximum allowed batch size
+        max_batch_beta (None): an optional lower/upper bound on the ratio
+            between successive batch sizes
+        return_views (False): whether to return each batch as a
+            :class:`fiftyone.core.view.DatasetView`. Only applicable when the
+            iterable is a :class:`fiftyone.core.collections.SampleCollection`
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+    """
+
+    manual_backpressure = True
+
+    def __init__(
+        self,
+        iterable,
+        target_size=2**15,
+        init_batch_size=1,
+        min_batch_size=1,
+        max_batch_size=None,
+        max_batch_beta=None,
+        return_views=False,
+        progress=False,
+        total=None,
+    ):
+        super().__init__(
+            iterable,
+            target_size,
+            init_batch_size=init_batch_size,
+            min_batch_size=min_batch_size,
+            max_batch_size=max_batch_size,
+            max_batch_beta=max_batch_beta,
+            return_views=return_views,
+            progress=progress,
+            total=total,
+        )
+        self._last_batch_content_size = 0
+
+    def apply_backpressure(self, bsonable_batch):
+        batch_content_size = sum(
+            len(json_util.dumps(obj)) for obj in bsonable_batch
+        )
+        self._last_batch_content_size = batch_content_size
+        self._manually_applied_backpressure = True
+
+    def _get_measurement(self):
+        return self._last_batch_content_size
 
 
 class StaticBatcher(Batcher):
@@ -1185,7 +1363,7 @@ class StaticBatcher(Batcher):
         elements = range(int(1e7))
 
         batcher = fou.StaticBatcher(
-            elements, batch_size=100
+            elements, batch_size=10000
         )
 
         for batch in batcher:
@@ -1193,8 +1371,8 @@ class StaticBatcher(Batcher):
 
         batcher = fou.StaticBatcher(
             elements,
-            batch_size=100,
-            progress=True,
+            batch_size=10000,
+            progress=True
         )
 
         with batcher:
@@ -1234,18 +1412,30 @@ class StaticBatcher(Batcher):
 
 def get_default_batcher(iterable, progress=True, total=None):
     default_batcher = fo.config.default_batcher
-    if default_batcher == "dynamic":
-        return DynamicBatcher(
+    if default_batcher == "latency":
+        target_latency = fo.config.default_dynamic_batcher_target_latency
+        return LatencyDynamicBatcher(
             iterable,
-            target_latency=0.2,
+            target_latency=target_latency,
             init_batch_size=1,
             max_batch_beta=2.0,
             max_batch_size=100000,
             progress=progress,
             total=total,
         )
+    elif default_batcher == "size":
+        target_content_size = fo.config.default_dynamic_batcher_target_size
+        return BsonSizeDynamicBatcher(
+            iterable,
+            target_size=target_content_size,
+            init_batch_size=1,
+            max_batch_beta=8.0,
+            max_batch_size=100000,
+            progress=progress,
+            total=total,
+        )
     elif default_batcher == "static":
-        batch_size = fo.config.default_database_batch_size
+        batch_size = fo.config.default_database_static_batch_size
         return StaticBatcher(
             iterable, batch_size=batch_size, progress=progress, total=total
         )
