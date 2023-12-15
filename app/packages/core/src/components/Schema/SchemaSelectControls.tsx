@@ -2,7 +2,9 @@ import React, { useMemo } from "react";
 import { Box, FormControlLabel, FormGroup, Switch } from "@mui/material";
 
 import { useSchemaSettings, useSearchSchemaFields } from "@fiftyone/state";
-import styled from "styled-components";
+import styled, { useTheme } from "styled-components";
+import { ExternalLink, InfoIcon } from "@fiftyone/components";
+import { FIELD_METADATA } from "../../utils/links";
 
 const ContainerBox = styled(Box)`
   position: relative;
@@ -25,6 +27,7 @@ export const SchemaSelectionControls = () => {
     setIncludeNestedFields,
     mergedSchema,
   } = useSchemaSettings();
+  const theme = useTheme();
 
   const { searchResults } = useSearchSchemaFields(mergedSchema);
   const showMetadataVisible = !(isFilterRuleActive && !searchResults.length);
@@ -33,7 +36,8 @@ export const SchemaSelectionControls = () => {
   const controlList = useMemo(() => {
     return [
       {
-        label: "Show metadata",
+        label: "Show field metadata",
+        link: FIELD_METADATA,
         isVisible: showMetadataVisible,
         value: showMetadata,
         checked: showMetadata,
@@ -86,27 +90,45 @@ export const SchemaSelectionControls = () => {
       <Box display="flex" width="100%" flexDirection="row" marginTop="1rem">
         {controlList
           .filter(({ isVisible }) => isVisible)
-          .map(({ label, value, checked, onChange, disabled = false }) => (
-            <ContainerBox key={label} flex="1">
-              <FormGroup>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      value={value}
-                      checked={checked}
-                      onChange={onChange}
-                      disabled={disabled}
-                      data-cy={`field-visibility-controls-${label
-                        .toLowerCase()
-                        .replace(/ /g, "-")}`}
-                    />
-                  }
-                  label={label}
-                  sx={{ letterSpacing: "0.05rem" }}
-                />
-              </FormGroup>
-            </ContainerBox>
-          ))}
+          .map(
+            ({ label, value, checked, onChange, disabled = false, link }) => (
+              <ContainerBox key={label} flex="1">
+                <FormGroup>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        value={value}
+                        checked={checked}
+                        onChange={onChange}
+                        disabled={disabled}
+                        data-cy={`field-visibility-controls-${label
+                          .toLowerCase()
+                          .replace(/ /g, "-")}`}
+                      />
+                    }
+                    label={
+                      <>
+                        {label}{" "}
+                        {link && (
+                          <ExternalLink href={link}>
+                            <InfoIcon
+                              sx={{
+                                color: theme.text.tertiary,
+                                position: "absolute",
+                                ml: 0.5,
+                                mt: "1px",
+                              }}
+                            />
+                          </ExternalLink>
+                        )}
+                      </>
+                    }
+                    sx={{ letterSpacing: "0.05rem" }}
+                  />
+                </FormGroup>
+              </ContainerBox>
+            )
+          )}
       </Box>
     </Box>
   );
