@@ -4,6 +4,10 @@ import { Color, cssColorNames } from "./Color";
 import { getPointIndex } from "./getPointIndex";
 import { sortStringsAlphabetically } from "./sortStringsAlphabetically";
 
+const maxLegendLineLength = 35;
+const wordMatch = new RegExp(`.{1,${maxLegendLineLength}}(\\s|$)`, "g");
+const charMatch = new RegExp(`.{1,${maxLegendLineLength}}`, "g");
+
 export function tracesToData(
   traces,
   style,
@@ -18,6 +22,7 @@ export function tracesToData(
   const isUncolored = style === "uncolored";
   return Object.entries(traces)
     .sort((a, b) => sortStringsAlphabetically(a[0], b[0]))
+    .map(addLineBreaks)
     .map(([key, trace]) => {
       const selectedpoints = plotSelection?.length
         ? plotSelection
@@ -77,6 +82,24 @@ export function tracesToData(
       };
     });
 }
+
+const addLineBreaks = ([key, trace]) => {
+  // split the key into chunks of <maxLegendLineLength>> characters or less, respecting word boundaries.
+  // (\s|$) forces match termination on whitespace or the end of the string.
+  // {1,35}(\s|$) will match up to 35 characters followed by a whitespace character,
+  // then we can join the result on <br /> to get a line break.
+  if (key && key.length > maxLegendLineLength) {
+    let lines = key.match(wordMatch);
+
+    // if there was no whitespace to split it on, brute force split it at <maxLegendLineLength> chars
+    if (lines.length === 1) {
+      lines = key.match(charMatch);
+    }
+
+    key = lines.join("<br />");
+  }
+  return [key, trace];
+};
 
 const getLabelColor = (key: string, setting: CustomizeColor): Color | null => {
   if (!setting || !setting.valueColors) {
