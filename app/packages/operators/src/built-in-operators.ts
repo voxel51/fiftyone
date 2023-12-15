@@ -357,7 +357,6 @@ class ClearAllStages extends Operator {
   }
   useHooks(): {} {
     return {
-      setSelected: fos.useSetSelected(),
       resetExtended: fos.useResetExtendedSelection(),
     };
   }
@@ -391,12 +390,7 @@ class ShowSelectedSamples extends Operator {
       label: "Show selected samples",
     });
   }
-  useHooks(): {} {
-    return {
-      setSelected: fos.useSetSelected(),
-    };
-  }
-  async execute({ hooks, state }: ExecutionContext) {
+  async execute({ state }: ExecutionContext) {
     const selectedSamples = await state.snapshot.getPromise(
       fos.selectedSamples
     );
@@ -417,7 +411,6 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
   }
   useHooks(): {} {
     return {
-      setSelected: fos.useSetSelected(),
       resetExtended: fos.useResetExtendedSelection(),
     };
   }
