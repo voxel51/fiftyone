@@ -31,6 +31,19 @@ from fiftyone.operators.executor import (
 from fiftyone.operators.operator import Operator, OperatorConfig
 
 
+class MockDataset:
+    def __init__(self, **kwargs):
+        self.name = kwargs.get("name", "test_dataset")
+        self._doc = mock.MagicMock()
+        self._doc.id = kwargs.get("id", ObjectId())
+
+    def save(self):
+        pass
+
+    def delete(self):
+        pass
+
+
 class MockOperator(Operator):
     def __init__(self, success=True, sets_progress=False, **kwargs):
         self.success = success
@@ -257,12 +270,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         dataset.delete()
         dataset2.delete()
 
-    def test_set_run_states(self, mock_get_operator, mock_operator_exists):
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_set_run_states(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+        mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target",
-            context=ExecutionContext(request_params={"foo": "bar"}),
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
         )
 
         original_updated_at = doc.updated_at
@@ -291,13 +312,21 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNotNone(doc.result.error)
         self.assertNotEqual(doc.updated_at, original_updated_at)
 
-    def test_sets_progress(self, mock_get_operator, mock_operator_exists):
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_sets_progress(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+        mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockOperator(sets_progress=True)
 
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",
-            context=ExecutionContext(request_params={"foo": "bar"}),
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
         )
 
         self.docs_to_delete.append(doc)
@@ -312,12 +341,20 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    def test_full_run_success(self, mock_get_operator, mock_operator_exists):
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_full_run_success(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
+        mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target",
-            context=ExecutionContext(request_params={"foo": "bar"}),
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
         )
 
         self.docs_to_delete.append(doc)
@@ -336,17 +373,22 @@ class DelegatedOperationServiceTests(unittest.TestCase):
 
         self.assertEqual(doc.result.result, {"executed": True})
 
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
     def test_generator_run_success(
-        self, mock_get_operator, mock_operator_exists
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
     ):
-
+        mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator()
 
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/generator_op",
             label=mock_get_operator.return_value.name,
             delegation_target=f"test_target_generator",
-            context=ExecutionContext(request_params={"foo": "bar"}),
+            context=ExecutionContext(
+                request_params={"foo": "bar", "dataset_id": str(ObjectId())}
+            ),
         )
 
         self.docs_to_delete.append(doc)
@@ -364,9 +406,13 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertIsNone(doc.result)
         self.assertIsNone(doc.failed_at)
 
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
     def test_generator_sets_progress(
-        self, mock_get_operator, mock_operator_exists
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
     ):
+        mock_load_dataset.return_value = MockDataset()
         mock_get_operator.return_value = MockGeneratorOperator(
             sets_progress=True
         )
@@ -389,9 +435,14 @@ class DelegatedOperationServiceTests(unittest.TestCase):
         self.assertEqual(doc.status.label, "halfway there")
         self.assertIsNotNone(doc.status.updated_at)
 
-    def test_updates_progress(self, mock_get_operator, mock_operator_exists):
+    @patch(
+        "fiftyone.core.odm.utils.load_dataset",
+    )
+    def test_updates_progress(
+        self, mock_load_dataset, mock_get_operator, mock_operator_exists
+    ):
         mock_get_operator.return_value = MockProgressiveOperator()
-
+        mock_load_dataset.return_value = MockDataset()
         doc = self.svc.queue_operation(
             operator="@voxelfiftyone/operator/foo",
             delegation_target=f"test_target",

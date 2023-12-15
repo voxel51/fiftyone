@@ -13,7 +13,7 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-import fiftyone.core.dataset as fod
+import logging
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -22,6 +22,8 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperationRepo(object):
@@ -176,12 +178,12 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             try:
                 op.dataset_id = context.dataset._doc.id
             except:
-                # If we can't resolve the dataset_id, we can't queue the
-                # operation. This is likely because the dataset has been
-                # deleted.
-                raise ValueError(
-                    "Could not resolve dataset_id for " "operation. "
-                )
+                # If we can't resolve the dataset_id, it is possible the
+                # dataset doesn't exist (deleted/being created). However,
+                # it's also possible that future operators can run
+                # dataset-less, so don't raise an error here and just log it
+                # in case we need to debug later.
+                logger.debug("Could not resolve dataset_id for operation. ")
         elif op.dataset_id:
             # If the dataset_id is provided, we set it in the request_params
             # to ensure that the operation is executed on the correct dataset
