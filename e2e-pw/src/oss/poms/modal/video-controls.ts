@@ -74,7 +74,7 @@ export class ModalVideoControlsPom {
       const frames = document.querySelector(
         "[data-cy=looker-video-time]"
       )?.textContent;
-      return frames.startsWith(frameText_);
+      return frames === frameText_;
     }, frameText);
 
     await this.togglePlay();
