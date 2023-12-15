@@ -452,7 +452,8 @@ class ExecutionContext(object):
                 self._dataset = focu.load_dataset(name=uid)
         # TODO: refactor so that this additional reload post-load is not
         #  required
-        self._dataset.reload()
+        if self._dataset is not None:
+            self._dataset.reload()
         return self._dataset
 
     @property
