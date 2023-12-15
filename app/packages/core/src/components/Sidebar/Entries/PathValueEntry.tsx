@@ -11,8 +11,8 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useMemo, useState } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -357,6 +357,19 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
+  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const noneValued = noneValuedPaths?.[sampleId];
+
+  useEffect(() => {
+    if (none && path && !noneValued?.has(path) && sampleId) {
+      setNoneValued({
+        [sampleId]: noneValued
+          ? new Set([...noneValued]).add(path)
+          : new Set([]),
+      });
+    }
+  }, [noneValued, none, path, setNoneValued, sampleId]);
 
   return (
     <div
