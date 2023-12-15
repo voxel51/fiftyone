@@ -5,6 +5,7 @@ FiftyOne delegated operation repository.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from datetime import datetime
 from typing import Any, List
 
@@ -13,7 +14,6 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-import logging
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -120,7 +120,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
-        import fiftyone as fo
         import fiftyone.core.odm as foo
 
         database: pymongo.database.Database = foo.get_db_conn()
@@ -172,7 +171,8 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         elif isinstance(op.context, ExecutionContext):
             context = op.context
         if not op.dataset_id:
-            # For consistency, set the dataset_id using the ExecutionContext.dataset
+            # For consistency, set the dataset_id using the
+            # ExecutionContext.dataset
             # rather than calling load_dataset() on a potentially stale
             # dataset_name in the request_params
             try:
