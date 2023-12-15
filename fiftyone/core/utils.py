@@ -31,6 +31,9 @@ import timeit
 import types
 from xml.parsers.expat import ExpatError
 import zlib
+
+from bson import ObjectId
+from bson.errors import InvalidId
 from matplotlib import colors as mcolors
 from concurrent.futures import ThreadPoolExecutor
 

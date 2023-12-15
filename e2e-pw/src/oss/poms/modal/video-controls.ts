@@ -8,12 +8,14 @@ export class ModalVideoControlsPom {
   readonly optionsPanel: Locator;
   readonly time: Locator;
   readonly playPauseButton: Locator;
+  readonly speedButton: Locator;
 
   private readonly modal: ModalPom;
 
   constructor(page: Page, modal: ModalPom) {
     this.page = page;
     this.modal = modal;
+    this.assert = new ModalVideoControlsAsserter(this);
 
     this.controls = this.modal.locator.getByTestId("looker-video-controls");
     this.optionsPanel = this.modal.locator.getByTestId(
@@ -23,14 +25,13 @@ export class ModalVideoControlsPom {
     this.playPauseButton = this.controls.getByTestId(
       "looker-video-play-button"
     );
+    this.speedButton = this.controls.getByTestId("looker-video-speed-button");
   }
 
-  private async play() {
-    return this.playPauseButton.click();
-  }
-
-  private async pause() {
-    return this.playPauseButton.click();
+  private async togglePlay() {
+    // this is to clear popups, if any
+    this.controls.click();
+    await this.modal.locator.press("Space");
   }
 
   private async clickSettings() {
@@ -54,7 +55,7 @@ export class ModalVideoControlsPom {
   }
 
   async playUntilDuration(durationText: string) {
-    await this.play();
+    await this.togglePlay();
 
     await this.page.waitForFunction((durationText_) => {
       const time = document.querySelector(
@@ -63,11 +64,11 @@ export class ModalVideoControlsPom {
       return time.startsWith(durationText_);
     }, durationText);
 
-    await this.pause();
+    await this.togglePlay();
   }
 
   async playUntilFrames(frameText: string) {
-    await this.play();
+    await this.togglePlay();
 
     await this.page.waitForFunction((frameText_) => {
       const frames = document.querySelector(
@@ -76,15 +77,53 @@ export class ModalVideoControlsPom {
       return frames.startsWith(frameText_);
     }, frameText);
 
-    await this.pause();
+    await this.togglePlay();
+  }
+
+  async setSpeedTo(config: "low" | "middle" | "high") {
+    await this.speedButton.hover();
+    const speedSliderInputRange = this.speedButton.locator("input[type=range]");
+    const sliderBoundingBox = await speedSliderInputRange.boundingBox();
+
+    if (!sliderBoundingBox) {
+      throw new Error("Could not find speed slider bounding box");
+    }
+
+    const sliderWidth = sliderBoundingBox.width;
+
+    switch (config) {
+      case "low":
+        await this.page.mouse.click(
+          sliderBoundingBox.x + sliderWidth * 0.05,
+          sliderBoundingBox.y
+        );
+        break;
+      case "middle":
+        await this.page.mouse.click(
+          sliderBoundingBox.x + sliderWidth * 0.5,
+          sliderBoundingBox.y
+        );
+        break;
+      case "high":
+        await this.page.mouse.click(
+          sliderBoundingBox.x + sliderWidth * 0.95,
+          sliderBoundingBox.y
+        );
+        break;
+    }
   }
 }
 
 class ModalVideoControlsAsserter {
   constructor(private readonly videoControlsPom: ModalVideoControlsPom) {}
 
-  async assertCurrentTime(time: string) {
+  async isCurrentTimeEqualTo(time: string) {
     const currentTime = await this.videoControlsPom.getCurrentTime();
     expect(currentTime).toBe(time);
+  }
+
+  async isTimeTextEqualTo(text: string) {
+    const time = await this.videoControlsPom.time.textContent();
+    expect(time).toContain(text);
   }
 }

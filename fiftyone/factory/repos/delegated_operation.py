@@ -17,6 +17,7 @@ import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
+    ExecutionContext,
     ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
@@ -169,17 +170,19 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
-        dataset_name = None
-        if isinstance(op.context, dict):
-            dataset_name = op.context.get("request_params", {}).get(
-                "dataset_name"
-            )
-        elif "dataset_name" in op.context.request_params:
-            dataset_name = op.context.request_params["dataset_name"]
-
-        if dataset_name and not op.dataset_id:
-            dataset = fod.load_dataset(dataset_name)
-            op.dataset_id = dataset._doc.id
+        if not op.dataset_id:
+            # For consistency, set the dataset_id using the ExecutionContext.dataset
+            # rather than calling load_dataset() on a potentially stale
+            # dataset_name in the request_params
+            context = None
+            if isinstance(op.context, dict):
+                context = ExecutionContext(
+                    request_params=op.context.get("request_params", {})
+                )
+            elif isinstance(op.context, ExecutionContext):
+                context = op.context
+            if context and context.dataset:
+                op.dataset_id = context.dataset._doc.id
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
@@ -354,13 +357,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging = DelegatedOperationPagingParams(**paging)
 
         if search:
-            for term in search:
-                for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
-                        raise ValueError(
-                            "Invalid search field: {}".format(field)
-                        )
-                    query[field] = {"$regex": term}
+            query.update(self._extract_search_query(search))
 
         docs = self._collection.find(query)
         if paging.sort_by:
@@ -389,7 +386,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def count(self, filters: dict = None, search: dict = None) -> int:
         if filters is None and search is not None:
             filters = {}
-
         query = filters
 
         if "dataset_name" in query:
@@ -402,12 +398,22 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             del query["run_by"]
 
         if search:
+            query.update(self._extract_search_query(search))
+
+        return self._collection.count_documents(filter=query)
+
+    def _extract_search_query(self, search):
+        if search:
+            or_query = {"$or": []}
             for term in search:
                 for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
+                    if field not in (
+                        "operator",
+                        "delegated_operation",
+                        "label",
+                    ):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
-                    query[field] = {"$regex": term}
-
-        return self._collection.count_documents(filter=query)
+                    or_query["$or"].append({field: {"$regex": term}})
+            return or_query

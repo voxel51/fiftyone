@@ -14,16 +14,16 @@ import traceback
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
+import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
-import fiftyone.server.view as fosv
 import fiftyone.operators.types as types
+import fiftyone.server.view as fosv
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 
 from fiftyone.operators.decorators import coroutine_timeout
 from fiftyone.operators.registry import OperatorRegistry
 from fiftyone.operators.message import GeneratedMessage, MessageType
-
 
 logger = logging.getLogger(__name__)
 
@@ -218,19 +218,15 @@ async def execute_or_delegate_operator(
     if should_delegate:
         if not execution_options.allow_delegated_execution:
             logger.warning(
-                (
-                    "This operation does not support delegated execution; it "
-                    "will be executed immediately"
-                )
+                "This operation does not support delegated "
+                "execution; it will be executed immediately"
             )
             should_delegate = False
     else:
         if not execution_options.allow_immediate_execution:
             logger.warning(
-                (
-                    "This operation does not support immediate execution; it "
-                    "will be delegated"
-                )
+                "This operation does not support immediate "
+                "execution; it will be delegated"
             )
             should_delegate = True
 
@@ -465,12 +461,22 @@ class ExecutionContext(object):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
             return self._dataset
-
-        dataset_name = self.request_params.get("dataset_name", None)
-
-        self._dataset = fod.load_dataset(dataset_name)
-        self._dataset.reload()
-
+        # Since dataset may have been renamed, always resolve the dataset by
+        # id if it is available
+        uid = self.request_params.get("dataset_id", None)
+        if uid:
+            self._dataset = focu.load_dataset(id=uid)
+            # Set the dataset_name using the dataset object in case the dataset
+            # has been renamed or changed since the context was created
+            self.request_params["dataset_name"] = self._dataset.name
+        else:
+            uid = self.request_params.get("dataset_name", None)
+            if uid:
+                self._dataset = focu.load_dataset(name=uid)
+        # TODO: refactor so that this additional reload post-load is not
+        #  required
+        if self._dataset is not None:
+            self._dataset.reload()
         return self._dataset
 
     @property
@@ -493,16 +499,14 @@ class ExecutionContext(object):
         if self._view is not None:
             return self._view
 
-        # Forces a dataset reload if necessary
-        _ = self.dataset
-
-        dataset_name = self.request_params.get("dataset_name", None)
+        # Always derive the view from the context's dataset
+        dataset = self.dataset
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
         self._view = fosv.get_view(
-            dataset_name,
+            dataset,
             stages=stages,
             filters=filters,
             extended_stages=extended,

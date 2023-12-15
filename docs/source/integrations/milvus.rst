@@ -189,9 +189,19 @@ FiftyOne whenever a connection to Milvus is made.
 
 .. code-block:: shell
 
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_URI=XXXXXX
     export FIFTYONE_BRAIN_SIMILARITY_MILVUS_USER=XXXXXX
     export FIFTYONE_BRAIN_SIMILARITY_MILVUS_PASSWORD=XXXXXX
-    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_URI=XXXXXX
+
+    # also available if necessary
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_SECURE=true
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_TOKEN=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_DB_NAME=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_CLIENT_KEY_PATH=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_CLIENT_PEM_PATH=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_CA_PEM_PATH=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_SERVER_PEM_PATH=XXXXXX
+    export FIFTYONE_BRAIN_SIMILARITY_MILVUS_SERVER_NAME=XXXXXX
 
 **FiftyOne Brain config**
 
@@ -203,9 +213,19 @@ located at `~/.fiftyone/brain_config.json`:
     {
         "similarity_backends": {
             "milvus": {
-                "user": "XXXXXXXXXXXX",
-                "password": "XXXXXXXXXXXX",
-                "uri": "XXXXXXXXXXXX"
+                "uri": "XXXXXX",
+                "user": "XXXXXX",
+                "password": "XXXXXX",
+
+                # also available if necessary
+                "secure": true,
+                "token": "XXXXXX",
+                "db_name": "XXXXXX",
+                "client_key_path": "XXXXXX",
+                "client_pem_path": "XXXXXX",
+                "ca_pem_path": "XXXXXX",
+                "server_pem_path": "XXXXXX",
+                "server_name": "XXXXXX"
             }
         }
     }
@@ -228,9 +248,19 @@ connections to Milvus:
         ...
         backend="milvus",
         brain_key="milvus_index",
+        uri="XXXXXX",
         user="XXXXXX",
         password="XXXXXX",
-        uri="XXXXXX",
+
+        # also available if necessary
+        secure=True,
+        token="XXXXXX",
+        db_name="XXXXXX",
+        client_key_path="XXXXXX",
+        client_pem_path="XXXXXX",
+        ca_pem_path="XXXXXX",
+        server_pem_path="XXXXXX",
+        server_name="XXXXXX",
     )
 
 Note that, when using this strategy, you must manually provide the credentials
@@ -242,9 +272,19 @@ when loading an index later via
 
     milvus_index = dataset.load_brain_results(
         "milvus_index",
+        uri="XXXXXX",
         user="XXXXXX",
         password="XXXXXX",
-        uri="XXXXXX",
+
+        # also available if necessary
+        secure=True,
+        token="XXXXXX",
+        db_name="XXXXXX",
+        client_key_path="XXXXXX",
+        client_pem_path="XXXXXX",
+        ca_pem_path="XXXXXX",
+        server_pem_path="XXXXXX",
+        server_name="XXXXXX",
     )
 
 .. _milvus-config-parameters:

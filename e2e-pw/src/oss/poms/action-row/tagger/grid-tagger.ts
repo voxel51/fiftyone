@@ -2,7 +2,7 @@ import { Page } from "src/oss/fixtures";
 
 type TaggerMode = "sample" | "label";
 
-export class TaggerPom {
+export class GridTaggerPom {
   constructor(private readonly page: Page) {}
 
   async setActiveTaggerMode(mode: TaggerMode) {
