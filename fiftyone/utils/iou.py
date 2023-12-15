@@ -495,28 +495,40 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
 
     return ious
 
-def polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None):
-    num_pred = len(preds)
-    pred_labels = [pred.label for pred in preds]
-    num_gt = len(gts)
-    gt_labels = [gt.label for gt in gts]
+def polyline2d_iou_matrix(preds, gts, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None):
+    with contextlib.ExitStack() as context:
 
-    if iscrowd is not None:
-        gt_crowds = [iscrowd(gt) for gt in gts]
-    elif gt_crowds is None:
-        gt_crowds = [False] * num_gt
+            num_pred = len(preds)
+            pred_labels = [pred.label for pred in preds]
+            if is_symmetric:
+                num_gt = num_pred
+                gt_labels = pred_labels
+            else:
+                num_gt = len(gts)
+                gt_labels = [gt.label for gt in gts]
 
-    ious = np.zeros((num_pred, num_gt))
+            if iscrowd is not None:
+                gt_crowds = [iscrowd(gt) for gt in gts]
+            elif gt_crowds is None:
+                gt_crowds = [False] * num_gt
 
-    for j, (gt, gt_label, gt_crowd) in enumerate(
-        zip(gts, gt_labels, gt_crowds)
-    ):
-        for i, (pred, pred_label) in enumerate(
-            zip(preds, pred_labels)
-        ):
-            if classwise and pred_label != gt_label:
-                continue
-            ious[i, j] = _compute_object_polyline_similarity(gt, pred)
+            ious = np.zeros((num_pred, num_gt))
+
+            for j, (gt, gt_label, gt_crowd) in enumerate(
+                zip(gts, gt_labels, gt_crowds)
+            ):
+                for i, (pred, pred_label) in enumerate(
+                    zip(preds, pred_labels)
+                ):
+                    if is_symmetric and i < j:
+                        iou = ious[j, i]
+                    elif is_symmetric and i == j:
+                        iou = 1
+                    elif classwise and pred_label != gt_label:
+                        continue
+                    ious[i, j] = _compute_object_polyline_similarity(gt, pred)
+
+
     return ious
 
 def polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None):
@@ -589,18 +601,18 @@ def polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, clas
 
                     ious[i, j] = iou
     return ious
-
 def _compute_polyline_ious(
     preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
 ):
     is_symmetric = preds is gts
     are_all_closed = np.sum([p ["closed"] for p in preds])
     if are_all_closed > 0:
-        # all closed polylines = True for atleast one polyline instance, i.e., polygons
+        # all closed polylines = True for atleast one polyline instance, i.e., polygon
         ious = polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None)
     if are_all_closed == 0:
-        # all closed polylines = False, i.e., Lines not polygons
-        ious = polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None)
+        # all closed polylines = False, i.e., Lines not polygone
+        ious = polyline2d_iou_matrix(preds, gts, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None)
+
 
     return ious
 
