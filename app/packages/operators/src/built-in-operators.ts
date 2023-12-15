@@ -58,14 +58,7 @@ class ClearSelectedSamples extends Operator {
       label: "Clear selected samples",
     });
   }
-  useHooks() {
-    return {
-      setSelected: fos.useSetSelected(),
-    };
-  }
-  async execute({ hooks, state }: ExecutionContext) {
-    // needs to mutate the server / session
-    hooks.setSelected([]);
+  async execute({ state }: ExecutionContext) {
     state.reset(fos.selectedSamples);
   }
 }
@@ -373,7 +366,6 @@ class ClearAllStages extends Operator {
     state.reset(fos.filters);
     hooks.resetExtended();
     state.reset(fos.selectedSamples);
-    hooks.setSelected([]);
   }
 }
 
@@ -435,7 +427,6 @@ class ConvertExtendedSelectionToSelectedSamples extends Operator {
     );
     state.set(fos.selectedSamples, new Set(extendedSelection.selection));
     state.set(fos.extendedSelection, { selection: null });
-    hooks.setSelected(extendedSelection.selection);
     hooks.resetExtended();
   }
 }
