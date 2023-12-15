@@ -495,81 +495,141 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
 
     return ious
 
+def polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None):
+    with contextlib.ExitStack() as context:
+            # We're ignoring errors, so suppress shapely logging that occurs when
+            # invalid geometries are encountered
+            if error_level > 1:
+                # pylint: disable=no-member
+                context.enter_context(
+                    fou.LoggingLevel(logging.CRITICAL, logger="shapely")
+                )
 
+            num_pred = len(preds)
+
+            pred_polys = _polylines_to_shapely(preds, error_level)
+            pred_labels = [pred.label for pred in preds]
+            pred_areas = [pred_poly.area for pred_poly in pred_polys]
+
+            if is_symmetric:
+                num_gt = num_pred
+                gt_polys = pred_polys
+                gt_labels = pred_labels
+                gt_areas = pred_areas
+            else:
+                num_gt = len(gts)
+                gt_polys = _polylines_to_shapely(gts, error_level)
+                gt_labels = [gt.label for gt in gts]
+                gt_areas = [gt_poly.area for gt_poly in gt_polys]
+
+            if iscrowd is not None:
+                gt_crowds = [iscrowd(gt) for gt in gts]
+            elif gt_crowds is None:
+                gt_crowds = [False] * num_gt
+
+            ious = np.zeros((num_pred, num_gt))
+
+            for j, (gt_poly, gt_label, gt_area, gt_crowd) in enumerate(
+                zip(gt_polys, gt_labels, gt_areas, gt_crowds)
+            ):
+                for i, (pred_poly, pred_label, pred_area) in enumerate(
+                    zip(pred_polys, pred_labels, pred_areas)
+                ):
+                    if is_symmetric and i < j:
+                        iou = ious[j, i]
+                    elif is_symmetric and i == j:
+                        iou = 1
+                    elif classwise and pred_label != gt_label:
+                        continue
+                    else:
+                        try:
+                            inter = gt_poly.intersection(pred_poly).area
+                        except Exception as e:
+                            inter = 0.0
+                            fou.handle_error(
+                                ValueError(
+                                    "Failed to compute intersection of predicted "
+                                    "object '%s' and ground truth object '%s'"
+                                    % (preds[i].id, gts[j].id)
+                                ),
+                                error_level,
+                                base_error=e,
+                            )
+
+                        if gt_crowd:
+                            union = pred_area
+                        else:
+                            union = pred_area + gt_area - inter
+
+                        iou = min(etan.safe_divide(inter, union), 1)
+
+                    ious[i, j] = iou
+    return ious
+
+def polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None):
+    num_pred = len(preds)
+    pred_labels = [pred.label for pred in preds]
+    # if is_symmetric:
+    #     num_gt = num_pred
+    #     gt_labels = pred_labels
+    # else:
+    num_gt = len(gts)
+    gt_labels = [gt.label for gt in gts]
+
+    if iscrowd is not None:
+        gt_crowds = [iscrowd(gt) for gt in gts]
+    elif gt_crowds is None:
+        gt_crowds = [False] * num_gt
+
+    ious = np.zeros((num_pred, num_gt))
+
+    for j, (gt, gt_label, gt_crowd) in enumerate(
+        zip(gts, gt_labels, gt_crowds)
+    ):
+        for i, (pred, pred_label) in enumerate(
+            zip(preds, pred_labels)
+        ):
+            # if is_symmetric and i < j:
+            #     iou = ious[j, i]
+            # elif is_symmetric and i == j:
+            #     iou = 1
+            if classwise and pred_label != gt_label:
+                continue
+            ious[i, j] = _compute_object_polyline_similarity(gt, pred)
+    return ious
+
+def _compute_object_polyline_similarity(gt, pred):
+    gtp = np.array(gt.points, dtype=float)[0]
+    predp = np.array(pred.points, dtype=float)[0]
+    each_dist =[]
+    # Use extent of GT points as proxy for box area
+    scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
+    scale = np.maximum(0.0, np.minimum(scale, 1.0))
+    for ind in np.arange(len(gtp)):
+
+        if not np.isfinite(gtp[ind]).all():
+            continue
+        if np.isfinite(predp[ind]).all():
+            dists = np.linalg.norm(gtp[ind]-predp[ind])
+        else:
+            dists = 1
+        each_dist.append(np.exp(-(dists**2) / (2 * (scale**2))))
+    return np.mean(each_dist)
+    
 def _compute_polyline_ious(
     preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
 ):
     is_symmetric = preds is gts
 
-    with contextlib.ExitStack() as context:
-        # We're ignoring errors, so suppress shapely logging that occurs when
-        # invalid geometries are encountered
-        if error_level > 1:
-            # pylint: disable=no-member
-            context.enter_context(
-                fou.LoggingLevel(logging.CRITICAL, logger="shapely")
-            )
+    are_all_closed = np.sum([p ["closed"] for p in preds])
+    if are_all_closed > 0:
+        # all closed polylines = True for atleast one polyline instance, i.e., polygons
+        ious = polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None)
+    if are_all_closed == 0:
+        # all closed polylines = False, i.e., Lines not polygons
+        ious = polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None)
 
-        num_pred = len(preds)
-        pred_polys = _polylines_to_shapely(preds, error_level)
-        pred_labels = [pred.label for pred in preds]
-        pred_areas = [pred_poly.area for pred_poly in pred_polys]
-
-        if is_symmetric:
-            num_gt = num_pred
-            gt_polys = pred_polys
-            gt_labels = pred_labels
-            gt_areas = pred_areas
-        else:
-            num_gt = len(gts)
-            gt_polys = _polylines_to_shapely(gts, error_level)
-            gt_labels = [gt.label for gt in gts]
-            gt_areas = [gt_poly.area for gt_poly in gt_polys]
-
-        if iscrowd is not None:
-            gt_crowds = [iscrowd(gt) for gt in gts]
-        elif gt_crowds is None:
-            gt_crowds = [False] * num_gt
-
-        ious = np.zeros((num_pred, num_gt))
-
-        for j, (gt_poly, gt_label, gt_area, gt_crowd) in enumerate(
-            zip(gt_polys, gt_labels, gt_areas, gt_crowds)
-        ):
-            for i, (pred_poly, pred_label, pred_area) in enumerate(
-                zip(pred_polys, pred_labels, pred_areas)
-            ):
-                if is_symmetric and i < j:
-                    iou = ious[j, i]
-                elif is_symmetric and i == j:
-                    iou = 1
-                elif classwise and pred_label != gt_label:
-                    continue
-                else:
-                    try:
-                        inter = gt_poly.intersection(pred_poly).area
-                    except Exception as e:
-                        inter = 0.0
-                        fou.handle_error(
-                            ValueError(
-                                "Failed to compute intersection of predicted "
-                                "object '%s' and ground truth object '%s'"
-                                % (preds[i].id, gts[j].id)
-                            ),
-                            error_level,
-                            base_error=e,
-                        )
-
-                    if gt_crowd:
-                        union = pred_area
-                    else:
-                        union = pred_area + gt_area - inter
-
-                    iou = min(etan.safe_divide(inter, union), 1)
-
-                ious[i, j] = iou
-
-        return ious
+    return ious
 
 
 def _compute_mask_ious(
