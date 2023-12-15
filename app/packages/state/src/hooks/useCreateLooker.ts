@@ -161,12 +161,13 @@ export default <T extends AbstractLooker>(
         }
 
         if (constructor === ImaVidLooker) {
-          const { groupBy, orderBy } = snapshot
+          const { groupBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
             .valueMaybe();
           const groupByFieldValue = String(
             get(sample, getSanitizedGroupByExpression(groupBy))
           );
+
           const totalFrameCountPromise = getPromise(
             dynamicGroupsElementCount(groupByFieldValue)
           );
@@ -180,17 +181,22 @@ export default <T extends AbstractLooker>(
                 .valueMaybe() ?? 1
             : 1;
 
+          const imavidKey = `$${groupBy}-${groupByFieldValue}-${
+            snapshot
+              .getLoadable(groupAtoms.currentSlice(isModal))
+              .valueMaybe() ?? "UNSLICED"
+          }`;
+
           const thisSampleId = sample._id as string;
           if (!ImaVidFramesControllerStore.has(thisSampleId)) {
             ImaVidFramesControllerStore.set(
               thisSampleId,
               new ImaVidFramesController({
                 environment,
-                orderBy,
                 firstFrameNumber,
                 page,
                 totalFrameCountPromise,
-                posterSample: sample,
+                key: imavidKey,
               })
             );
           }

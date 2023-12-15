@@ -1,6 +1,5 @@
 import * as foq from "@fiftyone/relay";
 import { Environment, Subscription, fetchQuery } from "relay-runtime";
-import { Sample } from "../..";
 import { BufferRange, ImaVidState, StateUpdate } from "../../state";
 import { BufferManager } from "./buffer-manager";
 import { BUFFERS_REFRESH_TIMEOUT_YIELD, DEFAULT_FRAME_RATE } from "./constants";
@@ -24,11 +23,9 @@ export class ImaVidFramesController {
     private readonly config: {
       environment: Environment;
       firstFrameNumber: number;
-      // todo: see if we can do without it
-      orderBy: string;
       // todo: remove any
       page: any;
-      posterSample: Sample;
+      key: string;
       totalFrameCountPromise: Promise<number>;
     }
   ) {
@@ -159,19 +156,19 @@ export class ImaVidFramesController {
     return this.config.page;
   }
 
-  private get posterSampleId() {
-    return this.config.posterSample._id;
+  private get key() {
+    return this.config.key;
   }
 
   public get store() {
-    if (!ImaVidStore.has(this.posterSampleId)) {
+    if (!ImaVidStore.has(this.key)) {
       ImaVidStore.set(
-        this.posterSampleId,
+        this.key,
         new ImaVidFrameSamples(this.storeBufferManager)
       );
     }
 
-    return ImaVidStore.get(this.posterSampleId);
+    return ImaVidStore.get(this.key);
   }
 
   public setFrameRate(newFrameRate: number) {
@@ -189,7 +186,7 @@ export class ImaVidFramesController {
   public async fetchMore(cursor: number, count: number) {
     const variables = this.page(cursor, count);
 
-    const fetchUid = `${this.posterSampleId}-${cursor}-${variables.count}`;
+    const fetchUid = `${this.key}-${cursor}-${variables.count}`;
 
     return new Promise<void>((resolve, _reject) => {
       // do a gql query here, get samples, update store
