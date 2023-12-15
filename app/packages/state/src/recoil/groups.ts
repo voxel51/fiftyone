@@ -33,7 +33,7 @@ import {
 } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
-import { ModalSample, modalLooker, modalSample } from "./modal";
+import { ModalSample, isModalActive, modalLooker, modalSample } from "./modal";
 import { dynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
@@ -464,6 +464,19 @@ export const isNestedDynamicGroup = selector<boolean>({
   get: ({ get }) => {
     return get(isDynamicGroup) && get(hasGroupSlices);
   },
+});
+
+export const imaVidStoreKey = selectorFamily<string, string>({
+  key: "imaVidStoreKey",
+  get:
+    (groupByFieldValue) =>
+    ({ get }) => {
+      const groupBy = get(dynamicGroupParameters)?.groupBy;
+      const isModalActive_ = get(isModalActive);
+      const slice = isModalActive_ ? get(currentSlice(true)) : "UNSLICED";
+
+      return `$${groupBy}-${groupByFieldValue}-${slice}`;
+    },
 });
 
 export const shouldRenderImaVidLooker = selector<boolean>({

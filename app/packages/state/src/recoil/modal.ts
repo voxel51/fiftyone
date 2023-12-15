@@ -7,6 +7,7 @@ import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
 import {
+  activeModalSidebarSample,
   groupId,
   groupSlice,
   hasGroupSlices,
@@ -36,18 +37,16 @@ export const sidebarSampleId = selector({
       const isPlaying = get(imaVidLookerState("playing"));
       const isSeeking = get(imaVidLookerState("seeking"));
 
-      const thisLooker = get(modalLooker) as ImaVidLooker;
+      const sample = get(activeModalSidebarSample);
 
-      if (!isPlaying && !isSeeking && thisFrameNumber && thisLooker) {
-        const sample = thisLooker.thisFrameSample;
-        const id = sample?.id || sample?.sample?._id;
+      if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
+        const id = sample?.id || sample?._id || sample?.sample?._id;
         if (id) {
           return id;
         }
-      } else {
-        // suspend
-        return new Promise(() => {});
       }
+      // suspend
+      return new Promise(() => {});
     }
 
     const override = get(pinned3DSampleSlice);

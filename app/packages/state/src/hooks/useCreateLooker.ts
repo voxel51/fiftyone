@@ -181,11 +181,9 @@ export default <T extends AbstractLooker>(
                 .valueMaybe() ?? 1
             : 1;
 
-          const imavidKey = `$${groupBy}-${groupByFieldValue}-${
-            snapshot
-              .getLoadable(groupAtoms.currentSlice(isModal))
-              .valueMaybe() ?? "UNSLICED"
-          }`;
+          const imavidKey = snapshot
+            .getLoadable(groupAtoms.imaVidStoreKey(groupByFieldValue))
+            .valueOrThrow();
 
           const thisSampleId = sample._id as string;
           if (!ImaVidFramesControllerStore.has(thisSampleId)) {
