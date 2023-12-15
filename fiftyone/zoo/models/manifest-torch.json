@@ -1866,7 +1866,7 @@
             "base_name": "open-clip",
             "base_filename": "",
             "version": null,
-            "description": "OPENN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
+            "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/mlfoundations/open_clip",
             "size_bytes": 353976522,
             "manager": {
@@ -1890,13 +1890,7 @@
                 }
             },
             "requirements": {
-                "packages": [
-                    "torch",
-                    "torchvision",
-                    "huggingface_hub",
-                    "timm",
-                    "transformers"
-                ],
+                "packages": ["torch", "torchvision", "open_clip_torch"],
                 "cpu": {
                     "support": true
                 },
