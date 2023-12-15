@@ -143,6 +143,29 @@ class MediaCache(object):
         fs, _, exists, _ = self._parse_filepath(filepath)
         return fs == fos.FileSystem.LOCAL or exists
 
+    def use_cached_path(self, filepath):
+        """Converts ``filepath`` to local path if it exists, otherwise
+        returns ``filepath``. Also returns whether the returned path is local.
+
+        Args:
+            filepath: a filepath
+
+        Returns:
+            Tuple of the (possibly locally-cached) filepath, and whether the
+            returned path is local
+        """
+        # Function will report exists as True if we have previously
+        #   failed to download it, so we must override that protection. In this
+        #   function, we'd prefer to err on the side of returning the original
+        #   unless we're certain the local path exists.
+        fs, local_path, exists, _ = self._parse_filepath(
+            filepath, check_exists=True, override_retry_protection=True
+        )
+        if fs == fos.FileSystem.LOCAL or exists:
+            return local_path, True
+        else:
+            return filepath, False
+
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.
 
@@ -491,7 +514,9 @@ class MediaCache(object):
                 if fs != fos.FileSystem.LOCAL and exists:
                     _pop_cache(local_path)
 
-    def _parse_filepath(self, filepath, check_exists=True):
+    def _parse_filepath(
+        self, filepath, check_exists=True, override_retry_protection=False
+    ):
         fs = fos.get_file_system(filepath)
 
         # Always return `exists=True` for local filepaths
@@ -509,7 +534,7 @@ class MediaCache(object):
 
         # If the file does not exist and we were unable to download it in the
         # first place, report that the file exists to avoid retried downloads
-        if not exists:
+        if not override_retry_protection and not exists:
             result = _get_cache_result(local_path)
             if result is not None:
                 _, success, _ = result

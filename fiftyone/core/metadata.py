@@ -55,7 +55,9 @@ class Metadata(DynamicEmbeddedDocument):
         Returns:
             a :class:`Metadata`
         """
-        if fos.is_local(path):
+        path, is_local = fo.media_cache.use_cached_path(path)
+
+        if is_local:
             return cls._build_for_local(path, mime_type=mime_type)
 
         url = fos.get_url(path)
@@ -121,10 +123,12 @@ class ImageMetadata(Metadata):
         if not etau.is_str(img_or_path):
             return cls._build_for_img(img_or_path, mime_type=mime_type)
 
-        if fos.is_local(img_or_path):
-            return cls._build_for_local(img_or_path, mime_type=mime_type)
+        img_path, is_local = fo.media_cache.use_cached_path(img_or_path)
 
-        url = fos.get_url(img_or_path)
+        if is_local:
+            return cls._build_for_local(img_path, mime_type=mime_type)
+
+        url = fos.get_url(img_path)
         return cls._build_for_url(url, mime_type=mime_type)
 
     @classmethod
@@ -223,7 +227,9 @@ class VideoMetadata(Metadata):
         Returns:
             a :class:`VideoMetadata`
         """
-        if fos.is_local(video_path):
+        video_path, is_local = fo.media_cache.use_cached_path(video_path)
+
+        if is_local:
             return cls._build_for_local(video_path, mime_type=mime_type)
 
         url = fos.get_url(video_path)
