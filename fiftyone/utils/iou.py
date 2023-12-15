@@ -498,6 +498,10 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
 def polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None):
     num_pred = len(preds)
     pred_labels = [pred.label for pred in preds]
+    # if is_symmetric:
+    #     num_gt = num_pred
+    #     gt_labels = pred_labels
+    # else:
     num_gt = len(gts)
     gt_labels = [gt.label for gt in gts]
 
@@ -514,6 +518,10 @@ def polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=N
         for i, (pred, pred_label) in enumerate(
             zip(preds, pred_labels)
         ):
+            # if is_symmetric and i < j:
+            #     iou = ious[j, i]
+            # elif is_symmetric and i == j:
+            #     iou = 1
             if classwise and pred_label != gt_label:
                 continue
             ious[i, j] = _compute_object_polyline_similarity(gt, pred)
@@ -589,18 +597,18 @@ def polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, clas
 
                     ious[i, j] = iou
     return ious
+
 def _compute_polyline_ious(
     preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
 ):
     is_symmetric = preds is gts
     are_all_closed = np.sum([p ["closed"] for p in preds])
     if are_all_closed > 0:
-        # all closed polylines = True for atleast one polyline instance, i.e., polygon
+        # all closed polylines = True for atleast one polyline instance, i.e., polygons
         ious = polygon_iou_matrix(preds, gts, error_level, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None)
     if are_all_closed == 0:
-        # all closed polylines = False, i.e., Lines not polygone
-        ious = polyline2d_iou_matrix(preds, gts, is_symmetric, iscrowd=None, classwise=False, gt_crowds=None)
-
+        # all closed polylines = False, i.e., Lines not polygons
+        ious = polyline2d_iou_matrix(preds, gts, iscrowd=None, classwise=False, gt_crowds=None)
 
     return ious
 
