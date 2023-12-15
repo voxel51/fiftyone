@@ -442,7 +442,7 @@ class ExecutionContext(object):
         # id if it is available
         uid = self.request_params.get("dataset_id", None)
         if uid:
-            self._dataset = focu.load_dataset(_id=uid)
+            self._dataset = focu.load_dataset(id=uid)
             # Set the dataset_name using the dataset object in case the dataset
             # has been renamed or changed since the context was created
             self.request_params["dataset_name"] = self._dataset.name
@@ -450,6 +450,9 @@ class ExecutionContext(object):
             uid = self.request_params.get("dataset_name", None)
             if uid:
                 self._dataset = focu.load_dataset(name=uid)
+        # TODO: refactor so that this additional reload post-load is not
+        #  required
+        self._dataset.reload()
         return self._dataset
 
     @property
@@ -474,12 +477,6 @@ class ExecutionContext(object):
 
         # Always derive the view from the context's dataset
         dataset = self.dataset
-        if not dataset:
-            raise RuntimeError(
-                "Cannot create a view without setting the dataset in the "
-                "context first."
-            )
-
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)

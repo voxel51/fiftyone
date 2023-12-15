@@ -332,7 +332,7 @@ class TestLoadDataset(unittest.TestCase):
         }
 
         # Test
-        result = load_dataset(_id=identifier)
+        result = load_dataset(id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()
@@ -355,7 +355,7 @@ class TestLoadDataset(unittest.TestCase):
         }
 
         # Test
-        result = load_dataset(_id=identifier)
+        result = load_dataset(id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()
@@ -386,7 +386,7 @@ class TestLoadDataset(unittest.TestCase):
 
         # Call the function and expect a ValueError
         with self.assertRaises(ValueError) as context:
-            load_dataset(_id=identifier)
+            load_dataset(id=identifier)
 
         # Assertions
         mock_get_db_conn.assert_called_once()

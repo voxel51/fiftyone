@@ -276,9 +276,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
         else:
             doc, sample_doc_cls, frame_doc_cls = _load_dataset(
-                self,
-                name,
-                virtual=_virtual,
+                self, name, virtual=_virtual
             )
 
         self._doc = doc
@@ -6810,11 +6808,7 @@ def _load_clips_source_dataset(frame_collection_name):
     return load_dataset(doc["name"])
 
 
-def _load_dataset(
-    obj,
-    name,
-    virtual=False,
-):
+def _load_dataset(obj, name, virtual=False):
     if not virtual:
         fomi.migrate_dataset_if_necessary(name)
 
