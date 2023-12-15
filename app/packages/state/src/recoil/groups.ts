@@ -466,16 +466,18 @@ export const isNestedDynamicGroup = selector<boolean>({
   },
 });
 
-export const imaVidStoreKey = selectorFamily<string, string>({
+export const imaVidStoreKey = selectorFamily<
+  string,
+  { modal: boolean; groupByFieldValue: string }
+>({
   key: "imaVidStoreKey",
   get:
-    (groupByFieldValue) =>
+    ({ modal, groupByFieldValue }) =>
     ({ get }) => {
-      const groupBy = get(dynamicGroupParameters)?.groupBy;
-      const isModalActive_ = get(isModalActive);
-      const slice = isModalActive_ ? get(currentSlice(true)) : "UNSLICED";
+      const { groupBy, orderBy } = get(dynamicGroupParameters);
+      const slice = get(currentSlice(modal)) ?? "UNSLICED";
 
-      return `$${groupBy}-${groupByFieldValue}-${slice}`;
+      return `$${groupBy}-${orderBy}-${groupByFieldValue}-${slice}`;
     },
 });
 

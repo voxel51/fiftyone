@@ -182,7 +182,9 @@ export default <T extends AbstractLooker>(
             : 1;
 
           const imavidKey = snapshot
-            .getLoadable(groupAtoms.imaVidStoreKey(groupByFieldValue))
+            .getLoadable(
+              groupAtoms.imaVidStoreKey({ groupByFieldValue, modal: isModal })
+            )
             .valueOrThrow();
 
           const thisSampleId = sample._id as string;
