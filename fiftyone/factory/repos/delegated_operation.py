@@ -5,6 +5,7 @@ FiftyOne delegated operation repository.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from datetime import datetime
 from typing import Any, List
 
@@ -13,7 +14,6 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
@@ -22,6 +22,8 @@ from fiftyone.operators.executor import (
     ExecutionResult,
     ExecutionRunState,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperationRepo(object):
@@ -118,7 +120,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
-        import fiftyone as fo
         import fiftyone.core.odm as foo
 
         database: pymongo.database.Database = foo.get_db_conn()
@@ -162,19 +163,32 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
+        context = None
+        if isinstance(op.context, dict):
+            context = ExecutionContext(
+                request_params=op.context.get("request_params", {})
+            )
+        elif isinstance(op.context, ExecutionContext):
+            context = op.context
         if not op.dataset_id:
-            # For consistency, set the dataset_id using the ExecutionContext.dataset
+            # For consistency, set the dataset_id using the
+            # ExecutionContext.dataset
             # rather than calling load_dataset() on a potentially stale
             # dataset_name in the request_params
-            context = None
-            if isinstance(op.context, dict):
-                context = ExecutionContext(
-                    request_params=op.context.get("request_params", {})
-                )
-            elif isinstance(op.context, ExecutionContext):
-                context = op.context
-            if context and context.dataset:
+            try:
                 op.dataset_id = context.dataset._doc.id
+            except:
+                # If we can't resolve the dataset_id, it is possible the
+                # dataset doesn't exist (deleted/being created). However,
+                # it's also possible that future operators can run
+                # dataset-less, so don't raise an error here and just log it
+                # in case we need to debug later.
+                logger.debug("Could not resolve dataset_id for operation. ")
+        elif op.dataset_id:
+            # If the dataset_id is provided, we set it in the request_params
+            # to ensure that the operation is executed on the correct dataset
+            context.request_params["dataset_id"] = str(op.dataset_id)
+            context.request_params["dataset_name"] = context.dataset.name
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
