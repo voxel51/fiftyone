@@ -6,13 +6,7 @@ CLIP model wrapper for the FiftyOne Model Zoo.
 |
 """
 import logging
-import os
-from packaging.version import Version
-import warnings
 
-import eta.core.web as etaw
-
-import fiftyone as fo
 import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
@@ -21,13 +15,15 @@ import fiftyone.zoo.models as fozm
 fou.ensure_torch()
 import torch
 
-import open_clip
+open_clip = fou.lazy_import(
+    "open_clip", callback=lambda: fou.ensure_package("open_clip_torch")
+)
 
 logger = logging.getLogger(__name__)
 
 
 class TorchOpenClipModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
-    """Configuration for running a :class:`TorchCLIPModel`.
+    """Configuration for running a :class:`TorchOpenClipModel`.
 
     See :class:`fiftyone.utils.torch.TorchImageModelConfig` for additional
     arguments.
@@ -36,7 +32,7 @@ class TorchOpenClipModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         context_length: the model's context length
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
-        model_name_clip (None): the model to use
+        model_name (None): the model to use
         pretrained (None): the pretrained version to use
     """
 
@@ -47,15 +43,17 @@ class TorchOpenClipModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.context_length = self.parse_int(d, "context_length")
         self.text_prompt = self.parse_string(d, "text_prompt")
 
-        self.model_name_clip = self.parse_string(d, "model_name_clip")
-        self.pretrained = self.parse_string(d, "pretrained")
+        self.model_name_clip = self.parse_string(
+            d, "model_name_clip", default="ViT-B-32"
+        )
+        self.pretrained = self.parse_string(d, "pretrained", default=None)
 
 
 class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
     """Torch implementation of CLIP from https://github.com/mlfoundations/open_clip.
 
     Args:
-        config: a :class:`TorchOpenClipPModelConfig`
+        config: a :class:`TorchOpenClipModelConfig`
     """
 
     def __init__(self, config):
