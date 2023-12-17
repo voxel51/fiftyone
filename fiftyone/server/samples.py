@@ -52,15 +52,19 @@ class VideoSample(Sample):
     frame_number: int
     frame_rate: float
 
-
+@gql.type
+class AudioSample(Sample):
+    pass
+    
 SampleItem = gql.union(
-    "SampleItem", types=(ImageSample, PointCloudSample, VideoSample)
+    "SampleItem", types=(ImageSample, PointCloudSample, VideoSample, AudioSample)
 )
 
 MEDIA_TYPES = {
     fom.IMAGE: ImageSample,
     fom.POINT_CLOUD: PointCloudSample,
     fom.VIDEO: VideoSample,
+    fom.AUDIO: AudioSample
 }
 
 
@@ -171,12 +175,15 @@ async def _create_sample_item(
         cls = VideoSample
     elif media_type == fom.POINT_CLOUD:
         cls = PointCloudSample
+    elif media_type == fom.AUDIO:
+        cls = AudioSample
     else:
         raise ValueError(f"unknown media type '{media_type}'")
 
     metadata = await fosm.get_metadata(
         dataset, sample, media_type, metadata_cache, url_cache
     )
+
 
     if cls == VideoSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))

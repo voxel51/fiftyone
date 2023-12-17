@@ -27,6 +27,7 @@ import fiftyone.core.evaluation as foe
 import fiftyone.core.frame as fof
 import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
+import fiftyone.core.fields as foff
 import fiftyone.core.metadata as fom
 import fiftyone.core.media as fomm
 import fiftyone.core.odm as foo
@@ -37,6 +38,8 @@ import fiftyone.core.utils as fou
 import fiftyone.migrations as fomi
 import fiftyone.types as fot
 
+
+
 from .parsers import (
     FiftyOneImageClassificationSampleParser,
     FiftyOneTemporalDetectionSampleParser,
@@ -44,6 +47,12 @@ from .parsers import (
     FiftyOneImageLabelsSampleParser,
     FiftyOneVideoLabelsSampleParser,
 )
+
+np = fou.lazy_import("numpy")
+sio = fou.lazy_import("scipy.io")
+ss = fou.lazy_import("scipy.signal")
+plt = fou.lazy_import("matplotlib.pyplot")
+foaa = fou.lazy_import("fiftyone.utils.audio")
 
 
 logger = logging.getLogger(__name__)
@@ -528,6 +537,53 @@ def _build_parse_sample_fcn(
                 sample.frames.merge(frame_labels)
 
             return sample
+        
+    elif isinstance(dataset_importer, LabeledAudioDatasetImporter):
+    # Labeled image dataset
+
+
+        if isinstance(label_field, dict):
+            label_key = lambda k: label_field.get(k, k)
+        elif label_field is not None:
+            label_key = lambda k: label_field + "_" + k
+        else:
+            label_field = "ground_truth"
+            label_key = lambda k: k
+
+        
+
+        def parse_sample(sample):
+            audio_path, audio_metadata, label = sample
+            sample = Sample(
+                filepath=audio_path,
+                metadata=audio_metadata,
+                tags=tags,
+            )
+
+
+            if isinstance(label, dict):
+                sample.update_fields(
+                    {label_key(k): v for k, v in label.items()}
+                )
+            elif label is not None:
+                sample[label_field] = label
+
+
+            return sample
+
+        # Optimization: if we can deduce exactly what fields will be added
+        # during import, we declare them now and set `expand_schema` to False
+        try:
+            can_expand_now = issubclass(dataset_importer.label_cls, fol.Label)
+        except:
+            can_expand_now = False
+
+        if expand_schema and not dynamic and can_expand_now:
+            dataset._ensure_label_field(
+                label_field, dataset_importer.label_cls
+            )
+            expand_schema = False
+
 
     else:
         raise ValueError(
@@ -1419,6 +1475,82 @@ class LabeledVideoDatasetImporter(DatasetImporter):
             frame labels that it may return
         """
         raise NotImplementedError("subclass must implement frame_labels_cls")
+    
+class LabeledAudioDatasetImporter(DatasetImporter):
+    """Interface for importing datasets of labeled audio samples.
+
+    Typically, dataset importers should implement the parameters documented on
+    this class, although this is not mandatory.
+
+    See :ref:`this page <writing-a-custom-dataset-importer>` for information
+    about implementing/using dataset importers.
+
+    .. automethod:: __len__
+    .. automethod:: __next__
+
+    Args:
+        dataset_dir (None): the dataset directory. This may be optional for
+            some importers
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __next__(self):
+        """Returns information about the next sample in the dataset.
+
+        Returns:
+            an  ``(audio_path, audio_metadata, label)`` tuple, where
+
+            -   ``audio_path``: the path to the image on disk
+            -   ``audio_metadata``: an
+                :class:`fiftyone.core.metadata.AudioMetadata` instances for the
+                image, or ``None`` if :meth:`has_audio_metadata` is ``False``
+            -   ``label``: an instance of :meth:`label_cls`, or a dictionary
+                mapping field names to :class:`fiftyone.core.labels.Label`
+                instances, or ``None`` if the sample is unlabeled
+
+        Raises:
+            StopIteration: if there are no more samples to import
+        """
+        raise NotImplementedError("subclass must implement __next__()")
+
+    @property
+    def has_image_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.ImageMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_image_metadata")
+    
+    @property
+    def has_audio_metadata(self):
+        """Whether this importer produces
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each image.
+        """
+        raise NotImplementedError("subclass must implement has_audio_metadata")
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) returned by this
+        importer.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            importer is guaranteed to return labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the importer can produce a single label field of any of
+            these types
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the importer will return label dictionaries with keys
+            and value-types specified by this dictionary. Not all keys need be
+            present in the imported labels
+        -   ``None``. In this case, the importer makes no guarantees about the
+            labels that it may return
+        """
+        raise NotImplementedError("subclass must implement label_cls")
 
 
 class LegacyFiftyOneDatasetImporter(GenericSampleDatasetImporter):
@@ -2627,6 +2759,140 @@ class ImageClassificationDirectoryTreeImporter(LabeledImageDatasetImporter):
 
             label = chunks[0]
             if label.startswith("."):
+                continue
+
+            if whitelist is not None and label not in whitelist:
+                continue
+
+            if label == self.unlabeled:
+                label = None
+            else:
+                classes.add(label)
+
+            path = os.path.join(self.dataset_dir, relpath)
+            samples.append((path, label))
+
+        samples = self._preprocess_list(samples)
+
+        if whitelist is not None:
+            classes = self.classes
+        else:
+            classes = sorted(classes)
+
+        self._classes = classes
+        self._samples = samples
+        self._num_samples = len(samples)
+
+    def get_dataset_info(self):
+        return {"classes": self._classes}
+
+    @staticmethod
+    def _get_classes(dataset_dir):
+        # Used only by dataset zoo
+        return sorted(etau.list_subdirs(dataset_dir))
+
+    @staticmethod
+    def _get_num_samples(dataset_dir):
+        # Used only by dataset zoo
+        return len(etau.list_files(dataset_dir, recursive=True))
+    
+class AudioClassificationDirectoryTreeImporter(LabeledAudioDatasetImporter):
+    """Importer for an audio classification directory tree stored on disk.
+
+    See :ref:`this page <AudioClassificationDirectoryTree-import>` for format
+    details.
+
+    Args:
+        dataset_dir: the dataset directory
+        compute_metadata (False): whether to produce
+            :class:`fiftyone.core.metadata.AudioMetadata` instances for each
+            audio when importing
+        classes (None): an optional string or list of strings specifying a
+            subset of classes to load
+        unlabeled ("_unlabeled"): the name of the subdirectory containing
+            unlabeled audios
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to import. By default,
+            all samples are imported
+    """
+
+    def __init__(
+        self,
+        dataset_dir,
+        compute_metadata=False,
+        classes=None,
+        unlabeled="_unlabeled",
+        shuffle=False,
+        seed=None,
+        max_samples=None,
+    ):
+        classes = _to_list(classes)
+
+        super().__init__(
+            dataset_dir=dataset_dir,
+            shuffle=shuffle,
+            seed=seed,
+            max_samples=max_samples,
+        )
+
+        self.compute_metadata = compute_metadata
+        self.classes = classes
+        self.unlabeled = unlabeled
+
+        self._classes = None
+        self._samples = None
+        self._iter_samples = None
+        self._num_samples = None
+
+    def __iter__(self):
+        self._iter_samples = iter(self._samples)
+        return self
+
+    def __len__(self):
+        return self._num_samples
+
+    def __next__(self):
+        image_path, label = next(self._iter_samples)
+
+        if self.compute_metadata:
+            image_metadata = fom.ImageMetadata.build_for(image_path)
+        else:
+            image_metadata = None
+
+        if label is not None:
+            label = fol.Classification(label=label)
+
+        return image_path, image_metadata, label
+
+    @property
+    def has_image_metadata(self):
+        return self.compute_metadata
+
+    @property
+    def has_dataset_info(self):
+        return True
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def setup(self):
+        samples = []
+        classes = set()
+        whitelist = set(self.classes) if self.classes is not None else None
+
+        for relpath in etau.list_files(self.dataset_dir, recursive=True):
+            
+            chunks = relpath.split(os.path.sep, 1)
+            if len(chunks) == 1:
+                continue
+
+            label = chunks[0]
+            if label.startswith("."):
+                continue
+            if "spectograms" in relpath:
                 continue
 
             if whitelist is not None and label not in whitelist:

@@ -1665,6 +1665,62 @@ class LabeledVideoDatasetExporter(DatasetExporter):
                 :meth:`requires_video_metadata` is ``True``
         """
         raise NotImplementedError("subclass must implement export_sample()")
+    
+class LabeledAudioDatasetExporter(DatasetExporter):
+    """Interface for exporting datasets of labeled audio samples.
+
+    See :ref:`this page <writing-a-custom-dataset-exporter>` for information
+    about implementing/using dataset exporters.
+
+    Args:
+        export_dir (None): the directory to write the export. This may be
+            optional for some exporters
+    """
+
+    @property
+    def requires_audio_metadata(self):
+        """Whether this exporter requires
+        :class:`fiftyone.core.metadata.AudioMetadata` instances for each sample
+        being exported.
+        """
+        raise NotImplementedError(
+            "subclass must implement requires_audio_metadata"
+        )
+
+    @property
+    def label_cls(self):
+        """The :class:`fiftyone.core.labels.Label` class(es) exported by this
+        exporter.
+
+        This can be any of the following:
+
+        -   a :class:`fiftyone.core.labels.Label` class. In this case, the
+            exporter directly exports labels of this type
+        -   a list or tuple of :class:`fiftyone.core.labels.Label` classes. In
+            this case, the exporter can export a single label field of any of
+            these types
+        -   a dict mapping keys to :class:`fiftyone.core.labels.Label` classes.
+            In this case, the exporter can handle label dictionaries with
+            value-types specified by this dictionary. Not all keys need be
+            present in the exported label dicts
+        -   ``None``. In this case, the exporter makes no guarantees about the
+            labels that it can export
+        """
+        raise NotImplementedError("subclass must implement label_cls")
+
+    def export_sample(self, image_or_path, label, metadata=None):
+        """Exports the given sample to the dataset.
+
+        Args:
+            image_or_path: an image or the path to the image on disk
+            label: an instance of :meth:`label_cls`, or a dictionary mapping
+                field names to :class:`fiftyone.core.labels.Label` instances,
+                or ``None`` if the sample is unlabeled
+            metadata (None): a :class:`fiftyone.core.metadata.ImageMetadata`
+                instance for the sample. Only required when
+                :meth:`requires_image_metadata` is ``True``
+        """
+        raise NotImplementedError("subclass must implement export_sample()")
 
 
 class LegacyFiftyOneDatasetExporter(GenericSampleDatasetExporter):
@@ -2851,6 +2907,119 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         outpath = os.path.join(self.export_dir, _label, filename)
 
         self._media_exporter.export(video_path, outpath=outpath)
+
+    def close(self, *args):
+        self._media_exporter.close()
+
+class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
+    """Exporter that writes an audio classification directory tree to disk.
+
+    See :ref:`this page <AudioClassificationDirectoryTree-export>` for format
+    details.
+
+    The filenames of the input audios are maintained, unless a name conflict
+    would occur, in which case an index of the form ``"-%d" % count`` is
+    appended to the base filename.
+
+    Args:
+        export_dir: the directory to write the export
+        export_media (None): controls how to export the raw media. The
+            supported values are:
+
+            -   ``True`` (default): copy all media files into the output
+                directory
+            -   ``"move"``: move all media files into the output directory
+            -   ``"symlink"``: create symlinks to the media files in the output
+                directory
+        rel_dir (None): an optional relative directory to strip from each input
+            filepath to generate a unique identifier for each audio. When
+            exporting media, this identifier is joined with ``export_dir`` to
+            generate an output path for each exported audio. This argument
+            allows for populating nested subdirectories that match the shape of
+            the input paths. The path is converted to an absolute path (if
+            necessary) via :func:`fiftyone.core.storage.normalize_path`
+        audio_format (None): the audio format to use when writing in-memory
+            audios to disk. By default, ``fiftyone.config.default_audio_ext``
+            is used
+    """
+
+    def __init__(
+        self, export_dir, export_media=None, rel_dir=None, audio_format=None
+    ):
+        if export_media is None:
+            export_media = True
+
+        if rel_dir is not None:
+            rel_dir = fos.normalize_path(rel_dir)
+
+        if image_format is None:
+            image_format = fo.config.default_image_ext
+
+        super().__init__(export_dir=export_dir)
+
+        self.export_media = export_media
+        self.rel_dir = rel_dir
+        self.image_format = image_format
+
+        self._class_counts = None
+        self._filename_counts = None
+        self._media_exporter = None
+        self._default_filename_patt = (
+            fo.config.default_sequence_idx + image_format
+        )
+
+    @property
+    def requires_image_metadata(self):
+        return False
+
+    @property
+    def label_cls(self):
+        return fol.Classification
+
+    def setup(self):
+        self._class_counts = defaultdict(int)
+        self._filename_counts = defaultdict(int)
+        self._media_exporter = ImageExporter(
+            self.export_media,
+            supported_modes=(True, "move", "symlink"),
+        )
+        self._media_exporter.setup()
+
+        etau.ensure_dir(self.export_dir)
+
+    def export_sample(self, image_or_path, classification, metadata=None):
+        _label = _parse_classifications(
+            classification, include_confidence=False, include_attributes=False
+        )
+
+        if _label is None:
+            _label = "_unlabeled"
+
+        self._class_counts[_label] += 1
+
+        if etau.is_str(image_or_path):
+            image_path = fos.normalize_path(image_or_path)
+        else:
+            image_path = self._default_filename_patt % (
+                self._class_counts[_label]
+            )
+
+        if self.rel_dir is not None:
+            filename = fou.safe_relpath(image_path, self.rel_dir)
+        else:
+            filename = os.path.basename(image_path)
+
+        name, ext = os.path.splitext(filename)
+
+        key = (_label, filename)
+        self._filename_counts[key] += 1
+        count = self._filename_counts[key]
+        if count > 1:
+            filename = name + ("-%d" % count) + ext
+
+        outpath = os.path.join(self.export_dir, _label, filename)
+
+        self._media_exporter.export(image_or_path, outpath=outpath)
 
     def close(self, *args):
         self._media_exporter.close()

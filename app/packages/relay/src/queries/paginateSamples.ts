@@ -47,6 +47,15 @@ export default r(graphql`
               url
             }
           }
+          ... on AudioSample {
+            aspectRatio
+            id
+            sample
+            urls {
+              field
+              url
+            }
+          }
           ... on VideoSample {
             id
             aspectRatio

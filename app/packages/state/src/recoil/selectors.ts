@@ -105,6 +105,12 @@ export const isPointcloudDataset = selector({
   get: ({ get }) => get(atoms.mediaType) === "point_cloud",
 });
 
+
+export const isAudioDataset = selector({
+  key: "isAudioDataset",
+  get: ({ get }) => get(atoms.mediaType) === "audio",
+});
+
 export const timeZone = selector<string>({
   key: "timeZone",
   get: ({ get }) => {

@@ -66,6 +66,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
+  const isAudio = useRecoilValue(fos.isAudioDataset);
   const sampleId = useRecoilValue(fos.currentSampleId);
 
   const clearModal = fos.useClearModal();

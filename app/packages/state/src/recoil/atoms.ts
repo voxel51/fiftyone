@@ -311,6 +311,15 @@ export const onlyPcd = selector<boolean>({
   },
 });
 
+export const onlyAudio = selector<boolean>({
+  key: "onlyAudio",
+  get: ({ get }) => {
+    const set = get(groupMediaTypesSet);
+    const hasAudio = set.has("audio");
+    return set.size === 1 && hasAudio;
+  },
+});
+
 export const theme = atom<"dark" | "light">({
   key: "theme",
   default: "dark",

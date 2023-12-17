@@ -130,7 +130,7 @@ class LabeledImageDataset(LabeledDataset):
             class
         """
         return super().get_dataset_exporter_cls()
-
+    
 
 class LabeledVideoDataset(LabeledDataset):
     """Base type for datasets that represent a collection of videos and their
@@ -158,6 +158,33 @@ class LabeledVideoDataset(LabeledDataset):
             class
         """
         return super().get_dataset_exporter_cls()
+    
+class LabeledAudioDataset(LabeledDataset):
+    """Base type for datasets that represent a collection of images and their
+    associated labels.
+    """
+
+    def get_dataset_importer_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.importers.LabeledAudioDatasetImporter`
+        class for importing datasets of this type from disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.importers.LabeledAudioDatasetImporter`
+            class
+        """
+        return super().get_dataset_importer_cls()
+
+    def get_dataset_exporter_cls(self):
+        """Returns the
+        :class:`fiftyone.utils.data.exporters.LabeledAudioDatasetExporter`
+        class for exporting datasets of this type to disk.
+
+        Returns:
+            a :class:`fiftyone.utils.data.exporters.LabeledAudioDatasetExporter`
+            class
+        """
+        return super().get_dataset_exporter_cls()
 
 
 class ImageClassificationDataset(LabeledImageDataset):
@@ -170,6 +197,13 @@ class ImageClassificationDataset(LabeledImageDataset):
 
 class VideoClassificationDataset(LabeledVideoDataset):
     """Base type for datasets that represent a collection of videos and a set
+    of associated classification labels.
+    """
+
+    pass
+
+class AudioClassificationDataset(LabeledAudioDataset):
+    """Base type for datasets that represent a collection of audios and a set
     of associated classification labels.
     """
 
@@ -357,6 +391,26 @@ class VideoClassificationDirectoryTree(VideoClassificationDataset):
         import fiftyone.utils.data as foud
 
         return foud.VideoClassificationDirectoryTreeExporter
+    
+class AudioClassificationDirectoryTree(AudioClassificationDataset):
+    """A directory tree whose subfolders define an image classification
+    dataset.
+
+    See :ref:`this page <AudioClassificationDirectoryTree-import>` for
+    importing datasets of this type, and see
+    :ref:`this page <AudioClassificationDirectoryTree-export>` for exporting
+    datasets of this type.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.AudioClassificationDirectoryTreeImporter
+
+    def get_dataset_exporter_cls(self):
+        import fiftyone.utils.data as foud
+
+        return foud.AudioClassificationDirectoryTreeExporter
 
 
 class TFImageClassificationDataset(ImageClassificationDataset):

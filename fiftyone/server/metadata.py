@@ -10,6 +10,7 @@ import logging
 import shutil
 import struct
 import typing as t
+import wave
 
 from functools import reduce
 
@@ -24,6 +25,7 @@ import fiftyone.core.fields as fof
 import fiftyone.core.labels as fol
 from fiftyone.core.collections import SampleCollection
 from fiftyone.utils.utils3d import OrthographicProjectionMetadata
+from fiftyone.utils.audio import SpectogramMetadata
 
 import fiftyone.core.media as fom
 
@@ -33,6 +35,8 @@ _ADDITIONAL_MEDIA_FIELDS = {
     fol.Heatmap: "map_path",
     fol.Segmentation: "mask_path",
     OrthographicProjectionMetadata: "filepath",
+    SpectogramMetadata: "spec_path",
+
 }
 _FFPROBE_BINARY_PATH = shutil.which("ffprobe")
 
@@ -43,6 +47,7 @@ class MediaType(Enum):
     group = "group"
     point_cloud = "point-cloud"
     video = "video"
+    audio = "audio"
 
 
 async def get_metadata(
@@ -65,7 +70,7 @@ async def get_metadata(
     filepath = sample["filepath"]
     metadata = sample.get("metadata", None)
 
-    opm_field, additional_fields = _get_additional_media_fields(collection)
+    opm_field, spec_field, additional_fields = _get_additional_media_fields(collection)
 
     filepath_result, filepath_source, urls = _create_media_urls(
         collection,
@@ -73,15 +78,15 @@ async def get_metadata(
         url_cache,
         additional_fields=additional_fields,
         opm_field=opm_field,
+        spec_field=spec_field,
     )
     if filepath_result is not None:
         filepath = filepath_result
 
-    is_video = media_type == fom.VIDEO
 
     # If sufficient pre-existing metadata exists, use it
     if filepath not in metadata_cache and metadata:
-        if is_video:
+        if media_type == fom.VIDEO:
             width = metadata.get("frame_width", None)
             height = metadata.get("frame_height", None)
             frame_rate = metadata.get("frame_rate", None)
@@ -91,6 +96,9 @@ async def get_metadata(
                     aspect_ratio=width / height,
                     frame_rate=frame_rate,
                 )
+        elif media_type == fom.AUDIO:
+            metadata_cache[filepath] = dict(aspect_ratio=1.333333333)
+            
         else:
             width = metadata.get("width", None)
             height = metadata.get("height", None)
@@ -104,7 +112,7 @@ async def get_metadata(
         try:
             # Retrieve media metadata from disk
             metadata_cache[filepath] = await read_metadata(
-                filepath_source, is_video
+                filepath_source, media_type
             )
         except Exception as exc:
             # Immediately fail so the user knows they should install FFmpeg
@@ -113,7 +121,7 @@ async def get_metadata(
 
             # Something went wrong (ie non-existent file), so we gracefully
             # return some placeholder metadata so the App grid can be rendered
-            if is_video:
+            if fom.VIDEO == media_type:
                 metadata_cache[filepath] = dict(aspect_ratio=1, frame_rate=30)
             else:
                 metadata_cache[filepath] = dict(aspect_ratio=1)
@@ -121,7 +129,7 @@ async def get_metadata(
     return dict(urls=urls, **metadata_cache[filepath])
 
 
-async def read_metadata(filepath, is_video):
+async def read_metadata(filepath, media_type):
     """Calculates the metadata for the given local media path.
 
     Args:
@@ -131,12 +139,28 @@ async def read_metadata(filepath, is_video):
     Returns:
         dict
     """
-    if is_video:
+    if media_type == fom.VIDEO:
         info = await get_stream_info(filepath)
         return dict(
             aspect_ratio=info.frame_size[0] / info.frame_size[1],
             frame_rate=info.frame_rate,
         )
+    elif media_type == fom.AUDIO:
+        return dict(aspect_ratio=1)
+        with wave.open(filepath, 'rb') as wav_file:
+            channels = wav_file.getnchannels()
+            sample_width = wav_file.getsampwidth()
+            frame_rate = wav_file.getframerate()
+            num_frames = wav_file.getnframes()
+            duration = num_frames / float(frame_rate)
+            return  {
+                'Channels': channels,
+                'Sample Width': sample_width,
+                'Frame Rate': frame_rate,
+                'Number of Frames': num_frames,
+                'Duration': duration
+            }
+
 
     async with aiofiles.open(filepath, "rb") as f:
         width, height = await get_image_dimensions(f)
@@ -384,6 +408,7 @@ def _create_media_urls(
     cache: t.Dict,
     additional_fields: t.Optional[t.List[str]] = None,
     opm_field: t.Optional[str] = None,
+    spec_field: t.Optional[str] = None,
 ) -> t.Dict[str, str]:
     filepath_source = None
     media_fields = collection.app_config.media_fields.copy()
@@ -400,6 +425,15 @@ def _create_media_urls(
         if use_opm
         else None
     )
+    use_spec = (
+        collection.media_type == fom.AUDIO
+        or collection.media_type == fom.GROUP
+    )
+    spec_filepath = (
+        f"{spec_field}.{_ADDITIONAL_MEDIA_FIELDS[SpectogramMetadata]}"
+        if use_spec
+        else None
+    )
     filepath = None
     media_urls = []
 
@@ -412,10 +446,13 @@ def _create_media_urls(
         if use_opm and opm_filepath == field:
             filepath_source = path
             filepath = path
-        elif field == "filepath":
+        if use_spec and spec_filepath == field:
+            filepath_source = sample["spectogram_metadata"]["spec_path"]
+            filepath = sample["spectogram_metadata"]["spec_path"]
+        elif field == "filepath" and collection.media_type != fom.AUDIO:
             filepath_source = path
             filepath = path
-
+        
         media_urls.append(dict(field=field, url=path))
 
     return filepath, filepath_source, media_urls
@@ -426,6 +463,7 @@ def _get_additional_media_fields(
 ) -> t.List[str]:
     additional = []
     opm_field = None
+    spec_field = None
     for cls, subfield_name in _ADDITIONAL_MEDIA_FIELDS.items():
         for field_name, field in collection.get_field_schema(
             flat=True
@@ -438,9 +476,12 @@ def _get_additional_media_fields(
             if cls == OrthographicProjectionMetadata:
                 opm_field = field_name
 
+            if cls == SpectogramMetadata:
+                spec_field = field_name
+
             additional.append(f"{field_name}.{subfield_name}")
 
-    return opm_field, additional
+    return opm_field, spec_field, additional
 
 
 def _deep_get(sample, keys, default=None):

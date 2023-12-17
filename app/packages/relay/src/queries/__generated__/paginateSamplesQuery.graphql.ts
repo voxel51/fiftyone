@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<ee62f8703f3753de2c9f5df4417fa1a9>>
+ * @generated SignedSource<<69ab9a70d6edfc4082fd7471ba5a26e6>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -33,6 +33,15 @@ export type paginateSamplesQuery$data = {
     readonly edges: ReadonlyArray<{
       readonly cursor: string;
       readonly node: {
+        readonly __typename: "AudioSample";
+        readonly aspectRatio: number;
+        readonly id: string;
+        readonly sample: object;
+        readonly urls: ReadonlyArray<{
+          readonly field: string;
+          readonly url: string | null;
+        }>;
+      } | {
         readonly __typename: "ImageSample";
         readonly aspectRatio: number;
         readonly id: string;
@@ -165,6 +174,12 @@ v11 = {
   "storageKey": null
 },
 v12 = [
+  (v9/*: any*/),
+  (v8/*: any*/),
+  (v10/*: any*/),
+  (v11/*: any*/)
+],
+v13 = [
   {
     "alias": null,
     "args": [
@@ -275,13 +290,14 @@ v12 = [
               },
               {
                 "kind": "InlineFragment",
-                "selections": [
-                  (v9/*: any*/),
-                  (v8/*: any*/),
-                  (v10/*: any*/),
-                  (v11/*: any*/)
-                ],
+                "selections": (v12/*: any*/),
                 "type": "PointCloudSample",
+                "abstractKey": null
+              },
+              {
+                "kind": "InlineFragment",
+                "selections": (v12/*: any*/),
+                "type": "AudioSample",
                 "abstractKey": null
               },
               {
@@ -334,7 +350,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "paginateSamplesQuery",
-    "selections": (v12/*: any*/),
+    "selections": (v13/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -352,19 +368,19 @@ return {
     ],
     "kind": "Operation",
     "name": "paginateSamplesQuery",
-    "selections": (v12/*: any*/)
+    "selections": (v13/*: any*/)
   },
   "params": {
-    "cacheID": "d65e8259e9d935782ca905d80e22550f",
+    "cacheID": "da49b593e72efcd53cd67c385b6bf432",
     "id": null,
     "metadata": {},
     "name": "paginateSamplesQuery",
     "operationKind": "query",
-    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
+    "text": "query paginateSamplesQuery(\n  $count: Int = 20\n  $after: String = null\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: BSON = null\n  $extendedStages: BSON\n  $paginationData: Boolean = true\n) {\n  samples(dataset: $dataset, view: $view, first: $count, after: $after, filter: $filter, filters: $filters, extendedStages: $extendedStages, paginationData: $paginationData) {\n    pageInfo {\n      hasNextPage\n    }\n    edges {\n      cursor\n      node {\n        __typename\n        ... on ImageSample {\n          id\n          aspectRatio\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on PointCloudSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on AudioSample {\n          aspectRatio\n          id\n          sample\n          urls {\n            field\n            url\n          }\n        }\n        ... on VideoSample {\n          id\n          aspectRatio\n          frameRate\n          frameNumber\n          sample\n          urls {\n            field\n            url\n          }\n        }\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "e8ef27726824c7362be7589892f01f2a";
+(node as any).hash = "14018ed5470456fd00ad91e92facb347";
 
 export default node;

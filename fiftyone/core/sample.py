@@ -71,7 +71,7 @@ class _SampleMixin(object):
         if self.media_type == fomm.VIDEO:
             return iter(self._frames)
 
-        raise ValueError("Image samples are not iterable")
+        raise ValueError("Image samples are not iterable") #fix
 
     @property
     def dataset_id(self):
@@ -132,7 +132,7 @@ class _SampleMixin(object):
 
         super().clear_field(field_name)
 
-    def compute_metadata(self, overwrite=False, skip_failures=False):
+    def compute_metadata(self, overwrite=False, skip_failures=False): #fix
         """Populates the ``metadata`` field of the sample.
 
         Args:

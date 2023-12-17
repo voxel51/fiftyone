@@ -4,6 +4,7 @@ import {
   ImaVidLooker,
   ImageLooker,
   PcdLooker,
+  AudioLooker,
   Sample,
   VideoLooker,
 } from "@fiftyone/looker";
@@ -82,6 +83,7 @@ export default <T extends AbstractLooker>(
           | typeof ImageLooker
           | typeof ImaVidLooker
           | typeof PcdLooker
+          | typeof AudioLooker
           | typeof VideoLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
@@ -95,7 +97,9 @@ export default <T extends AbstractLooker>(
         // split("?")[0] is to remove query params, if any, from signed urls
         if (urls.filepath?.split("?")[0].endsWith(".pcd")) {
           constructor = PcdLooker;
-        } else if (mimeType !== null) {
+        } else if (urls.filepath?.split("?")[0].endsWith(".wav")){
+          constructor = AudioLooker
+        }else if (mimeType !== null) {
           const isVideo = mimeType.startsWith("video/");
 
           if (isVideo && (isFrame || isPatch)) {
@@ -125,6 +129,20 @@ export default <T extends AbstractLooker>(
           if (orthographicProjectionField) {
             sampleMediaFilePath = urls[
               `${orthographicProjectionField}.filepath`
+            ] as string;
+          }
+        }
+
+        if (constructor === AudioLooker) {
+          const spectogramField = Object.entries(sample)
+            .find(
+              (el) =>
+                el[1] && el[1]["_cls"] === "SpectogramMetadata"
+            )
+            ?.at(0) as string | undefined;
+          if (spectogramField) {
+            sampleMediaFilePath = urls[
+              `${spectogramField}.spec_path`
             ] as string;
           }
         }

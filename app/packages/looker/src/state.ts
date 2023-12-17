@@ -236,6 +236,8 @@ export interface ImaVidConfig extends BaseConfig {
 
 export type PcdConfig = BaseConfig;
 
+export type AudioConfig = BaseConfig;
+
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
   zoom: boolean;
@@ -259,6 +261,8 @@ export interface ImaVidOptions extends BaseOptions {
 }
 
 export type PcdOptions = BaseOptions;
+
+export type AudioOptions = BaseOptions;
 
 export interface TooltipOverlay {
   color: string;
@@ -395,6 +399,12 @@ export interface PcdState extends BaseState {
   SHORTCUTS: Readonly<ControlMap<PcdState>>;
 }
 
+export interface AudioState extends BaseState {
+  config: AudioConfig;
+  options: AudioOptions;
+  SHORTCUTS: Readonly<ControlMap<AudioState>>;
+}
+
 export interface Point {
   point: [number | NONFINITE, number | NONFINITE];
   label: string;
@@ -475,6 +485,10 @@ export const DEFAULT_VIDEO_OPTIONS: VideoOptions = {
 };
 
 export const DEFAULT_PCD_OPTIONS: PcdOptions = {
+  ...DEFAULT_BASE_OPTIONS,
+};
+
+export const DEFAULT_AUDIO_OPTIONS: AudioOptions = {
   ...DEFAULT_BASE_OPTIONS,
 };
 

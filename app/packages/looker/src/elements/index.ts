@@ -9,11 +9,13 @@ import {
   PcdState,
   StateUpdate,
   VideoState,
+  AudioState,
 } from "../state";
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
 import * as pcd from "./pcd";
+import * as audio from "./audio";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 import * as imavid from "./imavid";
@@ -319,6 +321,62 @@ export const getPcdElements: GetElements<PcdState> = (
   };
 
   return createElementsTree<PcdState, common.LookerElement<PcdState>>(
+    config,
+    elements,
+    update,
+    dispatchEvent
+  );
+};
+
+export const getAudioElements: GetElements<AudioState> = (
+  config,
+  update,
+  dispatchEvent
+) => {
+  const elements = {
+    node: common.LookerElement,
+    children: [
+      {
+        node: audio.AudioElement,
+      },
+      {
+        node: common.CanvasElement,
+      },
+      {
+        node: common.ErrorElement,
+      },
+      { node: common.TagsElement },
+      {
+        node: common.ThumbnailSelectorElement,
+      },
+      {
+        node: common.ControlsElement,
+        children: [
+          { node: frame.FrameNumberElement },
+          { node: common.PlusElement },
+          { node: common.MinusElement },
+          { node: common.CropToContentButtonElement },
+          { node: common.FullscreenButtonElement },
+          { node: common.ToggleOverlaysButtonElement },
+          { node: common.JSONButtonElement },
+          { node: common.OptionsButtonElement },
+          { node: common.HelpButtonElement },
+        ],
+      },
+      {
+        node: common.OptionsPanelElement,
+        children: [
+          { node: common.OnlyShowHoveredOnLabelOptionElement },
+          { node: common.ShowConfidenceOptionElement },
+          { node: common.ShowIndexOptionElement },
+          { node: common.ShowLabelOptionElement },
+          { node: common.ShowTooltipOptionElement },
+        ],
+      },
+    ],
+  };
+
+  return createElementsTree<AudioState, common.LookerElement<AudioState>>(
     config,
     elements,
     update,
