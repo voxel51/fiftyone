@@ -13,6 +13,8 @@ import LoadingDots from "../Loading/LoadingDots";
 import SearchResults, { UseSearch } from "./SearchResults";
 import style from "./Selector.module.css";
 
+export class SelectorValidationError extends Error {}
+
 export interface SelectorProps<T> {
   id?: string;
   value?: string;
@@ -66,11 +68,18 @@ function Selector<T>(props: SelectorProps<T>) {
           ? valuesRef.current[active]
           : valuesRef.current.find((v) => toKey(v) === search);
 
-      const result = await onSelect(value ? toKey(value) : search, value);
-      if (result !== undefined) {
-        local.current = result;
+      try {
+        const result = await onSelect(value ? toKey(value) : search, value);
+        if (result !== undefined) {
+          local.current = result;
+        }
+        setEditing(false);
+      } catch (error) {
+        if (error instanceof SelectorValidationError) {
+          return;
+        }
+        throw error;
       }
-      setEditing(false);
     };
   }, [active, onSelect, toKey, valuesRef]);
 
