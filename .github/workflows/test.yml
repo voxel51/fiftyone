@@ -59,7 +59,9 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: "pip"
           cache-dependency-path: |
-            pyproject.toml
+            requirements/common.txt
+            requirements/github.txt
+            requirements/test.txt
       - name: Install requirements
         if: steps.pip-cache.outputs.cache-hit != true
         run: |

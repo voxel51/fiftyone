@@ -1624,7 +1624,7 @@ function delim(arr, str) {
 // MAIN
 //////////
 
-const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/fiftyone/plugins/api");
+const PLUGIN_RST_DOCS = path.join(__dirname, "..", "docs/source/plugins/api");
 
 const project = new DocProject(docs, RstFile);
 project.generate();
