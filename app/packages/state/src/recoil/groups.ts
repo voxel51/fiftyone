@@ -25,7 +25,12 @@ import {
 import { graphQLSelectorFamily } from "recoil-relay";
 import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { mediaType, similarityParameters } from "./atoms";
+import {
+  mediaType,
+  selectedLabels,
+  selectedSamples,
+  similarityParameters,
+} from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
@@ -127,13 +132,19 @@ export const groupSlice = selector<string>({
     if (get(similarityParameters)) {
       // avoid this pattern
       const unsubscribe = foq.subscribeBefore(() => {
-        getSessionRef().sessionGroupSlice =
+        const session = getSessionRef();
+        session.sessionGroupSlice =
           slice instanceof DefaultValue ? defaultSlice : slice;
+        session.selectedSamples = new Set();
+        session.selectedLabels = [];
+
         unsubscribe();
       });
       reset(similarityParameters);
     } else {
       set(sessionGroupSlice, slice);
+      set(selectedLabels, []);
+      set(selectedSamples, new Set());
     }
   },
 });
