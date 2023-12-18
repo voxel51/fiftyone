@@ -33,14 +33,13 @@ test.describe("lightning", () => {
     );
   });
 
-  test.beforeEach(async ({ page, fiftyoneLoader }) => {
+  test.beforeEach(async ({ grid, page, fiftyoneLoader }) => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
-  });
-
-  test("assert enabled fields", async ({ grid, sidebar }) => {
     await grid.actionsRow.toggleDisplayOptions();
     await grid.actionsRow.displayActions.setLightningMode("enable");
+  });
 
+  test("assert enabled fields", async ({ sidebar }) => {
     await sidebar.asserter.assertFieldsEnabled([
       "tags",
       "metadata.mime_type",
