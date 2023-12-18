@@ -126,7 +126,7 @@ def apply_model(
         fov.validate_image_collection(samples)
     elif samples.media_type == fom.GROUP:
         raise fom.SelectGroupSlicesError((fom.IMAGE, fom.VIDEO))
-    elif samples.media_type != fom.VIDEO:
+    elif samples.media_type != fom.VIDEO or samples.media_type != fom.AUDIO :
         raise fom.MediaTypeError(
             "Unsupported media type '%s'" % samples.media_type
         )

@@ -262,6 +262,77 @@ const makeAcquirer = (
   ];
 };
 
+export function getWavSource(sources: { [path: string]: string }): string {
+  for (const path in sources) {
+    if (sources.hasOwnProperty(path)) {
+      if (path.endsWith(".wav")) {
+        return path;
+      }
+    }
+  }
+  return "error";
+}
+
+const makeAcquirerAudio = (
+  maxAudios: number
+): [() => Promise<[HTMLAudioElement, () => void]>, () => void] => {
+  let AUDIOS: HTMLAudioElement[] = [];
+  let QUEUE = [];
+  let FREE = [];
+
+  const clearAudio = (audio: HTMLAudioElement) => {
+    audio.muted = true;
+    audio.preload = "metadata";
+    audio.loop = false;
+  };
+
+  const release = (audio: HTMLAudioElement) => {
+    return () => {
+      if (!audio.paused) {
+        throw new Error("Release playing audio");
+      }
+
+      clearAudio(audio);
+      if (QUEUE.length) {
+        const resolve = QUEUE.shift();
+        resolve([audio, release(audio)]);
+      } else {
+        FREE.push(audio);
+      }
+    };
+  };
+
+  return [
+    (): Promise<[HTMLAudioElement, () => void]> => {
+      if (FREE.length) {
+        const audio = FREE.shift();
+        return Promise.resolve([audio, release(audio)]);
+      }
+
+      if (AUDIOS.length < maxAudios) {
+        const audio = document.createElement("audio");
+        audio.crossOrigin = "Anonymous";
+        audio.preload = "metadata";
+        audio.muted = true;
+        audio.loop = false;
+
+        AUDIOS.push(audio);
+        return Promise.resolve([audio, release(audio)]);
+      }
+
+      return new Promise<[HTMLAudioElement, () => void]>((resolve) => {
+        QUEUE.push(resolve);
+      });
+    },
+    () => {
+      QUEUE.forEach(clearAudio);
+      FREE = [];
+      QUEUE = [];
+      AUDIOS = [];
+    },
+  ];
+};
+
 const [acquirePlayer, freePlayer] = makeAcquirer(1);
 
 const [acquireThumbnailer, freeThumbnailers] = makeAcquirer(6);
@@ -271,4 +342,15 @@ export { acquirePlayer, acquireThumbnailer };
 export const freeVideos = () => {
   freePlayer();
   freeThumbnailers();
+};
+
+const [acquirePlayerAudio, freePlayerAudio] = makeAcquirerAudio(1);
+
+const [acquireThumbnailerAudio, freeThumbnailersAudio] = makeAcquirerAudio(6);
+
+export { acquirePlayerAudio, acquireThumbnailerAudio };
+
+export const freeAudios = () => {
+  freePlayerAudio();
+  freeThumbnailersAudio();
 };

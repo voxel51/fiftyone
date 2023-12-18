@@ -154,7 +154,7 @@ def validate_field_name(field_name, media_type=None, is_frame_field=False):
         )
 
     if (
-        media_type == fom.VIDEO
+        (media_type == fom.VIDEO or media_type == fom.AUDIO)
         and not is_frame_field
         and field_name == "frames"
     ):

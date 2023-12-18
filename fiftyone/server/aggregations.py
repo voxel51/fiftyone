@@ -278,7 +278,7 @@ def _resolve_path_aggregation(
             data["expanded_field_count"] = _count_expanded_fields(
                 view._root_dataset
             )
-            if view._root_dataset.media_type == fom.VIDEO:
+            if view._root_dataset.media_type == fom.VIDEO or view._root_dataset.media_type == fom.AUDIO:
                 data["frame_label_field_count"] = len(
                     view._root_dataset.get_frame_field_schema(
                         embedded_doc_type=fol.Label

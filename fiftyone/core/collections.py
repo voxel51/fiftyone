@@ -629,7 +629,7 @@ class SampleCollection(object):
 
     def _get_frames_bytes(self):
         """Computes the total size of the frame documents in the collection."""
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return None
 
         # Impl note: this pipeline does not suffer the same fate as
@@ -670,7 +670,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping frame IDs to document sizes (in bytes)
         for each frame in the video collection.
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields() :
             return None
 
         pipeline = [
@@ -686,7 +686,7 @@ class SampleCollection(object):
         """Returns a dictionary mapping sample IDs to total frame document
         sizes (in bytes) for each sample in the video collection.
         """
-        if not self._contains_videos():
+        if not self._has_frame_fields():
             return None
 
         pipeline = [
@@ -9048,9 +9048,10 @@ class SampleCollection(object):
         if rel_dir is not None:
             rel_dir = fost.normalize_path(rel_dir) + os.path.sep
 
-        contains_videos = self._contains_videos(any_slice=True)
+        contains_frames = self._has_frame_fields(any_slice=True)
+        contains_videos = contains_frames
         write_frame_labels = (
-            contains_videos and include_frames and frame_labels_dir is not None
+            contains_frames and include_frames and frame_labels_dir is not None
         )
 
         d = {
@@ -9066,7 +9067,7 @@ class SampleCollection(object):
 
         d["sample_fields"] = self._serialize_field_schema()
 
-        if contains_videos:
+        if contains_frames:
             d["frame_fields"] = self._serialize_frame_field_schema()
 
         d["info"] = self.info
@@ -9777,9 +9778,12 @@ class SampleCollection(object):
 
     def _contains_videos(self, any_slice=False):
         return self._contains_media_type(fom.VIDEO, any_slice=any_slice)
+    
+    def _contains_audios(self, any_slice=False):
+        return self._contains_media_type(fom.AUDIO, any_slice=any_slice)
 
     def _has_frame_fields(self):
-        return self._contains_videos(any_slice=True)
+        return self._contains_videos(any_slice=True) or self._contains_audios(any_slice=True)
 
     def _handle_id_fields(self, field_name):
         return _handle_id_fields(self, field_name)

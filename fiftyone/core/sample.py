@@ -40,27 +40,29 @@ def get_default_sample_fields(include_private=False, use_db_fields=False):
 
 class _SampleMixin(object):
     def __getattr__(self, name):
-        if name == "frames" and self.media_type == fomm.VIDEO:
-            return self._frames
+        if name == "frames":
+            if self.media_type== fomm.AUDIO or self.media_type == fomm.VIDEO:
+                return self._frames
 
         return super().__getattr__(name)
 
     def __setattr__(self, name, value):
-        if name == "frames" and self.media_type == fomm.VIDEO:
-            self.set_field("frames", value)
-            return
+        if name == "frames":
+            if self.media_type== fomm.AUDIO or self.media_type == fomm.VIDEO:
+                self.set_field("frames", value)
+                return
 
         self._secure_media(name, value)
         super().__setattr__(name, value)
 
     def __getitem__(self, field_name):
-        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO) and fofu.is_frame_number(field_name):
             return self.frames[field_name]
 
         return super().__getitem__(field_name)
 
     def __setitem__(self, field_name, value):
-        if self.media_type == fomm.VIDEO and fofu.is_frame_number(field_name):
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO) and fofu.is_frame_number(field_name):
             self.frames[field_name] = value
             return
 
@@ -68,7 +70,7 @@ class _SampleMixin(object):
         super().__setitem__(field_name, value)
 
     def __iter__(self):
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             return iter(self._frames)
 
         raise ValueError("Image samples are not iterable") #fix
@@ -93,7 +95,7 @@ class _SampleMixin(object):
         return self._media_type
 
     def get_field(self, field_name):
-        if field_name == "frames" and self.media_type == fomm.VIDEO:
+        if field_name == "frames" and (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             return self._frames
 
         return super().get_field(field_name)
@@ -106,7 +108,7 @@ class _SampleMixin(object):
         validate=True,
         dynamic=False,
     ):
-        if field_name == "frames" and self.media_type == fomm.VIDEO:
+        if field_name == "frames" and (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self.frames.clear()
             self.frames.update(
                 value,
@@ -126,7 +128,7 @@ class _SampleMixin(object):
         )
 
     def clear_field(self, field_name):
-        if field_name == "frames" and self.media_type == fomm.VIDEO:
+        if field_name == "frames" and (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self.frames.clear()
             return
 
@@ -226,9 +228,9 @@ class _SampleMixin(object):
             labels = _apply_confidence_thresh(labels, confidence_thresh)
 
         if _is_frames_dict(labels):
-            if self.media_type != fomm.VIDEO:
+            if (self.media_type != fomm.VIDEO or self.media_type != fomm.AUDIO):
                 raise ValueError(
-                    "Cannot add frame labels to non-video samples"
+                    "Cannot add frame labels to non-video or non-audio samples"
                 )
 
             if isinstance(next(iter(labels.values())), dict):
@@ -353,13 +355,13 @@ class _SampleMixin(object):
                 "media type '%s'" % (sample.media_type, self.media_type)
             )
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             (
                 fields,
                 frame_fields,
                 omit_fields,
                 omit_frame_fields,
-            ) = self._parse_fields_video(
+            ) = self._parse_fields_frames(
                 fields=fields, omit_fields=omit_fields
             )
 
@@ -374,7 +376,7 @@ class _SampleMixin(object):
             dynamic=dynamic,
         )
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self.frames.merge(
                 sample.frames,
                 fields=frame_fields,
@@ -400,19 +402,19 @@ class _SampleMixin(object):
         Returns:
             a :class:`Sample`
         """
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             (
                 fields,
                 frame_fields,
                 omit_fields,
                 omit_frame_fields,
-            ) = self._parse_fields_video(
+            ) = self._parse_fields_frames(
                 fields=fields, omit_fields=omit_fields
             )
 
         sample = super().copy(fields=fields, omit_fields=omit_fields)
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             sample.frames.update(
                 {
                     frame_number: frame.copy(
@@ -437,7 +439,7 @@ class _SampleMixin(object):
         """
         d = super().to_dict(include_private=include_private)
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             if include_frames:
                 d["frames"] = self.frames._to_frames_dict(
                     include_private=include_private
@@ -459,7 +461,7 @@ class _SampleMixin(object):
                 % (self.media_type, new_media_type)
             )
 
-    def _parse_fields_video(self, fields=None, omit_fields=None):
+    def _parse_fields_frames(self, fields=None, omit_fields=None):
         if fields is not None:
             fields, frame_fields = fou.split_frame_fields(fields)
         else:
@@ -505,14 +507,14 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             filepath=filepath, tags=tags, metadata=metadata, **kwargs
         )
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self._frames = fofr.Frames(self)
         else:
             self._frames = None
 
     def __repr__(self):
         kwargs = {}
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             kwargs["frames"] = self._frames
 
         return self._doc.fancy_repr(
@@ -534,7 +536,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 its field values. This is necessary if new fields may have been
                 added to the dataset schema
         """
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self.frames.reload(hard=hard)
 
         super().reload(hard=hard)
@@ -549,7 +551,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
                 "Cannot save a sample that has not been added to a dataset"
             )
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             frame_ops = self.frames._save(deferred=deferred)
         else:
             frame_ops = []
@@ -591,7 +593,7 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         """
         sample = super().from_doc(doc, dataset=dataset)
 
-        if sample.media_type == fomm.VIDEO:
+        if (sample.media_type == fomm.VIDEO or sample.media_type == fomm.AUDIO):
             sample._frames = fofr.Frames(sample)
 
         return sample
@@ -611,12 +613,12 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
         if media_type is None:
             media_type = fomm.get_media_type(d.get("filepath", ""))
 
-        if media_type == fomm.VIDEO:
+        if (media_type == fomm.VIDEO or media_type == fomm.AUDIO):
             frames = d.pop("frames", {})
 
         sample = super().from_dict(d)
 
-        if sample.media_type == fomm.VIDEO:
+        if (sample.media_type == fomm.VIDEO or sample.media_type == fomm.AUDIO):
             for fn, fd in frames.items():
                 sample.frames[int(fn)] = fofr.Frame.from_dict(fd)
 
@@ -675,7 +677,7 @@ class SampleView(_SampleMixin, DocumentView):
             filtered_fields=filtered_fields,
         )
 
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             self._frames = fofr.FramesView(self)
         else:
             self._frames = None
@@ -687,7 +689,7 @@ class SampleView(_SampleMixin, DocumentView):
             select_fields = None
 
         kwargs = {}
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             kwargs["frames"] = self._frames
 
         return self._doc.fancy_repr(
@@ -720,7 +722,7 @@ class SampleView(_SampleMixin, DocumentView):
                 )
             )
 
-            if include_frames and self.media_type == fomm.VIDEO:
+            if include_frames and (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
                 field_names.add("frames")
 
             d = {k: v for k, v in d.items() if k in field_names}
@@ -738,7 +740,7 @@ class SampleView(_SampleMixin, DocumentView):
         super().save()
 
     def _save(self, deferred=False):
-        if self.media_type == fomm.VIDEO:
+        if (self.media_type == fomm.VIDEO or self.media_type == fomm.AUDIO):
             frame_ops = self.frames._save(deferred=deferred)
         else:
             frame_ops = []

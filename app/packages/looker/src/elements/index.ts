@@ -352,7 +352,13 @@ export const getAudioElements: GetElements<AudioState> = (
       {
         node: common.ControlsElement,
         children: [
-          { node: frame.FrameNumberElement },
+          { node: audio.SeekBarElement },
+          { node: audio.SeekBarThumbElement },
+          { node: audio.PlayButtonElement },
+          { node: audio.TimeElement },
+          audio.PLAYBACK_RATE,
+          audio.VOLUME,
+          { node: audio.SupportLockButtonElement },
           { node: common.PlusElement },
           { node: common.MinusElement },
           { node: common.CropToContentButtonElement },

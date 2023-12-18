@@ -8,6 +8,7 @@ import {
   FrameState,
   ImageState,
   VideoState,
+  AudioState,
 } from "./state";
 import { getContainingBox, mergeUpdates, snapBox } from "./util";
 
@@ -42,7 +43,7 @@ const adjustBox = (
 };
 
 export const zoomToContent = <
-  State extends FrameState | ImageState | VideoState
+  State extends FrameState | ImageState | VideoState | AudioState
 >(
   state: Readonly<State>,
   overlays: Overlay<State>[]

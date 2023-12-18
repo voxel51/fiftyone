@@ -21,6 +21,7 @@ from fiftyone.core.odm import DynamicEmbeddedDocument
 import fiftyone.core.fields as fof
 import fiftyone.core.media as fom
 import fiftyone.core.utils as fou
+import wave
 
 
 logger = logging.getLogger(__name__)
@@ -207,6 +208,51 @@ class VideoMetadata(Metadata):
             total_frame_count=stream_info.total_frame_count,
             duration=stream_info.duration,
             encoding_str=stream_info.encoding_str,
+        )
+    
+class AudioMetadata(Metadata):
+    """Class for storing metadata about audio samples.
+
+    Args:
+        size_bytes (None): the size of the audio on disk, in bytes
+        frame_rate (None): the frame rate of the video
+        total_frame_count (None): the total number of frames in the video
+        duration (None): the duration of the video, in seconds
+    """
+
+
+    frame_rate = fof.FloatField()
+    channels = fof.IntField()
+    sample_width = fof.FloatField
+    total_frame_count = fof.IntField()
+    duration = fof.FloatField()
+
+
+    @classmethod
+    def build_for(cls, audio_path_or_url,):
+        """Builds an :class:`AudioMetadata` object for the given video.
+
+        Args:
+            audio_path_or_url: the path to a audio on disk or a URL
+            mime_type (None): the MIME type of the image. If not provided, it
+                will be guessed
+
+        Returns:
+            a :class:`AudioMetadata`
+        """
+        with wave.open(audio_path_or_url, 'rb') as wav_file:
+            channels = wav_file.getnchannels()
+            sample_width = wav_file.getsampwidth()
+            frame_rate = wav_file.getframerate()
+            total_frame_count = wav_file.getnframes()
+            duration = total_frame_count / float(frame_rate)
+        wav_file.close()
+        return cls(
+            channels=channels,
+            sample_width=sample_width,
+            frame_rate =frame_rate,
+            total_frame_count=total_frame_count,
+            duration=duration
         )
 
 
@@ -423,6 +469,8 @@ def _get_metadata(filepath, media_type):
         metadata = ImageMetadata.build_for(filepath)
     elif media_type == fom.VIDEO:
         metadata = VideoMetadata.build_for(filepath)
+    elif media_type == fom.AUDIO:
+        metadata = AudioMetadata.build_for(filepath)
     else:
         metadata = Metadata.build_for(filepath)
 

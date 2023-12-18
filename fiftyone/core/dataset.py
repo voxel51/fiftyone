@@ -418,7 +418,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _set_media_type(self, media_type):
         self._doc.media_type = media_type
 
-        if self._contains_videos(any_slice=True):
+        if self._has_frame_fields():
             self._init_frames()
 
         if media_type == fom.GROUP:
@@ -442,6 +442,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 doc_type = fome.ImageMetadata
             elif media_type == fom.VIDEO:
                 doc_type = fome.VideoMetadata
+            elif media_type == fom.AUDIO:
+                doc_type = fome.AudioMetadata
             else:
                 doc_type = fome.Metadata
 
@@ -2442,6 +2444,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         validate=True,
         num_samples=None,
     ):
+        breakpoint()
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -2474,6 +2477,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
+        breakpoint()
         batcher = fou.DynamicBatcher(
             samples,
             target_latency=0.2,
@@ -2490,6 +2494,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     batch, expand_schema, dynamic, validate
                 )
                 sample_ids.extend(_ids)
+        breakpoint()
 
         return sample_ids
 
@@ -2564,7 +2569,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
-            if sample.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO or sample.media_type == fom.AUDIO:
                 sample.frames.save()
 
         return [str(d["_id"]) for d in dicts]
@@ -2627,7 +2632,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             doc = self._sample_dict_to_doc(d)
             sample._set_backing_doc(doc, dataset=self)
 
-            if sample.media_type == fom.VIDEO:
+            if sample.media_type == fom.VIDEO or sample.media_type == fom.AUDIO:
                 sample.frames.save()
 
     def _make_dict(self, sample, include_id=False):
@@ -3699,14 +3704,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear(self, view=None, sample_ids=None):
         if view is not None:
-            contains_videos = view._contains_videos(any_slice=True)
+            contains_frames = view._has_frame_fields()
 
             if view.media_type == fom.GROUP:
                 view = view.select_group_slices(_allow_mixed=True)
 
             sample_ids = view.values("id")
         else:
-            contains_videos = self._contains_videos(any_slice=True)
+            contains_frames = self._has_frame_fields()
 
         if sample_ids is not None:
             d = {"_id": {"$in": [ObjectId(_id) for _id in sample_ids]}}
@@ -3718,7 +3723,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             self._sample_collection_name, sample_ids=sample_ids
         )
 
-        if contains_videos:
+        if contains_frames:
             self._clear_frames(sample_ids=sample_ids)
 
     def _clear_groups(self, view=None, group_ids=None):
@@ -3787,7 +3792,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _clear_frames(self, view=None, sample_ids=None, frame_ids=None):
         sample_collection = view if view is not None else self
-        if not sample_collection._contains_videos(any_slice=True):
+        if not sample_collection._has_frame_fields():
             return
 
         if self._is_clips:
@@ -3826,7 +3831,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _keep_frames(self, view=None, frame_ids=None):
         sample_collection = view if view is not None else self
-        if not sample_collection._contains_videos(any_slice=True):
+        if not sample_collection._has_frame_fields():
             return
 
         if self._is_clips:
@@ -4060,6 +4065,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
+        breakpoint()
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,
@@ -5979,7 +5985,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if rel_dir and not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
 
-            if (media_type == fom.VIDEO) or (
+            if (media_type == fom.VIDEO or media_type == fom.AUDIO) or (
                 media_type == fom.GROUP
                 and fom.get_media_type(sd["filepath"]) == fom.VIDEO
             ):
@@ -6076,10 +6082,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         if media_type == fom.VIDEO:
             contains_videos = True
+            contains_audios = False
+        elif media_type == fom.AUDIO:
+            contains_audios = True
+            contains_videos = False
         else:
             contains_videos = self._contains_videos(any_slice=True)
+            contains_audios = self._contains_audios(any_slice=True)
 
-        if not contains_videos:
+        if not contains_videos and not contains_audios:
             attach_frames = False
             detach_frames = False
             frames_only = False
@@ -6915,7 +6926,7 @@ def _delete_dataset_doc(dataset_doc):
 def _clone_dataset_or_view(dataset_or_view, name, persistent):
     slug = _validate_dataset_name(name)
 
-    contains_videos = dataset_or_view._contains_videos(any_slice=True)
+    contains_frames = dataset_or_view._has_frame_fields()
     contains_groups = dataset_or_view.media_type == fom.GROUP
 
     if isinstance(dataset_or_view, fov.DatasetView):
@@ -6934,7 +6945,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     sample_collection_name = _make_sample_collection_name(_id)
 
-    if contains_videos:
+    if contains_frames:
         frame_collection_name = _make_frame_collection_name(
             sample_collection_name
         )
@@ -6978,7 +6989,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
         ]
 
         # Respect filtered frame fields, if any
-        if contains_videos:
+        if contains_frames:
             frame_schema = view.get_frame_field_schema()
             dataset_doc.frame_fields = [
                 f
@@ -7000,7 +7011,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     foo.aggregate(coll, pipeline)
 
     # Clone frames
-    if contains_videos:
+    if contains_frames:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
         pipeline.append({"$addFields": {"_dataset_id": _id}})
         pipeline.append({"$out": frame_collection_name})
@@ -7076,7 +7087,7 @@ def _save_view(view, fields=None):
 
     dataset = view._dataset
 
-    contains_videos = view._contains_videos()
+    contains_frames = view._has_frame_fields()
     all_fields = fields is None
 
     if fields is None:
@@ -7085,7 +7096,7 @@ def _save_view(view, fields=None):
     if etau.is_str(fields):
         fields = [fields]
 
-    if contains_videos:
+    if contains_frames:
         sample_fields, frame_fields = fou.split_frame_fields(fields)
     else:
         sample_fields = fields
@@ -7098,7 +7109,7 @@ def _save_view(view, fields=None):
         frame_fields = dataset._handle_db_fields(frame_fields, frames=True)
 
     save_samples = sample_fields or all_fields
-    save_frames = contains_videos and (frame_fields or all_fields)
+    save_frames = contains_frames and (frame_fields or all_fields)
 
     # Must retrieve IDs now in case view changes after saving
     sample_ids = view.values("id")
@@ -7494,7 +7505,7 @@ def _add_collection_with_new_ids(
     )
 
     contains_groups = sample_collection.media_type == fom.GROUP
-    contains_videos = sample_collection._contains_videos(any_slice=True)
+    contains_frames = sample_collection._has_frame_fields()
 
     if contains_groups:
         dst_samples = dataset.select_group_slices(_allow_mixed=True)
@@ -7503,7 +7514,7 @@ def _add_collection_with_new_ids(
         dst_samples = dataset
         src_samples = sample_collection
 
-    if contains_videos:
+    if contains_frames:
         old_ids = src_samples.values("id")
         num_ids = len(old_ids)
     else:
@@ -7546,7 +7557,7 @@ def _add_collection_with_new_ids(
 
         dataset._bulk_write(ops)
 
-    if not contains_videos:
+    if not contains_frames:
         return new_ids
 
     if contains_groups:
@@ -7732,7 +7743,9 @@ def _merge_samples_pipeline(
     else:
         src_samples = src_collection
 
+    contains_frames = src_collection._has_frame_fields()
     contains_videos = src_collection._contains_videos(any_slice=True)
+    contains_audios = src_collection._contains_audios(any_slice=True)
     if contains_videos:
         if contains_groups:
             src_videos = src_collection.select_group_slices(
@@ -7745,10 +7758,22 @@ def _merge_samples_pipeline(
             dst_videos = dst_dataset.select_group_slices(media_type=fom.VIDEO)
         else:
             dst_videos = dst_dataset
+    elif contains_audios:
+        if contains_groups:
+            src_audios = src_collection.select_group_slices(
+                media_type=fom.AUDIO
+            )
+        else:
+            src_audios = src_collection
+
+        if dst_dataset.media_type == fom.GROUP:
+            dst_audios = dst_dataset.select_group_slices(media_type=fom.AUDIO)
+        else:
+            dst_videos = dst_dataset
 
     src_dataset = src_collection._dataset
 
-    if contains_videos:
+    if contains_frames:
         frame_fields = None
         omit_frame_fields = None
 
@@ -7756,11 +7781,11 @@ def _merge_samples_pipeline(
         if not isinstance(fields, dict):
             fields = {f: f for f in fields}
 
-        if contains_videos:
+        if contains_frames:
             fields, frame_fields = fou.split_frame_fields(fields)
 
     if omit_fields is not None:
-        if contains_videos:
+        if contains_frames:
             omit_fields, omit_frame_fields = fou.split_frame_fields(
                 omit_fields
             )
@@ -7769,7 +7794,7 @@ def _merge_samples_pipeline(
             fields = {k: v for k, v in fields.items() if k not in omit_fields}
             omit_fields = None
 
-        if contains_videos and frame_fields is not None:
+        if contains_frames and frame_fields is not None:
             frame_fields = {
                 k: v
                 for k, v in frame_fields.items()
@@ -7969,6 +7994,76 @@ def _merge_samples_pipeline(
             ]
         )
 
+    if contains_audios:
+        frame_key_field = "_merge_key"
+
+        # @todo this there a cleaner way to avoid this? we have to be sure that
+        # `frame_key_field` is not excluded by a user's view here...
+        _src_audios = _always_select_field(
+            src_audios, "frames." + frame_key_field
+        )
+
+        db_fields_map = src_collection._get_db_fields_map(frames=True)
+
+        frame_pipeline = []
+
+        if frame_fields is not None:
+            project = {}
+            for k, v in frame_fields.items():
+                k = db_fields_map.get(k, k)
+                v = db_fields_map.get(v, v)
+                if k == v:
+                    project[k] = True
+                else:
+                    project[v] = "$" + k
+
+            project[frame_key_field] = True
+            project["frame_number"] = True
+            frame_pipeline.append({"$project": project})
+
+        if omit_frame_fields is not None:
+            _omit_frame_fields = set(omit_frame_fields)
+        else:
+            _omit_frame_fields = set()
+
+        _omit_frame_fields.add("id")
+        _omit_frame_fields.discard(frame_key_field)
+        _omit_frame_fields.discard("frame_number")
+
+        unset_fields = [db_fields_map.get(f, f) for f in _omit_frame_fields]
+        frame_pipeline.append({"$project": {f: False for f in unset_fields}})
+
+        if skip_existing:
+            when_frame_matched = "keepExisting"
+        else:
+            when_frame_matched = _merge_docs(
+                src_collection,
+                merge_lists=merge_lists,
+                fields=frame_fields,
+                omit_fields=omit_frame_fields,
+                overwrite=overwrite,
+                frames=True,
+            )
+
+        frame_pipeline.extend(
+            [
+                {
+                    "$addFields": {
+                        "_dataset_id": dst_dataset._doc.id,
+                        "_sample_id": "$" + frame_key_field,
+                    }
+                },
+                {
+                    "$merge": {
+                        "into": dst_dataset._frame_collection_name,
+                        "on": [frame_key_field, "frame_number"],
+                        "whenMatched": when_frame_matched,
+                        "whenNotMatched": "insert",
+                    }
+                },
+            ]
+        )
+
     #
     # Perform the merge(s)
     #
@@ -7993,7 +8088,7 @@ def _merge_samples_pipeline(
             dst_dataset, key_field, unique=True
         )
 
-        if contains_videos:
+        if contains_frames:
             _index_frames(dst_dataset, key_field, frame_key_field)
             _index_frames(src_dataset, key_field, frame_key_field)
 
@@ -8021,6 +8116,15 @@ def _merge_samples_pipeline(
 
             # Finalize IDs
             _finalize_frames(dst_videos, key_field, frame_key_field)
+
+        if contains_audios:
+            # Merge frames
+            _src_audios._aggregate(
+                frames_only=True, post_pipeline=frame_pipeline
+            )
+
+            # Finalize IDs
+            _finalize_frames(dst_videos, key_field, frame_key_field)
     finally:
         # Cleanup indexes
         _cleanup_index(
@@ -8030,7 +8134,7 @@ def _merge_samples_pipeline(
             dst_dataset, key_field, new_dst_index, dropped_dst_index
         )
 
-        if contains_videos:
+        if contains_frames:
             # Cleanup indexes
             _cleanup_frame_index(dst_dataset, dst_frame_index)
             _cleanup_frame_index(src_dataset, src_frame_index)
@@ -8042,7 +8146,7 @@ def _merge_samples_pipeline(
 
     # Reload docs
     fos.Sample._reload_docs(dst_dataset._sample_collection_name)
-    if contains_videos:
+    if contains_frames:
         fofr.Frame._reload_docs(dst_dataset._frame_collection_name)
 
 

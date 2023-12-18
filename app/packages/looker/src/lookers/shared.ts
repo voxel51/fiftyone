@@ -1,6 +1,7 @@
 import { ClassificationsOverlay } from "../overlays";
 import { Overlay } from "../overlays/base";
 import {
+  AudioState,
   BaseState,
   FrameState,
   ImaVidState,
@@ -60,7 +61,7 @@ export const LookerUtils = {
   },
 
   toggleZoom: <
-    State extends FrameState | ImageState | VideoState | ImaVidState
+    State extends FrameState | ImageState | VideoState | ImaVidState | AudioState
   >(
     state: State,
     overlays: Overlay<State>[]

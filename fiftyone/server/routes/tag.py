@@ -81,7 +81,7 @@ class Tag(HTTPEndpoint):
             target_labels=False,
         )
 
-        is_video = view.media_type == fom.VIDEO
+        is_video = (view.media_type == fom.VIDEO or view.media_type == fom.AUDIO)
         if is_video and current_frame is not None:
             default_filter = F("frame_number") == 1
             current_filter = F("frame_number").is_in([current_frame, 1])

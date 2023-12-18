@@ -236,7 +236,10 @@ export interface ImaVidConfig extends BaseConfig {
 
 export type PcdConfig = BaseConfig;
 
-export type AudioConfig = BaseConfig;
+export interface AudioConfig extends BaseConfig {
+  frameRate: number;
+  support?: [number, number];
+};
 
 export interface FrameOptions extends BaseOptions {
   useFrameNumber: boolean;
@@ -262,7 +265,13 @@ export interface ImaVidOptions extends BaseOptions {
 
 export type PcdOptions = BaseOptions;
 
-export type AudioOptions = BaseOptions;
+export interface AudioOptions extends BaseOptions {
+  autoplay: boolean;
+  loop: boolean;
+  playbackRate: number;
+  useFrameNumber: boolean;
+  volume: number;
+}
 
 export interface TooltipOverlay {
   color: string;
@@ -403,6 +412,41 @@ export interface AudioState extends BaseState {
   config: AudioConfig;
   options: AudioOptions;
   SHORTCUTS: Readonly<ControlMap<AudioState>>;
+  duration: number | null;
+  waitingForAudio: boolean;
+  lockedToSupport: boolean;
+  frameNumber: number;
+
+  seeking: boolean;
+  /**
+   * true if playing, false if paused
+   */
+  playing: boolean;
+  /**
+   * current frame number
+   */
+  currentFrameNumber: number;
+  /**
+   * current frame number is usually synced from the player's state,
+   * if this flag is true, then the sync happens in the opposite direction
+   */
+  isCurrentFrameNumberAuthoritative: boolean;
+  /**
+   * total number of frames
+   */
+  totalFrames: number;
+  /**
+   * true if frames are buffering from server
+   */
+  buffering: boolean;
+  /**
+   * ranges of frame numbers that have been buffered.
+   */
+  bufferManager: BufferManager;
+  /**
+   * true if the seek bar is being hovered
+   */
+  seekBarHovering: boolean;
 }
 
 export interface Point {
@@ -490,6 +534,11 @@ export const DEFAULT_PCD_OPTIONS: PcdOptions = {
 
 export const DEFAULT_AUDIO_OPTIONS: AudioOptions = {
   ...DEFAULT_BASE_OPTIONS,
+  autoplay: false,
+  loop: false,
+  playbackRate: 1,
+  useFrameNumber: false,
+  volume: 0,
 };
 
 export interface FrameSample {
@@ -498,6 +547,10 @@ export interface FrameSample {
 }
 
 export interface VideoSample extends Sample {
+  frames: [FrameSample];
+}
+
+export interface AudioSample extends Sample {
   frames: [FrameSample];
 }
 

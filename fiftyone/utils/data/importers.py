@@ -100,6 +100,7 @@ def import_samples(
     Returns:
         a list of IDs of the samples that were added to the dataset
     """
+    breakpoint()
     if etau.is_str(tags):
         tags = [tags]
     elif tags is not None:
@@ -386,6 +387,7 @@ def _generate_group_samples(dataset_importer, parse_sample):
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema, dynamic
 ):
+    breakpoint()
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
         # Generic sample/group dataset
 
@@ -553,7 +555,7 @@ def _build_parse_sample_fcn(
         
 
         def parse_sample(sample):
-            audio_path, audio_metadata, label = sample
+            audio_path, audio_metadata, label, frames = sample
             sample = Sample(
                 filepath=audio_path,
                 metadata=audio_metadata,
@@ -569,6 +571,20 @@ def _build_parse_sample_fcn(
                 sample[label_field] = label
 
 
+            if frames is not None:
+                frame_labels = {}
+
+                for frame_number, _label in frames.items():
+                    if isinstance(_label, dict):
+                        frame_labels[frame_number] = {
+                            label_key(field_name): label
+                            for field_name, label in _label.items()
+                        }
+                    elif _label is not None:
+                        frame_labels[frame_number] = {label_field: _label}
+
+                sample.frames.merge(frame_labels)
+                
             return sample
 
         # Optimization: if we can deduce exactly what fields will be added
@@ -2854,20 +2870,20 @@ class AudioClassificationDirectoryTreeImporter(LabeledAudioDatasetImporter):
         return self._num_samples
 
     def __next__(self):
-        image_path, label = next(self._iter_samples)
+        audio_path, label = next(self._iter_samples)
 
         if self.compute_metadata:
-            image_metadata = fom.ImageMetadata.build_for(image_path)
+            audio_metadata = fom.AudioMetadata.build_for(audio_path)
         else:
-            image_metadata = None
+            audio_metadata = None
 
         if label is not None:
             label = fol.Classification(label=label)
 
-        return image_path, image_metadata, label
+        return audio_path, audio_metadata, label, None
 
     @property
-    def has_image_metadata(self):
+    def has_audio_metadata(self):
         return self.compute_metadata
 
     @property

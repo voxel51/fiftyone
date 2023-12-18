@@ -502,7 +502,7 @@ class Query(fosa.AggregateQuery):
             if view_stages:
                 view = fov.DatasetView._build(ds, view_stages or [])
 
-                if ds.media_type == fom.VIDEO:
+                if ds.media_type == fom.VIDEO or ds.media_type == fom.AUDIO:
                     frame_schema = serialize_fields(
                         view.get_frame_field_schema(flat=True)
                     )
@@ -520,7 +520,7 @@ class Query(fosa.AggregateQuery):
                     ),
                     frame_field_schema=[],
                 )
-            if ds.media_type == fom.VIDEO:
+            if ds.media_type == fom.VIDEO or ds.media_type ==  fom.AUDIO:
                 frames_field_schema = serialize_fields(
                     ds.get_frame_field_schema(flat=True)
                 )
