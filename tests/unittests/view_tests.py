@@ -4268,6 +4268,20 @@ class ViewStageTests(unittest.TestCase):
         ]
         self.assertEqual(optimized_view._all_stages, expected_stages)
 
+    def test_make_optimized_select_view_group_dataset_with_strings_and_lists(
+        self,
+    ):
+        dataset, sample_ids = self._make_group_dataset()
+
+        optimized_view = fov.make_optimized_select_view(
+            dataset, [sample_ids[0], sample_ids[0]], flatten=True
+        )
+        expected_stages = [
+            fosg.SelectGroupSlices(),
+            fosg.Select(f"{sample_ids[0]},{sample_ids[0]}"),
+        ]
+        self.assertEqual(optimized_view._all_stages, expected_stages)
+
     def test_make_optimized_select_view_select_group_slices_before_sample_selection(
         self,
     ):

@@ -8110,6 +8110,10 @@ class ToFrames(ViewStage):
 
 def _parse_sample_ids(arg):
     if etau.is_str(arg):
+        # this might be a comma delimited string of ids
+        if arg.find(",") > -1:
+            return arg.split(","), False
+
         return [arg], False
 
     if isinstance(arg, (fos.Sample, fos.SampleView)):
