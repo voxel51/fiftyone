@@ -579,12 +579,6 @@ type PointCloudSample implements Sample {
   aspectRatio: Float!
 }
 
-type AudioSample implements Sample {
-  id: ID!
-  sample: JSON!
-  urls: [MediaURL!]!
-  aspectRatio: Float!
-}
 
 type Query {
   aggregate(
@@ -817,6 +811,15 @@ input ValueColorInput {
 }
 
 type VideoSample implements Sample {
+  id: ID!
+  sample: JSON!
+  urls: [MediaURL!]!
+  aspectRatio: Float!
+  frameNumber: Int!
+  frameRate: Float!
+}
+
+type AudioSample implements Sample {
   id: ID!
   sample: JSON!
   urls: [MediaURL!]!

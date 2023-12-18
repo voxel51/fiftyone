@@ -32,6 +32,8 @@ export default r(graphql`
       ... on AudioSample {
         aspectRatio
         id
+        frameRate
+        frameNumber
         sample
         urls {
           field

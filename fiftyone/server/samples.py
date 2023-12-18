@@ -54,7 +54,8 @@ class VideoSample(Sample):
 
 @gql.type
 class AudioSample(Sample):
-    pass
+    frame_number: int
+    frame_rate: float
     
 SampleItem = gql.union(
     "SampleItem", types=(ImageSample, PointCloudSample, VideoSample, AudioSample)
@@ -77,7 +78,7 @@ async def paginate_samples(
     extended_stages: t.Optional[BSON] = None,
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
-) -> Connection[t.Union[ImageSample, VideoSample], str]:
+) -> Connection[t.Union[ImageSample, VideoSample, AudioSample], str]:
     run = lambda reload: fosv.get_view(
         dataset,
         stages=stages,
@@ -186,6 +187,9 @@ async def _create_sample_item(
 
 
     if cls == VideoSample:
+        metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
+
+    if cls == AudioSample:
         metadata = dict(**metadata, frame_number=sample.get("frame_number", 1))
 
     _id = sample["_id"]

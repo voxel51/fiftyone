@@ -405,7 +405,8 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   private waitingToPlay = false;
   private waitingToRelease = false;
 
-  private imageSource: HTMLCanvasElement | HTMLImageElement;
+  private canvasSource: HTMLCanvasElement | HTMLImageElement;
+  private imageSource: HTMLImageElement;
 
   getEvents(): Events<AudioState> {
     return {
@@ -582,7 +583,8 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
 
     // Create an image element for static image
     this.imageSource = document.createElement("img");
-    this.imageSource.src = src
+    this.imageSource.src = 
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==";
 
     return this.element;
   }
@@ -625,7 +627,7 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   private releaseAudio() {
     if (this.waitingToPause || this.waitingToPlay || !this.element) {
       this.waitingToRelease = true;
-      this.imageSource = this.canvas;
+      this.canvasSource = this.canvas;
       this.canvas &&
         this.update(({ waitingForAudio }) =>
           waitingForAudio ? { waitingForAudio: false } : {}
@@ -652,7 +654,7 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
 
   renderSelf({
     options: { loop, volume, playbackRate },
-    config: { frameRate, thumbnail },
+    config: { frameRate, thumbnail, src },
     frameNumber,
     seeking,
     playing,
@@ -679,14 +681,14 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
       return null;
     }
     // Draw the image on the canvas
-    this.drawStaticImage();
+    this.drawStaticImage(src);
 
     if (!this.element) {
       return null;
     }
 
     
-    this.imageSource = this.canvas || this.imageSource; // Use canvas if available, otherwise use the static image
+    this.canvasSource = this.canvas || this.imageSource; // Use canvas if available, otherwise use the static image
 
 
     if (loaded && playing && !seeking && !buffering && this.element.paused) {
@@ -731,9 +733,15 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   }
   
 
-  drawStaticImage() {
+  drawStaticImage(src) {
     // Draw the static image on the canvas
-    this.canvasContext.drawImage(this.imageSource, 0, 0, this.canvas.width, this.canvas.height);
+    this.imageSource = new Image();
+    this.imageSource.onload = () => {
+      // Draw the static image on the canvas
+      this.canvasContext.drawImage(this.imageSource, 0, 0, this.canvas.width, this.canvas.height);
+    };
+    this.imageSource.src = src;
+
   }
 
 }

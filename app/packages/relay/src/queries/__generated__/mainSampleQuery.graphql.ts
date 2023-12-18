@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<e9338a895f18b6b5d9cebb9dede86a81>>
+ * @generated SignedSource<<12745fc38df3e6ec5b7fa642706eb802>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -28,6 +28,8 @@ export type mainSampleQuery$data = {
   readonly sample: {
     readonly __typename: "AudioSample";
     readonly aspectRatio: number;
+    readonly frameNumber: number;
+    readonly frameRate: number;
     readonly id: string;
     readonly sample: object;
     readonly urls: ReadonlyArray<{
@@ -148,6 +150,26 @@ v8 = [
   (v7/*: any*/)
 ],
 v9 = [
+  (v4/*: any*/),
+  (v5/*: any*/),
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "frameRate",
+    "storageKey": null
+  },
+  {
+    "alias": null,
+    "args": null,
+    "kind": "ScalarField",
+    "name": "frameNumber",
+    "storageKey": null
+  },
+  (v6/*: any*/),
+  (v7/*: any*/)
+],
+v10 = [
   {
     "alias": null,
     "args": [
@@ -198,32 +220,13 @@ v9 = [
       },
       {
         "kind": "InlineFragment",
-        "selections": (v8/*: any*/),
+        "selections": (v9/*: any*/),
         "type": "AudioSample",
         "abstractKey": null
       },
       {
         "kind": "InlineFragment",
-        "selections": [
-          (v4/*: any*/),
-          (v5/*: any*/),
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "frameRate",
-            "storageKey": null
-          },
-          {
-            "alias": null,
-            "args": null,
-            "kind": "ScalarField",
-            "name": "frameNumber",
-            "storageKey": null
-          },
-          (v6/*: any*/),
-          (v7/*: any*/)
-        ],
+        "selections": (v9/*: any*/),
         "type": "VideoSample",
         "abstractKey": null
       }
@@ -242,7 +245,7 @@ return {
     "kind": "Fragment",
     "metadata": null,
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/),
+    "selections": (v10/*: any*/),
     "type": "Query",
     "abstractKey": null
   },
@@ -256,19 +259,19 @@ return {
     ],
     "kind": "Operation",
     "name": "mainSampleQuery",
-    "selections": (v9/*: any*/)
+    "selections": (v10/*: any*/)
   },
   "params": {
-    "cacheID": "45db2c647b1dbfe0a51a53adead0f467",
+    "cacheID": "2c0e0b7fd8409c9d219ab3bdf05f504a",
     "id": null,
     "metadata": {},
     "name": "mainSampleQuery",
     "operationKind": "query",
-    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on AudioSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
+    "text": "query mainSampleQuery(\n  $dataset: String!\n  $view: BSONArray!\n  $filter: SampleFilter!\n  $filters: JSON\n) {\n  sample(dataset: $dataset, view: $view, filters: $filters, filter: $filter) {\n    __typename\n    ... on ImageSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on PointCloudSample {\n      aspectRatio\n      id\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on AudioSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n    ... on VideoSample {\n      aspectRatio\n      id\n      frameRate\n      frameNumber\n      sample\n      urls {\n        field\n        url\n      }\n    }\n  }\n}\n"
   }
 };
 })();
 
-(node as any).hash = "9946bd92080278769e8378733cdc2dec";
+(node as any).hash = "51f6486913a5bdab156dca3965d3844b";
 
 export default node;
