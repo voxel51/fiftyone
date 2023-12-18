@@ -68,7 +68,9 @@ export class SidebarPom {
   }
 
   async clickFieldDropdown(field: string) {
-    const selector = this.sidebar.getByTestId(`sidebar-field-arrow-${field}`);
+    const selector = this.sidebar.getByTestId(
+      `sidebar-field-arrow-enabled-${field}`
+    );
     return selector.click();
   }
 
@@ -100,6 +102,12 @@ export class SidebarPom {
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
     await selectionDiv.click({ force: true });
+  }
+
+  async applySearch(field: string, search: string) {
+    const input = this.sidebar.getByTestId(`selector-sidebar-search-${field}`);
+    await input.fill(search);
+    await input.press("Enter");
   }
 
   // apply a filter to a field

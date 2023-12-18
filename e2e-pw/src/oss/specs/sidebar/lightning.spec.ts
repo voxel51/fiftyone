@@ -57,7 +57,18 @@ test.describe("lightning", () => {
     ]);
   });
 
-  test("assert id field validation error", async ({ grid, sidebar }) => {
+  test("assert id search no page error", async ({
+    sidebar,
+    grid,
+    eventUtils,
+  }) => {
+    const entryExpandPromise = eventUtils.getEventReceivedPromiseForPredicate(
+      "animation-onRest",
+      () => true
+    );
     await sidebar.clickFieldDropdown("id");
+    await entryExpandPromise;
+    await sidebar.applySearch("id", "not an id");
+    await grid.assert.isLookerCountEqualTo(2);
   });
 });
