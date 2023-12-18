@@ -19,7 +19,7 @@ import { atom, atomFamily, selector, selectorFamily } from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
 import { sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { mediaType } from "./atoms";
+import { mediaType, similarityParameters } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
@@ -116,7 +116,14 @@ export const groupSlice = selector<string>({
   get: ({ get }) => {
     return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
   },
-  set: ({ set }, slice) => set(sessionGroupSlice, slice),
+  set: ({ get, set }, slice) => {
+    if (Boolean(get(similarityParameters))) {
+      set(similarityParameters, null);
+      set(sessionGroupSlice, slice);
+    } else {
+      set(sessionGroupSlice, slice);
+    }
+  },
 });
 
 export const defaultGroupSlice = graphQLSyncFragmentAtom<
