@@ -471,6 +471,9 @@ def build_dataset_exporter(
             "exporter"
         )
 
+    if etau.is_str(dataset_type):
+        dataset_type = etau.get_class(dataset_type)
+
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
