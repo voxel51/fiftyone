@@ -66,6 +66,7 @@ const SampleModal = () => {
     : { width: "95%", height: "90%", borderRadius: "3px" };
   const isGroup = useRecoilValue(fos.isGroup);
   const isPcd = useRecoilValue(fos.isPointcloudDataset);
+  const sampleId = useRecoilValue(fos.currentSampleId);
 
   const clearModal = fos.useClearModal();
   const { jsonPanel, helpPanel, onNavigate } = usePanels();
@@ -91,6 +92,9 @@ const SampleModal = () => {
     [eventHandler]
   );
 
+  const noneValuedPaths = useRecoilValue(fos.noneValuedPaths)?.[sampleId];
+  const hideNoneFields = useRecoilValue(fos.hideNoneValuedFields);
+
   const renderEntry = useCallback(
     (
       key: string,
@@ -104,13 +108,18 @@ const SampleModal = () => {
       ) => void
     ) => {
       switch (entry.kind) {
-        case fos.EntryKind.PATH:
+        case fos.EntryKind.PATH: {
           const isTag = entry.path === "tags";
           const isLabelTag = entry.path === "_label_tags";
           const isLabel = labelPaths.includes(entry.path);
           const isOther = disabled.has(entry.path);
           const isFieldPrimitive =
             !isLabelTag && !isLabel && !isOther && !(isTag && mode === "group");
+
+          if (hideNoneFields && noneValuedPaths?.has(entry?.path)) {
+            return { children: null };
+          }
+
           return {
             children: (
               <>
@@ -146,7 +155,7 @@ const SampleModal = () => {
             ),
             disabled: isTag || isOther,
           };
-
+        }
         case fos.EntryKind.GROUP: {
           return {
             children: (
@@ -180,7 +189,7 @@ const SampleModal = () => {
           throw new Error("invalid entry");
       }
     },
-    [disabled, labelPaths, mode]
+    [disabled, hideNoneFields, labelPaths, mode, noneValuedPaths]
   );
 
   useEffect(() => {
