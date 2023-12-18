@@ -140,8 +140,8 @@ setup(
     )
     + ["fiftyone.recipes", "fiftyone.tutorials"],
     package_dir={
-        "fiftyone.recipes": "docs/source/fiftyone/recipes",
-        "fiftyone.tutorials": "docs/source/fiftyone/tutorials",
+        "fiftyone.recipes": "docs/source/recipes",
+        "fiftyone.tutorials": "docs/source/tutorials",
     },
     install_requires=get_install_requirements(
         INSTALL_REQUIRES, CHOOSE_INSTALL_REQUIRES
