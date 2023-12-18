@@ -15,9 +15,15 @@ import {
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-import { sessionAtom } from "../session";
+import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
 import { mediaType, similarityParameters } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
@@ -116,10 +122,16 @@ export const groupSlice = selector<string>({
   get: ({ get }) => {
     return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
   },
-  set: ({ get, set }, slice) => {
-    if (Boolean(get(similarityParameters))) {
-      set(similarityParameters, null);
-      set(sessionGroupSlice, slice);
+  set: ({ get, reset, set }, slice) => {
+    const defaultSlice = get(defaultGroupSlice);
+    if (get(similarityParameters)) {
+      // avoid this pattern
+      const unsubscribe = foq.subscribeBefore(() => {
+        getSessionRef().sessionGroupSlice =
+          slice instanceof DefaultValue ? defaultSlice : slice;
+        unsubscribe();
+      });
+      reset(similarityParameters);
     } else {
       set(sessionGroupSlice, slice);
     }

@@ -81,6 +81,10 @@ export const useSessionRef = () => {
   return sessionRef;
 };
 
+export const getSessionRef = () => {
+  return sessionRef;
+};
+
 export const useSessionSetter = () => {
   return useCallback(<K extends SetterKeys>(key: K, value: Session[K]) => {
     const setter = setters[key];
