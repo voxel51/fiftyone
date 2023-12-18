@@ -8,8 +8,8 @@ readme = "README.md"
 
 packages = [
     {include = "fiftyone"},
-    {include = "fiftyone/recipes", from = "docs/source"},
-    {include = "fiftyone/tutorials", from = "docs/source"},
+    {include = "recipes", from = "docs/source", to = "fiftyone"},
+    {include = "tutorials", from = "docs/source", to = "fiftyone"},
 ]
 
 [tool.poetry.dependencies]
