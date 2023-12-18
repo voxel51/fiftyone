@@ -31,8 +31,6 @@ SOURCE_ETA_INSTALL=false
 SCRATCH_MONGODB_INSTALL=false
 BUILD_APP=true
 VOXEL51_INSTALL=false
-GITHUB_INSTALL=false
-E2E_INSTALL=false
 while getopts "hdempv" FLAG; do
     case "${FLAG}" in
         h) SHOW_HELP=true ;;
@@ -101,21 +99,15 @@ if [ ${VOXEL51_INSTALL} = false ]; then
     pip install --upgrade fiftyone-brain
 fi
 
-pip install poetry
-
 echo "***** INSTALLING FIFTYONE *****"
 if [ ${DEV_INSTALL} = true ] || [ ${VOXEL51_INSTALL} = true ]; then
     echo "Performing dev install"
-    poetry install --with docs,extras,test,dev
-elif [ ${GITHUB_INSTALL} = true ]; then
-    echo "Performing github install"
-    poetry install --with test,github
-elif [ ${E2E_INSTALL} = true ]; then
-    echo "Performing e2e install"
-    poetry install --with test,github,e2e
+    pip install -r requirements/dev.txt
+    pre-commit install
+    pip install -e .
 else
-    poetry build
-    pip install dist/fiftyone-*.whl
+    pip install -r requirements.txt
+    pip install .
 fi
 
 if [ ${SOURCE_ETA_INSTALL} = true ]; then
