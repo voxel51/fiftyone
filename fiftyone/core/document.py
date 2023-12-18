@@ -5,6 +5,7 @@ Base classes for objects that are backed by database documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from copy import deepcopy
 
 from bson import ObjectId
@@ -101,6 +102,22 @@ class _Document(object):
         not been added to a dataset.
         """
         return self._dataset
+
+    @property
+    def created_at(self):
+        """Creation time of the document, or ``None`` if unknown.
+
+        Documents only get a creation time when they're attached to a dataset.
+        """
+        return self._doc.created_at
+
+    @property
+    def last_updated_at(self):
+        """Latest update time of the document, or ``None`` if unknown.
+
+        Documents only get an update time when they're attached to a dataset.
+        """
+        return self._doc.last_updated_at
 
     @property
     def _collection(self):
@@ -445,6 +462,8 @@ class _Document(object):
                 "Cannot save a document that has not been added to a dataset"
             )
 
+        self._doc.last_updated_at = datetime.datetime.utcnow()
+
         return self._doc._save(deferred=deferred)
 
     def _parse_fields(self, fields=None, omit_fields=None):
@@ -452,7 +471,8 @@ class _Document(object):
             fields = {
                 f: f
                 for f in self.field_names
-                if f not in ("id", "_dataset_id")
+                if f
+                not in ("id", "_dataset_id", "created_at", "last_updated_at")
             }
         elif etau.is_str(fields):
             fields = {fields: fields}
@@ -836,6 +856,7 @@ class DocumentView(_Document):
         self._reload_parents()
 
     def _save(self, deferred=False):
+        self._doc.last_updated_at = datetime.datetime.utcnow()
         return self._doc._save(
             deferred=deferred,
             filtered_fields=self._filtered_fields,

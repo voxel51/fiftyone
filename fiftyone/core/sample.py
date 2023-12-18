@@ -606,6 +606,8 @@ class Sample(_SampleMixin, Document, metaclass=SampleSingleton):
             a :class:`Sample`
         """
         d.pop("_dataset_id", None)
+        d.pop("created_at", None)
+        d.pop("last_updated_at", None)
 
         media_type = d.pop("_media_type", None)
         if media_type is None:

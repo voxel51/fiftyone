@@ -5,8 +5,9 @@ FiftyOne dataset-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from copy import deepcopy, copy
-from datetime import date, datetime
+import tempfile
+from copy import copy, deepcopy
+from datetime import date, datetime, timedelta
 import gc
 import os
 import random
@@ -457,7 +458,7 @@ class DatasetTests(unittest.TestCase):
         info = dataset.get_index_information()
         indexes = dataset.list_indexes()
 
-        default_indexes = {"id", "filepath"}
+        default_indexes = {"id", "filepath", "last_updated_at"}
         self.assertSetEqual(set(info.keys()), default_indexes)
         self.assertSetEqual(set(indexes), default_indexes)
 
@@ -896,6 +897,8 @@ class DatasetTests(unittest.TestCase):
                 "filepath",
                 "tags",
                 "metadata",
+                "created_at",
+                "last_updated_at",
                 "foo",
                 "bar",
                 "spam",
@@ -926,7 +929,16 @@ class DatasetTests(unittest.TestCase):
         schema = view.get_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "filepath", "tags", "metadata", "foo", "spam"},
+            {
+                "id",
+                "filepath",
+                "tags",
+                "metadata",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_field_schema(ftype=fo.StringField)
@@ -997,7 +1009,16 @@ class DatasetTests(unittest.TestCase):
         schema = dataset.get_frame_field_schema()
         self.assertSetEqual(
             set(schema.keys()),
-            {"id", "frame_number", "foo", "bar", "spam", "eggs"},
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "bar",
+                "spam",
+                "eggs",
+            },
         )
 
         schema = dataset.get_frame_field_schema(ftype=fo.StringField)
@@ -1024,7 +1045,15 @@ class DatasetTests(unittest.TestCase):
 
         schema = view.get_frame_field_schema()
         self.assertSetEqual(
-            set(schema.keys()), {"id", "frame_number", "foo", "spam"}
+            set(schema.keys()),
+            {
+                "id",
+                "frame_number",
+                "created_at",
+                "last_updated_at",
+                "foo",
+                "spam",
+            },
         )
 
         schema = view.get_frame_field_schema(ftype=fo.StringField)
@@ -1475,8 +1504,14 @@ class DatasetTests(unittest.TestCase):
             d1 = dataset1.clone()
             d1.merge_samples(dataset2, skip_existing=True, key_fcn=key_fcn)
 
-            fields1 = set(dataset1.get_field_schema().keys())
-            fields2 = set(d1.get_field_schema().keys())
+            fields1 = set(dataset1.get_field_schema().keys()) - {
+                "created_at",
+                "last_updated_at",
+            }
+            fields2 = set(d1.get_field_schema().keys()) - {
+                "created_at",
+                "last_updated_at",
+            }
             new_fields = fields2 - fields1
 
             self.assertEqual(len(d1), 6)
@@ -2917,6 +2952,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_media_type", d)
         self.assertIn("_rand", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("created_at", d)
+        self.assertIn("last_updated_at", d)
 
         sample2 = fo.Sample.from_dict(d)
         self.assertEqual(sample2["foo"], "bar")
@@ -2960,6 +2997,8 @@ class DatasetSerializationTests(unittest.TestCase):
         self.assertIn("_id", d)
         self.assertIn("_sample_id", d)
         self.assertIn("_dataset_id", d)
+        self.assertIn("created_at", d)
+        self.assertIn("last_updated_at", d)
 
         frame2 = fo.Frame.from_dict(d)
         self.assertEqual(frame2["foo"], "bar")
@@ -3182,6 +3221,22 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(dataset5.distinct("dataset_id"), [dataset_id5])
 
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            dataset_id6 = str(dataset6._doc.id)
+            self.assertListEqual(
+                dataset6.distinct("dataset_id"), [dataset_id6]
+            )
+
     @drop_datasets
     def test_video_dataset_id(self):
         sample1 = fo.Sample(filepath="video1.mp4")
@@ -3269,6 +3324,799 @@ class DatasetIdTests(unittest.TestCase):
         self.assertListEqual(
             dataset5.distinct("frames.dataset_id"), [dataset_id5]
         )
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            dataset_id6 = str(dataset6._doc.id)
+            self.assertListEqual(
+                dataset6.distinct("frames.dataset_id"), [dataset_id6]
+            )
+
+
+class LastUpdatedAtTests(unittest.TestCase):
+    def check_updated(
+        self, sample, creation_time, prev_updated_time, reload=False
+    ):
+        if reload:
+            sample.reload()
+        dataset = sample._dataset
+        self.assertEqual(sample.created_at, creation_time)
+        self.assertGreater(sample.last_updated_at, prev_updated_time)
+        self.assertEqual(
+            sample.last_updated_at,
+            dataset._sample_last_updated_at,
+        )
+        self.assertEqual(
+            max(sample.last_updated_at, dataset._last_updated_at),
+            dataset.last_updated_at,
+        )
+        return sample.last_updated_at
+
+    @drop_datasets
+    def test_update_times(self):
+        now = datetime.utcnow()
+        delta = timedelta(milliseconds=1000)
+
+        # Create sample and test initial times
+        dataset = fo.Dataset()
+        sample = fo.Sample("s1.jpg")
+
+        dataset.add_sample(sample)
+        sample.reload()
+        creation_time = sample.created_at
+        updated_time = sample.last_updated_at
+
+        self.assertEqual(creation_time, updated_time)
+        self.assertAlmostEqual(now, creation_time, delta=delta)
+
+        # Adding sample field should not update modify time because we update
+        #   the schema not each sample
+        dataset.add_sample_field(
+            "class_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_sample_field(
+            "detect_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        self.assertEqual(sample.created_at, creation_time)
+        self.assertEqual(sample.last_updated_at, updated_time)
+
+        # However the dataset updated time IS updated
+        self.assertGreater(dataset.last_updated_at, updated_time)
+
+        # Make single field edit and check update time
+        dataset.set_values("foo", ["bar"])
+        sample.reload()
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Make sample level edit with save and check time
+        sample.class_field = fo.Classification(label="cow", other="snother")
+        sample.detect_field = fo.Detections(
+            detections=[
+                fo.Detection(label="cow", other="snother"),
+                fo.Detection(label="moo", other="snother"),
+            ]
+        )
+        sample.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        sample["foo"] = "bar"
+        sample.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # tag_samples
+        dataset.tag_samples("blah")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # untag_samples
+        dataset.untag_samples("blah")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # tag_labels
+        dataset.tag_labels("blah", "class_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+        dataset.tag_labels("blah", "detect_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # untag_labels
+        dataset.untag_labels("blah", "class_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+        dataset.untag_labels("blah", "detect_field")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Set label values
+        class_id = dataset.values("class_field.id")[0]
+        dataset.set_label_values("class_field.other", {class_id: "change"})
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        detect_ids = dataset.values("detect_field.detections.id", unwind=True)
+        dataset.set_label_values(
+            "detect_field.detections.other",
+            {detect_id: "change" for detect_id in detect_ids},
+        )
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # View is saved - first field only then entire view.
+        view = dataset.set_field("foo", "spam")
+        view.save("foo")
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        view = dataset.set_field("foo", "eggs")
+        view.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # SampleView
+        sample_view = view.first()
+        sample_view.foo = "bacon"
+        sample_view.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        self.assertEqual(view.first().last_updated_at, updated_time)
+
+        # Patches
+        patches = dataset.to_patches("detect_field")
+        patches.set_field("detect_field.spam", "foo").save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+        patches.set_values("detect_field.spam", ["bar"])
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # PatchView
+        patch_view = patches.first()
+        patch_view.detect_field.spam = "bar"
+        patch_view.save()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # Essentially calls delete_labels
+        patches.limit(0).keep()
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # Autosave / SaveContext
+        for s in dataset.iter_samples(autosave=True):
+            s.foo = "poe tay toes"
+
+        updated_time = self.check_updated(
+            sample, creation_time, updated_time, reload=True
+        )
+
+        # Clone fields
+        dataset.clone_sample_field("foo", "food")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        dataset.clone_sample_field("class_field.other", "class_field.snothers")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Rename fields
+        dataset.rename_sample_field(
+            "class_field.snothers", "class_field.smores"
+        )
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Clear fields
+        dataset.clear_sample_field("class_field.smores")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+        # Delete fields
+        dataset.delete_sample_field("class_field.smores")
+        updated_time = self.check_updated(sample, creation_time, updated_time)
+
+    def check_frame_updated(
+        self,
+        frame,
+        sample,
+        frame_creation_time,
+        prev_frame_updated_time,
+        sample_creation_time,
+        prev_sample_updated_time,
+        reload=False,
+    ):
+        if reload:
+            frame.reload()
+
+        self.assertEqual(frame.created_at, frame_creation_time)
+        self.assertGreater(frame.last_updated_at, prev_frame_updated_time)
+        self.check_updated(
+            sample, sample_creation_time, prev_sample_updated_time
+        )
+
+        return frame.last_updated_at, sample.last_updated_at
+
+    def test_frame_update_times(self):
+        delta = timedelta(milliseconds=1000)
+        sample = fo.Sample("blah.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        view = dataset.select_fields()
+        frames = sample.frames
+        frame_view = view.first().frames.first()
+        frames_view = view.first().frames
+
+        # Add sample and test initial times
+        dataset.add_sample(sample)
+        sample.reload()
+        now = datetime.utcnow()
+        sample_creation_time = sample.created_at
+        frame_creation_time = frame.created_at
+        sample_updated_time = sample.last_updated_at
+        frame_updated_time = frame.last_updated_at
+
+        # Sample creation and updated time won't be exactly the same because
+        #   it is updated when the frames are saved.
+        self.assertAlmostEqual(
+            sample_creation_time, sample_updated_time, delta=delta
+        )
+        self.assertEqual(frame_creation_time, frame_updated_time)
+        self.assertAlmostEqual(sample_creation_time, now, delta=delta)
+        self.assertAlmostEqual(
+            frame_creation_time,
+            sample_creation_time,
+            delta=timedelta(milliseconds=100),
+        )
+
+        # Adding frame field should not update modify time because we update
+        #   the schema not each sample
+        dataset.add_frame_field(
+            "class_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Classification,
+        )
+        dataset.add_frame_field(
+            "detect_field",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.Detections,
+        )
+        self.assertEqual(frame.last_updated_at, frame_updated_time)
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+
+        # However the dataset updated time IS updated
+        self.assertGreater(dataset.last_updated_at, sample_updated_time)
+
+        # Set values regular
+        dataset.set_values("frames.foo", ["bar"])
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Set values list field
+        dataset.set_values("frames.detect_field.foo", ["bar"])
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frame save
+        frame.foo = "baz"
+        frame.save()
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frame View save
+        frame_view["foo"] = "bat"
+        frame_view.save()
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Frames add_frame
+        frames.add_frame(2, fo.Frame(frame_number=2))
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Delete frame
+        frames.delete_frame(2)
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten on save since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # FramesView add_frame
+        frames_view.add_frame(2, fo.Frame(frame_number=2))
+        self.assertEqual(sample.last_updated_at, sample_updated_time)
+        frames.save()
+        sample.reload()
+        # Note: we cannot assert this because every single frame
+        #   is rewritten since include_singletons defaults to True in
+        #   Frame._save_replacements()
+        # self.assertEqual(frame.last_updated_at, frame_updated_time)
+        frame_updated_time, sample_updated_time = self.check_frame_updated(
+            frame,
+            sample,
+            frame_creation_time,
+            frame_updated_time,
+            sample_creation_time,
+            sample_updated_time,
+            reload=True,
+        )
+
+        # Delete all frames
+        frames.clear()
+        frames.save()
+        self.check_updated(sample, sample_creation_time, sample_updated_time)
+
+    def check_dataset_updated(self, dataset, prev_last_updated_at):
+        self.assertGreater(dataset._last_updated_at, prev_last_updated_at)
+        self.assertEqual(dataset.last_updated_at, dataset._last_updated_at)
+        return dataset._last_updated_at
+
+    def test_dataset_update_time(self):
+        now = datetime.utcnow()
+        delta = timedelta(seconds=1)
+
+        # Dataset last updated should be roughly now
+        dataset = fo.Dataset()
+        last_updated = dataset.last_updated_at
+        self.assertAlmostEqual(last_updated, now, delta=delta)
+
+        # Add sample field calls _save() on the doc
+        dataset.add_sample_field(
+            "foo",
+            fo.StringField,
+        )
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Rename field
+        dataset.rename_sample_field("foo", "bar")
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Appending to tags list causes it to be "dirty" for a save
+        dataset.tags.append("a-tag")
+        dataset.save()
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Setter should call save() automatically
+        dataset.description = "crazy awesome description"
+        last_updated = self.check_dataset_updated(dataset, last_updated)
+
+        # Calling save() with no changes should not update the time
+        dataset.save()
+        self.assertEqual(dataset.last_updated_at, last_updated)
+
+        # Loading dataset again which updates last_loaded_at, should not update
+        #   last_updated_at. Reloads multiple times to get rid of mongo rounding
+        dataset.reload()
+        last_updated = dataset.last_updated_at
+        dataset.reload()
+        self.assertEqual(dataset.last_updated_at, last_updated)
+
+
+class SampleCreatedTimeAtTests(unittest.TestCase):
+    EQUAL_DELTA = timedelta(milliseconds=1)
+    CLOSE_DELTA = timedelta(seconds=1)
+
+    def _assert_creation_times(self, time_field, previous_times, dataset, now):
+        unwind = time_field.startswith("frames.")
+        new_times = dataset.values(time_field, unwind=unwind)
+
+        for original_t, new_t in zip(previous_times, new_times):
+            self.assertGreater(new_t, original_t)
+            self.assertAlmostEqual(new_t, now, delta=self.CLOSE_DELTA)
+
+        return new_times
+
+    def _test_creation_time(self, time_field, is_update):
+        samples = [
+            fo.Sample(filepath="image1.jpg"),
+            fo.Sample(filepath="image2.jpg"),
+            fo.Sample(filepath="image3.jpg"),
+            fo.Sample(filepath="image4.jpg"),
+        ]
+
+        # created at is None when not inside a dataset
+        all_none = not any(s[time_field] for s in samples)
+        self.assertTrue(all_none)
+
+        # Add samples to dataset
+        dataset = fo.Dataset()
+        now = datetime.utcnow()
+        dataset.add_samples(samples)
+
+        # In schema
+        schema = dataset.get_field_schema()
+        self.assertIn(time_field, schema)
+
+        # Time pushed to sample objects, and more or less equal to "now"
+        original_times = times = dataset.values(time_field)
+        for sample, new_t in zip(samples, times):
+            self.assertAlmostEqual(
+                sample[time_field], new_t, delta=self.EQUAL_DELTA
+            )
+            self.assertAlmostEqual(new_t, now, delta=self.CLOSE_DELTA)
+
+        sample = dataset.first()
+        self.assertAlmostEqual(
+            sample[time_field], samples[0][time_field], delta=self.EQUAL_DELTA
+        )
+
+        # Shouldn't be changed on updates
+        if not is_update:
+            dataset.set_values("foo", [4] * len(samples))
+            self.assertEqual(times, dataset.values(time_field))
+
+        # view schema
+        view = dataset.select_fields()
+        schema = view.get_field_schema()
+        self.assertIn(time_field, schema)
+
+        # View values
+        view_times = view.values(time_field)
+        for view_t, original_t in zip(view_times, times):
+            self.assertAlmostEqual(view_t, original_t, delta=self.EQUAL_DELTA)
+
+        sample = view.first()
+        self.assertAlmostEqual(
+            sample[time_field], samples[0][time_field], delta=self.EQUAL_DELTA
+        )
+
+        # add_collection()
+
+        now = datetime.utcnow()
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset, new_ids=True)
+
+        times = self._assert_creation_times(time_field, times, dataset2, now)
+
+        # clone()
+
+        now = datetime.utcnow()
+        dataset3 = dataset.clone()
+
+        times = self._assert_creation_times(time_field, times, dataset3, now)
+
+        # add_samples()
+
+        now = datetime.utcnow()
+
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(dataset)
+
+        times = self._assert_creation_times(time_field, times, dataset4, now)
+
+        # merge_samples()
+
+        now = datetime.utcnow()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(dataset)
+
+        times = self._assert_creation_times(time_field, times, dataset5, now)
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            times = self._assert_creation_times(
+                time_field, times, dataset6, now
+            )
+
+        # merge existing samples
+        dataset.merge_samples(samples, skip_existing=False)
+        if is_update:
+            for original_t, new_t in zip(
+                original_times, dataset.values(time_field)
+            ):
+                self.assertGreater(new_t, original_t)
+        else:
+            self.assertEqual(original_times, dataset.values(time_field))
+
+    @drop_datasets
+    def test_created_at(self):
+        self._test_creation_time("created_at", False)
+
+    @drop_datasets
+    def test_last_updated_at(self):
+        self._test_creation_time("last_updated_at", True)
+
+    def _test_video_creation_time(self, time_field, is_update):
+        frame_time_field = f"frames.{time_field}"
+        samples = [
+            fo.Sample("video1.mp4"),
+            fo.Sample("video2.mp4"),
+            fo.Sample("video3.mp4"),
+        ]
+
+        frames = []
+        for samp in samples:
+            samp.frames[1] = fo.Frame()
+            frames.append(samp.frames[1])
+
+        # created at is None when not inside a dataset
+        all_none = not any(
+            f[time_field] for s in samples for f in s.frames.values()
+        )
+        self.assertTrue(all_none)
+
+        # Create dataset
+        now = datetime.utcnow()
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        # time field in schema
+        schema = dataset.get_frame_field_schema(include_private=True)
+        self.assertIn(time_field, schema)
+
+        # Values of time field in frames are close to now
+        original_times = times = dataset.values(frame_time_field, unwind=True)
+        for t in times:
+            self.assertIsNotNone(t)
+            self.assertAlmostEqual(t, now, delta=self.CLOSE_DELTA)
+
+        # Local frames and values should be really close, within rounding.
+        for local_frame, db_frame_t in zip(frames, times):
+            self.assertAlmostEqual(
+                local_frame[time_field], db_frame_t, delta=self.EQUAL_DELTA
+            )
+
+        # Local frames from above and through sample-frame iteration should be
+        #   equal.
+        self.assertListEqual(
+            [f[time_field] for f in frames],
+            [f[time_field] for s in dataset for f in s.frames.values()],
+        )
+
+        # Shouldn't be changed on updates
+        if not is_update:
+            dataset.set_values("frames.foo", [[4]] * len(frames))
+            self.assertEqual(
+                original_times,
+                dataset.values(frame_time_field, unwind=True),
+            )
+
+        # View
+        view = dataset.select_fields()
+
+        schema = view.get_frame_field_schema(include_private=True)
+        self.assertIn(time_field, schema)
+
+        values = view.values(f"frames.{time_field}", unwind=True)
+        self.assertListEqual(values, times)
+
+        frame = view.first().frames.first()
+        self.assertEqual(frame[time_field], values[0])
+
+        # add_collection()
+
+        now = datetime.utcnow()
+        dataset2 = fo.Dataset()
+        dataset2.add_collection(dataset, new_ids=True)
+
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset2, now
+        )
+
+        # clone()
+
+        now = datetime.utcnow()
+        dataset3 = dataset.clone()
+
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset3, now
+        )
+
+        # add_samples()
+
+        now = datetime.utcnow()
+        dataset4 = fo.Dataset()
+        dataset4.add_samples(dataset)
+
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset4, now
+        )
+
+        # merge_samples()
+
+        dataset5 = fo.Dataset()
+        dataset5.merge_samples(dataset)
+
+        times = self._assert_creation_times(
+            frame_time_field, times, dataset5, now
+        )
+
+        # import samples with from_dir
+        with tempfile.TemporaryDirectory() as temp_dir:
+            now = datetime.utcnow()
+            dataset.export(
+                export_dir=temp_dir,
+                export_media=False,
+                dataset_type=fo.types.FiftyOneDataset,
+            )
+            dataset6 = fo.Dataset.from_dir(
+                dataset_dir=temp_dir, dataset_type=fo.types.FiftyOneDataset
+            )
+            times = self._assert_creation_times(
+                frame_time_field, times, dataset6, now
+            )
+
+        # merge existing samples, time should not change.
+        dataset.merge_samples(samples, skip_existing=False)
+        if is_update:
+            for original_t, new_t in zip(
+                original_times, dataset.values(frame_time_field, unwind=True)
+            ):
+                self.assertGreater(new_t, original_t)
+        else:
+            self.assertEqual(
+                original_times,
+                dataset.values(frame_time_field, unwind=True),
+            )
+
+        # Can add a new frame to sample and it gets creation time on save()
+        samples[0].frames[2] = fo.Frame(frame_number=2)
+        self.assertIsNone(samples[0].frames[2][time_field])
+        samples[0].frames.save()
+        if not is_update:
+            # All frames are saved when a frame is added, so we can't check
+            #   this for last updated at.
+            self.assertGreater(
+                samples[0].frames[2][time_field],
+                samples[0].frames[1][time_field],
+            )
+            self.assertEqual(
+                samples[0].frames[1][time_field], original_times[0]
+            )
+
+    @drop_datasets
+    def test_video_created_at(self):
+        self._test_video_creation_time("created_at", False)
+
+    @drop_datasets
+    def test_video_last_updated_at(self):
+        self._test_video_creation_time("last_updated_at", True)
+
+    @drop_datasets
+    def _test_readonly_creation_time(self, time_field):
+        # Setup
+        sample = fo.Sample("blah.mp4")
+        frame = fo.Frame()
+        sample.frames[1] = frame
+        dataset = fo.Dataset()
+        dataset.add_sample(sample)
+        view = dataset.select_fields()
+        sample_view = view.first()
+        frame_view = sample_view.frames.first()
+        now = datetime.utcnow()
+
+        # Sample and SampleView checks
+        for obj in (sample, sample_view, frame, frame_view):
+            self.assertRaises(ValueError, obj.__setattr__, time_field, now)
+            self.assertRaises(ValueError, obj.__setitem__, time_field, now)
+            self.assertRaises(ValueError, obj.set_field, time_field, now)
+            self.assertRaises(ValueError, obj.clear_field, time_field)
+            self.assertRaises(ValueError, obj.update_fields, {time_field: now})
+
+        # Dataset only
+        self.assertRaises(
+            ValueError,
+            dataset.rename_sample_field,
+            time_field,
+            "blah",
+        )
+        self.assertRaises(
+            ValueError,
+            dataset.rename_frame_field,
+            time_field,
+            "blah",
+        )
+        self.assertRaises(ValueError, dataset.delete_sample_field, time_field)
+        self.assertRaises(ValueError, dataset.delete_frame_field, time_field)
+
+        # Common collection calls
+        for collection in (dataset, view):
+            self.assertRaises(
+                ValueError, collection.set_values, time_field, [now]
+            )
+            self.assertRaises(
+                ValueError,
+                collection.set_values,
+                f"frames.{time_field}",
+                [[now]],
+            )
+            self.assertRaises(
+                ValueError, collection.clear_sample_field, time_field
+            )
+            self.assertRaises(
+                ValueError, collection.clear_frame_field, time_field
+            )
+            self.assertRaises(
+                ValueError, collection.set_field, time_field, now
+            )
+            self.assertRaises(
+                ValueError, collection.set_field, f"frames.{time_field}", now
+            )
+
+    @drop_datasets
+    def test_readonly_created_at(self):
+        self._test_readonly_creation_time("created_at")
+
+    @drop_datasets
+    def test_readonly_last_updated_at(self):
+        self._test_readonly_creation_time("last_updated_at")
 
 
 class DatasetDeletionTests(unittest.TestCase):

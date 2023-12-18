@@ -5,6 +5,7 @@ Mixins and helpers for dataset backing documents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import datetime
 from collections import OrderedDict
 
 from bson import ObjectId
@@ -136,18 +137,24 @@ class DatasetMixin(object):
                 raise ValueError(
                     "%s has no field '%s'" % (self._doc_name(), field_name)
                 )
-        elif value is not None:
-            if validate:
-                self._fields[field_name].validate(value)
-
-            if dynamic:
-                self.add_implied_field(
-                    field_name,
-                    value,
-                    expand_schema=create,
-                    validate=validate,
-                    dynamic=dynamic,
+        else:
+            field = self._fields[field_name]
+            if field.readonly:
+                raise ValueError(
+                    f"Readonly field '{field_name}' cannot be edited"
                 )
+            if value is not None:
+                if validate:
+                    field.validate(value)
+
+                if dynamic:
+                    self.add_implied_field(
+                        field_name,
+                        value,
+                        expand_schema=create,
+                        validate=validate,
+                        dynamic=dynamic,
+                    )
 
         super().__setattr__(field_name, value)
 
@@ -595,6 +602,9 @@ class DatasetMixin(object):
                     "%s field '%s' does not exist" % (cls._doc_name(), path)
                 )
 
+            if field is not None and field.readonly:
+                raise ValueError(f"Readonly field '{path}' cannot be cleared")
+
             if is_dataset and is_root_field:
                 simple_paths.append(path)
             else:
@@ -833,6 +843,7 @@ class DatasetMixin(object):
         _paths, _new_paths = cls._handle_db_fields(paths, new_paths)
 
         set_expr = {v: "$" + k for k, v in zip(_paths, _new_paths)}
+        set_expr.update(last_updated_at=datetime.datetime.utcnow())
 
         coll = get_db_conn()[cls.__name__]
         coll.update_many({}, [{"$set": set_expr}])
@@ -918,7 +929,10 @@ class DatasetMixin(object):
         _paths = cls._handle_db_fields(paths)
 
         coll = get_db_conn()[cls.__name__]
-        coll.update_many({}, [{"$unset": _paths}])
+        now = datetime.datetime.utcnow()
+        coll.update_many(
+            {}, [{"$unset": _paths}, {"$set": {"last_updated_at": now}}]
+        )
 
     @classmethod
     def _handle_db_field(cls, path, new_path=None):
@@ -1257,6 +1271,7 @@ class DatasetMixin(object):
             prev._set_dataset(None, None)
             field.required = prev.required
             field.null = prev.null
+            field._readonly = prev.readonly
 
         field._set_dataset(dataset, path)
         cls._fields[field_name] = field
@@ -1630,7 +1645,7 @@ class NoDatasetMixin(object):
 
             if k == "_id":
                 k = "id"
-            elif k == "_dataset_id":
+            elif k in {"_dataset_id", "created_at", "last_updated_at"}:
                 continue
             elif isinstance(v, ObjectId) and k.startswith("_"):
                 k = k[1:]

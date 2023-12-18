@@ -4288,6 +4288,14 @@ class SetField(ViewStage):
         if not self._allow_missing:
             sample_collection.validate_fields_exist(self._field)
 
+        # Check readonly Field
+        _field = sample_collection.get_field(self._field)
+
+        if _field and getattr(_field, "readonly", False):
+            raise ValueError(
+                f"Readonly field '{self._field}' cannot be edited"
+            )
+
         pipeline, expr_dict = sample_collection._make_set_field_pipeline(
             self._field,
             self._expr,

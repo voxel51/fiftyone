@@ -661,6 +661,42 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         return self._doc.last_loaded_at
 
     @property
+    def _last_updated_at(self):
+        """The datetime that the dataset was last saved."""
+        return self._doc.last_updated_at or self._doc.created_at
+
+    @property
+    def _sample_last_updated_at(self):
+        """The datetime that any sample of the dataset was last updated."""
+        conn = foo.get_db_conn()
+        sample_collection = self._sample_collection_name
+        docs = list(
+            conn[sample_collection]
+            .find({}, {"last_updated_at"})
+            .sort("last_updated_at", -1)
+            .limit(1)
+        )
+        if docs:
+            return docs[0]["last_updated_at"]
+        else:
+            return None
+
+    @property
+    def last_updated_at(self):
+        """The datetime that any element of the dataset was last updated.
+        This is the max of last_updated_at of each sample, and the
+        last_updated_at time for the dataset metadata itself.
+        """
+        sample_last_updated_at = self._sample_last_updated_at
+        self_updated_at = self._last_updated_at
+        if sample_last_updated_at is None:
+            return self_updated_at
+        elif self_updated_at is None:
+            return sample_last_updated_at
+        else:
+            return max(sample_last_updated_at, self_updated_at)
+
+    @property
     def persistent(self):
         """Whether the dataset persists in the database after a session is
         terminated.
@@ -2552,7 +2588,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         if validate:
             self._validate_samples(samples)
 
-        dicts = [self._make_dict(sample) for sample in samples]
+        now = datetime.utcnow()
+        dicts = [self._make_dict(sample, now) for sample in samples]
 
         try:
             # adds `_id` to each dict
@@ -2611,8 +2648,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         dicts = []
         ops = []
+        now = datetime.utcnow()
         for sample in samples:
-            d = self._make_dict(sample, include_id=True)
+            d = self._make_dict(sample, now, include_id=True)
             dicts.append(d)
 
             if sample.id:
@@ -2630,7 +2668,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
-    def _make_dict(self, sample, include_id=False):
+    def _make_dict(self, sample, now_time, include_id=False):
         d = sample.to_mongo_dict(include_id=include_id)
 
         # We omit None here to allow samples with None-valued new fields to
@@ -2638,7 +2676,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         # because None and missing are equivalent in our data model
         d = {k: v for k, v in d.items() if v is not None}
 
+        # Add created and updated times to sample
         d["_dataset_id"] = self._doc.id
+        d["last_updated_at"] = now_time
+        d["created_at"] = sample.created_at or now_time
 
         return d
 
@@ -3125,6 +3166,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         sample_ops = []
         frame_ops = []
+        now = datetime.utcnow()
         for field in fields:
             if view is not None:
                 _, id_path = view._get_label_field_path(field, "_id")
@@ -3143,7 +3185,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             query,
-                            {"$pull": {root: {"_id": {"$in": view_ids}}}},
+                            {
+                                "$pull": {root: {"_id": {"$in": view_ids}}},
+                                "$set": {"last_updated_at": now},
+                            },
                         )
                     )
 
@@ -3151,7 +3196,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             query,
-                            {"$pull": {root: {"_id": {"$in": ids}}}},
+                            {
+                                "$pull": {root: {"_id": {"$in": ids}}},
+                                "$set": {"last_updated_at": now},
+                            },
                         )
                     )
 
@@ -3163,7 +3211,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                 "$pull": {
                                     root: {
                                         "tags": {"$elemMatch": {"$in": tags}}
-                                    }
+                                    },
+                                    "$set": {"last_updated_at": now},
                                 }
                             },
                         )
@@ -3173,7 +3222,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": view_ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3181,7 +3230,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + "._id": {"$in": ids}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3189,7 +3238,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     ops.append(
                         UpdateMany(
                             {root + ".tags": {"$elemMatch": {"$in": tags}}},
-                            {"$set": {root: None}},
+                            {"$set": {root: None, "last_updated_at": now}},
                         )
                     )
 
@@ -3219,6 +3268,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         sample_ops = []
         frame_ops = []
+        now = datetime.utcnow()
         for field, field_labels in labels_map.items():
             if fields is not None and field not in fields:
                 continue
@@ -3245,7 +3295,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                     "_sample_id": ObjectId(sample_id),
                                     "frame_number": frame_number,
                                 },
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_updated_at": now},
+                                },
                             )
                         )
                 else:
@@ -3266,7 +3321,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "frame_number": frame_number,
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_updated_at": now,
+                                        }
+                                    },
                                 )
                             )
             else:
@@ -3280,7 +3340,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         sample_ops.append(
                             UpdateOne(
                                 {"_id": ObjectId(sample_id)},
-                                {"$pull": {root: {"_id": {"$in": label_ids}}}},
+                                {
+                                    "$pull": {
+                                        root: {"_id": {"$in": label_ids}}
+                                    },
+                                    "$set": {"last_updated_at": now},
+                                },
                             )
                         )
                 else:
@@ -3297,7 +3362,12 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                                         "_id": ObjectId(sample_id),
                                         root + "._id": label_id,
                                     },
-                                    {"$set": {root: None}},
+                                    {
+                                        "$set": {
+                                            root: None,
+                                            "last_updated_at": now,
+                                        }
+                                    },
                                 )
                             )
 
@@ -3370,12 +3440,14 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         """
         self._save()
 
-    def _save(self, view=None, fields=None):
+    def _save(self, view=None, fields=None, override_last_updated_at=False):
         if view is not None:
             _save_view(view, fields=fields)
 
         try:
-            self._doc.save(safe=True)
+            self._doc.save(
+                safe=True, override_last_updated_at=override_last_updated_at
+            )
         except moe.DoesNotExist:
             name = self.name
             self._deleted = True
@@ -3901,6 +3973,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             )
 
         sample_collection.compute_metadata()
+        now = datetime.utcnow()
         sample_collection._aggregate(
             post_pipeline=[
                 {
@@ -3908,6 +3981,8 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         "_id": False,
                         "_sample_id": "$_id",
                         "_dataset_id": self._doc.id,
+                        "created_at": now,
+                        "last_updated_at": now,
                         "frame_number": {
                             "$range": [
                                 1,
@@ -6594,7 +6669,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
     def _update_last_loaded_at(self):
         self._doc.last_loaded_at = datetime.utcnow()
-        self._save()
+        self._save(override_last_updated_at=True)
 
 
 def _get_random_characters(n):
@@ -6689,12 +6764,14 @@ def _create_dataset(
         frame_doc_cls = None
         frame_fields = None
 
+    now = datetime.utcnow()
     dataset_doc = foo.DatasetDocument(
         id=_id,
         name=name,
         slug=slug,
         version=focn.VERSION,
-        created_at=datetime.utcnow(),
+        created_at=now,
+        last_updated_at=now,
         media_type=None,  # will be inferred when first sample is added
         sample_collection_name=sample_collection_name,
         frame_collection_name=frame_collection_name,
@@ -6719,6 +6796,7 @@ def _create_indexes(sample_collection_name, frame_collection_name):
     if sample_collection_name is not None:
         sample_collection = conn[sample_collection_name]
         sample_collection.create_index("filepath")
+        sample_collection.create_index("last_updated_at")
 
     if frame_collection_name is not None:
         frame_collection = conn[frame_collection_name]
@@ -6951,6 +7029,7 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
     dataset_doc.name = name
     dataset_doc.slug = slug
     dataset_doc.created_at = datetime.utcnow()
+    dataset_doc.last_loaded_at = dataset_doc.created_at
     dataset_doc.last_loaded_at = None
     dataset_doc.persistent = persistent
     dataset_doc.sample_collection_name = sample_collection_name
@@ -6995,14 +7074,31 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
-    pipeline.append({"$addFields": {"_dataset_id": _id}})
+    now = datetime.utcnow()
+    pipeline.append(
+        {
+            "$addFields": {
+                "_dataset_id": _id,
+                "created_at": now,
+                "last_updated_at": now,
+            }
+        }
+    )
     pipeline.append({"$out": sample_collection_name})
     foo.aggregate(coll, pipeline)
 
     # Clone frames
     if contains_videos:
         coll, pipeline = _get_frames_pipeline(dataset_or_view)
-        pipeline.append({"$addFields": {"_dataset_id": _id}})
+        pipeline.append(
+            {
+                "$addFields": {
+                    "_dataset_id": _id,
+                    "created_at": now,
+                    "last_updated_at": now,
+                }
+            }
+        )
         pipeline.append({"$out": frame_collection_name})
         foo.aggregate(coll, pipeline)
 
@@ -7109,11 +7205,15 @@ def _save_view(view, fields=None):
 
     pipeline = view._pipeline(detach_frames=True, detach_groups=True)
 
+    now = datetime.utcnow()
     if sample_fields:
-        pipeline.append({"$project": {f: True for f in sample_fields}})
+        field_project = {f: True for f in sample_fields}
+        field_project.update(last_updated_at=now)
+        pipeline.append({"$project": field_project})
         pipeline.append({"$merge": dataset._sample_collection_name})
         foo.aggregate(dataset._sample_collection, pipeline)
     elif save_samples:
+        pipeline.append({"$set": {"last_updated_at": now}})
         pipeline.append(
             {
                 "$merge": {
@@ -7144,10 +7244,13 @@ def _save_view(view, fields=None):
             )
 
         if frame_fields:
-            pipeline.append({"$project": {f: True for f in frame_fields}})
+            field_project = {f: True for f in frame_fields}
+            field_project.update(last_updated_at=now)
+            pipeline.append({"$project": field_project})
             pipeline.append({"$merge": dataset._frame_collection_name})
             foo.aggregate(dataset._sample_collection, pipeline)
         else:
+            pipeline.append({"$project": {"last_updated_at": now}})
             pipeline.append(
                 {
                     "$merge": {
@@ -7509,7 +7612,12 @@ def _add_collection_with_new_ids(
     else:
         num_ids = len(src_samples)
 
-    add_fields = {"_dataset_id": dataset._doc.id}
+    now = datetime.utcnow()
+    add_fields = {
+        "_dataset_id": dataset._doc.id,
+        "created_at": now,
+        "last_updated_at": now,
+    }
 
     if contains_groups:
         id_field = sample_collection.group_field + "._id"
@@ -7566,7 +7674,13 @@ def _add_collection_with_new_ids(
                 }
             },
             {"$project": {"_id": False}},
-            {"$addFields": {"_dataset_id": dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dataset._doc.id,
+                    "created_at": now,
+                    "last_updated_at": now,
+                }
+            },
             {
                 "$merge": {
                     "into": dataset._frame_collection_name,
@@ -7846,6 +7960,9 @@ def _merge_samples_pipeline(
                     f for f in default_fields if f in omit_fields
                 )
 
+        # Delete created_at field so it isn't overwritten
+        delete_fields.add("created_at")
+
         when_matched = _merge_docs(
             src_collection,
             merge_lists=merge_lists,
@@ -7861,9 +7978,20 @@ def _merge_samples_pipeline(
     else:
         when_not_matched = "discard"
 
+    now = datetime.utcnow()
     sample_pipeline.extend(
         [
-            {"$addFields": {"_dataset_id": dst_dataset._doc.id}},
+            {
+                "$addFields": {
+                    "_dataset_id": dst_dataset._doc.id,
+                    # We can safely add this field here. Either doc is
+                    #   new then we insert or discard, either is fine. Or,
+                    #   doc exists and we keepExisting OR created_at should
+                    #   be a deleted_field in the whenMatch pipeline
+                    "created_at": now,
+                    "last_updated_at": now,
+                }
+            },
             {
                 "$merge": {
                     "into": dst_dataset._sample_collection_name,
@@ -7941,11 +8069,14 @@ def _merge_samples_pipeline(
         if skip_existing:
             when_frame_matched = "keepExisting"
         else:
+            # Delete created_at field so it isn't overwritten
+            delete_fields = {"created_at"}
             when_frame_matched = _merge_docs(
                 src_collection,
                 merge_lists=merge_lists,
                 fields=frame_fields,
                 omit_fields=omit_frame_fields,
+                delete_fields=delete_fields,
                 overwrite=overwrite,
                 frames=True,
             )
@@ -7956,6 +8087,12 @@ def _merge_samples_pipeline(
                     "$addFields": {
                         "_dataset_id": dst_dataset._doc.id,
                         "_sample_id": "$" + frame_key_field,
+                        # We can safely add this field here. Either doc is
+                        #   new then we insert. Or, doc exists and we
+                        #   keepExisting OR created_at should
+                        #   be a deleted_field in the whenMatch pipeline
+                        "created_at": now,
+                        "last_updated_at": now,
                     }
                 },
                 {

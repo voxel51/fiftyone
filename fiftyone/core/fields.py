@@ -266,10 +266,11 @@ class Field(mongoengine.fields.BaseField):
         info (None): an optional info dict
     """
 
-    def __init__(self, description=None, info=None, **kwargs):
+    def __init__(self, description=None, info=None, readonly=False, **kwargs):
         super().__init__(**kwargs)
         self._description = description
         self._info = info
+        self._readonly = readonly
 
         self.__dataset = None
         self.__path = None
@@ -362,6 +363,11 @@ class Field(mongoengine.fields.BaseField):
     @info.setter
     def info(self, info):
         self._info = info
+
+    @property
+    def readonly(self):
+        """If this property should be considered readonly after setting"""
+        return self._readonly
 
     def copy(self):
         """Returns a copy of the field.
