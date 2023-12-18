@@ -1411,6 +1411,22 @@ class StaticBatcher(Batcher):
 
 
 def get_default_batcher(iterable, progress=True, total=None):
+    """Returns a ``Batcher`` over ``iterable`` using defaults from the config.
+
+    Uses ``fiftyone.config.default_batcher`` to determine the implementation
+    to use, and related configuration values as needed for each.
+
+    Args:
+        iterable: an iterable to batch over
+        progress (True): whether to render a progress bar tracking the
+            consumption of the batches
+        total (None): the length of ``iterable``. Only applicable when
+            ``progress=True``. If not provided, it is computed via
+            ``len(iterable)``, if possible
+
+    Returns:
+        ``fiftyone.core.utils.Batcher``
+    """
     default_batcher = fo.config.default_batcher
     if default_batcher == "latency":
         target_latency = fo.config.dynamic_batch_target_latency
