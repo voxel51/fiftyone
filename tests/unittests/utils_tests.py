@@ -29,7 +29,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "latency"):
             with patch.object(
                 fo.config,
-                "default_dynamic_batcher_target_latency",
+                "dynamic_batch_target_latency",
                 target_latency,
             ):
                 batcher = fou.get_default_batcher(iterable)
@@ -40,7 +40,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "static"):
             with patch.object(
                 fo.config,
-                "default_database_static_batch_size",
+                "database_static_batch_size",
                 static_batch_size,
             ):
                 batcher = fou.get_default_batcher(iterable)
@@ -51,7 +51,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "size"):
             with patch.object(
                 fo.config,
-                "default_dynamic_batcher_target_size",
+                "dynamic_batch_target_size",
                 target_size,
             ):
                 batcher = fou.get_default_batcher(iterable)

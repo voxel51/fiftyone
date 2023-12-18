@@ -57,6 +57,20 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100_000`                     | Batch size to use for bulk writing MongoDB operations; cannot be > 100,000             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
+|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`. Supported values    |
+|                               |                                     |                               | are `latency`, `size`, and `static`. `latency` is the default, which uses a dynamic    |
+|                               |                                     |                               | batch size attempting to achieve a target latency between calls                        |
+|                               |                                     |                               | `default_dynamic_batcher_target_latency`. `size` is the default for FiftyOne Teams SDK,|
+|                               |                                     |                               | which attempts to achieve a target content size `default_dynamic_batcher_target_size`. |
+|                               |                                     |                               | `static` uses a fixed batch size `default_database_static_batch_size`.                 |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `dynamic_batch_target_latency`| `FIFTYONE_DYNAMIC_BATCH_LATENCY`    | `0.2`                         | Target latency between batches. Ignored if `default_batcher` is not `latency`.         |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `dynamic_batch_target_size`   | `FIFTYONE_DYNAMIC_BATCH_TARGET_SIZE`| `2 ** 20`                     | Target content size of batches, in bytes. Ignored if `default_batcher` is not `size`.  |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `database_static_batch_size`  | `FIFTYONE_STATIC_BATCH_SIZE`        | `100`                         | Fixed size of batches. Ignored if `default_batcher` is not `static`.                   |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+

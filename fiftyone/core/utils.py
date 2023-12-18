@@ -1413,7 +1413,7 @@ class StaticBatcher(Batcher):
 def get_default_batcher(iterable, progress=True, total=None):
     default_batcher = fo.config.default_batcher
     if default_batcher == "latency":
-        target_latency = fo.config.default_dynamic_batcher_target_latency
+        target_latency = fo.config.dynamic_batch_target_latency
         return LatencyDynamicBatcher(
             iterable,
             target_latency=target_latency,
@@ -1424,7 +1424,7 @@ def get_default_batcher(iterable, progress=True, total=None):
             total=total,
         )
     elif default_batcher == "size":
-        target_content_size = fo.config.default_dynamic_batcher_target_size
+        target_content_size = fo.config.dynamic_batch_target_size
         return BsonSizeDynamicBatcher(
             iterable,
             target_size=target_content_size,
@@ -1435,7 +1435,7 @@ def get_default_batcher(iterable, progress=True, total=None):
             total=total,
         )
     elif default_batcher == "static":
-        batch_size = fo.config.default_database_static_batch_size
+        batch_size = fo.config.database_static_batch_size
         return StaticBatcher(
             iterable, batch_size=batch_size, progress=progress, total=total
         )
