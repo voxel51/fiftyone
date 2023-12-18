@@ -8,6 +8,7 @@ import {
 } from "../overlays/util";
 import {
   Coloring,
+  Colorscale,
   CustomizeColor,
   LabelTagColor,
   MaskColorInput,
@@ -21,6 +22,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -129,6 +131,7 @@ export const PainterFactory = (requestColor) => ({
     labels,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     labelTagColors: LabelTagColor,
     selectedLabelTags: string[]
   ) => {
@@ -150,6 +153,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring: Coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     selectedLabelTags: string[],
     labelTagColors: LabelTagColor
   ) => {
@@ -170,53 +174,49 @@ export const PainterFactory = (requestColor) => ({
       : isFloatArray(targets)
       ? [0, 1]
       : [0, 255];
+    const max = Math.max(Math.abs(start), Math.abs(stop));
 
-    const setting = customizeColorSetting?.find((s) => s.path === field);
+    let color;
+    const fieldSetting = customizeColorSetting?.find((x) => field === x.path);
 
-    const color =
-      setting?.fieldColor ??
-      (await requestColor(coloring.pool, coloring.seed, field));
+    // when colorscale is null or doe
+    let scale;
 
-    const getColor =
-      coloring.by === "value"
-        ? (value) => {
-            if (value === 0) {
-              return 0;
-            }
-
-            const index = Math.round(
-              (Math.max(value - start, 0) / (stop - start)) *
-                (coloring.scale.length - 1)
-            );
-
-            return get32BitColor(coloring.scale[index]);
-          }
-        : (value) => {
-            // render in field’s color with opacity proportional to the magnitude of the heatmap’s value
-            const absMax = Math.max(Math.abs(start), Math.abs(stop));
-
-            // clip value
-            if (value < start) {
-              value = start;
-            } else if (value > stop) {
-              value = stop;
-            }
-
-            const alpha = Math.abs(value) / absMax;
-
-            return get32BitColor(color, alpha);
-          };
+    if (colorscale?.fields?.find((x) => x.path === field)?.rgb) {
+      scale = colorscale?.fields?.find((x) => x.path === field).rgb;
+    } else if (colorscale?.default?.rgb) {
+      scale = colorscale.default.rgb;
+    } else {
+      scale = coloring.scale;
+    }
 
     // these for loops must be fast. no "in" or "of" syntax
     for (let i = 0; i < overlay.length; i++) {
-      if (targets[i] !== 0) {
-        if (mapData.channels > 2) {
-          overlay[i] = getColor(
-            getRgbFromMaskData(targets, mapData.channels, i)[0]
-          );
+      let value;
+      if (mapData.channels > 2) {
+        // rgb mask
+        value = getRgbFromMaskData(targets, mapData.channels, i)[0];
+      } else {
+        value = targets[i];
+      }
+
+      // 0 is background image
+      if (value !== 0) {
+        let r;
+        if (coloring.by === COLOR_BY.FIELD) {
+          color =
+            fieldSetting?.fieldColor ??
+            (await requestColor(coloring.pool, coloring.seed, field));
+
+          r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
-          overlay[i] = getColor(targets[i]);
+          const index = Math.round(
+            (Math.max(value - start, 0) / (stop - start)) * (scale.length - 1)
+          );
+          r = get32BitColor(scale[index]);
         }
+
+        overlay[i] = r;
       }
     }
   },
@@ -225,6 +225,7 @@ export const PainterFactory = (requestColor) => ({
     label,
     coloring,
     customizeColorSetting: CustomizeColor[],
+    colorscale: Colorscale,
     selectedLabelsTags: string[],
     labelTagColors: LabelTagColor
   ) => {
@@ -339,7 +340,7 @@ export const PainterFactory = (requestColor) => ({
               // Attempt to find a color in the fields mask target color settings
               // If not found, attempt to find a color in the default mask target colors.
 
-              const target = targets[i].toString()
+              const target = targets[i].toString();
               const customColor =
                 fieldSetting?.[target] || defaultSetting?.[target];
 

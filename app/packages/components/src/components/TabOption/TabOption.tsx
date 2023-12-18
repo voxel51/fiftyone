@@ -27,6 +27,7 @@ const TabOptionDiv = animated(styled.div`
   & > div > div {
     display: flex;
     justify-content: center;
+    padding: 0 1rem;
   }
 `);
 

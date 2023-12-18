@@ -12,6 +12,7 @@ import {
 } from "./ShareStyledDiv";
 import ColorPalette from "./colorPalette/ColorPalette";
 import DefaultMaskTargets from "./colorPalette/DefaultMaskTargets";
+import GlobalColorscale from "./colorPalette/GlobalColorscale";
 import ShuffleColor from "./controls/RefreshColor";
 
 const GlobalSetting = () => {
@@ -86,6 +87,10 @@ const GlobalSetting = () => {
       <Divider>Segmentation</Divider>
       <ControlGroupWrapper>
         <DefaultMaskTargets />
+      </ControlGroupWrapper>
+      <Divider>Colorscale</Divider>
+      <ControlGroupWrapper>
+        <GlobalColorscale />
       </ControlGroupWrapper>
     </div>
   );

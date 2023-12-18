@@ -299,6 +299,162 @@ attribute names in the App's sidebar:
     :alt: app-field-tooltips
     :align: center
 
+.. _app-lightning-mode:
+
+Lightning mode
+--------------
+
+Lightning mode is a performant sidebar setting for larger datasets that can be
+enabled either by adding a `lightning_threshold` to your
+:ref:`App config <configuring-fiftyone-app>`, or for a particular dataset by
+clicking on the "Gear" icon above the sample grid in the App.
+
+.. note::
+
+    When lightning mode is enabled through the "Gear" icon in the App, the
+    setting is persisted in your browser for that dataset.
+
+The lightning threshold specifies a dataset/view size (sample count) above
+which filters can *only* be applied to fields that have been **indexed**. After
+applying filters that bring the current view size below the lightning
+threshold, all fields become available for filtering and additional information
+like value counts are presented.
+
+.. image:: /images/app/app-lightning-mode.gif
+    :alt: app-lightning-mode
+    :align: center
+
+The above GIF shows lightning mode in action on the train split of the
+:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with a
+`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_
+and a specific index on the `metadata.size_bytes` field:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # The path to the source files that you manually downloaded
+    source_dir = "/path/to/dir-with-bdd100k-files"
+
+    dataset = foz.load_zoo_dataset(
+        "bdd100k",
+        split="train",
+        source_dir=source_dir,
+    )
+
+    dataset.create_index("$**")
+    dataset.create_index("metadata.size_bytes")
+
+    session = fo.launch_app(dataset)
+
+The SDK provides a number of useful utilities for managing indexes on your
+datasets:
+
+-   :meth:`list_indexes() <fiftyone.core.collections.SampleCollection.list_indexes>` -
+    list all existing indexes
+-   :meth:`create_index() <fiftyone.core.collections.SampleCollection.create_index>` -
+    create a new index
+-   :meth:`drop_index() <fiftyone.core.collections.SampleCollection.drop_index>` -
+    drop an existing index
+-   :meth:`get_index_information() <fiftyone.core.collections.SampleCollection.get_index_information>` -
+    get information about the existing indexes
+
+.. note::
+
+    Did you know? You can manage dataset indexes via the App by installing the
+    `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
+    plugin!
+
+For datasets with a relatively small number of fields, the easiest option for
+taking advantage of lightning mode is to create a global wildcard index:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.create_index("$**")
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes.
+
+For video datasets with frame-level fields, a separate wildcard index for frame
+fields is also necessary:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    dataset.create_index("$**")
+    dataset.create_index("frames.$**")
+    
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+For datasets with a large number fields, adding individual and/or selective
+wildcard indexes is recommended:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    dataset = fo.Dataset()
+
+    # Index specific top-level fields
+    dataset.create_index("camera_id")
+    dataset.create_index("recorded_at")
+    dataset.create_index("annotated_at")
+    dataset.create_index("annotated_by")
+
+    # Wildcard index for all attributes of ground truth detections
+    dataset.create_index("ground_truth.detections.$**")
+
+    # Note: it is faster to declare indexes before adding samples
+    dataset.add_samples(...)
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+For :ref:`grouped datasets <groups>`, you should create two indexes for each
+field you wish to filter by in lightning mode: the field itself and a compound
+index that includes the group slice name:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-groups")
+
+    # Index a specific field
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
 .. _app-sidebar-mode:
 
 Sidebar mode
@@ -703,11 +859,22 @@ in detail:
     | Tab             | Element                       | Description                                                   |
     +=================+===============================+===============================================================+
     | Global settings | Color annotations by          | Whether to color the annotations in the grid/modal based on   |
-    |                 |                               | the `field` that they are in or the `value` that each         |
-    |                 |                               | annotation takes                                              |
+    |                 |                               | the `field` that they are in, the `value` that each           |
+    |                 |                               | annotation takes, or per `instance` of the annotation         |                                     
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | Global settings | Color pool                    | A pool of colors from which colors are randomly assigned      |
     |                 |                               | for otherwise unspecified fields/values                       |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Label Opacity                 | Color opacity of annotations                                  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Multicolor keypoints          | Whether to independently coloy keypoint points by their index |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Show keypoints skeletons      | Whether to show keypoint skeletons, if available              |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default mask targets colors   | If the MaskTargetsField is defined with integer keys, the     |
+    |                 |                               | dataset can assign a default color based on the integer keys  |
+    +-----------------+-------------------------------+---------------------------------------------------------------+
+    | Global settings | Default colorscale            | The default colorscale to use when rendering heatmaps         |
     +-----------------+-------------------------------+---------------------------------------------------------------+
     | JSON editor     |                               | A JSON representation of the current color scheme that you    |
     |                 |                               | can directly edit or copy + paste                             |
@@ -731,7 +898,11 @@ in detail:
     |                 |                               | must also specify an attribute of each object. For example,   |
     |                 |                               | color all                                                     |
     |                 |                               | :class:`Classification <fiftyone.core.labels.Classification>` |
-    |                 |                               | instances whose `label` is `"car"` in `#FF0000`               |
+    |                 |                               | instances whose `label` is `"car"` in `#FF0000`;              |
+    |                 |                               | :class:`Segmentation <fiftyone.core.labels.Segmentation>`     |
+    |                 |                               | instances whose `mask target integer` is `12` in `#FF0000`;   |
+    |                 |                               | :class:`Heatmap <fiftyone.core.labels.Heatmap>`               |
+    |                 |                               | instances using `hsv` colorscale.                             |
     +-----------------+-------------------------------+---------------------------------------------------------------+
 
 .. _app-color-schemes-python:
@@ -753,19 +924,48 @@ You can also programmatically configure a session's color scheme by creating
                 "path": "ground_truth",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fn", "color": "#0000ff"},  # false negatives: blue
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                     # false negatives: blue
+                    {"value": "fn", "color": "#0000ff"},
+                    # true positives: green
+                    {"value": "tp", "color": "#00ff00"},
                 ]
             },
             {
                 "path": "predictions",
                 "colorByAttribute": "eval",
                 "valueColors": [
-                    {"value": "fp", "color": "#ff0000"},  # false positives: red
-                    {"value": "tp", "color": "#00ff00"},  # true positives: green
+                    # false positives: red
+                    {"value": "fp", "color": "#ff0000"},
+                     # true positives: green
+                    {"value": "tp", "color": "#00ff00"}, 
+                ]
+            },
+            {
+                "path": "segmentations",
+                "maskTargetsColors": [
+                     # 12: red
+                    {"intTarget": 12, "color": "#ff0000"},
+                     # 15: green
+                    {"intTarget": 15, "color": "#00ff00"},
                 ]
             }
-        ]
+        ],
+        color_by="value",
+        opacity=0.5,
+        default_colorscale= { "name": "rdbu", "list": None },
+        colorscales=[
+            {
+                 # field definition overrides the default_colorscale
+                "path": "heatmap_2",
+                 # if name is defined, it will override the list
+                "name": None,
+                "list": [
+                    {"value": 0.0, "color": "rgb(0,255,255)"},
+                    {"value": 0.5, "color": "rgb(255,0,0)"},
+                    {"value": 1.0, "color": "rgb(0,0,255)"},
+                ],
+            }
+        ],
     )
 
 .. note::
@@ -804,17 +1004,6 @@ You can also dynamically edit your current color scheme by modifying it:
     # Edit the existing color scheme in-place
     session.color_scheme.color_pool = [...]
     session.refresh()
-
-You can reset the color scheme to its default value (the dataset's default
-color scheme, if any, else the global default) by setting
-:meth:`session.color_scheme <fiftyone.core.session.Session.color_scheme>` to
-None:
-
-.. code-block:: python
-    :linenos:
-
-    # Reset color scheme
-    session.color_scheme = None
 
 .. note::
 

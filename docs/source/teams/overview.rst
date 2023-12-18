@@ -90,7 +90,7 @@ _______________________
 
 FiftyOne Teams is fully backwards compatible with open-source FiftyOne. This
 means that all of your pre-existing FiftyOne workflows should be usable without
-odification.
+modification.
 
 For example, you can continue running all of the workflows listed below as you
 would with open source FiftyOne:

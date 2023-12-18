@@ -16,13 +16,7 @@ export class LoaderBar extends BaseElement<ImaVidState> {
     return element;
   }
 
-  renderSelf({
-    buffering,
-    hovering,
-    playing,
-    error,
-    config: { frameRate },
-  }: Readonly<ImaVidState>) {
+  renderSelf({ buffering, hovering, error }: Readonly<ImaVidState>) {
     this.buffering = buffering && hovering && !error;
 
     if (this.buffering) {

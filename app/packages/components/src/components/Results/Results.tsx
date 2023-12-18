@@ -1,6 +1,5 @@
 import classNames from "classnames";
 import React, { useLayoutEffect, useRef } from "react";
-
 import style from "./Results.module.css";
 
 export interface ResultProps<T> {
@@ -33,12 +32,12 @@ export const getValueString = (value: unknown): [string, boolean] => {
   return [value as string, false];
 };
 
-export const Result = <T extends unknown>({
+export function Result<T>({
   active,
   result,
   onClick,
   component,
-}: ResultProps<T>) => {
+}: ResultProps<T>) {
   const Component = component;
 
   const classes = active ? [style.active, style.result] : [style.result];
@@ -52,27 +51,29 @@ export const Result = <T extends unknown>({
       <Component value={result} />
     </div>
   );
-};
+}
 
 export interface ResultsProps<T> {
   active?: number;
-  component: React.FC<{ value: T; className: string }>;
+  component: React.FC<{ value: T; className?: string }>;
   cy?: string;
+  noResults?: string;
   onSelect: (value: T) => void;
-  results: T[];
-  toKey: (value: T) => string;
+  results?: T[];
+  toKey?: (value: T) => string;
   total?: number;
 }
 
-const Results = <T extends unknown>({
+function Results<T>({
   active,
   cy,
   component,
+  noResults,
   onSelect,
   results,
   toKey = (value: T) => String(value),
   total,
-}: ResultsProps<T>) => {
+}: ResultsProps<T>) {
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -85,32 +86,34 @@ const Results = <T extends unknown>({
     <div className={style.container}>
       <div
         className={style.scrollContainer}
-        style={{ paddingBottom: total === undefined ? 0 : 26.5 }}
+        style={{ paddingBottom: total || !results?.length ? 26.5 : undefined }}
         data-cy={`selector-results-container${cy ? "-" + cy : ""}`}
         ref={ref}
       >
-        {results.map((result, i) => (
-          <Result
-            active={i === active}
-            component={component}
-            key={toKey(result)}
-            result={result}
-            onClick={() => onSelect(result)}
-          />
-        ))}
+        {!!results &&
+          results.map((result, i) => {
+            return (
+              <Result
+                active={i === active}
+                component={component}
+                key={toKey ? toKey(result) : String(result)}
+                result={result}
+                onClick={() => onSelect(result)}
+              />
+            );
+          })}
       </div>
-      {total !== undefined && (
-        <div className={style.footer}>
-          {Boolean(total) && (
-            <>
-              {results.length} of {total.toLocaleString()}
-            </>
-          )}
-          {!total && <>No results</>}
-        </div>
-      )}
+      <div className={style.footer}>
+        {!results && !!noResults && <>{noResults}</>}
+        {total && results?.length && (
+          <>
+            {results.length} of {total.toLocaleString()}
+          </>
+        )}
+        {!!results && !results.length && <>No results</>}
+      </div>
     </div>
   );
-};
+}
 
 export default Results;

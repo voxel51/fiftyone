@@ -8,36 +8,7 @@ export default graphql`
     plugins
     sidebarMode
     colorScheme {
-      id
-      colorBy
-      colorPool
-      multicolorKeypoints
-      opacity
-      showSkeletons
-      labelTags {
-        fieldColor
-        valueColors {
-          color
-          value
-        }
-      }
-      defaultMaskTargetsColors {
-        intTarget
-        color
-      }
-      fields {
-        colorByAttribute
-        fieldColor
-        path
-        valueColors {
-          color
-          value
-        }
-        maskTargetsColors {
-          intTarget
-          color
-        }
-      }
+      ...colorSchemeFragment
     }
   }
 `;

@@ -1,8 +1,11 @@
 // Auto generate SchemaIO compatible schema based on a value
+
+import { isNullish, isPrimitiveType } from "@fiftyone/utilities";
+
 // todo: add support for OneOfView, TupleView, and MapView
-export function generateSchema(value, options?) {
+export function generateSchema(value: any, options?: GenerateSchemaOptions) {
   const type = getType(value);
-  const { label, readOnly } = options;
+  const { label, readOnly } = options || {};
   if (type === "array") {
     const dominantType = getDominantType(value);
     const isValueTable = isTable(value);
@@ -13,10 +16,9 @@ export function generateSchema(value, options?) {
           label,
           component: "TableView",
           columns: getTableColumns(value),
-          readOnly: true,
         },
       };
-    } else if (primitives.includes(dominantType) && readOnly) {
+    } else if (isPrimitiveType(dominantType || "") && readOnly) {
       return {
         type,
         view: {
@@ -50,7 +52,7 @@ export function generateSchema(value, options?) {
         readOnly,
       },
     };
-  } else {
+  } else if (isPrimitiveType(type || "")) {
     return {
       type,
       view: {
@@ -63,12 +65,16 @@ export function generateSchema(value, options?) {
         readOnly,
       },
     };
+  } else {
+    // todo: improve unknown type - TupleView? CodeView?
+    return { type, view: { label, component: "UnsupportedView", readOnly } };
   }
 }
 
 function getType(value) {
-  if (value !== undefined || value !== null)
+  if (!isNullish(value)) {
     return Array.isArray(value) ? "array" : typeof value;
+  }
 }
 
 function getDominantType(array) {
@@ -87,7 +93,7 @@ function getDominantType(array) {
     } else if (count > dominantTypeCount) {
       dominantType = type;
       dominantTypeCount = count;
-    } else if (count === dominantTypeCount && primitives.includes(type)) {
+    } else if (count === dominantTypeCount && isPrimitiveType(type)) {
       dominantType = type;
     }
   }
@@ -117,4 +123,7 @@ function getTableColumns(array) {
   return Object.keys(firstItem).map((key) => ({ key, label: key }));
 }
 
-const primitives = ["string", "number", "boolean"];
+type GenerateSchemaOptions = {
+  label?: string;
+  readOnly?: boolean;
+};

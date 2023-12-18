@@ -1,5 +1,5 @@
 import { Setter } from "@fiftyone/relay";
-import { Session } from "@fiftyone/state";
+import { Session, useSessionSetter } from "@fiftyone/state";
 import { MutableRefObject } from "react";
 import { Environment } from "react-relay";
 import { Queries } from "../makeRoutes";
@@ -9,6 +9,8 @@ type SetterContext = {
   environment: Environment;
   router: RoutingContext<Queries>;
   sessionRef: MutableRefObject<Session>;
+  setter: ReturnType<typeof useSessionSetter>;
+  subscription: string;
   // for showing snackbar errors
   handleError: (errors: string[]) => void;
 };

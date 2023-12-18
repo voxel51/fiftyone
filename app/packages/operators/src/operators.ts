@@ -59,6 +59,8 @@ export class ExecutionContext {
   ) {
     this.state = _currentContext.state;
   }
+  public delegationTarget: string = null;
+  public requestDelegation: boolean = false;
   trigger(operatorURI: string, params: any = {}) {
     if (!this.executor) {
       throw new Error(
@@ -114,6 +116,7 @@ export type OperatorConfigOptions = {
   icon?: string;
   darkIcon?: string;
   lightIcon?: string;
+  resolveExecutionOptionsOnChange?: boolean;
 };
 export class OperatorConfig {
   public name: string;
@@ -128,6 +131,7 @@ export class OperatorConfig {
   public icon = null;
   public darkIcon = null;
   public lightIcon = null;
+  public resolveExecutionOptionsOnChange = false;
   constructor(options: OperatorConfigOptions) {
     this.name = options.name;
     this.label = options.label || options.name;
@@ -142,6 +146,8 @@ export class OperatorConfig {
     this.icon = options.icon;
     this.darkIcon = options.darkIcon;
     this.lightIcon = options.lightIcon;
+    this.resolveExecutionOptionsOnChange =
+      options.resolveExecutionOptionsOnChange || false;
   }
   static fromJSON(json) {
     return new OperatorConfig({
@@ -157,6 +163,7 @@ export class OperatorConfig {
       icon: json.icon,
       darkIcon: json.dark_icon,
       lightIcon: json.light_icon,
+      resolveExecutionOptionsOnChange: json.resolve_execution_options_on_change,
     });
   }
 }
@@ -437,6 +444,7 @@ async function executeOperatorAsGenerator(
       operator_uri: operator.uri,
       params: ctx.params,
       dataset_name: currentContext.datasetName,
+      delegation_target: currentContext.delegationTarget,
       extended: currentContext.extended,
       view: currentContext.view,
       filters: currentContext.filters,
@@ -445,6 +453,7 @@ async function executeOperatorAsGenerator(
         : [],
       selected_labels: formatSelectedLabels(currentContext.selectedLabels),
       current_sample: currentContext.currentSample,
+      request_delegation: ctx.requestDelegation,
     },
     "json-stream"
   );
@@ -453,21 +462,26 @@ async function executeOperatorAsGenerator(
   const abortQueue = getAbortableOperationQueue();
   abortQueue.add(operator.uri, ctx.params, parser);
 
-  let result = null;
-  let triggerPromises = [];
+  const result = { result: {} };
   const onChunk = (chunk) => {
+    if (chunk?.delegated) {
+      result.delegated = chunk?.delegated;
+    }
+    if (chunk?.error) {
+      result.error = chunk?.error;
+    }
     const message = GeneratedMessage.fromJSON(chunk);
     if (message.cls == InvocationRequest) {
       executeOperator(message.body.operator_uri, message.body.params);
     } else if (message.cls == ExecutionResult) {
-      result = message.body;
+      result.result = message.body;
     }
   };
   await parser.parse(onChunk);
   abortQueue.remove(operator.uri);
   // Should we wait for all triggered operators finish execution?
   // e.g. await Promise.all(triggerPromises)
-  return result || {};
+  return result;
 }
 
 export function resolveOperatorURI(operatorURI) {
@@ -498,7 +512,10 @@ export async function executeOperatorWithContext(
   if (isRemote) {
     if (operator.config.executeAsGenerator) {
       try {
-        result = await executeOperatorAsGenerator(operator, ctx);
+        const serverResult = await executeOperatorAsGenerator(operator, ctx);
+        result = serverResult.result;
+        delegated = serverResult.delegated;
+        error = serverResult.error;
       } catch (e) {
         const isAbortError =
           e.name === "AbortError" || e instanceof DOMException;
@@ -524,6 +541,8 @@ export async function executeOperatorWithContext(
             : [],
           selected_labels: formatSelectedLabels(currentContext.selectedLabels),
           current_sample: currentContext.currentSample,
+          delegation_target: ctx.delegationTarget,
+          request_delegation: ctx.requestDelegation,
         }
       );
       result = serverResult.result;
@@ -588,6 +607,74 @@ export async function resolveRemoteType(
   return null;
 }
 
+const parseDateOrNull = (raw, fieldName) => {
+  return raw[fieldName]?.$date ? new Date(raw[fieldName].$date) : null;
+};
+
+class Orchestrator {
+  constructor(
+    public id: string,
+    public instanceID: string,
+    public description: string = null,
+    public availableOperators: string[],
+    public createdAt: Date,
+    public updatedAt: Date = null,
+    public deactivatedAt: Date = null
+  ) {}
+  static fromJSON(raw: any) {
+    return new Orchestrator(
+      raw.id,
+      raw.instance_id,
+      raw.description,
+      raw.available_operators,
+      parseDateOrNull(raw, "created_at"),
+      parseDateOrNull(raw, "updated_at"),
+      parseDateOrNull(raw, "deactivated_at")
+    );
+  }
+}
+class ExecutionOptions {
+  constructor(
+    public orchestratorRegistrationEnabled: boolean,
+    public allowImmediateExecution: boolean,
+    public allowDelegatedExecution: boolean,
+    public availableOrchestrators: Orchestrator[] = [],
+    public defaultChoiceToDelegated: boolean = false
+  ) {}
+}
+
+export async function resolveExecutionOptions(
+  operatorURI,
+  ctx: ExecutionContext
+) {
+  const currentContext = ctx._currentContext;
+  const executionOptionsAsJSON = await getFetchFunction()(
+    "POST",
+    "/operators/resolve-execution-options",
+    {
+      operator_uri: operatorURI,
+      params: ctx.params,
+      dataset_name: currentContext.datasetName,
+      extended: currentContext.extended,
+      view: currentContext.view,
+      filters: currentContext.filters,
+      selected: currentContext.selectedSamples
+        ? Array.from(currentContext.selectedSamples)
+        : [],
+      selected_labels: formatSelectedLabels(currentContext.selectedLabels),
+    }
+  );
+
+  return new ExecutionOptions(
+    executionOptionsAsJSON.orchestrator_registration_enabled,
+    executionOptionsAsJSON.allow_immediate_execution,
+    executionOptionsAsJSON.allow_delegated_execution,
+    executionOptionsAsJSON?.available_orchestrators?.map(
+      Orchestrator.fromJSON
+    ) || [],
+    executionOptionsAsJSON.default_choice_to_delegated
+  );
+}
 export async function fetchRemotePlacements(ctx: ExecutionContext) {
   const currentContext = ctx._currentContext;
   const result = await getFetchFunction()(

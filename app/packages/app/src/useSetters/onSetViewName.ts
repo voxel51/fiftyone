@@ -3,6 +3,7 @@ import { datasetName, stateSubscription } from "@fiftyone/state";
 import { DefaultValue } from "recoil";
 import { commitMutation } from "relay-runtime";
 import { pendingEntry } from "../Renderer";
+import { resolveURL } from "../utils";
 import { RegisteredSetter } from "./registerSetter";
 
 const onSetViewName: RegisteredSetter =
@@ -12,21 +13,10 @@ const onSetViewName: RegisteredSetter =
     if (slug instanceof DefaultValue) {
       slug = null;
     }
-    const params = new URLSearchParams(router.get().search);
-    const current = params.get("view");
-    if (current === slug) {
-      return;
-    }
 
-    if (slug) {
-      params.set("view", slug);
-    } else {
-      params.delete("view");
-    }
-
-    let search = params.toString();
-    if (search.length) {
-      search = `?${search}`;
+    const dataset = get(datasetName);
+    if (!dataset) {
+      throw new Error("no dataset");
     }
 
     commitMutation<setViewMutation>(environment, {
@@ -35,7 +25,7 @@ const onSetViewName: RegisteredSetter =
         subscription: get(stateSubscription),
         view: [],
         savedViewSlug: slug,
-        datasetName: get(datasetName) as string,
+        datasetName: dataset,
         form: {},
       },
     });
@@ -43,9 +33,17 @@ const onSetViewName: RegisteredSetter =
     sessionRef.current.selectedLabels = [];
     sessionRef.current.selectedSamples = new Set();
     sessionRef.current.fieldVisibilityStage = undefined;
-    router.history.push(`${router.get().pathname}${search}`, {
-      view: [],
-    });
+    router.history.push(
+      resolveURL({
+        currentPathname: router.history.location.pathname,
+        currentSearch: router.history.location.search,
+        nextDataset: dataset,
+        nextView: slug || undefined,
+      }),
+      {
+        view: [],
+      }
+    );
   };
 
 export default onSetViewName;

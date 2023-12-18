@@ -5,7 +5,8 @@ import { RelayEnvironmentProvider } from "react-relay";
 import { RecoilRelayEnvironment } from "recoil-relay";
 import { IEnvironment } from "relay-runtime";
 import Sync from "./Sync";
-import { Queries, Renderer, RouterContext, RoutingContext } from "./routing";
+import { Queries } from "./makeRoutes";
+import { Renderer, RouterContext, RoutingContext } from "./routing";
 
 const Network: React.FC<{
   environment: IEnvironment;

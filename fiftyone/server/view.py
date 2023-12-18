@@ -144,7 +144,6 @@ def get_view(
             pagination_data=pagination_data,
             extended_stages=extended_stages,
         )
-
     return view
 
 
@@ -369,7 +368,7 @@ def _is_label(field):
     )
 
 
-def _make_query(path, field, args):
+def _make_query(path: str, field: fof.Field, args):
     keys = path.split(".")
     path = ".".join(keys[:-1] + [field.db_field or field.name])
     if isinstance(field, fof.ListField) and field.field:
@@ -379,24 +378,7 @@ def _make_query(path, field, args):
         field,
         (fof.DateField, fof.DateTimeField, fof.FloatField, fof.IntField),
     ):
-        mn, mx = args["range"]
-        if isinstance(field, (fof.DateField, fof.DateTimeField)):
-            mn, mx = [fou.timestamp_to_datetime(d) for d in args["range"]]
-
-        if args["exclude"]:
-            return {
-                "$or": [
-                    {path: {"$lt": mn}},
-                    {path: {"$gt": mx}},
-                ]
-            }
-
-        return {
-            "$and": [
-                {path: {"$gte": mn}},
-                {path: {"$lte": mx}},
-            ]
-        }
+        return _make_range_query(path, field, args)
 
     values = args.get("values", None)
     if isinstance(field, fof.ObjectIdField):
@@ -424,6 +406,58 @@ def _make_query(path, field, args):
             }
 
     raise ValueError("unexpected filter")
+
+
+_NONFINITES = {
+    "inf": float("inf"),
+    "nan": float("nan"),
+    "ninf": float("-inf"),
+    "none": None,
+}
+
+
+def _make_range_query(path: str, field: fof.Field, args):
+    range_ = args.get("range", None)
+    if range_:
+        mn, mx = range_
+        if isinstance(field, (fof.DateField, fof.DateTimeField)):
+            mn, mx = [fou.timestamp_to_datetime(d) for d in range_]
+    else:
+        mn, mx = None, None
+
+    exclude = args.get("exclude", False)
+    if not exclude and range_:
+        return {
+            "$and": [
+                {path: {"$gte": mn}},
+                {path: {"$lte": mx}},
+            ]
+        }
+
+    if range_:
+        return {
+            "$or": [
+                {path: {"$lt": mn}},
+                {path: {"$gt": mx}},
+            ]
+        }
+
+    if exclude:
+        return {
+            "$and": [
+                {path: {"$eq": v}}
+                for k, v in _NONFINITES.items()
+                if k in args and not args[k]
+            ]
+        }
+
+    return {
+        "$and": [
+            {path: {"$ne": v}}
+            for k, v in _NONFINITES.items()
+            if k in args and not args[k]
+        ]
+    }
 
 
 def _make_scalar_expression(f, args, field, list_field=False, is_label=False):

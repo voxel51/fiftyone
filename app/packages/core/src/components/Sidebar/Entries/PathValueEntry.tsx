@@ -11,8 +11,8 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useMemo, useState } from "react";
-import { useRecoilValue, useRecoilValueLoadable } from "recoil";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -23,11 +23,12 @@ import { makePseudoField } from "./utils";
 
 const ScalarDiv = styled.div`
   & > div {
-    user-select: text;
     font-weight: bold;
     padding: 0 3px;
     overflow: hidden;
     text-overflow: ellipsis;
+    user-select: all;
+    white-space: nowrap;
   }
 `;
 
@@ -113,7 +114,7 @@ const ScalarValueEntry = ({
   );
 };
 
-const ListContainer = styled.div`
+const ListContainer = styled(ScalarDiv)`
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid var(--fo-palette-divider);
   border-radius: 2px;
@@ -228,7 +229,9 @@ const ListLoadable = ({ path }: { path: string }) => {
   return (
     <ListContainer>
       {values.map((v, i) => (
-        <div key={i}>{v}</div>
+        <div key={i} title={typeof v === "string" ? v : undefined}>
+          {v}
+        </div>
       ))}
       {values.length == 0 && <>No results</>}
     </ListContainer>
@@ -354,9 +357,26 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
+  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const sampleId = useRecoilValue(fos.currentSampleId);
+  const noneValued = noneValuedPaths?.[sampleId];
+
+  useEffect(() => {
+    if (none && path && !noneValued?.has(path) && sampleId) {
+      setNoneValued({
+        [sampleId]: noneValued
+          ? new Set([...noneValued]).add(path)
+          : new Set([]),
+      });
+    }
+  }, [noneValued, none, path, setNoneValued, sampleId]);
 
   return (
-    <div data-cy={`sidebar-entry-${path}`} style={none ? { color } : {}}>
+    <div
+      data-cy={`sidebar-entry-${path}`}
+      title={typeof formatted === "string" ? formatted : undefined}
+      style={none ? { color } : {}}
+    >
       {none ? "None" : formatted}
     </div>
   );

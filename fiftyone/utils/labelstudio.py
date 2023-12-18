@@ -295,9 +295,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             (
                 one["source_id"],
                 (
-                    one["source_id"],
-                    open(one[one["media_type"]], "rb"),
-                    one["mime_type"],
+                    open(one[one["media_type"]], "rb")
                 ),
             )
             for one in tasks

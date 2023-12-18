@@ -1,24 +1,29 @@
-import React, { useEffect, useRef, useState } from "react";
-import DynamicIO from "./components/DynamicIO";
-import { set } from "lodash";
 import { PluginComponentType, registerComponent } from "@fiftyone/plugins";
+import { cloneDeep, set } from "lodash";
+import React, { useCallback, useEffect, useRef } from "react";
+import DynamicIO from "./components/DynamicIO";
+import { clearUseKeyStores } from "./hooks";
 
 export function SchemaIOComponent(props) {
   const { onChange } = props;
-  const [state, setState] = useState({});
+  const stateRef = useRef({});
   const autoFocused = useRef(false);
 
-  function onIOChange(path, value) {
-    setState((state) => {
-      const updatedState = structuredClone(state);
-      set(updatedState, path, structuredClone(value));
-      return updatedState;
-    });
-  }
-
   useEffect(() => {
-    if (onChange) onChange(state);
-  }, [state]);
+    return clearUseKeyStores;
+  }, []);
+
+  const onIOChange = useCallback(
+    (path, value) => {
+      const currentState = stateRef.current;
+      const updatedState = cloneDeep(currentState);
+      set(updatedState, path, cloneDeep(value));
+      stateRef.current = updatedState;
+      if (onChange) onChange(updatedState);
+      return updatedState;
+    },
+    [onChange]
+  );
 
   return (
     <DynamicIO

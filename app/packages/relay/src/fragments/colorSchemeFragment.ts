@@ -4,11 +4,40 @@ import r from "../resolve";
 
 export default r(graphql`
   fragment colorSchemeFragment on ColorScheme {
+    id
     colorBy
     colorPool
     multicolorKeypoints
     opacity
     showSkeletons
+    labelTags {
+      fieldColor
+      valueColors {
+        color
+        value
+      }
+    }
+    defaultMaskTargetsColors {
+      intTarget
+      color
+    }
+    defaultColorscale {
+      name
+      list {
+        value
+        color
+      }
+      rgb
+    }
+    colorscales {
+      path
+      name
+      list {
+        value
+        color
+      }
+      rgb
+    }
     fields {
       colorByAttribute
       fieldColor
@@ -17,11 +46,8 @@ export default r(graphql`
         color
         value
       }
-    }
-    labelTags {
-      fieldColor
-      valueColors {
-        value
+      maskTargetsColors {
+        intTarget
         color
       }
     }

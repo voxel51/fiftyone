@@ -70,6 +70,13 @@ on the cards below to see how!
     :tags: Annotation
 
 .. customcarditem::
+    :header: V7
+    :description: Use our V7 integration to easily annotate and edit your FiftyOne datasets.
+    :link: v7.html
+    :image: ../_static/images/integrations/v7.jpg
+    :tags: Annotation
+
+.. customcarditem::
     :header: Labelbox
     :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
     :link: labelbox.html
@@ -84,10 +91,24 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Redis
+    :description: Use our Redis vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: redis.html
+    :image: ../_static/images/integrations/redis.jpg
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
     :header: Pinecone
     :description: Use our Pinecone integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: pinecone.html
     :image: ../_static/images/integrations/pinecone.png
+    :tags: Brain,Embeddings,Filtering
+
+.. customcarditem::
+    :header: MongoDB
+    :description: Use our MongoDB vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
+    :link: mongodb.html
+    :image: ../_static/images/integrations/mongodb.jpg
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
@@ -148,9 +169,12 @@ on the cards below to see how!
     ActivityNet <activitynet.rst>
     CVAT <cvat.rst>
     Label Studio <labelstudio.rst>
+    V7 <v7.rst>
     Labelbox <labelbox.rst>
     Qdrant <qdrant.rst>
+    Redis <redis.rst>
     Pinecone <pinecone.rst>
+    MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
     Ultralytics <ultralytics.rst>

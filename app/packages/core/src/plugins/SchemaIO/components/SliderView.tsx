@@ -2,12 +2,19 @@ import React, { useEffect, useRef } from "react";
 import { Slider } from "@mui/material";
 import FieldWrapper from "./FieldWrapper";
 import { autoFocus, getComponentProps } from "../utils";
+import { useKey } from "../hooks";
+import { isNumber } from "lodash";
 
 export default function SliderView(props) {
   const { data, onChange, path, schema } = props;
   const sliderRef = useRef<HTMLInputElement>(null);
   const focus = autoFocus(props);
-  const { min = 0, max = 100, multipleOf = 1 } = schema;
+  const { type, min, max, multipleOf } = schema;
+  const computedMin = isNumber(min) ? min : 0;
+  const computedMax = isNumber(max) ? max : 100;
+  const computedMultipleOf = isNumber(multipleOf)
+    ? multipleOf
+    : (computedMax - computedMin) / 100;
 
   useEffect(() => {
     if (sliderRef.current && focus) {
@@ -15,17 +22,21 @@ export default function SliderView(props) {
     }
   }, [sliderRef, focus]);
 
+  const [key, setUserChanged] = useKey(path, schema, data, true);
+
   return (
     <FieldWrapper {...props}>
       <Slider
-        min={min}
-        max={max}
-        step={multipleOf}
+        min={computedMin}
+        max={computedMax}
+        step={computedMultipleOf}
+        key={key}
         disabled={schema.view?.readOnly}
         valueLabelDisplay="auto"
-        value={data ?? schema.default}
-        onChange={(e, value) => {
-          onChange(path, value);
+        defaultValue={data}
+        onChange={(e, value: string) => {
+          onChange(path, type === "number" ? parseFloat(value) : value);
+          setUserChanged();
         }}
         ref={sliderRef}
         {...getComponentProps(props, "slider")}

@@ -9,6 +9,7 @@ export default r(graphql`
       colorPool
       colorscale
       gridZoom
+      lightningThreshold
       loopVideos
       multicolorKeypoints
       notebookHeight

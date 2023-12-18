@@ -8,11 +8,15 @@ import {
 import React from "react";
 import { HeaderView } from ".";
 import { autoFocus, getComponentProps } from "../utils";
+import { useKey } from "../hooks";
 
 export default function RadioView(props: RadioGroupProps) {
   const { schema, onChange, path, data } = props;
   const { view = {} } = schema;
   const { choices, label, description, orientation, readOnly } = view;
+
+  const [key, setUserChanged] = useKey(path, schema, data, true);
+
   return (
     <FormControl {...getComponentProps(props, "container")}>
       {(label || description) && (
@@ -24,9 +28,11 @@ export default function RadioView(props: RadioGroupProps) {
         </FormLabel>
       )}
       <MUIRadioGroup
-        defaultValue={data ?? schema.default}
+        key={key}
+        defaultValue={data}
         onChange={(e, value) => {
           onChange(path, value);
+          setUserChanged();
         }}
         sx={{ alignItems: "flex-start" }}
         row={orientation !== "vertical"}
@@ -81,5 +87,8 @@ export type RadioGroupProps = {
   label?: string;
   description?: string;
   choices: Array<Choice>;
-  onChange: (selected: string) => void;
+  onChange: (path: string, value: string) => void;
+  schema: any; // todo
+  path: string;
+  data: unknown;
 };

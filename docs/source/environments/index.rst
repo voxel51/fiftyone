@@ -23,6 +23,8 @@ ___________
   `Jupyter Notebook <https://jupyter.org>`_,
   `Google Colab Notebook <https://colab.research.google.com>`_, or
   `Databricks Notebook <https://docs.databricks.com/en/notebooks/index.html>`_
+  `SageMaker Notebook <https://aws.amazon.com/sagemaker/notebooks/>`_
+   
 
 * :ref:`Cloud storage <cloud-storage>`: Data is stored in a cloud bucket
   (e.g., :ref:`S3 <AWS>`, :ref:`GCS <google-cloud>`, or :ref:`Azure <azure>`)
@@ -191,8 +193,12 @@ Notebooks
 _________
 
 FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_,
-`Google Colab Notebooks <https://colab.research.google.com>`_, and
+`Google Colab Notebooks <https://colab.research.google.com>`_,
 `Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
+App support is also available in
+`SageMaker Notebooks <https://aws.amazon.com/sagemaker/notebooks/>`_ and any
+cloud notebook that has an accessible network proxy via configured
+:ref:`proxy_url <configuring-proxy-url>`.
 
 To use FiftyOne in a notebook, simply install `fiftyone` via `pip`:
 

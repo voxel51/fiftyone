@@ -141,6 +141,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
             onBlur={() => onSyncUpdate(input)}
             onEnter={() => onSyncUpdate(input)}
             style={{ width: "12rem" }}
+            id={`value-${index}`}
           />
           :
           <ColorSquare
@@ -193,6 +194,7 @@ const ValueColorList: React.FC<ValueColorProp> = ({
             onEnter={() => {
               onSyncColor(index, input[index].color);
             }}
+            id={`color-${index}`}
           />
           <DeleteButton
             onClick={() => {

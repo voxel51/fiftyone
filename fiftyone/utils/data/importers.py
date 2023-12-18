@@ -1832,6 +1832,11 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             conn.datasets.replace_one({"name": name}, dataset_dict)
 
             dataset._reload(hard=True)
+
+            if dataset.media_type == fomm.GROUP:
+                fod._create_group_indexes(
+                    dataset._sample_collection_name, dataset.group_field
+                )
         else:
             #
             # The dataset we're merging into is non-empty, but it is safe to

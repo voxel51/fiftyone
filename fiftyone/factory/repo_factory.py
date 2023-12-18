@@ -15,9 +15,7 @@ from fiftyone.factory.repos.delegated_operation import (
     MongoDelegatedOperationRepo,
 )
 
-
-db_client: pymongo.mongo_client.MongoClient = foo.get_db_client()
-db: Database = db_client[fo.config.database_name]
+db: Database = foo.get_db_conn()
 
 
 class RepositoryFactory(object):

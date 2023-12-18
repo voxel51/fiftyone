@@ -18,6 +18,9 @@ import fiftyone.core.odm as foo
 import fiftyone.core.utils as fou
 
 from fiftyone.server.events import dispatch_event, get_state
+from fiftyone.server.utils import from_dict
+
+fop = fou.lazy_import("fiftyone.core.plots.plotly")
 
 
 @gql.type
@@ -47,6 +50,41 @@ class LabelTagColor:
     valueColors: t.Optional[t.List[ValueColor]] = None
 
 
+@gql.type
+class ColorscaleList:
+    color: str
+    value: float
+
+
+@gql.type
+class Colorscale:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+
+    @gql.field
+    def rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        data = self.name or [
+            [item.value, item.color] for item in self.list or []
+        ]
+        if data:
+            return fop.get_colormap(data)
+
+
+@gql.type
+class DefaultColorscale:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleList]] = None
+
+    @gql.field
+    def rgb(self) -> t.Optional[t.List[t.List[int]]]:
+        data = self.name or [
+            [item.value, item.color] for item in self.list or []
+        ]
+        if data:
+            return fop.get_colormap(data)
+
+
 @gql.enum
 class ColorBy(Enum):
     field = "field"
@@ -65,6 +103,8 @@ class ColorScheme:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColor]] = None
+    colorscales: t.Optional[t.List[Colorscale]] = None
+    default_colorscale: t.Optional[DefaultColorscale] = None
 
 
 @gql.input
@@ -77,6 +117,25 @@ class ValueColorInput:
 class MaskColorInput:
     color: str
     intTarget: int
+
+
+@gql.input
+class ColorscaleListInput:
+    color: str
+    value: t.Optional[float]
+
+
+@gql.input
+class ColorscaleInput:
+    path: str
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleListInput]] = None
+
+
+@gql.input
+class DefaultColorscaleInput:
+    name: t.Optional[str] = None
+    list: t.Optional[t.List[ColorscaleListInput]] = None
 
 
 @gql.input
@@ -97,6 +156,7 @@ class LabelTagColorInput:
 @gql.input
 class ColorSchemeInput:
     color_pool: t.List[str]
+    id: t.Optional[gql.ID] = None
     color_by: t.Optional[str] = None
     fields: t.Optional[t.List[CustomizeColorInput]] = None
     label_tags: t.Optional[LabelTagColorInput] = None
@@ -104,6 +164,8 @@ class ColorSchemeInput:
     opacity: t.Optional[float] = None
     show_skeletons: t.Optional[bool] = None
     default_mask_targets_colors: t.Optional[t.List[MaskColorInput]] = None
+    colorscales: t.Optional[t.List[ColorscaleInput]] = None
+    default_colorscale: t.Optional[DefaultColorscaleInput] = None
 
 
 @gql.type
@@ -113,14 +175,16 @@ class SetColorScheme:
         self,
         subscription: str,
         color_scheme: ColorSchemeInput,
-    ) -> bool:
+    ) -> ColorScheme:
+        if color_scheme.id is None:
+            color_scheme.id = str(ObjectId())
+
         state = get_state()
         state.color_scheme = _to_odm_color_scheme(color_scheme)
-
         await dispatch_event(
             subscription, fose.SetColorScheme(color_scheme=color_scheme)
         )
-        return True
+        return from_dict(ColorScheme, asdict(color_scheme))
 
     @gql.field
     async def set_dataset_color_scheme(
@@ -128,7 +192,10 @@ class SetColorScheme:
         subscription: str,
         dataset_name: str,
         color_scheme: t.Optional[ColorSchemeInput] = None,
-    ) -> None:
+    ) -> t.Optional[ColorScheme]:
+        if color_scheme and color_scheme.id is None:
+            color_scheme.id = str(ObjectId())
+
         def run():
             dataset = fo.load_dataset(dataset_name)
             dataset.app_config.color_scheme = (
@@ -138,6 +205,11 @@ class SetColorScheme:
 
         await fou.run_sync_task(run)
         await dispatch_event(subscription, fose.SetDatasetColorScheme())
+
+        if color_scheme is None:
+            return None
+
+        return from_dict(ColorScheme, asdict(color_scheme))
 
 
 def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
@@ -155,7 +227,13 @@ def _to_odm_color_scheme(color_scheme: ColorSchemeInput):
         fields=[asdict(f) for f in color_scheme.fields]
         if color_scheme.fields
         else [],
+        colorscales=[asdict(f) for f in color_scheme.colorscales]
+        if color_scheme.colorscales
+        else [],
         label_tags=asdict(color_scheme.label_tags)
         if color_scheme.label_tags
+        else {},
+        default_colorscale=asdict(color_scheme.default_colorscale)
+        if color_scheme.default_colorscale
         else {},
     )

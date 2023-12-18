@@ -10,8 +10,8 @@ import {
   Schema,
   withPath,
 } from "@fiftyone/utilities";
+import { isEmpty } from "lodash";
 import { v4 as uuid } from "uuid";
-
 import {
   BASE_ALPHA,
   DASH_LENGTH,
@@ -20,6 +20,7 @@ import {
   POINT_RADIUS,
   STROKE_WIDTH,
 } from "../constants";
+import { Events } from "../elements/base";
 import { COMMON_SHORTCUTS, LookerElement } from "../elements/common";
 import { ClassificationsOverlay, loadOverlays } from "../overlays";
 import { CONTAINS, Overlay } from "../overlays/base";
@@ -41,9 +42,6 @@ import {
   mergeUpdates,
   snapBox,
 } from "../util";
-
-import { isEmpty } from "lodash";
-import { Events } from "../elements/base";
 import { ProcessSample } from "../worker";
 import { LookerUtils } from "./shared";
 
@@ -98,7 +96,7 @@ export abstract class AbstractLooker<
   protected pluckedOverlays: Overlay<State>[];
   protected sample: S;
   protected state: State;
-  protected readonly updater: StateUpdate<BaseState>;
+  protected readonly updater: StateUpdate<State>;
 
   private batchMergedUpdates: Partial<State> = {};
   private isBatching = false;
@@ -123,13 +121,11 @@ export abstract class AbstractLooker<
 
     this.resizeObserver = new ResizeObserver(() => {
       const box = getElementBBox(this.lookerElement.element);
-      box[2] &&
-        box[3] &&
-        this.lookerElement &&
-        this.updater({
-          windowBBox: box,
-        });
-      this.updater({});
+      if (box[2] && box[3] && this.lookerElement) {
+        this.updater((s) => ({ ...s, windowBBox: box }));
+      } else {
+        this.updater({});
+      }
     });
 
     this.rootEvents = {};
@@ -700,6 +696,7 @@ export abstract class AbstractLooker<
       method: "processSample",
       coloring: this.state.options.coloring,
       customizeColorSetting: this.state.options.customizeColorSetting,
+      colorscale: this.state.options.colorscale,
       labelTagColors: this.state.options.labelTagColors,
       selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,

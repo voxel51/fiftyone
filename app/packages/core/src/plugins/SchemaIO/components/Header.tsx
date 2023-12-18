@@ -29,7 +29,8 @@ export default function Header(props: HeaderProps) {
     !label &&
     !description &&
     (!caption || omitCaption) &&
-    (errors.length === 0 || omitErrors)
+    (errors.length === 0 || omitErrors) &&
+    !Actions
   ) {
     return null;
   }

@@ -4233,6 +4233,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         files, open_files = self._parse_local_files(paths)
 
+        if self._server_version >= Version("2.4.6"):
+            data["sorting_method"] = "predefined"
+
         try:
             self.post(self.task_data_url(task_id), data=data, files=files)
         except Exception as e:
@@ -4294,10 +4297,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             # Image task
             for idx, path in enumerate(paths):
-                # IMPORTANT: CVAT organizes media within a task alphabetically
-                # by filename, so we must give CVAT filenames whose
-                # alphabetical order matches the order of `paths`
-                filename = "%06d_%s" % (idx, os.path.basename(path))
+                filename = os.path.basename(path)
+                if self._server_version < Version("2.4.6"):
+                    # IMPORTANT: older versions of CVAT organizes media within
+                    # a task alphabetically by filename, so we must give CVAT
+                    # filenames whose alphabetical order matches the order of `paths`
+                    filename = "%06d_%s" % (idx, os.path.basename(path))
 
                 if self._server_version >= Version("2.3"):
                     with open(path, "rb") as f:

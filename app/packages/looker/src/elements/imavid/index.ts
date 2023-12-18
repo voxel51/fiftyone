@@ -80,26 +80,20 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private playBackRate = DEFAULT_PLAYBACK_RATE;
-  private loop = false;
   // adding a new state to track it because we want to compute it conditionally in renderSelf and not drawFrame
   private setTimeoutDelay = getMillisecondsFromPlaybackRate(this.playBackRate);
   private frameNumber = 1;
-  private posterFrame: number;
   private mediaField: string;
-  private requestCallback: (callback: (time: number) => void) => void;
-  private release: () => void;
   private thumbnailSrc: string;
   /**
    * This frame number is the authoritaive frame number that is drawn on the canvas.
    * `frameNumber` or `currentFrameNumber`, on the other hand, are suggestive
    */
   private canvasFrameNumber: number;
-  private isBuffering: boolean;
   private isPlaying: boolean;
   private isSeeking: boolean;
   private waitingToPause = false;
   private isAnimationActive = false;
-  private waitingToRelease = false;
 
   public framesController: ImaVidFramesController;
 
@@ -115,7 +109,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.canvas.height = this.element.naturalHeight;
 
         this.ctx = this.canvas.getContext("2d");
-        this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
         this.imageSource = this.canvas;
@@ -192,7 +185,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   resetWaitingFlags() {
     this.waitingToPause = false;
-    this.waitingToRelease = false;
   }
 
   pause(shouldUpdatePlaying = true) {
@@ -200,7 +192,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (shouldUpdatePlaying) {
       this.update(({ playing }) => {
         if (playing) {
-          return { playing: false };
+          return { playing: false, disabled: false, disableOverlays: false };
         }
         return {};
       });
@@ -257,6 +249,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
       // thisSampleOverlayPrepared.then((overlay) => {
+      this.ctx.imageSmoothingEnabled = false;
       this.ctx.drawImage(image, 0, 0);
 
       if (animate && !this.waitingToPause) {
@@ -276,14 +269,29 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         }
 
         setTimeout(() => {
-          requestAnimationFrame(() =>
-            this.drawFrame(
-              Math.min(
-                frameNumberToDraw + 1,
-                this.framesController.totalFrameCount
-              )
-            )
-          );
+          requestAnimationFrame(() => {
+            const next = frameNumberToDraw + 1;
+
+            if (next > this.framesController.totalFrameCount) {
+              this.update(({ options: { loop } }) => {
+                if (loop) {
+                  this.drawFrame(1);
+                  return {
+                    playing: true,
+                    currentFrameNumber: 1,
+                  };
+                }
+
+                return {
+                  playing: false,
+                  currentFrameNumber: this.framesController.totalFrameCount,
+                };
+              });
+              return;
+            }
+
+            this.drawFrame(next);
+          });
         }, this.setTimeoutDelay);
       }
       // });
@@ -295,6 +303,8 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.isAnimationActive) {
       return;
     }
+
+    this.update(() => ({ disabled: true, disableOverlays: true }));
 
     requestAnimationFrame(() => this.drawFrame(this.frameNumber));
   }
@@ -365,15 +375,13 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
   renderSelf(state: Readonly<ImaVidState>) {
     const {
-      options: { loop, playbackRate },
+      options: { playbackRate },
       config: { thumbnail, src: thumbnailSrc },
       currentFrameNumber,
       seeking,
       hovering,
       playing,
-      bufferManager,
       loaded,
-      buffering,
       destroyed,
     } = state;
     // todo: move this to `createHtmlElement` unless src is something that isn't stable between renders
@@ -386,7 +394,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       return;
     }
 
-    this.isBuffering = buffering;
     this.isPlaying = playing;
     this.isSeeking = seeking;
     this.frameNumber = currentFrameNumber;

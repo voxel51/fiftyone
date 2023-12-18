@@ -34,11 +34,13 @@ class Values(HTTPEndpoint):
         group_id = data.get("group_id", None)
         slices = data.get("slices", None)
         slice = data.get("slice", None)
+        filters = data.get("filters", None)
 
         view = fosv.get_view(
             dataset,
             stages=stages,
             extended_stages=extended,
+            filters=filters,
             sample_filter=SampleFilter(
                 group=GroupElementFilter(
                     slice=slice, id=group_id, slices=slices

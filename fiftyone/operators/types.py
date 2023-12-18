@@ -1022,7 +1022,14 @@ class TabsView(Choices):
 
 
 class JSONView(View):
-    """Displays a JSON viewer."""
+    """Displays a JSON viewer.
+
+    Examples::
+
+        # Show an object/dictionary in a JSON viewer
+        outputs.obj("my_property", label="My Object", view=types.JSONView())
+
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1034,6 +1041,10 @@ class AutocompleteView(Choices):
     .. note::
 
         This view can be used in place of :class:`Choices`.
+
+    Args:
+        choices (None): a list of :class:`Choice` instances
+        read_only (False): whether the view is read-only
     """
 
     def __init__(self, **kwargs):
@@ -1046,13 +1057,16 @@ class FileView(View):
     .. note::
 
         This view can be used on :class:`String` or :class:`UploadedFile`
-        properties. If used on a :class:`String` property, the value will be the
-        value will be the file base64 encoded contents. If used on a
-        :class:`UploadedFile`, the value will be a :class:`UploadedFile` object.
+        properties. If used on a :class:`String` property, the value will be
+        the base64-encoded contents. If used on a :class:`UploadedFile`, the
+        value will be a :class:`UploadedFile` object.
 
     Args:
-        max_size: the maximum size of the file in bytes
-        max_size_error_message: the error message to display if the file larger than the given max_size
+        max_size (None): a maximum allowed size of the file, in bytes
+        max_size_error_message (None): an error message to display if the file
+            exceeds the max size
+        types (None): a string containing the comma-separated file types to
+            accept
     """
 
     def __init__(self, **kwargs):
@@ -1083,7 +1097,11 @@ class HiddenView(View):
 
 
 class LoadingView(ReadOnlyView):
-    """Displays a loading indicator."""
+    """Displays a loading indicator.
+
+    Args:
+        label ("Loading"): a label for the loading indicator
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1276,7 +1294,23 @@ class ProgressView(View):
 
 
 class ImageView(View):
-    """Displays an image."""
+    """Displays an image.
+
+    Examples::
+
+        def execute():
+            return {"image": "https://voxel51.com/your/image.png"}
+
+        def resolve_output(self, ctx):
+            outputs = types.Object()
+            outputs.define_property(
+                "image",
+                types.String(),
+                label="Image",
+                view=types.ImageView(),
+            )
+            return types.Property(outputs)
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1287,7 +1321,13 @@ class AlertView(View):
 
     Args:
         severity (None): the severity of the alert displayed, one of
-        ``(info", "success", "warning", "error")``
+            ``(info", "success", "warning", "error")``
+        componentsProps (None): an optional dict with the following keys:
+
+            -   ``'label'`` (None): props to pass to the label subcomponents
+            -   ``'description'`` (None): props to pass to the description
+                subcomponents
+            -   ``'caption'`` (None): props to pass to the caption subcomponents
     """
 
     def __init__(self, **kwargs):
@@ -1301,6 +1341,16 @@ class AlertView(View):
 class CheckboxView(View):
     """Displays a checkbox.
 
+    Examples::
+
+        inputs.bool(
+            "my_property_name",
+            default=True,
+            label="My Checkbox",
+            description="A checkbox description.",
+            view=types.CheckboxView(),
+        )
+
     .. note::
 
         Must be used with :class:`Boolean` properties.
@@ -1311,7 +1361,14 @@ class CheckboxView(View):
 
 
 class ErrorView(View):
-    """Displays an error."""
+    """Displays an error.
+
+    Args:
+        detailed (False): whether to display a detailed error message
+        popout (None): if provided, displays a popout button with the given
+            dictionary of props
+        left (False): whether to display on the left side of the popout button
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -1408,12 +1465,14 @@ class DropdownView(Dropdown):
 
 
 class LabelValueView(View):
-    """Displays a label-value component.
+    """Displays a label-value component. Used for displaying a label and a
+    corresponding value.
 
     .. note::
 
         Must be used with :class:`String`, :class:`Number`, or :class:`Boolean`
-        properties, or lists of such properties.
+        properties, or lists of such properties. Also this view is not supported
+        for input properties.
     """
 
     def __init__(self, **kwargs):

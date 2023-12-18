@@ -14,7 +14,7 @@ import { cloneDeep } from "lodash";
 import React from "react";
 import { useRecoilValue } from "recoil";
 import styled from "styled-components";
-import Item from "../../Filters/categoricalFilter/filterOption/FilterItem";
+import Item from "../../Filters/FilterOption/FilterItem";
 import { activeColorPath } from "../state";
 
 const ActionDiv = styled.div`
@@ -87,7 +87,7 @@ const ColorAttribute: React.FC<Prop> = ({ style }) => {
           text={
             "You can select StringField, BooleanField or IntField attribute for annotation's color"
           }
-          placement={"bottom-center"}
+          placement={"top-center"}
         >
           <SelectButton
             onClick={() => setOpen((o) => !o)}

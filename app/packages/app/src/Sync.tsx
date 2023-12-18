@@ -23,7 +23,7 @@ import {
 } from "./pages/datasets/__generated__/DatasetPageQuery.graphql";
 import { Entry, useRouterContext } from "./routing";
 import { AppReadyState } from "./useEvents/registerEvent";
-import useEventSource, { getDatasetName } from "./useEventSource";
+import useEventSource from "./useEventSource";
 import useSetters from "./useSetters";
 import useWriters from "./useWriters";
 
@@ -113,9 +113,15 @@ const dispatchSideEffect = ({
 
   session.selectedLabels = [];
   session.selectedSamples = new Set();
-  session.selectedFields = undefined;
 
-  if (nextEntry.pathname === "/") {
+  const currentDataset: string | undefined =
+    // @ts-ignore
+    currentEntry.preloadedQuery.variables.name;
+  const nextDataset: string | undefined =
+    // @ts-ignore
+    nextEntry.preloadedQuery.variables.name;
+
+  if (!nextDataset) {
     session.sessionSpaces = fos.SPACES_DEFAULT;
     commitMutation<setDatasetMutation>(nextEntry.preloadedQuery.environment, {
       mutation: setDataset,
@@ -126,18 +132,16 @@ const dispatchSideEffect = ({
     return;
   }
 
-  const currentDataset = getDatasetName(currentEntry.pathname);
-  const nextDataset = getDatasetName(nextEntry.pathname);
-
   // @ts-ignore
   const data: DatasetPageQuery$data = nextEntry.data;
   if (currentDataset !== nextDataset) {
-    session.sessionSpaces = fos.SPACES_DEFAULT;
     session.colorScheme = fos.ensureColorScheme(
       data.dataset?.appConfig?.colorScheme,
       data.config
     );
+    session.fieldVisibilityStage = nextEntry.state.fieldVisibility;
     session.sessionGroupSlice = data.dataset?.defaultGroupSlice || undefined;
+    session.sessionSpaces = fos.SPACES_DEFAULT;
   }
 
   commitMutation<setViewMutation>(environment, {
@@ -146,7 +150,7 @@ const dispatchSideEffect = ({
       view: nextEntry.state.view,
       savedViewSlug: nextEntry.state.savedViewSlug,
       form: {},
-      datasetName: getDatasetName(nextEntry.pathname) as string,
+      datasetName: nextDataset,
       subscription,
     },
   });

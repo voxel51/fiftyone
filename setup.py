@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.23.0"
+VERSION = "0.24.0"
 
 
 def get_version():
@@ -75,9 +75,9 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain~=0.13.2",
-    "fiftyone-db~=0.4",
-    "voxel51-eta~=0.12",
+    "fiftyone-brain>=0.14,<0.15",
+    "fiftyone-db>=0.4,<2.0",
+    "voxel51-eta>=0.12,<0.13",
 ]
 
 
@@ -114,7 +114,8 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.32"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.33.1"]}
+
 
 with open("README.md", "r") as fh:
     long_description = fh.read()

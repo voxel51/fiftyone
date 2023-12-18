@@ -48,6 +48,7 @@ import Patcher, { patchesFields } from "./Patcher";
 import Selector from "./Selected";
 import Tagger from "./Tagger";
 import SortBySimilarity from "./similar/Similar";
+import { ActionDiv } from "./utils";
 
 export const shouldToggleBookMarkIconOnSelector = selector<boolean>({
   key: "shouldToggleBookMarkIconOn",
@@ -81,10 +82,6 @@ const Loading = () => {
   const theme = useTheme();
   return <LoadingDots text="" style={{ color: theme.text.primary }} />;
 };
-
-export const ActionDiv = styled.div`
-  position: relative;
-`;
 
 const Patches = () => {
   const [open, setOpen] = useState(false);
@@ -171,8 +168,9 @@ const Tag = ({
   const tagging = useRecoilValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-
-  const disabled = tagging;
+  const lightning = useRecoilValue(fos.lightning);
+  const unlocked = fos.useLightingUnlocked();
+  const disabled = tagging || (lightning && !modal && !unlocked);
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {
@@ -197,7 +195,7 @@ const Tag = ({
             ? "default"
             : "pointer",
         }}
-        icon={disabled ? <Loading /> : <LocalOffer />}
+        icon={tagging ? <Loading /> : <LocalOffer />}
         open={open}
         onClick={() => !disabled && available && !readOnly && setOpen(!open)}
         highlight={(selected || open) && available}
