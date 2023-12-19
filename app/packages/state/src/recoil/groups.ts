@@ -15,11 +15,22 @@ import {
 } from "@fiftyone/utilities";
 import { get as getPath } from "lodash";
 import { VariablesOf } from "react-relay";
-import { atom, atomFamily, selector, selectorFamily } from "recoil";
+import {
+  DefaultValue,
+  atom,
+  atomFamily,
+  selector,
+  selectorFamily,
+} from "recoil";
 import { graphQLSelectorFamily } from "recoil-relay";
-import { sessionAtom } from "../session";
+import { getSessionRef, sessionAtom } from "../session";
 import type { ResponseFrom } from "../utils";
-import { mediaType } from "./atoms";
+import {
+  mediaType,
+  selectedLabels,
+  selectedSamples,
+  similarityParameters,
+} from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
@@ -116,7 +127,26 @@ export const groupSlice = selector<string>({
   get: ({ get }) => {
     return get(isGroup) && get(hasGroupSlices) ? get(sessionGroupSlice) : null;
   },
-  set: ({ set }, slice) => set(sessionGroupSlice, slice),
+  set: ({ get, reset, set }, slice) => {
+    const defaultSlice = get(defaultGroupSlice);
+    if (get(similarityParameters)) {
+      // avoid this pattern
+      const unsubscribe = foq.subscribeBefore(() => {
+        const session = getSessionRef();
+        session.sessionGroupSlice =
+          slice instanceof DefaultValue ? defaultSlice : slice;
+        session.selectedSamples = new Set();
+        session.selectedLabels = [];
+
+        unsubscribe();
+      });
+      reset(similarityParameters);
+    } else {
+      set(sessionGroupSlice, slice);
+      set(selectedLabels, []);
+      set(selectedSamples, new Set());
+    }
+  },
 });
 
 export const defaultGroupSlice = graphQLSyncFragmentAtom<
