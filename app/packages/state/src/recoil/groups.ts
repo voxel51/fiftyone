@@ -33,7 +33,7 @@ import {
 } from "./atoms";
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
-import { ModalSample, isModalActive, modalLooker, modalSample } from "./modal";
+import { ModalSample, modalLooker, modalSample } from "./modal";
 import { dynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
