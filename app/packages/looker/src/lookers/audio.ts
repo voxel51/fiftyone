@@ -6,7 +6,7 @@ import { LookerUtils } from "./shared";
 
 export class AudioLooker extends AbstractLooker<AudioState> {
   getElements(config) {
-    return getIAudioElements(config, this.updater, this.getDispatchEvent());
+    return getAudioElements(config, this.updater, this.getDispatchEvent());
   }
 
   getInitialState(

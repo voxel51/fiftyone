@@ -97,7 +97,14 @@ async def get_metadata(
                     frame_rate=frame_rate,
                 )
         elif media_type == fom.AUDIO:
-            metadata_cache[filepath] = dict(aspect_ratio=1.333333333)
+
+            width = metadata.get("width", None)
+            height = metadata.get("height", None)
+
+            if width and height:
+                metadata_cache[filepath] = dict(
+                    aspect_ratio=width / height,
+                )
             
         else:
             width = metadata.get("width", None)
@@ -146,20 +153,16 @@ async def read_metadata(filepath, media_type):
             frame_rate=info.frame_rate,
         )
     elif media_type == fom.AUDIO:
-        return dict(aspect_ratio=1)
-        with wave.open(filepath, 'rb') as wav_file:
-            channels = wav_file.getnchannels()
-            sample_width = wav_file.getsampwidth()
-            frame_rate = wav_file.getframerate()
-            num_frames = wav_file.getnframes()
-            duration = num_frames / float(frame_rate)
-            return  {
-                'Channels': channels,
-                'Sample Width': sample_width,
-                'Frame Rate': frame_rate,
-                'Number of Frames': num_frames,
-                'Duration': duration
-            }
+
+        if ".wav"  in filepath:
+            return dict(aspect_ratio=1)
+        elif ".png" in filepath or ".jpg" in filepath:
+            async with aiofiles.open(filepath, "rb") as f:
+                width, height = await get_image_dimensions(f)
+                return dict(aspect_ratio=width / height)
+        else:
+            return dict(aspect_ratio=1)
+
 
 
     async with aiofiles.open(filepath, "rb") as f:

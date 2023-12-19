@@ -42,6 +42,7 @@ def wav_to_spectrogram(wav_file,output_dir):
             image_path = output_dir + "/" + wav_file.split("/")[-2] + "/" + wav_file.split("/")[-1].split(".")[0] + ".png"
             plt.savefig(image_path)
             plt.close()
+            image_path = os.path.abspath(image_path)
             return  image_path
 
 class SpectogramMetadata(DynamicEmbeddedDocument, fol._HasMedia):
