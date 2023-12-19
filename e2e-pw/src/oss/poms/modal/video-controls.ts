@@ -67,15 +67,21 @@ export class ModalVideoControlsPom {
     await this.togglePlay();
   }
 
-  async playUntilFrames(frameText: string) {
+  async playUntilFrames(frameText: string, matchBeginning = false) {
     await this.togglePlay();
 
-    await this.page.waitForFunction((frameText_) => {
-      const frames = document.querySelector(
-        "[data-cy=looker-video-time]"
-      )?.textContent;
-      return frames === frameText_;
-    }, frameText);
+    await this.page.waitForFunction(
+      ({ frameText_, matchBeginning_ }) => {
+        const frameTextDom = document.querySelector(
+          "[data-cy=looker-video-time]"
+        )?.textContent;
+        if (matchBeginning_) {
+          return frameTextDom?.startsWith(frameText_);
+        }
+        return frameTextDom === frameText_;
+      },
+      { frameText_: frameText, matchBeginning_: matchBeginning }
+    );
 
     await this.togglePlay();
   }

@@ -53,7 +53,7 @@ test.beforeEach(async ({ page, fiftyoneLoader }) => {
   await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
 });
 
-test(`ego default group slice transitions`, async ({ page, grid, modal }) => {
+test(`ego default group slice transitions`, async ({ grid, modal }) => {
   await grid.assert.isEntryCountTextEqualTo("50 groups with slice");
   await grid.openFirstSample();
   await modal.sidebar.toggleSidebarGroup("GROUP");

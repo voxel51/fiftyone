@@ -41,9 +41,12 @@ const GroupMediaVisibilityPopout = ({
   const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
   const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode);
+  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
 
   const isSequentialAccessAllowed =
-    isNestedDynamicGroup || dynamicGroupsViewMode === "carousel";
+    isNestedDynamicGroup ||
+    dynamicGroupsViewMode === "carousel" ||
+    hasGroupSlices;
 
   const isImavidInNestedGroup = isNestedDynamicGroup && shouldRenderImaVid;
 
