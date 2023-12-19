@@ -3,7 +3,7 @@ import { VideoLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { groupId, useBrowserStorage } from "@fiftyone/state";
 import { Resizable } from "re-resizable";
-import React, { useRef } from "react";
+import React, { useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { GroupBar } from "../Bars";
 import EnsureGroupSample from "./EnsureGroupSample";
@@ -27,6 +27,10 @@ export const GroupView = () => {
     DEFAULT_SPLIT_VIEW_LEFT_WIDTH
   );
 
+  const shouldRender3DBelow = useMemo(() => {
+    return isCarouselVisible && is3dVisible && !isMainVisible;
+  }, [is3dVisible, isCarouselVisible, isMainVisible]);
+
   return (
     <div className={groupContainer} data-cy="group-container">
       <GroupBar lookerRef={lookerRef} />
@@ -35,13 +39,13 @@ export const GroupView = () => {
           <Resizable
             size={{
               height: "100% !important",
-              width: is3dVisible ? width : "100%",
+              width: is3dVisible && !shouldRender3DBelow ? width : "100%",
             }}
             minWidth={300}
-            maxWidth={is3dVisible ? "90%" : "100%"}
+            maxWidth={is3dVisible && !shouldRender3DBelow ? "90%" : "100%"}
             enable={{
               top: false,
-              right: is3dVisible ? true : false,
+              right: is3dVisible && !shouldRender3DBelow ? true : false,
               bottom: false,
               left: false,
               topRight: false,
@@ -72,9 +76,10 @@ export const GroupView = () => {
                 <GroupImageVideoSample lookerRef={lookerRef} />
               </EnsureGroupSample>
             )}
+            {shouldRender3DBelow && <GroupSample3d />}
           </Resizable>
         )}
-        {is3dVisible && <GroupSample3d />}
+        {!shouldRender3DBelow && is3dVisible && <GroupSample3d />}
       </div>
     </div>
   );
