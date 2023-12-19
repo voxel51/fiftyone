@@ -27,6 +27,7 @@ import {
   getFrameNumber,
   getFrameString,
   getFullTimeString,
+  getAltImageSource,
   getTime,
   getWavSource,
 } from "./util";
@@ -400,16 +401,27 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
   private requestCallback: (callback: (time: number) => void) => void;
   private release: () => void;
   private src: string;
+  private sources: { [path: string]: string }; 
   private volume: number;
   private waitingToPause = false;
   private waitingToPlay = false;
   private waitingToRelease = false;
 
-  private canvasSource: HTMLCanvasElement | HTMLImageElement;
-  private imageSource: HTMLImageElement;
+  private imageSource: HTMLCanvasElement | HTMLImageElement;
+
 
   getEvents(): Events<AudioState> {
     return {
+      load: ({ update }) => {
+        
+        this.imageSource = new Image();
+        this.imageSource.src = getAltImageSource(this.sources)
+
+        update({
+          loaded: true,
+          dimensions: [this.imageSource.naturalWidth, this.imageSource.naturalHeight],
+        });
+      },
       error: ({ update }) => {
         this.releaseAudio();
         update({ error: true });
@@ -583,8 +595,8 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
 
     // Create an image element for static image
     this.imageSource = document.createElement("img");
-    this.imageSource.src = 
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==";
+    this.imageSource.src = src
+
 
     return this.element;
   }
@@ -654,7 +666,7 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
 
   renderSelf({
     options: { loop, volume, playbackRate },
-    config: { frameRate, thumbnail, src },
+    config: { frameRate, thumbnail, src, sources },
     frameNumber,
     seeking,
     playing,
@@ -681,6 +693,14 @@ export class AudioElement extends BaseElement<AudioState, HTMLAudioElement> {
       return null;
     }
     // Draw the image on the canvas
+    if (src.endsWith(".wav") || src.split("?")[0].endsWith(".wav")) {
+      // this means spectograms have not been computed, replace with a 1x1 base64 blank image
+      src = getAltImageSource(sources)
+      if (src == "error"){
+        src =
+          "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWNgYGD4DwABDQF/w6a5YwAAAABJRU5ErkJggg==";
+      }
+    }
     this.drawStaticImage(src);
 
     if (!this.element) {

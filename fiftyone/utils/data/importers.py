@@ -100,7 +100,7 @@ def import_samples(
     Returns:
         a list of IDs of the samples that were added to the dataset
     """
-    breakpoint()
+
     if etau.is_str(tags):
         tags = [tags]
     elif tags is not None:
@@ -387,7 +387,7 @@ def _generate_group_samples(dataset_importer, parse_sample):
 def _build_parse_sample_fcn(
     dataset, dataset_importer, label_field, tags, expand_schema, dynamic
 ):
-    breakpoint()
+
     if isinstance(dataset_importer, GenericSampleDatasetImporter):
         # Generic sample/group dataset
 

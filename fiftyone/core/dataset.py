@@ -2444,7 +2444,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         validate=True,
         num_samples=None,
     ):
-        breakpoint()
+
         """Adds the given samples to the dataset.
 
         Any sample instances that do not belong to a dataset are updated
@@ -2477,7 +2477,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         # Dynamically size batches so that they are as large as possible while
         # still achieving a nice frame rate on the progress bar
-        breakpoint()
+
         batcher = fou.DynamicBatcher(
             samples,
             target_latency=0.2,
@@ -2494,7 +2494,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                     batch, expand_schema, dynamic, validate
                 )
                 sample_ids.extend(_ids)
-        breakpoint()
+
 
         return sample_ids
 
@@ -4065,7 +4065,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         Returns:
             a list of IDs of the samples that were added to the dataset
         """
-        breakpoint()
+
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type,
             dataset_dir=dataset_dir,

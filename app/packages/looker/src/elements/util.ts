@@ -273,6 +273,17 @@ export function getWavSource(sources: { [path: string]: string }): string {
   return "error";
 }
 
+export function getAltImageSource(sources: { [path: string]: string }): string {
+  for (const path in sources) {
+    if (sources.hasOwnProperty(path)) {
+      if (path.endsWith(".png") || path.endsWith(".jpg")) {
+        return path;
+      }
+    }
+  }
+  return "error";
+}
+
 const makeAcquirerAudio = (
   maxAudios: number
 ): [() => Promise<[HTMLAudioElement, () => void]>, () => void] => {
