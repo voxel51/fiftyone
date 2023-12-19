@@ -8,6 +8,8 @@ FiftyOne singleton implementations.
 from collections import defaultdict
 import weakref
 
+import fiftyone as fo
+
 
 class DatasetSingleton(type):
     """Singleton metaclass for :class:`fiftyone.core.dataset.Dataset`.
@@ -44,7 +46,8 @@ class DatasetSingleton(type):
                     name=name, _create=_create, *args, **kwargs
                 )
 
-        cls._instances[name] = instance
+        if fo.config.singleton_cache:
+            cls._instances[name] = instance
 
         return instance
 
@@ -107,7 +110,8 @@ class SampleSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.id] = obj
+        if fo.config.singleton_cache:
+            cls._instances[obj._doc.collection_name][obj.id] = obj
 
     def _get_instance(cls, doc):
         try:
@@ -248,9 +252,10 @@ class FrameSingleton(DocumentSingleton):
         return cls
 
     def _register_instance(cls, obj):
-        cls._instances[obj._doc.collection_name][obj.sample_id][
-            obj.frame_number
-        ] = obj
+        if fo.config.singleton_cache:
+            cls._instances[obj._doc.collection_name][obj.sample_id][
+                obj.frame_number
+            ] = obj
 
     def _get_instance(cls, doc):
         try:

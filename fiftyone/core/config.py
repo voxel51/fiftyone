@@ -230,6 +230,12 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_MAX_PROCESS_POOL_WORKERS",
             default=None,
         )
+        self.singleton_cache = self.parse_bool(
+            d,
+            "singleton_cache",
+            env_var="FIFTYONE_SINGLETON_CACHE",
+            default=True,
+        )
 
         self._init()
 
