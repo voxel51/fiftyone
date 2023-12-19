@@ -2642,7 +2642,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return d
 
-    def _bulk_write(self, ops, frames=False, ordered=False):
+    def _bulk_write(self, ops, ids=None, frames=False, ordered=False):
         if frames:
             coll = self._frame_collection
         else:
@@ -2651,9 +2651,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         foo.bulk_write(ops, coll, ordered=ordered)
 
         if frames:
-            fofr.Frame._reload_docs(self._frame_collection_name)
+            fofr.Frame._reload_docs(self._frame_collection_name, frame_ids=ids)
         else:
-            fos.Sample._reload_docs(self._sample_collection_name)
+            fos.Sample._reload_docs(
+                self._sample_collection_name, sample_ids=ids
+            )
 
     def _merge_doc(
         self,
@@ -7545,7 +7547,7 @@ def _add_collection_with_new_ids(
             )
             ops.append(op)
 
-        dataset._bulk_write(ops)
+        dataset._bulk_write(ops, ids=[])
 
     if not contains_videos:
         return new_ids
@@ -7586,7 +7588,7 @@ def _add_collection_with_new_ids(
         for old_id, new_id in zip(old_ids, new_ids)
     ]
 
-    dataset._bulk_write(ops, frames=True)
+    dataset._bulk_write(ops, ids=[], frames=True)
 
     return new_ids
 
