@@ -17,6 +17,7 @@ import eta.core.datasets as etad
 import eta.core.frameutils as etaf
 import eta.core.serial as etas
 import eta.core.utils as etau
+import shutil
 
 import fiftyone as fo
 import fiftyone.core.collections as foc
@@ -31,6 +32,7 @@ import fiftyone.core.utils as fou
 import fiftyone.utils.eta as foue
 import fiftyone.utils.image as foui
 import fiftyone.utils.patches as foup
+import fiftyone.utils.audio as foua
 
 from .parsers import (
     FiftyOneLabeledImageSampleParser,
@@ -286,6 +288,17 @@ def export_samples(
     elif isinstance(dataset_exporter, UnlabeledMediaDatasetExporter):
         sample_parser = FiftyOneUnlabeledMediaSampleParser(
             compute_metadata=True
+        )
+
+    elif isinstance(dataset_exporter, LabeledAudioDatasetExporter):
+
+        label_fcn = _make_label_coercion_functions(
+            label_field, samples, dataset_exporter
+        )
+        sample_parser = FiftyOneLabeledImageSampleParser(
+            label_field,
+            label_fcn=label_fcn,
+            compute_metadata=True,
         )
 
     elif isinstance(dataset_exporter, LabeledImageDatasetExporter):
@@ -1258,6 +1271,38 @@ class ImageExporter(MediaExporter):
 
     def _write_media(self, img, outpath):
         foui.write(img, outpath)
+
+
+class AudioExporter(MediaExporter):
+    """Utility class for :class:`DatasetExporter` instances that export images.
+
+    See :class:`MediaExporter` for details.
+    """
+
+    def __init__(self, *args, default_ext=None, **kwargs):
+        if default_ext is None:
+            default_ext = ".wav"
+
+        super().__init__(*args, default_ext=default_ext, **kwargs)
+
+    def _write_media(self, audio, outpath):
+        if not os.path.exists(outpath):
+            os.makedirs(outpath)
+
+        # Extract the file name from the source path
+        file_name = os.path.basename(outpath)
+
+        # Construct the destination path
+        destination_path = os.path.join(outpath, file_name)
+
+        try:
+            # Copy the file to the destination directory
+            shutil.copy2(audio, destination_path)
+        except FileNotFoundError:
+            print(f"Error: File '{audio}' not found.")
+        except PermissionError:
+            print(f"Error: Permission issue while copying '{file_name}'")
+
 
 
 class VideoExporter(MediaExporter):
@@ -2952,24 +2997,24 @@ class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
         if rel_dir is not None:
             rel_dir = fos.normalize_path(rel_dir)
 
-        if image_format is None:
-            image_format = fo.config.default_image_ext
+        if audio_format is None:
+            audio_format = ".wav"
 
         super().__init__(export_dir=export_dir)
 
         self.export_media = export_media
         self.rel_dir = rel_dir
-        self.image_format = image_format
+        self.audio_format = audio_format
 
         self._class_counts = None
         self._filename_counts = None
         self._media_exporter = None
         self._default_filename_patt = (
-            fo.config.default_sequence_idx + image_format
+            fo.config.default_sequence_idx + audio_format
         )
 
     @property
-    def requires_image_metadata(self):
+    def requires_audio_metadata(self):
         return False
 
     @property
@@ -2979,7 +3024,7 @@ class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
     def setup(self):
         self._class_counts = defaultdict(int)
         self._filename_counts = defaultdict(int)
-        self._media_exporter = ImageExporter(
+        self._media_exporter = AudioExporter(
             self.export_media,
             supported_modes=(True, "move", "symlink"),
         )
@@ -2987,7 +3032,7 @@ class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
 
         etau.ensure_dir(self.export_dir)
 
-    def export_sample(self, image_or_path, classification, metadata=None):
+    def export_sample(self, audio_or_path, classification, metadata=None):
         _label = _parse_classifications(
             classification, include_confidence=False, include_attributes=False
         )
@@ -2997,17 +3042,17 @@ class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
 
         self._class_counts[_label] += 1
 
-        if etau.is_str(image_or_path):
-            image_path = fos.normalize_path(image_or_path)
+        if etau.is_str(audio_or_path):
+            audio_path = fos.normalize_path(audio_or_path)
         else:
-            image_path = self._default_filename_patt % (
+            audio_path = self._default_filename_patt % (
                 self._class_counts[_label]
             )
 
         if self.rel_dir is not None:
-            filename = fou.safe_relpath(image_path, self.rel_dir)
+            filename = fou.safe_relpath(audio_path, self.rel_dir)
         else:
-            filename = os.path.basename(image_path)
+            filename = os.path.basename(audio_path)
 
         name, ext = os.path.splitext(filename)
 
@@ -3019,7 +3064,7 @@ class AudioClassificationDirectoryTreeExporter(LabeledAudioDatasetExporter):
 
         outpath = os.path.join(self.export_dir, _label, filename)
 
-        self._media_exporter.export(image_or_path, outpath=outpath)
+        self._media_exporter.export(audio_or_path, outpath=outpath)
 
     def close(self, *args):
         self._media_exporter.close()
