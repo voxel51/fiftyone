@@ -103,7 +103,8 @@ class PluginContext(object):
             if self.can_register(instance):
                 instance.plugin_name = self.name
                 if self.secrets:
-                    instance.add_secrets(self.secrets)
+                    instance.register_secrets(self.secrets)
+
                 self.instances.append(instance)
         except:
             logger.warning(

@@ -34,11 +34,7 @@ class ListOperators(HTTPEndpoint):
         )
         operators_as_json = []
         for operator in registry.list_operators():
-
-            ctx = ExecutionContext(
-                operator_uri=operator.uri,
-                required_secrets=operator._plugin_secrets,
-            )
+            ctx = ExecutionContext(operator=operator)
             serialized_op = operator.to_json(ctx)
             config = serialized_op["config"]
             config["can_execute"] = registry.can_execute(serialized_op["uri"])
