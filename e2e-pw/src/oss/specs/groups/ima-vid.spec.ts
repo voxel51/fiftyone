@@ -51,6 +51,7 @@ const writeFrames = async () => {
           height: 50,
           fillColor: FRAME_COLORS[i % 2],
           watermarkString: `${j}`,
+          hideLogs: true,
         })
       );
     }

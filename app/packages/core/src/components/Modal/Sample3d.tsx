@@ -1,5 +1,4 @@
 import { Loading } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import React, { Suspense, useRef } from "react";

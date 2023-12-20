@@ -72,6 +72,7 @@ test("modal dynamic group carousel has correct second page (all 21 samples)", as
     savedView: "group",
   });
   await grid.openFirstSample();
+  await modal.group.setDynamicGroupsNavigationMode("carousel");
   await modal.waitForCarouselToLoad();
   await modal.scrollCarousel();
   await modal.navigateSlice("i", "20", true);

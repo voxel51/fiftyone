@@ -82,7 +82,7 @@ const MediaFields = ({ modal }) => {
   );
   const mediaFields = useRecoilValue(fos.mediaFields);
 
-  if (mediaFields.length <= 1) return null;
+  if (!mediaFields || mediaFields?.length <= 1) return null;
 
   return (
     <>
@@ -148,16 +148,19 @@ const SidebarMode = () => {
 };
 
 const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
-  const [mode, setMode] = useRecoilState(fos.nonNestedDynamicGroupsViewMode);
-  const isImaVidLookerAvailable = useRecoilValue(fos.isImaVidLookerAvailable);
+  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+
+  const [mode, setMode] = useRecoilState(fos.dynamicGroupsViewMode);
+  const setIsCarouselVisible = useSetRecoilState(
+    fos.groupMediaIsCarouselVisibleSetting
+  );
+  const setIsMainVisible = useSetRecoilState(
+    fos.groupMediaIsMainVisibleSetting
+  );
 
   const tabOptions = useMemo(() => {
     const options = [
-      {
-        text: "carousel",
-        title: "Sequential Access",
-        onClick: () => setMode("carousel"),
-      },
       {
         text: "pagination",
         title: "Random Access",
@@ -165,23 +168,36 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
       },
     ];
 
-    if (isImaVidLookerAvailable) {
+    if (!hasGroupSlices) {
+      options.push({
+        text: "carousel",
+        title: "Sequential Access",
+        onClick: () => {
+          setMode("carousel");
+          setIsCarouselVisible(true);
+        },
+      });
+    }
+
+    if (isOrderedDynamicGroup) {
       options.push({
         text: "video",
         title: "Video",
-        onClick: () => setMode("video"),
+        onClick: () => {
+          setMode("video");
+          setIsMainVisible(true);
+        },
       });
     }
 
     return options;
-  }, [isImaVidLookerAvailable]);
+  }, [isOrderedDynamicGroup, hasGroupSlices]);
 
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
-      {modal ? (
-        <TabOption active={mode} options={tabOptions} />
-      ) : (
+      {modal && <TabOption active={mode} options={tabOptions} />}
+      {isOrderedDynamicGroup && !modal && (
         <Checkbox
           name={"Render frames as video"}
           value={mode === "video"}
@@ -307,13 +323,12 @@ type OptionsProps = {
 const Options = ({ modal, anchorRef }: OptionsProps) => {
   const isGroup = useRecoilValue(fos.isGroup);
   const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
-  const isNonNestedDynamicGroup = useRecoilValue(fos.isNonNestedDynamicGroup);
   const view = useRecoilValue(fos.view);
 
   return (
     <Popout modal={modal} fixed anchorRef={anchorRef}>
       {modal && <HideFieldSetting />}
-      {isNonNestedDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
+      {isDynamicGroup && <DynamicGroupsViewMode modal={modal} />}
       {isGroup && !isDynamicGroup && <GroupStatistics modal={modal} />}
       <MediaFields modal={modal} />
       <Patches modal={modal} />
