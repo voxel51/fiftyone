@@ -74,9 +74,10 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `batcher_static_size`         | `FIFTYONE_BATCHER_STATIC_SIZE`      | `100`                         | Fixed size of batches. Ignored if `default_batcher` is not `static`.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `batcher_target_size`         | `FIFTYONE_BATCHER_TARGET_SIZE`      | `2 ** 20`                     | Target content size of batches, in bytes. Ignored if `default_batcher` is not `size`.  |
+| `batcher_target_size_bytes`   | `FIFTYONE_BATCHER_TARGET_SIZE_BYTES`| `2 ** 20`                     | Target content size of batches, in bytes. Ignored if `default_batcher` is not `size`.  |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`   | `0.2`                         | Target latency between batches. Ignored if `default_batcher` is not `latency`.         |
+| `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`   | `0.2`                         | Target latency between batches, in seconds. Ignored if `default_batcher` is not        |
+|                               |                                     |                               | `latency`.                                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |

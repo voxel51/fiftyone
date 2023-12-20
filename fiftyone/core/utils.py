@@ -1435,7 +1435,7 @@ def get_default_batcher(iterable, progress=True, total=None):
             total=total,
         )
     elif default_batcher == "size":
-        target_content_size = fo.config.batcher_target_size
+        target_content_size = fo.config.batcher_target_size_bytes
         return BSONSizeDynamicBatcher(
             iterable,
             target_size=target_content_size,

@@ -51,7 +51,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "size"):
             with patch.object(
                 fo.config,
-                "batcher_target_size",
+                "batcher_target_size_bytes",
                 target_size,
             ):
                 batcher = fou.get_default_batcher(iterable)

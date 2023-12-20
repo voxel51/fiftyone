@@ -172,10 +172,10 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_BATCHER_STATIC_SIZE",
             default=100,
         )
-        self.batcher_target_size = self.parse_int(
+        self.batcher_target_size_bytes = self.parse_int(
             d,
-            "batcher_target_size",
-            env_var="FIFTYONE_BATCHER_TARGET_SIZE",
+            "batcher_target_size_bytes",
+            env_var="FIFTYONE_BATCHER_TARGET_SIZE_BYTES",
             default=2**20,
         )
         self.batcher_target_latency = self.parse_number(
