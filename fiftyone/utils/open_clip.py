@@ -29,28 +29,26 @@ class TorchOpenClipModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        context_length: the model's context length
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
+        clip_model ("ViT-B-32"): the Open CLIP model to use
+        pretrained ("openai"): the pretrained version to use
         classes (None): a list of custom classes for zero-shot prediction
-        clip_model_name ("ViT-B-32"): the Open CLIP model to use
-        pretrained (None): the pretrained version to use
     """
 
     def __init__(self, d):
         d = self.init(d)
         super().__init__(d)
 
-        self.context_length = self.parse_int(d, "context_length")
         self.text_prompt = self.parse_string(d, "text_prompt")
-
-        self.clip_model_name = self.parse_string(
-            d, "clip_model_name", default="ViT-B-32"
+        self.clip_model = self.parse_string(
+            d, "clip_model", default="ViT-B-32"
         )
-        self.pretrained = self.parse_string(d, "pretrained", default=None)
+        self.pretrained = self.parse_string(d, "pretrained", default="openai")
 
 
 class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
-    """Torch implementation of CLIP from https://github.com/mlfoundations/open_clip.
+    """Torch implementation of CLIP from
+    https://github.com/mlfoundations/open_clip.
 
     Args:
         config: a :class:`TorchOpenClipModelConfig`
@@ -66,9 +64,9 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             _,
             self.preprocess,
         ) = open_clip.create_model_and_transforms(
-            config.clip_model_name, pretrained=config.pretrained
+            config.clip_model, pretrained=config.pretrained
         )
-        self._tokenizer = open_clip.get_tokenizer(config.clip_model_name)
+        self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         return self._model
 
     def _get_text_features(self):
