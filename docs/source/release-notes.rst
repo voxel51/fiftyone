@@ -5,7 +5,7 @@ FiftyOne Release Notes
 
 .. _release-notes-teams-v1.5.2:
 
-FiftyOne Teams 1.5.2
+FiftyOne Teams 1.5.3
 --------------------
 *Released December 20, 2023*
 
@@ -16,6 +16,9 @@ General
 - Added 'label' as searchable field for delegated operations
 - Fixed issue where invalid tokens were not causing redirects
 - Re-running a delegated operation now uses dataset id instead of name
+- Improved performance of ``add_samples()``, ``set_values()``,
+   ``compute_metadata()``, and other large batched computations, through
+   API-connected SDK.
 
 .. _release-notes-v0.23.2:
 
@@ -37,6 +40,8 @@ Core
   `#3942 <https://github.com/voxel51/fiftyone/pull/3942>`_
 - Added configurable batch sizes to `bulk_write()`
   `#3944 <https://github.com/voxel51/fiftyone/pull/3944>`_
+- Added configurable batcher choices used in some operations like ``add_samples()``
+  `#3923 <https://github.com/voxel51/fiftyone/pull/3923>`_
 - Added built-in Ubuntu 23 support
   `#3936 <https://github.com/voxel51/fiftyone/pull/3936>`_
 - Fixed evaluation of unclosed polylines
