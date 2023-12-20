@@ -958,7 +958,7 @@ class ProgressBar(etau.ProgressBar):
 
 
 class Batcher(abc.ABC):
-    """Base class for iterating over the elements of an iterable in batches"""
+    """Base class for iterating over the elements of an iterable in batches."""
 
     manual_backpressure = False
 
@@ -1020,8 +1020,8 @@ class Batcher(abc.ABC):
                 self._pb.__enter__()
             else:
                 logger.warning(
-                    "DynamicBatcher must be invoked as a context manager in "
-                    "order to print progress"
+                    "Batcher must be invoked as a context manager in order to "
+                    "print progress"
                 )
                 self.progress = False
 
@@ -1073,7 +1073,7 @@ class Batcher(abc.ABC):
         """Apply backpressure needed to rightsize the next batch.
 
         Required to be implemented and called every iteration, if
-            ``self.manual_backpressure == True``
+        ``self.manual_backpressure == True``.
 
         Subclass defines arguments and behavior of this method.
         """
@@ -1149,7 +1149,7 @@ class BaseDynamicBatcher(Batcher):
 
     @abc.abstractmethod
     def _get_measurement(self):
-        """Get backpressure measurement for current batch"""
+        """Get backpressure measurement for current batch."""
 
 
 class LatencyDynamicBatcher(BaseDynamicBatcher):
@@ -1180,7 +1180,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             elements,
             target_latency=0.1,
             max_batch_beta=2.0,
-            progress=True
+            progress=True,
         )
 
         with batcher:
@@ -1243,7 +1243,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
 
 
 # Define this for backwards compatibility in case someone was using this
-#   batcher directly
+# batcher directly
 DynamicBatcher = LatencyDynamicBatcher
 
 
@@ -1362,18 +1362,12 @@ class StaticBatcher(Batcher):
 
         elements = range(int(1e7))
 
-        batcher = fou.StaticBatcher(
-            elements, batch_size=10000
-        )
+        batcher = fou.StaticBatcher(elements, batch_size=10000)
 
         for batch in batcher:
             print("batch size: %d" % len(batch))
 
-        batcher = fou.StaticBatcher(
-            elements,
-            batch_size=10000,
-            progress=True
-        )
+        batcher = fou.StaticBatcher(elements, batch_size=10000, progress=True)
 
         with batcher:
             for batch in batcher:
@@ -1411,7 +1405,8 @@ class StaticBatcher(Batcher):
 
 
 def get_default_batcher(iterable, progress=True, total=None):
-    """Returns a ``Batcher`` over ``iterable`` using defaults from the config.
+    """Returns a :class:`Batcher` over ``iterable`` using defaults from your
+    FiftyOne config.
 
     Uses ``fiftyone.config.default_batcher`` to determine the implementation
     to use, and related configuration values as needed for each.
@@ -1425,7 +1420,7 @@ def get_default_batcher(iterable, progress=True, total=None):
             ``len(iterable)``, if possible
 
     Returns:
-        ``fiftyone.core.utils.Batcher``
+        a :class:`Batcher`
     """
     default_batcher = fo.config.default_batcher
     if default_batcher == "latency":

@@ -755,17 +755,9 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
         a list of IDs of the inserted documents
     """
     ids = []
+    batcher = fou.get_default_batcher(docs, progress=progress, total=num_docs)
 
     try:
-        # Get default batcher:
-        # dynamic - Dynamically size batches so that they are as large as
-        #   possible while still achieving a nice frame rate on the progress bar
-        # size - Dynamically size batches to reach a target bson content size
-        # static - fixed size batches
-        batcher = fou.get_default_batcher(
-            docs, progress=progress, total=num_docs
-        )
-
         with batcher:
             for batch in batcher:
                 batch = list(batch)
