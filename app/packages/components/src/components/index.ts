@@ -1,6 +1,7 @@
 export { default as Bar } from "./Bar";
 export { default as Button } from "./Button";
 export { default as CodeBlock } from "./CodeBlock";
+export { default as CodeTabs } from "./CodeTabs";
 export { default as CopyButton } from "./CopyButton";
 export { default as ErrorBoundary } from "./ErrorBoundary";
 export { default as ExternalLink, useExternalLink } from "./ExternalLink";
@@ -17,9 +18,8 @@ export { default as PillButton } from "./PillButton";
 export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutSectionTitle } from "./PopoutSectionTitle";
 export { default as Selection } from "./Selection";
-export { default as Selector } from "./Selector";
+export { default as Selector, SelectorValidationError } from "./Selector";
 export type { UseSearch } from "./Selector";
 export { default as TabOption } from "./TabOption";
 export { default as ThemeProvider, useTheme } from "./ThemeProvider";
 export { default as Tooltip } from "./Tooltip";
-export { default as CodeTabs } from "./CodeTabs";

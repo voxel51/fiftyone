@@ -1,4 +1,4 @@
-import { SelectorValidationError } from "@fiftyone/components/src/components/Selector";
+import { SelectorValidationError } from "@fiftyone/components";
 import { isObjectIdField, snackbarErrors } from "@fiftyone/state";
 import { isObjectIdString } from "@fiftyone/utilities";
 import { useRef } from "react";
