@@ -6,6 +6,7 @@ Intersection over union (IoU) utilities.
 |
 """
 import contextlib
+import itertools
 import logging
 
 import numpy as np
@@ -37,11 +38,8 @@ def compute_ious(
     """Computes the pairwise IoUs between the predicted and ground truth
     objects.
 
-    For polylines, IoUs are computed assuming the shapes are solid (filled),
-    regardless of their ``filled`` attributes.
-
-    For :class:`fiftyone.core.labels.Polyline` objects, IoUs are computed
-    as solid shapes when ``filled=True` and are computed using
+    For polylines, IoUs are computed as solid shapes when ``filled=True` and
+    "IoUs" are computed using
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     when ``filled=False``.
 
@@ -92,17 +90,20 @@ def compute_ious(
     if etau.is_str(iscrowd):
         iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
 
-    if isinstance(preds[0], fol.Polyline):
+    if isinstance(gts[0], fol.Polyline):
         if use_boxes:
             return _compute_bbox_ious(
                 preds, gts, iscrowd=iscrowd, classwise=classwise
             )
 
-        return _compute_polyline_ious(
-            preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
-        )
+        if any(gt.filled for gt in gts):
+            return _compute_polygon_ious(
+                preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
+            )
 
-    if isinstance(preds[0], fol.Keypoint):
+        return _compute_polyline_similarities(preds, gts, classwise=classwise)
+
+    if isinstance(gts[0], fol.Keypoint):
         return _compute_keypoint_similarities(preds, gts, classwise=classwise)
 
     if use_masks:
@@ -501,15 +502,16 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     return ious
 
 
-def polygon_iou_matrix(
+def _compute_polygon_ious(
     preds,
     gts,
     error_level,
-    is_symmetric,
     iscrowd=None,
     classwise=False,
     gt_crowds=None,
 ):
+    is_symmetric = preds is gts
+
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
@@ -581,82 +583,18 @@ def polygon_iou_matrix(
     return ious
 
 
-def polyline2d_iou_matrix(
-    preds, gts, iscrowd=None, classwise=False, gt_crowds=None
-):
-    num_pred = len(preds)
-    pred_labels = [pred.label for pred in preds]
-    # if is_symmetric:
-    #     num_gt = num_pred
-    #     gt_labels = pred_labels
-    # else:
-    num_gt = len(gts)
-    gt_labels = [gt.label for gt in gts]
-
-    if iscrowd is not None:
-        gt_crowds = [iscrowd(gt) for gt in gts]
-    elif gt_crowds is None:
-        gt_crowds = [False] * num_gt
-
-    ious = np.zeros((num_pred, num_gt))
-
-    for j, (gt, gt_label, gt_crowd) in enumerate(
-        zip(gts, gt_labels, gt_crowds)
-    ):
-        for i, (pred, pred_label) in enumerate(zip(preds, pred_labels)):
-            # if is_symmetric and i < j:
-            #     iou = ious[j, i]
-            # elif is_symmetric and i == j:
-            #     iou = 1
-            if classwise and pred_label != gt_label:
+def _compute_polyline_similarities(preds, gts, classwise=False):
+    sims = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        for i, pred in enumerate(preds):
+            if classwise and pred.label != gt.label:
                 continue
-            ious[i, j] = _compute_object_polyline_similarity(gt, pred)
-    return ious
 
+            gtp = list(itertools.chain.from_iterable(gt.points))
+            predp = list(itertools.chain.from_iterable(pred.points))
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
 
-def _compute_object_polyline_similarity(gt, pred):
-    gtp = np.array(gt.points, dtype=float)[0]
-    predp = np.array(pred.points, dtype=float)[0]
-    each_dist = []
-    # Use extent of GT points as proxy for box area
-    scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
-    scale = np.maximum(0.0, np.minimum(scale, 1.0))
-    for ind in np.arange(len(gtp)):
-
-        if not np.isfinite(gtp[ind]).all():
-            continue
-        if np.isfinite(predp[ind]).all():
-            dists = np.linalg.norm(gtp[ind] - predp[ind])
-        else:
-            dists = 1
-        each_dist.append(np.exp(-(dists**2) / (2 * (scale**2))))
-    return np.mean(each_dist)
-
-
-def _compute_polyline_ious(
-    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
-):
-    is_symmetric = preds is gts
-
-    are_all_filled = np.sum([gt["filled"] for gt in gts])
-    if are_all_filled > 0:
-        # are_all_filled = True for atleast one polyline instance, i.e., polygons/solid shape
-        ious = polygon_iou_matrix(
-            preds,
-            gts,
-            error_level,
-            is_symmetric,
-            iscrowd=None,
-            classwise=False,
-            gt_crowds=None,
-        )
-    if are_all_filled == 0:
-        # are_all_filled = False, i.e., Lines not polygons
-        ious = polyline2d_iou_matrix(
-            preds, gts, iscrowd=None, classwise=False, gt_crowds=None
-        )
-
-    return ious
+    return sims
 
 
 def _compute_mask_ious(
@@ -685,7 +623,7 @@ def _compute_mask_ious(
     else:
         gt_crowds = [False] * len(gts)
 
-    return _compute_polyline_ious(
+    return _compute_polygon_ious(
         pred_polys,
         gt_polys,
         error_level,
@@ -734,14 +672,16 @@ def _compute_keypoint_similarities(preds, gts, classwise=False):
             if classwise and pred.label != gt.label:
                 continue
 
-            sims[i, j] = _compute_object_keypoint_similarity(gt, pred)
+            gtp = gt.points
+            predp = pred.points
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
 
     return sims
 
 
-def _compute_object_keypoint_similarity(gt, pred):
-    gtp = np.array(gt.points, dtype=float)
-    predp = np.array(pred.points, dtype=float)
+def _compute_object_keypoint_similarity(gtp, predp):
+    gtp = np.asarray(gtp, dtype=float)
+    predp = np.asarray(predp, dtype=float)
 
     # Use extent of GT points as proxy for box area
     scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
