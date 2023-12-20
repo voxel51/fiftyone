@@ -37,6 +37,8 @@ Core
   `#3942 <https://github.com/voxel51/fiftyone/pull/3942>`_
 - Added configurable batch sizes to `bulk_write()`
   `#3944 <https://github.com/voxel51/fiftyone/pull/3944>`_
+- Added built-in Ubuntu 23 support
+  `#3936 <https://github.com/voxel51/fiftyone/pull/3936>`_
 
 App
 
