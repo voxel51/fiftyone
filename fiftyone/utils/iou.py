@@ -522,7 +522,6 @@ def _compute_polygon_ious(
             )
 
         num_pred = len(preds)
-
         pred_polys = _polylines_to_shapely(preds, error_level)
         pred_labels = [pred.label for pred in preds]
         pred_areas = [pred_poly.area for pred_poly in pred_polys]
@@ -580,6 +579,7 @@ def _compute_polygon_ious(
                     iou = min(etan.safe_divide(inter, union), 1)
 
                 ious[i, j] = iou
+
     return ious
 
 
