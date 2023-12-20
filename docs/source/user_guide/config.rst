@@ -55,7 +55,10 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100_000`                     | Batch size to use for bulk writing MongoDB operations; cannot be > 100,000             |
+| `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100_000`                     | Batch size to use for bulk writing MongoDB operations; cannot be > 100,000.            |
+|                               |                                     |                               |                                                                                        |
+|                               |                                     |                               | Default changes to `10_000` for                                                        |
+|                               |                                     |                               | :ref:`Teams SDK in API connection mode <teams-api-connection>`.                        |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
 |                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`. Supported values    |
@@ -65,6 +68,9 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | of `dynamic_batch_target_latency` between calls. `size` is the default for the         |
 |                               |                                     |                               | FiftyOne Teams SDK, which targets a size of `dynamic_batch_target_size` bytes for      |
 |                               |                                     |                               | each call. `static` uses a fixed batch size of `batcher_static_size`.                  |
+|                               |                                     |                               |                                                                                        |
+|                               |                                     |                               | Default changes to `size` for                                                          |
+|                               |                                     |                               | :ref:`Teams SDK in API connection mode <teams-api-connection>`.                        |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `batcher_static_size`         | `FIFTYONE_BATCHER_STATIC_SIZE`      | `100`                         | Fixed size of batches. Ignored if `default_batcher` is not `static`.                   |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
