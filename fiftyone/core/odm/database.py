@@ -755,23 +755,17 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
         a list of IDs of the inserted documents
     """
     ids = []
+    batcher = fou.get_default_batcher(docs, progress=progress, total=num_docs)
 
     try:
-        batcher = fou.DynamicBatcher(
-            docs,
-            target_latency=0.2,
-            init_batch_size=1,
-            max_batch_beta=2.0,
-            max_batch_size=100000,  # mongodb limit
-            progress=progress,
-            total=num_docs,
-        )
-
         with batcher:
             for batch in batcher:
                 batch = list(batch)
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
+                if batcher.manual_backpressure:
+                    batcher.apply_backpressure(batch)
+
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
