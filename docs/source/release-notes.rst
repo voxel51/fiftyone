@@ -3,6 +3,69 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.5.2:
+
+FiftyOne Teams 1.5.2
+--------------------
+*Released December 20, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.23.2 <release-notes-v0.23.2>`, plus:
+
+General
+
+- Added 'label' as searchable field for delegated operations
+- Fixed issue where invalid tokens were not causing redirects
+- Re-running a delegated operation now uses dataset id instead of name
+
+.. _release-notes-v0.23.2:
+
+FiftyOne 0.23.2
+---------------
+*Released December 20, 2023*
+
+Core
+
+- Fixed an issue where exporting patches would have incorrect path names
+  `#3921 <https://github.com/voxel51/fiftyone/pull/3921>`_
+- Removed loading from mongoengine cache
+  `#3922 <https://github.com/voxel51/fiftyone/pull/3922>`_
+- Fixed overwriting dataset metadata with empty values during import
+  `#3913 <https://github.com/voxel51/fiftyone/pull/3913>`_
+- Fixed issue where users could not select scalar fields in the sidebar
+  `#3938 <https://github.com/voxel51/fiftyone/pull/3938>`_
+- Optimized reloading data from mongodb when performing bulk writes
+  `#3942 <https://github.com/voxel51/fiftyone/pull/3942>`_
+- Added configurable batch sizes to `bulk_write()`
+  `#3944 <https://github.com/voxel51/fiftyone/pull/3944>`_
+
+App
+
+- Added support for frames-as-videos in nested groups
+  `#3935 <https://github.com/voxel51/fiftyone/pull/3935>`_
+- Fixed an issue where embeddigns legend did not display full names
+  `#3927 <https://github.com/voxel51/fiftyone/pull/3927>`_
+- Added a toggle to show/hide fields in the sample modal that have undefined values
+  `#3937 <https://github.com/voxel51/fiftyone/pull/3937>`_
+- Fixed an issue with the Lightning threshold Reset button
+  `#3933 <https://github.com/voxel51/fiftyone/pull/3933>`_
+- Fixed an issue where similarity search only worked on the default group slice
+  `#3912 <https://github.com/voxel51/fiftyone/pull/3912>`_
+
+Plugins
+
+- Added support for the new `@voxel51/utils/delegate` operator
+  `#3939 <https://github.com/voxel51/fiftyone/pull/3939>`_
+- Added the ability to to search multiple fields in a delegated operation list query
+  `#3892 <https://github.com/voxel51/fiftyone/pull/3892>`_
+- Fixed backwards compatibility issue with `ctx.secrets`
+  `#3908 <https://github.com/voxel51/fiftyone/pull/3908>`_
+- Fixed issue with JS plugin app configs
+  `#3924 <https://github.com/voxel51/fiftyone/pull/3924>`_
+- Improved validation for `delete_selected_samples` and `clone_selected_samples` builtin operators
+  `#3914 <https://github.com/voxel51/fiftyone/pull/3914>`_
+- Python Operators now load datasets by ID instead of name
+  `#3920 <https://github.com/voxel51/fiftyone/pull/3920>`_
+
 .. _release-notes-teams-v1.5.1:
 
 FiftyOne Teams 1.5.1
