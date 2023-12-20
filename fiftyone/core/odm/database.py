@@ -788,7 +788,8 @@ def bulk_write(ops, coll, ordered=False):
         ordered (False): whether the operations must be performed in order
     """
     try:
-        for ops_batch in fou.iter_batches(ops, 100000):  # mongodb limit
+        batch_size = fo.config.bulk_write_batch_size
+        for ops_batch in fou.iter_batches(ops, batch_size):
             coll.bulk_write(list(ops_batch), ordered=ordered)
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
