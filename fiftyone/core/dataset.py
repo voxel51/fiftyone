@@ -2563,7 +2563,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         if batcher is not None and batcher.manual_backpressure:
-            batcher.register_backpressure(dicts)
+            batcher.apply_backpressure(dicts)
 
         return [str(d["_id"]) for d in dicts]
 
@@ -2623,7 +2623,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         if batcher is not None and batcher.manual_backpressure:
-            batcher.register_backpressure(dicts)
+            batcher.apply_backpressure(dicts)
 
     def _make_dict(self, sample, include_id=False):
         d = sample.to_mongo_dict(include_id=include_id)
