@@ -19,6 +19,7 @@ General
 - Improved performance of ``add_samples()``, ``set_values()``,
    ``compute_metadata()``, and other large batched computations, through
    API-connected SDK.
+- Trim API logging of large batch SDK operations.
 
 .. _release-notes-v0.23.2:
 
