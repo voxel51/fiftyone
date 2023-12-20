@@ -2581,11 +2581,6 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
-        # Get default batcher:
-        # dynamic - Dynamically size batches so that they are as large as
-        #   possible while still achieving a nice frame rate on the progress bar
-        # size - Dynamically size batches to reach a target bson content size
-        # static - fixed size batches
         batcher = fou.get_default_batcher(samples, progress=True)
 
         with batcher:
