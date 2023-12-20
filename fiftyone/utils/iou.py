@@ -40,6 +40,11 @@ def compute_ious(
     For polylines, IoUs are computed assuming the shapes are solid (filled),
     regardless of their ``filled`` attributes.
 
+    For :class:`fiftyone.core.labels.Polyline` objects, IoUs are computed
+    as solid shapes when ``filled=True` and are computed using
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
+    when ``filled=False``.
+
     For keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
 
@@ -496,11 +501,15 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     return ious
 
 
-def _compute_polyline_ious(
-    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
+def polygon_iou_matrix(
+    preds,
+    gts,
+    error_level,
+    is_symmetric,
+    iscrowd=None,
+    classwise=False,
+    gt_crowds=None,
 ):
-    is_symmetric = preds is gts
-
     with contextlib.ExitStack() as context:
         # We're ignoring errors, so suppress shapely logging that occurs when
         # invalid geometries are encountered
@@ -511,6 +520,7 @@ def _compute_polyline_ious(
             )
 
         num_pred = len(preds)
+
         pred_polys = _polylines_to_shapely(preds, error_level)
         pred_labels = [pred.label for pred in preds]
         pred_areas = [pred_poly.area for pred_poly in pred_polys]
@@ -568,8 +578,85 @@ def _compute_polyline_ious(
                     iou = min(etan.safe_divide(inter, union), 1)
 
                 ious[i, j] = iou
+    return ious
 
-        return ious
+
+def polyline2d_iou_matrix(
+    preds, gts, iscrowd=None, classwise=False, gt_crowds=None
+):
+    num_pred = len(preds)
+    pred_labels = [pred.label for pred in preds]
+    # if is_symmetric:
+    #     num_gt = num_pred
+    #     gt_labels = pred_labels
+    # else:
+    num_gt = len(gts)
+    gt_labels = [gt.label for gt in gts]
+
+    if iscrowd is not None:
+        gt_crowds = [iscrowd(gt) for gt in gts]
+    elif gt_crowds is None:
+        gt_crowds = [False] * num_gt
+
+    ious = np.zeros((num_pred, num_gt))
+
+    for j, (gt, gt_label, gt_crowd) in enumerate(
+        zip(gts, gt_labels, gt_crowds)
+    ):
+        for i, (pred, pred_label) in enumerate(zip(preds, pred_labels)):
+            # if is_symmetric and i < j:
+            #     iou = ious[j, i]
+            # elif is_symmetric and i == j:
+            #     iou = 1
+            if classwise and pred_label != gt_label:
+                continue
+            ious[i, j] = _compute_object_polyline_similarity(gt, pred)
+    return ious
+
+
+def _compute_object_polyline_similarity(gt, pred):
+    gtp = np.array(gt.points, dtype=float)[0]
+    predp = np.array(pred.points, dtype=float)[0]
+    each_dist = []
+    # Use extent of GT points as proxy for box area
+    scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))
+    scale = np.maximum(0.0, np.minimum(scale, 1.0))
+    for ind in np.arange(len(gtp)):
+
+        if not np.isfinite(gtp[ind]).all():
+            continue
+        if np.isfinite(predp[ind]).all():
+            dists = np.linalg.norm(gtp[ind] - predp[ind])
+        else:
+            dists = 1
+        each_dist.append(np.exp(-(dists**2) / (2 * (scale**2))))
+    return np.mean(each_dist)
+
+
+def _compute_polyline_ious(
+    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
+):
+    is_symmetric = preds is gts
+
+    are_all_filled = np.sum([gt["filled"] for gt in gts])
+    if are_all_filled > 0:
+        # are_all_filled = True for atleast one polyline instance, i.e., polygons/solid shape
+        ious = polygon_iou_matrix(
+            preds,
+            gts,
+            error_level,
+            is_symmetric,
+            iscrowd=None,
+            classwise=False,
+            gt_crowds=None,
+        )
+    if are_all_filled == 0:
+        # are_all_filled = False, i.e., Lines not polygons
+        ious = polyline2d_iou_matrix(
+            preds, gts, iscrowd=None, classwise=False, gt_crowds=None
+        )
+
+    return ious
 
 
 def _compute_mask_ious(
