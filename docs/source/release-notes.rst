@@ -39,6 +39,8 @@ Core
   `#3944 <https://github.com/voxel51/fiftyone/pull/3944>`_
 - Added built-in Ubuntu 23 support
   `#3936 <https://github.com/voxel51/fiftyone/pull/3936>`_
+- Fixed evaluation of unclosed polylines
+  `#3930 <https://github.com/voxel51/fiftyone/pull/3930>`_
 
 App
 
