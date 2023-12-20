@@ -76,7 +76,6 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `batcher_target_latency`      | `FIFTYONE_BATCHER_TARGET_LATENCY`   | `0.2`                         | Target latency between batches, in seconds. Only used when `default_batcher` is        |
 |                               |                                     |                               | `latency`.                                                                             |
->>>>>>> Stashed changes
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
