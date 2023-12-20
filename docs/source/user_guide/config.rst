@@ -55,6 +55,8 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
+| `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100_000`                     | Batch size to use for bulk writing MongoDB operations; cannot be > 100,000             |
++-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_sequence_idx`        | `FIFTYONE_DEFAULT_SEQUENCE_IDX`     | `%06d`                        | The default numeric string pattern to use when writing sequential lists of             |
 |                               |                                     |                               | files.                                                                                 |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
@@ -136,6 +138,7 @@ and the CLI:
     .. code-block:: text
 
         {
+            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -143,9 +146,8 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
-            "default_app_config_path": "~/.fiftyone/app_config.json",
-            "default_app_port": 5151,
             "default_app_address": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
@@ -155,14 +157,14 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
-            "max_thread_pool_workers": null,
             "max_process_pool_workers": null,
+            "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
-            "plugins_dir": null,
             "plugins_cache_enabled": false,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
@@ -183,6 +185,7 @@ and the CLI:
     .. code-block:: text
 
         {
+            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -190,9 +193,8 @@ and the CLI:
             "database_validation": true,
             "dataset_zoo_dir": "~/fiftyone",
             "dataset_zoo_manifest_paths": null,
-            "default_app_config_path": "~/.fiftyone/app_config.json",
-            "default_app_port": 5151,
             "default_app_address": null,
+            "default_app_port": 5151,
             "default_batch_size": null,
             "default_dataset_dir": "~/fiftyone",
             "default_image_ext": ".jpg",
@@ -202,14 +204,14 @@ and the CLI:
             "desktop_app": false,
             "do_not_track": false,
             "logging_level": "INFO",
-            "max_thread_pool_workers": null,
             "max_process_pool_workers": null,
+            "max_thread_pool_workers": null,
             "model_zoo_dir": "~/fiftyone/__models__",
             "model_zoo_manifest_paths": null,
             "module_path": null,
             "operator_timeout": 600,
-            "plugins_dir": null,
             "plugins_cache_enabled": false,
+            "plugins_dir": null,
             "requirement_error_level": 0,
             "show_progress_bars": true,
             "timezone": null
