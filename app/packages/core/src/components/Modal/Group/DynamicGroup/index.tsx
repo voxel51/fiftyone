@@ -1,5 +1,5 @@
 import * as fos from "@fiftyone/state";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
@@ -19,7 +19,8 @@ export const DynamicGroup = () => {
   );
 
   useEffect(() => {
-    // checking for integer because it is initialized to a float random value in useInitializeImaVidSubscriptions
+    // checking for integer because it is initialized to a float random value
+    // in useInitializeImaVidSubscriptions
     if (shouldRenderImaVid && Number.isInteger(imaVidIndex)) {
       setDynamicGroupCurrentElementIndex(imaVidIndex);
     }

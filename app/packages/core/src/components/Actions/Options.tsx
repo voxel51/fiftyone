@@ -82,7 +82,7 @@ const MediaFields = ({ modal }) => {
   );
   const mediaFields = useRecoilValue(fos.mediaFields);
 
-  if (mediaFields?.length <= 1) return null;
+  if (!mediaFields || mediaFields?.length <= 1) return null;
 
   return (
     <>

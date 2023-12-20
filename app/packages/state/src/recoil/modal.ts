@@ -1,4 +1,4 @@
-import { AbstractLooker, ImaVidLooker, type Sample } from "@fiftyone/looker";
+import { AbstractLooker, type Sample } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
@@ -40,13 +40,14 @@ export const sidebarSampleId = selector({
       const sample = get(activeModalSidebarSample);
 
       if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
+        // is the type incorrect? fix me
         const id = sample?.id || sample?._id || sample?.sample?._id;
         if (id) {
           return id;
         }
       }
       // suspend
-      return new Promise(() => {});
+      return new Promise(() => null);
     }
 
     const override = get(pinned3DSampleSlice);

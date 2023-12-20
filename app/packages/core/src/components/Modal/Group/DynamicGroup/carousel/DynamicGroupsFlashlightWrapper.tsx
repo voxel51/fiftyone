@@ -3,7 +3,7 @@ import { Sample, freeVideos } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { selectedSamples } from "@fiftyone/state";
 import { get } from "lodash";
-import {
+import React, {
   useCallback,
   useEffect,
   useId,
@@ -23,10 +23,16 @@ export const DYNAMIC_GROUPS_FLASHLIGHT_ELEMENT_ID =
 const pageParams = selector({
   key: "paginateDynamicGroupVariables",
   get: ({ get }) => {
+    const dataset = get(fos.datasetName);
+    if (!dataset) {
+      throw new Error("no dataset");
+    }
+
     const params = {
-      dataset: get(fos.datasetName),
+      dataset,
       view: get(fos.dynamicGroupViewQuery({})),
     };
+
     return (page: number, pageSize: number) => {
       return {
         ...params,

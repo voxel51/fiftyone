@@ -1,5 +1,4 @@
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
@@ -54,7 +53,7 @@ const ContentColumn = styled.div`
 `;
 
 const SampleModal = () => {
-  const lookerRef = useRef<AbstractLooker>();
+  const lookerRef = useRef<fos.Lookers>();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const disabled = useRecoilValue(fos.disabledPaths);
@@ -85,7 +84,7 @@ const SampleModal = () => {
    * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
    */
   const lookerRefCallback = useCallback(
-    (looker: AbstractLooker) => {
+    (looker: fos.Lookers) => {
       lookerRef.current = looker;
       looker.addEventListener("tooltip", eventHandler);
     },

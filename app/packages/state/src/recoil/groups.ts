@@ -583,7 +583,7 @@ export const imaVidLookerState = atomFamily<any, string>({
     ({ setSelf, getPromise, onSet }) => {
       let unsubscribe;
 
-      onSet((_newValue, oldValue, isReset) => {
+      onSet((_newValue) => {
         // note: resetRecoilState is not triggering `onSet` in effect,
         // see https://github.com/facebookexperimental/Recoil/issues/2183
         // replace with `useResetRecoileState` when fixed
