@@ -21,6 +21,66 @@ from fiftyone.migrations.runner import MigrationRunner
 from decorators import drop_datasets
 
 
+class BatcherTests(unittest.TestCase):
+    def test_get_default_batcher(self):
+        iterable = list(range(100))
+
+        target_latency = 0.25
+        with patch.object(fo.config, "default_batcher", "latency"):
+            with patch.object(
+                fo.config,
+                "batcher_target_latency",
+                target_latency,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(isinstance(batcher, fou.DynamicBatcher))
+                self.assertEqual(batcher.target_measurement, target_latency)
+
+        static_batch_size = 1000
+        with patch.object(fo.config, "default_batcher", "static"):
+            with patch.object(
+                fo.config,
+                "batcher_static_size",
+                static_batch_size,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(isinstance(batcher, fou.StaticBatcher))
+                self.assertEqual(batcher.batch_size, static_batch_size)
+
+        target_size = 2**16
+        with patch.object(fo.config, "default_batcher", "size"):
+            with patch.object(
+                fo.config,
+                "batcher_target_size_bytes",
+                target_size,
+            ):
+                batcher = fou.get_default_batcher(iterable)
+                self.assertTrue(
+                    isinstance(batcher, fou.BSONSizeDynamicBatcher)
+                )
+                self.assertEqual(batcher.target_measurement, target_size)
+
+        with patch.object(fo.config, "default_batcher", "invalid"):
+            self.assertRaises(ValueError, fou.get_default_batcher, iterable)
+
+    def test_static_batcher(self):
+        iterable = list(range(105))
+        batcher = fou.StaticBatcher(iterable, batch_size=10, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            expected = [list(range(i, i + 10)) for i in range(0, 95, 10)] + [
+                iterable[100:]
+            ]
+            self.assertListEqual(batches, expected)
+
+    def test_static_batcher_covered(self):
+        iterable = list(range(105))
+        batcher = fou.StaticBatcher(iterable, batch_size=200, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            self.assertListEqual(batches, [iterable])
+
+
 class CoreUtilsTests(unittest.TestCase):
     def test_validate_hex_color(self):
         # Valid colors

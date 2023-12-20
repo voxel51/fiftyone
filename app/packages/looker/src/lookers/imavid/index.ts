@@ -32,10 +32,6 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     return this.frameStoreController.store.getSampleAtFrame(this.frameNumber);
   }
 
-  get posterSample() {
-    return this.sample;
-  }
-
   get frameNumber() {
     return this.state.currentFrameNumber;
   }
@@ -54,6 +50,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
 
   destroy() {
     this.unsubscribe && this.unsubscribe();
+    this.frameStoreController.pauseFetch();
     this.pause();
     super.destroy();
   }
@@ -87,7 +84,7 @@ export class ImaVidLooker extends AbstractLooker<ImaVidState, Sample> {
     config: ImaVidState["config"],
     options: ImaVidState["options"]
   ): ImaVidState {
-    const firstFrame = 1;
+    const firstFrame = config.firstFrameNumber ?? 1;
 
     return {
       ...this.getInitialBaseState(),

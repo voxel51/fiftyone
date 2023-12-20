@@ -24,7 +24,7 @@ export const useInitializeImaVidSubscriptions = () => {
       () => {
         // note: resetRecoilState is not triggering `onSet` in effect,
         // see https://github.com/facebookexperimental/Recoil/issues/2183
-        // replace with `useResetRecoileState` when fixed
+        // replace with `useResetRecoilState` when fixed
 
         // this setter is to trigger onSet effect that kicks-off the subscription to frame number
         // the supplied random value is placeholder so that the onSet effect is triggered in the atom
