@@ -1247,7 +1247,7 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
 DynamicBatcher = LatencyDynamicBatcher
 
 
-class BsonSizeDynamicBatcher(BaseDynamicBatcher):
+class BSONSizeDynamicBatcher(BaseDynamicBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
     batch size to achieve a desired BSON content size.
 
@@ -1268,7 +1268,7 @@ class BsonSizeDynamicBatcher(BaseDynamicBatcher):
 
         elements = range(int(1e7))
 
-        batcher = fou.BsonSizeDynamicBatcher(
+        batcher = fou.BSONSizeDynamicBatcher(
             elements, target_size=2**20, max_batch_beta=2.0
         )
 
@@ -1281,7 +1281,7 @@ class BsonSizeDynamicBatcher(BaseDynamicBatcher):
             print("batch size: %d" % len(batch))
             batcher.apply_backpressure(batch)
 
-        batcher = fou.BsonSizeDynamicBatcher(
+        batcher = fou.BSONSizeDynamicBatcher(
             elements,
             target_size=2**20,
             max_batch_beta=2.0,
@@ -1316,7 +1316,7 @@ class BsonSizeDynamicBatcher(BaseDynamicBatcher):
     def __init__(
         self,
         iterable,
-        target_size=2**15,
+        target_size=2**20,
         init_batch_size=1,
         min_batch_size=1,
         max_batch_size=None,
@@ -1424,7 +1424,7 @@ def get_default_batcher(iterable, progress=True, total=None):
     """
     default_batcher = fo.config.default_batcher
     if default_batcher == "latency":
-        target_latency = fo.config.dynamic_batch_target_latency
+        target_latency = fo.config.batcher_target_latency
         return LatencyDynamicBatcher(
             iterable,
             target_latency=target_latency,
@@ -1435,8 +1435,8 @@ def get_default_batcher(iterable, progress=True, total=None):
             total=total,
         )
     elif default_batcher == "size":
-        target_content_size = fo.config.dynamic_batch_target_size
-        return BsonSizeDynamicBatcher(
+        target_content_size = fo.config.batcher_target_size
+        return BSONSizeDynamicBatcher(
             iterable,
             target_size=target_content_size,
             init_batch_size=1,
@@ -1446,7 +1446,7 @@ def get_default_batcher(iterable, progress=True, total=None):
             total=total,
         )
     elif default_batcher == "static":
-        batch_size = fo.config.database_static_batch_size
+        batch_size = fo.config.batcher_static_size
         return StaticBatcher(
             iterable, batch_size=batch_size, progress=progress, total=total
         )

@@ -166,22 +166,22 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_BATCHER",
             default="latency",
         )
-        self.database_static_batch_size = self.parse_int(
+        self.batcher_static_size = self.parse_int(
             d,
-            "database_static_batch_size",
-            env_var="FIFTYONE_STATIC_BATCH_SIZE",
+            "batcher_static_size",
+            env_var="FIFTYONE_BATCHER_STATIC_SIZE",
             default=100,
         )
-        self.dynamic_batch_target_size = self.parse_int(
+        self.batcher_target_size = self.parse_int(
             d,
-            "dynamic_batch_target_size",
-            env_var="FIFTYONE_DYNAMIC_BATCH_TARGET_SIZE",
+            "batcher_target_size",
+            env_var="FIFTYONE_BATCHER_TARGET_SIZE",
             default=2**20,
         )
-        self.dynamic_batch_target_latency = self.parse_number(
+        self.batcher_target_latency = self.parse_number(
             d,
-            "dynamic_batch_target_latency",
-            env_var="FIFTYONE_DYNAMIC_BATCH_LATENCY",
+            "batcher_target_latency",
+            env_var="FIFTYONE_BATCHER_TARGET_LATENCY",
             default=0.2,
         )
         self.default_sequence_idx = self.parse_string(

@@ -29,7 +29,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "latency"):
             with patch.object(
                 fo.config,
-                "dynamic_batch_target_latency",
+                "batcher_target_latency",
                 target_latency,
             ):
                 batcher = fou.get_default_batcher(iterable)
@@ -40,7 +40,7 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "static"):
             with patch.object(
                 fo.config,
-                "database_static_batch_size",
+                "batcher_static_size",
                 static_batch_size,
             ):
                 batcher = fou.get_default_batcher(iterable)
@@ -51,12 +51,12 @@ class BatcherTests(unittest.TestCase):
         with patch.object(fo.config, "default_batcher", "size"):
             with patch.object(
                 fo.config,
-                "dynamic_batch_target_size",
+                "batcher_target_size",
                 target_size,
             ):
                 batcher = fou.get_default_batcher(iterable)
                 self.assertTrue(
-                    isinstance(batcher, fou.BsonSizeDynamicBatcher)
+                    isinstance(batcher, fou.BSONSizeDynamicBatcher)
                 )
                 self.assertEqual(batcher.target_measurement, target_size)
 
