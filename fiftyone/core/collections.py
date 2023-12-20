@@ -1687,11 +1687,14 @@ class SampleCollection(object):
         view._edit_sample_tags(update)
 
     def _edit_sample_tags(self, update):
+        ids = []
         ops = []
-        for ids in fou.iter_batches(self.values("_id"), 100000):
-            ops.append(UpdateMany({"_id": {"$in": ids}}, update))
+        for _ids in fou.iter_batches(self.values("_id"), 100000):
+            ids.extend(_ids)
+            ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
 
-        self._dataset._bulk_write(ops)
+        if ops:
+            self._dataset._bulk_write(ops, ids=ids)
 
     def count_sample_tags(self):
         """Counts the occurrences of sample tags in this collection.
@@ -1821,7 +1824,7 @@ class SampleCollection(object):
                 )
 
         if ops:
-            self._dataset._bulk_write(ops, frames=is_frame_field)
+            self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
 
         return ids, label_ids
 
@@ -2730,7 +2733,8 @@ class SampleCollection(object):
 
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
-        self._dataset._bulk_write(ops, frames=frames)
+        if ops:
+            self._dataset._bulk_write(ops, ids=ids, frames=frames)
 
     def _set_list_values_by_id(
         self,
@@ -2784,7 +2788,8 @@ class SampleCollection(object):
                     )
                 )
 
-        self._dataset._bulk_write(ops, frames=frames)
+        if ops:
+            self._dataset._bulk_write(ops, ids=ids, frames=frames)
 
     def _set_label_list_values(
         self,
@@ -2801,6 +2806,7 @@ class SampleCollection(object):
         leaf = field_name[len(root) + 1 :]
         path = root + ".$[label]." + leaf
 
+        ids = []
         ops = []
         for label_id, value in values.items():
             if value is None and skip_none:
@@ -2811,16 +2817,18 @@ class SampleCollection(object):
                     field_name, field, value, validate=validate
                 )
 
+            _id = id_map[label_id]
+            ids.append(_id)
             ops.append(
                 UpdateOne(
-                    {"_id": id_map[label_id]},
+                    {"_id": _id},
                     {"$set": {path: value}},
                     array_filters=[{"label._id": ObjectId(label_id)}],
                 )
             )
 
         if ops:
-            self._dataset._bulk_write(ops, frames=frames)
+            self._dataset._bulk_write(ops, ids=ids, frames=frames)
 
     def _set_labels(self, field_name, sample_ids, label_docs):
         if self._is_group_field(field_name):
@@ -2832,6 +2840,7 @@ class SampleCollection(object):
         root, is_list_field = self._get_label_field_root(field_name)
         field_name, is_frame_field = self._handle_frame_field(field_name)
 
+        ids = []
         ops = []
         if is_list_field:
             elem_id = root + "._id"
@@ -2847,6 +2856,7 @@ class SampleCollection(object):
                 if not isinstance(_docs, (list, tuple)):
                     _docs = [_docs]
 
+                ids.append(_id)
                 for doc in _docs:
                     ops.append(
                         UpdateOne(
@@ -2861,6 +2871,7 @@ class SampleCollection(object):
                 if etau.is_str(_id):
                     _id = ObjectId(_id)
 
+                ids.append(_id)
                 ops.append(
                     UpdateOne(
                         {"_id": _id, elem_id: doc["_id"]},
@@ -2868,7 +2879,8 @@ class SampleCollection(object):
                     )
                 )
 
-        self._dataset._bulk_write(ops, frames=is_frame_field)
+        if ops:
+            self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
@@ -10872,9 +10884,9 @@ def _parse_frame_values_dicts(sample_collection, sample_ids, values):
 
     # Insert frame documents for new frame numbers
     if dicts:
-        sample_collection._dataset._bulk_write(
-            [InsertOne(d) for d in dicts], frames=True
-        )  # adds `_id` to each dict
+        # adds `_id` to each dict
+        ops = [InsertOne(d) for d in dicts]
+        sample_collection._dataset._bulk_write(ops, ids=[], frames=True)
 
         for d in dicts:
             id_map[(str(d["_sample_id"]), d["frame_number"])] = d["_id"]

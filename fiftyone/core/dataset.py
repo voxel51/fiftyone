@@ -2618,22 +2618,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
-        # Dynamically size batches so that they are as large as possible while
-        # still achieving a nice frame rate on the progress bar
-        batcher = fou.DynamicBatcher(
-            samples,
-            target_latency=0.2,
-            init_batch_size=1,
-            max_batch_beta=2.0,
-            progress=True,
-            total=num_samples,
+        batcher = fou.get_default_batcher(
+            samples, progress=True, total=num_samples
         )
 
         sample_ids = []
         with batcher:
             for batch in batcher:
                 _ids = self._add_samples_batch(
-                    batch, expand_schema, dynamic, validate
+                    batch, expand_schema, dynamic, validate, batcher=batcher
                 )
                 sample_ids.extend(_ids)
 
@@ -2657,7 +2650,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         samples refer to the same source media.
 
         Args:
-            samples: a :class:`fiftyone.core.collections.SampleCollection`
+            sample_collection: a :class:`fiftyone.core.collections.SampleCollection`
             include_info (True): whether to merge dataset-level information
                 such as ``info`` and ``classes``
             overwrite_info (False): whether to overwrite existing dataset-level
@@ -2687,7 +2680,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         )
         return self.skip(num_samples).values("id")
 
-    def _add_samples_batch(self, samples, expand_schema, dynamic, validate):
+    def _add_samples_batch(
+        self, samples, expand_schema, dynamic, validate, batcher=None
+    ):
         samples = [s.copy() if s._in_db else s for s in samples]
 
         if self.media_type is None and samples:
@@ -2714,6 +2709,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
+        if batcher is not None and batcher.manual_backpressure:
+            batcher.apply_backpressure(dicts)
+
         return [str(d["_id"]) for d in dicts]
 
     def _upsert_samples(
@@ -2730,23 +2728,17 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             except:
                 pass
 
-        # Dynamically size batches so that they are as large as possible while
-        # still achieving a nice frame rate on the progress bar
-        batcher = fou.DynamicBatcher(
-            samples,
-            target_latency=0.2,
-            init_batch_size=1,
-            max_batch_beta=2.0,
-            progress=True,
-        )
+        batcher = fou.get_default_batcher(samples, progress=True)
 
         with batcher:
             for batch in batcher:
                 self._upsert_samples_batch(
-                    batch, expand_schema, dynamic, validate
+                    batch, expand_schema, dynamic, validate, batcher=batcher
                 )
 
-    def _upsert_samples_batch(self, samples, expand_schema, dynamic, validate):
+    def _upsert_samples_batch(
+        self, samples, expand_schema, dynamic, validate, batcher=None
+    ):
         if self.media_type is None and samples:
             self.media_type = _get_media_type(samples[0])
 
@@ -2777,6 +2769,9 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             if sample.media_type == fom.VIDEO:
                 sample.frames.save()
 
+        if batcher is not None and batcher.manual_backpressure:
+            batcher.apply_backpressure(dicts)
+
     def _make_dict(self, sample, include_id=False):
         d = sample.to_mongo_dict(include_id=include_id)
 
@@ -2789,7 +2784,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return d
 
-    def _bulk_write(self, ops, frames=False, ordered=False):
+    def _bulk_write(self, ops, ids=None, frames=False, ordered=False):
         if frames:
             coll = self._frame_collection
         else:
@@ -2798,9 +2793,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         foo.bulk_write(ops, coll, ordered=ordered)
 
         if frames:
-            fofr.Frame._reload_docs(self._frame_collection_name)
+            fofr.Frame._reload_docs(self._frame_collection_name, frame_ids=ids)
         else:
-            fos.Sample._reload_docs(self._sample_collection_name)
+            fos.Sample._reload_docs(
+                self._sample_collection_name, sample_ids=ids
+            )
 
     def _merge_doc(
         self,
@@ -7728,7 +7725,7 @@ def _add_collection_with_new_ids(
             )
             ops.append(op)
 
-        dataset._bulk_write(ops)
+        dataset._bulk_write(ops, ids=[])
 
     if not contains_videos:
         return new_ids
@@ -7769,7 +7766,7 @@ def _add_collection_with_new_ids(
         for old_id, new_id in zip(old_ids, new_ids)
     ]
 
-    dataset._bulk_write(ops, frames=True)
+    dataset._bulk_write(ops, ids=[], frames=True)
 
     return new_ids
 

@@ -254,6 +254,12 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.ctx.drawImage(image, 0, 0);
       }
 
+      // this is when frame number changed through methods like keyboard navigation
+      if (!this.isPlaying && !this.isSeeking && !animate) {
+        this.ctx.drawImage(image, 0, 0);
+        this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
+      }
+
       if (animate && !this.waitingToPause) {
         if (frameNumberToDraw <= this.framesController.totalFrameCount) {
           this.update(({ playing }) => {

@@ -34,7 +34,7 @@ import {
 import { getBrowserStorageEffectForKey } from "./customEffects";
 import { dataset } from "./dataset";
 import { ModalSample, modalLooker, modalSample } from "./modal";
-import { nonNestedDynamicGroupsViewMode } from "./options";
+import { dynamicGroupsViewMode } from "./options";
 import { RelayEnvironmentKey } from "./relay";
 import { fieldPaths } from "./schema";
 import { datasetName, parentMediaTypeSelector } from "./selectors";
@@ -53,6 +53,16 @@ export const groupMediaIsCarouselVisibleSetting = atom<boolean>({
   ],
 });
 
+export const groupMediaIsCarouselVisible = selector<boolean>({
+  key: "groupMediaIsCarouselVisible",
+  get: ({ get }) => {
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+
+    return get(groupMediaIsCarouselVisibleSetting) && !isImaVidInNestedGroup;
+  },
+});
+
 export const groupMedia3dVisibleSetting = atom<boolean>({
   key: "groupMediaIs3dVisibleSetting",
   default: true,
@@ -69,7 +79,9 @@ export const groupMediaIs3dVisible = selector<boolean>({
   get: ({ get }) => {
     const set = get(groupMediaTypesSet);
     const hasPcd = set.has("point_cloud");
-    return get(groupMedia3dVisibleSetting) && hasPcd;
+    const isImaVidInNestedGroup =
+      get(shouldRenderImaVidLooker) && get(isNestedDynamicGroup);
+    return get(groupMedia3dVisibleSetting) && hasPcd && !isImaVidInNestedGroup;
   },
 });
 
@@ -447,22 +459,32 @@ export const isNonNestedDynamicGroup = selector<boolean>({
   },
 });
 
-export const isImaVidLookerAvailable = selector<boolean>({
-  key: "isImaVidLookerAvailable",
+export const isNestedDynamicGroup = selector<boolean>({
+  key: "isNestedDynamicGroup",
   get: ({ get }) => {
-    const isOrderedDynamicGroup_ = get(isOrderedDynamicGroup);
-    const isNonNestedDynamicGroup_ = get(isNonNestedDynamicGroup);
-    return isOrderedDynamicGroup_ && isNonNestedDynamicGroup_;
+    return get(isDynamicGroup) && get(hasGroupSlices);
   },
+});
+
+export const imaVidStoreKey = selectorFamily<
+  string,
+  { modal: boolean; groupByFieldValue: string }
+>({
+  key: "imaVidStoreKey",
+  get:
+    ({ modal, groupByFieldValue }) =>
+    ({ get }) => {
+      const { groupBy, orderBy } = get(dynamicGroupParameters);
+      const slice = get(currentSlice(modal)) ?? "UNSLICED";
+
+      return `$${groupBy}-${orderBy}-${groupByFieldValue}-${slice}`;
+    },
 });
 
 export const shouldRenderImaVidLooker = selector<boolean>({
   key: "shouldRenderImaVidLooker",
   get: ({ get }) => {
-    return (
-      get(isImaVidLookerAvailable) &&
-      get(nonNestedDynamicGroupsViewMode) === "video"
-    );
+    return get(isOrderedDynamicGroup) && get(dynamicGroupsViewMode) === "video";
   },
 });
 
@@ -501,9 +523,17 @@ export const dynamicGroupPageSelector = selectorFamily<
         ),
       };
 
+      const filter = get(hasGroupSlices)
+        ? {
+            group: {
+              slice: get(groupSlice),
+            },
+          }
+        : {};
+
       return (cursor: number, pageSize: number) => ({
         ...params,
-        filter: {},
+        filter,
         after: cursor ? String(cursor) : null,
         count: pageSize,
       });
@@ -553,7 +583,7 @@ export const imaVidLookerState = atomFamily<any, string>({
     ({ setSelf, getPromise, onSet }) => {
       let unsubscribe;
 
-      onSet((_newValue, oldValue, isReset) => {
+      onSet((_newValue) => {
         // note: resetRecoilState is not triggering `onSet` in effect,
         // see https://github.com/facebookexperimental/Recoil/issues/2183
         // replace with `useResetRecoileState` when fixed

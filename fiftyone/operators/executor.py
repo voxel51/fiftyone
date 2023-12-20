@@ -140,14 +140,21 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
 
     Returns:
         an :class:`ExecutionResult`
+
+    Raises:
+        ExecutionError: if an error occurred while immediately executing an
+            operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
 
-    return asyncio.run(
+    result = asyncio.run(
         execute_or_delegate_operator(
             operator_uri, request_params, exhaust=True
         )
     )
+    result.raise_exceptions()
+
+    return result
 
 
 def _parse_ctx(ctx=None, **kwargs):
@@ -165,9 +172,11 @@ def _parse_ctx(ctx=None, **kwargs):
         if isinstance(dataset, str):
             dataset = fod.load_dataset(dataset)
 
-        view = dataset.view()
+        if dataset is not None:
+            view = dataset.view()
 
-    view = view._serialize()
+    if view is not None:
+        view = view._serialize()
 
     if isinstance(dataset, fod.Dataset):
         dataset_name = dataset.name
@@ -701,6 +710,7 @@ class ExecutionResult(object):
         executor (None): an :class:`Executor`
         error (None): an error message
         validation_ctx (None): a :class:`ValidationContext`
+        delegated (False): whether execution was delegated
     """
 
     def __init__(

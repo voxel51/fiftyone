@@ -104,7 +104,7 @@ test.describe("groups video labels", () => {
         animations: "allow",
       });
 
-      await modal.video.playUntilFrames("5");
+      await modal.video.playUntilFrames("5", true);
       await modal.looker.hover();
 
       // check screenshot after video is played
