@@ -1,117 +1,97 @@
-[tool.poetry]
-name = "fiftyone"
-version = "0.23.0"
-description = ""
-authors = ["None"]
-license = "Apache License Version 2.0"
-readme = "README.md"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-packages = [
-    {include = "fiftyone"},
-    {include = "recipes", from = "docs/source", to = "fiftyone"},
-    {include = "tutorials", from = "docs/source", to = "fiftyone"},
+[project]
+name = "fiftyone"
+dynamic = ["version"]
+description = "FiftyOne: the open-source tool for building high-quality datasets and computer vision models"
+authors = [{ name = "Voxel51, Inc.", email = "info@voxel51.com" }]
+license = "Apache-2.0"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Scientific/Engineering :: Visualization",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+dependencies = [
+    "aiofiles",
+    "argcomplete",
+    "beautifulsoup4",
+    "boto3",
+    "cachetools",
+    "dacite>=1.6.0, <1.8.0",
+    "Deprecated",
+    "ftfy",
+    "humanize",
+    "hypercorn>=0.13.2",
+    "Jinja2>=3",
+    # kaleido indirectly required by plotly for image export
+    # https://plotly.com/python/static-image-export/
+    "kaleido!=0.2.1.post1",
+    "matplotlib",
+    "mongoengine==0.24.2",
+    "motor>=2.5",
+    "numpy",
+    "packaging",
+    "pandas",
+    "Pillow>=6.2",
+    "plotly>=4.14",
+    "pprintpp",
+    "psutil",
+    "pymongo>=3.12",
+    "pytz",
+    "PyYAML",
+    "regex",
+    "retrying",
+    "scikit-learn",
+    "scikit-image",
+    "setuptools",
+    "sseclient-py>=1.7.2,<2",
+    "sse-starlette>=0.10.3,<1",
+    "starlette>=0.24.0",
+    "strawberry-graphql==0.138.1",
+    "tabulate",
+    "xmltodict",
+    "universal-analytics-python3>=1.0.1,<2",
+    # internal packages
+    "fiftyone-brain~=0.13.2",
+    "fiftyone-db~=0.4",
+    "voxel51-eta~=0.12",
+
 ]
 
-[tool.poetry.dependencies]
-python = "^3.8,<3.11"
-aiofiles = "0.7.0"
-argcomplete = "1.11.0"
-beautifulsoup4 = "^4.12.2"
-boto3 = "1.17.36"
-cachetools = "5.2.0"
-mongoengine = "0.24.2"
-dacite = "1.6.0"
-deprecated = "1.2.11"
-ftfy = "6.1.1"
-humanize = "^4.8.0"
-hypercorn = "0.13.2"
-importlib-metadata = {version = "1.4.0", markers = "python_version < \"3.8\""}
-jinja2 = "3.0.3"
-kaleido = "0.2.1"
-matplotlib = "3.5.2"
-motor = ">=2.5"
-numpy = "<=1.26.2"
-packaging = "23.2"
-pandas = ">=1.3"
-pillow = ">=6.2"
-plotly = "5.17.0"
-pprintpp = "0.4.0"
-psutil = ">=5.7.0"
-pymongo = ">=3.12"
-pytz = "2022.1"
-pyyaml = "6.0.1"
-regex = "2022.8.17"
-retrying = ">=1.3.3"
-scikit-learn = ">=0.23.2"
-scikit-image = ">=0.16.2"
-setuptools = ">=45.2.0"
-sseclient-py = ">=1.7.2"
-sse-starlette = ">=0.10.3"
-starlette = "0.27.0"
-strawberry-graphql = "0.138.1"
-tabulate = "0.8.10"
-xmltodict = "0.12.0"
-universal-analytics-python3 = ">=1.0.1,<2"
-fiftyone-brain = ">=0.13.2,<0.14.0"
-fiftyone-db = ">=0.4,<1.0"
-voxel51-eta = ">=0.12,<1.0"
-httpx = "0.23.0"
+[project.optional-dependencies]
+desktop = ["fiftyone-desktop~=0.24"]
 
+[project.scripts]
+fiftyone = "fiftyone.core.cli:main"
 
-[tool.poetry.group.dev.dependencies]
-ipython = "8.12.3"
-pre-commit = "2.18.1"
-pylint = "2.13.9"
+[project.urls]
+documentation = "https://fiftyone.ai"
+homepage = "https://github.com/voxel51/fiftyone"
 
+# Development settings
 
-[tool.poetry.group.test.dependencies]
-open3d = ">=0.16.0"
-itsdangerous = "2.0.1"
-werkzeug = "3.0.1"
-pytest = "7.3.1"
-pytest-cov = "4.0.0"
-pytest-mock = "3.10.0"
-pytest-asyncio = "^0.21.1"
-twine = ">=3"
-
-
-[tool.poetry.group.docs.dependencies]
-autodocsumm = "0.2.7"
-docutils = "0.16"
-ipykernel = "5.3.0"
-ipython-genutils = "0.2.0"
-jsx-lexer = "2.0.0"
-jupyter-client = "6.1.3"
-myst-parser = "0.13.7"
-nbsphinx = "0.8.8"
-sphinx-tabs = "1.2.1"
-sphinx = "3.5.4"
-sphinxcontrib-napoleon = "0.7"
-sphinx-copybutton = "0.4.0"
-
-
-[tool.poetry.group.extras.dependencies]
-google-api-python-client = ">=1.6.5"
-google-cloud-storage = ">=1.36"
-httplib2 = "<=0.15"
-ipywidgets = ">=7.5,<8"
-notebook = ">=5.3"
-pydicom = ">=2.2.0"
-shapely = ">=1.7.1"
-
-
-[tool.poetry.group.github.dependencies]
-pydicom = ">=2.2.0"
-shapely = ">=1.7.1"
-tensorflow = "2.13.1"
-tensorflow-datasets = "4.8.3"
-torch = "^2.1.1"
-torchvision = "^0.16.1"
-
-
-[tool.poetry.group.e2e.dependencies]
-umap-learn = ">=0.5.3"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.black]
+line-length = 79
+include = '\.pyi?$'
+exclude = '''
+/(
+  | \.git
+)/
+'''

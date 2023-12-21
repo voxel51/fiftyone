@@ -32,7 +32,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip hatch wheel
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v3
