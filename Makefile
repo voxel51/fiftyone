@@ -6,7 +6,7 @@ app:
 	@cd app && yarn && yarn build && cd ..
 
 python: app
-	@hatch build
+	@hatchling build
 
 docker: python
 	@docker build -t voxel51/fiftyone .
