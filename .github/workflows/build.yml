@@ -17,7 +17,9 @@ jobs:
               - 'app/**'
               - '.github/**'
               - 'fiftyone/**'
-              - 'setup.py'
+              - 'pyproject.toml'
+              - 'dependencies.py'
+              - 'version.py'
 
   build:
     runs-on: ubuntu-20.04
@@ -32,7 +34,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip hatch wheel
+          pip install --upgrade pip hatchling wheel
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v3
