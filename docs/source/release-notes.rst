@@ -3,6 +3,113 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-teams-v1.5.3:
+
+FiftyOne Teams 1.5.3
+--------------------
+*Released December 21, 2023*
+
+Includes all updates from :ref:`FiftyOne 0.23.2 <release-notes-v0.23.2>`, plus:
+
+General
+
+- Improved performance of
+  :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`,
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`,
+  :meth:`compute_metadata() <fiftyone.core.collections.SampleCollection.compute_metadata>`,
+  and other large batched computations when using
+  :ref:`API connections <teams-api-connection>`
+- Added `label` as a searchable field for delegated operations
+- Fixed issue where invalid tokens were not causing redirects
+- Re-running a delegated operation now uses dataset ID instead of name
+- Trimmed API logging of large batch SDK operations
+
+.. _release-notes-v0.23.2:
+
+FiftyOne 0.23.2
+---------------
+*Released December 21, 2023*
+
+News
+
+- Added :ref:`OpenCLIP <model-zoo-open-clip-torch>` to the FiftyOne Model Zoo!
+  `#3925 <https://github.com/voxel51/fiftyone/pull/3925>`_
+
+App
+
+- Added support for frames-as-videos in nested groups
+  `#3935 <https://github.com/voxel51/fiftyone/pull/3935>`_
+- Fixed an issue where embeddigns legend did not display full names
+  `#3927 <https://github.com/voxel51/fiftyone/pull/3927>`_
+- Added a toggle to show/hide fields in the sample modal that have undefined
+  values
+  `#3937 <https://github.com/voxel51/fiftyone/pull/3937>`_
+- Fixed an issue with the Lightning threshold reset button
+  `#3933 <https://github.com/voxel51/fiftyone/pull/3933>`_
+- Fixed an issue where similarity search only worked on the default group slice
+  `#3912 <https://github.com/voxel51/fiftyone/pull/3912>`_
+- Fixed issue where users could not select scalar fields in the sidebar
+  `#3938 <https://github.com/voxel51/fiftyone/pull/3938>`_
+
+Core
+
+- Added configurable batching choices to optimize throughput for operations like
+  :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
+  `#3923 <https://github.com/voxel51/fiftyone/pull/3923>`_
+- IoU computations for non-filled polylines now uses keypoint similarity
+  `#3930 <https://github.com/voxel51/fiftyone/pull/3930>`_
+- Optimized bulk write database operations like
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#3942 <https://github.com/voxel51/fiftyone/pull/3942>`_
+- Added configurable batch sizes to bulk write operations
+  `#3944 <https://github.com/voxel51/fiftyone/pull/3944>`_
+- Added builtin support for Ubuntu 23
+  `#3936 <https://github.com/voxel51/fiftyone/pull/3936>`_
+- Fixed an issue where exporting patches would have incorrect path names
+  `#3921 <https://github.com/voxel51/fiftyone/pull/3921>`_
+- Removed loading from mongoengine cache
+  `#3922 <https://github.com/voxel51/fiftyone/pull/3922>`_
+- Fixed overwriting dataset metadata with empty values during import
+  `#3913 <https://github.com/voxel51/fiftyone/pull/3913>`_
+
+Annotation
+
+- Added support for annotating multiple label fields using the Label Studio
+  backend
+  `#3895 <https://github.com/voxel51/fiftyone/pull/3895>`_
+
+Plugins
+
+- Added support for
+  :ref:`delegating function calls <delegating-function-calls>` via the new
+  `@voxel51/utils/delegate <https://github.com/voxel51/fiftyone-plugins/pull/98>`_
+  operator
+  `#3939 <https://github.com/voxel51/fiftyone/pull/3939>`_
+- Added the ability to search multiple fields in a delegated operation list
+  query
+  `#3892 <https://github.com/voxel51/fiftyone/pull/3892>`_
+- Delegated operators now reference datasets by ID rather than name for
+  robustness to dataset name changes
+  `#3920 <https://github.com/voxel51/fiftyone/pull/3920>`_
+- Improved validation for the builtin `delete_selected_samples` and
+  `clone_selected_samples` operators
+  `#3914 <https://github.com/voxel51/fiftyone/pull/3914>`_
+- Fixed backwards compatibility issues with `ctx.secrets`
+  `#3908 <https://github.com/voxel51/fiftyone/pull/3908>`_
+- Fixed issue with JS plugin App configs
+  `#3924 <https://github.com/voxel51/fiftyone/pull/3924>`_
+
+.. _release-notes-teams-v1.5.2:
+
+FiftyOne Teams 1.5.2
+--------------------
+*Released December 11, 2023*
+
+Bugs
+
+- Avoid creating non-existent database indexes on API startup
+- Avoid errors when archiving snapshots with corrupted run results
+
 .. _release-notes-teams-v1.5.1:
 
 FiftyOne Teams 1.5.1
