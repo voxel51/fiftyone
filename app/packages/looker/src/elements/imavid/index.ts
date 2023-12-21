@@ -22,6 +22,7 @@ export function withImaVidLookerEvents(): () => Events<ImaVidState> {
           if (thumbnail) {
             return {
               playing: true,
+              disableOverlays: true,
             };
           }
           return {};
@@ -109,6 +110,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
         this.canvas.height = this.element.naturalHeight;
 
         this.ctx = this.canvas.getContext("2d");
+        this.ctx.imageSmoothingEnabled = false;
         this.ctx.drawImage(this.element, 0, 0);
 
         this.imageSource = this.canvas;
@@ -248,9 +250,15 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
 
     this.canvasFrameNumber = frameNumberToDraw;
     image.addEventListener("load", () => {
-      // thisSampleOverlayPrepared.then((overlay) => {
-      this.ctx.imageSmoothingEnabled = false;
-      this.ctx.drawImage(image, 0, 0);
+      if (this.isPlaying || this.isSeeking) {
+        this.ctx.drawImage(image, 0, 0);
+      }
+
+      // this is when frame number changed through methods like keyboard navigation
+      if (!this.isPlaying && !this.isSeeking && !animate) {
+        this.ctx.drawImage(image, 0, 0);
+        this.update(() => ({ currentFrameNumber: frameNumberToDraw }));
+      }
 
       if (animate && !this.waitingToPause) {
         if (frameNumberToDraw <= this.framesController.totalFrameCount) {
@@ -258,7 +266,7 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
             if (playing) {
               return {
                 currentFrameNumber: Math.min(
-                  frameNumberToDraw + 1,
+                  frameNumberToDraw,
                   this.framesController.totalFrameCount
                 ),
               };
@@ -278,12 +286,14 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
                   this.drawFrame(1);
                   return {
                     playing: true,
+                    disableOverlays: true,
                     currentFrameNumber: 1,
                   };
                 }
 
                 return {
                   playing: false,
+                  disableOverlays: false,
                   currentFrameNumber: this.framesController.totalFrameCount,
                 };
               });
@@ -294,7 +304,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
           });
         }, this.setTimeoutDelay);
       }
-      // });
     });
     image.src = src;
   }
@@ -303,8 +312,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
     if (this.isAnimationActive) {
       return;
     }
-
-    this.update(() => ({ disabled: true, disableOverlays: true }));
 
     requestAnimationFrame(() => this.drawFrame(this.frameNumber));
   }
@@ -327,10 +334,6 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
       this.framesController.totalFrameCount
     );
 
-    if (isNaN(frameRangeMax)) {
-      return [currentFrameNumber, currentFrameNumber + 1] as const;
-    }
-
     return [currentFrameNumber, frameRangeMax] as const;
   }
 
@@ -339,10 +342,19 @@ export class ImaVidElement extends BaseElement<ImaVidState, HTMLImageElement> {
    * This method is not blocking, it merely enqueues a fetch job.
    */
   private ensureBuffers(state: Readonly<ImaVidState>) {
+    if (!this.framesController.totalFrameCount) {
+      return;
+    }
+
     let shouldEnqueueFetch = false;
     const necessaryFrameRange = this.getLookAheadFrameRange(
       state.currentFrameNumber
     );
+
+    if (necessaryFrameRange[1] < necessaryFrameRange[0]) {
+      return;
+    }
+
     const rangeAvailable =
       this.framesController.storeBufferManager.containsRange(
         necessaryFrameRange

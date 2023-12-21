@@ -158,7 +158,7 @@ class SampleSingleton(DocumentSingleton):
         if collection_name not in cls._instances:
             return
 
-        sample = cls._instances[collection_name].get(sample_id, None)
+        sample = cls._instances[collection_name].get(str(sample_id), None)
         if sample is not None:
             sample.reload(hard=hard)
 
@@ -174,7 +174,7 @@ class SampleSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
 
         if sample_ids is not None:
-            sample_ids = set(sample_ids)
+            sample_ids = set(str(_id) for _id in sample_ids)
             for sample in samples.values():
                 if sample.id in sample_ids:
                     sample.reload(hard=hard)
@@ -194,7 +194,7 @@ class SampleSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
 
-        sample_ids = set(sample_ids)
+        sample_ids = set(str(_id) for _id in sample_ids)
         reset_ids = set()
         for sample in samples.values():
             if sample.id in sample_ids:
@@ -220,7 +220,7 @@ class SampleSingleton(DocumentSingleton):
         if sample_ids is not None:
             samples = cls._instances[collection_name]
             for sample_id in sample_ids:
-                sample = samples.pop(sample_id, None)
+                sample = samples.pop(str(sample_id), None)
                 if sample is not None:
                     sample._reset_backing_doc()
         else:
@@ -270,7 +270,9 @@ class FrameSingleton(DocumentSingleton):
         """Returns a frame number -> Frame dict containing all in-memory frame
         instances for the specified sample.
         """
-        return dict(cls._instances.get(collection_name, {}).get(sample_id, {}))
+        return dict(
+            cls._instances.get(collection_name, {}).get(str(sample_id), {})
+        )
 
     def _rename_fields(cls, collection_name, field_names, new_field_names):
         """Renames the field on all in-memory frames in the collection."""
@@ -312,7 +314,7 @@ class FrameSingleton(DocumentSingleton):
         if collection_name not in cls._instances:
             return
 
-        frames = cls._instances[collection_name].get(sample_id, {})
+        frames = cls._instances[collection_name].get(str(sample_id), {})
         frame = frames.get(frame_number, None)
         if frame is not None:
             frame.reload(hard=hard)
@@ -330,7 +332,7 @@ class FrameSingleton(DocumentSingleton):
             return
 
         samples = cls._instances[collection_name]
-        frames = samples.get(sample_id, {})
+        frames = samples.get(str(sample_id), {})
 
         if not frames:
             return
@@ -365,7 +367,7 @@ class FrameSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
 
-        sample_ids = set(sample_ids)
+        sample_ids = set(str(_id) for _id in sample_ids)
         reset_ids = set()
         for sample_id, frames in samples.items():
             if sample_id in sample_ids:
@@ -379,7 +381,9 @@ class FrameSingleton(DocumentSingleton):
         for sample_id in reset_ids:
             frames = samples.pop(sample_id)
 
-    def _reload_docs(cls, collection_name, sample_ids=None, hard=False):
+    def _reload_docs(
+        cls, collection_name, sample_ids=None, frame_ids=None, hard=False
+    ):
         """Reloads the backing documents for in-memory frames in the
         collection.
 
@@ -392,11 +396,17 @@ class FrameSingleton(DocumentSingleton):
         samples = cls._instances[collection_name]
 
         if sample_ids is not None:
-            sample_ids = set(sample_ids)
+            sample_ids = set(str(_id) for _id in sample_ids)
             for sample_id in sample_ids:
                 frames = samples.get(sample_id, {})
                 for frame in frames.values():
                     frame.reload(hard=hard)
+        elif frame_ids is not None:
+            frame_ids = set(str(_id) for _id in frame_ids)
+            for frames in samples.values():
+                for frame in frames.values():
+                    if frame.id in frame_ids:
+                        frame.reload(hard=hard)
         else:
             for frames in samples.values():
                 for frame in frames.values():
@@ -414,7 +424,7 @@ class FrameSingleton(DocumentSingleton):
         if sample_ids is not None:
             samples = cls._instances[collection_name]
             for sample_id in sample_ids:
-                frames = samples.pop(sample_id, {})
+                frames = samples.pop(str(sample_id), {})
                 for frame in frames.values():
                     frame._reset_backing_doc()
         else:
@@ -436,7 +446,7 @@ class FrameSingleton(DocumentSingleton):
             return
 
         samples = cls._instances[collection_name]
-        frames = samples.get(sample_id, {})
+        frames = samples.get(str(sample_id), {})
 
         if not frames:
             return
@@ -473,7 +483,7 @@ class FrameSingleton(DocumentSingleton):
 
         samples = cls._instances[collection_name]
 
-        frame_ids = set(frame_ids)
+        frame_ids = set(str(_id) for _id in frame_ids)
         reset = []
 
         if keep:

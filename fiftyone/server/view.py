@@ -72,7 +72,7 @@ async def load_view(
 
 
 def get_view(
-    dataset_name,
+    dataset,
     view_name=None,
     stages=None,
     filters=None,
@@ -84,7 +84,8 @@ def get_view(
     """Gets the view defined by the given request parameters.
 
     Args:
-        dataset_name: the dataset name
+        dataset: the dataset name or :class:`fiftyone.core.dataset.Dataset`
+            instance
         view_name (None): the name of a saved view to load
         stages (None): an optional list of serialized
             :class:`fiftyone.core.stages.ViewStage` instances
@@ -102,7 +103,8 @@ def get_view(
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
     """
-    dataset = fod.load_dataset(dataset_name)
+    if isinstance(dataset, str):
+        dataset = fod.load_dataset(dataset)
 
     if reload:
         dataset.reload()

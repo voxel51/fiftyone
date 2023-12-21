@@ -6,6 +6,7 @@ Intersection over union (IoU) utilities.
 |
 """
 import contextlib
+import itertools
 import logging
 
 import numpy as np
@@ -37,8 +38,10 @@ def compute_ious(
     """Computes the pairwise IoUs between the predicted and ground truth
     objects.
 
-    For polylines, IoUs are computed assuming the shapes are solid (filled),
-    regardless of their ``filled`` attributes.
+    For polylines, IoUs are computed as solid shapes when ``filled=True` and
+    "IoUs" are computed using
+    `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
+    when ``filled=False``.
 
     For keypoints, "IoUs" are computed via
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_.
@@ -87,17 +90,20 @@ def compute_ious(
     if etau.is_str(iscrowd):
         iscrowd = lambda l: bool(l.get_attribute_value(iscrowd, False))
 
-    if isinstance(preds[0], fol.Polyline):
+    if isinstance(gts[0], fol.Polyline):
         if use_boxes:
             return _compute_bbox_ious(
                 preds, gts, iscrowd=iscrowd, classwise=classwise
             )
 
-        return _compute_polyline_ious(
-            preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
-        )
+        if any(gt.filled for gt in gts):
+            return _compute_polygon_ious(
+                preds, gts, error_level, iscrowd=iscrowd, classwise=classwise
+            )
 
-    if isinstance(preds[0], fol.Keypoint):
+        return _compute_polyline_similarities(preds, gts, classwise=classwise)
+
+    if isinstance(gts[0], fol.Keypoint):
         return _compute_keypoint_similarities(preds, gts, classwise=classwise)
 
     if use_masks:
@@ -496,8 +502,13 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
     return ious
 
 
-def _compute_polyline_ious(
-    preds, gts, error_level, iscrowd=None, classwise=False, gt_crowds=None
+def _compute_polygon_ious(
+    preds,
+    gts,
+    error_level,
+    iscrowd=None,
+    classwise=False,
+    gt_crowds=None,
 ):
     is_symmetric = preds is gts
 
@@ -569,7 +580,21 @@ def _compute_polyline_ious(
 
                 ious[i, j] = iou
 
-        return ious
+    return ious
+
+
+def _compute_polyline_similarities(preds, gts, classwise=False):
+    sims = np.zeros((len(preds), len(gts)))
+    for j, gt in enumerate(gts):
+        for i, pred in enumerate(preds):
+            if classwise and pred.label != gt.label:
+                continue
+
+            gtp = list(itertools.chain.from_iterable(gt.points))
+            predp = list(itertools.chain.from_iterable(pred.points))
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
+
+    return sims
 
 
 def _compute_mask_ious(
@@ -598,7 +623,7 @@ def _compute_mask_ious(
     else:
         gt_crowds = [False] * len(gts)
 
-    return _compute_polyline_ious(
+    return _compute_polygon_ious(
         pred_polys,
         gt_polys,
         error_level,
@@ -647,14 +672,16 @@ def _compute_keypoint_similarities(preds, gts, classwise=False):
             if classwise and pred.label != gt.label:
                 continue
 
-            sims[i, j] = _compute_object_keypoint_similarity(gt, pred)
+            gtp = gt.points
+            predp = pred.points
+            sims[i, j] = _compute_object_keypoint_similarity(gtp, predp)
 
     return sims
 
 
-def _compute_object_keypoint_similarity(gt, pred):
-    gtp = np.array(gt.points, dtype=float)
-    predp = np.array(pred.points, dtype=float)
+def _compute_object_keypoint_similarity(gtp, predp):
+    gtp = np.asarray(gtp, dtype=float)
+    predp = np.asarray(predp, dtype=float)
 
     # Use extent of GT points as proxy for box area
     scale = np.sqrt(np.prod(np.nanmax(gtp, axis=0) - np.nanmin(gtp, axis=0)))

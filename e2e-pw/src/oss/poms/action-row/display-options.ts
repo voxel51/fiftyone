@@ -27,4 +27,9 @@ export class DisplayOptionsPom {
     const selector = this.page.getByTestId(`tab-option-Sort by ${mode}`);
     return selector.click();
   }
+
+  async toggleRenderFramesAsVideo() {
+    const selector = this.page.getByTestId("checkbox-Render frames as video");
+    return selector.click();
+  }
 }

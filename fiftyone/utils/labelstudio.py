@@ -8,6 +8,7 @@ Utilities for working with annotations in
 """
 from copy import deepcopy
 from datetime import datetime
+from collections import defaultdict
 import itertools
 import json
 import logging
@@ -224,12 +225,8 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 break
 
         # generate label config
-        assert len(label_schema) == 1
-        _, label_info = label_schema.popitem()
         label_config = generate_labeling_config(
-            media=samples.media_type,
-            label_type=label_info["type"],
-            labels=label_info["classes"],
+            label_schema, samples.media_type
         )
 
         project = self._client.start_project(
@@ -270,7 +267,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                         smp[label_field],
                         label_type=label_type,
                         full_result={
-                            "from_name": "label",
+                            "from_name": label_field,
                             "to_name": "image",
                             "original_width": smp.metadata["width"],
                             "original_height": smp.metadata["height"],
@@ -300,11 +297,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         files = [
             (
                 one["source_id"],
-                (
-                    one["source_id"],
-                    open(one[one["media_type"]], "rb"),
-                    one["mime_type"],
-                ),
+                (open(one[one["media_type"]], "rb")),
             )
             for one in tasks
         ]
@@ -359,7 +352,7 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
 
         return list(filter(task_filter, matched_tasks))
 
-    def _import_annotations(self, tasks, task_map, label_type):
+    def _import_annotations(self, tasks, task_map):
         results = {}
         for t in tasks:
             # convert latest annotation results
@@ -373,25 +366,27 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 if len(annotations) == 0
                 else sorted(annotations, key=lambda x: x["updated_at"])[-1]
             )
-            if label_type == "keypoints":
-                labels = import_label_studio_annotation(
-                    latest_annotation["result"]
-                )
-            else:
-                labels = [
-                    import_label_studio_annotation(r, label_type=label_type)
-                    for r in latest_annotation.get("result", [])
-                ]
+            latest_result = latest_annotation.get("result", [])
+            # we need logic below to group keypoints with same label together
+            result_kps = [
+                r for r in latest_result if _result_type(r) == "keypointlabels"
+            ]
+            result_not_kps = [
+                r for r in latest_result if _result_type(r) != "keypointlabels"
+            ]
+            labels = [
+                import_label_studio_annotation(r) for r in result_not_kps
+            ]
+            if result_kps:
+                labels += [import_label_studio_annotation(result_kps)]
+
+            if not labels:
+                continue
 
             # add to dict
-            if labels:
-                label_ids = (
-                    {l.id: l for l in labels}
-                    if not isinstance(labels[0], fol.Regression)
-                    else labels[0]
-                )
-                sample_id = task_map[t["id"]]
-                results[sample_id] = label_ids
+            sample_id = task_map[t["id"]]
+            # we save and pass both id and the name of the label field
+            results[sample_id] = {l.id: (ln, l) for (ln, l) in labels}
 
         return results
 
@@ -455,14 +450,34 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             project, list(results.uploaded_tasks.keys())
         )
         annotations = {}
+        all_labels = self._import_annotations(
+            labeled_tasks, results.uploaded_tasks
+        )
+        annotations = defaultdict(lambda: defaultdict(dict))
+        for task_id, task_labels in all_labels.items():
+            for label_id, (label_field, label) in task_labels.items():
+                annotations[label_field][task_id][label_id] = label
+
+        # convert to expected format
+        final_annotations = {}
         for label_field, label_info in results.config.label_schema.items():
             return_type = foua._RETURN_TYPES_MAP[label_info["type"]]
-            labels = self._import_annotations(
-                labeled_tasks, results.uploaded_tasks, return_type
-            )
-            annotations.update({label_field: {return_type: labels}})
+            # need to convert masks to detections
+            if label_info["type"] == "instances":
+                new_label_field = defaultdict(dict)
+                for task_id, task_labels in annotations[label_field].items():
+                    for label_id, label in task_labels.items():
+                        detections = label.to_detections(
+                            {255: label.label}
+                        ).detections
+                        detections = detections[0] if detections else None
+                        new_label_field[task_id][label_id] = detections
+                annotations[label_field] = new_label_field
+            final_annotations[label_field] = {
+                return_type: annotations[label_field]
+            }
 
-        return annotations
+        return final_annotations
 
     def upload_predictions(self, project, tasks, sample_labels, label_type):
         """Uploads the given predictions to an existing Label Studio project.
@@ -546,63 +561,67 @@ class LabelStudioAnnotationResults(foua.AnnotationResults):
         )
 
 
-def generate_labeling_config(media, label_type, labels=None):
+def generate_labeling_config(label_schema, media):
     """Generates a labeling config for a Label Studio project.
 
     Args:
+        label_shema: dict defining each label type
         media: The media type to label
-        label_type: The type of labels to use
-        labels (None): the labels to use
 
     Returns:
         a labeling config
     """
     assert media in ["image", "video"]
-    assert (
-        label_type in _LABEL_TYPES.keys()
-        or label_type in foua._RETURN_TYPES_MAP.keys()
+    possible_types = list(_LABEL_TYPES.keys()) + list(
+        foua._RETURN_TYPES_MAP.keys()
     )
 
     # root view and media view
     root = etree.Element("View")
     etree.SubElement(root, media.capitalize(), name=media, value=f"${media}")
 
-    # labels view
-    parent_tag, child_tag, tag_kwargs = _ls_tags_from_type(label_type)
-    # parent_name = child_tag.lower() if child_tag else parent_tag.lower()
-    label_view = etree.SubElement(
-        root, parent_tag, name="label", toName=media, **tag_kwargs
-    )
-    if labels:
-        for one in labels:
-            etree.SubElement(label_view, child_tag, value=one)
+    for label_field, label_info in label_schema.items():
+        assert label_info["type"] in possible_types
+        parent_tag, child_tag, tag_kwargs = _ls_tags_from_type(
+            label_info["type"]
+        )
+        label_view = etree.SubElement(
+            root, parent_tag, name=label_field, toName=media, **tag_kwargs
+        )
+        if "classes" in label_info and label_info["classes"]:
+            for one in label_info["classes"]:
+                etree.SubElement(label_view, child_tag, value=one)
 
     config_str = etree.tostring(root, pretty_print=True).decode()
     return config_str
 
 
-def import_label_studio_annotation(result, label_type=None):
+def _result_type(result):
+    if isinstance(result, dict):
+        return result["type"]
+    elif isinstance(result, list):
+        return result[0]["type"]
+    else:
+        raise TypeError("Result type %s is not understood" % type(result))
+
+
+def import_label_studio_annotation(result):
     """Imports an annotation from Label Studio.
 
     Args:
         result: the annotation result from Label Studio
-        label_type (None): the label type to use when importing the annotation.
-            This argument is only used when importing brush labels. By default,
-            these labels are imported as semantic segmentations, but you can
-            pass ``label_type="instances"`` to import them as instance
-            segmentations instead
 
     Returns:
         a :class:`fiftyone.core.labels.Label`
     """
     # TODO link keypoints by parent id
     # TODO handle multiple classes for segmentation
+    ls_type = _result_type(result)
+    # we return this to match with label field later
     if isinstance(result, dict):
-        ls_type = result["type"]
+        from_name = result.get("from_name", "from_name")
     elif isinstance(result, list):
-        ls_type = result[0]["type"]
-    else:
-        raise TypeError("Result type %s is not understood" % type(result))
+        from_name = result[0].get("from_name", "from_name")
 
     if ls_type == "choices":
         label = _from_choices(result)
@@ -613,7 +632,7 @@ def import_label_studio_annotation(result, label_type=None):
     elif ls_type == "keypointlabels":
         label = _from_keypointlabels(result)
     elif ls_type == "brushlabels":
-        label = _from_brushlabels(result, label_type=label_type)
+        label = _from_brushlabels(result)
     elif ls_type == "number":
         label = _from_number(result)
     else:
@@ -625,8 +644,7 @@ def import_label_studio_annotation(result, label_type=None):
         label.id = label_id
     except:
         pass
-
-    return label
+    return from_name, label
 
 
 def _update_dict(src_dict, update_dict):
@@ -873,10 +891,13 @@ def _from_keypointlabels(result):
         points = _normalize_values(points)
         keypoints.append(fol.Keypoint(label=key, points=points))
 
-    return keypoints
+    if len(keypoints) == 1:
+        return keypoints[0]
+    else:
+        return fol.Keypoints(keypoints=keypoints)
 
 
-def _from_brushlabels(result, label_type=None):
+def _from_brushlabels(result):
     label_values = result["value"]["brushlabels"]
     img = brush.decode_rle(result["value"]["rle"])
     shape = (result["original_height"], result["original_width"], 4)
@@ -884,11 +905,6 @@ def _from_brushlabels(result, label_type=None):
 
     label = label_values[0]
     segmentation = fol.Segmentation(label=label, mask=mask)
-
-    if label_type == "instances":
-        detections = segmentation.to_detections({255: label}).detections
-        return detections[0] if detections else None
-
     return segmentation
 
 
