@@ -85,7 +85,7 @@ Plugins
   `@voxel51/utils/delegate <https://github.com/voxel51/fiftyone-plugins/pull/98>`_
   operator
   `#3939 <https://github.com/voxel51/fiftyone/pull/3939>`_
-- Added the ability to to search multiple fields in a delegated operation list
+- Added the ability to search multiple fields in a delegated operation list
   query
   `#3892 <https://github.com/voxel51/fiftyone/pull/3892>`_
 - Delegated operators now reference datasets by ID rather than name for
