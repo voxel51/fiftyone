@@ -1,7 +1,7 @@
 import { IconButton, useTheme } from "@fiftyone/components";
 import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
-import { Option, Select } from "@mui/joy";
+// import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
@@ -9,6 +9,7 @@ import { JoyThemeProvider } from "../ThemeProvider";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
+import { Select } from "@mui/material";
 
 const Box = styled.div`
   display: flex;
@@ -16,7 +17,7 @@ const Box = styled.div`
   justify-content: center;
 `;
 
-const LastOption = styled(Option)`
+const LastOption = styled(Box)`
   border-top: 1px solid ${({ theme }) => theme.primary.plainBorder} !important;
   position: sticky !important;
   bottom: 0;
@@ -117,6 +118,7 @@ function Selection(props: SelectionProps) {
   }
 
   const selectionId = id;
+  console.log("selectedId", selectedId);
 
   return (
     <div
@@ -125,66 +127,28 @@ function Selection(props: SelectionProps) {
       data-cy={`${id}-selection-container`}
     >
       <Select
+        onClose={() => console.log()}
+        size="small"
         data-cy={`${id}-selection`}
         value={selectedId}
         defaultValue={selectedId}
-        listboxOpen={isOpen}
-        slotProps={{
-          startDecorator: {
-            sx: {
-              margin: 0,
-            },
-          },
-          endDecorator: {
-            sx: {
-              position: "absolute",
-              right: "0.4rem",
-            },
-          },
-          listbox: {
-            disablePortal: true,
-            sx: {
-              "--List-decorator-size": "24px",
-              padding: "0px",
-              maxHeight: compact
-                ? VIEW_LIST_MAX_COMPACT_HEIGHT
-                : VIEW_LIST_MAX_HEIGHT,
-              overflow: "auto",
-              background: theme.background.level1,
-              "&:hover": {
-                background: theme.background.level1,
-              },
-            },
-          },
-          root: {
-            sx: {
-              ...textBoxStyle,
-              display: "flex",
-              padding: "0 1rem",
-              background: theme.background.level3,
-              "&:hover": {
-                background: theme.background.level3,
-              },
-            },
-          },
-          button: {
-            sx: {
-              ...textBoxStyle,
-              textAlign: "left",
-              background: theme.background.level3,
-
-              "&:hover": {
-                background: theme.background.level3,
-              },
-            },
+        sx={{
+          width: "100%",
+        }}
+        inputProps={{
+          style: {
+            padding: 0,
           },
         }}
-        startDecorator={
-          <ColoredDot
-            color={selectedColor || DEFAULT_COLOR_OPTION.color}
-            data-cy="selection-color-dot"
-          />
-        }
+        renderValue={(value) => {
+          return <>{selected.label}</>;
+        }}
+        // startDecorator={
+        //   <ColoredDot
+        //     color={selectedColor || DEFAULT_COLOR_OPTION.color}
+        //     data-cy="selection-color-dot"
+        //   />
+        // }
         {...(selectedId !== DEFAULT_SELECTED.id &&
           onClear && {
             endDecorator: (
@@ -227,49 +191,32 @@ function Selection(props: SelectionProps) {
           {items.map((itemProps) => {
             const { id, color, label, slug } = itemProps;
             return (
-              <Option
+              <SelectionOption
                 data-cy={`${selectionId}-${slug}-selection-option`}
-                key={id + label}
-                value={id}
-                label={label}
-                onClick={(e) => {
-                  setSelected(itemProps);
-                  setIsOpen(false);
-                }}
-                sx={{
-                  display: id === "1" ? "none" : "flex",
-                  width: "100%",
-
-                  ["&.JoyOption-highlighted"]: {
-                    background: "unset",
-                  },
-                  ["&.Joy-selected"]: {
-                    background: theme.background.body,
-                    border: "none",
-                  },
-                }}
-              >
-                <SelectionOption
-                  item={itemProps}
-                  isSelected={id === selectedId}
-                  preDecorator={
-                    <Box
-                      style={{
-                        width: compact ? "6%" : "12%",
-                        display: "inline-block",
-                      }}
-                    >
-                      <ColoredDot
-                        color={color || DEFAULT_COLOR_OPTION.color}
-                        data-cy="testme"
-                      />
-                    </Box>
-                  }
-                  compact={compact}
-                  readonly={readonly}
-                  onEdit={onEdit}
-                />
-              </Option>
+                key={id || label}
+                item={itemProps}
+                // onClick={(e) => {
+                //   setSelected(itemProps);
+                //   setIsOpen(false);
+                // }}
+                isSelected={id === selectedId}
+                preDecorator={
+                  <Box
+                    style={{
+                      width: compact ? "6%" : "12%",
+                      display: "inline-block",
+                    }}
+                  >
+                    <ColoredDot
+                      color={color || DEFAULT_COLOR_OPTION.color}
+                      data-cy="testme"
+                    />
+                  </Box>
+                }
+                compact={compact}
+                readonly={readonly}
+                onEdit={onEdit}
+              />
             );
           })}
         </Box>
@@ -293,8 +240,8 @@ function Selection(props: SelectionProps) {
 // fix: wrapped with joy theme provider until component is refactored to use mui
 export default function SelectionWithJoy(props: SelectionProps) {
   return (
-    <JoyThemeProvider>
-      <Selection {...props} />
-    </JoyThemeProvider>
+    // <JoyThemeProvider>
+    <Selection {...props} />
+    // </JoyThemeProvider>
   );
 }
