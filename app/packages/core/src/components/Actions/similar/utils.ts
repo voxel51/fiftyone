@@ -72,6 +72,7 @@ export const useSortBySimilarity = (close) => {
 
         const view = await snapshot.getPromise(fos.view);
         const subscription = await snapshot.getPromise(fos.stateSubscription);
+        const slice = await snapshot.getPromise(fos.sessionGroupSlice);
 
         const { query, ...commonParams } = parameters;
 
@@ -95,6 +96,7 @@ export const useSortBySimilarity = (close) => {
           subscription,
           filters,
           extended: toSnakeCase(combinedParameters),
+          slice,
         });
         set(fos.similarityParameters, combinedParameters);
         close();

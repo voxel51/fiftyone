@@ -2308,9 +2308,9 @@ class DatasetZooLoadCommand(Command):
             splits=splits,
             dataset_name=dataset_name,
             dataset_dir=dataset_dir,
+            persistent=True,
             **kwargs,
         )
-        dataset.persistent = True
 
 
 class DatasetZooDeleteCommand(Command):

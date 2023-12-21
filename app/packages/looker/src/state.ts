@@ -232,6 +232,7 @@ export interface ImaVidConfig extends BaseConfig {
    * "C"ontroller for [ImaVidStore](./lookers/imavid/store.ts)
    */
   frameStoreController: ImaVidFramesController;
+  firstFrameNumber: number;
 }
 
 export type PcdConfig = BaseConfig;

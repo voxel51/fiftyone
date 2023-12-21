@@ -156,6 +156,9 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
     element.style.height = "24px";
     element.style.width = "24px";
     element.style.gridArea = "2 / 2 / 2 / 2";
+
+    element.setAttribute("data-cy", "looker-video-play-button");
+
     return element;
   }
 
@@ -196,7 +199,6 @@ export class PlayButtonElement extends BaseElement<VideoState, HTMLDivElement> {
         this.element.appendChild(this.play);
         this.element.title = "Play (space)";
         this.element.style.cursor = "pointer";
-        this.element.setAttribute("data-cy", "looker-video-play-button");
       }
       this.isPlaying = playing;
       this.isBuffering = buffering || !loaded;
@@ -923,6 +925,7 @@ class PlaybackRateContainerElement extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerPlaybackRate);
+    element.setAttribute("data-cy", "looker-video-speed-button");
     return element;
   }
 

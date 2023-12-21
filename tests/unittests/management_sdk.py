@@ -6,7 +6,9 @@ FiftyOne Management SDK unit tests.
 |
 """
 import datetime
+import json
 import os
+import tempfile
 import unittest
 from unittest import mock
 
@@ -227,6 +229,188 @@ class ManagementSdkTests(unittest.TestCase):
                 "userId": self.resolve_user.return_value,
             },
         )
+
+    ############# Cloud Credentials
+    @mock.patch.object(fom.cloud_credentials, "_prepare_credentials")
+    def test_add_cloud_credentials(self, _prepare_credentials_mock):
+        provider = "GCP"
+        cred_type, credentials, description = (
+            mock.Mock(),
+            mock.Mock(),
+            mock.Mock(),
+        )
+        prefixes = ["bucket1", "bucket2"]
+        formatted_creds = {"something": {"else": 1234}}
+        _prepare_credentials_mock.return_value = formatted_creds
+
+        #####
+        fom.add_cloud_credentials(
+            provider,
+            cred_type,
+            credentials,
+            description=description,
+            prefixes=prefixes,
+        )
+        #####
+
+        _prepare_credentials_mock.assert_called_with(cred_type, credentials)
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.cloud_credentials._SET_CLOUD_CREDENTIALS_QUERY,
+            variables={
+                "provider": provider,
+                "creds": json.dumps(formatted_creds),
+                "description": description,
+                "prefixes": prefixes,
+            },
+        )
+
+    def test__prepare_credentials(self):
+        # unknown
+        self.assertRaises(
+            ValueError,
+            fom.cloud_credentials._prepare_credentials,
+            "unknown",
+            None,
+        )
+
+        # .ini file
+        with tempfile.NamedTemporaryFile("w") as f:
+            content = "some\nini-content:\n\there"
+            f.write(content)
+            f.flush()
+            creds_content = fom.cloud_credentials._prepare_credentials(
+                "ini", f.name
+            )
+            self.assertEqual(creds_content, {"ini-file": content})
+
+        # json file
+        with tempfile.NamedTemporaryFile("w") as f:
+            content = {"some": {"json": ["content", "here"]}}
+            json.dump(content, f)
+            f.flush()
+            creds_content = fom.cloud_credentials._prepare_credentials(
+                "json", f.name
+            )
+            self.assertEqual(creds_content, {"service-account-file": content})
+
+        # factory dict
+        content = {"some": {"factory": ["content", "here"]}}
+        creds_content = fom.cloud_credentials._prepare_credentials(
+            "factory", content
+        )
+        self.assertEqual(creds_content, content)
+
+    def test_credentials_factories(self):
+        mocks = [mock.Mock() for _ in range(5)]
+
+        self.assertEqual(
+            fom.AwsCredentialsFactory.from_access_keys(*mocks[:3]),
+            {
+                "access-key-id": mocks[0],
+                "secret-access-key": mocks[1],
+                "default-region": mocks[2],
+            },
+        )
+
+        self.assertEqual(
+            fom.AzureCredentialsFactory.from_account_key(*mocks[:3]),
+            {
+                "account_name": mocks[0],
+                "account_key": mocks[1],
+                "alias": mocks[2],
+            },
+        )
+
+        self.assertEqual(
+            fom.AzureCredentialsFactory.from_connection_string(*mocks[:2]),
+            {
+                "conn_str": mocks[0],
+                "alias": mocks[1],
+            },
+        )
+
+        self.assertEqual(
+            fom.AzureCredentialsFactory.from_client_secret(*mocks),
+            {
+                "account_name": mocks[0],
+                "client_id": mocks[1],
+                "secret": mocks[2],
+                "tenant": mocks[3],
+                "alias": mocks[4],
+            },
+        )
+
+        self.assertEqual(
+            fom.MinIoCredentialsFactory.from_access_keys(*mocks),
+            {
+                "access-key-id": mocks[0],
+                "secret-access-key": mocks[1],
+                "endpoint-url": mocks[2],
+                "alias": mocks[3],
+                "default-region": mocks[4],
+            },
+        )
+
+    def test_add_cloud_credentials_invalid(self):
+        self.assertRaises(
+            ValueError, fom.add_cloud_credentials, "BLAH", None, None
+        )
+
+    def test_delete_cloud_credentials(self):
+        provider = "GCP"
+        prefixes = mock.Mock()
+
+        #####
+        fom.delete_cloud_credentials("GCP", prefixes)
+        #####
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.cloud_credentials._DELETE_CLOUD_CREDENTIAL_QUERY,
+            variables={
+                "provider": provider,
+                "prefixes": prefixes,
+            },
+        )
+
+    def test_delete_cloud_credentials_invalid(self):
+        self.assertRaises(
+            ValueError, fom.delete_cloud_credentials, "BLAH", None
+        )
+
+    def test_list_cloud_credentials(self):
+        credentials = [
+            {
+                "provider": "AZURE",
+                "description": "name1",
+                "createdAt": datetime.datetime.utcnow(),
+                "prefixes": [],
+            },
+            {
+                "provider": "AZURE",
+                "description": "name2",
+                "createdAt": datetime.datetime.utcnow(),
+                "prefixes": ["bucket_1", "bucket2"],
+            },
+        ]
+        self.client.post_graphql_request.return_value = {
+            "cloudCredentials": credentials
+        }
+        expected = [
+            fom.cloud_credentials.CloudCredential(
+                provider=cc["provider"],
+                description=cc["description"],
+                prefixes=cc["prefixes"],
+                created_at=cc["createdAt"],
+            )
+            for cc in credentials
+        ]
+
+        return_creds = fom.list_cloud_credentials()
+
+        self.client.post_graphql_request.assert_called_with(
+            query=fom.cloud_credentials._LIST_CLOUD_CREDENTIALS_QUERY,
+        )
+        self.assertEqual(return_creds, expected)
 
     ############# Dataset
 

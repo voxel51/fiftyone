@@ -562,6 +562,9 @@ def build_dataset_importer(
             "importer"
         )
 
+    if etau.is_str(dataset_type):
+        dataset_type = etau.get_class(dataset_type)
+
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
@@ -627,34 +630,32 @@ def parse_dataset_info(dataset, info, overwrite=True):
         overwrite (True): whether to overwrite existing dataset info fields
     """
     tags = info.pop("tags", None)
-    if tags is not None:
-        if overwrite:
-            dataset.tags = tags
-        else:
-            _update_no_overwrite(dataset.tags, tags)
+    if tags:
+        _update_no_overwrite(dataset.tags, tags)
 
     description = info.pop("description", None)
-    if description is not None:
+    if description:
         if overwrite or not dataset.description:
             dataset.description = str(description)
 
     classes = info.pop("classes", None)
-    if isinstance(classes, dict):
-        if overwrite:
-            dataset.classes.update(classes)
-        else:
-            _update_no_overwrite(dataset.classes, classes)
-    elif isinstance(classes, list):
-        if overwrite or not dataset.default_classes:
-            dataset.default_classes = classes
+    if classes:
+        if isinstance(classes, dict):
+            if overwrite:
+                dataset.classes.update(classes)
+            else:
+                _update_no_overwrite(dataset.classes, classes)
+        elif isinstance(classes, list):
+            if overwrite or not dataset.default_classes:
+                dataset.default_classes = classes
 
     default_classes = info.pop("default_classes", None)
-    if default_classes is not None:
+    if default_classes:
         if overwrite or not dataset.default_classes:
             dataset.default_classes = default_classes
 
     mask_targets = info.pop("mask_targets", None)
-    if mask_targets is not None:
+    if mask_targets:
         mask_targets = dataset._parse_mask_targets(mask_targets)
         if overwrite:
             dataset.mask_targets.update(mask_targets)
@@ -662,14 +663,14 @@ def parse_dataset_info(dataset, info, overwrite=True):
             _update_no_overwrite(dataset.mask_targets, mask_targets)
 
     default_mask_targets = info.pop("default_mask_targets", None)
-    if default_mask_targets is not None:
+    if default_mask_targets:
         if overwrite or not dataset.default_mask_targets:
             dataset.default_mask_targets = dataset._parse_default_mask_targets(
                 default_mask_targets
             )
 
     skeletons = info.pop("skeletons", None)
-    if skeletons is not None:
+    if skeletons:
         skeletons = dataset._parse_skeletons(skeletons)
         if overwrite:
             dataset.skeletons.update(skeletons)
@@ -677,7 +678,7 @@ def parse_dataset_info(dataset, info, overwrite=True):
             _update_no_overwrite(dataset.skeletons, skeletons)
 
     default_skeleton = info.pop("default_skeleton", None)
-    if default_skeleton is not None:
+    if default_skeleton:
         if overwrite or not dataset.default_skeleton:
             dataset.default_skeleton = dataset._parse_default_skeleton(
                 default_skeleton
@@ -1865,18 +1866,26 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
             # here because the import may need migration
             #
             doc = dataset._doc
-            dataset_dict.update(
-                dict(
-                    _id=doc.id,
-                    name=doc.name,
-                    slug=doc.slug,
-                    persistent=doc.persistent,
-                    created_at=doc.created_at,
-                    last_loaded_at=doc.last_loaded_at,
-                    sample_collection_name=doc.sample_collection_name,
-                    frame_collection_name=doc.frame_collection_name,
-                )
+            keep_fields = dict(
+                _id=doc.id,
+                name=doc.name,
+                slug=doc.slug,
+                persistent=doc.persistent,
+                created_at=doc.created_at,
+                last_loaded_at=doc.last_loaded_at,
+                sample_collection_name=doc.sample_collection_name,
+                frame_collection_name=doc.frame_collection_name,
             )
+            if doc.description and not dataset_dict.get("description", None):
+                keep_fields["description"] = doc.description
+
+            if doc.tags:
+                tags = doc.tags.copy()
+                new_tags = dataset_dict.get("tags", None) or []
+                tags.extend([t for t in new_tags if t not in tags])
+                keep_fields["tags"] = tags
+
+            dataset_dict.update(keep_fields)
 
             conn = foo.get_db_conn()
             conn.datasets.replace_one({"name": name}, dataset_dict)

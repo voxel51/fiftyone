@@ -117,13 +117,15 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           groupAtoms.dynamicGroupParameters
         );
 
-        const getIndex = async (index: number) => {
+        const getItemAtIndex = async (index: number) => {
           if (!store.indices.has(index)) await next();
 
           const id = store.indices.get(index);
 
           if (!id) {
-            throw new Error("unable to paginate to next sample");
+            throw new Error(
+              `unable to paginate to next sample, index = ${index}`
+            );
           }
 
           const sample = store.samples.get(id);
@@ -146,7 +148,9 @@ export default <T extends Lookers>(store: LookerStore<T>) => {
           return { id, groupId, groupByFieldValue };
         };
 
-        setModalState(getIndex).then(() => setExpandedSample(clickedIndex));
+        setModalState(getItemAtIndex).then(() =>
+          setExpandedSample(clickedIndex)
+        );
       },
     [setExpandedSample, setModalState, store]
   );
