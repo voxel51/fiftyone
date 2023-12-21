@@ -1,45 +1,19 @@
 import { IconButton, useTheme } from "@fiftyone/components";
-import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
+import { DEFAULT_SELECTED } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
-import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import styled from "styled-components";
-import { JoyThemeProvider } from "../ThemeProvider";
+import React, { useCallback, useState } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-
-const Box = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LastOption = styled(Option)`
-  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder} !important;
-  position: sticky !important;
-  bottom: 0;
-  width: 100%;
-  background: ${({ disabled, theme }) =>
-    disabled ? theme.background.body : theme.background.level1} !important;
-  z-index: 999;
-  display: flex;
-
-  &:hover {
-    background: ${({ disabled, theme }) =>
-      disabled ? "none" : theme.background.level2} !important;
-  }
-`;
-
-const ColoredDot = styled(Box)<{ color: string }>`
-  background: ${({ color }) => color};
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
-  margin-left: 0.25rem;
-`;
+import { Select, Typography } from "@mui/material";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import {
+  ColoredDot,
+  CustomBox,
+  LastOption,
+  ViewContainer,
+} from "./styledComponents";
 
 type SelectionProps = {
   id: string;
@@ -56,16 +30,13 @@ type SelectionProps = {
   onChange?: (item: string) => void;
   value?: string;
   disabled?: boolean;
-  compact?: boolean; // compact UI
+  hideActions?: boolean;
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
   onClear?: () => void;
 };
 
-const VIEW_LIST_MAX_HEIGHT = "300px";
-const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
-
-function Selection(props: SelectionProps) {
+export default function Selection(props: SelectionProps) {
   const {
     id,
     items = [],
@@ -74,7 +45,7 @@ function Selection(props: SelectionProps) {
     search,
     selected,
     setSelected,
-    compact,
+    hideActions,
     readonly,
     onEdit,
     onClear,
@@ -82,28 +53,15 @@ function Selection(props: SelectionProps) {
 
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const ref = useRef();
-  useOutsideClick(ref, () => setIsOpen(false));
 
   const {
     placeholder: searchPlaceholder,
     onSearch,
     value: searchValue,
   } = search || {};
-  const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
 
-  const { id: selectedId, color: selectedColor } = selected;
-  const textBoxStyle = useMemo(
-    () => ({
-      overflow: "hidden",
-      whiteSpace: "nowrap",
-      textOverflow: "ellipsis",
-      width: "100%",
-      display: "inline-block",
-      background: theme.background.level1,
-    }),
-    []
-  );
+  const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
+  const { id: selectedId, color: selectedColor } = selected || {};
 
   const debouncedSearch = useCallback(
     debounce((term: string) => {
@@ -119,90 +77,58 @@ function Selection(props: SelectionProps) {
   const selectionId = id;
 
   return (
-    <div
-      ref={ref}
-      style={{ width: "100%" }}
-      data-cy={`${id}-selection-container`}
-    >
+    <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
       <Select
+        MenuProps={{
+          MenuListProps: {
+            sx: { paddingY: 0, zIndex: 999 },
+          },
+        }}
+        IconComponent={
+          selectedId === DEFAULT_SELECTED.id || hideActions
+            ? ArrowDropDownIcon
+            : () => (
+                <IconButton
+                  data-cy={`${id}-btn-selection-clear`}
+                  size="small"
+                  sx={{
+                    "&:hover": {
+                      background: theme.background.level1,
+                    },
+                    mr: 1,
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsOpen(false);
+                    onClear?.();
+                  }}
+                >
+                  <CloseRounded />
+                </IconButton>
+              )
+        }
+        size="small"
         data-cy={`${id}-selection`}
         value={selectedId}
         defaultValue={selectedId}
-        listboxOpen={isOpen}
-        slotProps={{
-          startDecorator: {
-            sx: {
-              margin: 0,
-            },
-          },
-          endDecorator: {
-            sx: {
-              position: "absolute",
-              right: "0.4rem",
-            },
-          },
-          listbox: {
-            disablePortal: true,
-            sx: {
-              "--List-decorator-size": "24px",
-              padding: "0px",
-              maxHeight: compact
-                ? VIEW_LIST_MAX_COMPACT_HEIGHT
-                : VIEW_LIST_MAX_HEIGHT,
-              overflow: "auto",
-              background: theme.background.level1,
-              "&:hover": {
-                background: theme.background.level1,
-              },
-            },
-          },
-          root: {
-            sx: {
-              ...textBoxStyle,
-              display: "flex",
-              padding: "0 1rem",
-              background: theme.background.level3,
-              "&:hover": {
-                background: theme.background.level3,
-              },
-            },
-          },
-          button: {
-            sx: {
-              ...textBoxStyle,
-              textAlign: "left",
-              background: theme.background.level3,
-
-              "&:hover": {
-                background: theme.background.level3,
-              },
-            },
-          },
+        sx={{
+          width: "100%",
+          zIndex: 999,
+          background: theme.background.level3,
         }}
-        startDecorator={
-          <ColoredDot
-            color={selectedColor || DEFAULT_COLOR_OPTION.color}
-            data-cy="selection-color-dot"
-          />
-        }
-        {...(selectedId !== DEFAULT_SELECTED.id &&
-          onClear && {
-            endDecorator: (
-              <IconButton
-                data-cy={`${id}-btn-selection-clear`}
-                size="small"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsOpen(false);
-                  onClear();
-                }}
-              >
-                <CloseRounded />
-              </IconButton>
-            ),
-            indicator: null,
-          })}
+        renderValue={() => {
+          return (
+            <CustomBox justifyContent="start">
+              <ColoredDot
+                color={selectedColor || DEFAULT_COLOR_OPTION.color}
+                data-cy="selection-color-dot"
+              />
+              <Typography>{selected.label}</Typography>
+            </CustomBox>
+          );
+        }}
+        open={isOpen}
         onClick={() => {
           setIsOpen(!isOpen);
         }}
@@ -218,61 +144,42 @@ function Selection(props: SelectionProps) {
           />
         )}
         {!onSearch && headerComponent}
-        <Box
-          style={{
-            flexDirection: "column",
-            width: "100%",
-          }}
+
+        <ViewContainer
+          data-cy="selection-view"
+          width={hideActions ? "100%" : "270px"}
         >
           {items.map((itemProps) => {
             const { id, color, label, slug } = itemProps;
             return (
-              <Option
-                data-cy={`${selectionId}-${slug}-selection-option`}
-                key={id + label}
-                value={id}
-                label={label}
-                onClick={(e) => {
-                  setSelected(itemProps);
+              <SelectionOption
+                dataCy={`${selectionId}-${slug || "new"}-selection-option`}
+                key={id || label}
+                item={itemProps}
+                onClick={(e: Event) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsOpen(false);
+                  setSelected(itemProps);
                 }}
-                sx={{
-                  display: id === "1" ? "none" : "flex",
-                  width: "100%",
-
-                  ["&.JoyOption-highlighted"]: {
-                    background: "unset",
-                  },
-                  ["&.Joy-selected"]: {
-                    background: theme.background.body,
-                    border: "none",
-                  },
-                }}
-              >
-                <SelectionOption
-                  item={itemProps}
-                  isSelected={id === selectedId}
-                  preDecorator={
-                    <Box
-                      style={{
-                        width: compact ? "6%" : "12%",
-                        display: "inline-block",
-                      }}
-                    >
-                      <ColoredDot
-                        color={color || DEFAULT_COLOR_OPTION.color}
-                        data-cy="testme"
-                      />
-                    </Box>
-                  }
-                  compact={compact}
-                  readonly={readonly}
-                  onEdit={onEdit}
-                />
-              </Option>
+                isSelected={id === selectedId}
+                preDecorator={
+                  <CustomBox
+                    style={{
+                      width: "1.5rem",
+                      display: "inline-block",
+                    }}
+                  >
+                    <ColoredDot color={color || DEFAULT_COLOR_OPTION.color} />
+                  </CustomBox>
+                }
+                readonly={readonly}
+                onEdit={onEdit}
+                hideActions={hideActions}
+              />
             );
           })}
-        </Box>
+        </ViewContainer>
         {lastFixedOption && (
           <LastOption
             key="create-view-option"
@@ -287,14 +194,5 @@ function Selection(props: SelectionProps) {
         )}
       </Select>
     </div>
-  );
-}
-
-// fix: wrapped with joy theme provider until component is refactored to use mui
-export default function SelectionWithJoy(props: SelectionProps) {
-  return (
-    <JoyThemeProvider>
-      <Selection {...props} />
-    </JoyThemeProvider>
   );
 }

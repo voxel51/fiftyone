@@ -82,7 +82,7 @@ export default function ViewDialog(props: Props) {
     COLOR_OPTIONS_MAP[initialColor] || DEFAULT_COLOR_OPTION;
 
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
-    label: theColorOption.id,
+    label: theColorOption.label,
     color: theColorOption.color,
     id: theColorOption.id,
     description: "",
@@ -109,7 +109,7 @@ export default function ViewDialog(props: Props) {
         COLOR_OPTIONS_MAP[viewContent.color] || DEFAULT_COLOR_OPTION;
 
       setColorOption({
-        label: theColorOption?.id,
+        label: theColorOption?.label,
         color: theColorOption?.color,
         id: theColorOption?.id,
         description: "",
@@ -187,6 +187,10 @@ export default function ViewDialog(props: Props) {
     initialName,
   ]);
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <Dialog
       open={isOpen}
@@ -194,6 +198,7 @@ export default function ViewDialog(props: Props) {
         setIsOpen(false);
         resetValues();
       }}
+      hideBackdrop
     >
       <DialogBody
         style={{
@@ -254,7 +259,7 @@ export default function ViewDialog(props: Props) {
               selected={colorOption}
               setSelected={(item) => setColorOption(item)}
               items={COLOR_OPTIONS}
-              compact
+              hideActions
               readonly
             />
           </InputContainer>
