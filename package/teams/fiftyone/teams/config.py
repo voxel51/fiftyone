@@ -24,7 +24,7 @@ class FiftyOneTeamsConfig(EnvConfig):
         if d is None:
             d = {}
 
-        self.audience = self.parse_string(
+        self.auth_secret = self.parse_string(
             d,
             "auth_secret",
             default=None,

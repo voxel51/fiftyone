@@ -70,7 +70,7 @@ _GRAPHQL_NEEDS_VIEWER = {
     "samples": lambda v: v["dataset"],
     "sample": lambda v: v["dataset"],
     "saved_views": lambda v: v["datasetName"],
-    "schema_for_view_stages": lambda v: v["datasetName"],
+    "schema_for_view_stages": lambda v: v["name"],
 }
 
 _GRAPHQL_NEEDS_EDITOR = {
@@ -91,7 +91,7 @@ class IsAuthenticated(gqlp.BasePermission):
     ) -> bool:
         print(info.field_name)
         try:
-            await authenticate(get_token_from_request(info.context.request))
+            authenticate(get_token_from_request(info.context.request))
         except:
             return False
 
@@ -170,7 +170,7 @@ def _authorize_route(func):
         variables = await load_variables(request)
         token = get_token_from_request(request)
         try:
-            await authenticate(token)
+            authenticate(token)
         except:
             return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
@@ -184,6 +184,9 @@ def _authorize_route(func):
             )
         ):
             return JSONResponse({"error": "Forbidden"}, status_code=403)
+
+        if request.method == "GET":
+            return await func(endpoint, request)
 
         return await func(endpoint, request, variables=variables)
 
