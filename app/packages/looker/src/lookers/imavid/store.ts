@@ -1,24 +1,24 @@
 import LRUCache from "lru-cache";
-import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
-import { PartitionSampleId } from "./types";
 import { ImaVidFramesController } from "./controller";
+import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
+import { PartitionId } from "./types";
 
 /**
  * Each entry in the cache stores frames for ONE ordered dynamic group.
  */
-export const ImaVidStore = new LRUCache<PartitionSampleId, ImaVidFrameSamples>({
+export const ImaVidStore = new LRUCache<PartitionId, ImaVidFrameSamples>({
   max: 20,
-  dispose: (_partitionSampleId, sampleFrames) => {
+  dispose: (_partitionId, sampleFrames) => {
     sampleFrames.reset();
   },
 });
 
 export const ImaVidFramesControllerStore = new LRUCache<
-  PartitionSampleId,
+  PartitionId,
   ImaVidFramesController
 >({
   max: 20,
-  dispose: (_partitionSampleId, framesController) => {
+  dispose: (_partitionId, framesController) => {
     framesController.destroy();
   },
 });

@@ -6,6 +6,7 @@ FiftyOne Management SDK.
 |
 """
 from fiftyone.management.api_key import *
+from fiftyone.management.cloud_credentials import *
 from fiftyone.management.connection import (
     reload_api_connection,
     test_api_connection,

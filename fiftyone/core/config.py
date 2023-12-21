@@ -161,6 +161,37 @@ class FiftyOneConfig(EnvConfig):
             env_var="FIFTYONE_DEFAULT_BATCH_SIZE",
             default=None,
         )
+        self.bulk_write_batch_size = self.parse_int(
+            d,
+            "bulk_write_batch_size",
+            env_var="FIFTYONE_BULK_WRITE_BATCH_SIZE",
+            # 100k is mongodb limit - use less for URI connection
+            default=100_000 if self.api_uri is None else 10_000,
+        )
+        self.default_batcher = self.parse_string(
+            d,
+            "default_batcher",
+            env_var="FIFTYONE_DEFAULT_BATCHER",
+            default="latency" if self.api_uri is None else "size",
+        )
+        self.batcher_static_size = self.parse_int(
+            d,
+            "batcher_static_size",
+            env_var="FIFTYONE_BATCHER_STATIC_SIZE",
+            default=100,
+        )
+        self.batcher_target_size_bytes = self.parse_int(
+            d,
+            "batcher_target_size_bytes",
+            env_var="FIFTYONE_BATCHER_TARGET_SIZE_BYTES",
+            default=2**20,
+        )
+        self.batcher_target_latency = self.parse_number(
+            d,
+            "batcher_target_latency",
+            env_var="FIFTYONE_BATCHER_TARGET_LATENCY",
+            default=0.2,
+        )
         self.default_sequence_idx = self.parse_string(
             d,
             "default_sequence_idx",

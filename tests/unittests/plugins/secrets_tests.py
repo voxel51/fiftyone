@@ -62,6 +62,7 @@ class TestExecutionContext:
         assert result is None
 
     def test_secrets_property(self):
+        # pylint: disable=no-member
         context = ExecutionContext(
             operator_uri=self.operator_uri,
             required_secrets=self.plugin_secrets,
@@ -76,6 +77,7 @@ class TestExecutionContext:
             for k, v in context.secrets.items():
                 assert k in context._secrets
                 assert context._secrets[k] == v
+                assert context.secrets.get(k) == v
         except Exception as e:
             pytest.fail(
                 "secrets proproperty items should be the same as _secrets items"

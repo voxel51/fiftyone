@@ -16,7 +16,7 @@ import os
 import shutil
 
 
-VERSION = "0.23.1"
+VERSION = "0.23.2"
 
 
 def get_version():
