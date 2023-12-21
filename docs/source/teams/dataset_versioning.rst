@@ -650,7 +650,7 @@ method in the Management SDK:
 .. _dataset-versioning-unarchive-snapshot:
 
 Unarchive snapshot
-----------------
+------------------
 
 To make an archived snapshot browseable again, users with Can Manage
 permissions to the dataset can unarchive it via the UI or Management SDK.

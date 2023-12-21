@@ -33,6 +33,19 @@
 -   Refrain from using `page.waitForTimeout()`. There is always a better
     alternative.
 
+#### Check for flakiness
+
+If you suspect a test is flaky, you can run it multiple times to see if it
+fails consistently. In the following example, the test will be run 10 times and
+a summary of the results will be printed describing how many times it passed
+and how many times it failed.
+
+You may either pass the name of the spec file or the test title.
+
+```
+yarn check-flaky -r 10 -s "video plays with correct label for each slice"
+```
+
 #### Template for POMs
 
 ```typescript

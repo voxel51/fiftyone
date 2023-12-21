@@ -402,7 +402,7 @@ type RenderEntry = (
     key: string,
     cb: () => void
   ) => void
-) => { children: React.ReactNode; disabled: boolean };
+) => { children: React.ReactNode; disabled?: boolean };
 
 const InteractiveSidebar = ({
   render,

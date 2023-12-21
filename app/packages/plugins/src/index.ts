@@ -349,11 +349,11 @@ export function usePluginSettings<T>(
   pluginName: string,
   defaults?: Partial<T>
 ): T {
-  const dataset = recoil.useRecoilValue(fos.dataset);
+  const datasetAppConfig = recoil.useRecoilValue(fos.datasetAppConfig);
   const appConfig = recoil.useRecoilValue(fos.config);
 
   const settings = useMemo(() => {
-    const datasetPlugins = _.get(dataset, "appConfig.plugins", {});
+    const datasetPlugins = _.get(datasetAppConfig, "plugins", {});
     const appConfigPlugins = _.get(appConfig, "plugins", {});
 
     return _.merge<T | {}, Partial<T>, Partial<T>>(
@@ -361,7 +361,7 @@ export function usePluginSettings<T>(
       _.get(appConfigPlugins, pluginName, {}),
       _.get(datasetPlugins, pluginName, {})
     );
-  }, [dataset, appConfig, pluginName, defaults]);
+  }, [appConfig, pluginName, defaults, datasetAppConfig]);
 
   return settings as T;
 }

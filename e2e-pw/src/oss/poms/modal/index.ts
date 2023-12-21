@@ -4,6 +4,7 @@ import { Duration } from "../../utils";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
+import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -12,6 +13,7 @@ export class ModalPom {
 
   readonly assert: ModalAsserter;
   readonly sidebar: ModalSidebarPom;
+  readonly tagger: ModalTaggerPom;
   readonly locator: Locator;
   readonly group: ModalGroupActionsPom;
   readonly video: ModalVideoControlsPom;
@@ -28,6 +30,7 @@ export class ModalPom {
     this.modalContainer = this.locator.getByTestId("modal-looker-container");
 
     this.sidebar = new ModalSidebarPom(page);
+    this.tagger = new ModalTaggerPom(page, this);
     this.group = new ModalGroupActionsPom(page, this);
     this.video = new ModalVideoControlsPom(page, this);
   }
@@ -126,6 +129,10 @@ export class ModalPom {
 
     await this.page.mouse.move(newPositionX, newPositionY);
     await this.page.mouse.up();
+  }
+
+  async toggleTagSampleOrLabels() {
+    await this.locator.getByTestId("action-tag-sample-labels").click();
   }
 
   async waitForCarouselToLoad() {

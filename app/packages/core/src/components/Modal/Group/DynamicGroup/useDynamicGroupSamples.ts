@@ -10,11 +10,17 @@ export const useDynamicGroupSamples = () => {
   const view = useRecoilValue(fos.dynamicGroupViewQuery({}));
   const dataset = useRecoilValue(fos.datasetName);
   const dynamicGroupIndex = useRecoilValue(fos.dynamicGroupIndex);
+  const shouldRenderImavid = useRecoilValue(fos.shouldRenderImaVidLooker);
 
   const loadDynamicGroupSamples = useCallback(
     (cursor?: number) => {
       if (!dataset) {
         throw new Error("No dataset");
+      }
+
+      // imavid has its own fetching logic
+      if (shouldRenderImavid) {
+        return null;
       }
 
       return loadQuery<foq.paginateSamplesQuery>(
@@ -32,7 +38,7 @@ export const useDynamicGroupSamples = () => {
         }
       );
     },
-    [dataset, environment, slice, view]
+    [dataset, environment, slice, shouldRenderImavid, view]
   );
 
   const queryRef = useMemo(

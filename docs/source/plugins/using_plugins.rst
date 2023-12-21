@@ -556,8 +556,9 @@ Some Operators perform an immediate action when executed, while other Operators
 Executing operators via SDK
 ___________________________
 
-Many operators are intended to be executed programmatically via the SDK in
-addition to executing them by filling out their input form in the App.
+Many operators are intended to be executed programmatically via the SDK rather
+than (or in addition to) executing them by filling out their input form in the
+App.
 
 .. _calling-operators:
 
@@ -582,7 +583,7 @@ operator can be invoked like so:
     dataset = foz.load_zoo_dataset("quickstart")
     compute_metadata = foo.get_operator("@voxel51/utils/compute_metadata")
 
-    # Schedule a delegated operation to (re)compute metadata for the dataset
+    # Schedule a delegated operation to (re)compute metadata
     compute_metadata(dataset, overwrite=True, delegate=True)
 
 .. note::
@@ -617,12 +618,71 @@ for the operator's `ctx.params` and then passes them to
 :func:`execute_operator() <fiftyone.operators.execute_operator>`, which
 performs the execution.
 
+.. _delegating-function-calls:
+
+Delegating function calls
+-------------------------
+
+The
+`@voxel51/utils/delegate <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/utils>`_
+operator provides a general purpose utility for
+:ref:`delegating execution <delegated-operations>` of an arbitrary function
+call that can be expressed in any of the following forms:
+
+-   Execute an arbitrary function: `fcn(*args, **kwargs)`
+-   Apply a function to a dataset or view:
+    `fcn(dataset_or_view, *args, **kwargs)`
+-   Call an instance method of a dataset or view:
+    `dataset_or_view.fcn(*args, **kwargs)`
+
+Here's some examples of delegating common tasks that can be expressed in the
+above forms:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    delegate = foo.get_operator("@voxel51/utils/delegate")
+
+    # Compute metadata
+    delegate("compute_metadata", dataset=dataset)
+
+    # Compute visualization
+    delegate(
+        "fiftyone.brain.compute_visualization",
+        dataset=dataset,
+        brain_key="img_viz",
+    )
+
+    # Export a view
+    delegate(
+        "export",
+        view=dataset.to_patches("ground_truth"),
+        export_dir="/tmp/patches",
+        dataset_type="fiftyone.types.ImageClassificationDirectoryTree",
+        label_field="ground_truth",
+    )
+
+    # Load the exported patches into a new dataset
+    delegate(
+        "fiftyone.Dataset.from_dir",
+        dataset_dir="/tmp/patches",
+        dataset_type="fiftyone.types.ImageClassificationDirectoryTree",
+        label_field="ground_truth",
+        name="patches",
+        persistent=True,
+    )
+
 .. _direct-operator-execution:
 
 Direct execution
 ----------------
 
-You can also programmatically execute any operator by calling
+You can also programmatically execute any operator by directly calling
 :func:`execute_operator() <fiftyone.operators.execute_operator>`:
 
 .. code-block:: python

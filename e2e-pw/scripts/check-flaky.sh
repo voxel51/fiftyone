@@ -25,7 +25,14 @@ trap cleanup SIGINT
 
 # Function to run the Playwright test spec
 run_test() {
-    npx playwright test -c playwright.config.ts $spec_name
+    # if $spec_file ends in .ts, it's a spec name and not test title
+
+    if [[ $spec_name == *.ts ]]; then
+        npx playwright test -c playwright.config.ts $spec_name
+        return
+    fi
+    
+    npx playwright test -c playwright.config.ts -g "$spec_name" 
 }
 
 # Default values for keyword arguments
