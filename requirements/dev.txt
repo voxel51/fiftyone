@@ -3,7 +3,7 @@
 -r extras.txt
 -r test.txt
 
-hatch
+hatchling
 ipython==8.12.3
 pre-commit==2.18.1
 pylint==2.13.9
