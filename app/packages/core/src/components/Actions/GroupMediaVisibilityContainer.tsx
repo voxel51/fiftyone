@@ -38,8 +38,17 @@ const GroupMediaVisibilityPopout = ({
   const [isMainVisible, setIsMainVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
+  const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
+  const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const dynamicGroupsViewMode = useRecoilValue(fos.dynamicGroupsViewMode);
+  const hasGroupSlices = useRecoilValue(fos.hasGroupSlices);
+
   const isSequentialAccessAllowed =
-    useRecoilValue(fos.nonNestedDynamicGroupsViewMode) === "carousel";
+    isNestedDynamicGroup ||
+    dynamicGroupsViewMode === "carousel" ||
+    hasGroupSlices;
+
+  const isImavidInNestedGroup = isNestedDynamicGroup && shouldRenderImaVid;
 
   const checkboxes = useMemo(() => {
     const toReturn: React.ReactNode[] = [];
@@ -50,7 +59,9 @@ const GroupMediaVisibilityPopout = ({
           key="checkbox-3d-viewer"
           name={"3D Viewer"}
           value={isSlotVisible}
-          muted={!isMainVisible && !isCarouselVisible}
+          muted={
+            isImavidInNestedGroup || (!isMainVisible && !isCarouselVisible)
+          }
           setValue={(value) => setIsSlotVisible(value)}
         />
       );
@@ -62,7 +73,10 @@ const GroupMediaVisibilityPopout = ({
           key="checkbox-carousel"
           name={"Carousel"}
           value={isCarouselVisible}
-          muted={!(isSlotVisible && pointCloudSliceExists) && !isMainVisible}
+          muted={
+            isImavidInNestedGroup ||
+            (!(isSlotVisible && pointCloudSliceExists) && !isMainVisible)
+          }
           setValue={(value) => setIsCarouselVisible(value)}
         />
       );
@@ -74,6 +88,7 @@ const GroupMediaVisibilityPopout = ({
         name={"Viewer"}
         value={isMainVisible}
         muted={
+          isImavidInNestedGroup ||
           toReturn.length === 0 ||
           (!(isSlotVisible && pointCloudSliceExists) && !isCarouselVisible)
         }

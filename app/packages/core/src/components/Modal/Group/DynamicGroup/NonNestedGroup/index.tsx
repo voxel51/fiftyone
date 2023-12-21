@@ -29,7 +29,7 @@ const ElementsContainer = styled.div`
 export const NonNestedDynamicGroup = ({
   queryRef,
 }: {
-  queryRef: PreloadedQuery<foq.paginateSamplesQuery>;
+  queryRef: PreloadedQuery<foq.paginateSamplesQuery> | null;
 }) => {
   const { lookerRefCallback } = useGroupContext();
   const lookerRef = useRef<fos.Lookers>();
@@ -38,7 +38,7 @@ export const NonNestedDynamicGroup = ({
   const [isBigLookerVisible, setIsBigLookerVisible] = useRecoilState(
     fos.groupMediaIsMainVisibleSetting
   );
-  const viewMode = useRecoilValue(fos.nonNestedDynamicGroupsViewMode);
+  const viewMode = useRecoilValue(fos.dynamicGroupsViewMode);
   const isCarouselVisible = useRecoilValue(
     fos.groupMediaIsCarouselVisibleSetting
   );
@@ -52,6 +52,10 @@ export const NonNestedDynamicGroup = ({
 
   if (!groupByFieldValue) {
     return null;
+  }
+
+  if (viewMode !== "video" && !queryRef) {
+    throw new Error("no queryRef provided");
   }
 
   return (
@@ -81,7 +85,7 @@ export const NonNestedDynamicGroup = ({
             </GroupSuspense>
           )}
         </>
-        {viewMode === "pagination" && (
+        {viewMode === "pagination" && queryRef && (
           <GroupElementsLinkBar queryRef={queryRef} />
         )}
       </ElementsContainer>
