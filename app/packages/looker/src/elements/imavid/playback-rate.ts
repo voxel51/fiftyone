@@ -34,6 +34,7 @@ class PlaybackRateContainerElement extends BaseElement<
   createHTMLElement() {
     const element = document.createElement("div");
     element.classList.add(lookerPlaybackRate);
+    element.setAttribute("data-cy", "looker-video-speed-button");
     return element;
   }
 

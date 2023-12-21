@@ -34,11 +34,12 @@ class CloneSelectedSamples(foo.Operator):
                 view=types.Warning(),
             )
         else:
-            inputs.str(
+            prop = inputs.str(
                 "msg",
                 label="You must select samples in the grid to clone",
                 view=types.Warning(),
             )
+            prop.invalid = True
 
         view = types.View(label="Clone selected samples")
         return types.Property(inputs, view=view)
@@ -78,7 +79,10 @@ class CloneSampleField(foo.Operator):
             "field_name",
             field_keys,
             label="Choose a field",
-            description="The field to copy. You can use dot notation (embedded.field.name) to clone embedded fields",
+            description=(
+                "The field to copy. You can use dot notation "
+                "(embedded.field.name) to clone embedded fields"
+            ),
             view=field_selector,
             required=True,
         )
@@ -87,7 +91,10 @@ class CloneSampleField(foo.Operator):
                 "new_field_name",
                 required=True,
                 label="New field",
-                description="The new field to create. You can use dot notation (embedded.field.name) to create embedded fields",
+                description=(
+                    "The new field to create. You can use dot notation "
+                    "(embedded.field.name) to create embedded fields"
+                ),
                 default=f"{field_name}_copy",
             )
             if new_field_name and new_field_name in field_keys:
@@ -226,15 +233,16 @@ class DeleteSelectedSamples(foo.Operator):
             sample_text = "sample" if count == 1 else "samples"
             inputs.str(
                 "msg",
-                label=f"Delete {count} selected {sample_text}s?",
+                label=f"Delete {count} selected {sample_text}?",
                 view=types.Warning(),
             )
         else:
-            inputs.str(
+            prop = inputs.str(
                 "msg",
                 label="You must select samples in the grid to delete",
                 view=types.Warning(),
             )
+            prop.invalid = True
 
         view = types.View(label="Delete selected samples")
         return types.Property(inputs, view=view)

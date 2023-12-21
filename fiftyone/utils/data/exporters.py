@@ -471,6 +471,9 @@ def build_dataset_exporter(
             "exporter"
         )
 
+    if etau.is_str(dataset_type):
+        dataset_type = etau.get_class(dataset_type)
+
     if inspect.isclass(dataset_type):
         dataset_type = dataset_type()
 
@@ -1211,7 +1214,7 @@ class MediaExporter(object):
                 outpath = self._filename_maker.get_output_path(media_path)
                 uuid = self._get_uuid(outpath)
 
-            if self.export_mode == True:
+            if self.export_mode is True:
                 etau.copy_file(media_path, outpath)
             elif self.export_mode == "move":
                 etau.move_file(media_path, outpath)
@@ -1228,9 +1231,9 @@ class MediaExporter(object):
                 outpath = self._filename_maker.get_output_path()
                 uuid = self._get_uuid(outpath)
 
-            if self.export_mode == True:
+            if self.export_mode is True:
                 self._write_media(media, outpath)
-            elif self.export_mode != False:
+            elif self.export_mode is not False:
                 raise ValueError(
                     "Cannot export in-memory media when 'export_mode=%s'"
                     % self.export_mode
@@ -2071,7 +2074,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
 
         def _prep_sample(sd):
             filepath = sd["filepath"]
-            if self.export_media != False:
+            if self.export_media is not False:
                 # Store relative path
                 _, uuid = self._media_exporter.export(filepath)
                 sd["filepath"] = os.path.join("data", uuid)
@@ -2212,7 +2215,7 @@ class FiftyOneDatasetExporter(BatchDatasetExporter):
         if value is None:
             return
 
-        if self.export_media != False:
+        if self.export_media is not False:
             # Store relative path
             media_exporter = self._get_media_field_exporter(field_name)
             _, uuid = media_exporter.export(value)
@@ -2713,6 +2716,7 @@ class ImageClassificationDirectoryTreeExporter(LabeledImageDatasetExporter):
         self._media_exporter = ImageExporter(
             self.export_media,
             supported_modes=(True, "move", "symlink"),
+            export_path=self.export_dir,
         )
         self._media_exporter.setup()
 
@@ -2820,6 +2824,7 @@ class VideoClassificationDirectoryTreeExporter(LabeledVideoDatasetExporter):
         self._media_exporter = VideoExporter(
             self.export_media,
             supported_modes=(True, "move", "symlink"),
+            export_path=self.export_dir,
         )
         self._media_exporter.setup()
 

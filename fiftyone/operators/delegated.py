@@ -366,6 +366,12 @@ class DelegatedOperationService(object):
         context = doc.context
         context.request_params["run_doc"] = doc.id
 
+        if not context.request_params.get("dataset_id", None):
+            # Pass the dataset_id so that the execution context can load the
+            # dataset by id in case a dataset has been renamed since the task
+            # was initially queued. However, don't overwrite it if it exists.
+            context.request_params["dataset_id"] = doc.dataset_id
+
         prepared = await prepare_operator_executor(
             operator_uri=operator_uri,
             request_params=context.request_params,

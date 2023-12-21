@@ -644,5 +644,5 @@ ________________
 
 .. note::
 
-    Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_ for
-    making this integration happen!
+    Special thanks to `Rustem Galiullin <https://github.com/Rusteam>`_ and
+    `Emil Zakirov <https://github.com/bonlime>`_ for building this integration!

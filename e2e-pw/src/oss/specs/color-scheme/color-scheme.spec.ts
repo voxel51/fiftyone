@@ -148,10 +148,8 @@ test.describe("color scheme basic functionality with quickstart", () => {
   });
 
   test("update color by value - detection - no colorbyattribute", async ({
-    grid,
     gridActionsRow,
     colorModal,
-    page,
     sidebar,
   }) => {
     // turn off predictions detections and open color modal
