@@ -1,17 +1,16 @@
 import { IconButton, useTheme } from "@fiftyone/components";
 import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
-// import { Option, Select } from "@mui/joy";
 import { debounce } from "lodash";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import styled from "styled-components";
-import { JoyThemeProvider } from "../ThemeProvider";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { Select } from "@mui/material";
+import { Select, Box as BBox, Typography } from "@mui/material";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
-const Box = styled.div`
+const Box = styled(BBox)`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -66,7 +65,7 @@ type SelectionProps = {
 const VIEW_LIST_MAX_HEIGHT = "300px";
 const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
-function Selection(props: SelectionProps) {
+export default function Selection(props: SelectionProps) {
   const {
     id,
     items = [],
@@ -94,17 +93,6 @@ function Selection(props: SelectionProps) {
   const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
 
   const { id: selectedId, color: selectedColor } = selected;
-  const textBoxStyle = useMemo(
-    () => ({
-      overflow: "hidden",
-      whiteSpace: "nowrap",
-      textOverflow: "ellipsis",
-      width: "100%",
-      display: "inline-block",
-      background: theme.background.level1,
-    }),
-    []
-  );
 
   const debouncedSearch = useCallback(
     debounce((term: string) => {
@@ -118,7 +106,6 @@ function Selection(props: SelectionProps) {
   }
 
   const selectionId = id;
-  console.log("selectedId", selectedId);
 
   return (
     <div
@@ -127,7 +114,30 @@ function Selection(props: SelectionProps) {
       data-cy={`${id}-selection-container`}
     >
       <Select
-        onClose={() => console.log()}
+        IconComponent={
+          selectedId === DEFAULT_SELECTED.id
+            ? ArrowDropDownIcon
+            : () => (
+                <IconButton
+                  data-cy={`${id}-btn-selection-clear`}
+                  size="small"
+                  sx={{
+                    mr: 1,
+                    "&:hover": {
+                      background: theme.background.level1,
+                    },
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsOpen(false);
+                    onClear?.();
+                  }}
+                >
+                  <CloseRounded />
+                </IconButton>
+              )
+        }
         size="small"
         data-cy={`${id}-selection`}
         value={selectedId}
@@ -135,38 +145,17 @@ function Selection(props: SelectionProps) {
         sx={{
           width: "100%",
         }}
-        inputProps={{
-          style: {
-            padding: 0,
-          },
+        renderValue={() => {
+          return (
+            <Box display="flex" justifyContent="start">
+              <ColoredDot
+                color={selectedColor || DEFAULT_COLOR_OPTION.color}
+                data-cy="selection-color-dot"
+              />
+              <Typography>{selected.label}</Typography>
+            </Box>
+          );
         }}
-        renderValue={(value) => {
-          return <>{selected.label}</>;
-        }}
-        // startDecorator={
-        //   <ColoredDot
-        //     color={selectedColor || DEFAULT_COLOR_OPTION.color}
-        //     data-cy="selection-color-dot"
-        //   />
-        // }
-        {...(selectedId !== DEFAULT_SELECTED.id &&
-          onClear && {
-            endDecorator: (
-              <IconButton
-                data-cy={`${id}-btn-selection-clear`}
-                size="small"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsOpen(false);
-                  onClear();
-                }}
-              >
-                <CloseRounded />
-              </IconButton>
-            ),
-            indicator: null,
-          })}
         onClick={() => {
           setIsOpen(!isOpen);
         }}
@@ -183,10 +172,11 @@ function Selection(props: SelectionProps) {
         )}
         {!onSearch && headerComponent}
         <Box
-          style={{
-            flexDirection: "column",
-            width: "100%",
-          }}
+          display="flex"
+          flexDirection="column"
+          width="270px"
+          padding={2}
+          paddingTop={0}
         >
           {items.map((itemProps) => {
             const { id, color, label, slug } = itemProps;
@@ -195,10 +185,10 @@ function Selection(props: SelectionProps) {
                 data-cy={`${selectionId}-${slug}-selection-option`}
                 key={id || label}
                 item={itemProps}
-                // onClick={(e) => {
-                //   setSelected(itemProps);
-                //   setIsOpen(false);
-                // }}
+                onClick={() => {
+                  setSelected(itemProps);
+                  setIsOpen(false);
+                }}
                 isSelected={id === selectedId}
                 preDecorator={
                   <Box
@@ -234,14 +224,5 @@ function Selection(props: SelectionProps) {
         )}
       </Select>
     </div>
-  );
-}
-
-// fix: wrapped with joy theme provider until component is refactored to use mui
-export default function SelectionWithJoy(props: SelectionProps) {
-  return (
-    // <JoyThemeProvider>
-    <Selection {...props} />
-    // </JoyThemeProvider>
   );
 }

@@ -11,10 +11,8 @@ import {
   ListItemText,
   Tooltip,
   ButtonProps,
-  ListItemButton,
 } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import { theme, useBrowserStorage } from "@fiftyone/state";
 import { onEnter } from "./utils";
 
 const ButtonStylesOverrides: ButtonProps["sx"] = {

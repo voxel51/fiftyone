@@ -44,6 +44,7 @@ interface Props {
   compact?: boolean; // compact form rows
   readonly?: boolean;
   onEdit?: (item: DatasetViewOption) => void;
+  onClick?: () => void;
 }
 
 export default function SelectionOption(props: Props) {
@@ -54,6 +55,7 @@ export default function SelectionOption(props: Props) {
     compact,
     readonly,
     onEdit,
+    onClick,
   } = props;
 
   const [hoverRef, isHovered] = useHover();
@@ -61,7 +63,7 @@ export default function SelectionOption(props: Props) {
   const theme = useTheme();
 
   return (
-    <Box ref={hoverRef}>
+    <Box ref={hoverRef} onClick={onClick}>
       {preDecorator}
       <Box
         style={{
