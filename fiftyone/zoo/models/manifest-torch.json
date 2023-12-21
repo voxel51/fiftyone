@@ -1863,6 +1863,51 @@
             "date_added": "2020-12-11 13:45:51"
         },
         {
+            "base_name": "open-clip-torch",
+            "base_filename": "",
+            "version": null,
+            "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
+            "source": "https://github.com/mlfoundations/open_clip",
+            "size_bytes": 353976522,
+            "manager": {
+                "type": "fiftyone.core.models.ModelManager",
+                "config": {}
+            },
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.open_clip.TorchOpenClipModel",
+                "config": {
+                    "entrypoint_fcn": "",
+                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "image_size": [224, 224],
+                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
+                    "image_std": [0.26862954, 0.26130258, 0.27577711],
+                    "embeddings_layer": "visual",
+                    "tokenizer_base_filename": "clip_bpe_simple_vocab_16e6.txt.gz",
+                    "tokenizer_base_url": "https://github.com/openai/CLIP/raw/main/clip/bpe_simple_vocab_16e6.txt.gz",
+                    "text_prompt": "A photo of"
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "open_clip_torch"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "clip",
+                "zero-shot"
+            ],
+            "date_added": "2023-12-13 14:25:51"
+        },
+        {
             "base_name": "clip-vit-base32-torch",
             "base_filename": "CLIP-ViT-B-32.pt",
             "version": null,
