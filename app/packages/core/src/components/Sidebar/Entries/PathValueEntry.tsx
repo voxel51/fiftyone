@@ -168,7 +168,7 @@ const ListValueEntry = ({
       heading={
         <NameAndCountContainer>
           <span key="path">{OVERRIDE[path] ?? path}</span>
-          <span key="value">
+          <span key="value" data-cy={`sidebar-entry-${path}`}>
             <Suspense fallback={<LoadingDots text="" />}>
               {slices ? (
                 <SlicesLengthLoadable path={path} />

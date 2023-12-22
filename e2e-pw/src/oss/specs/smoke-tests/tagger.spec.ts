@@ -1,6 +1,6 @@
 import { test as base, expect } from "src/oss/fixtures";
 import { GridActionsRowPom } from "src/oss/poms/action-row/grid-actions-row";
-import { TaggerPom } from "src/oss/poms/action-row/tagger";
+import { GridTaggerPom } from "src/oss/poms/action-row/tagger/grid-tagger";
 import { GridPom } from "src/oss/poms/grid";
 import { SidebarPom } from "src/oss/poms/sidebar";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
@@ -8,13 +8,13 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
 
 const test = base.extend<{
-  tagger: TaggerPom;
+  tagger: GridTaggerPom;
   sidebar: SidebarPom;
   grid: GridPom;
   gridActionsRow: GridActionsRowPom;
 }>({
   tagger: async ({ page }, use) => {
-    await use(new TaggerPom(page));
+    await use(new GridTaggerPom(page));
   },
   sidebar: async ({ page }, use) => {
     await use(new SidebarPom(page));
