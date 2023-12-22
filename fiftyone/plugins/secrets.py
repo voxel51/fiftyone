@@ -223,3 +223,6 @@ class SecretsDictionary:
         except Exception as e:
             logging.error(f"Error when iterating through secrets:\n{e}")
             logging.debug(traceback.print_exc())
+
+    def get(self, key, default=None):
+        return self[key] if key in self.__required_keys else default

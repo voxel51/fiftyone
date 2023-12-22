@@ -80,6 +80,7 @@ export class ModalGroupActionsPom {
       default:
         throw new Error(`Unknown mode: ${mode}`);
     }
+    await this.modal.toggleDisplayOptionsButton.click();
   }
 }
 
