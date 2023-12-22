@@ -447,22 +447,18 @@ class ExecutionContext(object):
         """The :class:`fiftyone.core.dataset.Dataset` being operated on."""
         if self._dataset is not None:
             return self._dataset
-        # Since dataset may have been renamed, always resolve the dataset by
-        # id if it is available
-        uid = self.request_params.get("dataset_id", None)
-        if uid:
-            self._dataset = focu.load_dataset(id=uid)
-            # Set the dataset_name using the dataset object in case the dataset
-            # has been renamed or changed since the context was created
+
+        # Since dataset may have been renamed, always resolve the dataset by ID
+        # if it is available
+        id = self.request_params.get("dataset_id", None)
+        if id:
+            self._dataset = focu.load_dataset(id=id, reload=True)
             self.request_params["dataset_name"] = self._dataset.name
         else:
-            uid = self.request_params.get("dataset_name", None)
-            if uid:
-                self._dataset = focu.load_dataset(name=uid)
-        # TODO: refactor so that this additional reload post-load is not
-        #  required
-        if self._dataset is not None:
-            self._dataset.reload()
+            name = self.request_params.get("dataset_name", None)
+            if name:
+                self._dataset = focu.load_dataset(name=name, reload=True)
+
         return self._dataset
 
     @property
@@ -485,7 +481,6 @@ class ExecutionContext(object):
         if self._view is not None:
             return self._view
 
-        # Always derive the view from the context's dataset
         dataset = self.dataset
         stages = self.request_params.get("view", None)
         filters = self.request_params.get("filters", None)
@@ -496,7 +491,6 @@ class ExecutionContext(object):
             stages=stages,
             filters=filters,
             extended_stages=extended,
-            reload=False,
         )
 
         return self._view

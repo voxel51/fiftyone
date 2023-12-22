@@ -74,19 +74,14 @@ async def paginate_samples(
     sample_filter: t.Optional[SampleFilter] = None,
     pagination_data: t.Optional[bool] = False,
 ) -> Connection[t.Union[ImageSample, VideoSample], str]:
-    run = lambda reload: fosv.get_view(
+    view = fosv.get_view(
         dataset,
         stages=stages,
         filters=filters,
         pagination_data=pagination_data,
         extended_stages=extended_stages,
         sample_filter=sample_filter,
-        reload=reload,
     )
-    try:
-        view = await run_sync_task(run, False)
-    except:
-        view = await run_sync_task(run, True)
 
     # check frame field schema explicitly, media type is not reliable for groups
     has_frames = view.get_frame_field_schema() is not None

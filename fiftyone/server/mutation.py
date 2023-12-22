@@ -81,8 +81,13 @@ class Mutation(SetColorScheme):
         view_name: t.Optional[str],
         info: Info,
     ) -> bool:
+        if name is not None:
+            dataset = fod.load_dataset(name, reload=True)
+        else:
+            dataset = None
+
         state = get_state()
-        state.dataset = fod.load_dataset(name) if name is not None else None
+        state.dataset = dataset
         state.selected = []
         state.selected_labels = []
         state.view = None
@@ -190,7 +195,7 @@ class Mutation(SetColorScheme):
             await dispatch_event(subscription, StateUpdate(state=state))
 
         result_view = None
-        ds = fod.load_dataset(dataset_name)
+        ds = fod.load_dataset(dataset_name, reload=True)
         state.dataset = ds
 
         # Create the view using the saved view doc if loading a saved view
@@ -257,7 +262,7 @@ class Mutation(SetColorScheme):
         dataset = state.dataset
         use_state = dataset is not None
         if dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
 
         if dataset is None:
             raise ValueError(
@@ -284,7 +289,6 @@ class Mutation(SetColorScheme):
             view_name, result_view, description=description, color=color
         )
         if use_state:
-            dataset.reload()
             state.view = dataset.load_saved_view(view_name)
             state.view_name = view_name
             await dispatch_event(subscription, StateUpdate(state=state))
@@ -313,7 +317,7 @@ class Mutation(SetColorScheme):
                 view_name,
             )
 
-        dataset = fod.load_dataset(dataset_name)
+        dataset = fod.load_dataset(dataset_name, reload=True)
         if not dataset:
             raise ValueError(f"No dataset found with name {dataset_name}")
 
@@ -357,11 +361,10 @@ class Mutation(SetColorScheme):
             view_name: name of the existing saved view
             updated_info: input type with values only for fields requiring
             update
-
         """
         state = get_state()
         if state is None or state.dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
         else:
             dataset = state.dataset
 
@@ -375,7 +378,7 @@ class Mutation(SetColorScheme):
                 "%s",
                 view_name,
             )
-        dataset.reload()
+
         current_name = (
             updated_info["name"]
             if "name" in updated_info and updated_info["name"] is not None
@@ -414,7 +417,7 @@ class Mutation(SetColorScheme):
         state = get_state()
         dataset = state.dataset
         if dataset is None:
-            dataset = fod.load_dataset(dataset_name)
+            dataset = fod.load_dataset(dataset_name, reload=True)
 
         try:
             view = dataset.select_fields(meta_filter=meta_filter)

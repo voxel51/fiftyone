@@ -286,7 +286,9 @@ async def _initialize_listener(payload: ListenPayload) -> InitializedListener:
             update = True
             dataset_change = True
             try:
-                state.dataset = fod.load_dataset(payload.initializer.dataset)
+                state.dataset = fod.load_dataset(
+                    payload.initializer.dataset, reload=True
+                )
                 state.selected = []
                 state.selected_labels = []
                 state.view = None
