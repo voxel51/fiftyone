@@ -185,6 +185,7 @@ def load_zoo_dataset(
     dataset_dir=None,
     download_if_necessary=True,
     drop_existing_dataset=False,
+    persistent=False,
     overwrite=False,
     cleanup=True,
     **kwargs,
@@ -228,6 +229,8 @@ def load_zoo_dataset(
             not found in the specified dataset directory
         drop_existing_dataset (False): whether to drop an existing dataset
             with the same name if it exists
+        persistent (False): whether the dataset should persist in the database
+            after the session terminates
         overwrite (False): whether to overwrite any existing files if the
             dataset is to be downloaded
         cleanup (True): whether to cleanup any temporary files generated during
@@ -323,7 +326,7 @@ def load_zoo_dataset(
     if splits is None and zoo_dataset.has_splits:
         splits = zoo_dataset.supported_splits
 
-    dataset = fo.Dataset(dataset_name)
+    dataset = fo.Dataset(dataset_name, persistent=persistent)
 
     if splits:
         for split in splits:

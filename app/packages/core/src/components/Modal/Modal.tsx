@@ -1,5 +1,4 @@
 import { ErrorBoundary, HelpPanel, JSONPanel } from "@fiftyone/components";
-import { AbstractLooker } from "@fiftyone/looker";
 import * as fos from "@fiftyone/state";
 import { Controller } from "@react-spring/core";
 import React, {
@@ -10,7 +9,7 @@ import React, {
   useRef,
 } from "react";
 import ReactDOM from "react-dom";
-import { useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import styled from "styled-components";
 import Sidebar, { Entries } from "../Sidebar";
 import Group from "./Group";
@@ -54,7 +53,7 @@ const ContentColumn = styled.div`
 `;
 
 const SampleModal = () => {
-  const lookerRef = useRef<AbstractLooker>();
+  const lookerRef = useRef<fos.Lookers>();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const disabled = useRecoilValue(fos.disabledPaths);
@@ -85,7 +84,7 @@ const SampleModal = () => {
    * note: cannot use `useEventHandler()` hook since there's no direct reference to looker in Modal
    */
   const lookerRefCallback = useCallback(
-    (looker: AbstractLooker) => {
+    (looker: fos.Lookers) => {
       lookerRef.current = looker;
       looker.addEventListener("tooltip", eventHandler);
     },
@@ -198,6 +197,45 @@ const SampleModal = () => {
         lookerRef.current.removeEventListener("tooltip", eventHandler);
     };
   }, [eventHandler]);
+
+  const isNestedDynamicGroup = useRecoilValue(fos.isNestedDynamicGroup);
+  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+  const isLooker3DVisible = useRecoilValue(fos.groupMedia3dVisibleSetting);
+  const isCarouselVisible = useRecoilValue(
+    fos.groupMediaIsCarouselVisibleSetting
+  );
+
+  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
+    fos.dynamicGroupsViewMode
+  );
+  const setIsMainLookerVisible = useSetRecoilState(
+    fos.groupMediaIsMainVisibleSetting
+  );
+
+  useEffect(() => {
+    // if it is unordered nested dynamic group and mode is not pagination, set to pagination
+    if (
+      isNestedDynamicGroup &&
+      !isOrderedDynamicGroup &&
+      dynamicGroupsViewMode !== "pagination"
+    ) {
+      setDynamicGroupsViewMode("pagination");
+    }
+
+    // hide 3d looker and carousel if `hasGroupSlices`
+    if (
+      dynamicGroupsViewMode === "video" &&
+      (isLooker3DVisible || isCarouselVisible)
+    ) {
+      setIsMainLookerVisible(true);
+    }
+  }, [
+    dynamicGroupsViewMode,
+    isNestedDynamicGroup,
+    isOrderedDynamicGroup,
+    isLooker3DVisible,
+    isCarouselVisible,
+  ]);
 
   return ReactDOM.createPortal(
     <Fragment>

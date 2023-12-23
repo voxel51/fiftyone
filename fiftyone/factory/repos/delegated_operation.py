@@ -5,6 +5,7 @@ FiftyOne delegated operation repository.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
 from datetime import datetime
 from typing import Any, List
 
@@ -13,14 +14,16 @@ from bson import ObjectId
 from pymongo import IndexModel
 from pymongo.collection import Collection
 
-import fiftyone.core.dataset as fod
 from fiftyone.factory import DelegatedOperationPagingParams
 from fiftyone.factory.repos import DelegatedOperationDocument
 from fiftyone.operators.executor import (
+    ExecutionContext,
     ExecutionProgress,
     ExecutionResult,
     ExecutionRunState,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DelegatedOperationRepo(object):
@@ -117,7 +120,6 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         self._create_indexes()
 
     def _get_collection(self) -> Collection:
-        import fiftyone as fo
         import fiftyone.core.odm as foo
 
         database: pymongo.database.Database = foo.get_db_conn()
@@ -161,17 +163,32 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
         if delegation_target:
             setattr(op, "delegation_target", delegation_target)
 
-        dataset_name = None
+        context = None
         if isinstance(op.context, dict):
-            dataset_name = op.context.get("request_params", {}).get(
-                "dataset_name"
+            context = ExecutionContext(
+                request_params=op.context.get("request_params", {})
             )
-        elif "dataset_name" in op.context.request_params:
-            dataset_name = op.context.request_params["dataset_name"]
-
-        if dataset_name and not op.dataset_id:
-            dataset = fod.load_dataset(dataset_name)
-            op.dataset_id = dataset._doc.id
+        elif isinstance(op.context, ExecutionContext):
+            context = op.context
+        if not op.dataset_id:
+            # For consistency, set the dataset_id using the
+            # ExecutionContext.dataset
+            # rather than calling load_dataset() on a potentially stale
+            # dataset_name in the request_params
+            try:
+                op.dataset_id = context.dataset._doc.id
+            except:
+                # If we can't resolve the dataset_id, it is possible the
+                # dataset doesn't exist (deleted/being created). However,
+                # it's also possible that future operators can run
+                # dataset-less, so don't raise an error here and just log it
+                # in case we need to debug later.
+                logger.debug("Could not resolve dataset_id for operation. ")
+        elif op.dataset_id:
+            # If the dataset_id is provided, we set it in the request_params
+            # to ensure that the operation is executed on the correct dataset
+            context.request_params["dataset_id"] = str(op.dataset_id)
+            context.request_params["dataset_name"] = context.dataset.name
 
         doc = self._collection.insert_one(op.to_pymongo())
         op.id = doc.inserted_id
@@ -343,13 +360,7 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
             paging = DelegatedOperationPagingParams(**paging)
 
         if search:
-            for term in search:
-                for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
-                        raise ValueError(
-                            "Invalid search field: {}".format(field)
-                        )
-                    query[field] = {"$regex": term}
+            query.update(self._extract_search_query(search))
 
         docs = self._collection.find(query)
         if paging.sort_by:
@@ -378,13 +389,30 @@ class MongoDelegatedOperationRepo(DelegatedOperationRepo):
     def count(self, filters: dict = None, search: dict = None) -> int:
         if filters is None and search is not None:
             filters = {}
+        query = filters
+
+        if "dataset_name" in query:
+            query["context.request_params.dataset_name"] = query[
+                "dataset_name"
+            ]
+            del query["dataset_name"]
         if search:
+            query.update(self._extract_search_query(search))
+
+        return self._collection.count_documents(filter=query)
+
+    def _extract_search_query(self, search):
+        if search:
+            or_query = {"$or": []}
             for term in search:
                 for field in search[term]:
-                    if field not in ("operator", "delegated_operation"):
+                    if field not in (
+                        "operator",
+                        "delegated_operation",
+                        "label",
+                    ):
                         raise ValueError(
                             "Invalid search field: {}".format(field)
                         )
-                    filters[field] = {"$regex": term}
-
-        return self._collection.count_documents(filter=filters)
+                    or_query["$or"].append({field: {"$regex": term}})
+            return or_query

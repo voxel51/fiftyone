@@ -17,6 +17,7 @@ from fiftyone.server.decorators import route
 import fiftyone.server.events as fose
 from fiftyone.server.query import serialize_dataset
 import fiftyone.server.view as fosv
+from fiftyone.server.filters import GroupElementFilter, SampleFilter
 
 
 class Sort(HTTPEndpoint):
@@ -26,6 +27,7 @@ class Sort(HTTPEndpoint):
         filters = data.get("filters", {})
         stages = data.get("view", None)
         subscription = data.get("subscription", None)
+        slice = data.get("slice", None)
 
         await run_sync_task(
             lambda: fosv.get_view(
@@ -35,6 +37,11 @@ class Sort(HTTPEndpoint):
                 extended_stages={
                     "fiftyone.core.stages.SortBySimilarity": data["extended"]
                 },
+                sample_filter=SampleFilter(
+                    group=GroupElementFilter(slice=slice)
+                )
+                if slice is not None
+                else None,
             )
         )
 

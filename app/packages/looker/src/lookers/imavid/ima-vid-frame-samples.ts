@@ -44,6 +44,13 @@ export class ImaVidFrameSamples {
     return this.samples.get(sampleId);
   }
 
+  updateSample(id: string, newSample: ModalSample) {
+    const oldSample = this.samples.get(id);
+    if (oldSample) {
+      this.samples.set(id, { ...oldSample, sample: newSample });
+    }
+  }
+
   reset() {
     this.frameIndex.clear();
     this.reverseFrameIndex.clear();

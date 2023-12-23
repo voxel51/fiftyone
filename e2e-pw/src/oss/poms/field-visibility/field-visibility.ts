@@ -95,7 +95,9 @@ export class FieldVisibilityPom {
     );
   }
 
-  getControl(name: "select-all" | "show-metadata" | "show-nested-fields") {
+  getControl(
+    name: "select-all" | "show-field-metadata" | "show-nested-fields"
+  ) {
     return this.getFieldVisibilityControl(name);
   }
 
@@ -162,7 +164,7 @@ export class FieldVisibilityPom {
   }
 
   async toggleShowMetadata() {
-    const toggle = this.getControl("show-metadata");
+    const toggle = this.getControl("show-field-metadata");
     await toggle.click();
   }
 
