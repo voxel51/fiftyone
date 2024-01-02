@@ -139,6 +139,9 @@ def evaluate_detections(
     Returns:
         a :class:`DetectionResults`
     """
+    if progress is None:
+        progress = True
+
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),

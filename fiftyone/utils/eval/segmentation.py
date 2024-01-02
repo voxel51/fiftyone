@@ -94,6 +94,9 @@ def evaluate_segmentations(
     Returns:
         a :class:`SegmentationResults`
     """
+    if progress is None:
+        progress = True
+
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )

@@ -89,6 +89,9 @@ def evaluate_classifications(
     Returns:
         a :class:`ClassificationResults`
     """
+    if progress is None:
+        progress = True
+
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Classification, same_type=True
     )

@@ -969,6 +969,7 @@ class ProgressBar(etau.ProgressBar):
 
         super().__init__(**kwargs)
 
+        self._progress = progress
         self._callback = callback
 
     def __call__(self, iterable):
@@ -1108,6 +1109,7 @@ class Batcher(abc.ABC):
         self._last_batch_size = None
         self._pb = None
         self._in_context = False
+        self._render_progress = bool(progress)
         self._last_offset = None
         self._num_samples = None
         self._manually_applied_backpressure = True
@@ -1119,7 +1121,7 @@ class Batcher(abc.ABC):
     def __exit__(self, *args):
         self._in_context = False
 
-        if self.progress:
+        if self._render_progress:
             if self._last_batch_size is not None:
                 self._pb.update(count=self._last_batch_size)
 
@@ -1132,23 +1134,20 @@ class Batcher(abc.ABC):
         else:
             self._iter = iter(self.iterable)
 
-        if self.progress:
+        if self._render_progress:
             if self._in_context:
                 total = self.total
                 if total is None:
-                    try:
-                        total = len(self.iterable)
-                    except:
-                        pass
+                    total = self.iterable
 
-                self._pb = ProgressBar(total=total)
+                self._pb = ProgressBar(total=total, progress=self.progress)
                 self._pb.__enter__()
             else:
                 logger.warning(
                     "Batcher must be invoked as a context manager in order to "
                     "print progress"
                 )
-                self.progress = False
+                self._render_progress = False
 
         return self
 
@@ -1160,9 +1159,10 @@ class Batcher(abc.ABC):
             raise ValueError(
                 "Backpressure value not registered for this batcher"
             )
+
         self._manually_applied_backpressure = False
 
-        if self.progress and self._last_batch_size is not None:
+        if self._render_progress and self._last_batch_size is not None:
             self._pb.update(count=self._last_batch_size)
 
         batch_size = self._compute_batch_size()

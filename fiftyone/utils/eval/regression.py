@@ -82,6 +82,9 @@ def evaluate_regressions(
     Returns:
         a :class:`RegressionResults`
     """
+    if progress is None:
+        progress = True
+
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Regression, same_type=True
     )

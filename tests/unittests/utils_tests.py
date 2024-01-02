@@ -457,11 +457,11 @@ class TestLoadDataset(unittest.TestCase):
 
 class ProgressBarTests(unittest.TestCase):
     def _test_correct_value(self, progress, global_progress, quiet, expected):
-        fo.config.show_progress_bars = global_progress
-        with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
-            assert pb._progress == expected
+        with fou.SetAttributes(fo.config, show_progress_bars=global_progress):
+            with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
+                assert pb._progress == expected
 
-    def test_progress_None_uses_global(self):
+    def test_progress_none_uses_global(self):
         self._test_correct_value(
             progress=None, global_progress=True, quiet=None, expected=True
         )
