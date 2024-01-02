@@ -2404,7 +2404,13 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
+    samples,
+    output_dir,
+    rel_dir=None,
+    label_fields=None,
+    config=None,
+    progress=None,
+    **kwargs,
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2429,6 +2435,9 @@ def draw_labeled_videos(
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 
@@ -2448,7 +2457,7 @@ def draw_labeled_videos(
     num_videos = len(samples)
 
     outpaths = []
-    for idx, sample in enumerate(samples, 1):
+    for idx, sample in enumerate(samples.iter_samples(progress=progress), 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
             base, ext = os.path.splitext(sample.filepath)
