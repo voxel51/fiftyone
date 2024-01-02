@@ -621,6 +621,7 @@ def classifications_to_detections(
             field
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
+        progress (None): whether to render a progress bar
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications

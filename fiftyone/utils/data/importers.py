@@ -1982,8 +1982,6 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         fomi.migrate_dataset_if_necessary(name)
         dataset._reload(hard=True)
 
-        logger.info("Import complete")
-
         return sample_ids
 
     @staticmethod
