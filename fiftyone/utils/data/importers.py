@@ -88,7 +88,9 @@ def import_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if
             any) to the dataset
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         a list of IDs of the samples that were added to the dataset
@@ -266,7 +268,9 @@ def merge_samples(
             document fields that are encountered
         add_info (True): whether to add dataset info from the importer (if any)
             to the dataset
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if etau.is_str(tags):
         tags = [tags]
@@ -988,7 +992,9 @@ class BatchDatasetImporter(DatasetImporter):
         Args:
             dataset: a :class:`fiftyone.core.dataset.Dataset`
             tags (None): an optional list of tags to attach to each sample
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a list of IDs of the samples that were added to the dataset

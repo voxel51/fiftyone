@@ -402,7 +402,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         Args:
             dataset_ids: an iterable of dataset IDs
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         logger.info("Deleting datasets...")
         with fou.ProgressBar(progress=progress) as pb:
@@ -1548,7 +1550,9 @@ def import_from_labelbox(
             samples
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -1694,7 +1698,9 @@ def export_to_labelbox(
                 when constructing the exported frame labels
 
             By default, no frame labels are exported
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
@@ -1814,7 +1820,9 @@ def upload_media_to_labelbox(
             :class:`fiftyone.core.collections.SampleCollection`
         labelbox_id_field ("labelbox_id"): the sample field in which to store
             the IDs of the Labelbox DataRows
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     # @todo use `create_data_rows()` to optimize performance
     # @todo handle API rate limits

@@ -466,7 +466,9 @@ class DatasetView(foc.SampleCollection):
                 sample.ground_truth.label = make_label()
 
         Args:
-            progress (False): whether to render a progress bar
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -476,9 +478,6 @@ class DatasetView(foc.SampleCollection):
         Returns:
             an iterator over :class:`fiftyone.core.sample.SampleView` instances
         """
-        if progress is None:
-            progress = False
-
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 
@@ -583,7 +582,9 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (False): whether to render a progress bar
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -601,9 +602,6 @@ class DatasetView(foc.SampleCollection):
             raise ValueError(
                 "Use iter_dynamic_groups() for dynamic group views"
             )
-
-        if progress is None:
-            progress = False
 
         with contextlib.ExitStack() as exit_context:
             groups = self._iter_groups(group_slices=group_slices)
@@ -681,7 +679,9 @@ class DatasetView(foc.SampleCollection):
                 print("%s: %d" % (group_value, len(group)))
 
         Args:
-            progress (False): whether to render a progress bar
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             an iterator that emits :class:`DatasetView` instances, one per
@@ -689,9 +689,6 @@ class DatasetView(foc.SampleCollection):
         """
         if not self._is_dynamic_groups:
             raise ValueError("%s does not contain dynamic groups" % type(self))
-
-        if progress is None:
-            progress = False
 
         with contextlib.ExitStack() as context:
             groups = self._iter_dynamic_groups()

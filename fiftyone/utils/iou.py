@@ -176,7 +176,9 @@ def compute_max_ious(
         iou_attr ("max_iou"): the label attribute in which to store the max IoU
         id_attr (None): an optional attribute in which to store the label ID of
             the maximum overlapping label
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for :func:`compute_ious`
     """
     if other_field is None:
@@ -294,7 +296,9 @@ def find_duplicates(
             labels are duplicates
         method ("simple"): the duplicate removal method to use. The supported
             values are ``("simple", "greedy")``
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for :func:`compute_ious`
 
     Returns:

@@ -697,7 +697,9 @@ def copy_files(inpaths, outpaths, skip_failures=False, progress=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if an operation fails
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     _copy_files(inpaths, outpaths, skip_failures, progress)
 
@@ -714,7 +716,9 @@ def copy_dir(
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if an operation fails
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if overwrite and os.path.isdir(outdir):
         delete_dir(outdir)
@@ -747,7 +751,9 @@ def move_files(inpaths, outpaths, skip_failures=False, progress=None):
         outpaths: a list of output paths
         skip_failures (False): whether to gracefully continue without raising
             an error if an operation fails
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     tasks = [(i, o, skip_failures) for i, o in zip(inpaths, outpaths)]
     if tasks:
@@ -767,7 +773,9 @@ def move_dir(
             or merge its contents (False)
         skip_failures (False): whether to gracefully continue without raising
             an error if an operation fails
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if overwrite and os.path.isdir(outdir):
         delete_dir(outdir)
@@ -799,7 +807,9 @@ def delete_files(paths, skip_failures=False, progress=None):
         paths: a list of paths
         skip_failures (False): whether to gracefully continue without raising
             an error if an operation fails
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     tasks = [(p, skip_failures) for p in paths]
     if tasks:
@@ -823,7 +833,9 @@ def run(fcn, tasks, num_workers=None, progress=None):
         fcn: a function that accepts a single argument
         tasks: an iterable of function aguments
         num_workers (None): a suggested number of threads to use
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         the list of function outputs

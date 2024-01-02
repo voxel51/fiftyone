@@ -82,16 +82,15 @@ def evaluate_classifications(
             supported values are
             ``fo.evaluation_config.classification_backends.keys()`` and the
             default is ``fo.evaluation_config.default_classification_backend``
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`ClassificationEvaluationConfig` being used
 
     Returns:
         a :class:`ClassificationResults`
     """
-    if progress is None:
-        progress = True
-
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Classification, same_type=True
     )
@@ -170,7 +169,9 @@ class ClassificationEvaluation(foe.EvaluationMethod):
                 purposes
             missing (None): a missing label string. Any None-valued labels are
                 given this label for results purposes
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`ClassificationResults` instance

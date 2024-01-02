@@ -153,7 +153,9 @@ def reencode_videos(
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -262,7 +264,9 @@ def transform_videos(
             an error if a video cannot be transformed
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -411,7 +415,9 @@ def sample_videos(
             an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)

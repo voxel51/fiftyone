@@ -648,7 +648,9 @@ def export_collection(
             to the document's ID
         num_docs (None): the total number of documents. If omitted, this must
             be computable via ``len(docs)``
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if num_docs is None:
         num_docs = len(docs)
@@ -755,7 +757,9 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
         docs: an iterable of BSON document dicts
         coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible

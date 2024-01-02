@@ -87,16 +87,15 @@ def evaluate_segmentations(
             supported values are
             ``fo.evaluation_config.segmentation_backends.keys()`` and the
             default is ``fo.evaluation_config.default_segmentation_backend``
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
     Returns:
         a :class:`SegmentationResults`
     """
-    if progress is None:
-        progress = True
-
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
@@ -198,7 +197,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
                 contain a subset of the possible classes if you wish to
                 evaluate a subset of the semantic classes. By default, the
                 observed pixel values are used as labels
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`SegmentationResults` instance

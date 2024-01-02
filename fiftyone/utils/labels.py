@@ -62,7 +62,9 @@ def objects_to_segmentations(
             if it exists
         save_mask_targets (False): whether to store the ``mask_targets`` on the
             dataset
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -173,7 +175,9 @@ def export_segmentations(
         update (True): whether to delete the arrays from the database
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
@@ -232,7 +236,9 @@ def import_segmentations(
             :class:`fiftyone.core.labels.Heatmap` field
         update (True): whether to delete the image paths from the labels
         delete_images (False): whether to delete any imported images from disk
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
@@ -309,7 +315,9 @@ def transform_segmentations(
             dataset to reflect the transformed targets
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Segmentation
@@ -410,7 +418,9 @@ def segmentations_to_detections(
             -   ``"thing"`` if all classes are thing classes
             -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
                 masks) to ``"stuff"`` or ``"thing"`` for each class
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -463,7 +473,9 @@ def instances_to_polylines(
         tolerance (2): a tolerance, in pixels, when generating approximate
             polylines for each region. Typical values are 1-3 pixels
         filled (True): whether the polylines should be filled
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -533,7 +545,9 @@ def segmentations_to_polylines(
                 masks) to ``"stuff"`` or ``"thing"`` for each class
         tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -577,7 +591,9 @@ def classification_to_detections(
             field
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
@@ -621,7 +637,9 @@ def classifications_to_detections(
             field
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications

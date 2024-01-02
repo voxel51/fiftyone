@@ -132,16 +132,15 @@ def evaluate_detections(
             label (True) or allow matches between classes (False)
         dynamic (True): whether to declare the dynamic object-level attributes
             that are populated on the dataset's schema
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`DetectionEvaluationConfig` being used
 
     Returns:
         a :class:`DetectionResults`
     """
-    if progress is None:
-        progress = True
-
     fov.validate_collection_label_fields(
         samples,
         (pred_field, gt_field),
@@ -394,7 +393,9 @@ class DetectionEvaluation(foe.EvaluationMethod):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`DetectionResults`

@@ -75,16 +75,15 @@ def evaluate_regressions(
             supported values are
             ``fo.evaluation_config.regression_backends.keys()`` and the default
             is ``fo.evaluation_config.default_regression_backend``
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`RegressionEvaluationConfig` being used
 
     Returns:
         a :class:`RegressionResults`
     """
-    if progress is None:
-        progress = True
-
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Regression, same_type=True
     )
@@ -165,7 +164,9 @@ class RegressionEvaluation(foe.EvaluationMethod):
             eval_key (None): an evaluation key for this evaluation
             missing (None): a missing value. Any None-valued regressions are
                 given this value for results purposes
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`RegressionResults` instance
