@@ -8761,6 +8761,7 @@ class SampleCollection(object):
         dest_field=None,
         unexpected="prompt",
         cleanup=False,
+        progress=None,
         **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
@@ -8788,6 +8789,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: keyword arguments for the run's
                 :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
@@ -8802,6 +8806,7 @@ class SampleCollection(object):
             dest_field=dest_field,
             unexpected=unexpected,
             cleanup=cleanup,
+            progress=progress,
             **kwargs,
         )
 
