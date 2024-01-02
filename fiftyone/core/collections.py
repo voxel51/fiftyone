@@ -8197,6 +8197,7 @@ class SampleCollection(object):
         label_fields=None,
         overwrite=False,
         config=None,
+        progress=None,
         **kwargs,
     ):
         """Renders annotated versions of the media in the collection with the
@@ -8226,6 +8227,9 @@ class SampleCollection(object):
             config (None): an optional
                 :class:`fiftyone.utils.annotations.DrawConfig` configuring how
                 to draw the labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments specifying parameters of the
                 default :class:`fiftyone.utils.annotations.DrawConfig` to
                 override
@@ -8253,6 +8257,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
@@ -8263,6 +8268,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
