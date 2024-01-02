@@ -2906,7 +2906,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 the default value ``fiftyone.config.show_progress_bars``
                 (None), or a progress callback function to invoke instead
             num_samples (None): the number of samples in ``samples``. If not
-                provided, this is computed (if possibleE) via ``len(samples)``
+                provided, this is computed (if possible) via ``len(samples)``
                 if needed for progress tracking
         """
         if fields is not None:

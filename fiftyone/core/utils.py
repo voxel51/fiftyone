@@ -1089,7 +1089,7 @@ class Batcher(abc.ABC):
         self,
         iterable,
         return_views=False,
-        progress=None,
+        progress=False,
         total=None,
     ):
         import fiftyone.core.collections as foc
@@ -1109,7 +1109,7 @@ class Batcher(abc.ABC):
         self._last_batch_size = None
         self._pb = None
         self._in_context = False
-        self._render_progress = bool(progress)
+        self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
         self._manually_applied_backpressure = True
@@ -1325,7 +1325,9 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1430,7 +1432,9 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1505,7 +1509,9 @@ class StaticBatcher(Batcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1529,7 +1535,7 @@ class StaticBatcher(Batcher):
         return self.batch_size
 
 
-def get_default_batcher(iterable, progress=True, total=None):
+def get_default_batcher(iterable, progress=False, total=None):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
 
@@ -1538,8 +1544,10 @@ def get_default_batcher(iterable, progress=True, total=None):
 
     Args:
         iterable: an iterable to batch over
-        progress (True): whether to render a progress bar tracking the
-            consumption of the batches
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
