@@ -101,7 +101,9 @@ def reencode_images(
         num_workers (None): a suggested number of worker processes to use
         skip_failures (False): whether to gracefully continue without raising
             an error if an image cannot be re-encoded
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_image_collection(sample_collection)
 
@@ -193,7 +195,9 @@ def transform_images(
         num_workers (None): a suggested number of worker processes to use
         skip_failures (False): whether to gracefully continue without raising
             an error if an image cannot be transformed
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_image_collection(sample_collection)
 

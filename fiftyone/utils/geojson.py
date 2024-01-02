@@ -90,7 +90,9 @@ def load_location_data(
             used, else a new "location" field is created
         skip_missing (True): whether to skip GeoJSON features with no
             ``filename`` properties (True) or raise an error (False)
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if location_field is None:
         try:

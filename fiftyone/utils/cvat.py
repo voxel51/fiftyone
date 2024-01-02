@@ -4000,7 +4000,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         Args:
             project_ids: an iterable of project IDs
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         with fou.ProgressBar(progress=progress) as pb:
             for project_id in pb(list(project_ids)):
@@ -4158,7 +4160,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
 
         Args:
             task_ids: an iterable of task IDs
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         with fou.ProgressBar(progress=progress) as pb:
             for task_id in pb(list(task_ids)):

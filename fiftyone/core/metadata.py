@@ -251,7 +251,9 @@ def compute_metadata(
             error if metadata cannot be computed for a sample
         warn_failures (False): whether to log a warning if metadata cannot
             be computed for a sample
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     num_workers = fou.recommend_thread_pool_workers(num_workers)
 

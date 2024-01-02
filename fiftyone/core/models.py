@@ -100,7 +100,9 @@ def apply_model(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -764,7 +766,9 @@ def compute_embeddings(
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample. Only
             applicable to :class:`Model` instances
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -1282,7 +1286,9 @@ def compute_patch_embeddings(
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         one of the following:

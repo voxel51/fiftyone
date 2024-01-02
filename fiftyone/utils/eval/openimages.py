@@ -244,7 +244,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`OpenImagesDetectionResults`

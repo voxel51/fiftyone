@@ -236,9 +236,9 @@ def load_zoo_dataset(
             dataset is to be downloaded
         cleanup (True): whether to cleanup any temporary files generated during
             download
-        progress (None): whether to show the progress bar of the import. If
-            None this uses the global setting, otherwise it overwrites the
-            setting for this method
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also

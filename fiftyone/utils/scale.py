@@ -187,7 +187,9 @@ def import_from_scale(
             that are created, separated by an underscore
         scale_id_field ("scale_id"): the sample field to use to associate Scale
             task IDs with FiftyOne samples
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -396,7 +398,9 @@ def export_to_scale(
                 when constructing the exported frame labels
 
             By default, no frame labels are exported
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)

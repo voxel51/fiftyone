@@ -830,7 +830,9 @@ class SampleCollection(object):
         """Returns an iterator over the samples in the collection.
 
         Args:
-            progress (False): whether to render a progress bar
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -854,7 +856,9 @@ class SampleCollection(object):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (False): whether to render a progress bar
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -2747,7 +2751,9 @@ class SampleCollection(object):
                 raising an error if metadata cannot be computed for a sample
             warn_failures (False): whether to log a warning if metadata cannot
                 be computed for a sample
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         fomt.compute_metadata(
             self,
@@ -2818,7 +2824,9 @@ class SampleCollection(object):
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
                 necessary) via :func:`fiftyone.core.storage.normalize_path`
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2884,7 +2892,9 @@ class SampleCollection(object):
                 raising an error if embeddings cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
 
@@ -2981,7 +2991,9 @@ class SampleCollection(object):
                 applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if embeddings cannot be generated for a sample
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             one of the following:
@@ -3061,7 +3073,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.regression_backends.keys()`` and the
                 default is ``fo.evaluation_config.regression_default_backend``
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
                 being used
@@ -3136,7 +3150,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.classification_backends.keys()`` and the
                 default is ``fo.evaluation_config.classification_default_backend``
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -3262,7 +3278,9 @@ class SampleCollection(object):
                 label (True) or allow matches between classes (False)
             dynamic (True): whether to declare the dynamic object-level
                 attributes that are populated on the dataset's schema
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -3348,7 +3366,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.segmentation_backends.keys()`` and the
                 default is ``fo.evaluation_config.segmentation_default_backend``
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -8430,7 +8450,9 @@ class SampleCollection(object):
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
                 existing files and directories (False)
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
@@ -9079,7 +9101,9 @@ class SampleCollection(object):
                 readable format with newlines and indentations. Only applicable
                 to datasets that contain videos when a ``frame_labels_dir`` is
                 provided
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a JSON dict

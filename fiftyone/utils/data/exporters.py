@@ -193,7 +193,9 @@ def export_samples(
             or a dictionary mapping field names to output keys describing the
             frame label fields to export. Only applicable if
             ``dataset_exporter`` is a :class:`LabeledVideoDatasetExporter`
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)`` if needed for
             progress tracking
@@ -389,7 +391,9 @@ def write_dataset(
             :class:`fiftyone.core.collections.SampleCollection`, this parameter
             defaults to ``samples``. This parameter is optional and is only
             passed to :meth:`DatasetExporter.log_collection`
-        progress (None): whether to render a progress bar
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_samples (None): the number of samples in ``samples``. If omitted,
             this is computed (if possible) via ``len(samples)`` if needed for
             progress tracking
@@ -1397,7 +1401,9 @@ class BatchDatasetExporter(DatasetExporter):
         Args:
             sample_collection: a
                 :class:`fiftyone.core.collections.SampleCollection`
-            progress (None): whether to render a progress bar
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         raise NotImplementedError("subclass must implement export_samples()")
 
