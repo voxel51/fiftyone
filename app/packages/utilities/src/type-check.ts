@@ -11,7 +11,7 @@ export function isPrimitiveType(type: string) {
 }
 
 export function isHex(value: string) {
-  return parseInt(value, 16).toString(16) === value;
+  return /[0-9a-f]{24}/g.test(value);
 }
 
 export function isObjectIdString(value: string) {
