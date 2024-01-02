@@ -1145,6 +1145,7 @@ on their execution context from within
 .. code-block:: python
     :linenos:
 
+    import fiftyone as fo
     import fiftyone.core.storage as fos
     import fiftyone.core.utils as fou
 
@@ -1167,6 +1168,35 @@ on their execution context from within
     :ref:`FiftyOne Teams <fiftyone-teams>` users can view the current progress
     of their delegated operations from the
     :ref:`Runs page <teams-managing-delegated-operations>` of the Teams App!
+
+For your convenience, all builtin methods of the FiftyOne SDK that support
+rendering progress bars provide an optional `progress` method that you can use
+trigger calls to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+using the pattern show below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    def execute(self, ctx):
+        images_dir = ctx.params["images_dir"]
+
+        # Custom logic that controls how progress is reported
+        def set_progress(pb):
+            if pb.complete:
+                ctx.set_progress(progress=1, label="Operation complete")
+            else:
+                ctx.set_progress(progress=pb.progress)
+
+        # Option 1: report progress every five seconds
+        progress = fo.report_progress(set_progress, dt=5.0)
+
+        # Option 2: report progress at 10 equally-spaced increments
+        # progress = fo.report_progress(set_progress, n=10)
+
+        ctx.dataset.add_images_dir(images_dir, progress=progress)
 
 .. _operator-execution:
 
