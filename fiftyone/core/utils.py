@@ -943,24 +943,24 @@ class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
     def __init__(self, total=None, progress=None, quiet=None, **kwargs):
-        if quiet is not None:
-            # Allow overwrite with expected progress attribute
-            progress = not quiet
-
         if progress is None:
-            # Use global config value
             progress = fo.config.show_progress_bars
 
-        self._progress = progress
-        kwargs["quiet"] = not self._progress
+        if quiet is not None:
+            progress = not quiet
+
+        if callable(progress):
+            callback = progress
+            progress = False
+        else:
+            callback = None
+
+        kwargs["total"] = total
+        if isinstance(progress, bool):
+            kwargs["quiet"] = not progress
 
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
-
-        if progress:
-            kwargs["total"] = total
-        else:
-            kwargs["total"] = None
 
         # For progress bars in notebooks, use a fixed size so that they will
         # read well across browsers, in HTML format, etc
@@ -969,10 +969,11 @@ class ProgressBar(etau.ProgressBar):
 
         super().__init__(**kwargs)
 
-    def __call__(self, iterable):
-        # Don't compute `len(iterable)` unless necessary
-        no_len = self._quiet and self._total is None
+        self._callback = callback
 
+    def __call__(self, iterable):
+        # Ensure that `len(iterable)` is not computed unnecessarily
+        no_len = self._quiet and self._total is None
         if no_len:
             self._total = -1
 
@@ -982,6 +983,100 @@ class ProgressBar(etau.ProgressBar):
             self._total = None
 
         return self
+
+    def set_iteration(self, *args, **kwargs):
+        super().set_iteration(*args, **kwargs)
+
+        if self._callback is not None:
+            self._callback(self)
+
+
+def report_progress(progress, n=None, dt=None):
+    """Wraps the provided progress function such that it will only be called
+    at the specified increments or time intervals.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        def print_progress(pb):
+            if pb.complete:
+                print("COMPLETE")
+            else:
+                print("PROGRESS: %0.3f" % pb.progress)
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # Print progress at 10 equally-spaced increments
+        progress = fo.report_progress(print_progress, n=10)
+        dataset.compute_metadata(progress=progress)
+
+        # Print progress every 0.5 seconds
+        progress = fo.report_progress(print_progress, dt=0.5)
+        dataset.compute_metadata(progress=progress, overwrite=True)
+
+    Args:
+        progress: a function that accepts a :class:`ProgressBar` as input
+        n (None): a number of equally-spaced increments to invoke ``progress``
+        dt (None): a number of seconds between ``progress`` calls
+
+    Returns:
+        a function that accepts a :class:`ProgressBar` as input
+    """
+    if n is not None:
+        return _report_progress_n(progress, n)
+
+    if dt is not None:
+        return _report_progress_dt(progress, dt)
+
+    return progress
+
+
+def _report_progress_n(progress, n):
+    def progress_n(pb):
+        if not hasattr(pb, "_next_idx"):
+            if pb.has_total and n > 0:
+                next_iters = [
+                    int(np.round(i))
+                    for i in np.linspace(0, pb.total, min(n, pb.total) + 1)
+                ][1:]
+
+                pb._next_idx = 0
+                pb._next_iters = next_iters
+            else:
+                pb._next_idx = None
+                pb._next_iters = None
+
+        if (
+            pb._next_idx is not None
+            and pb.iteration >= pb._next_iters[pb._next_idx]
+        ):
+            progress(pb)
+
+            pb._next_idx += 1
+            if pb._next_idx >= len(pb._next_iters):
+                pb._next_idx = None
+
+    return progress_n
+
+
+def _report_progress_dt(progress, dt):
+    def progress_dt(pb):
+        if not hasattr(pb, "_next_dt"):
+            pb._next_dt = dt
+
+        if pb._next_dt is not None and (
+            pb.elapsed_time >= pb._next_dt or pb.complete
+        ):
+            progress(pb)
+
+            if not pb.complete:
+                pb._next_dt += dt
+            else:
+                pb._next_dt = None
+
+    return progress_dt
 
 
 class Batcher(abc.ABC):
