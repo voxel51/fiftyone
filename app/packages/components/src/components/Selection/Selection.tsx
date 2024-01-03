@@ -3,43 +3,17 @@ import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import { debounce } from "lodash";
 import React, { useCallback, useRef, useState } from "react";
-import styled from "styled-components";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { Select, Box as BBox, Typography } from "@mui/material";
+import { Box, Select, Typography } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-
-const Box = styled(BBox)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const LastOption = styled(Box)`
-  border-top: 1px solid ${({ theme }) => theme.primary.plainBorder} !important;
-  position: sticky !important;
-  bottom: 0;
-  width: 100%;
-  background: ${({ disabled, theme }) =>
-    disabled ? theme.background.body : theme.background.level1} !important;
-  z-index: 999;
-  display: flex;
-
-  &:hover {
-    background: ${({ disabled, theme }) =>
-      disabled ? "none" : theme.background.level2} !important;
-  }
-`;
-
-const ColoredDot = styled(Box)<{ color: string }>`
-  background: ${({ color }) => color};
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin-right: 0.5rem;
-  margin-left: 0.25rem;
-`;
+import {
+  ColoredDot,
+  CustomBox,
+  LastOption,
+  ViewContainer,
+} from "./styledComponents";
 
 type SelectionProps = {
   id: string;
@@ -56,14 +30,11 @@ type SelectionProps = {
   onChange?: (item: string) => void;
   value?: string;
   disabled?: boolean;
-  compact?: boolean; // compact UI
+  hideActions?: boolean;
   readonly?: boolean; // no edits available
   onEdit?: (item: DatasetViewOption) => void;
   onClear?: () => void;
 };
-
-const VIEW_LIST_MAX_HEIGHT = "300px";
-const VIEW_LIST_MAX_COMPACT_HEIGHT = "200px";
 
 export default function Selection(props: SelectionProps) {
   const {
@@ -74,7 +45,7 @@ export default function Selection(props: SelectionProps) {
     search,
     selected,
     setSelected,
-    compact,
+    hideActions,
     readonly,
     onEdit,
     onClear,
@@ -90,9 +61,9 @@ export default function Selection(props: SelectionProps) {
     onSearch,
     value: searchValue,
   } = search || {};
-  const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
 
-  const { id: selectedId, color: selectedColor } = selected;
+  const [searchTerm, setSearchTerm] = useState<string>(searchValue || "");
+  const { id: selectedId, color: selectedColor } = selected || {};
 
   const debouncedSearch = useCallback(
     debounce((term: string) => {
@@ -114,6 +85,12 @@ export default function Selection(props: SelectionProps) {
       data-cy={`${id}-selection-container`}
     >
       <Select
+        MenuProps={{
+          MenuListProps: {
+            sx: { paddingY: 0 },
+          },
+          hideBackdrop: false,
+        }}
         IconComponent={
           selectedId === DEFAULT_SELECTED.id
             ? ArrowDropDownIcon
@@ -122,14 +99,12 @@ export default function Selection(props: SelectionProps) {
                   data-cy={`${id}-btn-selection-clear`}
                   size="small"
                   sx={{
-                    mr: 1,
                     "&:hover": {
                       background: theme.background.level1,
                     },
+                    mr: 1,
                   }}
                   onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     setIsOpen(false);
                     onClear?.();
                   }}
@@ -142,18 +117,24 @@ export default function Selection(props: SelectionProps) {
         data-cy={`${id}-selection`}
         value={selectedId}
         defaultValue={selectedId}
+        // inputProps={{
+        //   sx: {
+        //     pointerEvents: "",
+        //   },
+        // }}
         sx={{
           width: "100%",
+          zIndex: 99999,
         }}
         renderValue={() => {
           return (
-            <Box display="flex" justifyContent="start">
+            <CustomBox justifyContent="start">
               <ColoredDot
                 color={selectedColor || DEFAULT_COLOR_OPTION.color}
                 data-cy="selection-color-dot"
               />
               <Typography>{selected.label}</Typography>
-            </Box>
+            </CustomBox>
           );
         }}
         onClick={() => {
@@ -171,18 +152,13 @@ export default function Selection(props: SelectionProps) {
           />
         )}
         {!onSearch && headerComponent}
-        <Box
-          display="flex"
-          flexDirection="column"
-          width="270px"
-          padding={2}
-          paddingTop={0}
-        >
+
+        <ViewContainer data-cy="selection-view">
           {items.map((itemProps) => {
             const { id, color, label, slug } = itemProps;
             return (
               <SelectionOption
-                data-cy={`${selectionId}-${slug}-selection-option`}
+                dataCy={`${selectionId}-${slug || "new"}-selection-option`}
                 key={id || label}
                 item={itemProps}
                 onClick={() => {
@@ -191,25 +167,22 @@ export default function Selection(props: SelectionProps) {
                 }}
                 isSelected={id === selectedId}
                 preDecorator={
-                  <Box
+                  <CustomBox
                     style={{
-                      width: compact ? "6%" : "12%",
+                      width: "1.5rem",
                       display: "inline-block",
                     }}
                   >
-                    <ColoredDot
-                      color={color || DEFAULT_COLOR_OPTION.color}
-                      data-cy="testme"
-                    />
-                  </Box>
+                    <ColoredDot color={color || DEFAULT_COLOR_OPTION.color} />
+                  </CustomBox>
                 }
-                compact={compact}
                 readonly={readonly}
                 onEdit={onEdit}
+                hideActions
               />
             );
           })}
-        </Box>
+        </ViewContainer>
         {lastFixedOption && (
           <LastOption
             key="create-view-option"

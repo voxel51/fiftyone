@@ -220,32 +220,3 @@ const ThemeProvider: React.FC<
 };
 
 export default ThemeProvider;
-
-// DEPRECATED
-import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
-
-export const joyTheme = extendJoyTheme({
-  colorSchemes: {
-    dark: theme.colorSchemes.dark,
-    light: theme.colorSchemes.light,
-  },
-  fontFamily: {
-    body: "Palanquin, sans-serif",
-  },
-  opacity: {
-    inputPlaceholder: 0.5,
-  },
-});
-
-export const JoyThemeProvider: React.FC<React.PropsWithChildren<{}>> = ({
-  children,
-}) => {
-  const current = useRecoilValue(fos.theme);
-  return (
-    <LegacyTheme.Provider value={joyTheme.colorSchemes[current].palette}>
-      <CssVarsProvider theme={joyTheme} defaultMode={current}>
-        {children}
-      </CssVarsProvider>
-    </LegacyTheme.Provider>
-  );
-};

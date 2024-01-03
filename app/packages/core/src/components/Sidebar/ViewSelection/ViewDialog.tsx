@@ -194,6 +194,8 @@ export default function ViewDialog(props: Props) {
         setIsOpen(false);
         resetValues();
       }}
+      hideBackdrop
+      slotProps={{ backdrop: { sx: { display: "none" } } }}
     >
       <DialogBody
         style={{
@@ -254,7 +256,7 @@ export default function ViewDialog(props: Props) {
               selected={colorOption}
               setSelected={(item) => setColorOption(item)}
               items={COLOR_OPTIONS}
-              compact
+              hideActions
               readonly
             />
           </InputContainer>

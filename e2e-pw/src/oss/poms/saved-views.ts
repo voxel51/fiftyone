@@ -46,8 +46,8 @@ export class SavedViewsPom {
   }
 
   async saveViewInputs({ name, description, color, newColor }) {
-    await this.nameInput().type(name);
-    await this.descriptionInput().type(description);
+    await this.nameInput().fill(name);
+    await this.descriptionInput().fill(description);
     await this.colorInput(color).click();
     await this.colorOption(newColor).click();
   }
@@ -100,10 +100,6 @@ export class SavedViewsPom {
     await this.closeModalBtn().click();
   }
 
-  selectorContainer() {
-    return this.locator.getByTestId("saved-views-selection-container");
-  }
-
   selector() {
     return this.locator.getByTestId("saved-views-selection");
   }
@@ -119,7 +115,7 @@ export class SavedViewsPom {
   }
 
   saveNewViewBtn() {
-    return this.locator.getByTestId("saved-views-create-new");
+    return this.page.getByTestId("saved-views-create-new");
   }
 
   canClearView() {
@@ -127,12 +123,12 @@ export class SavedViewsPom {
   }
 
   async openSelect() {
-    await this.selector().click();
+    await this.selector().click({ timeout: 2000 });
   }
 
   async openCreateModal() {
     await this.openSelect();
-    await this.saveNewViewBtn().click();
+    await this.saveNewViewBtn().click({ timeout: 2000 });
   }
 
   async savedViewCount(name: string) {
@@ -140,7 +136,9 @@ export class SavedViewsPom {
   }
 
   savedViewOption(slug: string) {
-    return this.locator.getByTestId(`saved-views-${slug}-selection-option`);
+    return this.page
+      .getByTestId("selection-view")
+      .getByTestId(`saved-views-${slug}-selection-option`);
   }
 
   async savedViewOptionCount(slug: string) {
@@ -160,7 +158,10 @@ export class SavedViewsPom {
   }
 
   colorOption(c: Color = "Purple") {
-    return this.dialogLocator.getByRole("option", { name: c });
+    return this.colorListContainer().getByRole("option", {
+      name: c,
+      exact: true,
+    });
   }
 
   saveButton() {
@@ -175,7 +176,7 @@ export class SavedViewsPom {
   }
 
   colorListContainer() {
-    return this.dialogLocator.getByRole("listbox");
+    return this.page.getByTestId("selection-view").filter({ hasText: "Gray" });
   }
 
   nameError() {
@@ -183,7 +184,7 @@ export class SavedViewsPom {
   }
 
   searchInput() {
-    return this.locator
+    return this.page
       .getByTestId("saved-views-selection-search-container")
       .getByTestId("saved-views-selection-search-input");
   }
