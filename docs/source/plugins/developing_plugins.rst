@@ -1198,6 +1198,26 @@ using the pattern show below:
 
         ctx.dataset.add_images_dir(images_dir, progress=progress)
 
+You can also use the builtin
+:class:`ProgressHandler <fiftyone.operators.ProgressHandler>` class to
+automatically forward logging messages to
+:meth:`set_progress() <fiftyone.operators.executor.ExecutionContext.set_progress>`
+as `label` values using the pattern shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import logging
+    import fiftyone.operators as foo
+    import fiftyone.zoo as foz
+
+    def execute(self, ctx):
+        name = ctx.params["name"]
+
+        # Automatically report all `fiftyone` logging messages
+        with foo.ProgressHandler(ctx, logger=logging.getLogger("fiftyone")):
+            foz.load_zoo_dataset(name, persistent=True)
+
 .. _operator-execution:
 
 Operator execution
