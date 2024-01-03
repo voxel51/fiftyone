@@ -157,6 +157,7 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
+from .core.threed import Object3D, Scene
 from .core.spaces import (
     Space,
     Panel,
