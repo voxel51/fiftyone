@@ -31,7 +31,7 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
 
 
