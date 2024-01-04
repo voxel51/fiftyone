@@ -126,10 +126,16 @@ def get_view(
                 view = fov.make_optimized_select_view(
                     view, sample_filter.group.id, groups=True
                 )
+
             if sample_filter.group.slices:
+                if view._is_patches:
+                    use_mixed = len(sample_filter.group.slices) > 1
+                else:
+                    use_mixed = True
+
                 view = view.select_group_slices(
                     sample_filter.group.slices,
-                    _force_mixed=len(sample_filter.group.slices) > 1,
+                    _force_mixed=use_mixed,
                 )
 
         elif sample_filter.id:
