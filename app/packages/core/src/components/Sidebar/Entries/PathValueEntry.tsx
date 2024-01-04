@@ -466,8 +466,6 @@ const PathValueEntry = ({
   const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
 
   const isScalar = useRecoilValue(isScalarValue(path));
-  console.log(path, isScalar);
-
   return isScalar ? (
     <ScalarValueEntry
       entryKey={entryKey}
