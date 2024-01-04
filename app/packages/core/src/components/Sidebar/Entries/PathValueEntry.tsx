@@ -4,6 +4,7 @@ import {
   DATE_FIELD,
   DATE_TIME_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -382,7 +383,11 @@ const Loadable = ({ path }: { path: string }) => {
   );
 };
 
-const useData = <T extends unknown>(path: string): T => {
+const EMBEDDED_DOCUMENT_TYPES = [
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
+];
+const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
 
@@ -400,8 +405,9 @@ const useData = <T extends unknown>(path: string): T => {
 
   let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
+  const embeddedDocType = field?.embeddedDocType;
 
-  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_FIELD) {
+  if (embeddedDocType && EMBEDDED_DOCUMENT_TYPES.includes(embeddedDocType)) {
     data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]).join(", ");
   } else {
     for (let index = 0; index < keys.length; index++) {
@@ -414,7 +420,7 @@ const useData = <T extends unknown>(path: string): T => {
       data = data[field?.dbField || key];
 
       if (keys[index + 1]) {
-        field = field?.fields[keys[index + 1]];
+        field = field?.fields?.[keys[index + 1]] || null;
       }
     }
   }
