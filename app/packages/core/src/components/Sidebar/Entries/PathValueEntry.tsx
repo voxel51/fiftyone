@@ -3,7 +3,8 @@ import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
@@ -386,6 +387,20 @@ const Loadable = ({ path }: { path: string }) => {
   );
 };
 
+const isOfDocumentFieldList = selectorFamily({
+  key: "isOfDocumentField",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const field = get(fos.field(path.split(".")[0]));
+
+      return [
+        DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+        EMBEDDED_DOCUMENT_FIELD,
+      ].includes(field?.subfield || "");
+    },
+});
+
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
@@ -405,7 +420,7 @@ const useData = <T,>(path: string): T => {
   let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
 
-  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_PATH) {
+  if (useRecoilValue(isOfDocumentFieldList(path))) {
     data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
   } else {
     for (let index = 0; index < keys.length; index++) {
