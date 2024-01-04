@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React, { useLayoutEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef } from "react";
 import style from "./Results.module.css";
 
 export interface ResultProps<T> {
@@ -39,6 +39,14 @@ export function Result<T>({
   component,
 }: ResultProps<T>) {
   const Component = component;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const elem = ref.current;
+    if (active && elem) {
+      elem.scrollIntoView({ block: "center" });
+    }
+  }, [active]);
 
   const classes = active ? [style.active, style.result] : [style.result];
 
@@ -47,6 +55,7 @@ export function Result<T>({
       data-cy={`selector-result-${result}`}
       onClick={onClick}
       className={classNames(...classes)}
+      ref={ref}
     >
       <Component value={result} />
     </div>

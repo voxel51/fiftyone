@@ -60,9 +60,9 @@ function Selector<T>(props: SelectorProps<T>) {
   const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
-    return async (search: string) => {
+    return async (search: string, useSearch?: boolean) => {
       const value =
-        active !== undefined
+        active !== undefined && !useSearch
           ? valuesRef.current[active]
           : valuesRef.current.find((v) => toKey(v) === search);
 
@@ -87,9 +87,12 @@ function Selector<T>(props: SelectorProps<T>) {
       document.activeElement === ref.current && ref.current?.blur();
     } else {
       setSearch("");
-      setActive(undefined);
+      const defaultActive = valuesRef.current.findIndex(
+        (item) => value === item
+      );
+      setActive(defaultActive || 0);
     }
-  }, [editing]);
+  }, [editing, value]);
 
   const onResults = useCallback((results: T[]) => {
     valuesRef.current = results;
@@ -201,7 +204,7 @@ function Selector<T>(props: SelectorProps<T>) {
                     noResults={noResults}
                     search={search}
                     useSearch={useSearch}
-                    onSelect={(value) => onSelectWrapper(toKey(value))}
+                    onSelect={(value) => onSelectWrapper(toKey(value), true)}
                     component={component}
                     onResults={onResults}
                     toKey={toKey}
