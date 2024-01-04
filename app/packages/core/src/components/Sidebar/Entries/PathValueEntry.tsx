@@ -3,17 +3,20 @@ import * as fos from "@fiftyone/state";
 import {
   DATE_FIELD,
   DATE_TIME_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   DYNAMIC_EMBEDDED_DOCUMENT_PATH,
   formatDate,
   formatDateTime,
   FRAME_SUPPORT_FIELD,
-  LIST_FIELD,
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { useRecoilState, useRecoilValue, useRecoilValueLoadable } from "recoil";
+import {
+  selectorFamily,
+  useRecoilState,
+  useRecoilValue,
+  useRecoilValueLoadable,
+} from "recoil";
 import styled from "styled-components";
 import LoadingDots from "../../../../../components/src/components/Loading/LoadingDots";
 import { prettify } from "../../../utils/generic";
@@ -383,10 +386,6 @@ const Loadable = ({ path }: { path: string }) => {
   );
 };
 
-const EMBEDDED_DOCUMENT_TYPES = [
-  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
-  DYNAMIC_EMBEDDED_DOCUMENT_PATH,
-];
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
@@ -405,18 +404,15 @@ const useData = <T,>(path: string): T => {
 
   let data = loadable.contents;
   let field = useRecoilValue(fos.field(keys[0]));
-  const embeddedDocType = field?.embeddedDocType;
 
-  if (embeddedDocType && EMBEDDED_DOCUMENT_TYPES.includes(embeddedDocType)) {
-    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]).join(", ");
+  if (field?.embeddedDocType === DYNAMIC_EMBEDDED_DOCUMENT_PATH) {
+    data = data?.[field?.dbField || keys[0]]?.map((d) => d[keys[1]]);
   } else {
     for (let index = 0; index < keys.length; index++) {
       if (!data) {
         break;
       }
-
       const key = keys[index];
-
       data = data[field?.dbField || key];
 
       if (keys[index + 1]) {
@@ -427,6 +423,15 @@ const useData = <T,>(path: string): T => {
 
   return data as T;
 };
+
+const isScalarValue = selectorFamily({
+  key: "isScalarValue",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return !get(fos.isListField(path)) && !get(fos.isInListField(path));
+    },
+});
 
 const PathValueEntry = ({
   entryKey,
@@ -441,12 +446,14 @@ const PathValueEntry = ({
     cb: () => void
   ) => void;
 }) => {
-  const field = useRecoilValue(fos.field(path));
   const pinned3DSample = useRecoilValue(fos.pinned3DSampleSlice);
   const activePcdSlices = useRecoilValue(fos.activePcdSlices);
   const slices = Boolean(pinned3DSample) && (activePcdSlices?.length || 1) > 1;
 
-  return field && field.ftype !== LIST_FIELD ? (
+  const isScalar = useRecoilValue(isScalarValue(path));
+  console.log(path, isScalar);
+
+  return isScalar ? (
     <ScalarValueEntry
       entryKey={entryKey}
       path={path}
