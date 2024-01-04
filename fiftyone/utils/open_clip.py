@@ -58,6 +58,32 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         super().__init__(config)
         self._text_features = None
 
+    @property
+    def can_embed_prompts(self):
+        return True
+
+    def embed_prompt(self, prompt):
+        """Generates an embedding for the given text prompt.
+
+        Args:
+            prompt: a text string
+
+        Returns:
+            a numpy vector
+        """
+        return self.embed_prompts([prompt])[0]
+
+    def embed_prompts(self, prompts):
+        """Generates an embedding for the given text prompts.
+
+        Args:
+            prompts: an iterable of text strings
+
+        Returns:
+            a ``num_prompts x num_dims`` array of prompt embeddings
+        """
+        return self._embed_prompts(prompts).detach().cpu().numpy()
+
     def _load_model(self, config):
         (
             self._model,
@@ -79,6 +105,14 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
             self._text_features = self._model.encode_text(text)
 
         return self._text_features
+
+    def _embed_prompts(self, prompts):
+        formatted_prompts = [
+            "%s %s" % (self.config.text_prompt, p) for p in prompts
+        ]
+        # Tokenize text
+        text = self._tokenizer(formatted_prompts)
+        return self._model.encode_text(text)
 
     def _get_class_logits(self, text_features, image_features):
         # source: https://github.com/openai/CLIP/blob/main/README.md
