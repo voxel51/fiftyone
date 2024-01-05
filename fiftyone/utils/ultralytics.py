@@ -9,9 +9,15 @@ Utilities for working with
 import itertools
 
 import numpy as np
+from PIL import Image
 
+import fiftyone.core.utils as fou
 import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
+from fiftyone.core.models import Model
+
+ultralytics = fou.lazy_import("ultralytics")
+from ultralytics import YOLO
 
 
 def to_detections(results, confidence_thresh=None):
@@ -270,3 +276,84 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
                 for row in df.itertuples()
             ]
         )
+
+
+class YOLODetectionModel(Model):
+    def __init__(self, config):
+
+        self.model = config.get("model", None)
+
+    @property
+    def media_type(self):
+        return "image"
+
+    def predict(self, args):
+        image = Image.fromarray(args)
+        predictions = self.model(image, verbose=False)
+        return to_detections(predictions[0])
+
+    def predict_all(self, samples, args):
+        return self.predict(args)
+
+
+class YOLOSegmentationModel(Model):
+    def __init__(self, config):
+
+        self.model = config.get("model", None)
+
+    @property
+    def media_type(self):
+        return "image"
+
+    def predict(self, args):
+        image = Image.fromarray(args)
+        predictions = self.model(image, verbose=False)
+        return to_instances(predictions[0])
+
+    def predict_all(self, samples, args):
+        res = self.predict(args)
+        return res
+
+
+class YOLOPoseModel(Model):
+    def __init__(self, config):
+
+        self.model = config.get("model", None)
+
+    @property
+    def media_type(self):
+        return "image"
+
+    def predict(self, args):
+        image = Image.fromarray(args)
+        predictions = self.model(image, verbose=False)
+        return to_keypoints(predictions[0])
+
+    def predict_all(self, samples, args):
+        return self.predict(args)
+
+
+def _convert_yolo_detection_model(model):
+    config = {"model": model}
+    return YOLODetectionModel(config)
+
+
+def _convert_yolo_segmentation_model(model):
+    config = {"model": model}
+    return YOLOSegmentationModel(config)
+
+
+def _convert_yolo_pose_model(model):
+    config = {"model": model}
+    return YOLOPoseModel(config)
+
+
+def _convert_yolo_model(model):
+    if isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
+        return _convert_yolo_segmentation_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
+        return _convert_yolo_pose_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
+        return _convert_yolo_detection_model(model)
+
+    return model

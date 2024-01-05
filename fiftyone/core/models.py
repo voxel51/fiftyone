@@ -32,7 +32,9 @@ fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
+fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
+ultralytics = fou.lazy_import("ultralytics")
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +74,8 @@ def apply_model(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task`
+        model: a :class:`Model` or :class:`flash:flash.core.model.Task` or
+            `YOLO` model from `ultralytics
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -111,6 +114,22 @@ def apply_model(
             store_logits=store_logits,
             batch_size=batch_size,
             num_workers=num_workers,
+            output_dir=output_dir,
+            rel_dir=rel_dir,
+            **kwargs,
+        )
+
+    if isinstance(model, ultralytics.YOLO):
+        model = fouu._convert_yolo_model(model)
+        return apply_model(
+            samples,
+            model,
+            label_field=label_field,
+            confidence_thresh=confidence_thresh,
+            store_logits=store_logits,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            skip_failures=skip_failures,
             output_dir=output_dir,
             rel_dir=rel_dir,
             **kwargs,
