@@ -75,7 +75,7 @@ def apply_model(
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
         model: a :class:`Model` or :class:`flash:flash.core.model.Task` or
-            `YOLO` model from `ultralytics
+            `ultralytics.YOLO` model
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -119,21 +119,24 @@ def apply_model(
             **kwargs,
         )
 
-    if isinstance(model, ultralytics.YOLO):
-        model = fouu._convert_yolo_model(model)
-        return apply_model(
-            samples,
-            model,
-            label_field=label_field,
-            confidence_thresh=confidence_thresh,
-            store_logits=store_logits,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            skip_failures=skip_failures,
-            output_dir=output_dir,
-            rel_dir=rel_dir,
-            **kwargs,
-        )
+    try:
+        if isinstance(model, ultralytics.YOLO):
+            model = fouu._convert_yolo_model(model)
+            return apply_model(
+                samples,
+                model,
+                label_field=label_field,
+                confidence_thresh=confidence_thresh,
+                store_logits=store_logits,
+                batch_size=batch_size,
+                num_workers=num_workers,
+                skip_failures=skip_failures,
+                output_dir=output_dir,
+                rel_dir=rel_dir,
+                **kwargs,
+            )
+    except ImportError:
+        pass
 
     if not isinstance(model, Model):
         raise ValueError(

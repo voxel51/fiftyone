@@ -17,7 +17,6 @@ import fiftyone.utils.torch as fout
 from fiftyone.core.models import Model
 
 ultralytics = fou.lazy_import("ultralytics")
-from ultralytics import YOLO
 
 
 def to_detections(results, confidence_thresh=None):
@@ -292,74 +291,97 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
         )
 
 
-class YOLODetectionModel(Model):
-    def __init__(self, config):
+class FiftyOneYOLOModel(Model):
+    """YOLO model wrapper for FiftyOne.
 
+    Args:
+        config: a dict which has the `ultralytics.YOLO` model as the value for
+            the key `model`
+    """
+
+    def __init__(self, config):
         self.model = config.get("model", None)
 
     @property
     def media_type(self):
         return "image"
 
+    @property
+    def ragged_batches(self):
+        return True
+
+    @property
+    def transforms(self):
+        return None
+
+    @property
+    def preprocess(self):
+        return False
+
     def predict(self, args):
-        image = Image.fromarray(args)
+        raise NotImplementedError(
+            "Subclass must implement `predict` or `predict_all`"
+        )
+
+    def predict_all(self, args):
+        return self.predict(args)
+
+
+class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
+    """YOLO detection model wrapper for FiftyOne.
+
+    Args:
+        config: a dict which has the `ultralytics.YOLO` Detection model as the
+            value for the key `model`
+    """
+
+    def predict(self, arg):
+        image = Image.fromarray(arg)
         predictions = self.model(image, verbose=False)
         return to_detections(predictions[0])
 
-    def predict_all(self, samples, args):
-        return self.predict(args)
 
+class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
+    """YOLO segmentation model wrapper for FiftyOne.
 
-class YOLOSegmentationModel(Model):
-    def __init__(self, config):
+    Args:
+        config: a dict which has the `ultralytics.YOLO` Segmentation model as
+            the value for the key `model`
+    """
 
-        self.model = config.get("model", None)
-
-    @property
-    def media_type(self):
-        return "image"
-
-    def predict(self, args):
-        image = Image.fromarray(args)
+    def predict(self, arg):
+        image = Image.fromarray(arg)
         predictions = self.model(image, verbose=False)
         return to_instances(predictions[0])
 
-    def predict_all(self, samples, args):
-        res = self.predict(args)
-        return res
 
+class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
+    """YOLO pose model wrapper for FiftyOne.
 
-class YOLOPoseModel(Model):
-    def __init__(self, config):
+    Args:
+        config: a dict which has the `ultralytics.YOLO` Pose model as the value
+            for the key `model`
+    """
 
-        self.model = config.get("model", None)
-
-    @property
-    def media_type(self):
-        return "image"
-
-    def predict(self, args):
-        image = Image.fromarray(args)
+    def predict(self, arg):
+        image = Image.fromarray(arg)
         predictions = self.model(image, verbose=False)
         return to_keypoints(predictions[0])
-
-    def predict_all(self, samples, args):
-        return self.predict(args)
 
 
 def _convert_yolo_detection_model(model):
     config = {"model": model}
-    return YOLODetectionModel(config)
+    return FiftyOneYOLODetectionModel(config)
 
 
 def _convert_yolo_segmentation_model(model):
     config = {"model": model}
-    return YOLOSegmentationModel(config)
+    return FiftyOneYOLOSegmentationModel(config)
 
 
 def _convert_yolo_pose_model(model):
     config = {"model": model}
-    return YOLOPoseModel(config)
+    return FiftyOneYOLOPoseModel(config)
 
 
 def _convert_yolo_model(model):
