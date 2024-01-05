@@ -94,31 +94,45 @@ def to_instances(results, confidence_thresh=None):
     return batch
 
 
+def _uncenter_boxes(boxes):
+    """convert from center coords to corner coords"""
+    boxes[:, 0] -= boxes[:, 2] / 2.0
+    boxes[:, 1] -= boxes[:, 3] / 2.0
+
+
 def _to_instances(result, confidence_thresh=None):
     if result.masks is None:
         return None
 
     classes = np.rint(result.boxes.cls.detach().cpu().numpy()).astype(int)
     boxes = result.boxes.xywhn.detach().cpu().numpy().astype(float)
-    bounds = np.rint(result.boxes.xyxy.detach().cpu().numpy()).astype(int)
     masks = result.masks.data.detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
 
+    _uncenter_boxes(boxes)
+
     detections = []
-    for cls, box, bound, mask, conf in zip(
-        classes, boxes, bounds, masks, confs
-    ):
+    for cls, box, mask, conf in zip(classes, boxes, masks, confs):
         if confidence_thresh is not None and conf < confidence_thresh:
             continue
 
         label = result.names[cls]
-        xc, yc, w, h = box
-        x1, y1, x2, y2 = bound
+        w, h = mask.shape
+        tmp = np.copy(box)
+        tmp[2] += tmp[0]
+        tmp[3] += tmp[1]
+        tmp[0] *= h
+        tmp[2] *= h
+        tmp[1] *= w
+        tmp[3] *= w
+        tmp = [int(b) for b in tmp]
+        y0, x0, y1, x1 = tmp
+        sub_mask = mask[x0:x1, y0:y1]
 
         detection = fol.Detection(
             label=label,
-            bounding_box=[xc - 0.5 * w, yc - 0.5 * h, w, h],
-            mask=mask[y1:y2, x1:x2],
+            bounding_box=list(box),
+            mask=sub_mask.astype(bool),
             confidence=conf,
         )
         detections.append(detection)
