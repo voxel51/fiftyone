@@ -13,6 +13,20 @@ export const stringSearch = atomFamily<
   default: "",
 });
 
+const pathSearchFilters = selectorFamily({
+  key: "pathSearchFilters",
+  get:
+    ({ modal, path }: { modal: boolean; path: string }) =>
+    ({ get }) => {
+      const filters = { ...get(modal ? fos.modalFilters : fos.filters) };
+
+      // omit the path being searched, but include coinciding filters
+      delete filters[path];
+
+      return filters;
+    },
+});
+
 export const stringSearchResults = selectorFamily<
   {
     values?: Result[];
@@ -62,7 +76,7 @@ export const stringSearchResults = selectorFamily<
           path,
           search,
           selected,
-          filters: !modal ? get(fos.lightningFilters) : null,
+          filters: get(pathSearchFilters({ modal, path })),
           group_id: modal ? get(fos.groupId) || null : null,
           mixed,
           slice: get(fos.groupSlice),
