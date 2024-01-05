@@ -122,19 +122,6 @@ def apply_model(
     try:
         if isinstance(model, ultralytics.YOLO):
             model = fouu._convert_yolo_model(model)
-            return apply_model(
-                samples,
-                model,
-                label_field=label_field,
-                confidence_thresh=confidence_thresh,
-                store_logits=store_logits,
-                batch_size=batch_size,
-                num_workers=num_workers,
-                skip_failures=skip_failures,
-                output_dir=output_dir,
-                rel_dir=rel_dir,
-                **kwargs,
-            )
     except ImportError:
         pass
 

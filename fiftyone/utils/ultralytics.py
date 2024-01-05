@@ -319,9 +319,7 @@ class FiftyOneYOLOModel(Model):
         return False
 
     def predict(self, args):
-        raise NotImplementedError(
-            "Subclass must implement `predict` or `predict_all`"
-        )
+        raise NotImplementedError("Subclass must implement `predict`")
 
     def predict_all(self, args):
         return self.predict(args)
