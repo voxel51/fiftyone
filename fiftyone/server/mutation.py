@@ -217,6 +217,9 @@ class Mutation(SetColorScheme):
                 else None,
             )
 
+            # special case for group datasets with ToPatches
+            # `result_view` will output a `mixed` media type dataset
+            # but `ToPatches` expects an `image` media type dataset
             is_to_patches_in_stages = False
 
             if form.add_stages:
