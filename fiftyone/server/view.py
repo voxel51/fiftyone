@@ -93,8 +93,6 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
@@ -128,14 +126,9 @@ def get_view(
                 )
 
             if sample_filter.group.slices:
-                if view._is_patches:
-                    use_mixed = len(sample_filter.group.slices) > 1
-                else:
-                    use_mixed = True
-
                 view = view.select_group_slices(
                     sample_filter.group.slices,
-                    _force_mixed=use_mixed,
+                    _force_mixed=True,
                 )
 
         elif sample_filter.id:

@@ -217,6 +217,17 @@ class Mutation(SetColorScheme):
                 else None,
             )
 
+            is_to_patches_in_stages = False
+
+            if form.add_stages:
+                is_to_patches_in_stages = any(
+                    stage.get("_cls") == "fiftyone.core.stages.ToPatches"
+                    for stage in form.add_stages
+                )
+
+            if result_view.media_type == "mixed" and is_to_patches_in_stages:
+                result_view._set_media_type(ds.group_media_types[form.slice])
+
             result_view = _build_result_view(result_view, form)
 
         # Set view state
