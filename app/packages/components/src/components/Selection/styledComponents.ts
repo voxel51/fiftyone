@@ -41,10 +41,11 @@ export const SearchInput = styled.input`
   border-radius: 4px;
   cursor: ${({ disabled }) =>
     disabled ? "not-allowed" : "pointer"} !important;
-  padding: 0.5rem;
+  padding: 1.25rem 0.5rem;
   color: ${({ theme }) => theme.text.primary};
   background: ${({ theme }) => theme.background.level2};
   border: 1px solid ${({ theme }) => theme.primary.plainBorder};
+  height: 30px;
 
   &:focus {
     border: 1px solid ${({ theme }) => theme.primary.softBorder};
@@ -64,7 +65,8 @@ export const SelectionRow = styled(MuiBox)`
   padding: 0.25rem 0.5rem;
   width: 100%;
   align-items: center;
-  border-bottom: 1px solid ${({ theme }) => theme.primary.softBorder};
+  border-bottom: 1px solid ${({ theme }) => theme.primary.plainBorder};
+
   &:hover {
     cursor: pointer;
     background: ${({ theme }) => theme.background.level1};
@@ -77,11 +79,21 @@ export const CustomBox = styled(MuiBox)`
   justify-content: center;
 `;
 
-export const ViewContainer = styled(MuiBox)`
+export const CustomSearchBox = styled(CustomBox)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  zindex: 9999;
+  background: ${({ theme }) => theme.background.level3};
+`;
+
+export const ViewContainer = styled(MuiBox)<{ width?: string }>`
   display: flex;
   flex-direction: column;
   max-height: 400px;
-  width: 270px;
+  width: ${({ width = "270px" }) => width};
   overflow-y: auto;
   background: ${({ theme }) => theme.background.level2};
 `;

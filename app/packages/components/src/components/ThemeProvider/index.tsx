@@ -171,6 +171,22 @@ let theme = extendMuiTheme({
         disableRipple: true,
       },
     },
+    MuiModal: {
+      styleOverrides: {
+        root: {
+          // Relative to MuiMenu. Without it, Playwright will not be
+          // able to click on Mui-Select component without force=true
+          zIndex: 99,
+        },
+      },
+    },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          zIndex: 999,
+        },
+      },
+    },
     MuiOutlinedInput: {
       styleOverrides: {
         root: {

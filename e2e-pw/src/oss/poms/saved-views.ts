@@ -11,6 +11,8 @@ export type Color =
   | "Orange"
   | "Purple";
 
+const defaultColor = "Gray";
+
 export class SavedViewsPom {
   readonly page: Page;
   readonly assert: SavedViewAsserter;
@@ -46,9 +48,9 @@ export class SavedViewsPom {
   }
 
   async saveViewInputs({ name, description, color, newColor }) {
-    await this.nameInput().fill(name);
-    await this.descriptionInput().fill(description);
-    await this.colorInput(color).click();
+    await this.nameInput().fill(name, { timeout: 2000 });
+    await this.descriptionInput().fill(description, { timeout: 2000 });
+    await this.colorInput(color).click({ timeout: 2000 });
     await this.colorOption(newColor).click();
   }
 
@@ -88,7 +90,7 @@ export class SavedViewsPom {
     await this.saveButton().click();
   }
 
-  async clickColor(color: Color = "Gray") {
+  async clickColor(color: Color = defaultColor) {
     await this.colorInput(color).click();
   }
 
@@ -153,7 +155,7 @@ export class SavedViewsPom {
     return this.dialogLocator.getByTestId("saved-views-input-description");
   }
 
-  colorInput(c: Color = "Gray") {
+  colorInput(c: Color = defaultColor) {
     return this.dialogLocator.getByRole("combobox").getByText(c);
   }
 
@@ -176,7 +178,9 @@ export class SavedViewsPom {
   }
 
   colorListContainer() {
-    return this.page.getByTestId("selection-view").filter({ hasText: "Gray" });
+    return this.page
+      .getByTestId("selection-view")
+      .filter({ hasText: defaultColor });
   }
 
   nameError() {
@@ -213,7 +217,7 @@ class SavedViewAsserter {
     await expect(desc).toBeEmpty();
   }
 
-  async verifyDefaultColor(color: Color = "Gray") {
+  async verifyDefaultColor(color: Color = defaultColor) {
     await expect(this.svp.colorInput(color)).toBeVisible();
   }
 
@@ -236,13 +240,14 @@ class SavedViewAsserter {
   async verifyAllInputClear() {
     await expect(this.svp.nameInput()).toBeEmpty();
     await expect(this.svp.descriptionInput()).toBeEmpty();
-    await expect(this.svp.colorInput("Gray")).toBeVisible();
+    await expect(this.svp.colorInput(defaultColor)).toBeVisible();
   }
 
   async verifyCancelBtnClearsAll() {
     const cancelBtn = this.svp.cancelButton();
     await cancelBtn.click();
 
+    await this.svp.openCreateModal();
     await this.verifyAllInputClear();
   }
 
@@ -264,7 +269,7 @@ class SavedViewAsserter {
     await expect(colorListBox).toBeVisible();
     // verify default
     await expect(
-      colorListBox.getByRole("option", { name: "Gray" })
+      colorListBox.getByRole("option", { name: defaultColor })
     ).toBeInViewport();
 
     colorList.forEach(async (color: string) => {

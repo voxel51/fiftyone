@@ -1,4 +1,4 @@
-import React from "react";
+import React, { MouseEventHandler } from "react";
 
 import { useHover } from "@fiftyone/state";
 import { Edit, Check } from "@mui/icons-material";
@@ -22,11 +22,11 @@ interface Props {
   item: DatasetViewOption;
   isSelected?: boolean;
   preDecorator?: React.ReactNode;
-  hideActions?: boolean; // compact form rows
+  hideActions?: boolean;
   readonly?: boolean;
   dataCy?: string;
   onEdit?: (item: DatasetViewOption) => void;
-  onClick?: () => void;
+  onClick?: (e: MouseEventHandler) => void;
 }
 
 export default function (props: Props) {
@@ -59,7 +59,7 @@ export default function (props: Props) {
       </RowLabelContainer>
       {(isHovered || isSelected) && (
         <EditBox isSelected isHovered>
-          {isHovered && (
+          {!hideActions && isHovered && (
             <IconButton
               sx={{
                 "&:hover": {
@@ -81,7 +81,7 @@ export default function (props: Props) {
                 data-cy="btn-edit-selection"
                 sx={{
                   color: readonly ? theme.text.disabled : theme.text.secondary,
-                  zIndex: "9999",
+                  zIndex: 999,
                   right: isSelected ? ".5rem" : "0",
                   cursor: readonly ? "not-allowed" : "inherit",
                   width: 16,

@@ -1,12 +1,12 @@
 import { IconButton, useTheme } from "@fiftyone/components";
-import { DEFAULT_SELECTED, useOutsideClick } from "@fiftyone/state";
+import { DEFAULT_SELECTED } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
 import { debounce } from "lodash";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { Box, Select, Typography } from "@mui/material";
+import { Select, Typography } from "@mui/material";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import {
   ColoredDot,
@@ -53,8 +53,6 @@ export default function Selection(props: SelectionProps) {
 
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const ref = useRef();
-  useOutsideClick(ref, () => setIsOpen(false));
 
   const {
     placeholder: searchPlaceholder,
@@ -79,20 +77,15 @@ export default function Selection(props: SelectionProps) {
   const selectionId = id;
 
   return (
-    <div
-      ref={ref}
-      style={{ width: "100%" }}
-      data-cy={`${id}-selection-container`}
-    >
+    <div style={{ width: "100%" }} data-cy={`${id}-selection-container`}>
       <Select
         MenuProps={{
           MenuListProps: {
-            sx: { paddingY: 0 },
+            sx: { paddingY: 0, zIndex: 999 },
           },
-          hideBackdrop: false,
         }}
         IconComponent={
-          selectedId === DEFAULT_SELECTED.id
+          selectedId === DEFAULT_SELECTED.id || hideActions
             ? ArrowDropDownIcon
             : () => (
                 <IconButton
@@ -105,6 +98,8 @@ export default function Selection(props: SelectionProps) {
                     mr: 1,
                   }}
                   onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setIsOpen(false);
                     onClear?.();
                   }}
@@ -117,14 +112,10 @@ export default function Selection(props: SelectionProps) {
         data-cy={`${id}-selection`}
         value={selectedId}
         defaultValue={selectedId}
-        // inputProps={{
-        //   sx: {
-        //     pointerEvents: "",
-        //   },
-        // }}
         sx={{
           width: "100%",
-          zIndex: 99999,
+          zIndex: 999,
+          background: theme.background.level3,
         }}
         renderValue={() => {
           return (
@@ -137,6 +128,7 @@ export default function Selection(props: SelectionProps) {
             </CustomBox>
           );
         }}
+        open={isOpen}
         onClick={() => {
           setIsOpen(!isOpen);
         }}
@@ -153,7 +145,10 @@ export default function Selection(props: SelectionProps) {
         )}
         {!onSearch && headerComponent}
 
-        <ViewContainer data-cy="selection-view">
+        <ViewContainer
+          data-cy="selection-view"
+          width={hideActions ? "100%" : "270px"}
+        >
           {items.map((itemProps) => {
             const { id, color, label, slug } = itemProps;
             return (
@@ -161,9 +156,11 @@ export default function Selection(props: SelectionProps) {
                 dataCy={`${selectionId}-${slug || "new"}-selection-option`}
                 key={id || label}
                 item={itemProps}
-                onClick={() => {
-                  setSelected(itemProps);
+                onClick={(e: Event) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   setIsOpen(false);
+                  setSelected(itemProps);
                 }}
                 isSelected={id === selectedId}
                 preDecorator={
@@ -178,7 +175,7 @@ export default function Selection(props: SelectionProps) {
                 }
                 readonly={readonly}
                 onEdit={onEdit}
-                hideActions
+                hideActions={hideActions}
               />
             );
           })}

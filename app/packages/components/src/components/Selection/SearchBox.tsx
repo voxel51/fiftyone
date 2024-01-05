@@ -1,10 +1,8 @@
 import React from "react";
 
-import styled from "styled-components";
-
 import { useTheme } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
-import { CustomBox, SearchInput } from "./styledComponents";
+import { CustomSearchBox, SearchInput } from "./styledComponents";
 
 export const SearchBox = ({
   id,
@@ -25,21 +23,10 @@ export const SearchBox = ({
 }) => {
   const theme = useTheme();
   const {
-    background: { level3 },
-    primary: { plainBorder },
     text: { secondary },
   } = theme;
   return (
-    <CustomBox
-      data-cy={`${id}-selection-search-container`}
-      sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: 9999,
-        background: level3,
-        borderBottom: `1px solid ${plainBorder}`,
-      }}
-    >
+    <CustomSearchBox data-cy={`${id}-selection-search-container`}>
       <SearchInput
         autoFocus
         data-cy={`${id}-selection-search-input`}
@@ -58,6 +45,8 @@ export const SearchBox = ({
           e.stopPropagation();
         }}
         onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           if (!disabled) {
             (e.target as HTMLInputElement).focus();
           }
@@ -65,7 +54,9 @@ export const SearchBox = ({
       />
       {searchValue && (
         <Close
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             setSearchTerm("");
             debouncedSearch("");
           }}
@@ -74,10 +65,11 @@ export const SearchBox = ({
             cursor: "pointer",
             color: secondary,
             position: "absolute",
-            right: 20,
+            right: "1rem",
+            top: "1.75rem",
           }}
         />
       )}
-    </CustomBox>
+    </CustomSearchBox>
   );
 };
