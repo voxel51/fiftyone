@@ -7,7 +7,9 @@ FiftyOne Teams mutations.
 """
 import datetime
 import logging
+import traceback
 
+import graphql
 from dacite import Config, from_dict
 from fiftyone.teams.authentication import (
     IsAuthenticated,
@@ -26,6 +28,13 @@ import fiftyone.server.mutation as fosm
 from fiftyone.server.scalars import BSONArray
 
 from fiftyone.teams.query import User
+
+from fiftyone.internal.requests import make_request, make_sync_request
+from fiftyone.internal.util import get_api_url
+
+logger = logging.getLogger(__name__)
+
+_API_URL = get_api_url()
 
 
 @gql.input
@@ -80,10 +89,7 @@ class Mutation(fosm.Mutation):
                 ds = fod.load_dataset(dataset_name)
                 doc = ds._get_saved_view_doc(saved_view_slug, slug=True)
                 result_view = ds._load_saved_view_from_doc(doc)
-                loaded_at = datetime.datetime.utcnow()
-                await _update_view_activity(
-                    result_view.name, ds, loaded_at, info
-                )
+                await _update_view_activity(result_view.name, ds, info)
             except:
                 pass
 
@@ -107,17 +113,31 @@ class Mutation(fosm.Mutation):
         return result_view._serialize()
 
 
+UPDATE_VIEW_ACTIVITY_MUTATION = """
+mutation (
+    $datasetId: String!
+    $viewId: String!
+    $viewName: String!
+    ) {
+    updateViewActivity(
+        datasetId: $datasetId
+        viewId: $viewId
+        viewName: $viewName
+    )
+}
+"""
+
+
 async def _update_view_activity(
     view_name: str,
     dataset: fod.Dataset,
-    loaded_at: datetime.datetime,
     info: Info,
 ):
     """Record the last load time and total load count
     for a particular saved view and user"""
 
-    db = info.context.db
     uid = info.context.request.user.sub
+    token = info.context.request.headers.get("Authorization", None)
 
     if not uid:
         logging.warning("[teams/mutation.py] No id found for the current user")
@@ -142,36 +162,23 @@ async def _update_view_activity(
         return
 
     try:
-        # Note: if multi-tab syncing becomes supported, update this to only
-        # increase load_count when the difference between the current and
-        # previous last_loaded_at is greater than X
-        res = await db["views.activity"].find_one_and_update(
-            {
-                "user_id": uid,
-                "view_id": view_id,
-                "dataset_id": dataset._doc.id,
+        # attempt to log the view, but don't throw an error if it fails since
+        # it's not necessary for loading the view
+        await make_request(
+            f"{_API_URL}/graphql/v1",
+            token,
+            UPDATE_VIEW_ACTIVITY_MUTATION,
+            variables={
+                "datasetId": str(dataset._doc.id),
+                "viewId": str(view_id),
+                "viewName": view_name,
             },
-            {
-                "$set": {
-                    "last_loaded_at": loaded_at,
-                    "view_name": view_name,
-                },
-                "$inc": {"load_count": 1},
-            },
-            projection={
-                "_id": True,
-                "view_name": True,
-                "last_loaded_at": True,
-                "load_count": True,
-            },
-            upsert=True,
         )
-        if res:
-            return res.get("view_name", None)
+
     except Exception as e:
-        logging.error(
-            "[teams/mutation.py] Failed to log view activity to db. "
-            "Error: {}".format(e)
+        logger.error(
+            f"[teams/mutation.py] Failed to log view activity for "
+            f"{view_name}\nError: {e}"
         )
 
     return
