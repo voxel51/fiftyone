@@ -5,11 +5,7 @@ FiftyOne Teams mutations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import datetime
 import logging
-import traceback
-
-import graphql
 from dacite import Config, from_dict
 from fiftyone.teams.authentication import (
     IsAuthenticated,
@@ -29,7 +25,7 @@ from fiftyone.server.scalars import BSONArray
 
 from fiftyone.teams.query import User
 
-from fiftyone.internal.requests import make_request, make_sync_request
+from fiftyone.internal.requests import make_request
 from fiftyone.internal.util import get_api_url
 
 logger = logging.getLogger(__name__)
@@ -155,9 +151,8 @@ async def _update_view_activity(
     )
     if not view_id:
         logging.error(
-            "[teams/mutation.py] No id found for view_name={} and dataset={}".format(
-                view_name, dataset.name
-            )
+            "[teams/mutation.py] No id found for view_name={} and "
+            "dataset={}".format(view_name, dataset.name)
         )
         return
 
