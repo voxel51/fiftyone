@@ -2786,8 +2786,8 @@ class SampleCollection(object):
             video collection
 
         Args:
-            model: a :class:`fiftyone.core.models.Model` or
-                :class:`flash:flash.core.model.Task`
+            model: a :class:`Model` or :class:`flash:flash.core.model.Task` or
+                `ultralytics.YOLO` model
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
