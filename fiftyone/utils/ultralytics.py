@@ -389,5 +389,8 @@ def _convert_yolo_model(model):
         return _convert_yolo_pose_model(model)
     elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
         return _convert_yolo_detection_model(model)
-
-    return model
+    else:
+        raise ValueError(
+            "Unsupported model type. Cannot convert to a FiftyOne,"
+            ":class:`Model`."
+        )
