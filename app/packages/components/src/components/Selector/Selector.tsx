@@ -85,12 +85,9 @@ function Selector<T>(props: SelectorProps<T>) {
   useLayoutEffect(() => {
     if (!editing) {
       document.activeElement === ref.current && ref.current?.blur();
+      setActive(undefined);
     } else {
       setSearch("");
-      const defaultActive = valuesRef.current.findIndex(
-        (item) => value === item
-      );
-      setActive(defaultActive || 0);
     }
   }, [editing, value]);
 
@@ -160,11 +157,20 @@ function Selector<T>(props: SelectorProps<T>) {
               editing && setEditing(false);
               break;
             case "ArrowDown":
-              active !== undefined &&
-                setActive(Math.min(active + 1, valuesRef.current.length - 1));
+              setActive(
+                active === valuesRef.current.length - 1
+                  ? undefined
+                  : Math.min((active ?? -1) + 1, valuesRef.current.length - 1)
+              );
               break;
             case "ArrowUp":
-              active !== undefined && setActive(Math.max(active - 1, 0));
+              setActive(
+                active === undefined
+                  ? valuesRef.current.length - 1
+                  : active === 0
+                  ? undefined
+                  : Math.max(active - 1, 0)
+              );
               break;
           }
         }}

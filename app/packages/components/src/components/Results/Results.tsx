@@ -114,7 +114,7 @@ function Results<T>({
       </div>
       <div className={style.footer}>
         {!results && !!noResults && <>{noResults}</>}
-        {total && results?.length && (
+        {!!total && !!results?.length && (
           <>
             {results.length} of {total.toLocaleString()}
           </>
