@@ -14,6 +14,7 @@ from PIL import Image
 import fiftyone.core.utils as fou
 import fiftyone.core.labels as fol
 import fiftyone.utils.torch as fout
+from fiftyone.core.config import Config
 from fiftyone.core.models import Model
 
 ultralytics = fou.lazy_import("ultralytics")
@@ -291,16 +292,38 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
         )
 
 
+class FiftyOneYOLOConfig(Config):
+    def __init__(self, d):
+        """YOLO model configuration.
+
+        Args:
+            d: a dict which can contain any of the following attributes:
+
+                    -   **model**: the YOLO model
+                    -   **checkpoint_path**: the path to the checkpoint file
+        """
+        self.model = self.parse_raw(d, "model", default=None)
+        self.checkpoint_path = self.parse_string(
+            d, "checkpoint_path", default=None
+        )
+
+
 class FiftyOneYOLOModel(Model):
     """YOLO model wrapper for FiftyOne.
 
     Args:
-        config: a dict which has the `ultralytics.YOLO` model as the value for
-            the key `model`
+        config: a `FiftyOneYOLOConfig` object
     """
 
     def __init__(self, config):
-        self.model = config.get("model", None)
+        self.config = config
+        self.model = self._load_model(config)
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        return FiftyOneYOLOConfig(config.checkpoint_path)
 
     @property
     def media_type(self):
@@ -308,7 +331,7 @@ class FiftyOneYOLOModel(Model):
 
     @property
     def ragged_batches(self):
-        return True
+        return False
 
     @property
     def transforms(self):
@@ -368,17 +391,17 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
 
 
 def _convert_yolo_detection_model(model):
-    config = {"model": model}
+    config = FiftyOneYOLOConfig({"model": model})
     return FiftyOneYOLODetectionModel(config)
 
 
 def _convert_yolo_segmentation_model(model):
-    config = {"model": model}
+    config = FiftyOneYOLOConfig({"model": model})
     return FiftyOneYOLOSegmentationModel(config)
 
 
 def _convert_yolo_pose_model(model):
-    config = {"model": model}
+    config = FiftyOneYOLOConfig({"model": model})
     return FiftyOneYOLOPoseModel(config)
 
 
