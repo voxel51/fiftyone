@@ -306,6 +306,9 @@ class FiftyOneYOLOConfig(Config):
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
+        self.default_batch_size = self.parse_int(
+            d, "default_batch_size", default=32
+        )
 
 
 class FiftyOneYOLOModel(Model):
@@ -341,11 +344,15 @@ class FiftyOneYOLOModel(Model):
     def preprocess(self):
         return False
 
-    def predict(self, args):
-        raise NotImplementedError("Subclass must implement `predict`")
+    def _format_predictions(self, predictions):
+        raise NotImplementedError(
+            "Subclass must implement `_format_predictions`"
+        )
 
-    def predict_all(self, args):
-        return self.predict(args)
+    def predict(self, arg):
+        image = Image.fromarray(arg)
+        predictions = self.model(image, verbose=False)
+        return self._format_predictions(predictions[0])
 
 
 class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
@@ -356,10 +363,13 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
             value for the key `model`
     """
 
-    def predict(self, arg):
-        image = Image.fromarray(arg)
-        predictions = self.model(image, verbose=False)
-        return to_detections(predictions[0])
+    def _format_predictions(self, predictions):
+        return to_detections(predictions)
+
+    def predict_all(self, args):
+        images = [Image.fromarray(arg) for arg in args]
+        predictions = self.model(images, verbose=False)
+        return self._format_predictions(predictions)
 
 
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
@@ -370,10 +380,8 @@ class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
             the value for the key `model`
     """
 
-    def predict(self, arg):
-        image = Image.fromarray(arg)
-        predictions = self.model(image, verbose=False)
-        return to_instances(predictions[0])
+    def _format_predictions(self, predictions):
+        return to_instances(predictions)
 
 
 class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
@@ -384,10 +392,8 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
             for the key `model`
     """
 
-    def predict(self, arg):
-        image = Image.fromarray(arg)
-        predictions = self.model(image, verbose=False)
-        return to_keypoints(predictions[0])
+    def _format_predictions(self, predictions):
+        return to_keypoints(predictions)
 
 
 def _convert_yolo_detection_model(model):
