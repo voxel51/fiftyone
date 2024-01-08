@@ -92,7 +92,7 @@ function Selector<T>(props: SelectorProps<T>) {
     } else {
       setSearch("");
     }
-  }, [editing, value]);
+  }, [editing]);
 
   const onResults = useCallback((results: T[]) => {
     valuesRef.current = results;
