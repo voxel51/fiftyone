@@ -69,7 +69,7 @@ _GRAPHQL_NEEDS_VIEWER = {
     "lightning": lambda v: v["input"]["dataset"],
     "samples": lambda v: v["dataset"],
     "sample": lambda v: v["dataset"],
-    "saved_views": lambda v: v["datasetName"],
+    "saved_views": lambda v: lambda v: v["name"],
     "schema_for_view_stages": lambda v: v["name"],
 }
 
@@ -102,8 +102,11 @@ class IsAuthorized(gqlp.BasePermission):
     message = "Unauthorized request"
 
     async def has_permission(self, _, info: Info, **__) -> bool:
+        # convert camel case field names to snake case
         pattern = re.compile(r"(?<!^)(?=[A-Z])")
         name = pattern.sub("_", info.field_name).lower()
+        print(f"has_permission info.field_name={info.field_name}, name={name}")
+        print(f"info.variable_values={info.variable_values}")
 
         if name in _GRAPHQL_NEEDS_EDITOR:
             dataset_name = _GRAPHQL_NEEDS_EDITOR[name](info.variable_values)
