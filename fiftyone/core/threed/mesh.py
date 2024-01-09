@@ -24,6 +24,12 @@ class ObjMesh(Mesh):
 
         self.mtl_url = mtl_url
 
+    def _to_dict_extra(self):
+        return {
+            "obj_url": self.obj_url,
+            "mtl_url": self.mtl_url,
+        }
+
 
 class GLTFMesh(Mesh):
     def __init__(self, gltf_url: str, *args, **kwargs):
@@ -33,6 +39,9 @@ class GLTFMesh(Mesh):
             raise ValueError("GLTF mesh must be a .gltf file")
 
         self.gltf_url = gltf_url
+
+    def _to_dict_extra(self):
+        return {"gltf_url": self.gltf_url}
 
 
 class PlyMesh(Mesh):
@@ -44,6 +53,9 @@ class PlyMesh(Mesh):
 
         self.ply_url = ply_url
 
+    def _to_dict_extra(self):
+        return {"ply_url": self.ply_url}
+
 
 class StlMesh(Mesh):
     def __init__(self, stl_url: str, *args, **kwargs):
@@ -53,3 +65,6 @@ class StlMesh(Mesh):
             raise ValueError("STL mesh must be a .stl file")
 
         self.stl_url = stl_url
+
+    def _to_dict_extra(self):
+        return {"stl_url": self.stl_url}

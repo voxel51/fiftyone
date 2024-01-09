@@ -4,7 +4,9 @@
 |
 """
 
+from .mesh import *
 from .object_3d import *
+from .pointcloud import *
 from .scene_3d import *
 
 # This enables Sphinx refs to directly use paths imported here

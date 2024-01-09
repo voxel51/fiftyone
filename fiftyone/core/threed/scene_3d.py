@@ -5,6 +5,8 @@ Fiftyone 3D Scene.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import json
+
 from .object_3d import Object3D
 
 
@@ -36,10 +38,10 @@ class Scene(Object3D):
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
 
-        json = super()._to_json()
+        scene = super()._to_dict()
 
         with open(path, "w") as f:
-            f.write(json)
+            json.dump(scene, f)
 
     @staticmethod
     def from_fo3d(path: str):
@@ -48,6 +50,6 @@ class Scene(Object3D):
             raise ValueError("Scene must be loaded from a .fo3d file")
 
         with open(path, "r") as f:
-            json = f.read()
+            dict_data = json.load(f)
 
-        return Scene._from_json(json)
+        return Scene._from_dict(dict_data)

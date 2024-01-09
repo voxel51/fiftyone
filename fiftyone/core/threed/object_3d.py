@@ -6,32 +6,15 @@ Fiftyone 3D Scene.
 |
 """
 import uuid
-from dataclasses import dataclass
+from typing import Literal
 
 import numpy as np
+from pydantic.dataclasses import dataclass
 from scipy.spatial.transform import Rotation
 
+import fiftyone.core.utils as fou
 
-@dataclass(frozen=True)
-class Euler:
-    """Represents a set of rotations about the 3 principal axes."""
-
-    x: float = 0.0
-    y: float = 0.0
-    z: float = 0.0
-
-    degrees: bool = False
-
-    def to_quaternion(self):
-        """Convert euler angles to a quaternion."""
-        q = Rotation.from_euler(
-            "xyz", [self.x, self.y, self.z], degrees=self.degrees
-        )
-        return Quaternion(*q.as_quat())
-
-    def to_arr(self):
-        """Convert the euler angles to a numpy array."""
-        return np.array([self.x, self.y, self.z])
+threed = fou.lazy_import("fiftyone.core.threed")
 
 
 @dataclass(frozen=True)
@@ -48,6 +31,29 @@ class Vector3:
 
 
 @dataclass(frozen=True)
+class Euler:
+    """Represents intrinsic rotations about the object's own principal axes."""
+
+    x: float = 0.0
+    y: float = 0.0
+    z: float = 0.0
+
+    degrees: bool = False
+    sequence: Literal["XYZ", "XZY", "YXZ", "YZX", "ZXY", "ZYX"] = "XYZ"
+
+    def to_quaternion(self):
+        """Convert euler angles to a quaternion."""
+        q = Rotation.from_euler(
+            self.sequence, [self.x, self.y, self.z], degrees=self.degrees
+        )
+        return Quaternion(*q.as_quat())
+
+    def to_arr(self):
+        """Convert the euler angles to a numpy array."""
+        return np.array([self.x, self.y, self.z])
+
+
+@dataclass(frozen=True)
 class Quaternion:
     """Represents a quaternion."""
 
@@ -56,16 +62,10 @@ class Quaternion:
     z: float = 0.0
     w: float = 1.0
 
-    @staticmethod
-    def from_matrix(matrix: np.ndarray):
-        """Convert a rotation matrix to a quaternion."""
-        q = Rotation.from_matrix(matrix)
-        return Quaternion(*q.as_quat())
-
-    def to_euler(self, degrees=False):
+    def to_euler(self, degrees=False, sequence="XYZ"):
         """Convert a quaternion into euler angles."""
         q = Rotation.from_quat([self.x, self.y, self.z, self.w])
-        return Euler(*q.as_euler("XYZ", degrees=degrees))
+        return Euler(*q.as_euler(sequence, degrees=degrees))
 
     def to_arr(self):
         """Convert the quaternion to a numpy array."""
@@ -176,8 +176,10 @@ class Object3D:
 
         # extract rotation
         norm_matrix = value[:3, :3] / self._scale.to_arr()
-        self._quaternion = Quaternion.from_matrix(norm_matrix)
-        self._rotation = self._quaternion.to_euler()
+
+        r = Rotation.from_matrix(norm_matrix)
+        self._quaternion = Quaternion(*r.as_quat())
+        self._rotation = Euler(*r.as_euler("XYZ", degrees=False))
 
     def _update_matrix(self):
         rotation_matrix = Rotation.from_quat(
@@ -220,37 +222,59 @@ class Object3D:
         """Remove all children from this object."""
         self.children = []
 
-    def _to_json(self):
-        """Serializes the object to a JSON representation."""
+    def _to_dict(self):
+        """Converts the object to a dict."""
         data = {
+            "_cls": self.__class__.__name__,
             "name": self.name,
             "visible": self.visible,
             "local_transform_matrix": self.local_transform_matrix.tolist(),
-            "uuid": self.uuid,
-            "children": [child._toFo3d() for child in self.children],
+            "children": [child._to_dict() for child in self.children],
         }
+
+        # add object-specific data
+        data.update(self._to_dict_extra())
 
         return data
 
-    @classmethod
-    def _from_json(cls, json_data: dict):
-        """Deserializes the object from a JSON representation."""
-        if not isinstance(json_data, dict):
+    def _to_dict_extra(self):
+        """Returns the extra data to include in the dict representation."""
+        return {}
+
+    @staticmethod
+    def _from_dict(dict_data: dict):
+        """Creates an Object3D (or its subclass) from a dict."""
+        if not isinstance(dict_data, dict):
             raise ValueError("json_data must be a dictionary")
 
-        obj = cls(
-            name=json_data.get("name", ""),
-            visible=json_data.get("visible", True),
+        cls_name = dict_data.get("_cls", "Object3D")
+        clz = getattr(threed, cls_name, Object3D)
+
+        obj = clz(
+            name=dict_data.get("name", ""),
+            visible=dict_data.get("visible", True),
+            **{
+                k: v
+                for k, v in dict_data.items()
+                if k
+                not in [
+                    "_cls",
+                    "name",
+                    "visible",
+                    "children",
+                    "local_transform_matrix",
+                ]
+            },
         )
 
-        matrix_data = json_data.get(
+        matrix_data = dict_data.get(
             "local_transform_matrix", np.eye(4).tolist()
         )
         obj.local_transform_matrix = np.array(matrix_data)
 
         # recursively handle children
-        for child_json in json_data.get("children", []):
-            child = Object3D._from_json(child_json)
+        for child_json in dict_data.get("children", []):
+            child = Object3D._from_dict(child_json)
             obj.add(child)
 
         return obj
