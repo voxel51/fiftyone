@@ -200,9 +200,11 @@ test.describe("saved views", () => {
 
   test("searching through saved views works", async ({ savedViews }) => {
     await savedViews.saveView(testView1);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearViewBtn().click();
 
     await savedViews.saveView(testView2);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearView();
 
     await savedViews.selector().click();
