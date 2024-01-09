@@ -14,7 +14,7 @@ export class ModalSidebarPom {
   }
 
   getSidebarEntry(key: string) {
-    return this.locator.getByTestId(key);
+    return this.locator.getByTestId(`sidebar-entry-${key}`);
   }
 
   async getSidebarEntryText(key: string) {
@@ -57,9 +57,7 @@ class SidebarAsserter {
   constructor(private readonly modalSidebarPom: ModalSidebarPom) {}
 
   async verifySidebarEntryText(key: string, value: string) {
-    const text = await this.modalSidebarPom.locator
-      .getByTestId(`sidebar-entry-${key}`)
-      .textContent();
+    const text = await this.modalSidebarPom.getSidebarEntryText(key);
     expect(text).toBe(value);
   }
 
