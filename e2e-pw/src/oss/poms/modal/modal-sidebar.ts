@@ -13,8 +13,12 @@ export class ModalSidebarPom {
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
 
+  getSidebarEntry(key: string) {
+    return this.locator.getByTestId(key);
+  }
+
   async getSidebarEntryText(key: string) {
-    return this.locator.getByTestId(key).textContent();
+    return this.getSidebarEntry(key).textContent();
   }
 
   async getSampleTagCount() {
