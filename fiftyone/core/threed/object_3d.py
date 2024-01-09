@@ -5,9 +5,9 @@ Fiftyone 3D Scene.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import uuid
 from dataclasses import dataclass
 
-import uuid
 import numpy as np
 from scipy.spatial.transform import Rotation
 
@@ -62,10 +62,10 @@ class Quaternion:
         q = Rotation.from_matrix(matrix)
         return Quaternion(*q.as_quat())
 
-    def to_euler(self):
+    def to_euler(self, degrees=False):
         """Convert a quaternion into euler angles."""
         q = Rotation.from_quat([self.x, self.y, self.z, self.w])
-        return Euler(*q.as_euler("xyz"))
+        return Euler(*q.as_euler("XYZ", degrees=degrees))
 
     def to_arr(self):
         """Convert the quaternion to a numpy array."""
@@ -75,7 +75,10 @@ class Quaternion:
 class Object3D:
     """The base class for all 3D objects in the scene."""
 
-    def __init__(self):
+    def __init__(self, name="", visible=True):
+        self.name = name
+        self.visible = visible
+
         self._position = Vector3()
         self._rotation = Euler()
         self._quaternion = Quaternion()
@@ -83,8 +86,21 @@ class Object3D:
         self._local_transform_matrix = np.eye(4)
         self._uuid = str(uuid.uuid4())
 
-        self.name = ""
-        self.visible = True
+        self.children = []
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(name="{self.name}", visible={self.visible})'
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __eq__(self, other):
+        return np.array_equal(
+            self.local_transform_matrix, other.local_transform_matrix
+        )
+
+    def __iter__(self):
+        return iter(self.children)
 
     @property
     def uuid(self):
@@ -140,10 +156,14 @@ class Object3D:
 
     @local_transform_matrix.setter
     def local_transform_matrix(self, value: np.ndarray):
+        if isinstance(value, np.ndarray) and value.shape == (4, 4):
+            self._local_transform_matrix = value
+        else:
+            raise ValueError(
+                "local_transform_matrix must be a 4x4 numpy array"
+            )
+
         # decompose and set position, quaternion, and scale
-
-        self._local_transform_matrix = value
-
         # extract position
         self._position = Vector3(*value[:3, 3])
 
@@ -199,3 +219,38 @@ class Object3D:
     def clear(self) -> None:
         """Remove all children from this object."""
         self.children = []
+
+    def _to_json(self):
+        """Serializes the object to a JSON representation."""
+        data = {
+            "name": self.name,
+            "visible": self.visible,
+            "local_transform_matrix": self.local_transform_matrix.tolist(),
+            "uuid": self.uuid,
+            "children": [child._toFo3d() for child in self.children],
+        }
+
+        return data
+
+    @classmethod
+    def _from_json(cls, json_data: dict):
+        """Deserializes the object from a JSON representation."""
+        if not isinstance(json_data, dict):
+            raise ValueError("json_data must be a dictionary")
+
+        obj = cls(
+            name=json_data.get("name", ""),
+            visible=json_data.get("visible", True),
+        )
+
+        matrix_data = json_data.get(
+            "local_transform_matrix", np.eye(4).tolist()
+        )
+        obj.local_transform_matrix = np.array(matrix_data)
+
+        # recursively handle children
+        for child_json in json_data.get("children", []):
+            child = Object3D._from_json(child_json)
+            obj.add(child)
+
+        return obj
