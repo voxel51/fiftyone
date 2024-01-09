@@ -1,11 +1,12 @@
-import { Selection, useTheme } from "@fiftyone/components";
-import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 import {
   COLOR_OPTIONS,
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR,
   DEFAULT_COLOR_OPTION,
-} from "@fiftyone/components/src/components/Selection/SelectionColors";
+  DatasetViewOption,
+  Selection,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";

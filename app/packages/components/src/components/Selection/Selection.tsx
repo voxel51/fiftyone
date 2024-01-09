@@ -1,13 +1,13 @@
 import { IconButton, useTheme } from "@fiftyone/components";
 import { DEFAULT_SELECTED } from "@fiftyone/state";
 import { CloseRounded } from "@mui/icons-material";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
+import { Select, Typography } from "@mui/material";
 import { debounce } from "lodash";
 import React, { useCallback, useState } from "react";
 import SelectionOption, { DatasetViewOption } from "./Option";
 import { SearchBox } from "./SearchBox";
 import { DEFAULT_COLOR_OPTION } from "./SelectionColors";
-import { Select, Typography } from "@mui/material";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import {
   ColoredDot,
   CustomBox,
@@ -156,7 +156,7 @@ export default function Selection(props: SelectionProps) {
                 dataCy={`${selectionId}-${slug || "new"}-selection-option`}
                 key={id || label}
                 item={itemProps}
-                onClick={(e: Event) => {
+                onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
                   setIsOpen(false);

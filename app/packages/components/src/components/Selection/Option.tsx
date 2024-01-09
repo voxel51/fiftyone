@@ -1,8 +1,8 @@
 import React, { MouseEventHandler } from "react";
 
-import { useHover } from "@fiftyone/state";
-import { Edit, Check } from "@mui/icons-material";
 import { IconButton, useTheme } from "@fiftyone/components";
+import { useHover } from "@fiftyone/state";
+import { Check, Edit } from "@mui/icons-material";
 import {
   EditBox,
   RowLabelContainer,
@@ -26,7 +26,7 @@ interface Props {
   readonly?: boolean;
   dataCy?: string;
   onEdit?: (item: DatasetViewOption) => void;
-  onClick?: (e: MouseEventHandler) => void;
+  onClick?: MouseEventHandler;
 }
 
 export default function (props: Props) {
