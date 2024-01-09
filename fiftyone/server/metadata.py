@@ -42,6 +42,7 @@ class MediaType(Enum):
     image = "image"
     group = "group"
     point_cloud = "point-cloud"
+    three_d = "3d"
     video = "video"
 
 
