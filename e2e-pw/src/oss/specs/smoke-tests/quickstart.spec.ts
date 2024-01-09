@@ -34,8 +34,9 @@ test.describe("quickstart", () => {
     // test navigation
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
-    const idEntry = await modal.sidebar.getSidebarEntry("id");
-    idEntry.press(`Ctrl+KeyC`);
+
+    // text copy text
+    await modal.sidebar.getSidebarEntry("id").press(`Ctrl+KeyC`);
     modal.assert.verifySampleNavigation("forward");
   });
 
