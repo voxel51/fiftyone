@@ -135,10 +135,6 @@ def get_view(
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
 
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view)
-
     if filters or extended_stages or pagination_data:
         view = get_extended_view(
             view,
@@ -169,7 +165,12 @@ def get_extended_view(
     label_tags = None
 
     if extended_stages:
+        # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
+
+    if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view)
 
     if filters:
         if "tags" in filters:
