@@ -3,3 +3,9 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
+from .object_3d import *
+from .scene_3d import *
+
+# This enables Sphinx refs to directly use paths imported here
+__all__ = [k for k, v in globals().items() if not k.startswith("_")]

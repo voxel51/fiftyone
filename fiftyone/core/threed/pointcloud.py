@@ -3,8 +3,12 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from object_3d import Object3D
+from .object_3d import Object3D
 
 
 class Pointcloud(Object3D):
-    pass
+    """Represents a point cloud."""
+
+    def __init__(self, pcd_url: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.pcd_url = pcd_url
