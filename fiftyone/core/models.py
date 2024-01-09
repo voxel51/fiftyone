@@ -33,6 +33,7 @@ foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fout = fou.lazy_import("fiftyone.utils.torch")
+foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
 
@@ -67,6 +68,8 @@ def apply_model(
     -   Applying an image :class:`Model` to an image collection
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
+    -   Applying a Hugging Face ``transformers.models`` model to an image
+        collection
     -   Applying an ``ultralytics.YOLO`` model to an image collection
     -   Applying a SuperGradients model to an image collection
     -   Applying a :class:`flash:flash.core.model.Task` to an image or video
@@ -74,8 +77,9 @@ def apply_model(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`, ``ultralytics.YOLO`` model, SuperGradients
-            model, or :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, Hugging Face ``transformers.models`` model,
+            ``ultralytics.YOLO`` model, SuperGradients model, or
+            :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -119,11 +123,7 @@ def apply_model(
             **kwargs,
         )
 
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -284,12 +284,29 @@ def _is_flash_model(model):
     return False
 
 
+def _is_transformers_model(model):
+    return type(model).__module__.startswith("transformers.models.")
+
+
 def _is_ultralytics_model(model):
     return type(model).__module__.startswith("ultralytics.")
 
 
 def _is_super_gradients_models(model):
     return type(model).__module__.startswith("super_gradients.")
+
+
+def _convert_model_if_necessary(model):
+    if _is_transformers_model(model):
+        return foutr.convert_transformers_model(model)
+
+    if _is_ultralytics_model(model):
+        return fouu.convert_ultralytics_model(model)
+
+    if _is_super_gradients_models(model):
+        return fous.convert_super_gradients_model(model)
+
+    return model
 
 
 def _apply_image_model_single(
@@ -790,11 +807,7 @@ def compute_embeddings(
             **kwargs,
         )
 
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -1277,11 +1290,7 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
