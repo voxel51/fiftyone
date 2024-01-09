@@ -69,7 +69,7 @@ _GRAPHQL_NEEDS_VIEWER = {
     "lightning": lambda v: v["input"]["dataset"],
     "samples": lambda v: v["dataset"],
     "sample": lambda v: v["dataset"],
-    "saved_views": lambda v: v.get("datasetName", v.get("name")),
+    "saved_views": lambda v: v.get("name", []),
     "schema_for_view_stages": lambda v: v["name"],
 }
 
