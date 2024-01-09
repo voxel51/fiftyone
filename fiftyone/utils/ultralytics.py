@@ -395,6 +395,11 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
     def _format_predictions(self, predictions):
         return to_keypoints(predictions)
 
+    def predict_all(self, args):
+        images = [Image.fromarray(arg) for arg in args]
+        predictions = self.model(images, verbose=False)
+        return self._format_predictions(predictions)
+
 
 def _convert_yolo_detection_model(model):
     config = FiftyOneYOLOConfig({"model": model})
