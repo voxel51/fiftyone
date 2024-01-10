@@ -280,13 +280,7 @@ def _is_flash_model(model):
 
 
 def _is_ultralytics_model(model):
-    try:
-        # pylint: disable=import-error
-        import ultralytics
-
-        return isinstance(model, ultralytics.YOLO)
-    except:
-        return False
+    return type(model).__module__.startswith("ultralytics.")
 
 
 def _apply_image_model_single(
