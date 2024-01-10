@@ -52,10 +52,8 @@ the following sample dataset:
 Object detection
 ----------------
 
-You can use the builtin
-:func:`to_detections() <fiftyone.utils.ultralytics.to_detections>` utility to
-convert Ultralytics bounding boxes to
-:ref:`FiftyOne format <object-detection>`:
+You can directly pass Ultralytics YOLO detection models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
 .. code-block:: python
     :linenos:
@@ -72,12 +70,22 @@ convert Ultralytics bounding boxes to
     # model = YOLO("yolov5l.pt")
     # model = YOLO("yolov5x.pt")
 
+    dataset.apply_model(model, label_field="boxes")
+
+    session = fo.launch_app(dataset)
+
+Alternatively, you can use the
+:func:`to_detections() <fiftyone.utils.ultralytics.to_detections>` utility to
+manually convert Ultralytics predictions to
+:ref:`FiftyOne format <object-detection>`:
+
+.. code-block:: python
+    :linenos:
+
     for sample in dataset.iter_samples(progress=True):
         result = model(sample.filepath)[0]
         sample["boxes"] = fou.to_detections(result)
         sample.save()
-
-    session = fo.launch_app(dataset)
 
 .. image:: /images/integrations/ultralytics_boxes.jpg
    :alt: ultralytics-boxes
@@ -88,15 +96,8 @@ convert Ultralytics bounding boxes to
 Instance segmentation
 ---------------------
 
-You can use the builtin
-:func:`to_instances() <fiftyone.utils.ultralytics.to_instances>` and
-:func:`to_polylines() <fiftyone.utils.ultralytics.to_polylines>` utilities to
-convert Ultralytics instance segmentations to
-:ref:`FiftyOne format <instance-segmentation>`:
-
-You can use the builtin
-:func:`to_detections() <fiftyone.utils.ultralytics.to_detections>` utility to
-convert YOLO boxes to FiftyOne format:
+You can directly pass Ultralytics YOLO segmentation models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
 .. code-block:: python
     :linenos:
@@ -106,14 +107,25 @@ convert YOLO boxes to FiftyOne format:
     # model = YOLO("yolov8l-seg.pt")
     # model = YOLO("yolov8x-seg.pt")
 
+    dataset.apply_model(model, label_field="instances")
+
+    session = fo.launch_app(dataset)
+
+Alternatively, you can use the
+:func:`to_instances() <fiftyone.utils.ultralytics.to_instances>` and
+:func:`to_polylines() <fiftyone.utils.ultralytics.to_polylines>` utilities to
+manually convert Ultralytics predictions into the desired
+:ref:`FiftyOne format <instance-segmentation>`:
+
+.. code-block:: python
+    :linenos:
+
     for sample in dataset.iter_samples(progress=True):
         result = model(sample.filepath)[0]
         sample["detections"] = fou.to_detections(result)
         sample["instances"] = fou.to_instances(result)
         sample["polylines"] = fou.to_polylines(result)
         sample.save()
-
-    session = fo.launch_app(dataset)
 
 .. image:: /images/integrations/ultralytics_instances.jpg
    :alt: ultralytics-instances
@@ -124,9 +136,8 @@ convert YOLO boxes to FiftyOne format:
 Keypoints
 ---------
 
-You can use the builtin
-:func:`to_keypoints() <fiftyone.utils.ultralytics.to_keypoints>` utility to
-convert Ultralytics keypoints to :ref:`FiftyOne format <keypoints>`:
+You can directly pass Ultralytics YOLO pose models to
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`:
 
 .. code-block:: python
     :linenos:
@@ -136,10 +147,7 @@ convert Ultralytics keypoints to :ref:`FiftyOne format <keypoints>`:
     # model = YOLO("yolov8l-pose.pt")
     # model = YOLO("yolov8x-pose.pt")
 
-    for sample in dataset.iter_samples(progress=True):
-        result = model(sample.filepath)[0]
-        sample["keypoints"] = fou.to_keypoints(result)
-        sample.save()
+    dataset.apply_model(model, label_field="keypoints")
 
     # Store the COCO-pose keypoint skeleton so the App can render it
     dataset.default_skeleton = fo.KeypointSkeleton(
@@ -158,6 +166,18 @@ convert Ultralytics keypoints to :ref:`FiftyOne format <keypoints>`:
 
     session = fo.launch_app(dataset)
 
+Alternatively, you can use the
+:func:`to_keypoints() <fiftyone.utils.ultralytics.to_keypoints>` utility to
+manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
+
+.. code-block:: python
+    :linenos:
+
+    for sample in dataset.iter_samples(progress=True):
+        result = model(sample.filepath)[0]
+        sample["keypoints"] = fou.to_keypoints(result)
+        sample.save()
+
 .. image:: /images/integrations/ultralytics_keypoints.jpg
    :alt: ultralytics-keypoints
    :align: center
@@ -167,20 +187,29 @@ convert Ultralytics keypoints to :ref:`FiftyOne format <keypoints>`:
 Batch inference
 ---------------
 
-Any of the above loops can be executed using batch inference using the pattern
-below:
+When using
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`,
+you can request batch inference by passing the optional `batch_size` parameter:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.apply_model(model, label_field="predictions", batch_size=16)
+
+The manual inference loops can be also executed using batch inference via the
+pattern below:
 
 .. code-block:: python
     :linenos:
 
     from fiftyone.core.utils import iter_batches
 
-    # The inference batch size
-    batch_size = 4
+    filepaths = dataset.values("filepath")
+    batch_size = 16
 
     predictions = []
-    for filepaths in iter_batches(dataset.values("filepath"), batch_size):
-        results = model(filepaths)
+    for paths in iter_batches(filepaths, batch_size):
+        results = model(paths)
         predictions.extend(fou.to_detections(results))
 
     dataset.set_values("predictions", predictions)
@@ -188,7 +217,7 @@ below:
 .. note::
 
     See :ref:`this section <batch-updates>` for more information about
-    performing batch updates to your FiftyOne dataset.
+    performing batch updates to your FiftyOne datasets.
 
 .. _ultralytics-training:
 
