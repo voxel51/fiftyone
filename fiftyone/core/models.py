@@ -118,7 +118,7 @@ def apply_model(
         )
 
     if _is_ultralytics_model(model):
-        model = fouu.convert_model(model)
+        model = fouu.convert_ultralytics_model(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -788,7 +788,7 @@ def compute_embeddings(
         )
 
     if _is_ultralytics_model(model):
-        model = fouu.convert_model(model)
+        model = fouu.convert_ultralytics_model(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -1272,12 +1272,10 @@ def compute_patch_embeddings(
             missing or ``None`` values to indicate uncomputable embeddings
     """
     if _is_ultralytics_model(model):
-        model = fouu.convert_model(model)
+        model = fouu.convert_ultralytics_model(model)
 
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(
