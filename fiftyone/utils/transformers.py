@@ -183,7 +183,7 @@ class TransformersEmbeddingsMixin(EmbeddingsMixin):
         return last_hidden_state
 
     def embed(self, arg):
-        return self._embed(arg)
+        return self._embed(arg)[0]
 
     def embed_all(self, args):
         return self._embed(args)
