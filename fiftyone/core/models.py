@@ -117,19 +117,11 @@ def apply_model(
             **kwargs,
         )
 
-    try:
-        import ultralytics
-
-        if isinstance(model, ultralytics.YOLO):
-            model = fouu.convert_model(model)
-    except ImportError:
-        pass
+    if _is_ultralytics_model(model):
+        model = fouu.convert_model(model)
 
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
@@ -279,15 +271,22 @@ def apply_model(
         )
 
 
-_BASE_FLASH_TYPE = "flash.core.model.Task"
-
-
 def _is_flash_model(model):
     for cls in inspect.getmro(type(model)):
-        if etau.get_class_name(cls) == _BASE_FLASH_TYPE:
+        if etau.get_class_name(cls) == "flash.core.model.Task":
             return True
 
     return False
+
+
+def _is_ultralytics_model(model):
+    try:
+        # pylint: disable=import-error
+        import ultralytics
+
+        return isinstance(model, ultralytics.YOLO)
+    except:
+        return False
 
 
 def _apply_image_model_single(
@@ -725,8 +724,7 @@ def compute_embeddings(
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
-    :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+    model.
 
     This method supports all the following cases:
 
@@ -789,11 +787,11 @@ def compute_embeddings(
             **kwargs,
         )
 
+    if _is_ultralytics_model(model):
+        model = fouu.convert_model(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(
@@ -1207,7 +1205,7 @@ def compute_patch_embeddings(
     skip_failures=True,
 ):
     """Computes embeddings for the image patches defined by ``patches_field``
-    of the samples in the collection using the given :class:`Model`.
+    of the samples in the collection using the given model.
 
     This method supports all the following cases:
 
@@ -1273,6 +1271,9 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
+    if _is_ultralytics_model(model):
+        model = fouu.convert_model(model)
+
     if not isinstance(model, Model):
         raise ValueError(
             "Model must be a %s instance; found %s" % (Model, type(model))

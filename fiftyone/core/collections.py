@@ -2842,8 +2842,7 @@ class SampleCollection(object):
         **kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
-        given :class:`FiftyOne model <fiftyone.core.models.Model>` or
-        :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+        given model.
 
         This method supports all the following cases:
 
@@ -2924,7 +2923,7 @@ class SampleCollection(object):
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
-        :class:`fiftyone.core.models.Model`.
+        model.
 
         This method supports all the following cases:
 
