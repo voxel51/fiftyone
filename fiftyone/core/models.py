@@ -59,22 +59,21 @@ def apply_model(
     rel_dir=None,
     **kwargs,
 ):
-    """Applies the :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
-    in the collection.
+    """Applies the model to the samples in the collection.
 
     This method supports all of the following cases:
 
     -   Applying an image :class:`Model` to an image collection
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
+    -   Applying an ``ultralytics.YOLO`` model to an image collection
     -   Applying a :class:`flash:flash.core.model.Task` to an image or video
         collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task` or
-            `ultralytics.YOLO` model
+        model: a :class:`Model`, ``ultralytics.YOLO`` model, or
+            :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
