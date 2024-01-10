@@ -28,3 +28,7 @@ dist/
 coverage.xml
 .coverage.*
 pyvenv.cfg
+
+.venv
+poetry.lock
+.python-version
