@@ -20,7 +20,7 @@ import fiftyone.core.utils as fou
 ultralytics = fou.lazy_import("ultralytics")
 
 
-def convert_model(model):
+def convert_ultralytics_model(model):
     """Converts the given Ultralytics model into a FiftyOne model.
 
     Args:
