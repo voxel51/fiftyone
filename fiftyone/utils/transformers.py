@@ -174,13 +174,19 @@ class TransformersEmbeddingsMixin(EmbeddingsMixin):
             _dynamic_import, detection_model_name
         )
 
-    def embed(self, arg):
-        inputs = self.image_processor(arg, return_tensors="pt")
+    def _embed(self, args):
+        inputs = self.image_processor(args, return_tensors="pt")
         with torch.no_grad():
             outputs = self.model.base_model(**inputs)
 
-        last_hidden_state = outputs.last_hidden_state[-1][-1].cpu().numpy()
+        last_hidden_state = outputs.last_hidden_state[:, -1, :].cpu().numpy()
         return last_hidden_state
+
+    def embed(self, arg):
+        return self._embed(arg)
+
+    def embed_all(self, args):
+        return self._embed(args)
 
 
 class FiftyOneTransformer(TransformersEmbeddingsMixin, Model):
