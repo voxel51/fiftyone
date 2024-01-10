@@ -11,11 +11,11 @@ import itertools
 import numpy as np
 from PIL import Image
 
-import fiftyone.core.utils as fou
-import fiftyone.core.labels as fol
-import fiftyone.utils.torch as fout
 from fiftyone.core.config import Config
+import fiftyone.core.labels as fol
 from fiftyone.core.models import Model
+import fiftyone.utils.torch as fout
+import fiftyone.core.utils as fou
 
 ultralytics = fou.lazy_import("ultralytics")
 
@@ -119,12 +119,6 @@ def to_instances(results, confidence_thresh=None):
     return batch
 
 
-def _uncenter_boxes(boxes):
-    """convert from center coords to corner coords"""
-    boxes[:, 0] -= boxes[:, 2] / 2.0
-    boxes[:, 1] -= boxes[:, 3] / 2.0
-
-
 def _to_instances(result, confidence_thresh=None):
     if result.masks is None:
         return None
@@ -134,7 +128,9 @@ def _to_instances(result, confidence_thresh=None):
     masks = result.masks.data.detach().cpu().numpy() > 0.5
     confs = result.boxes.conf.detach().cpu().numpy().astype(float)
 
-    _uncenter_boxes(boxes)
+    # convert from center coords to corner coords
+    boxes[:, 0] -= boxes[:, 2] / 2.0
+    boxes[:, 1] -= boxes[:, 3] / 2.0
 
     detections = []
     for cls, box, mask, conf in zip(classes, boxes, masks, confs):
@@ -286,37 +282,6 @@ def _to_keypoints(result, confidence_thresh=None):
     return fol.Keypoints(keypoints=keypoints)
 
 
-class UltralyticsOutputProcessor(fout.OutputProcessor):
-    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
-
-    def __call__(self, result, frame_size, confidence_thresh=None):
-        batch = []
-        for df in result.pandas().xywhn:
-            if confidence_thresh is not None:
-                df = df[df["confidence"] >= confidence_thresh]
-
-            batch.append(self._to_detections(df))
-
-        return batch
-
-    def _to_detections(self, df):
-        return fol.Detections(
-            detections=[
-                fol.Detection(
-                    label=row.name,
-                    bounding_box=[
-                        row.xcenter - 0.5 * row.width,
-                        row.ycenter - 0.5 * row.height,
-                        row.width,
-                        row.height,
-                    ],
-                    confidence=row.confidence,
-                )
-                for row in df.itertuples()
-            ]
-        )
-
-
 class FiftyOneYOLOConfig(Config):
     """Configuration for a :class:`FiftyOneYOLOModel`.
 
@@ -367,7 +332,7 @@ class FiftyOneYOLOModel(Model):
 
     def _format_predictions(self, predictions):
         raise NotImplementedError(
-            "Subclass must implement `_format_predictions`"
+            "Subclass must implement _format_predictions()"
         )
 
     def predict(self, arg):
@@ -377,7 +342,7 @@ class FiftyOneYOLOModel(Model):
 
 
 class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an ``ultralytics.YOLO`` detection model
+    """FiftyOne wrapper around an Ultralytics YOLO detection model.
 
     Args:
         config: a :class:`FiftyOneYOLOConfig`
@@ -393,18 +358,23 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
 
 
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an ``ultralytics.YOLO`` segmentation model.
+    """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
 
     Args:
         config: a :class:`FiftyOneYOLOConfig`
     """
+
+    @property
+    def ragged_batches(self):
+        # These models don't yet support batching due to padding issues
+        return True
 
     def _format_predictions(self, predictions):
         return to_instances(predictions)
 
 
 class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
-    """FiftyOne wrapper around an ``ultralytics.YOLO`` pose model.
+    """FiftyOne wrapper around an Ultralytics YOLO pose model.
 
     Args:
         config: a :class:`FiftyOneYOLOConfig`
@@ -432,3 +402,34 @@ def _convert_yolo_segmentation_model(model):
 def _convert_yolo_pose_model(model):
     config = FiftyOneYOLOConfig({"model": model})
     return FiftyOneYOLOPoseModel(config)
+
+
+class UltralyticsOutputProcessor(fout.OutputProcessor):
+    """Converts Ultralytics PyTorch Hub model outputs to FiftyOne format."""
+
+    def __call__(self, result, frame_size, confidence_thresh=None):
+        batch = []
+        for df in result.pandas().xywhn:
+            if confidence_thresh is not None:
+                df = df[df["confidence"] >= confidence_thresh]
+
+            batch.append(self._to_detections(df))
+
+        return batch
+
+    def _to_detections(self, df):
+        return fol.Detections(
+            detections=[
+                fol.Detection(
+                    label=row.name,
+                    bounding_box=[
+                        row.xcenter - 0.5 * row.width,
+                        row.ycenter - 0.5 * row.height,
+                        row.width,
+                        row.height,
+                    ],
+                    confidence=row.confidence,
+                )
+                for row in df.itertuples()
+            ]
+        )
