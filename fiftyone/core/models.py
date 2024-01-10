@@ -34,7 +34,6 @@ foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
-ultralytics = fou.lazy_import("ultralytics")
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +119,10 @@ def apply_model(
         )
 
     try:
+        import ultralytics
+
         if isinstance(model, ultralytics.YOLO):
-            model = fouu._convert_yolo_model(model)
+            model = fouu.convert_model(model)
     except ImportError:
         pass
 
