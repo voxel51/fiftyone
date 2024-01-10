@@ -24,7 +24,7 @@ def convert_model(model):
     """Converts the given Ultralytics model into a FiftyOne model.
 
     Args:
-        model: an ``ultralytics.YOLO` model
+        model: an ``ultralytics.YOLO`` model
 
     Returns:
          a :class:`fiftyone.core.models.Model`
@@ -312,7 +312,7 @@ class FiftyOneYOLOModel(Model):
         if config.model is not None:
             return config.model
 
-        return FiftyOneYOLOConfig(config.checkpoint_path)
+        return ultralytics.YOLO(config.checkpoint_path)
 
     @property
     def media_type(self):
