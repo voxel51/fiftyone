@@ -10,7 +10,7 @@ import numpy as np
 
 from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model
+from fiftyone.core.models import Model, EmbeddingsMixin
 import fiftyone.core.utils as fou
 
 torch = fou.lazy_import("torch")
@@ -34,6 +34,8 @@ def convert_transformers_model(model):
         return _convert_transformer_for_image_classification(model)
     elif _is_transformer_for_object_detection(model):
         return _convert_transformer_for_object_detection(model)
+    elif _is_transformer_base_model(model):
+        return _convert_transformer_base_model(model)
     else:
         raise ValueError(
             "Unsupported model type; cannot convert %s to a FiftyOne model"
@@ -148,7 +150,40 @@ class FiftyOneTransformerConfig(Config):
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
 
 
-class FiftyOneTransformer(Model):
+class TransformersEmbeddingsMixin(EmbeddingsMixin):
+    """Mixin for Torch models that can generate embeddings.
+
+    Args:
+        model: the Transformers `transformers:models` model
+    """
+
+    @property
+    def has_embeddings(self):
+        smodel = str(type(self.model)).split(".")
+        model_name = smodel[-1][:-2].split("For")[0].replace("Model", "")
+        module_name = "transformers"
+
+        classif_model_name = f"{model_name}ForImageClassification"
+        detection_model_name = f"{model_name}ForObjectDetection"
+
+        _dynamic_import = __import__(
+            module_name, fromlist=[classif_model_name, detection_model_name]
+        )
+
+        return hasattr(_dynamic_import, classif_model_name) or hasattr(
+            _dynamic_import, detection_model_name
+        )
+
+    def embed(self, arg):
+        inputs = self.image_processor(arg, return_tensors="pt")
+        with torch.no_grad():
+            outputs = self.model.base_model(**inputs)
+
+        last_hidden_state = outputs.last_hidden_state[-1][-1].cpu().numpy()
+        return last_hidden_state
+
+
+class FiftyOneTransformer(TransformersEmbeddingsMixin, Model):
     """FiftyOne wrapper around a ``transformers.model`` model.
 
     Args:
@@ -180,7 +215,10 @@ class FiftyOneTransformer(Model):
         return _get_image_processor(self.model)
 
     def _load_model(self, config):
-        raise NotImplementedError("Subclass must implement _load_model()")
+        if config.model is not None:
+            return config.model
+
+        return transformers.AutoModel.from_pretrained(config.name_or_path)
 
     def predict(self, arg):
         raise NotImplementedError("Subclass must implement predict()")
@@ -252,12 +290,26 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         return self._predict(inputs, target_sizes)
 
 
+def _get_model_type_string(model):
+    return str(type(model)).split(".")[-1][:-2]
+
+
 def _is_transformer_for_image_classification(model):
-    return "ForImageClassification" in str(type(model)).split(".")[-1][:-2]
+    return "ForImageClassification" in _get_model_type_string(model)
 
 
 def _is_transformer_for_object_detection(model):
-    return "ForObjectDetection" in str(type(model)).split(".")[-1][:-2]
+    return "ForObjectDetection" in _get_model_type_string(model)
+
+
+def _is_transformer_base_model(model):
+    model_type = _get_model_type_string(model)
+    return "Model" in model_type and "For" not in model_type
+
+
+def _convert_transformer_base_model(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformer(config)
 
 
 def _convert_transformer_for_image_classification(model):
