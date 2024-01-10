@@ -20,6 +20,31 @@ from fiftyone.core.models import Model
 ultralytics = fou.lazy_import("ultralytics")
 
 
+def convert_model(model):
+    """Converts the given Ultralytics model into a FiftyOne model.
+
+    Args:
+        model: an ``ultralytics.YOLO` model
+
+    Returns:
+         a :class:`fiftyone.core.models.Model`
+
+    Raises:
+        ValueError: if the model could not be converted
+    """
+    if isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
+        return _convert_yolo_segmentation_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
+        return _convert_yolo_pose_model(model)
+    elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
+        return _convert_yolo_detection_model(model)
+    else:
+        raise ValueError(
+            "Unsupported model type; cannot convert %s to a FiftyOne model"
+            % model
+        )
+
+
 def to_detections(results, confidence_thresh=None):
     """Converts ``ultralytics.YOLO`` boxes to FiftyOne format.
 
@@ -293,29 +318,25 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
 
 
 class FiftyOneYOLOConfig(Config):
+    """Configuration for a :class:`FiftyOneYOLOModel`.
+
+    Args:
+        model (None): an ``ultralytics.YOLO`` model to use
+        checkpoint_path (None): the path to a checkpoint file to load
+    """
+
     def __init__(self, d):
-        """YOLO model configuration.
-
-        Args:
-            d: a dict which can contain any of the following attributes:
-
-                    -   **model**: the YOLO model
-                    -   **checkpoint_path**: the path to the checkpoint file
-        """
         self.model = self.parse_raw(d, "model", default=None)
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
-        self.default_batch_size = self.parse_int(
-            d, "default_batch_size", default=32
-        )
 
 
 class FiftyOneYOLOModel(Model):
-    """YOLO model wrapper for FiftyOne.
+    """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
 
     Args:
-        config: a `FiftyOneYOLOConfig` object
+        config: a `FiftyOneYOLOConfig`
     """
 
     def __init__(self, config):
@@ -356,11 +377,10 @@ class FiftyOneYOLOModel(Model):
 
 
 class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
-    """YOLO detection model wrapper for FiftyOne.
+    """FiftyOne wrapper around an ``ultralytics.YOLO`` detection model
 
     Args:
-        config: a dict which has the `ultralytics.YOLO` Detection model as the
-            value for the key `model`
+        config: a :class:`FiftyOneYOLOConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -373,11 +393,10 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
 
 
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
-    """YOLO segmentation model wrapper for FiftyOne.
+    """FiftyOne wrapper around an ``ultralytics.YOLO`` segmentation model.
 
     Args:
-        config: a dict which has the `ultralytics.YOLO` Segmentation model as
-            the value for the key `model`
+        config: a :class:`FiftyOneYOLOConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -385,11 +404,10 @@ class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
 
 
 class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
-    """YOLO pose model wrapper for FiftyOne.
+    """FiftyOne wrapper around an ``ultralytics.YOLO`` pose model.
 
     Args:
-        config: a dict which has the `ultralytics.YOLO` Pose model as the value
-            for the key `model`
+        config: a :class:`FiftyOneYOLOConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -414,17 +432,3 @@ def _convert_yolo_segmentation_model(model):
 def _convert_yolo_pose_model(model):
     config = FiftyOneYOLOConfig({"model": model})
     return FiftyOneYOLOPoseModel(config)
-
-
-def _convert_yolo_model(model):
-    if isinstance(model.model, ultralytics.nn.tasks.SegmentationModel):
-        return _convert_yolo_segmentation_model(model)
-    elif isinstance(model.model, ultralytics.nn.tasks.PoseModel):
-        return _convert_yolo_pose_model(model)
-    elif isinstance(model.model, ultralytics.nn.tasks.DetectionModel):
-        return _convert_yolo_detection_model(model)
-    else:
-        raise ValueError(
-            "Unsupported model type. Cannot convert to a FiftyOne,"
-            ":class:`Model`."
-        )
