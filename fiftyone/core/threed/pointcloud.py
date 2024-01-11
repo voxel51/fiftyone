@@ -9,8 +9,8 @@ from .object_3d import Object3D
 class Pointcloud(Object3D):
     """Represents a point cloud."""
 
-    def __init__(self, pcd_url: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, pcd_url: str, **kwargs):
+        super().__init__(name=name, **kwargs)
         self.pcd_url = pcd_url
 
     def _to_dict_extra(self):
