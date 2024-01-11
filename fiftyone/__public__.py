@@ -157,7 +157,14 @@ from .core.runs import (
     RunResults,
 )
 from .core.sample import Sample
-from .core.threed import Object3D, Scene
+from .core.threed import (
+    GLTFMesh,
+    ObjMesh,
+    PlyMesh,
+    Pointcloud,
+    Scene,
+    StlMesh,
+)
 from .core.spaces import (
     Space,
     Panel,

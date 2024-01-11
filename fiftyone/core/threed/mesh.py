@@ -11,8 +11,8 @@ class Mesh(Object3D):
 
 
 class ObjMesh(Mesh):
-    def __init__(self, obj_url: str, mtl_url: str = None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, obj_url: str, mtl_url: str = None, **kwargs):
+        super().__init__(name=name, **kwargs)
 
         if not obj_url.endswith(".obj"):
             raise ValueError("OBJ mesh must be a .obj file")
@@ -32,8 +32,8 @@ class ObjMesh(Mesh):
 
 
 class GLTFMesh(Mesh):
-    def __init__(self, gltf_url: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, gltf_url: str, **kwargs):
+        super().__init__(name=name, **kwargs)
 
         if not gltf_url.endswith(".gltf"):
             raise ValueError("GLTF mesh must be a .gltf file")
@@ -45,8 +45,8 @@ class GLTFMesh(Mesh):
 
 
 class PlyMesh(Mesh):
-    def __init__(self, ply_url: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, ply_url: str, **kwargs):
+        super().__init__(name=name, **kwargs)
 
         if not ply_url.endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
@@ -58,8 +58,8 @@ class PlyMesh(Mesh):
 
 
 class StlMesh(Mesh):
-    def __init__(self, stl_url: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, name: str, stl_url: str, **kwargs):
+        super().__init__(name=name, **kwargs)
 
         if not stl_url.endswith(".stl"):
             raise ValueError("STL mesh must be a .stl file")
