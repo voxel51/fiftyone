@@ -31,6 +31,7 @@ foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
+fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fout = fou.lazy_import("fiftyone.utils.torch")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
@@ -119,6 +120,9 @@ def apply_model(
 
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
+
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -281,6 +285,10 @@ def _is_flash_model(model):
 
 def _is_ultralytics_model(model):
     return type(model).__module__.startswith("ultralytics.")
+
+
+def _is_super_gradients_models(model):
+    return type(model).__module__.startswith("super_gradients.")
 
 
 def _apply_image_model_single(

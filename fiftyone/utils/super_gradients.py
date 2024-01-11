@@ -22,6 +22,48 @@ super_gradients = fou.lazy_import(
 logger = logging.getLogger(__name__)
 
 
+def convert_super_gradients_model(model):
+    """Converts the given super_gradients model into a FiftyOne model.
+
+    Args:
+        model: an ``super_gradients.training.models.detection_models.yolo_nas`` model
+
+    Returns:
+         a :class:`fiftyone.core.models.Model`
+
+    Raises:
+        ValueError: if the model could not be converted
+    """
+    if type(model).__module__.startswith(
+        "super_gradients.training.models.detection_models.yolo_nas"
+    ):
+        return _convert_yolo_nas_detection_model(model)
+    else:
+        raise ValueError(
+            "Unsupported model type; cannot convert %s to a FiftyOne model"
+            % model
+        )
+
+
+def _convert_yolo_nas_detection_model(model):
+    """Converts a YOLO-NAS model from the Super-Gradients library to a FiftyOne compatible format using the TorchYoloNasModel.
+
+    Args:
+        model: An instance of a YOLO-NAS model from the Super-Gradients library.
+
+    Returns:
+        An instance of TorchYoloNasModel configured and ready for use within FiftyOne workflows, preserving the original YOLO-NAS model's characteristics and settings.
+    """
+    config_model = {
+        "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+        "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+        "raw_inputs": True,
+    }
+
+    config = TorchYoloNasModelConfig(config_model)
+    return TorchYoloNasModel(config, preloaded_model=model)
+
+
 class TorchYoloNasModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     """Configuration for running a :class:`TorchYoloNasModel`.
 
@@ -51,8 +93,10 @@ class TorchYoloNasModel(fout.TorchImageModel):
         config: a :class:`TorchYoloNasModelConfig`
     """
 
-    def __init__(self, config):
+    def __init__(self, config, preloaded_model=None):
         super().__init__(config)
+        if preloaded_model is not None:
+            self._model = preloaded_model
 
     def _load_model(self, config):
         """
