@@ -17,7 +17,9 @@
                 "type": "fiftyone.zoo.models.torch.TorchvisionImageModel",
                 "config": {
                     "entrypoint_fcn": "torchvision.models.alexnet.alexnet",
-                    "entrypoint_args": { "weights": "AlexNet_Weights.DEFAULT" },
+                    "entrypoint_args": {
+                        "weights": "AlexNet_Weights.DEFAULT"
+                    },
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "labels_path": "{{eta-resources}}/imagenet-labels-no-background.txt",
                     "image_min_dim": 224,
@@ -29,8 +31,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -70,8 +76,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segmentation", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -99,8 +109,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "segment-anything"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
             "date_added": "2023-05-12 11:40:51"
@@ -128,8 +142,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "segment-anything"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
             "date_added": "2023-05-12 11:40:51"
@@ -157,8 +175,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "segment-anything"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segment-anything", "sa-1b", "torch", "zero-shot"],
             "date_added": "2023-05-12 11:40:51"
@@ -192,8 +214,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segmentation", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -229,8 +255,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -272,8 +302,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -315,8 +349,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -358,8 +396,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -397,8 +439,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -432,8 +478,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segmentation", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -467,8 +517,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["segmentation", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -504,8 +558,12 @@
             },
             "requirements": {
                 "packages": ["scipy", "torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -546,8 +604,12 @@
             },
             "requirements": {
                 "packages": ["scipy", "torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -611,8 +673,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["keypoints", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -643,8 +709,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["instances", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -680,8 +750,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -723,8 +797,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -766,8 +844,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -809,8 +891,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -852,8 +938,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -895,8 +985,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -938,8 +1032,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -981,8 +1079,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1024,8 +1126,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1067,8 +1173,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1106,8 +1216,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision>=0.8.0"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -1143,8 +1257,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1186,8 +1304,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1228,8 +1350,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["classification", "imagenet", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -1264,8 +1390,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["classification", "imagenet", "torch"],
             "date_added": "2020-12-11 13:45:51"
@@ -1301,8 +1431,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1342,8 +1476,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1385,8 +1523,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1426,8 +1568,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1469,8 +1615,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1510,8 +1660,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1553,8 +1707,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1594,8 +1752,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1637,8 +1799,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1680,8 +1846,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1716,8 +1886,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "open_clip_torch"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1728,29 +1902,6 @@
                 "zero-shot"
             ],
             "date_added": "2023-12-13 14:25:51"
-        },
-        {
-            "base_name": "yolo-nas-torch",
-            "base_filename": " ",
-            "version": null,
-            "description": "Yolo-NAS, part of Deci AI's Super-Gradients, is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection.",
-            "source": "https://github.com/Deci-AI/super-gradients",
-            "size_bytes": 353976522,
-            "default_deployment_config_dict": {
-                "type": "fiftyone.utils.yolo_nas.TorchYoloNasModel",
-                "config": {
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "raw_inputs": true
-                }
-            },
-            "requirements": {
-                "packages": ["torch", "torchvision", "super-gradients"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
-            },
-            "tags": ["classification", "torch"],
-            "date_added": "2024-01-06 08:51:14"
         },
         {
             "base_name": "clip-vit-base32-torch",
@@ -1783,8 +1934,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": [
                 "classification",
@@ -1815,8 +1970,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["embeddings", "torch"],
             "date_added": "2023-07-31 10:17:51"
@@ -1840,8 +1999,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["embeddings", "torch"],
             "date_added": "2023-07-31 10:17:51"
@@ -1865,8 +2028,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["embeddings", "torch"],
             "date_added": "2023-07-31 10:17:51"
@@ -1890,8 +2057,12 @@
             },
             "requirements": {
                 "packages": ["torch", "torchvision"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["embeddings", "torch"],
             "date_added": "2023-07-31 10:17:51"
@@ -1916,8 +2087,12 @@
             },
             "requirements": {
                 "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2023-08-22 19:22:51"
@@ -1942,8 +2117,12 @@
             },
             "requirements": {
                 "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2023-08-22 19:22:51"
@@ -1968,8 +2147,12 @@
             },
             "requirements": {
                 "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2023-08-22 19:22:51"
@@ -1994,11 +2177,42 @@
             },
             "requirements": {
                 "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2023-08-22 19:22:51"
+        },
+        {
+            "base_name": "yolo-nas-torch",
+            "base_filename": " ",
+            "version": null,
+            "description": "Yolo-NAS, part of Deci AI's Super-Gradients, is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection.",
+            "source": "https://github.com/Deci-AI/super-gradients",
+            "size_bytes": 353976522,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.yolo_nas.TorchYoloNasModel",
+                "config": {
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "super-gradients"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "torch"],
+            "date_added": "2024-01-06 08:51:14"
         },
         {
             "base_name": "yolov5x-coco-torch",
@@ -2020,8 +2234,12 @@
             },
             "requirements": {
                 "packages": ["torch>=1.7.0", "torchvision>=0.8.1"],
-                "cpu": { "support": true },
-                "gpu": { "support": true }
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
             },
             "tags": ["detection", "coco", "torch"],
             "date_added": "2023-08-22 19:22:51"
