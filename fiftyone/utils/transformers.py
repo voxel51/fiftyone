@@ -159,6 +159,11 @@ class TransformersEmbeddingsMixin(EmbeddingsMixin):
 
     @property
     def has_embeddings(self):
+        """
+        If the model family supports classification or detection tasks,
+        its embeddings from last_hidden_layer are meaningful and properly
+        sized.
+        """
         smodel = str(type(self.model)).split(".")
         model_name = smodel[-1][:-2].split("For")[0].replace("Model", "")
         module_name = "transformers"
