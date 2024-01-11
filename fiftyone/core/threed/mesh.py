@@ -11,60 +11,62 @@ class Mesh(Object3D):
 
 
 class ObjMesh(Mesh):
-    def __init__(self, name: str, obj_url: str, mtl_url: str = None, **kwargs):
+    def __init__(
+        self, name: str, obj_path: str, mtl_path: str = None, **kwargs
+    ):
         super().__init__(name=name, **kwargs)
 
-        if not obj_url.endswith(".obj"):
+        if not obj_path.endswith(".obj"):
             raise ValueError("OBJ mesh must be a .obj file")
 
-        self.obj_url = obj_url
+        self.obj_path = obj_path
 
-        if mtl_url is not None and not mtl_url.endswith(".mtl"):
+        if mtl_path is not None and not mtl_path.endswith(".mtl"):
             raise ValueError("OBJ material must be a .mtl file")
 
-        self.mtl_url = mtl_url
+        self.mtl_path = mtl_path
 
     def _to_dict_extra(self):
         return {
-            "obj_url": self.obj_url,
-            "mtl_url": self.mtl_url,
+            "obj_path": self.obj_path,
+            "mtl_path": self.mtl_path,
         }
 
 
 class GLTFMesh(Mesh):
-    def __init__(self, name: str, gltf_url: str, **kwargs):
+    def __init__(self, name: str, gltf_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not gltf_url.endswith(".gltf"):
+        if not gltf_path.endswith(".gltf"):
             raise ValueError("GLTF mesh must be a .gltf file")
 
-        self.gltf_url = gltf_url
+        self.gltf_path = gltf_path
 
     def _to_dict_extra(self):
-        return {"gltf_url": self.gltf_url}
+        return {"gltf_path": self.gltf_path}
 
 
 class PlyMesh(Mesh):
-    def __init__(self, name: str, ply_url: str, **kwargs):
+    def __init__(self, name: str, ply_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not ply_url.endswith(".ply"):
+        if not ply_path.endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
 
-        self.ply_url = ply_url
+        self.ply_path = ply_path
 
     def _to_dict_extra(self):
-        return {"ply_url": self.ply_url}
+        return {"ply_path": self.ply_path}
 
 
 class StlMesh(Mesh):
-    def __init__(self, name: str, stl_url: str, **kwargs):
+    def __init__(self, name: str, stl_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not stl_url.endswith(".stl"):
+        if not stl_path.endswith(".stl"):
             raise ValueError("STL mesh must be a .stl file")
 
-        self.stl_url = stl_url
+        self.stl_path = stl_path
 
     def _to_dict_extra(self):
-        return {"stl_url": self.stl_url}
+        return {"stl_path": self.stl_path}
