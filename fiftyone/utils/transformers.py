@@ -34,6 +34,8 @@ def convert_transformers_model(model):
         return _convert_transformer_for_image_classification(model)
     elif _is_transformer_for_object_detection(model):
         return _convert_transformer_for_object_detection(model)
+    elif _is_transformer_for_semantic_segmentation(model):
+        return _convert_transformer_for_semantic_segmentation(model)
     elif _is_transformer_base_model(model):
         return _convert_transformer_base_model(model)
     else:
@@ -87,6 +89,18 @@ def to_classification(results, id2label):
             )
             for i in range(logits.shape[0])
         ]
+
+
+def _create_segmentation(mask):
+    return fol.Segmentation(mask=mask)
+
+
+def to_segmentation(results):
+    masks = [r.cpu().numpy() for r in results]
+    if len(results) == 1:
+        return _create_segmentation(masks[0])
+    else:
+        return [_create_segmentation(masks[i]) for i in range(len(masks))]
 
 
 def _convert_bounding_box(box, image_shape):
@@ -301,6 +315,43 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         return self._predict(inputs, target_sizes)
 
 
+class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
+    """FiftyOne wrapper around a ``transformers.model`` for semantic
+    segmentation.
+
+    Args:
+        config: a `FiftyOneTransformerConfig`
+    """
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        return transformers.AutoModelForSemanticSegmentation.from_pretrained(
+            config.name_or_path
+        )
+        self.mask_targets = config.model.id2label
+
+    def _predict(self, inputs, target_sizes):
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        results = self.image_processor.post_process_semantic_segmentation(
+            outputs, target_sizes=target_sizes
+        )
+        return to_segmentation(results)
+
+    def predict(self, arg):
+        target_sizes = [arg.shape[:-1][::-1]]
+        inputs = self.image_processor(arg, return_tensors="pt")
+        return self._predict(inputs, target_sizes)
+
+    def predict_all(self, args):
+        target_sizes = [i.shape[:-1][::-1] for i in args]
+        inputs = self.image_processor(args, return_tensors="pt")
+        return self._predict(inputs, target_sizes)
+
+
 def _get_model_type_string(model):
     return str(type(model)).split(".")[-1][:-2]
 
@@ -311,6 +362,11 @@ def _is_transformer_for_image_classification(model):
 
 def _is_transformer_for_object_detection(model):
     return "ForObjectDetection" in _get_model_type_string(model)
+
+
+def _is_transformer_for_semantic_segmentation(model):
+    ms = _get_model_type_string(model)
+    return "For" in ms and "Segmentation" in ms
 
 
 def _is_transformer_base_model(model):
@@ -331,3 +387,8 @@ def _convert_transformer_for_image_classification(model):
 def _convert_transformer_for_object_detection(model):
     config = FiftyOneTransformerConfig({"model": model})
     return FiftyOneTransformerForObjectDetection(config)
+
+
+def _convert_transformer_for_semantic_segmentation(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformerForSemanticSegmentation(config)
