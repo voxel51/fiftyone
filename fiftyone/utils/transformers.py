@@ -155,7 +155,7 @@ class FiftyOneTransformerConfig(Config):
     """Configuration for a :class:`FiftyOneTransformer`.
 
     Args:
-        model (None): a ``transformers.model`` model
+        model (None): a ``transformers.models`` model
         name_or_path (None): the name or path to a checkpoint file to load
     """
 
@@ -164,20 +164,13 @@ class FiftyOneTransformerConfig(Config):
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
 
 
-class TransformersEmbeddingsMixin(EmbeddingsMixin):
-    """Mixin for Torch models that can generate embeddings.
-
-    Args:
-        model: the Transformers `transformers:models` model
-    """
+class TransformerEmbeddingsMixin(EmbeddingsMixin):
+    """Mixin for Transformers that can generate embeddings."""
 
     @property
     def has_embeddings(self):
-        """
-        If the model family supports classification or detection tasks,
-        its embeddings from last_hidden_layer are meaningful and properly
-        sized.
-        """
+        # If the model family supports classification or detection tasks, its
+        # embeddings from last_hidden_layer are meaningful and properly sized
         smodel = str(type(self.model)).split(".")
         model_name = smodel[-1][:-2].split("For")[0].replace("Model", "")
         module_name = "transformers"
@@ -208,8 +201,8 @@ class TransformersEmbeddingsMixin(EmbeddingsMixin):
         return self._embed(args)
 
 
-class FiftyOneTransformer(TransformersEmbeddingsMixin, Model):
-    """FiftyOne wrapper around a ``transformers.model`` model.
+class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
+    """FiftyOne wrapper around a ``transformers.models`` model.
 
     Args:
         config: a `FiftyOneTransformerConfig`
@@ -250,7 +243,7 @@ class FiftyOneTransformer(TransformersEmbeddingsMixin, Model):
 
 
 class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.model`` for image
+    """FiftyOne wrapper around a ``transformers.models`` model for image
     classification.
 
     Args:
@@ -280,7 +273,8 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
 
 
 class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.model`` for object detection.
+    """FiftyOne wrapper around a ``transformers.models`` model for object
+    detection.
 
     Args:
         config: a `FiftyOneTransformerConfig`
@@ -316,7 +310,7 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
 
 
 class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.model`` for semantic
+    """FiftyOne wrapper around a ``transformers.models`` model for semantic
     segmentation.
 
     Args:

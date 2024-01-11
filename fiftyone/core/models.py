@@ -65,21 +65,14 @@ def apply_model(
 
     This method supports all of the following cases:
 
-    -   Applying an image :class:`Model` to an image collection
-    -   Applying an image :class:`Model` to the frames of a video collection
-    -   Applying a video :class:`Model` to a video collection
-    -   Applying a Hugging Face ``transformers.models`` model to an image
-        collection
-    -   Applying an ``ultralytics.YOLO`` model to an image collection
-    -   Applying a SuperGradients model to an image collection
-    -   Applying a :class:`flash:flash.core.model.Task` to an image or video
-        collection
+    -   Applying an image model to an image collection
+    -   Applying an image model to the frames of a video collection
+    -   Applying a video model to a video collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`, Hugging Face ``transformers.models`` model,
-            ``ultralytics.YOLO`` model, SuperGradients model, or
-            :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -748,24 +741,20 @@ def compute_embeddings(
 
     This method supports all the following cases:
 
-    -   Using an image :class:`Model` to compute embeddings for an image
-        collection
-    -   Using an image :class:`Model` to compute frame embeddings for a video
-        collection
-    -   Using a video :class:`Model` to compute embeddings for a video
-        collection
-    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
-        embeddings for an image collection
+    -   Using an image model to compute embeddings for an image collection
+    -   Using an image model to compute frame embeddings for a video collection
+    -   Using a video model to compute embeddings for a video collection
 
-    When using a :class:`FiftyOne model <Model>`, the model must expose
-    embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
+    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
+    must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task>`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -1241,7 +1230,8 @@ def compute_patch_embeddings(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         patches_field: the name of the field defining the image patches in each
             sample to embed. Must be of type
             :class:`fiftyone.core.labels.Detection`,
