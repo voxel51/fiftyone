@@ -33,6 +33,8 @@ foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
 fous = fou.lazy_import("fiftyone.utils.super_gradients")
+fouu = fou.lazy_import("fiftyone.utils.ultralytics")
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,21 +60,21 @@ def apply_model(
     rel_dir=None,
     **kwargs,
 ):
-    """Applies the :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
-    in the collection.
+    """Applies the model to the samples in the collection.
 
     This method supports all of the following cases:
 
     -   Applying an image :class:`Model` to an image collection
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
+    -   Applying an ``ultralytics.YOLO`` model to an image collection
     -   Applying a :class:`flash:flash.core.model.Task` to an image or video
         collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, ``ultralytics.YOLO`` model, or
+            :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -118,12 +120,12 @@ def apply_model(
 
     if _is_super_gradients_models(model):
         model = fous.convert_super_gradients_model(model)
+        
+    if _is_ultralytics_model(model):
+        model = fouu.convert_ultralytics_model(model)
 
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
@@ -273,20 +275,18 @@ def apply_model(
         )
 
 
-_BASE_FLASH_TYPE = "flash.core.model.Task"
-
-
 def _is_flash_model(model):
     for cls in inspect.getmro(type(model)):
-        if etau.get_class_name(cls) == _BASE_FLASH_TYPE:
+        if etau.get_class_name(cls) == "flash.core.model.Task":
             return True
 
     return False
 
-
 def _is_super_gradients_models(model):
     return type(model).__module__.startswith("super_gradients.")
 
+def _is_ultralytics_model(model):
+    return type(model).__module__.startswith("ultralytics.")
 
 def _apply_image_model_single(
     samples,
@@ -723,8 +723,7 @@ def compute_embeddings(
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
-    :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+    model.
 
     This method supports all the following cases:
 
@@ -787,11 +786,11 @@ def compute_embeddings(
             **kwargs,
         )
 
+    if _is_ultralytics_model(model):
+        model = fouu.convert_ultralytics_model(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(
@@ -1205,7 +1204,7 @@ def compute_patch_embeddings(
     skip_failures=True,
 ):
     """Computes embeddings for the image patches defined by ``patches_field``
-    of the samples in the collection using the given :class:`Model`.
+    of the samples in the collection using the given model.
 
     This method supports all the following cases:
 
@@ -1271,10 +1270,11 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
+    if _is_ultralytics_model(model):
+        model = fouu.convert_ultralytics_model(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(

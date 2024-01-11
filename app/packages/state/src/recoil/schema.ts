@@ -7,6 +7,7 @@ import {
 import {
   DETECTION,
   DETECTIONS,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
   Field,
   LABELS,
@@ -693,7 +694,9 @@ export const isInListField = selectorFamily({
 
       return (
         parent?.ftype === LIST_FIELD &&
-        parent?.subfield === EMBEDDED_DOCUMENT_FIELD
+        [EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD].includes(
+          parent.subfield
+        )
       );
     },
 });
