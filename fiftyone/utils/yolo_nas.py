@@ -99,7 +99,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
         bboxes[:, 1] = 1 - (bboxes[:, 1] + bboxes[:, 3])
         return bboxes
 
-    def _generate_detections(self, p, width, height):
+    def _generate_detections(self, p):
         """
         Generates FiftyOne detection objects from the model's predictions.
 
@@ -113,11 +113,13 @@ class TorchYoloNasModel(fout.TorchImageModel):
         """
         class_names = p.class_names
         dp = p.prediction
+        img = p.image
         bboxes, confs, labels = (
             np.array(dp.bboxes_xyxy),
             dp.confidence,
             dp.labels.astype(int),
         )
+        height, width, _ = img.shape
         if 0 in bboxes.shape:
             return fo.Detections(detections=[])
 
@@ -134,16 +136,14 @@ class TorchYoloNasModel(fout.TorchImageModel):
         Performs batch prediction on a set of images and generates FiftyOne detection objects.
 
         Args:
-            imgs (torch.Tensor): A batch of images.
+            imgs (PIL.images): A batch of images.
 
         Returns:
             List[fo.Detections]: A list of FiftyOne Detections objects for each image in the batch.
         """
-        height, width = imgs.size()[-2:]
+
         preds = self._model.predict(
             imgs, conf=self.config.confidence_thresh
         )._images_prediction_lst
-        dets = [
-            self._generate_detections(pred, width, height) for pred in preds
-        ]
+        dets = [self._generate_detections(pred) for pred in preds]
         return dets
