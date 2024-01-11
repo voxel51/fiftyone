@@ -1739,11 +1739,9 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.yolo_nas.TorchYoloNasModel",
                 "config": {
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
+                    "raw_inputs": true
                 }
             },
             "requirements": {
