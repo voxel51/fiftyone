@@ -58,10 +58,11 @@ def _convert_yolo_nas_detection_model(model):
         "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
         "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
         "raw_inputs": True,
+        "model": model,
     }
 
     config = TorchYoloNasModelConfig(config_model)
-    return TorchYoloNasModel(config, preloaded_model=model)
+    return TorchYoloNasModel(config)
 
 
 class TorchYoloNasModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
@@ -82,6 +83,7 @@ class TorchYoloNasModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.yolo_nas_model = self.parse_string(
             d, "yolo_nas_model", default="yolo_nas_l"
         )
+        self.model = self.parse_raw(d, "model", default=None)
         self.pretrained = self.parse_string(d, "pretrained", default="coco")
 
 
@@ -93,10 +95,8 @@ class TorchYoloNasModel(fout.TorchImageModel):
         config: a :class:`TorchYoloNasModelConfig`
     """
 
-    def __init__(self, config, preloaded_model=None):
+    def __init__(self, config):
         super().__init__(config)
-        if preloaded_model is not None:
-            self._model = preloaded_model
 
     def _load_model(self, config):
         """
@@ -108,14 +108,17 @@ class TorchYoloNasModel(fout.TorchImageModel):
         Returns:
             The loaded Yolo-nas model.
         """
-        if self._using_gpu:
-            self._model = super_gradients.training.models.get(
-                config.yolo_nas_model, pretrained_weights=config.pretrained
-            ).cuda()
+        if config.model is not None:
+            self._model = config.model
         else:
-            self._model = super_gradients.training.models.get(
-                config.yolo_nas_model, pretrained_weights=config.pretrained
-            )
+            if self._using_gpu:
+                self._model = super_gradients.training.models.get(
+                    config.yolo_nas_model, pretrained_weights=config.pretrained
+                ).cuda()
+            else:
+                self._model = super_gradients.training.models.get(
+                    config.yolo_nas_model, pretrained_weights=config.pretrained
+                )
 
         return self._model
 
