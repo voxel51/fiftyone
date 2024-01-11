@@ -2195,7 +2195,7 @@
             "source": "https://github.com/Deci-AI/super-gradients",
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
-                "type": "fiftyone.utils.yolo_nas.TorchYoloNasModel",
+                "type": "fiftyone.utils.super_gradients.TorchYoloNasModel",
                 "config": {
                     "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",

@@ -32,7 +32,7 @@ fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
-
+fous = fou.lazy_import("fiftyone.utils.super_gradients")
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,9 @@ def apply_model(
             rel_dir=rel_dir,
             **kwargs,
         )
+
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
 
     if not isinstance(model, Model):
         raise ValueError(
@@ -279,6 +282,10 @@ def _is_flash_model(model):
             return True
 
     return False
+
+
+def _is_super_gradients_models(model):
+    return type(model).__module__.startswith("super_gradients.")
 
 
 def _apply_image_model_single(
