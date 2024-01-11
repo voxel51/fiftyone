@@ -64,9 +64,15 @@ class TorchYoloNasModel(fout.TorchImageModel):
         Returns:
             The loaded Yolo-nas model.
         """
-        self._model = super_gradients.training.models.get(
-            config.yolo_nas_model, pretrained_weights=config.pretrained
-        )
+        if self._using_gpu:
+            self._model = super_gradients.training.models.get(
+                config.yolo_nas_model, pretrained_weights=config.pretrained
+            ).cuda()
+        else:
+            self._model = super_gradients.training.models.get(
+                config.yolo_nas_model, pretrained_weights=config.pretrained
+            )
+
         return self._model
 
     def _convert_bboxes(self, bboxes, w, h):
