@@ -7,7 +7,6 @@ YOLO-NAS model wrapper for the FiftyOne Model Zoo.
 """
 import logging
 import fiftyone as fo
-import fiftyone.core.models as fom
 import fiftyone.core.utils as fou
 import fiftyone.utils.torch as fout
 import fiftyone.zoo.models as fozm
@@ -56,12 +55,32 @@ class TorchYoloNasModel(fout.TorchImageModel):
         super().__init__(config)
 
     def _load_model(self, config):
+        """
+        Loads the Yolo-nas model based on the provided configuration.
+
+        Args:
+            config (TorchYoloNasModelConfig): Configuration for the Yolo-nas model.
+
+        Returns:
+            The loaded Yolo-nas model.
+        """
         self._model = super_gradients.training.models.get(
             config.yolo_nas_model, pretrained_weights=config.pretrained
         )
         return self._model
 
     def _convert_bboxes(self, bboxes, w, h):
+        """
+        Converts bounding boxes from YOLO format (xyxy) to COCO format (normalized xywh).
+
+        Args:
+            bboxes (numpy.ndarray): Bounding boxes in YOLO format.
+            w (int): Width of the image.
+            h (int): Height of the image.
+
+        Returns:
+            numpy.ndarray: Bounding boxes in COCO format.
+        """
         tmp = np.copy(bboxes[:, 1])
         bboxes[:, 1] = h - bboxes[:, 3]
         bboxes[:, 3] = h - tmp
@@ -74,34 +93,51 @@ class TorchYoloNasModel(fout.TorchImageModel):
         bboxes[:, 1] = 1 - (bboxes[:, 1] + bboxes[:, 3])
         return bboxes
 
-    def _predict_all(self, imgs):
-        height, width = imgs.size()[-2:]
-        frame_size = (width, height)
+    def _generate_detections(self, p, width, height):
+        """
+        Generates FiftyOne detection objects from the model's predictions.
 
-        if self._using_gpu:
-            imgs = imgs.cuda()
+        Args:
+            p (Prediction): The prediction output from the model.
+            width (int): Width of the original image.
+            height (int): Height of the original image.
 
-        with torch.no_grad(), torch.cuda.amp.autocast():
-            pred = self._model.predict(
-                imgs, conf=self.config.confidence_thresh
-            )[0]
-            self._class_names = pred.class_names
-            dp = pred.prediction
-
-            bboxes, confs, labels = (
-                np.array(dp.bboxes_xyxy),
-                dp.confidence,
-                dp.labels.astype(int),
-            )
-
-            if 0 in bboxes.shape:
-                return fo.Detections(detections=[])
-
-            bboxes = self._convert_bboxes(bboxes, width, height)
-            labels = [self._class_names[l] for l in labels]
-
-            print(labels)
-
-        return fo.Detection(
-            label=labels, confidence=confs, bounding_box=bboxes
+        Returns:
+            fo.Detections: A FiftyOne Detections object containing the formatted detections.
+        """
+        class_names = p.class_names
+        dp = p.prediction
+        bboxes, confs, labels = (
+            np.array(dp.bboxes_xyxy),
+            dp.confidence,
+            dp.labels.astype(int),
         )
+        if 0 in bboxes.shape:
+            return fo.Detections(detections=[])
+
+        bboxes = self._convert_bboxes(bboxes, width, height)
+        labels = [class_names[l] for l in labels]
+        detections = [
+            fo.Detection(label=l, confidence=c, bounding_box=b)
+            for (l, c, b) in zip(labels, confs, bboxes)
+        ]
+        return fo.Detections(detections=detections)
+
+    def _predict_all(self, imgs):
+        """
+        Performs batch prediction on a set of images and generates FiftyOne detection objects.
+
+        Args:
+            imgs (torch.Tensor): A batch of images.
+
+        Returns:
+            List[fo.Detections]: A list of FiftyOne Detections objects for each image in the batch.
+        """
+        height, width = imgs.size()[-2:]
+        preds = self._model.predict(
+            imgs, conf=self.config.confidence_thresh
+        )._images_prediction_lst
+        dets = [
+            self._generate_detections(pred, width, height) for pred in preds
+        ]
+        return dets
