@@ -318,13 +318,14 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
     """
 
     def _load_model(self, config):
+        self.mask_targets = config.model.id2label
+
         if config.model is not None:
             return config.model
 
         return transformers.AutoModelForSemanticSegmentation.from_pretrained(
             config.name_or_path
         )
-        self.mask_targets = config.model.id2label
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
