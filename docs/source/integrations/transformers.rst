@@ -460,10 +460,11 @@ instance can be used to generate embeddings:
     image_embedding = model(np.array(image))
 
 
+
 .. _transformers-batch-embeddings:
 
 Batch Embeddings
-================
+----------------
 
 When using
 :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
@@ -473,6 +474,7 @@ you can request batch inference by passing the optional `batch_size` parameter:
     :linenos:
 
     dataset.compute_embeddings(model, embeddings_field="embeddings", batch_size=16)
+
 
 
 .. _transformers-patch-embeddings:
@@ -502,4 +504,151 @@ method:
     dataset.compute_patch_embeddings(model, embeddings_field="embeddings")
 
 
+.. _transformers-brain-runs:
+
+Brain Runs
+__________
+
+Because `transformers` models can be used to compute embeddings for images,
+they can be used to run brain methods on your FiftyOne datasets like 
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`.
+
+The examples below show how to run brain methods on the sample dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+    import fiftyone.utils.transformers as fout
+
+    # Load an example dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+
+    from transformers import BeitModel
+    transformers_model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
+    )
+
+    # Option 1: Compute embeddings from a `transformers` model and create
+    #  brain runs from the embeddings
+
+    dataset.compute_embeddings(transformers_model, embeddings_field="embeddings")
+
+    # Compute similarity
+    fob.compute_similarity(dataset, embeddings="embeddings", brain_key="sim1")
+
+    # Compute visualization
+    fob.compute_visualization(dataset, embeddings="embeddings", brain_key="vis1")
+
+    # Option 2: Create brain runs from a `transformers` model directly
+
+    # Compute similarity
+    # fob.compute_similarity(dataset, model=transformers_model, brain_key="sim2")
+
+    # Compute visualization
+    # fob.compute_visualization(dataset, model=transformers_model, brain_key="vis2")
+
+    # Option 3: Convert a `transformers` model to a `FiftyOneTransformer` and
+    #  create brain runs from the converted model
+
+    # model = fout.convert_transformers_model(transformers_model)
+
+    # Compute similarity
+    # fob.compute_similarity(dataset, model=model, brain_key="sim3")
+
+    # Compute visualization
+    # fob.compute_visualization(dataset, model=model, brain_key="vis3")
+
+    session = fo.launch_app(dataset)
+
+
+The same approaches can be used to run brain methods on image patches:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+    import fiftyone.utils.transformers as fout
+
+    # Load an example dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+
+    from transformers import BeitModel
+    transformers_model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
+    )
+
+    patches_field = "ground_truth"
+    embeddings_field = "gt_embeddings"
+
+    # Option 1: Compute embeddings from a `transformers` model and create
+    #  brain runs from the embeddings
+
+    dataset.compute_patch_embeddings(
+        transformers_model, 
+        patches_field,
+        embeddings_field=embeddings_field
+    )
+
+    # Compute similarity
+    fob.compute_similarity(
+        dataset, 
+        patches_field=patches_field,
+        embeddings=embeddings_field, 
+        brain_key="gt_sim1"
+    )
+
+    # Compute visualization
+    fob.compute_visualization(
+        dataset, 
+        patches_field=patches_field,
+        embeddings="embeddings", 
+        brain_key="gt_vis1"
+    )
+
+    # Option 2: Create brain runs from a `transformers` model directly
+
+    # Compute similarity
+    # fob.compute_similarity(
+    #     dataset,
+    #     patches_field=patches_field,
+    #     model=transformers_model,
+    #     brain_key="gt_sim2"
+    # )
+
+    # Compute visualization
+    # fob.compute_visualization(
+    #     dataset,
+    #     patches_field=patches_field,
+    #     model=transformers_model,
+    #     brain_key="gt_vis2"
+    # )
+
+    # Option 3: Convert a `transformers` model to a `FiftyOneTransformer` and
+    #  create brain runs from the converted model
+
+    # model = fout.convert_transformers_model(transformers_model)
+
+    # Compute similarity
+    # fob.compute_similarity(
+    #     dataset,
+    #     patches_field=patches_field,
+    #     model=model,
+    #     brain_key="gt_sim3"
+    # )
+
+    # Compute visualization
+    # fob.compute_visualization(
+    #     dataset,
+    #     patches_field=patches_field,
+    #     model=model,
+    #     brain_key="gt_vis3"
+    # )
+
+    session = fo.launch_app(dataset)
 
