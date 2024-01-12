@@ -655,21 +655,19 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
 .. _teams-annotating-cloud-media-v7:
 
 Annotating cloud-backed datasets with V7 Darwin
-__________________________________________
+_______________________________________________
 
 
-When using FiftyOne to
-:ref:`annotate data with V7 Darwin <v7-integration>`,
+When using FiftyOne to :ref:`annotate data with V7 Darwin <v7-integration>`,
 you can optionally follow the instructions below to instruct V7 to load media
-directly from S3, GCS, or Azure buckets rather
-than the default behavior of uploading copies of the media from your local machine.
+directly from S3, GCS, or Azure buckets rather than the default behavior of
+uploading copies of the media from your local machine.
 
 First, follow
 `these instructions <https://docs.v7labs.com/docs/external-storage-configuration>`_
-to configure external storage for V7. Then, simply provide the
-`external_storage` parameter to
-:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
-specify the sluggified external storage name:
+to configure external storage for V7. Then, simply provide the `external_storage`
+parameter to :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`
+and specify the sluggified external storage name:
 
 .. code-block:: python
     :linenos:
@@ -684,7 +682,6 @@ specify the sluggified external storage name:
     )
 
 .. _teams-annotating-cloud-media-labelbox:
-
 
 Annotating cloud-backed datasets with Labelbox
 ______________________________________________
