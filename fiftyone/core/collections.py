@@ -2781,12 +2781,14 @@ class SampleCollection(object):
         -   Applying a video :class:`fiftyone.core.models.Model` to a video
             collection
         -   Applying an ``ultralytics.YOLO`` model to an image collection
+        -   Applying a SuperGradients model to an image collection
         -   Applying a :class:`flash:flash.core.model.Task` to an image or
             video collection
 
         Args:
             model: a :class:`fiftyone.core.models.Model`, ``ultralytics.YOLO``
-                model, or :class:`flash:flash.core.model.Task`
+                model, SuperGradients model, or
+                :class:`flash:flash.core.model.Task`
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional

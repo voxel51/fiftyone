@@ -31,8 +31,8 @@ foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
-fout = fou.lazy_import("fiftyone.utils.torch")
 fous = fou.lazy_import("fiftyone.utils.super_gradients")
+fout = fou.lazy_import("fiftyone.utils.torch")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
 
@@ -68,13 +68,14 @@ def apply_model(
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
     -   Applying an ``ultralytics.YOLO`` model to an image collection
+    -   Applying a SuperGradients model to an image collection
     -   Applying a :class:`flash:flash.core.model.Task` to an image or video
         collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`, ``ultralytics.YOLO`` model, or
-            :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, ``ultralytics.YOLO`` model, SuperGradients
+            model, or :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -120,7 +121,7 @@ def apply_model(
 
     if _is_super_gradients_models(model):
         model = fous.convert_super_gradients_model(model)
-        
+
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
@@ -282,11 +283,14 @@ def _is_flash_model(model):
 
     return False
 
-def _is_super_gradients_models(model):
-    return type(model).__module__.startswith("super_gradients.")
 
 def _is_ultralytics_model(model):
     return type(model).__module__.startswith("ultralytics.")
+
+
+def _is_super_gradients_models(model):
+    return type(model).__module__.startswith("super_gradients.")
+
 
 def _apply_image_model_single(
     samples,
@@ -786,6 +790,9 @@ def compute_embeddings(
             **kwargs,
         )
 
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
+
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
@@ -1270,6 +1277,9 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
+
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
