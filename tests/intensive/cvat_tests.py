@@ -1654,10 +1654,10 @@ class CVATCloudTests(unittest.TestCase):
         self.minio_root_dir = None
         self.minio_manifest = None
 
-        if fos.minio_endpoint_prefix is not None:
+        if fos.minio_prefixes is not None and fos.minio_prefixes:
             # Spin up default local MinIO server and load in quickstart data
-            self.minio_root_dir = fos.minio_endpoint_prefix + data_root
-            self.minio_manifest = fos.minio_endpoint_prefix + manifest
+            self.minio_root_dir = fos.minio_prefixes[0][0] + data_root
+            self.minio_manifest = fos.minio_prefixes[0][0] + manifest
 
     def _test_cloud(self, root_dir, cloud_manifest):
         dataset = foz.load_zoo_dataset("quickstart", max_samples=1).clone()
