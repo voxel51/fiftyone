@@ -1864,7 +1864,7 @@
         },
         {
             "base_name": "open-clip-torch",
-            "base_filename": "",
+            "base_filename": null,
             "version": null,
             "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/mlfoundations/open_clip",
@@ -2189,9 +2189,9 @@
         },
         {
             "base_name": "yolo-nas-torch",
-            "base_filename": " ",
+            "base_filename": null,
             "version": null,
-            "description": "Yolo-NAS, part of Deci AI's Super-Gradients, is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection.",
+            "description": "YOLO-NAS is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection",
             "source": "https://github.com/Deci-AI/super-gradients",
             "size_bytes": 353976522,
             "default_deployment_config_dict": {

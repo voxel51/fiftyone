@@ -1,5 +1,6 @@
 """
-YOLO-NAS model wrapper for the FiftyOne Model Zoo.
+Utilities for working with
+`SuperGradients <https://github.com/Deci-AI/super-gradients>`_.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
@@ -19,14 +20,16 @@ super_gradients = fou.lazy_import(
     "super_gradients", callback=lambda: fou.ensure_package("super-gradients")
 )
 
+
 logger = logging.getLogger(__name__)
 
 
 def convert_super_gradients_model(model):
-    """Converts the given super_gradients model into a FiftyOne model.
+    """Converts the given SuperGradients model into a FiftyOne model.
 
     Args:
-        model: an ``super_gradients.training.models.detection_models.yolo_nas`` model
+        model: a ``super_gradients.training.models.detection_models.yolo_nas``
+            model
 
     Returns:
          a :class:`fiftyone.core.models.Model`
@@ -46,19 +49,11 @@ def convert_super_gradients_model(model):
 
 
 def _convert_yolo_nas_detection_model(model):
-    """Converts a YOLO-NAS model from the Super-Gradients library to a FiftyOne compatible format using the TorchYoloNasModel.
-
-    Args:
-        model: An instance of a YOLO-NAS model from the Super-Gradients library.
-
-    Returns:
-        An instance of TorchYoloNasModel configured and ready for use within FiftyOne workflows, preserving the original YOLO-NAS model's characteristics and settings.
-    """
     config_model = {
+        "model": model,
         "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
         "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
         "raw_inputs": True,
-        "model": model,
     }
 
     config = TorchYoloNasModelConfig(config_model)
@@ -72,7 +67,10 @@ class TorchYoloNasModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
     arguments.
 
     Args:
-        yolo_nas_model ("yolo_nas_l"): the Yolo-nas model to use
+        model (None): a preloaded
+            ``super_gradients.training.models.detection_models.yolo_nas`` model
+            to use
+        yolo_nas_model ("yolo_nas_l"): the name of a YOLO-NAS model to use
         pretrained ("coco"): the pretrained version to use
     """
 
@@ -80,34 +78,22 @@ class TorchYoloNasModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         d = self.init(d)
         super().__init__(d)
 
+        self.model = self.parse_raw(d, "model", default=None)
         self.yolo_nas_model = self.parse_string(
             d, "yolo_nas_model", default="yolo_nas_l"
         )
-        self.model = self.parse_raw(d, "model", default=None)
         self.pretrained = self.parse_string(d, "pretrained", default="coco")
 
 
 class TorchYoloNasModel(fout.TorchImageModel):
-    """Torch implementation of Yolo-nas from
-    https://github.com/Deci-AI/super-gradients
+    """FiftyOne wrapper around YOLO-NAS from
+    https://github.com/Deci-AI/super-gradients.
 
     Args:
         config: a :class:`TorchYoloNasModelConfig`
     """
 
-    def __init__(self, config):
-        super().__init__(config)
-
     def _load_model(self, config):
-        """
-        Loads the Yolo-nas model based on the provided configuration.
-
-        Args:
-            config (TorchYoloNasModelConfig): Configuration for the Yolo-nas model.
-
-        Returns:
-            The loaded Yolo-nas model.
-        """
         if config.model is not None:
             self._model = config.model
         else:
@@ -123,17 +109,6 @@ class TorchYoloNasModel(fout.TorchImageModel):
         return self._model
 
     def _convert_bboxes(self, bboxes, w, h):
-        """
-        Converts bounding boxes from YOLO format (xyxy) to COCO format (normalized xywh).
-
-        Args:
-            bboxes (numpy.ndarray): Bounding boxes in YOLO format.
-            w (int): Width of the image.
-            h (int): Height of the image.
-
-        Returns:
-            numpy.ndarray: Bounding boxes in COCO format.
-        """
         tmp = np.copy(bboxes[:, 1])
         bboxes[:, 1] = h - bboxes[:, 3]
         bboxes[:, 3] = h - tmp
@@ -147,17 +122,6 @@ class TorchYoloNasModel(fout.TorchImageModel):
         return bboxes
 
     def _generate_detections(self, p):
-        """
-        Generates FiftyOne detection objects from the model's predictions.
-
-        Args:
-            p (Prediction): The prediction output from the model.
-            width (int): Width of the original image.
-            height (int): Height of the original image.
-
-        Returns:
-            fo.Detections: A FiftyOne Detections object containing the formatted detections.
-        """
         class_names = p.class_names
         dp = p.prediction
         img = p.image
@@ -179,18 +143,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
         return fo.Detections(detections=detections)
 
     def _predict_all(self, imgs):
-        """
-        Performs batch prediction on a set of images and generates FiftyOne detection objects.
-
-        Args:
-            imgs (PIL.images): A batch of images.
-
-        Returns:
-            List[fo.Detections]: A list of FiftyOne Detections objects for each image in the batch.
-        """
-
         preds = self._model.predict(
             imgs, conf=self.config.confidence_thresh
         )._images_prediction_lst
-        dets = [self._generate_detections(pred) for pred in preds]
-        return dets
+        return [self._generate_detections(pred) for pred in preds]

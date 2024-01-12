@@ -68,13 +68,14 @@ def apply_model(
     -   Applying an image :class:`Model` to the frames of a video collection
     -   Applying a video :class:`Model` to a video collection
     -   Applying an ``ultralytics.YOLO`` model to an image collection
+    -   Applying a SuperGradients model to an image collection
     -   Applying a :class:`flash:flash.core.model.Task` to an image or video
         collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`, ``ultralytics.YOLO`` model, or
-            :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, ``ultralytics.YOLO`` model, SuperGradients
+            model, or :class:`flash:flash.core.model.Task`
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -118,11 +119,11 @@ def apply_model(
             **kwargs,
         )
 
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
-
     if _is_super_gradients_models(model):
         model = fous.convert_super_gradients_model(model)
+
+    if _is_ultralytics_model(model):
+        model = fouu.convert_ultralytics_model(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -789,6 +790,9 @@ def compute_embeddings(
             **kwargs,
         )
 
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
+
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
@@ -1273,6 +1277,9 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
+
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
