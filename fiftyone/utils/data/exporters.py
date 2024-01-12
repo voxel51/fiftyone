@@ -875,6 +875,15 @@ def _write_image_dataset(
     num_samples=None,
     sample_collection=None,
 ):
+    if (
+        dataset_exporter.requires_image_metadata
+        and len(samples.exists("metadata", bool=False)) > 0
+    ):
+        logger.warning(
+            "This exporter requires metadata but not all samples have it; "
+            "consider using compute_metadata() to efficiently precompute it"
+        )
+
     labeled_images = isinstance(dataset_exporter, LabeledImageDatasetExporter)
 
     with fou.ProgressBar(total=num_samples) as pb:
@@ -928,6 +937,15 @@ def _write_video_dataset(
     num_samples=None,
     sample_collection=None,
 ):
+    if (
+        dataset_exporter.requires_video_metadata
+        and len(samples.exists("metadata", bool=False)) > 0
+    ):
+        logger.warning(
+            "This exporter requires metadata but not all samples have it; "
+            "consider using compute_metadata() to efficiently precompute it"
+        )
+
     labeled_videos = isinstance(dataset_exporter, LabeledVideoDatasetExporter)
 
     with fou.ProgressBar(total=num_samples) as pb:
@@ -976,6 +994,15 @@ def _write_unlabeled_dataset(
     num_samples=None,
     sample_collection=None,
 ):
+    if (
+        dataset_exporter.requires_metadata
+        and len(samples.exists("metadata", bool=False)) > 0
+    ):
+        logger.warning(
+            "This exporter requires metadata but not all samples have it; "
+            "consider using compute_metadata() to efficiently precompute it"
+        )
+
     with fou.ProgressBar(total=num_samples) as pb:
         with dataset_exporter:
             if sample_collection is not None:
