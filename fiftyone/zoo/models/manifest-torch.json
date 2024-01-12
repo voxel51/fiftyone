@@ -2188,6 +2188,33 @@
             "date_added": "2023-08-22 19:22:51"
         },
         {
+            "base_name": "yolo-nas-torch",
+            "base_filename": " ",
+            "version": null,
+            "description": "Yolo-NAS, part of Deci AI's Super-Gradients, is an open-source training library for advanced computer vision models. It specializes in accuracy and efficiency, supporting tasks like object detection.",
+            "source": "https://github.com/Deci-AI/super-gradients",
+            "size_bytes": 353976522,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.super_gradients.TorchYoloNasModel",
+                "config": {
+                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "raw_inputs": true
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "super-gradients"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["classification", "torch"],
+            "date_added": "2024-01-06 08:51:14"
+        },
+        {
             "base_name": "yolov5x-coco-torch",
             "description": "Ultralytics YOLOv5x model trained on COCO",
             "source": "https://pytorch.org/hub/ultralytics_yolov5",

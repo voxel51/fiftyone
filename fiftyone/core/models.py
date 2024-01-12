@@ -32,6 +32,7 @@ fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fout = fou.lazy_import("fiftyone.utils.torch")
+fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
 
@@ -117,6 +118,9 @@ def apply_model(
             **kwargs,
         )
 
+    if _is_super_gradients_models(model):
+        model = fous.convert_super_gradients_model(model)
+        
     if _is_ultralytics_model(model):
         model = fouu.convert_ultralytics_model(model)
 
@@ -278,10 +282,11 @@ def _is_flash_model(model):
 
     return False
 
+def _is_super_gradients_models(model):
+    return type(model).__module__.startswith("super_gradients.")
 
 def _is_ultralytics_model(model):
     return type(model).__module__.startswith("ultralytics.")
-
 
 def _apply_image_model_single(
     samples,
