@@ -46,6 +46,12 @@ in FiftyOne. Click on the cards below to see how!
     :image: ../../_static/images/integrations/lightning_flash.png
     :tags: Model-Training,Model-Evaluation
 
+.. customcarditem::
+    :header: SuperGradients
+    :description: Use our SuperGradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
+    :link: super_gradients.html
+    :image: ../../_static/images/integrations/super_gradients.png
+
 .. End of integrations cards
 
 .. raw:: html
@@ -66,6 +72,7 @@ in FiftyOne. Click on the cards below to see how!
 
     Lightning Flash <lightning_flash.rst>
     PyTorch Hub <pytorch_hub.rst>
+    SuperGradients <super_gradients.rst>
     Ultralytics <ultralytics.rst>
     
     

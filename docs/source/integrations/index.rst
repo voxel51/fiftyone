@@ -126,6 +126,12 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Super Gradients
+    :description: Use our Super Gradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
+    :link: models/super_gradients.html
+    :image: ../_static/images/integrations/super_gradients.png
+
+.. customcarditem::
     :header: Ultralytics
     :description: Load, fine-tune, and run inference with Ultralytics models on your FiftyOne datasets with just a few lines of code.
     :link: models/ultralytics.html
