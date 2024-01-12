@@ -853,11 +853,17 @@ def _make_patches_view(
         "metadata": True,
         "tags": True,
         field + "._cls": True,
+        field.split(".")[0] + "._cls": True,  # embedded fields
         root: True,
     }
 
     if other_fields is not None:
-        project.update({f: True for f in other_fields})
+        update = {}
+        for f in other_fields:
+            update[f] = True
+            update[f.split(".")[0] + "._cls"] = True  # embedded fields
+
+        project.update(update)
 
     if sample_collection._is_frames:
         project["_sample_id"] = True
