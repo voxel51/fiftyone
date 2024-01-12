@@ -126,6 +126,13 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Filtering
 
 .. customcarditem::
+    :header: Transformers
+    :description: Use our Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
+    :link: transformers.html
+    :image: ../_static/images/integrations/transformers.png
+    :tags: Brain,Embeddings,Model-Zoo
+
+.. customcarditem::
     :header: Ultralytics
     :description: Load, fine-tune, and run inference with Ultralytics models on your FiftyOne datasets with just a few lines of code.
     :link: ultralytics.html
@@ -177,6 +184,7 @@ on the cards below to see how!
     MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
+    Transformers <transformers.rst>
     Ultralytics <ultralytics.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
