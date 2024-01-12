@@ -56,7 +56,7 @@ Image Classification
 
 You can pass the `transformers` model directly into the FiftyOne sample 
 collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
- method:
+method:
 
 .. code-block:: python
     :linenos:
@@ -109,8 +109,9 @@ collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.ap
     session = fo.launch_app(dataset)
 
 Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a :class:`fiftyone.core.Model` instance and
-then run inference:
+convert the transformer model to a 
+:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>` 
+instance and then run inference:
 
 .. code-block:: python
     :linenos:
@@ -126,7 +127,7 @@ then run inference:
 
 
 A third option is to run inference with the transformer model manually and then
-convert the predictions to :ref:`FiftyOne format <image-classification>`:
+convert the predictions to :ref:`FiftyOne format <classification>`:
 
 .. code-block:: python
 
@@ -152,7 +153,7 @@ Object Detection
 
 You can pass the `transformers` model directly into the FiftyOne sample
 collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
- method:
+method:
 
 .. code-block:: python
     :linenos:
@@ -197,8 +198,9 @@ collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.ap
 
 
 Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a :class:`fiftyone.core.Model` instance and
-then run inference:
+convert the transformer model to a 
+:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
+instance and then run inference:
 
 .. code-block:: python
     :linenos:
@@ -276,8 +278,9 @@ collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.ap
 
 
 Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a :class:`fiftyone.core.Model` instance and
-then run inference:
+convert the transformer model to a
+:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
+instance and then run inference:
 
 .. code-block:: python
     :linenos:
