@@ -313,6 +313,8 @@ convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
         sample["predictions"] = fout.to_segmentation(result)
 
 
+.. _transformers-batch-inference:
+
 Batch inference
 ---------------
 
@@ -347,6 +349,157 @@ pattern below:
 
     See :ref:`this section <batch-updates>` for more information about
     performing batch updates to your FiftyOne datasets.
+
+
+.. _transformers-embeddings:
+
+Embeddings
+__________
+
+Any transformer model that supports image classification or object detection
+tasks can be used to compute embeddings for your samples.
+
+The embeddings that are extracted are the final hidden states of the model's
+base encoder, which are typically the embeddings that are fed into the
+classification or detection heads. For the Transformer model, these embeddings
+would be accessed via the ``last_hidden_state`` attribute of the model output.
+
+.. _transformers-image-embeddings:
+
+
+Image Embeddings
+----------------
+
+To compute embeddings for images, you can pass the `transformers` model
+directly into the FiftyOne sample collection's
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+method:
+
+.. note::
+
+    Regardless of whether you pass a classification or detection model, or a
+    base Transformer model, FiftyOne will extract the same embeddings by 
+    accessing the `base_model` attribute of the model, if it exists and using 
+    the `last_hidden_state` attribute of this base model's output.
+
+
+The examples below show how to compute embeddings for the images in the sample
+dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.transformers as fout
+
+    # Load an example dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+    dataset.select_fields().keep_fields()
+
+    # Embeddings from base model (`BeiTModel`)
+    from transformers import BeitModel
+    model = BeitModel.from_pretrained("microsoft/beit-base-patch16-224-pt22k")
+
+    ## Embeddings from classification model (`BeitForImageClassification`)
+    # from transformers import BeitForImageClassification
+    # model = BeitForImageClassification.from_pretrained(
+    #     "microsoft/beit-base-patch16-224"
+    # )
+
+    ## Embeddings from detection model (`DetaForImageObjectDetection`)
+    # from transformers import DetaForImageObjectDetection
+    # model = DetaForImageObjectDetection.from_pretrained(
+    #     "jozhang97/deta-swin-large-o365"
+    # )
+
+    dataset.compute_embeddings(model, embeddings_field="embeddings")
+
+    session = fo.launch_app(dataset)
+
+
+Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
+convert the transformer model to a 
+:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
+instance and then compute embeddings:
+
+.. code-block:: python
+    :linenos:
+
+    from transformers import BeitModel
+    transformers_model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
+    )
+
+    model = fout.convert_transformers_model(transformers_model)
+
+    dataset.compute_embeddings(model, embeddings_field="embeddings")
+
+
+If you convert a `transformers` model to a 
+:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`,
+you can check if the :class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>` 
+instance can be used to generate embeddings:
+
+.. code-block:: python
+    :linenos:
+
+    import numpy as np
+
+    from transformers import BeitModel
+    transformers_model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
+    )
+
+    model = fout.convert_transformers_model(transformers_model)
+
+    print(model.has_embeddings)  # True
+
+    ## embed an image directly
+    image = Image.open(dataset.first().filepath)
+    image_embedding = model(np.array(image))
+
+
+.. _transformers-batch-embeddings:
+
+Batch Embeddings
+================
+
+When using
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
+you can request batch inference by passing the optional `batch_size` parameter:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.compute_embeddings(model, embeddings_field="embeddings", batch_size=16)
+
+
+.. _transformers-patch-embeddings:
+
+Patch Embeddings
+----------------
+
+In analogous fashion to the :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+method, you can compute embeddings for image patches by passing the
+`transformers` model directly into the FiftyOne sample collection's
+:meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.transformers as fout
+
+    # Load an example dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+
+    from transformers import BeitModel
+    model = BeitModel.from_pretrained("microsoft/beit-base-patch16-224-pt22k")
+
+    dataset.compute_patch_embeddings(model, embeddings_field="embeddings")
 
 
 
