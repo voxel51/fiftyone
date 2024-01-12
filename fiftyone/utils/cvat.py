@@ -3609,6 +3609,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return self._server_version
 
     @property
+    def _supports_content_v2(self):
+        # Whether the CVAT server version supports the content-v2 API endpoint
+        # for working with cloud storages
+        return self._server_version >= Version("2.4.6")
+
+    @property
     def base_url(self):
         return self._url
 
@@ -3732,7 +3738,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def cloud_storages_content_url(
         self, cloud_storage_id, manifest=None, prefix=None
     ):
-        if self._server_version >= Version("2.4.6"):
+        if self._supports_content_v2:
             url = "%s/content-v2" % self.cloud_storage_url(cloud_storage_id)
         else:
             url = "%s/content" % self.cloud_storage_url(cloud_storage_id)
@@ -4320,7 +4326,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if cloud_manifest:
             self._parse_cloud_files(paths, data, cloud_manifest)
 
-            if self._server_version >= Version("2.4.6"):
+            if self._supports_content_v2:
                 # @todo how else can a multipart/form-data POST be used
                 # instead of a application/x-www-form-urlencoded
                 files = {"foo": "bar"}
@@ -4330,7 +4336,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         else:
             files, open_files = self._parse_local_files(paths)
 
-        if self._server_version >= Version("2.4.6"):
+        if self._supports_content_v2:
             data["sorting_method"] = "predefined"
 
         try:
@@ -4397,7 +4403,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Image task
             for idx, path in enumerate(paths):
                 filename = os.path.basename(path)
-                if self._server_version < Version("2.4.6"):
+                if not self._supports_content_v2:
                     # IMPORTANT: older versions of CVAT organizes media within
                     # a task alphabetically by filename, so we must give CVAT
                     # filenames whose alphabetical order matches the order of `paths`
@@ -7056,7 +7062,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "system of samples '%s'" % (root_fs, paths_fs)
             )
 
-        if self._server_version >= Version("2.4.6"):
+        if self._supports_content_v2:
             manifest_files = []
             self._parse_v2_cloud_manifest(
                 manifest_files, cloud_storage_id, manifest_filename
