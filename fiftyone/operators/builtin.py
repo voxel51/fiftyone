@@ -293,10 +293,7 @@ class DeleteSelectedLabels(foo.Operator):
         if not ctx.selected_labels:
             return
 
-        # @todo switch to this once `selected_labels` format is fixed
-        # ctx.dataset.delete_labels(labels=ctx.selected_labels)
-        ids = [d["labelId"] for d in ctx.selected_labels]
-        ctx.dataset.delete_labels(ids=ids)
+        ctx.dataset.delete_labels(labels=ctx.selected_labels)
 
         ctx.trigger("clear_selected_labels")
         ctx.trigger("reload_dataset")
