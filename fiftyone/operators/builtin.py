@@ -290,8 +290,7 @@ class DeleteSelectedLabels(foo.Operator):
         return types.Property(inputs, view=view)
 
     def execute(self, ctx):
-        num_samples = len(ctx.selected_labels)
-        if num_samples == 0:
+        if not ctx.selected_labels:
             return
 
         # @todo switch to this once `selected_labels` format is fixed
