@@ -728,9 +728,16 @@ class DocumentView(_Document):
             self._selected_fields is not None
             or self._excluded_fields is not None
         ):
-            return self._view.has_field(field_name)
+            return self._has_field(field_name)
 
         return super().has_field(field_name)
+
+    def _has_field(self, field_name):
+        path = field_name
+        if self._DOCUMENT_CLS.__name__.startswith("Frame"):
+            path = self._view._FRAMES_PREFIX + path
+
+        return self._view.has_field(path)
 
     def get_field(self, field_name):
         value = super().get_field(field_name)
@@ -739,7 +746,7 @@ class DocumentView(_Document):
             self._selected_fields is not None
             or self._excluded_fields is not None
         ):
-            if value is None and not self._view.has_field(field_name):
+            if value is None and not self._has_field(field_name):
                 raise AttributeError(
                     "Field '%s' was not selected on this %s"
                     % (field_name, self.__class__.__name__)
