@@ -654,10 +654,6 @@ class DocumentView(_Document):
         excluded_fields=None,
         filtered_fields=None,
     ):
-        if selected_fields is not None and excluded_fields is not None:
-            selected_fields = selected_fields.difference(excluded_fields)
-            excluded_fields = None
-
         self._view = view
         self._selected_fields = selected_fields
         self._excluded_fields = excluded_fields
@@ -728,34 +724,25 @@ class DocumentView(_Document):
         return self._filtered_fields
 
     def has_field(self, field_name):
-        ef = self._excluded_fields
-        if ef is not None and field_name in ef:
-            return False
-
-        sf = self._selected_fields
-        if sf is not None and field_name not in sf:
-            return False
+        if (
+            self._selected_fields is not None
+            or self._excluded_fields is not None
+        ):
+            return self._view.has_field(field_name)
 
         return super().has_field(field_name)
 
     def get_field(self, field_name):
-        ef = self._excluded_fields
-        if ef is not None and field_name in ef:
-            raise AttributeError(
-                "Field '%s' is excluded from this %s"
-                % (field_name, self.__class__.__name__)
-            )
-
-        value = super().get_field(field_name)
-
-        sf = self._selected_fields
-        if sf is not None and field_name not in sf:
-            raise AttributeError(
-                "Field '%s' was not selected on this %s"
-                % (field_name, self.__class__.__name__)
-            )
-
-        return value
+        try:
+            return super().get_field(field_name)
+        except AttributeError:
+            if self._view._dataset.has_field(field_name):
+                raise AttributeError(
+                    "Field '%s' was not selected on this %s"
+                    % (field_name, self.__class__.__name__)
+                )
+            else:
+                raise
 
     def set_field(
         self,
@@ -785,11 +772,12 @@ class DocumentView(_Document):
                 dynamic=dynamic,
             )
 
+            if self._selected_fields is not None:
+                root = field_name.split(".", 1)[0]
+                self._selected_fields.add(root)
+
             if self._excluded_fields is not None:
                 self._excluded_fields.discard(field_name)
-
-            if self._selected_fields is not None:
-                self._selected_fields.add(field_name)
 
     def clear_field(self, field_name):
         # Ensures field exists
@@ -800,7 +788,10 @@ class DocumentView(_Document):
     def to_dict(self, include_private=False):
         d = super().to_dict(include_private=include_private)
 
-        if self._selected_fields or self._excluded_fields:
+        if (
+            self._selected_fields is not None
+            or self._excluded_fields is not None
+        ):
             field_names = set(
                 self._get_field_names(
                     include_private=include_private,
@@ -815,7 +806,10 @@ class DocumentView(_Document):
     def to_mongo_dict(self, include_id=False):
         d = super().to_mongo_dict(include_id=include_id)
 
-        if self._selected_fields or self._excluded_fields:
+        if (
+            self._selected_fields is not None
+            or self._excluded_fields is not None
+        ):
             field_names = set(
                 self._get_field_names(include_private=True, use_db_fields=True)
             )
