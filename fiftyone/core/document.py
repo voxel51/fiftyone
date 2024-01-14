@@ -733,16 +733,19 @@ class DocumentView(_Document):
         return super().has_field(field_name)
 
     def get_field(self, field_name):
-        try:
-            return super().get_field(field_name)
-        except AttributeError:
-            if self._view._dataset.has_field(field_name):
+        value = super().get_field(field_name)
+
+        if (
+            self._selected_fields is not None
+            or self._excluded_fields is not None
+        ):
+            if value is None and not self._view.has_field(field_name):
                 raise AttributeError(
                     "Field '%s' was not selected on this %s"
                     % (field_name, self.__class__.__name__)
                 )
-            else:
-                raise
+
+        return value
 
     def set_field(
         self,
