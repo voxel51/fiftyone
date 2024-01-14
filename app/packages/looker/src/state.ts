@@ -87,7 +87,7 @@ export type Sample = {
   filepath: string;
   tags: string[];
   _label_tags: string[];
-  _media_type: "image" | "video" | "point-cloud";
+  _media_type: "image" | "video" | "point-cloud" | "3d";
 } & GenericLabel;
 
 export interface LabelData {
