@@ -3600,7 +3600,13 @@ class SampleCollection(object):
         return fors.RunConfig()
 
     def register_run(
-        self, run_key, config, results=None, overwrite=False, cache=True
+        self,
+        run_key,
+        config,
+        results=None,
+        overwrite=False,
+        cleanup=True,
+        cache=True,
     ):
         """Registers a run under the given key on this collection.
 
@@ -3610,6 +3616,9 @@ class SampleCollection(object):
             results (None): an optional :class:`fiftyone.core.runs.RunResults`
             overwrite (False): whether to allow overwriting an existing run of
                 the same type
+            cleanup (True): whether to execute an existing run's
+                :meth:`fiftyone.core.runs.Run.cleanup` method when overwriting
+                it
             cache (True): whether to cache the results on the collection
         """
         if not isinstance(config, fors.RunConfig):
@@ -3621,7 +3630,7 @@ class SampleCollection(object):
         run = config.build()
         run.ensure_requirements()
 
-        run.register_run(self, run_key, overwrite=overwrite)
+        run.register_run(self, run_key, overwrite=overwrite, cleanup=cleanup)
 
         if results is not None:
             if not isinstance(results, fors.RunResults):
