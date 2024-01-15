@@ -87,6 +87,11 @@ learn how:
     :image_title: Ultralytics
 
 .. customimagelink::
+    :image_link: integrations/super_gradients.html
+    :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
+    :image_title: SuperGradients
+
+.. customimagelink::
     :image_link: recipes/adding_detections.html
     :image_src: https://voxel51.com/images/integrations/tensorflow-128.png
     :image_title: TensorFlow

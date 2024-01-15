@@ -140,6 +140,13 @@ on the cards below to see how!
     :tags: Model-Training,Model-Evaluation,Model-Zoo
 
 .. customcarditem::
+    :header: SuperGradients
+    :description: Use our SuperGradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
+    :link: super_gradients.html
+    :image: ../_static/images/integrations/super_gradients.png
+    :tags: Model-Training,Model-Evaluation,Model-Zoo
+
+.. customcarditem::
     :header: PyTorch Hub
     :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
     :link: pytorch_hub.html
@@ -186,5 +193,6 @@ on the cards below to see how!
     LanceDB <lancedb.rst>
     Transformers <transformers.rst>
     Ultralytics <ultralytics.rst>
+    SuperGradients <super_gradients.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
