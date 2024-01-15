@@ -33,6 +33,7 @@ foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
 fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fout = fou.lazy_import("fiftyone.utils.torch")
+foutr = fou.lazy_import("fiftyone.utils.transformers")
 fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
 
@@ -64,18 +65,14 @@ def apply_model(
 
     This method supports all of the following cases:
 
-    -   Applying an image :class:`Model` to an image collection
-    -   Applying an image :class:`Model` to the frames of a video collection
-    -   Applying a video :class:`Model` to a video collection
-    -   Applying an ``ultralytics.YOLO`` model to an image collection
-    -   Applying a SuperGradients model to an image collection
-    -   Applying a :class:`flash:flash.core.model.Task` to an image or video
-        collection
+    -   Applying an image model to an image collection
+    -   Applying an image model to the frames of a video collection
+    -   Applying a video model to a video collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`, ``ultralytics.YOLO`` model, SuperGradients
-            model, or :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -119,11 +116,7 @@ def apply_model(
             **kwargs,
         )
 
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -284,12 +277,29 @@ def _is_flash_model(model):
     return False
 
 
+def _is_transformers_model(model):
+    return type(model).__module__.startswith("transformers.models.")
+
+
 def _is_ultralytics_model(model):
     return type(model).__module__.startswith("ultralytics.")
 
 
 def _is_super_gradients_models(model):
     return type(model).__module__.startswith("super_gradients.")
+
+
+def _convert_model_if_necessary(model):
+    if _is_transformers_model(model):
+        return foutr.convert_transformers_model(model)
+
+    if _is_ultralytics_model(model):
+        return fouu.convert_ultralytics_model(model)
+
+    if _is_super_gradients_models(model):
+        return fous.convert_super_gradients_model(model)
+
+    return model
 
 
 def _apply_image_model_single(
@@ -731,24 +741,20 @@ def compute_embeddings(
 
     This method supports all the following cases:
 
-    -   Using an image :class:`Model` to compute embeddings for an image
-        collection
-    -   Using an image :class:`Model` to compute frame embeddings for a video
-        collection
-    -   Using a video :class:`Model` to compute embeddings for a video
-        collection
-    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
-        embeddings for an image collection
+    -   Using an image model to compute embeddings for an image collection
+    -   Using an image model to compute frame embeddings for a video collection
+    -   Using a video model to compute embeddings for a video collection
 
-    When using a :class:`FiftyOne model <Model>`, the model must expose
-    embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
+    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
+    must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task>`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -790,11 +796,7 @@ def compute_embeddings(
             **kwargs,
         )
 
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
@@ -913,7 +915,7 @@ def _compute_image_embeddings_single(
 
             try:
                 img = foui.read(sample.filepath)
-                embedding = model.embed(img)[0]
+                embedding = model.embed(img)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -1056,7 +1058,7 @@ def _compute_frame_embeddings_single(
                     sample.filepath, frames=frames
                 ) as video_reader:
                     for img in video_reader:
-                        embedding = model.embed(img)[0]
+                        embedding = model.embed(img)
 
                         if embeddings_field is not None:
                             sample.add_labels(
@@ -1174,7 +1176,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
                 with etav.FFmpegVideoReader(
                     sample.filepath, frames=frames
                 ) as video_reader:
-                    embedding = model.embed(video_reader)[0]
+                    embedding = model.embed(video_reader)
 
             except Exception as e:
                 if not skip_failures:
@@ -1228,7 +1230,8 @@ def compute_patch_embeddings(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         patches_field: the name of the field defining the image patches in each
             sample to embed. Must be of type
             :class:`fiftyone.core.labels.Detection`,
@@ -1277,11 +1280,7 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
-    if _is_super_gradients_models(model):
-        model = fous.convert_super_gradients_model(model)
-
-    if _is_ultralytics_model(model):
-        model = fouu.convert_ultralytics_model(model)
+    model = _convert_model_if_necessary(model)
 
     if not isinstance(model, Model):
         raise ValueError("Unsupported model type: %s" % type(model))
