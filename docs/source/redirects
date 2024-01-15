@@ -20,3 +20,26 @@ user_guide/dataset_creation/common_datasets.rst  user_guide/dataset_creation/dat
 # Introduced in v0.2
 examples/dataset_creation.rst  user_guide/dataset_creation/datasets.rst
 examples/index.rst  tutorials/index.rst
+
+# Introduced in v0.24
+integrations/cvat.rst  integrations/annotation/cvat.rst
+integrations/labelbox.rst  integrations/annotation/labelbox.rst
+integrations/labelstudio.rst  integrations/annotation/labelstudio.rst
+integrations/v7.rst  integrations/annotation/v7.rst
+
+integrations/activitynet.rst  integrations/datasets/activitynet.rst
+integrations/coco.rst  integrations/datasets/coco.rst
+integrations/open_images.rst  integrations/datasets/open_images.rst
+
+integrations/lightning_flash.rst  integrations/models/lightning_flash.rst
+integrations/pytorch_hub.rst  integrations/models/pytorch_hub.rst
+integrations/super_gradients.rst  integrations/models/super_gradients.rst
+integrations/transformers.rst  integrations/models/transformers.rst
+integrations/ultralytics.rst  integrations/models/ultralytics.rst
+
+integrations/lancedb.rst  integrations/vector_search/lancedb.rst
+integrations/milvus.rst  integrations/vector_search/milvus.rst
+integrations/mongodb.rst  integrations/vector_search/mongodb.rst
+integrations/pinecone.rst  integrations/vector_search/pinecone.rst
+integrations/qdrant.rst  integrations/vector_search/qdrant.rst
+integrations/redis.rst  integrations/vector_search/redis.rst
