@@ -1,7 +1,7 @@
 .. _model-integrations:
 
 FiftyOne Model Integrations
-================================
+===========================
 
 .. default-role:: code
 
