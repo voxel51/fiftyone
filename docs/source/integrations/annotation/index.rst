@@ -1,7 +1,7 @@
 .. _annotation-integrations:
 
-FiftyOne Annotation Integrations
-================================
+Annotation Integrations
+=======================
 
 .. default-role:: code
 
@@ -32,13 +32,6 @@ the cards below to see how!
     :tags: Annotation
 
 .. customcarditem::
-    :header: Labelbox
-    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
-    :link: labelbox.html
-    :image: ../../_static/images/integrations/labelbox.jpeg
-    :tags: Annotation
-
-.. customcarditem::
     :header: Label Studio
     :description: Annotate and edit your FiftyOne datasets in Label Studio through our integration.
     :link: labelstudio.html
@@ -50,6 +43,13 @@ the cards below to see how!
     :description: Use our V7 integration to easily annotate and edit your FiftyOne datasets.
     :link: v7.html
     :image: ../../_static/images/integrations/v7.jpg
+    :tags: Annotation
+
+.. customcarditem::
+    :header: Labelbox
+    :description: Use our Labelbox integration to get your FiftyOne datasets annotated.
+    :link: labelbox.html
+    :image: ../../_static/images/integrations/labelbox.jpeg
     :tags: Annotation
 
 .. End of integrations cards
@@ -71,6 +71,6 @@ the cards below to see how!
    :hidden:
 
     CVAT <cvat.rst>
-    Labelbox <labelbox.rst>
     Label Studio <labelstudio.rst>
     V7 <v7.rst>
+    Labelbox <labelbox.rst>

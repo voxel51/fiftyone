@@ -1,7 +1,7 @@
 .. _vector-search-integrations:
 
-FiftyOne Vector Search Integrations
-===================================
+Vector Search Integrations
+==========================
 
 .. default-role:: code
 
@@ -84,9 +84,9 @@ Click on the cards below to see how!
    :maxdepth: 1
    :hidden:
 
-    LanceDB <lancedb.rst>
-    Milvus <milvus.rst>
-    MongoDB <mongodb.rst>
-    Pinecone <pinecone.rst>
     Qdrant <qdrant.rst>
     Redis <redis.rst>
+    Pinecone <pinecone.rst>
+    MongoDB <mongodb.rst>
+    Milvus <milvus.rst>
+    LanceDB <lancedb.rst>

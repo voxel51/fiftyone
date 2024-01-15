@@ -1,7 +1,7 @@
 .. _dataset-integrations:
 
-FiftyOne Dataset Integrations
-=============================
+Dataset Integrations
+====================
 
 .. default-role:: code
 
@@ -24,13 +24,6 @@ on the cards below to see how!
 .. Add tutorial cards below
 
 .. customcarditem::
-    :header: ActivityNet Dataset
-    :description: See how to use FiftyOne to download, visualize, and evaluate on the ActivityNet dataset with ease.
-    :link: activitynet.html
-    :image: ../../_static/images/integrations/activitynet.png
-    :tags: Datasets,Model-Evaluation
-
-.. customcarditem::
     :header: COCO Dataset
     :description: See how FiftyOne makes downloading, visualizing, and evaluating on the COCO dataset (or your own COCO-formatted data) a breeze.
     :link: coco.html
@@ -42,6 +35,13 @@ on the cards below to see how!
     :description: See why FiftyOne is a recommended tool for downloading, visualizing, and evaluating on Google's Open Images Dataset.
     :link: open_images.html
     :image: ../../_static/images/integrations/open_images.png
+    :tags: Datasets,Model-Evaluation
+
+.. customcarditem::
+    :header: ActivityNet Dataset
+    :description: See how to use FiftyOne to download, visualize, and evaluate on the ActivityNet dataset with ease.
+    :link: activitynet.html
+    :image: ../../_static/images/integrations/activitynet.png
     :tags: Datasets,Model-Evaluation
 
 .. End of integrations cards
@@ -62,6 +62,6 @@ on the cards below to see how!
    :maxdepth: 1
    :hidden:
 
-    ActivityNet <activitynet.rst>
     COCO <coco.rst>
     Open Images <open_images.rst>
+    ActivityNet <activitynet.rst>
