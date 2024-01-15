@@ -1,7 +1,7 @@
 .. _transformers-integration:
 
 Transformers Integration
-=======================
+========================
 
 .. default-role:: code
 
@@ -17,45 +17,44 @@ _____
 
 To get started with
 `Transformers <https://huggingface.co/docs/transformers>`_, just install the
-`transformers` library:
+`transformers` package:
 
 .. code-block:: shell
 
     pip install transformers
-
 
 .. _transformers-inference:
 
 Inference
 _________
 
-All of the `Transformers models <https://huggingface.co/docs/transformers/index#supported-models-and-frameworks>`_ 
+All
+`Transformers models <https://huggingface.co/docs/transformers/index#supported-models-and-frameworks>`_
 that support image classification, object detection, and semantic segmentation
-can be applied for those tasks in FiftyOne via the 
-:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>` 
+can be passed directly to your FiftyOne dataset's
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
 method.
 
-The examples below show how to run inference with various Transformers models on
-the following sample dataset:
+The examples below show how to run inference with various Transformers models
+on the following sample dataset:
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.utils.transformers as fout
 
-    # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
 .. _transformers-image-classification:
 
-Image Classification
+Image classification
 --------------------
 
-You can pass the `transformers` model directly into the FiftyOne sample 
-collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+You can pass `transformers` classification models directly to FiftyOne
+dataset's
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
 method:
 
 .. code-block:: python
@@ -67,92 +66,79 @@ method:
         "microsoft/beit-base-patch16-224"
     )
 
-    ## DeiT
-    # from transformers import DeiTForImageClassification
-    # model = DeiTForImageClassification.from_pretrained(
-    #     "facebook/deit-base-distilled-patch16-224"
-    # )
+    # DeiT
+    from transformers import DeiTForImageClassification
+    model = DeiTForImageClassification.from_pretrained(
+        "facebook/deit-base-distilled-patch16-224"
+    )
 
-    ## DINOV2
-    # from transformers import Dinov2ForImageClassification
-    # model = Dinov2ForImageClassification.from_pretrained(
-    #     "facebook/dinov2-small-imagenet1k-1-layer"
-    # )
+    # DINOv2
+    from transformers import Dinov2ForImageClassification
+    model = Dinov2ForImageClassification.from_pretrained(
+        "facebook/dinov2-small-imagenet1k-1-layer"
+    )
 
-    ## MobileNetV2
-    # from transformers import MobileNetV2ForImageClassification
-    # model = MobileNetV2ForImageClassification.from_pretrained(
-    #     "google/mobilenet_v2_1.0_224"
-    # )
+    # MobileNetV2
+    from transformers import MobileNetV2ForImageClassification
+    model = MobileNetV2ForImageClassification.from_pretrained(
+        "google/mobilenet_v2_1.0_224"
+    )
 
-    ## Swin Transformer
-    # from transformers import SwinForImageClassification
-    # model = SwinForImageClassification.from_pretrained(
-    #     "microsoft/swin-tiny-patch4-window7-224"
-    # )
+    # Swin Transformer
+    from transformers import SwinForImageClassification
+    model = SwinForImageClassification.from_pretrained(
+        "microsoft/swin-tiny-patch4-window7-224"
+    )
 
-    ## ViT
-    # from transformers import ViTForImageClassification
-    # model = ViTForImageClassification.from_pretrained(
-    #     "google/vit-base-patch16-224"
-    # )
+    # ViT
+    from transformers import ViTForImageClassification
+    model = ViTForImageClassification.from_pretrained(
+        "google/vit-base-patch16-224"
+    )
 
+    # Any auto model
+    from transformers import AutoModelForImageClassification
+    model = AutoModelForImageClassification.from_pretrained(
+        "google/vit-hybrid-base-bit-384"
+    )
 
-    ## Or any model loaded with `transformers.AutoModelForImageClassification`
-    # from transformers import AutoModelForImageClassification
-    # model = AutoModelForImageClassification.from_pretrained(
-    #     "google/vit-hybrid-base-bit-384"
-    # )
+.. code-block:: python
+    :linenos:
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a 
-:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>` 
-instance and then run inference:
+Alternatively, you can manually run inference with the Transformer and then use
+the :func:`to_classification() <fiftyone.utils.transformers.to_classification>`
+utility to convert the predictions to :ref:`FiftyOne format <classification>`:
 
 .. code-block:: python
     :linenos:
 
-    from transformers import AutoModelForImageClassification
-    transformers_model = AutoModelForImageClassification.from_pretrained(
-        "google/vit-hybrid-base-bit-384"
-    )
-
-    model = fout.convert_transformers_model(transformers_model)
-
-    dataset.apply_model(model, label_field="predictions")
-
-
-A third option is to run inference with the transformer model manually and then
-convert the predictions to :ref:`FiftyOne format <classification>`:
-
-.. code-block:: python
-
     from PIL import Image
+    import fiftyone.utils.transformers as fout
 
     from transformers import AutoModelForImageClassification
     transformers_model = AutoModelForImageClassification.from_pretrained(
         "google/vit-hybrid-base-bit-384"
     )
-
     id2label = transformers_model.config.id2label
 
-    for sample in dataset.iter_samples(progress=True, autosave=True):
+    for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
         result = transformers_model(image)
         sample["predictions"] = fout.to_classification(result, id2label)
-
+        sample.save()
 
 .. _transformers-object-detection:
 
-Object Detection
+Object detection
 ----------------
 
-You can pass the `transformers` model directly into the FiftyOne sample
-collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+You can pass `transformers` detection models directly to your FiftyOne
+dataset's
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
 method:
 
 .. code-block:: python
@@ -164,86 +150,73 @@ method:
         "jozhang97/deta-swin-large"
     )
 
-    ## DETR
-    # from transformers import DetrForObjectDetection
-    # model = DetrForObjectDetection.from_pretrained(
-    #     "facebook/detr-resnet-50"
-    # )
+    # DETR
+    from transformers import DetrForObjectDetection
+    model = DetrForObjectDetection.from_pretrained(
+        "facebook/detr-resnet-50"
+    )
 
-    ## DeformableDETR
-    # from transformers import DeformableDetrForObjectDetection
-    # model = DeformableDetrForObjectDetection.from_pretrained(
-    #     "SenseTime/deformable-detr"
-    # )
+    # DeformableDETR
+    from transformers import DeformableDetrForObjectDetection
+    model = DeformableDetrForObjectDetection.from_pretrained(
+        "SenseTime/deformable-detr"
+    )
 
-    ## Table Transformer
-    # from transformers import TableTransformerForObjectDetection
-    # model = TableTransformerForObjectDetection.from_pretrained(
-    #     "microsoft/table-transformer-detection"
-    # )
+    # Table Transformer
+    from transformers import TableTransformerForObjectDetection
+    model = TableTransformerForObjectDetection.from_pretrained(
+        "microsoft/table-transformer-detection"
+    )
 
-    ## YOLOS
-    # from transformers import YolosForObjectDetection
-    # model = YolosForObjectDetection.from_pretrained('hustvl/yolos-tiny')
+    # YOLOS
+    from transformers import YolosForObjectDetection
+    model = YolosForObjectDetection.from_pretrained(
+        "hustvl/yolos-tiny"
+    )
 
-    ## Or any model loaded with `transformers.AutoModelForObjectDetection`
-    # from transformers import AutoModelForObjectDetection
-    # model = AutoModelForObjectDetection.from_pretrained(
-    #     "microsoft/conditional-detr-resnet-50"
-    # )
+    # Any auto model
+    from transformers import AutoModelForObjectDetection
+    model = AutoModelForObjectDetection.from_pretrained(
+        "microsoft/conditional-detr-resnet-50"
+    )
+
+.. code-block:: python
+    :linenos:
 
     dataset.apply_model(model, label_field="predictions")
 
     session = fo.launch_app(dataset)
 
-
-Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a 
-:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
-instance and then run inference:
-
-.. code-block:: python
-    :linenos:
-
-    from transformers import AutoModelForObjectDetection
-    transformers_model = AutoModelForObjectDetection.from_pretrained(
-        "microsoft/conditional-detr-resnet-50"
-    )
-
-    model = fout.convert_transformers_model(transformers_model)
-
-    dataset.apply_model(model, label_field="predictions")
-
-
-A third option is to run inference with the transformer model manually and then
-convert the predictions to :ref:`FiftyOne format <object-detection>`:
+Alternatively, you can manually run inference with the Transformer and then use
+the :func:`to_detections() <fiftyone.utils.transformers.to_detections>` utility
+to convert the predictions to :ref:`FiftyOne format <object-detection>`:
 
 .. code-block:: python
 
     from PIL import Image
+    import fiftyone.utils.transformers as fout
 
     from transformers import AutoModelForObjectDetection
     transformers_model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50"
     )
-
     id2label = transformers_model.config.id2label
 
-    for sample in dataset.iter_samples(progress=True, autosave=True):
+    for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        image_shape = image.size
         result = transformers_model(image)
-        sample["predictions"] = fout.to_detections(result, id2label, [image_shape])
-
+        sample["predictions"] = fout.to_detections(result, id2label, [image.size])
+        sample.save()
 
 .. _transformers-semantic-segmentation:
 
-Semantic Segmentation
+Semantic segmentation
 ---------------------
 
-You can pass the `transformers` model directly into the FiftyOne sample
-collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
- method:
+You can pass a `transformers` semantic segmentation model directly to your
+FiftyOne dataset's
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+method:
 
 .. code-block:: python
     :linenos:
@@ -254,64 +227,52 @@ collection's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.ap
         "facebook/mask2former-swin-small-coco-instance"
     )
 
-    ## Mask2Former
-    # from transformers import MaskFormerForInstanceSegmentation
-    # model = MaskFormerForInstanceSegmentation.from_pretrained(
-    #     "facebook/maskformer-swin-base-ade"
-    # )
+    # Mask2Former
+    from transformers import MaskFormerForInstanceSegmentation
+    model = MaskFormerForInstanceSegmentation.from_pretrained(
+        "facebook/maskformer-swin-base-ade"
+    )
 
-    ## SegFormer
-    # from transformers import SegFormerForSemanticSegmentation
-    # model = SegFormerForSemanticSegmentation.from_pretrained(
-    #     "nvidia/segformer-b0-finetuned-ade-512-512"
-    # )
+    # SegFormer
+    from transformers import SegFormerForSemanticSegmentation
+    model = SegFormerForSemanticSegmentation.from_pretrained(
+        "nvidia/segformer-b0-finetuned-ade-512-512"
+    )
 
-    ## Or any model loaded with `transformers.AutoModelForSemanticSegmentation`
-    # from transformers import AutoModelForSemanticSegmentation
-    # model = AutoModelForSemanticSegmentation.from_pretrained(
-    #     "Intel/dpt-large-ade"
-    # )
-
-    dataset.apply_model(model, label_field="predictions")
-
-    session = fo.launch_app(dataset)
-
-
-Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a
-:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
-instance and then run inference:
+    # Any auto model
+    from transformers import AutoModelForSemanticSegmentation
+    model = AutoModelForSemanticSegmentation.from_pretrained(
+        "Intel/dpt-large-ade"
+    )
 
 .. code-block:: python
     :linenos:
 
-    from transformers import AutoModelForSemanticSegmentation
-    transformers_model = AutoModelForSemanticSegmentation.from_pretrained(
-        "Intel/dpt-large-ade"
-    )
-
-    model = fout.convert_transformers_model(transformers_model)
-
     dataset.apply_model(model, label_field="predictions")
+    dataset.default_mask_targets = model.config.id2label
 
+    session = fo.launch_app(dataset)
 
-A third option is to run inference with the transformer model manually and then
-convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
+Alternatively, you can manually run inference with the Transformer and then use
+the :func:`to_segmentation() <fiftyone.utils.transformers.to_segmentation>`
+utility to convert the predictions to
+:ref:`FiftyOne format <semantic-segmentation>`:
 
 .. code-block:: python
 
     from PIL import Image
+    import fiftyone.utils.transformers as fout
 
     from transformers import AutoModelForSemanticSegmentation
     transformers_model = AutoModelForSemanticSegmentation.from_pretrained(
         "Intel/dpt-large-ade"
     )
 
-    for sample in dataset.iter_samples(progress=True, autosave=True):
+    for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
         result = transformers_model(image)
         sample["predictions"] = fout.to_segmentation(result)
-
+        sample.save()
 
 .. _transformers-batch-inference:
 
@@ -334,14 +295,21 @@ pattern below:
     :linenos:
 
     from fiftyone.core.utils import iter_batches
+    import fiftyone.utils.transformers as fout
+
+    # Pick a detection model
+    transformers_model = ...
+    id2label = transformers_model.config.id2label
 
     filepaths = dataset.values("filepath")
     batch_size = 16
 
     predictions = []
     for paths in iter_batches(filepaths, batch_size):
-        results = model(paths)
-        predictions.extend(fou.to_detections(results))
+        images = [Image.open(p) for p in paths]
+        image_sizes = [i.size for i in images]
+        results = transformers_model(images)
+        predictions.extend(fout.to_detections(results, id2label, image_sizes))
 
     dataset.set_values("predictions", predictions)
 
@@ -350,101 +318,75 @@ pattern below:
     See :ref:`this section <batch-updates>` for more information about
     performing batch updates to your FiftyOne datasets.
 
-
 .. _transformers-embeddings:
 
 Embeddings
 __________
 
-Any transformer model that supports image classification or object detection
+Any Transformer that supports image classification or object detection
 tasks can be used to compute embeddings for your samples.
-
-The embeddings that are extracted are the final hidden states of the model's
-base encoder, which are typically the embeddings that are fed into the
-classification or detection heads. For the Transformer model, these embeddings
-would be accessed via the ``last_hidden_state`` attribute of the model output.
-
-.. _transformers-image-embeddings:
-
-
-Image Embeddings
-----------------
-
-To compute embeddings for images, you can pass the `transformers` model
-directly into the FiftyOne sample collection's
-:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
-method:
 
 .. note::
 
-    Regardless of whether you pass a classification or detection model, or a
-    base Transformer model, FiftyOne will extract the same embeddings by 
-    accessing the `base_model` attribute of the model, if it exists and using 
-    the `last_hidden_state` attribute of this base model's output.
+    Regardless of whether you use a classification, detection, or base model,
+    FiftyOne will extract embeddings from the final hidden state
+    (``last_hidden_state``) of the model's base encoder.
 
+.. _transformers-image-embeddings:
 
-The examples below show how to compute embeddings for the images in the sample
-dataset:
+Image embeddings
+----------------
+
+To compute embeddings for images, you can pass the `transformers` model
+directly to your FiftyOne dataset's
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    # Embeddings from base model
+    from transformers import BeitModel
+    model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
+    )
+
+    # Embeddings from classification model
+    from transformers import BeitForImageClassification
+    model = BeitForImageClassification.from_pretrained(
+        "microsoft/beit-base-patch16-224"
+    )
+
+    # Embeddings from detection model
+    from transformers import DetaForImageObjectDetection
+    model = DetaForImageObjectDetection.from_pretrained(
+        "jozhang97/deta-swin-large-o365"
+    )
 
 .. code-block:: python
     :linenos:
 
     import fiftyone as fo
     import fiftyone.zoo as foz
-    import fiftyone.utils.transformers as fout
 
     # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
-    # Embeddings from base model (`BeiTModel`)
-    from transformers import BeitModel
-    model = BeitModel.from_pretrained("microsoft/beit-base-patch16-224-pt22k")
-
-    ## Embeddings from classification model (`BeitForImageClassification`)
-    # from transformers import BeitForImageClassification
-    # model = BeitForImageClassification.from_pretrained(
-    #     "microsoft/beit-base-patch16-224"
-    # )
-
-    ## Embeddings from detection model (`DetaForImageObjectDetection`)
-    # from transformers import DetaForImageObjectDetection
-    # model = DetaForImageObjectDetection.from_pretrained(
-    #     "jozhang97/deta-swin-large-o365"
-    # )
-
     dataset.compute_embeddings(model, embeddings_field="embeddings")
 
-    session = fo.launch_app(dataset)
-
-
-Alternatively, you can use FiftyOne's `transformers` utilities to explicitly
-convert the transformer model to a 
-:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`
-instance and then compute embeddings:
-
-.. code-block:: python
-    :linenos:
-
-    from transformers import BeitModel
-    transformers_model = BeitModel.from_pretrained(
-        "microsoft/beit-base-patch16-224-pt22k"
-    )
-
-    model = fout.convert_transformers_model(transformers_model)
-
-    dataset.compute_embeddings(model, embeddings_field="embeddings")
-
-
-If you convert a `transformers` model to a 
-:class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>`,
-you can check if the :class:`FiftyOneTransformer <fiftyone.utils.transformers.FiftyOneTransformer>` 
-instance can be used to generate embeddings:
+Alternatively, you can use the
+:func:`convert_transformers_model() <fiftyone.utils.transformers.convert_transformers_model>`
+utility to convert a Tranformer to FiftyOne format, which allows you to check
+the model's :meth:`has_embeddings <fiftyone.core.models.Model.has_embeddings>`
+property to see if the model can be used to generate embeddings:
 
 .. code-block:: python
     :linenos:
 
     import numpy as np
+    from PIL import Image
+    import fiftyone.utils.transformers as fout
 
     from transformers import BeitModel
     transformers_model = BeitModel.from_pretrained(
@@ -452,39 +394,33 @@ instance can be used to generate embeddings:
     )
 
     model = fout.convert_transformers_model(transformers_model)
-
     print(model.has_embeddings)  # True
 
-    ## embed an image directly
+    # Embed an image directly
     image = Image.open(dataset.first().filepath)
-    image_embedding = model(np.array(image))
-
-
+    embedding = model.embed(np.array(image))
 
 .. _transformers-batch-embeddings:
 
-Batch Embeddings
+Batch embeddings
 ----------------
 
-When using
-:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`,
-you can request batch inference by passing the optional `batch_size` parameter:
+You can request batch inference by passing the optional `batch_size` parameter
+to
+:meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`:
 
 .. code-block:: python
     :linenos:
 
     dataset.compute_embeddings(model, embeddings_field="embeddings", batch_size=16)
 
-
-
 .. _transformers-patch-embeddings:
 
-Patch Embeddings
+Patch embeddings
 ----------------
 
-In analogous fashion to the :meth:`compute_embeddings() <fiftyone.core.collections.SampleCollection.compute_embeddings>`
-method, you can compute embeddings for image patches by passing the
-`transformers` model directly into the FiftyOne sample collection's
+You can compute embeddings for image patches by passing `transformers` models
+directly to your FiftyOne dataset's
 :meth:`compute_patch_embeddings() <fiftyone.core.collections.SampleCollection.compute_patch_embeddings>`
 method:
 
@@ -499,156 +435,52 @@ method:
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
 
     from transformers import BeitModel
-    model = BeitModel.from_pretrained("microsoft/beit-base-patch16-224-pt22k")
-
-    dataset.compute_patch_embeddings(model, embeddings_field="embeddings")
-
-
-.. _transformers-brain-runs:
-
-Brain Runs
-__________
-
-Because `transformers` models can be used to compute embeddings for images,
-they can be used to run brain methods on your FiftyOne datasets like 
-:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and
-:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`.
-
-The examples below show how to run brain methods on the sample dataset:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-    import fiftyone.zoo as foz
-    import fiftyone.utils.transformers as fout
-
-    # Load an example dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
-
-    from transformers import BeitModel
-    transformers_model = BeitModel.from_pretrained(
+    model = BeitModel.from_pretrained(
         "microsoft/beit-base-patch16-224-pt22k"
     )
-
-    # Option 1: Compute embeddings from a `transformers` model and create
-    #  brain runs from the embeddings
-
-    dataset.compute_embeddings(transformers_model, embeddings_field="embeddings")
-
-    # Compute similarity
-    fob.compute_similarity(dataset, embeddings="embeddings", brain_key="sim1")
-
-    # Compute visualization
-    fob.compute_visualization(dataset, embeddings="embeddings", brain_key="vis1")
-
-    # Option 2: Create brain runs from a `transformers` model directly
-
-    # Compute similarity
-    # fob.compute_similarity(dataset, model=transformers_model, brain_key="sim2")
-
-    # Compute visualization
-    # fob.compute_visualization(dataset, model=transformers_model, brain_key="vis2")
-
-    # Option 3: Convert a `transformers` model to a `FiftyOneTransformer` and
-    #  create brain runs from the converted model
-
-    # model = fout.convert_transformers_model(transformers_model)
-
-    # Compute similarity
-    # fob.compute_similarity(dataset, model=model, brain_key="sim3")
-
-    # Compute visualization
-    # fob.compute_visualization(dataset, model=model, brain_key="vis3")
-
-    session = fo.launch_app(dataset)
-
-
-The same approaches can be used to run brain methods on image patches:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.brain as fob
-    import fiftyone.zoo as foz
-    import fiftyone.utils.transformers as fout
-
-    # Load an example dataset
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
-
-    from transformers import BeitModel
-    transformers_model = BeitModel.from_pretrained(
-        "microsoft/beit-base-patch16-224-pt22k"
-    )
-
-    patches_field = "ground_truth"
-    embeddings_field = "gt_embeddings"
-
-    # Option 1: Compute embeddings from a `transformers` model and create
-    #  brain runs from the embeddings
 
     dataset.compute_patch_embeddings(
-        transformers_model, 
-        patches_field,
-        embeddings_field=embeddings_field
+        model,
+        patches_field="ground_truth",
+        embeddings_field="embeddings",
     )
 
-    # Compute similarity
-    fob.compute_similarity(
-        dataset, 
-        patches_field=patches_field,
-        embeddings=embeddings_field, 
-        brain_key="gt_sim1"
+.. _transformers-brain-methods:
+
+Brain methods
+_____________
+
+Because `transformers` models can be used to compute embeddings, they can be
+passed to :ref:`Brain methods <fiftyone-brain>` like
+:meth:`compute_similarity() <fiftyone.brain.compute_similarity>` and
+:meth:`compute_visualization() <fiftyone.brain.compute_visualization>`:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+
+    from transformers import BeitModel
+    transformers_model = BeitModel.from_pretrained(
+        "microsoft/beit-base-patch16-224-pt22k"
     )
 
-    # Compute visualization
-    fob.compute_visualization(
-        dataset, 
-        patches_field=patches_field,
-        embeddings="embeddings", 
-        brain_key="gt_vis1"
-    )
+.. code-block:: python
+    :linenos:
 
-    # Option 2: Create brain runs from a `transformers` model directly
+    # Option 1: directly pass `transformers` model
+    fob.compute_similarity(dataset, model=transformers_model, brain_key="sim1")
+    fob.compute_visualization(dataset, model=transformers_model, brain_key="vis1")
 
-    # Compute similarity
-    # fob.compute_similarity(
-    #     dataset,
-    #     patches_field=patches_field,
-    #     model=transformers_model,
-    #     brain_key="gt_sim2"
-    # )
+.. code-block:: python
+    :linenos:
 
-    # Compute visualization
-    # fob.compute_visualization(
-    #     dataset,
-    #     patches_field=patches_field,
-    #     model=transformers_model,
-    #     brain_key="gt_vis2"
-    # )
+    # Option 2: pass pre-computed embeddings
+    dataset.compute_embeddings(transformers_model, embeddings_field="embeddings")
 
-    # Option 3: Convert a `transformers` model to a `FiftyOneTransformer` and
-    #  create brain runs from the converted model
-
-    # model = fout.convert_transformers_model(transformers_model)
-
-    # Compute similarity
-    # fob.compute_similarity(
-    #     dataset,
-    #     patches_field=patches_field,
-    #     model=model,
-    #     brain_key="gt_sim3"
-    # )
-
-    # Compute visualization
-    # fob.compute_visualization(
-    #     dataset,
-    #     patches_field=patches_field,
-    #     model=model,
-    #     brain_key="gt_vis3"
-    # )
-
-    session = fo.launch_app(dataset)
-
+    fob.compute_similarity(dataset, embeddings="embeddings", brain_key="sim2")
+    fob.compute_visualization(dataset, embeddings="embeddings", brain_key="vis2")

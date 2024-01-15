@@ -127,7 +127,7 @@ on the cards below to see how!
 
 .. customcarditem::
     :header: Transformers
-    :description: Use our Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
+    :description: Use our Hugging Face Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
     :link: transformers.html
     :image: ../_static/images/integrations/transformers.png
     :tags: Brain,Embeddings,Model-Zoo
