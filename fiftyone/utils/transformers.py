@@ -67,6 +67,15 @@ def _get_image_processor(model):
 
 
 def to_classification(results, id2label):
+    """Converts the Transformers classification results to FiftyOne format.
+
+    Args:
+        results: Transformers classification results
+        id2label: Transformers ID to label mapping
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Classification`
+    """
     logits = results.logits
     predicted_labels = logits.argmax(-1)
 
@@ -80,42 +89,59 @@ def to_classification(results, id2label):
         return fol.Classification(
             label=label_classes[0], confidence=confidences[0], logits=logits[0]
         )
-    else:
-        return [
-            fol.Classification(
-                label=label_classes[i],
-                confidence=confidences[i],
-                logits=logits[i],
-            )
-            for i in range(logits.shape[0])
-        ]
+
+    return [
+        fol.Classification(
+            label=label_classes[i],
+            confidence=confidences[i],
+            logits=logits[i],
+        )
+        for i in range(logits.shape[0])
+    ]
+
+
+def to_segmentation(results):
+    """Converts the Transformers semantic segmentation results to FiftyOne
+    format.
+
+    Args:
+        results: Transformers semantic segmentation results
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Segmentation`
+    """
+    masks = [r.cpu().numpy() for r in results]
+
+    if len(results) == 1:
+        return _create_segmentation(masks[0])
+
+    return [_create_segmentation(masks[i]) for i in range(len(masks))]
 
 
 def _create_segmentation(mask):
     return fol.Segmentation(mask=mask)
 
 
-def to_segmentation(results):
-    masks = [r.cpu().numpy() for r in results]
+def to_detections(results, id2label, image_sizes):
+    """Converts the Transformers detection results to FiftyOne format.
+
+    Args:
+        results: Transformers detection results
+        id2label: Transformers ID to label mapping
+        image_sizes: the list of image sizes
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Detections`
+    """
+    if isinstance(results, dict):
+        return _to_detections(results, id2label, image_sizes[0])
+
     if len(results) == 1:
-        return _create_segmentation(masks[0])
-    else:
-        return [_create_segmentation(masks[i]) for i in range(len(masks))]
-
-
-def _convert_bounding_box(box, image_shape):
-    top_left_x, top_left_y, bottom_right_x, bottom_right_y = box
-
-    width = bottom_right_x - top_left_x
-    height = bottom_right_y - top_left_y
-
-    img_width, img_height = image_shape
+        return _to_detections(results[0], id2label, image_sizes[0])
 
     return [
-        top_left_x / img_width,
-        top_left_y / img_height,
-        width / img_width,
-        height / img_height,
+        _to_detections(result, id2label, image_sizes[i])
+        for i, result in enumerate(results)
     ]
 
 
@@ -139,16 +165,20 @@ def _to_detections(result, id2label, image_size):
     return fol.Detections(detections=detections)
 
 
-def to_detections(results, id2label, image_sizes):
-    if isinstance(results, dict):
-        return _to_detections(results, id2label, image_sizes[0])
-    elif len(results) == 1:
-        return _to_detections(results[0], id2label, image_sizes[0])
-    else:
-        return [
-            _to_detections(result, id2label, image_sizes[i])
-            for i, result in enumerate(results)
-        ]
+def _convert_bounding_box(box, image_shape):
+    top_left_x, top_left_y, bottom_right_x, bottom_right_y = box
+
+    width = bottom_right_x - top_left_x
+    height = bottom_right_y - top_left_y
+
+    img_width, img_height = image_shape
+
+    return [
+        top_left_x / img_width,
+        top_left_y / img_height,
+        width / img_width,
+        height / img_height,
+    ]
 
 
 class FiftyOneTransformerConfig(Config):
@@ -186,19 +216,18 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             _dynamic_import, detection_model_name
         )
 
-    def _embed(self, args):
-        inputs = self.image_processor(args, return_tensors="pt")
-        with torch.no_grad():
-            outputs = self.model.base_model(**inputs)
-
-        last_hidden_state = outputs.last_hidden_state[:, -1, :].cpu().numpy()
-        return last_hidden_state
-
     def embed(self, arg):
         return self._embed(arg)[0]
 
     def embed_all(self, args):
         return self._embed(args)
+
+    def _embed(self, args):
+        inputs = self.image_processor(args, return_tensors="pt")
+        with torch.no_grad():
+            outputs = self.model.base_model(**inputs)
+
+        return outputs.last_hidden_state[:, -1, :].cpu().numpy()
 
 
 class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
@@ -318,14 +347,17 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
     """
 
     def _load_model(self, config):
-        self.mask_targets = config.model.id2label
-
         if config.model is not None:
-            return config.model
+            model = config.model
+        else:
+            model = (
+                transformers.AutoModelForSemanticSegmentation.from_pretrained(
+                    config.name_or_path
+                )
+            )
 
-        return transformers.AutoModelForSemanticSegmentation.from_pretrained(
-            config.name_or_path
-        )
+        self.mask_targets = model.config.id2label
+        return model
 
     def _predict(self, inputs, target_sizes):
         with torch.no_grad():
