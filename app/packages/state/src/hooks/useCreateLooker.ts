@@ -3,7 +3,7 @@ import {
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
-  PcdLooker,
+  ThreeDLooker,
   Sample,
   VideoLooker,
 } from "@fiftyone/looker";
@@ -81,7 +81,7 @@ export default <T extends AbstractLooker>(
           | typeof FrameLooker
           | typeof ImageLooker
           | typeof ImaVidLooker
-          | typeof PcdLooker
+          | typeof ThreeDLooker
           | typeof VideoLooker = ImageLooker;
 
         const mimeType = getMimeType(sample);
@@ -95,7 +95,7 @@ export default <T extends AbstractLooker>(
         const filePath = urls.filepath?.split("?")[0];
 
         if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
-          constructor = PcdLooker;
+          constructor = ThreeDLooker;
         } else if (mimeType !== null) {
           const isVideo = mimeType.startsWith("video/");
 
@@ -116,7 +116,7 @@ export default <T extends AbstractLooker>(
 
         let sampleMediaFilePath = urls[mediaField];
 
-        if (constructor === PcdLooker) {
+        if (constructor === ThreeDLooker) {
           const orthographicProjectionField = Object.entries(sample)
             .find(
               (el) =>

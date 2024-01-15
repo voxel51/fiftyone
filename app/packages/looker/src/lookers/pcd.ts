@@ -4,7 +4,7 @@ import { DEFAULT_PCD_OPTIONS, Optional, PcdState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
-export class PcdLooker extends AbstractLooker<PcdState> {
+export class ThreeDLooker extends AbstractLooker<PcdState> {
   getElements(config) {
     return getPcdElements(config, this.updater, this.getDispatchEvent());
   }
