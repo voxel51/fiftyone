@@ -915,7 +915,7 @@ def _compute_image_embeddings_single(
 
             try:
                 img = foui.read(sample.filepath)
-                embedding = model.embed(img)[0]
+                embedding = model.embed(img)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -1058,7 +1058,7 @@ def _compute_frame_embeddings_single(
                     sample.filepath, frames=frames
                 ) as video_reader:
                     for img in video_reader:
-                        embedding = model.embed(img)[0]
+                        embedding = model.embed(img)
 
                         if embeddings_field is not None:
                             sample.add_labels(
@@ -1176,7 +1176,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
                 with etav.FFmpegVideoReader(
                     sample.filepath, frames=frames
                 ) as video_reader:
-                    embedding = model.embed(video_reader)[0]
+                    embedding = model.embed(video_reader)
 
             except Exception as e:
                 if not skip_failures:
