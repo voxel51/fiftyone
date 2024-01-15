@@ -77,6 +77,11 @@ learn how:
     :image_title: PyTorch Lightning
 
 .. customimagelink::
+    :image_link: integrations/transformers.html
+    :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
+    :image_title: Hugging Face
+
+.. customimagelink::
     :image_link: integrations/ultralytics.html
     :image_src: https://voxel51.com/images/integrations/ultralytics-128.png
     :image_title: Ultralytics
