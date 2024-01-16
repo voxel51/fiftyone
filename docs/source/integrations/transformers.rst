@@ -291,12 +291,22 @@ utility to convert the predictions to
     transformers_model = AutoModelForSemanticSegmentation.from_pretrained(
         "Intel/dpt-large-ade"
     )
+    image_processor = AutoImageProcessor.from_pretrained("Intel/dpt-large-ade")
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
-        sample["predictions"] = fout.to_segmentation(result)
+        inputs = image_processor(image, return_tensors="pt")
+        with torch.no_grad():
+            outputs = transformers_model(**inputs)
+
+        results = image_processor.post_process_semantic_segmentation(
+            outputs, target_sizes=[image.size[::-1]]
+        )
+
+        sample["seg_predictions"] = fout.to_segmentation(results)
         sample.save()
+
+    dataset.default_mask_targets = transformers_model.config.id2label
 
 .. _transformers-batch-inference:
 
