@@ -1,4 +1,4 @@
-import { getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchParameters, getFetchPathPrefix } from "@fiftyone/utilities";
 import { KeyboardEventHandler } from "react";
 
 export function stringifyError(error, fallback?) {
@@ -24,8 +24,8 @@ export function onEnter(
 }
 
 export function resolveServerPath(plugin) {
-  const origin = getFetchOrigin();
-  return origin + plugin.serverPath;
+  const { pathPrefix } = getFetchParameters();
+  return pathPrefix + plugin.serverPath;
 }
 
 export function formatValidationErrors(errors: []) {
