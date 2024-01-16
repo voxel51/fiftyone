@@ -46,5 +46,4 @@ class ProgressHandler(logging.Handler):
 
     def emit(self, record):
         msg = self.format(record)
-        print(f"****** {msg} ******")
         self.ctx.set_progress(label=msg)
