@@ -4,10 +4,11 @@ import { MutableRefObject, useEffect, useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Queries } from "./makeRoutes";
-import { RoutingContext, matchPath } from "./routing";
+import { RoutingContext } from "./routing";
 import useEvents from "./useEvents";
 import { AppReadyState } from "./useEvents/registerEvent";
 import { appReadyState } from "./useEvents/utils";
+import { getDatasetName, getSavedViewName } from "./utils";
 
 const useEventSource = (
   router: RoutingContext<Queries>,
@@ -52,8 +53,8 @@ const useEventSource = (
       controller.signal,
       {
         initializer: {
-          dataset: getDatasetName(location.pathname),
-          view: getSavedViewName(location.search),
+          dataset: getDatasetName(),
+          view: getSavedViewName(),
         },
         subscription,
         events: subscriptions,
@@ -77,30 +78,3 @@ const useEventSource = (
 };
 
 export default useEventSource;
-
-export const getDatasetName = (pathname: string) => {
-  const result = matchPath(
-    pathname,
-    {
-      path: "/datasets/:name",
-    },
-    "",
-    {}
-  );
-
-  if (result) {
-    return decodeURIComponent(result.variables.name);
-  }
-
-  return null;
-};
-
-const getSavedViewName = (search: string) => {
-  const params = new URLSearchParams(search);
-  const viewName = params.get("view");
-  if (viewName) {
-    return decodeURIComponent(viewName);
-  }
-
-  return null;
-};
