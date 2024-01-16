@@ -88,7 +88,7 @@ const accumulateOverlays = <State extends BaseState>(
       continue;
     }
 
-    if (label._cls === DYNAMIC_EMBEDDED_DOCUMENT && depth) {
+    if (depth && label._cls === DYNAMIC_EMBEDDED_DOCUMENT) {
       const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
       classifications.push(...nestedResult.classifications);
       overlays.push(...nestedResult.overlays);

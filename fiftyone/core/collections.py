@@ -942,8 +942,9 @@ class SampleCollection(object):
         """Returns an iterator over the samples in the collection.
 
         Args:
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -967,8 +968,9 @@ class SampleCollection(object):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -2892,6 +2894,7 @@ class SampleCollection(object):
         num_workers=None,
         skip_failures=True,
         warn_failures=False,
+        progress=None,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
 
@@ -2905,6 +2908,9 @@ class SampleCollection(object):
                 raising an error if metadata cannot be computed for a sample
             warn_failures (False): whether to log a warning if metadata cannot
                 be computed for a sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         fomt.compute_metadata(
             self,
@@ -2912,6 +2918,7 @@ class SampleCollection(object):
             num_workers=num_workers,
             skip_failures=skip_failures,
             warn_failures=warn_failures,
+            progress=progress,
         )
 
     def download_media(
@@ -3032,6 +3039,7 @@ class SampleCollection(object):
         skip_failures=True,
         output_dir=None,
         rel_dir=None,
+        progress=None,
         **kwargs,
     ):
         """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
@@ -3080,6 +3088,9 @@ class SampleCollection(object):
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
                 necessary) via :func:`fiftyone.core.storage.normalize_path`
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -3094,6 +3105,7 @@ class SampleCollection(object):
             skip_failures=skip_failures,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            progress=progress,
             **kwargs,
         )
 
@@ -3105,6 +3117,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        progress=None,
         **kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
@@ -3144,6 +3157,9 @@ class SampleCollection(object):
                 raising an error if embeddings cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
 
@@ -3173,6 +3189,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            progress=progress,
             **kwargs,
         )
 
@@ -3188,6 +3205,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        progress=None,
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
@@ -3239,6 +3257,9 @@ class SampleCollection(object):
                 applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if embeddings cannot be generated for a sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             one of the following:
@@ -3269,6 +3290,7 @@ class SampleCollection(object):
             alpha=alpha,
             handle_missing=handle_missing,
             skip_failures=skip_failures,
+            progress=progress,
         )
 
     @mutates_data
@@ -3279,6 +3301,7 @@ class SampleCollection(object):
         eval_key=None,
         missing=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the regression predictions in this collection with respect
@@ -3317,6 +3340,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.regression_backends.keys()`` and the
                 default is ``fo.evaluation_config.regression_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
                 being used
@@ -3331,6 +3357,7 @@ class SampleCollection(object):
             eval_key=eval_key,
             missing=missing,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3343,6 +3370,7 @@ class SampleCollection(object):
         classes=None,
         missing=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the classification predictions in this collection with
@@ -3390,6 +3418,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.classification_backends.keys()`` and the
                 default is ``fo.evaluation_config.classification_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -3405,6 +3436,7 @@ class SampleCollection(object):
             classes=classes,
             missing=missing,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3422,6 +3454,7 @@ class SampleCollection(object):
         use_boxes=False,
         classwise=True,
         dynamic=True,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -3514,6 +3547,9 @@ class SampleCollection(object):
                 label (True) or allow matches between classes (False)
             dynamic (True): whether to declare the dynamic object-level
                 attributes that are populated on the dataset's schema
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -3534,6 +3570,7 @@ class SampleCollection(object):
             use_boxes=use_boxes,
             classwise=classwise,
             dynamic=dynamic,
+            progress=progress,
             **kwargs,
         )
 
@@ -3545,6 +3582,7 @@ class SampleCollection(object):
         eval_key=None,
         mask_targets=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3598,6 +3636,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.segmentation_backends.keys()`` and the
                 default is ``fo.evaluation_config.segmentation_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3612,6 +3653,7 @@ class SampleCollection(object):
             eval_key=eval_key,
             mask_targets=mask_targets,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3876,7 +3918,13 @@ class SampleCollection(object):
         return fors.RunConfig()
 
     def register_run(
-        self, run_key, config, results=None, overwrite=False, cache=True
+        self,
+        run_key,
+        config,
+        results=None,
+        overwrite=False,
+        cleanup=True,
+        cache=True,
     ):
         """Registers a run under the given key on this collection.
 
@@ -3886,6 +3934,9 @@ class SampleCollection(object):
             results (None): an optional :class:`fiftyone.core.runs.RunResults`
             overwrite (False): whether to allow overwriting an existing run of
                 the same type
+            cleanup (True): whether to execute an existing run's
+                :meth:`fiftyone.core.runs.Run.cleanup` method when overwriting
+                it
             cache (True): whether to cache the results on the collection
         """
         if not isinstance(config, fors.RunConfig):
@@ -3897,7 +3948,7 @@ class SampleCollection(object):
         run = config.build()
         run.ensure_requirements()
 
-        run.register_run(self, run_key, overwrite=overwrite)
+        run.register_run(self, run_key, overwrite=overwrite, cleanup=cleanup)
 
         if results is not None:
             if not isinstance(results, fors.RunResults):
@@ -8430,6 +8481,7 @@ class SampleCollection(object):
         label_fields=None,
         overwrite=False,
         config=None,
+        progress=None,
         **kwargs,
     ):
         """Renders annotated versions of the media in the collection with the
@@ -8459,6 +8511,9 @@ class SampleCollection(object):
             config (None): an optional
                 :class:`fiftyone.utils.annotations.DrawConfig` configuring how
                 to draw the labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments specifying parameters of the
                 default :class:`fiftyone.utils.annotations.DrawConfig` to
                 override
@@ -8486,6 +8541,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
@@ -8496,6 +8552,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
@@ -8518,6 +8575,7 @@ class SampleCollection(object):
         label_field=None,
         frame_labels_field=None,
         overwrite=False,
+        progress=None,
         **kwargs,
     ):
         """Exports the samples in the collection to disk.
@@ -8691,6 +8749,9 @@ class SampleCollection(object):
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
                 existing files and directories (False)
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
@@ -8725,6 +8786,7 @@ class SampleCollection(object):
                 label_field=label_field,
                 frame_labels_field=frame_labels_field,
                 overwrite=overwrite,
+                progress=progress,
                 **kwargs,
             )
 
@@ -9001,6 +9063,7 @@ class SampleCollection(object):
         dest_field=None,
         unexpected="prompt",
         cleanup=False,
+        progress=None,
         **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
@@ -9028,6 +9091,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: keyword arguments for the run's
                 :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
@@ -9042,6 +9108,7 @@ class SampleCollection(object):
             dest_field=dest_field,
             unexpected=unexpected,
             cleanup=cleanup,
+            progress=progress,
             **kwargs,
         )
 
@@ -9335,6 +9402,7 @@ class SampleCollection(object):
         include_frames=False,
         frame_labels_dir=None,
         pretty_print=False,
+        progress=None,
     ):
         """Returns a JSON dictionary representation of the collection.
 
@@ -9359,6 +9427,9 @@ class SampleCollection(object):
                 readable format with newlines and indentations. Only applicable
                 to datasets that contain videos when a ``frame_labels_dir`` is
                 provided
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a JSON dict
@@ -9415,7 +9486,7 @@ class SampleCollection(object):
         # Serialize samples
         samples = []
         with fost.FileWriter() as writer:
-            for sample in self.iter_samples(progress=True):
+            for sample in self.iter_samples(progress=progress):
                 sd = sample.to_dict(
                     include_frames=include_frames,
                     include_private=include_private,
@@ -11233,6 +11304,7 @@ def _export(
     label_field=None,
     frame_labels_field=None,
     overwrite=False,
+    progress=None,
     **kwargs,
 ):
     if dataset_type is None and dataset_exporter is None:
@@ -11304,6 +11376,7 @@ def _export(
         dataset_exporter=dataset_exporter,
         label_field=label_field,
         frame_labels_field=frame_labels_field,
+        progress=progress,
         **kwargs,
     )
 

@@ -3476,7 +3476,6 @@ __metadata:
     "@fiftyone/state": "*"
     "@focus-reactive/storybook-graphql-kit": ^1.0.2
     "@mdx-js/react": ^1.6.22
-    "@mui/joy": ^5.0.0-beta.11
     "@mui/material": ^5.9.0
     "@storybook/addon-actions": ^6.5.13
     "@storybook/addon-docs": ^7.5.0
@@ -4899,9 +4898,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/material@npm:^5.9.0":
-  version: 5.10.11
-  resolution: "@mui/material@npm:5.10.11"
+"@mui/material@npm:^5.9.0, @mui/material@npm:^5.9.2":
+  version: 5.14.14
+  resolution: "@mui/material@npm:5.14.14"
   dependencies:
     "@babel/runtime": ^7.19.0
     "@mui/base": 5.0.0-alpha.103
