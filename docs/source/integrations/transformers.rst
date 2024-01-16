@@ -211,12 +211,25 @@ to convert the predictions to :ref:`FiftyOne format <object-detection>`:
     transformers_model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50"
     )
+    image_processor = AutoImageProcessor.from_pretrained(
+        "microsoft/conditional-detr-resnet-50"
+    )
+
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
-        sample["predictions"] = fout.to_detections(result, id2label, [image.size])
+        inputs = image_processor(image, return_tensors="pt")
+        with torch.no_grad():
+            outputs = transformers_model(**inputs)
+
+        results = image_processor.post_process_object_detection(
+            outputs, target_sizes=[image.size[::-1]]
+        )
+
+        sample["det_predictions"] = fout.to_detections(
+            results, id2label, [image.size]
+            )
         sample.save()
 
 .. _transformers-semantic-segmentation:
