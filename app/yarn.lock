@@ -4791,8 +4791,8 @@ __metadata:
   linkType: hard
 
 "@mui/material@npm:^5.9.0":
-  version: 5.14.14
-  resolution: "@mui/material@npm:5.14.14"
+  version: 5.10.11
+  resolution: "@mui/material@npm:5.10.11"
   dependencies:
     "@babel/runtime": ^7.19.0
     "@mui/base": 5.0.0-alpha.103
@@ -4819,7 +4819,7 @@ __metadata:
       optional: true
     "@types/react":
       optional: true
-  checksum: b7e30db2b82732d42940d702ede13e2298535e3dcf76fc841e1f2c7d1bafa30716ff5e05e3f51d326c3a870bf2f7c1de8559f27a43b30d7466f1b1a5a5287b76
+  checksum: 208312fc063ccdfad393e0e86f1d22d1e8e45fdcf6ba9ce5e0914211944f7dec04a2784d04f728f6014d3fe17b1b102e0279a51d9cf94147c45520c662f3be40
   languageName: node
   linkType: hard
 
