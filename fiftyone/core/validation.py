@@ -216,21 +216,20 @@ def _validate_fields(
     same_type,
     frames=False,
 ):
-    if frames:
-        schema = sample_collection.get_frame_field_schema()
-    else:
-        schema = sample_collection.get_field_schema()
-
     label_types = {}
     for field_name in field_names:
-        if field_name not in schema:
+        path = field_name
+        if frames:
+            path = sample_collection._FRAMES_PREFIX + path
+
+        field = sample_collection.get_field(path)
+
+        if field is None:
             ftype = "frame field" if frames else "sample field"
             raise ValueError(
                 "%s has no %s '%s'"
                 % (sample_collection.__class__.__name__, ftype, field_name)
             )
-
-        field = schema[field_name]
 
         try:
             label_type = field.document_type

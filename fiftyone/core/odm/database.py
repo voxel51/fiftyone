@@ -631,6 +631,7 @@ def export_collection(
     key="documents",
     patt="{idx:06d}-{id}.json",
     num_docs=None,
+    progress=None,
 ):
     """Exports the collection to disk in JSON format.
 
@@ -647,22 +648,31 @@ def export_collection(
             to the document's ID
         num_docs (None): the total number of documents. If omitted, this must
             be computable via ``len(docs)``
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if num_docs is None:
         num_docs = len(docs)
 
     if json_dir_or_path.endswith(".json"):
-        _export_collection_single(docs, json_dir_or_path, key, num_docs)
+        _export_collection_single(
+            docs, json_dir_or_path, key, num_docs, progress=progress
+        )
     else:
-        _export_collection_multi(docs, json_dir_or_path, patt, num_docs)
+        _export_collection_multi(
+            docs, json_dir_or_path, patt, num_docs, progress=progress
+        )
 
 
-def _export_collection_single(docs, json_path, key, num_docs):
+def _export_collection_single(docs, json_path, key, num_docs, progress=None):
     etau.ensure_basedir(json_path)
 
     with open(json_path, "w") as f:
         f.write('{"%s": [' % key)
-        with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+        with fou.ProgressBar(
+            total=num_docs, iters_str="docs", progress=progress
+        ) as pb:
             for idx, doc in pb(enumerate(docs, 1)):
                 f.write(json_util.dumps(doc))
                 if idx < num_docs:
@@ -671,11 +681,13 @@ def _export_collection_single(docs, json_path, key, num_docs):
         f.write("]}")
 
 
-def _export_collection_multi(docs, json_dir, patt, num_docs):
+def _export_collection_multi(docs, json_dir, patt, num_docs, progress=None):
     etau.ensure_dir(json_dir)
 
     json_patt = os.path.join(json_dir, patt)
-    with fou.ProgressBar(total=num_docs, iters_str="docs") as pb:
+    with fou.ProgressBar(
+        total=num_docs, iters_str="docs", progress=progress
+    ) as pb:
         for idx, doc in pb(enumerate(docs, 1)):
             json_path = json_patt.format(idx=idx, id=str(doc["_id"]))
             export_document(doc, json_path)
@@ -735,7 +747,7 @@ def _import_collection_multi(json_dir):
     return docs, len(json_paths)
 
 
-def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
+def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     """Inserts documents into a collection.
 
     The ``_id`` field of the input documents will be populated if it is not
@@ -745,8 +757,9 @@ def insert_documents(docs, coll, ordered=False, progress=False, num_docs=None):
         docs: an iterable of BSON document dicts
         coll: a pymongo collection
         ordered (False): whether the documents must be inserted in order
-        progress (False): whether to render a progress bar tracking the
-            insertion
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         num_docs (None): the total number of documents. Only used when
             ``progress=True``. If omitted, this will be computed via
             ``len(docs)``, if possible
