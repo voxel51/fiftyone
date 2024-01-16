@@ -1,5 +1,5 @@
 /**
- * @generated SignedSource<<a3ab4ad2dfc47512de3d717569c80233>>
+ * @generated SignedSource<<6a026f47ac9fe6e3324ad7be21c88269>>
  * @lightSyntaxTransform
  * @nogrep
  */
@@ -14,6 +14,7 @@ export type mediaFieldsFragment$data = {
   readonly appConfig: {
     readonly gridMediaField: string;
     readonly mediaFields: ReadonlyArray<string> | null;
+    readonly modalMediaField: string;
   } | null;
   readonly name: string;
   readonly sampleFields: ReadonlyArray<{
@@ -60,6 +61,13 @@ const node: ReaderFragment = {
           "kind": "ScalarField",
           "name": "mediaFields",
           "storageKey": null
+        },
+        {
+          "alias": null,
+          "args": null,
+          "kind": "ScalarField",
+          "name": "modalMediaField",
+          "storageKey": null
         }
       ],
       "storageKey": null
@@ -87,6 +95,6 @@ const node: ReaderFragment = {
   "abstractKey": null
 };
 
-(node as any).hash = "12bf18714983f2f5a61167b9e5703f8e";
+(node as any).hash = "f65b23fc366d07867fc580339a336842";
 
 export default node;

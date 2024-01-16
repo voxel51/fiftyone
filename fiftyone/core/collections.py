@@ -3042,24 +3042,18 @@ class SampleCollection(object):
         progress=None,
         **kwargs,
     ):
-        """Applies the :class:`FiftyOne model <fiftyone.core.models.Model>` or
-        :class:`Lightning Flash model <flash:flash.core.model.Task>` to the
-        samples in the collection.
+        """Applies the model to the samples in the collection.
 
         This method supports all of the following cases:
 
-        -   Applying an image :class:`fiftyone.core.models.Model` to an image
-            collection
-        -   Applying an image :class:`fiftyone.core.models.Model` to the frames
-            of a video collection
-        -   Applying a video :class:`fiftyone.core.models.Model` to a video
-            collection
-        -   Applying a :class:`flash:flash.core.model.Task` to an image or
-            video collection
+        -   Applying an image model to an image collection
+        -   Applying an image model to the frames of a video collection
+        -   Applying a video model to a video collection
 
         Args:
-            model: a :class:`fiftyone.core.models.Model` or
-                :class:`flash:flash.core.model.Task`
+            model: a :class:`fiftyone.core.models.Model`, Hugging Face
+                transformers model, Ultralytics model, SuperGradients model, or
+                Lightning Flash model
             label_field ("predictions"): the name of the field in which to
                 store the model predictions. When performing inference on video
                 frames, the "frames." prefix is optional
@@ -3121,30 +3115,25 @@ class SampleCollection(object):
         **kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
-        given :class:`FiftyOne model <fiftyone.core.models.Model>` or
-        :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+        given model.
 
         This method supports all the following cases:
 
-        -   Using an image :class:`fiftyone.core.models.Model` to compute
-            embeddings for an image collection
-        -   Using an image :class:`fiftyone.core.models.Model` to compute frame
-            embeddings for a video collection
-        -   Using a video :class:`fiftyone.core.models.Model` to compute
-            embeddings for a video collection
-        -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
-            embeddings for an image collection
+        -   Using an image model to compute embeddings for an image collection
+        -   Using an image model to compute frame embeddings for a video
+            collection
+        -   Using a video model to compute embeddings for a video collection
 
-        When using a :class:`FiftyOne model <fiftyone.core.models.Model>`, the
-        model must expose embeddings, i.e.,
+        The ``model`` must expose embeddings, i.e.,
         :meth:`fiftyone.core.models.Model.has_embeddings` must return ``True``.
 
         If an ``embeddings_field`` is provided, the embeddings are saved to the
         samples; otherwise, the embeddings are returned in-memory.
 
         Args:
-            model: a :class:`fiftyone.core.models.Model` or
-                :class:`flash:flash.core.model.Task`
+            model: a :class:`fiftyone.core.models.Model`, Hugging Face
+                Transformers model, Ultralytics model, SuperGradients model, or
+                Lightning Flash model
             embeddings_field (None): the name of a field in which to store the
                 embeddings. When computing video frame embeddings, the
                 "frames." prefix is optional
@@ -3209,7 +3198,7 @@ class SampleCollection(object):
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
-        :class:`fiftyone.core.models.Model`.
+        model.
 
         This method supports all the following cases:
 
@@ -3225,7 +3214,9 @@ class SampleCollection(object):
         samples; otherwise, the embeddings are returned in-memory.
 
         Args:
-            model: a :class:`fiftyone.core.models.Model`
+            model: a :class:`fiftyone.core.models.Model`, Hugging Face
+                Transformers model, Ultralytics model,  SuperGradients model,
+                or Lightning Flash model
             patches_field: the name of the field defining the image patches in
                 each sample to embed. Must be of type
                 :class:`fiftyone.core.labels.Detection`,

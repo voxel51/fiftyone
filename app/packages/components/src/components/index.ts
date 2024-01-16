@@ -19,7 +19,7 @@ export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutSectionTitle } from "./PopoutSectionTitle";
 export * from "./Selection";
 export { default as Selection } from "./Selection";
-export { default as Selector } from "./Selector";
+export { default as Selector, SelectorValidationError } from "./Selector";
 export type { UseSearch } from "./Selector";
 export { default as TabOption } from "./TabOption";
 export { default as ThemeProvider, useTheme } from "./ThemeProvider";

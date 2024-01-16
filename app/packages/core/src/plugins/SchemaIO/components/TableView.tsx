@@ -15,10 +15,16 @@ import { getComponentProps } from "../utils";
 
 export default function TableView(props) {
   const { schema, data } = props;
-  const { view = {} } = schema;
+  const { view = {}, default: defaultValue } = schema;
   const { columns } = view;
 
-  const dataMissing = !Array.isArray(data) || data.length === 0;
+  const table = Array.isArray(data)
+    ? data
+    : Array.isArray(defaultValue)
+    ? defaultValue
+    : [];
+
+  const dataMissing = table.length === 0;
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -44,7 +50,7 @@ export default function TableView(props) {
               </TableRow>
             </TableHead>
             <TableBody {...getComponentProps(props, "tableBody")}>
-              {data.map((item) => (
+              {table.map((item) => (
                 <TableRow
                   key={item.id}
                   sx={{ "&:last-child td, &:last-child th": { border: 0 } }}

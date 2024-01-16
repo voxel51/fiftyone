@@ -18,6 +18,10 @@ let theme = extendMuiTheme({
   typography: {
     fontFamily: "Palanquin, sans-serif",
   },
+  zIndex: {
+    // MUI default max is zIndex.tooltip=1500
+    operatorPalette: 1501,
+  },
   colorSchemes: {
     light: {
       palette: {
