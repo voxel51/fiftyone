@@ -28,6 +28,16 @@ export class SidebarPom {
       .nth(1);
   }
 
+  fieldContainer(fieldName: string) {
+    return this.sidebar.getByTestId(`sidebar-field-container-${fieldName}`);
+  }
+
+  fieldArrow(fieldName: string, enabled: boolean) {
+    return this.fieldContainer(fieldName).getByTestId(
+      `sidebar-field-arrow-${enabled ? "enabled" : "disabled"}-${fieldName}`
+    );
+  }
+
   sidebarEntryDraggableArea(fieldName: string) {
     return this.sidebar
       .getByTestId(`sidebar-entry-draggable-${fieldName}`)
@@ -58,7 +68,9 @@ export class SidebarPom {
   }
 
   async clickFieldDropdown(field: string) {
-    const selector = this.sidebar.getByTestId(`sidebar-field-arrow-${field}`);
+    const selector = this.sidebar.getByTestId(
+      `sidebar-field-arrow-enabled-${field}`
+    );
     return selector.click();
   }
 
@@ -90,6 +102,12 @@ export class SidebarPom {
       .getByTestId("checkbox-" + label)
       .getByTitle(label);
     await selectionDiv.click({ force: true });
+  }
+
+  async applySearch(field: string, search: string) {
+    const input = this.sidebar.getByTestId(`selector-sidebar-search-${field}`);
+    await input.fill(search);
+    await input.press("Enter");
   }
 
   // apply a filter to a field
@@ -137,9 +155,29 @@ class SidebarAsserter {
     await expect(this.sb.field(fieldName)).toBeVisible();
   }
 
+  async assertFieldDisabled(fieldName: string) {
+    await expect(this.sb.fieldArrow(fieldName, false)).toBeVisible();
+  }
+
+  async assertFieldsDisabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertFieldDisabled(fieldNames[i]);
+    }
+  }
+
+  async assertFieldEnabled(fieldName: string) {
+    await expect(this.sb.fieldArrow(fieldName, true)).toBeVisible();
+  }
+
+  async assertFieldsEnabled(fieldNames: string[]) {
+    for (let i = 0; i < fieldNames.length; i++) {
+      await this.assertFieldEnabled(fieldNames[i]);
+    }
+  }
+
   async assertFieldsInSidebar(fieldNames: string[]) {
     for (let i = 0; i < fieldNames.length; i++) {
-      await this.sb.asserter.assertFieldInSidebar(fieldNames[i]);
+      await this.assertFieldInSidebar(fieldNames[i]);
     }
   }
 
