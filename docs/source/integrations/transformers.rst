@@ -139,6 +139,7 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
         inputs = image_processor(image, return_tensors="pt")
         with torch.no_grad():
             result = transformers_model(**inputs)
+
         sample["classif_predictions"] = fout.to_classification(result, id2label)
         sample.save()
 
@@ -226,10 +227,9 @@ to convert the predictions to :ref:`FiftyOne format <object-detection>`:
         results = image_processor.post_process_object_detection(
             outputs, target_sizes=[image.size[::-1]]
         )
-
         sample["det_predictions"] = fout.to_detections(
             results, id2label, [image.size]
-            )
+        )
         sample.save()
 
 .. _transformers-semantic-segmentation:
@@ -302,7 +302,6 @@ utility to convert the predictions to
         results = image_processor.post_process_semantic_segmentation(
             outputs, target_sizes=[image.size[::-1]]
         )
-
         sample["seg_predictions"] = fout.to_segmentation(results)
         sample.save()
 
@@ -344,19 +343,14 @@ pattern below:
         images = [Image.open(p) for p in paths]
         inputs = image_processor(images, return_tensors="pt")
         image_sizes = [i.size for i in images]
-
         with torch.no_grad():
             outputs = transformers_model(**inputs)
 
         results = image_processor.<post_processing_function>(...)
 
-        ## classification
+        # Use the appropriate one of these
         predictions.extend(fout.to_classification(results, id2label))
-
-        ## detection
         predictions.extend(fout.to_detections(results, id2label, image_sizes))
-
-        ## semantic segmentations
         predictions.extend(fout.to_segmentation(results))
 
     dataset.set_values("predictions", predictions)
