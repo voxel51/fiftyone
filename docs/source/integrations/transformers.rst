@@ -331,8 +331,9 @@ pattern below:
     from fiftyone.core.utils import iter_batches
     import fiftyone.utils.transformers as fout
 
-    # Pick a detection model
+    # Pick a model
     transformers_model = ...
+    image_processor = ...
     id2label = transformers_model.config.id2label
 
     filepaths = dataset.values("filepath")
@@ -341,9 +342,22 @@ pattern below:
     predictions = []
     for paths in iter_batches(filepaths, batch_size):
         images = [Image.open(p) for p in paths]
+        inputs = image_processor(images, return_tensors="pt")
         image_sizes = [i.size for i in images]
-        results = transformers_model(images)
+
+        with torch.no_grad():
+            outputs = transformers_model(**inputs)
+
+        results = image_processor.<post_processing_function>(...)
+
+        ## classification
+        predictions.extend(fout.to_classification(results, id2label))
+
+        ## detection
         predictions.extend(fout.to_detections(results, id2label, image_sizes))
+
+        ## semantic segmentations
+        predictions.extend(fout.to_segmentation(results))
 
     dataset.set_values("predictions", predictions)
 
