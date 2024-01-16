@@ -857,7 +857,7 @@ def _make_patches_view(
     }
 
     if "." in field:
-        project[field.split(".", 1)[0] + ".cls"] = True  # embedded fields
+        project[field.split(".", 1)[0] + "._cls"] = True  # embedded fields
 
     if other_fields is not None:
         for f in other_fields:
