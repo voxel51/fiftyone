@@ -54,9 +54,7 @@ async def load_view(
                 stages=serialized_view,
                 filters=form.filters,
                 sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slices=[form.slice] if form.slice else None
-                    )
+                    group=GroupElementFilter(slice=form.slice)
                 ),
             )
 
@@ -65,6 +63,7 @@ async def load_view(
 
             if form.mixed and view.media_type == fom.GROUP:
                 view = view.select_group_slices(_force_mixed=True)
+                view = get_extended_view(view, form.filters)
 
             return view
 
@@ -141,6 +140,7 @@ def get_view(
             pagination_data=pagination_data,
             extended_stages=extended_stages,
         )
+
     return view
 
 
