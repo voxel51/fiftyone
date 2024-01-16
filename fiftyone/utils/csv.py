@@ -379,12 +379,12 @@ class CSVDatasetExporter(foud.BatchDatasetExporter, foud.ExportPathsMixin):
         self._include_media = include_media
         self._needs_metadata = needs_metadata
 
-    def export_samples(self, sample_collection):
+    def export_samples(self, sample_collection, progress=None):
         if self._needs_metadata:
             sample_collection.compute_metadata()
 
         idx = self._media_idx
-        with fou.ProgressBar(total=len(sample_collection)) as pb:
+        with fou.ProgressBar(total=sample_collection, progress=progress) as pb:
             for data in pb(zip(*sample_collection.values(self._paths))):
                 data = [_parse_value(d) for d in data]
 

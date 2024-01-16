@@ -466,8 +466,9 @@ class DatasetView(foc.SampleCollection):
                 sample.ground_truth.label = make_label()
 
         Args:
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -480,10 +481,9 @@ class DatasetView(foc.SampleCollection):
         with contextlib.ExitStack() as exit_context:
             samples = self._iter_samples()
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                exit_context.enter_context(pb)
-                samples = pb(samples)
+            pb = fou.ProgressBar(total=self, progress=progress)
+            exit_context.enter_context(pb)
+            samples = pb(samples)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
@@ -582,8 +582,9 @@ class DatasetView(foc.SampleCollection):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -605,10 +606,9 @@ class DatasetView(foc.SampleCollection):
         with contextlib.ExitStack() as exit_context:
             groups = self._iter_groups(group_slices=group_slices)
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                exit_context.enter_context(pb)
-                groups = pb(groups)
+            pb = fou.ProgressBar(total=self, progress=progress)
+            exit_context.enter_context(pb)
+            groups = pb(groups)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
@@ -679,8 +679,9 @@ class DatasetView(foc.SampleCollection):
                 print("%s: %d" % (group_value, len(group)))
 
         Args:
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             an iterator that emits :class:`DatasetView` instances, one per
@@ -692,10 +693,9 @@ class DatasetView(foc.SampleCollection):
         with contextlib.ExitStack() as context:
             groups = self._iter_dynamic_groups()
 
-            if progress:
-                pb = fou.ProgressBar(total=len(self))
-                context.enter_context(pb)
-                groups = pb(groups)
+            pb = fou.ProgressBar(total=self, progress=progress)
+            context.enter_context(pb)
+            groups = pb(groups)
 
             for group in groups:
                 yield group

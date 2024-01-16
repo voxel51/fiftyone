@@ -97,6 +97,7 @@ def reencode_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
@@ -152,6 +153,9 @@ def reencode_videos(
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -168,6 +172,7 @@ def reencode_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -190,6 +195,7 @@ def transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Transforms the videos in the sample collection according to the provided
@@ -258,6 +264,9 @@ def transform_videos(
             an error if a video cannot be transformed
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -280,6 +289,7 @@ def transform_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -303,6 +313,7 @@ def sample_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Samples the videos in the sample collection into directories of
@@ -404,6 +415,9 @@ def sample_videos(
             an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -428,6 +442,7 @@ def sample_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -725,6 +740,7 @@ def _transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     if output_field is None:
@@ -744,7 +760,7 @@ def _transform_videos(
     if frames is None:
         frames = itertools.repeat(None)
 
-    with fou.ProgressBar(total=len(view)) as pb:
+    with fou.ProgressBar(total=view, progress=progress) as pb:
         for sample, _frames in pb(zip(view, frames)):
             inpath = sample[media_field]
 

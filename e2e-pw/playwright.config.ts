@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { Duration } from "src/oss/utils";
 
 dotenv.config({ path: process.env.CI ? ".env.ci" : ".env.dev" });
-
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
