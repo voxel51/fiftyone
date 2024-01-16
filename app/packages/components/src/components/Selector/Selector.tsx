@@ -58,13 +58,16 @@ function Selector<T>(props: SelectorProps<T>) {
   const [editing, setEditing] = useState(false);
   const [search, setSearch] = useState("");
   const valuesRef = useRef<T[]>([]);
-  const [active, setActive] = useState<number>();
+
+  // active is an index in the values array, or "undefined" which is the unset
+  // pivot between 0 and (length - 1)
+  const [active, setActive] = useState<number | undefined>(undefined);
   const local = useRef(value || "");
 
   const onSelectWrapper = useMemo(() => {
-    return async (search: string) => {
+    return async (search: string, useSearch?: boolean) => {
       const value =
-        active !== undefined
+        active !== undefined && !useSearch
           ? valuesRef.current[active]
           : valuesRef.current.find((v) => toKey(v) === search);
 
@@ -94,9 +97,9 @@ function Selector<T>(props: SelectorProps<T>) {
   useLayoutEffect(() => {
     if (!editing) {
       document.activeElement === ref.current && ref.current?.blur();
+      setActive(undefined);
     } else {
       setSearch("");
-      setActive(undefined);
     }
   }, [editing]);
 
@@ -155,6 +158,7 @@ function Selector<T>(props: SelectorProps<T>) {
         }}
         onChange={(e) => {
           setSearch(e.target.value);
+          setActive(undefined);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -166,11 +170,10 @@ function Selector<T>(props: SelectorProps<T>) {
               editing && setEditing(false);
               break;
             case "ArrowDown":
-              active !== undefined &&
-                setActive(Math.min(active + 1, valuesRef.current.length - 1));
+              setActive(down(active, valuesRef.current.length));
               break;
             case "ArrowUp":
-              active !== undefined && setActive(Math.max(active - 1, 0));
+              setActive(up(active, valuesRef.current.length));
               break;
           }
         }}
@@ -210,7 +213,7 @@ function Selector<T>(props: SelectorProps<T>) {
                     noResults={noResults}
                     search={search}
                     useSearch={useSearch}
-                    onSelect={(value) => onSelectWrapper(toKey(value))}
+                    onSelect={(value) => onSelectWrapper(toKey(value), true)}
                     component={component}
                     onResults={onResults}
                     toKey={toKey}
@@ -224,5 +227,25 @@ function Selector<T>(props: SelectorProps<T>) {
     </div>
   );
 }
+
+const down = (active: number | undefined, length: number) => {
+  if (active === length - 1) {
+    return undefined; // we are at the end, go to pivot
+  }
+
+  return Math.min((active ?? -1) + 1, length - 1);
+};
+
+const up = (active: number | undefined, length: number) => {
+  if (active === undefined) {
+    return length - 1; // go to end
+  }
+
+  if (active === 0) {
+    return undefined; // return to pivot
+  }
+
+  return Math.max(active - 1, 0);
+};
 
 export default Selector;

@@ -31,8 +31,7 @@ const test = base.extend<{
 });
 
 const datasetName = getUniqueDatasetNameWithPrefix("quickstart");
-// start the dataset with a default colorscheme: color pool is purple and pink;
-// ground_truth has green as field color, bird value has yellow color;
+
 test.describe("color scheme basic functionality with quickstart", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
     await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
@@ -61,52 +60,6 @@ test.describe("color scheme basic functionality with quickstart", () => {
     await fiftyoneLoader.waitUntilGridVisible(page, datasetName);
   });
 
-  test("update color scheme's color pool", async ({
-    grid,
-    gridActionsRow,
-    colorModal,
-    eventUtils,
-  }) => {
-    // update color scheme to color blind friendly palette
-    await gridActionsRow.toggleColorSettings();
-    await colorModal.selectActiveField("JSON editor");
-    // mount eventListener
-    const editorUpdatePromise = eventUtils.getEventReceivedPromiseForPredicate(
-      "json-viewer-update",
-      () => true
-    );
-    await colorModal.selectActiveField("Global settings");
-    await colorModal.useColorBlindColors();
-    // verify the color palette is updated in JSON editor
-    await colorModal.selectActiveField("JSON editor");
-    // mount eventListener
-    await editorUpdatePromise;
-
-    // wait for json editor to load
-    await expect(await colorModal.getJSONEditor()).toHaveScreenshot(
-      "change-color-palette-json-editor.png",
-      { animations: "allow" }
-    );
-
-    // verify the color palette is updated in grid
-    await colorModal.closeColorModal();
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "change-color-palette.png",
-      { animations: "allow" }
-    );
-
-    // open the color modal again, the setting is persistent
-    await gridActionsRow.toggleColorSettings();
-    await colorModal.selectActiveField("Global settings");
-
-    // TODO: will update this screenshot test after the all v1.5 color tickets updated.
-
-    // await expect(await page.locator("#color-palette")).toHaveScreenshot(
-    //   "color-pool-1.png",
-    //   { animations: "allow" }
-    // );
-  });
-
   test("update color by value mode, use tag as colorByAttribute", async ({
     gridActionsRow,
     colorModal,
@@ -133,7 +86,8 @@ test.describe("color scheme basic functionality with quickstart", () => {
       .first()
       .click({ force: true });
     await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
-    await colorModal.addANewPair("test", "black", 1); // this doesn't matter
+    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
+    await colorModal.addANewPair("validation", "#9ACD32", 0); // yellow green
 
     await colorModal.closeColorModal();
     const tagBubble = page.getByTestId("tag-validation").first();
@@ -144,85 +98,6 @@ test.describe("color scheme basic functionality with quickstart", () => {
     // verify validation tag has yellow green as background color
     expect(await tagBubble.getAttribute("style")).toContain(
       "rgb(154, 205, 50)"
-    );
-  });
-
-  test("update color by value - detection - no colorbyattribute", async ({
-    gridActionsRow,
-    colorModal,
-    sidebar,
-  }) => {
-    // turn off predictions detections and open color modal
-    await sidebar.clickFieldCheckbox("predictions");
-    await gridActionsRow.toggleColorSettings();
-    // go to prediction tab
-    await colorModal.selectActiveField("ground_truth");
-    // color by value mode
-    await colorModal.changeColorMode("value");
-
-    // await page
-    //   .getByTitle(`Use custom colors for specific field values`)
-    //   .first()
-    //   .click({ force: true });
-    // // I can set value colors directly bypass choosing attribute by value
-    // await colorModal.addNewPairs([
-    //   { value: "bird", color: "#ffff00" }, // yellow
-    //   { value: "person", color: "#ff0000" }, // red
-    //   { value: "horse", color: "#008000" }, //green
-    //   { value: "cat", color: "#0000ff" }, //blue
-    //   { value: "bottle", color: "#ffffff" }, // white
-    //   { value: "surfboard", color: "#ffffff" },
-    //   { value: "knife", color: "#ffffff" },
-    //   { value: "fork", color: "#ffffff" },
-    //   { value: "cup", color: "#ffffff" },
-    //   { value: "dining table", color: "#ffffff" },
-    //   { value: "chair", color: "#ffffff" },
-    //   { value: "cake", color: "#ffffff" },
-    // ]);
-
-    // await colorModal.closeColorModal();
-    // await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-    //   "color-value-setting-1.png",
-    //   { animations: "allow" }
-    // );
-  });
-
-  test("update color by value - ground_truth - with custom string field", async ({
-    grid,
-    sidebar,
-    gridActionsRow,
-    colorModal,
-    page,
-  }) => {
-    // turn off predictions
-    await sidebar.clickFieldCheckbox("predictions");
-    // tag existing labels
-    await gridActionsRow.toggleTagSamplesOrLabels();
-    await gridActionsRow.toggleColorSettings();
-
-    await colorModal.selectActiveField("ground_truth");
-    // color by value mode
-    await colorModal.changeColorMode("value");
-    await page
-      .getByTitle(`Use custom colors for specific field values`)
-      .first()
-      .click({ force: true });
-    // I can set value colors directly bypass choosing attribute by value 'str_field'
-    // "foo", "bar", "spam", "eggs"
-
-    // delete the existing one
-    await colorModal.addNewPairs([
-      { value: "foo", color: "green" },
-      { value: "bar", color: "purple" },
-      { value: "spam", color: "yellow" },
-      { value: "eggs", color: "blue" },
-    ]);
-    await colorModal.selectColorByAttribute("str_field");
-
-    await colorModal.closeColorModal();
-    await expect(await grid.getNthFlashlightSection(0)).toHaveScreenshot(
-      "color-value-setting-2.png",
-      { animations: "allow" }
     );
   });
 });

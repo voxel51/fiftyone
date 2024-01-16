@@ -17,6 +17,7 @@ export { default as Pending } from "./Pending";
 export { default as PillButton } from "./PillButton";
 export { default as Popout, PopoutDiv } from "./Popout";
 export { default as PopoutSectionTitle } from "./PopoutSectionTitle";
+export * from "./Selection";
 export { default as Selection } from "./Selection";
 export { default as Selector, SelectorValidationError } from "./Selector";
 export type { UseSearch } from "./Selector";
