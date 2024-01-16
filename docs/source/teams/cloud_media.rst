@@ -652,16 +652,44 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
     The cloud manifest file must contain all media files in the sample
     collection being annotated.
 
+.. _teams-annotating-cloud-media-v7:
+
+Annotating cloud-backed datasets with V7 Darwin
+_______________________________________________
+
+When using FiftyOne to :ref:`annotate data with V7 Darwin <v7-integration>`,
+you can optionally follow the instructions below to instruct V7 to load media
+directly from S3, GCS, or Azure buckets rather than the default behavior of
+uploading copies of the media from your local machine.
+
+First, follow
+`these instructions <https://docs.v7labs.com/docs/external-storage-configuration>`_
+to configure external storage for V7. Then, simply provide the
+`external_storage` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+specify the sluggified external storage name:
+
+.. code-block:: python
+    :linenos:
+
+    anno_key = "cloud_annotations"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        external_storage="example-darwin-storage-slug",
+        ...
+    )
+
 .. _teams-annotating-cloud-media-labelbox:
 
 Annotating cloud-backed datasets with Labelbox
 ______________________________________________
 
 When using FiftyOne to
-:ref:`annotate data with Labelbox <labelbox-integration>`,
-you can optionally follow the instructions below to instruct Labelbox to load media
-directly from S3 rather than the default behavior of uploading copies of the
-media.
+:ref:`annotate data with Labelbox <labelbox-integration>`, you can optionally
+follow the instructions below to instruct Labelbox to load media directly from
+S3 rather than the default behavior of uploading copies of the media.
 
 This assumes that you have configured the
 `S3 integration for Labelbox <https://docs.labelbox.com/docs/import-aws-s3-data>`_.

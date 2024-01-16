@@ -1,4 +1,4 @@
-import { getFetchFunction, ServerError } from "@fiftyone/utilities";
+import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
@@ -418,15 +418,19 @@ class GeneratedMessage {
   }
 }
 
-function formatSelectedLabels(selectedLabels = {}) {
+function formatSelectedLabels(selectedLabels) {
   const labels = [];
-  for (const labelId of Object.keys(selectedLabels)) {
-    const label = selectedLabels[labelId];
-    labels.push({
-      ...label,
-      label_id: labelId,
-      sample_id: label.sampleId,
-      frame_number: label.frameNumber,
+  if (Array.isArray(selectedLabels) && selectedLabels.length > 0) {
+    return selectedLabels.map((label) => {
+      const formattedLabel = {
+        field: label.field,
+        label_id: label.labelId,
+        sample_id: label.sampleId,
+      };
+      if (!isNullish(label.frameNumber)) {
+        formattedLabel.frame_number = label.frameNumber;
+      }
+      return formattedLabel;
     });
   }
   return labels;
