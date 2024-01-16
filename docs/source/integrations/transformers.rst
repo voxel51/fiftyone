@@ -96,10 +96,16 @@ method:
         "google/vit-base-patch16-224"
     )
 
+    # ViT Hybrid
+    from transformers import ViTHybridForImageClassification
+    model = ViTHybridForImageClassification(
+        "google/vit-hybrid-base-bit-384"
+    )
+
     # Any auto model
     from transformers import AutoModelForImageClassification
     model = AutoModelForImageClassification.from_pretrained(
-        "google/vit-hybrid-base-bit-384"
+        "facebook/vit-msn-small"
     )
 
 .. code-block:: python
