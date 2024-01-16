@@ -51,14 +51,7 @@ class Sort(HTTPEndpoint):
 
         await fose.dispatch_event(subscription, fose.StateUpdate(state))
 
-        dataset = stringify(
-            asdict(
-                await serialize_dataset(
-                    dataset_name=dataset_name,
-                    serialized_view=stages,
-                )
-            )
-        )
-
-        dataset["stages"] = None
-        return {"dataset": dataset}
+        # empty response
+        #
+        # /sort is only used to populate a dist_field, if provided
+        return {}
