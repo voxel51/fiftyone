@@ -942,9 +942,22 @@ class ResourceLimit(object):
 class ProgressBar(etau.ProgressBar):
     """.. autoclass:: eta.core.utils.ProgressBar"""
 
-    def __init__(self, *args, **kwargs):
-        if "quiet" not in kwargs:
-            kwargs["quiet"] = not fo.config.show_progress_bars
+    def __init__(self, total=None, progress=None, quiet=None, **kwargs):
+        if progress is None:
+            progress = fo.config.show_progress_bars
+
+        if quiet is not None:
+            progress = not quiet
+
+        if callable(progress):
+            callback = progress
+            progress = False
+        else:
+            callback = None
+
+        kwargs["total"] = total
+        if isinstance(progress, bool):
+            kwargs["quiet"] = not progress
 
         if "iters_str" not in kwargs:
             kwargs["iters_str"] = "samples"
@@ -954,7 +967,117 @@ class ProgressBar(etau.ProgressBar):
         if foc.is_notebook_context() and "max_width" not in kwargs:
             kwargs["max_width"] = 90
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
+
+        self._progress = progress
+        self._callback = callback
+
+    def __call__(self, iterable):
+        # Ensure that `len(iterable)` is not computed unnecessarily
+        no_len = self._quiet and self._total is None
+        if no_len:
+            self._total = -1
+
+        super().__call__(iterable)
+
+        if no_len:
+            self._total = None
+
+        return self
+
+    def set_iteration(self, *args, **kwargs):
+        super().set_iteration(*args, **kwargs)
+
+        if self._callback is not None:
+            self._callback(self)
+
+
+def report_progress(progress, n=None, dt=None):
+    """Wraps the provided progress function such that it will only be called
+    at the specified increments or time intervals.
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        def print_progress(pb):
+            if pb.complete:
+                print("COMPLETE")
+            else:
+                print("PROGRESS: %0.3f" % pb.progress)
+
+        dataset = foz.load_zoo_dataset("cifar10", split="test")
+
+        # Print progress at 10 equally-spaced increments
+        progress = fo.report_progress(print_progress, n=10)
+        dataset.compute_metadata(progress=progress)
+
+        # Print progress every 0.5 seconds
+        progress = fo.report_progress(print_progress, dt=0.5)
+        dataset.compute_metadata(progress=progress, overwrite=True)
+
+    Args:
+        progress: a function that accepts a :class:`ProgressBar` as input
+        n (None): a number of equally-spaced increments to invoke ``progress``
+        dt (None): a number of seconds between ``progress`` calls
+
+    Returns:
+        a function that accepts a :class:`ProgressBar` as input
+    """
+    if n is not None:
+        return _report_progress_n(progress, n)
+
+    if dt is not None:
+        return _report_progress_dt(progress, dt)
+
+    return progress
+
+
+def _report_progress_n(progress, n):
+    def progress_n(pb):
+        if not hasattr(pb, "_next_idx"):
+            if pb.has_total and n > 0:
+                next_iters = [
+                    int(np.round(i))
+                    for i in np.linspace(0, pb.total, min(n, pb.total) + 1)
+                ][1:]
+
+                pb._next_idx = 0
+                pb._next_iters = next_iters
+            else:
+                pb._next_idx = None
+                pb._next_iters = None
+
+        if (
+            pb._next_idx is not None
+            and pb.iteration >= pb._next_iters[pb._next_idx]
+        ):
+            progress(pb)
+
+            pb._next_idx += 1
+            if pb._next_idx >= len(pb._next_iters):
+                pb._next_idx = None
+
+    return progress_n
+
+
+def _report_progress_dt(progress, dt):
+    def progress_dt(pb):
+        if not hasattr(pb, "_next_dt"):
+            pb._next_dt = dt
+
+        if pb._next_dt is not None and (
+            pb.elapsed_time >= pb._next_dt or pb.complete
+        ):
+            progress(pb)
+
+            if not pb.complete:
+                pb._next_dt += dt
+            else:
+                pb._next_dt = None
+
+    return progress_dt
 
 
 class Batcher(abc.ABC):
@@ -974,6 +1097,9 @@ class Batcher(abc.ABC):
         if not isinstance(iterable, foc.SampleCollection):
             return_views = False
 
+        if progress is None:
+            progress = fo.config.show_progress_bars
+
         self.iterable = iterable
         self.return_views = return_views
         self.progress = progress
@@ -983,6 +1109,7 @@ class Batcher(abc.ABC):
         self._last_batch_size = None
         self._pb = None
         self._in_context = False
+        self._render_progress = bool(progress)  # callback function: True
         self._last_offset = None
         self._num_samples = None
         self._manually_applied_backpressure = True
@@ -994,7 +1121,7 @@ class Batcher(abc.ABC):
     def __exit__(self, *args):
         self._in_context = False
 
-        if self.progress:
+        if self._render_progress:
             if self._last_batch_size is not None:
                 self._pb.update(count=self._last_batch_size)
 
@@ -1007,23 +1134,20 @@ class Batcher(abc.ABC):
         else:
             self._iter = iter(self.iterable)
 
-        if self.progress:
+        if self._render_progress:
             if self._in_context:
                 total = self.total
                 if total is None:
-                    try:
-                        total = len(self.iterable)
-                    except:
-                        pass
+                    total = self.iterable
 
-                self._pb = ProgressBar(total=total)
+                self._pb = ProgressBar(total=total, progress=self.progress)
                 self._pb.__enter__()
             else:
                 logger.warning(
                     "Batcher must be invoked as a context manager in order to "
                     "print progress"
                 )
-                self.progress = False
+                self._render_progress = False
 
         return self
 
@@ -1035,9 +1159,10 @@ class Batcher(abc.ABC):
             raise ValueError(
                 "Backpressure value not registered for this batcher"
             )
+
         self._manually_applied_backpressure = False
 
-        if self.progress and self._last_batch_size is not None:
+        if self._render_progress and self._last_batch_size is not None:
             self._pb.update(count=self._last_batch_size)
 
         batch_size = self._compute_batch_size()
@@ -1200,7 +1325,9 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1305,7 +1432,9 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1380,7 +1509,9 @@ class StaticBatcher(Batcher):
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
             iterable is a :class:`fiftyone.core.collections.SampleCollection`
         progress (False): whether to render a progress bar tracking the
-            consumption of the batches
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible
@@ -1404,7 +1535,7 @@ class StaticBatcher(Batcher):
         return self.batch_size
 
 
-def get_default_batcher(iterable, progress=True, total=None):
+def get_default_batcher(iterable, progress=False, total=None):
     """Returns a :class:`Batcher` over ``iterable`` using defaults from your
     FiftyOne config.
 
@@ -1413,8 +1544,10 @@ def get_default_batcher(iterable, progress=True, total=None):
 
     Args:
         iterable: an iterable to batch over
-        progress (True): whether to render a progress bar tracking the
-            consumption of the batches
+        progress (False): whether to render a progress bar tracking the
+            consumption of the batches (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         total (None): the length of ``iterable``. Only applicable when
             ``progress=True``. If not provided, it is computed via
             ``len(iterable)``, if possible

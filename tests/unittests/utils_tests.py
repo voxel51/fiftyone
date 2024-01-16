@@ -455,6 +455,44 @@ class TestLoadDataset(unittest.TestCase):
         )
 
 
+class ProgressBarTests(unittest.TestCase):
+    def _test_correct_value(self, progress, global_progress, quiet, expected):
+        with fou.SetAttributes(fo.config, show_progress_bars=global_progress):
+            with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
+                assert pb._progress == expected
+
+    def test_progress_none_uses_global(self):
+        self._test_correct_value(
+            progress=None, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=None, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_progress_overwrites_global(self):
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=True, global_progress=False, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=False, global_progress=True, quiet=None, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_quiet_overwrites_all(self):
+        # Careful, we expect here to have progress the opposite value of quiet
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=True, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=False, expected=True
+        )
+
+
 if __name__ == "__main__":
     fo.config.show_progress_bars = False
     unittest.main(verbosity=2)

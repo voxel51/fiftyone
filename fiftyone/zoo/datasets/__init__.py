@@ -188,6 +188,7 @@ def load_zoo_dataset(
     persistent=False,
     overwrite=False,
     cleanup=True,
+    progress=None,
     **kwargs,
 ):
     """Loads the dataset of the given name from the FiftyOne Dataset Zoo as
@@ -235,6 +236,9 @@ def load_zoo_dataset(
             dataset is to be downloaded
         cleanup (True): whether to cleanup any temporary files generated during
             download
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional arguments to pass to the
             :class:`fiftyone.utils.data.importers.DatasetImporter` constructor.
             If ``download_if_necessary == True``, then ``kwargs`` can also
@@ -343,14 +347,21 @@ def load_zoo_dataset(
                 dataset_type, dataset_dir=split_dir, **importer_kwargs
             )
             dataset.add_importer(
-                dataset_importer, label_field=label_field, tags=[split]
+                dataset_importer,
+                label_field=label_field,
+                tags=[split],
+                progress=progress,
             )
     else:
         logger.info("Loading '%s'", zoo_dataset.name)
         dataset_importer, _ = foud.build_dataset_importer(
             dataset_type, dataset_dir=dataset_dir, **importer_kwargs
         )
-        dataset.add_importer(dataset_importer, label_field=label_field)
+        dataset.add_importer(
+            dataset_importer,
+            label_field=label_field,
+            progress=progress,
+        )
 
     if info.classes is not None:
         dataset.default_classes = info.classes
