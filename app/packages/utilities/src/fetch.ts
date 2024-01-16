@@ -89,14 +89,15 @@ export const setFetchFunction = (
     let url: string;
     const controller = new AbortController();
 
-    if (fetchPathPrefix) {
-      path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
-    }
-
     try {
+      // if a valid URL is provided, make no adjustments
       new URL(path);
       url = path;
     } catch {
+      if (fetchPathPrefix) {
+        path = `${fetchPathPrefix}${path}`.replaceAll("//", "/");
+      }
+
       url = `${origin}${
         !origin.endsWith("/") && !path.startsWith("/") ? "/" : ""
       }${path}`;
