@@ -127,14 +127,19 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
 
     from transformers import AutoModelForImageClassification
     transformers_model = AutoModelForImageClassification.from_pretrained(
-        "google/vit-hybrid-base-bit-384"
+        "microsoft/beit-base-patch16-224"
+    )
+    image_processor = AutoImageProcessor.from_pretrained(
+        "microsoft/beit-base-patch16-224"
     )
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
-        sample["predictions"] = fout.to_classification(result, id2label)
+        inputs = image_processor(image, return_tensors="pt")
+        with torch.no_grad():
+            result = transformers_model(**inputs)
+        sample["classif_predictions"] = fout.to_classification(result, id2label)
         sample.save()
 
 .. _transformers-object-detection:
