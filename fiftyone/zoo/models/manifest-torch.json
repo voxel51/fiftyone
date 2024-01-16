@@ -1869,10 +1869,6 @@
             "description": "OPEN CLIP text/image encoder from `Learning Transferable Visual Models From Natural Language Supervision <https://arxiv.org/abs/2103.00020>`_ trained on 400M text-image pairs",
             "source": "https://github.com/mlfoundations/open_clip",
             "size_bytes": 353976522,
-            "manager": {
-                "type": "fiftyone.core.models.ModelManager",
-                "config": {}
-            },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.open_clip.TorchOpenClipModel",
                 "config": {
