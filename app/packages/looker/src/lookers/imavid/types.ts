@@ -4,7 +4,7 @@ import { ImaVidFrameSamples } from "./ima-vid-frame-samples";
 export type SampleId = string;
 export type SampleResponse =
   foq.paginateSamplesQuery$data["samples"]["edges"][number]["node"];
-export type PartitionSampleId = string;
+export type PartitionId = string;
 
 export type ImaVidStore = {
   [partitionSampleId: string]: ImaVidFrameSamples;

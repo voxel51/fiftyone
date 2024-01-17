@@ -88,63 +88,77 @@ on the cards below to see how!
     :description: Use our Qdrant integration to enable vector search and query your FiftyOne datasets at scale.
     :link: qdrant.html
     :image: ../_static/images/integrations/qdrant.png
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
     :header: Redis
     :description: Use our Redis vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: redis.html
     :image: ../_static/images/integrations/redis.jpg
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
     :header: Pinecone
     :description: Use our Pinecone integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: pinecone.html
     :image: ../_static/images/integrations/pinecone.png
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
     :header: MongoDB
     :description: Use our MongoDB vector search integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: mongodb.html
     :image: ../_static/images/integrations/mongodb.jpg
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
     :header: Milvus
     :description: Use our Milvus integration to index your FiftyOne datasets and perform embeddings queries at scale.
     :link: milvus.html
     :image: ../_static/images/integrations/milvus.png
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
     :header: LanceDB
     :description: Use our LancedDB integration to index your datasets and perform embeddings queries at scale without the need for a cloud service.
     :link: lancedb.html
     :image: ../_static/images/integrations/lancedb.png
-    :tags: Brain,Embeddings,Filtering
+    :tags: Brain,Embeddings,Vector-Search
+
+.. customcarditem::
+    :header: Transformers
+    :description: Use our Hugging Face Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
+    :link: transformers.html
+    :image: ../_static/images/integrations/transformers.png
+    :tags: Model-Training,Model-Evaluation,Model-Zoo,Brain,Embeddings
 
 .. customcarditem::
     :header: Ultralytics
     :description: Load, fine-tune, and run inference with Ultralytics models on your FiftyOne datasets with just a few lines of code.
     :link: ultralytics.html
     :image: ../_static/images/integrations/ultralytics.jpg
-    :tags: Model-Training,Model-Evaluation
+    :tags: Model-Training,Model-Evaluation,Model-Zoo
+
+.. customcarditem::
+    :header: SuperGradients
+    :description: Use our SuperGradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
+    :link: super_gradients.html
+    :image: ../_static/images/integrations/super_gradients.png
+    :tags: Model-Training,Model-Evaluation,Model-Zoo
 
 .. customcarditem::
     :header: PyTorch Hub
     :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
     :link: pytorch_hub.html
     :image: ../_static/images/integrations/pytorch.png
-    :tags: Model-Zoo,Model-Evaluation
+    :tags: Model-Training,Model-Evaluation,Model-Zoo
 
 .. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
     :image: ../_static/images/integrations/lightning_flash.png
-    :tags: Model-Training,Model-Evaluation
+    :tags: Model-Training,Model-Evaluation,Model-Zoo
 
 .. End of integrations cards
 
@@ -177,6 +191,8 @@ on the cards below to see how!
     MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
+    Transformers <transformers.rst>
     Ultralytics <ultralytics.rst>
+    SuperGradients <super_gradients.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>

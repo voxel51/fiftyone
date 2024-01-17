@@ -8,14 +8,14 @@ import {
   datasetFragment$key,
   graphQLSyncFragmentAtom,
 } from "@fiftyone/relay";
-import { fieldVisibilityStage } from "@fiftyone/state";
+import { currentSlice, fieldVisibilityStage, isGroup } from "@fiftyone/state";
 import { toSnakeCase } from "@fiftyone/utilities";
 import { DefaultValue, atomFamily, selector, selectorFamily } from "recoil";
 import { v4 as uuid } from "uuid";
 import * as atoms from "./atoms";
 import { config } from "./config";
 import { dataset as datasetAtom } from "./dataset";
-import { currentModalSample, modalSample } from "./modal";
+import { currentModalSample, isModalActive, modalSample } from "./modal";
 import { pathFilter } from "./pathFilters";
 import { State } from "./types";
 import { isPatchesView } from "./view";
@@ -82,14 +82,6 @@ export const mediaTypeSelector = selector({
 export const parentMediaTypeSelector = selector({
   key: "parentMediaTypeSelector",
   get: ({ get }) => get(datasetAtom)?.parentMediaType,
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
-export const savedViewsSelector = selector<State.SavedView[]>({
-  key: "datasetViews",
-  get: ({ get }) => get(datasetAtom)?.savedViews || [],
   cachePolicy_UNSTABLE: {
     eviction: "most-recent",
   },
@@ -384,7 +376,24 @@ export const similarityMethods = selector<{
 }>({
   key: "similarityMethods",
   get: ({ get }) => {
-    const methods = get(datasetAtom)?.brainMethods || [];
+    let methods = get(datasetAtom)?.brainMethods || [];
+    const isGroupDataset = get(isGroup);
+    const activeSlice = get(currentSlice(get(isModalActive)));
+
+    if (isGroupDataset && activeSlice) {
+      methods = methods.filter(({ viewStages }) => {
+        return viewStages.some((vs) => {
+          const { _cls, kwargs } = JSON.parse(vs);
+          if (_cls === "fiftyone.core.stages.SelectGroupSlices") {
+            const sliceValue = kwargs.filter(
+              (kwarg: string[]) => kwarg[0] === "slices"
+            )?.[0]?.[1];
+            if (sliceValue && sliceValue !== activeSlice) return false;
+          }
+          return true;
+        });
+      });
+    }
 
     return methods
       .filter(

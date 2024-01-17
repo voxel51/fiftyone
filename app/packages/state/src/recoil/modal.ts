@@ -1,4 +1,4 @@
-import { AbstractLooker, ImaVidLooker, type Sample } from "@fiftyone/looker";
+import { AbstractLooker, type Sample } from "@fiftyone/looker";
 import { BaseState } from "@fiftyone/looker/src/state";
 import { mainSample, mainSampleQuery } from "@fiftyone/relay";
 import { atom, selector } from "recoil";
@@ -7,6 +7,7 @@ import { VariablesOf } from "relay-runtime";
 import { Nullable } from "vitest";
 import { ResponseFrom } from "../utils";
 import {
+  activeModalSidebarSample,
   groupId,
   groupSlice,
   hasGroupSlices,
@@ -36,18 +37,17 @@ export const sidebarSampleId = selector({
       const isPlaying = get(imaVidLookerState("playing"));
       const isSeeking = get(imaVidLookerState("seeking"));
 
-      const thisLooker = get(modalLooker) as ImaVidLooker;
+      const sample = get(activeModalSidebarSample);
 
-      if (!isPlaying && !isSeeking && thisFrameNumber && thisLooker) {
-        const sample = thisLooker.thisFrameSample;
-        const id = sample?.id || sample?.sample?._id;
+      if (!isPlaying && !isSeeking && thisFrameNumber && sample) {
+        // is the type incorrect? fix me
+        const id = sample?.id || sample?._id || sample?.sample?._id;
         if (id) {
           return id;
         }
-      } else {
-        // suspend
-        return new Promise(() => {});
       }
+      // suspend
+      return new Promise(() => null);
     }
 
     const override = get(pinned3DSampleSlice);
