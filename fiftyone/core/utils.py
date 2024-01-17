@@ -21,6 +21,7 @@ import io
 import itertools
 import logging
 import multiprocessing
+import numbers
 import os
 import platform
 import re
@@ -1467,10 +1468,14 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
         )
         self._last_batch_content_size = 0
 
-    def apply_backpressure(self, bsonable_batch):
-        batch_content_size = sum(
-            len(json_util.dumps(obj)) for obj in bsonable_batch
-        )
+    def apply_backpressure(self, batch_or_size):
+        if isinstance(batch_or_size, numbers.Number):
+            batch_content_size = batch_or_size
+        else:
+            batch_content_size = sum(
+                len(json_util.dumps(obj)) for obj in batch_or_size
+            )
+
         self._last_batch_content_size = batch_content_size
         self._manually_applied_backpressure = True
 
@@ -1562,7 +1567,7 @@ def get_default_batcher(iterable, progress=False, total=None):
             iterable,
             target_latency=target_latency,
             init_batch_size=1,
-            max_batch_beta=2.0,
+            max_batch_beta=8.0,
             max_batch_size=100000,
             progress=progress,
             total=total,
