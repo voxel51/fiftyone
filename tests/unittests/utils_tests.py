@@ -56,7 +56,7 @@ class BatcherTests(unittest.TestCase):
             ):
                 batcher = fou.get_default_batcher(iterable)
                 self.assertTrue(
-                    isinstance(batcher, fou.BSONSizeDynamicBatcher)
+                    isinstance(batcher, fou.ContentSizeDynamicBatcher)
                 )
                 self.assertEqual(batcher.target_measurement, target_size)
 
