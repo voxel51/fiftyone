@@ -2,7 +2,7 @@
     "name": "@fiftyone/flashlight",
     "version": "0.0.0",
     "author": "Voxel51, Inc.",
-    "description": "Justified, scrubbable, and virtualized looker grid",
+    "description": "Cursor based flex-layout virtualized grid",
     "homepage": "https://github.com/voxel51/fiftyone/app/packages/flashlight",
     "license": "Apache-2.0",
     "bugs": {
@@ -19,8 +19,10 @@
     ],
     "devDependencies": {
         "prettier": "^2.7.1",
+        "ts-node": "^10.9.2",
         "typescript": "^4.7.4",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^3.2.7"
-    }
+    },
+    "type": "module"
 }

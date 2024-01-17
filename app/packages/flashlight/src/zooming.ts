@@ -1,36 +1,33 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 export const createScrollReader = (
   element: HTMLElement,
-  horizontal: boolean,
   render: (zooming: boolean) => void,
-  getScrollSpeendThreshold: () => number
-): void => {
-  let zooming = false;
-  let scrolling = false;
+  getScrollSpeedThreshold: () => number
+) => {
+  let destroyed = false;
   let prior = 0;
+  let scrolling = false;
   let timer = undefined;
+  let zooming = false;
 
-  element.addEventListener("scroll", () => {
+  const listener = () => {
     scrolling = true;
     updateScrollStatus() && !zooming && render(zooming);
-  });
+  };
+
+  element.addEventListener("scroll", listener);
 
   const updateScrollStatus = () => {
-    const threshold = getScrollSpeendThreshold();
+    const threshold = getScrollSpeedThreshold();
     if (threshold === Infinity) {
       return false;
     }
+
     if (!prior) {
-      prior = horizontal ? element.scrollLeft : element.scrollTop;
-    } else {
-      if (
-        Math.abs(
-          (horizontal ? element.scrollLeft : element.scrollTop) - prior
-        ) > threshold
-      ) {
+      if (Math.abs(element.scrollTop - prior) > threshold) {
         zooming = true;
         if (timer !== undefined) {
           clearTimeout(timer);
@@ -41,21 +38,26 @@ export const createScrollReader = (
           timer = undefined;
           render(false);
         }, 350);
-      } else {
-        if (timer === undefined) {
-          scrolling = false;
-        }
+      } else if (timer === undefined) {
+        scrolling = false;
       }
-      prior = horizontal ? element.scrollLeft : element.scrollTop;
     }
+    prior = element.scrollTop;
 
     return true;
   };
 
   const animate = () => {
-    requestAnimationFrame(animate);
-    scrolling && updateScrollStatus() && zooming && render(zooming);
+    if (!destroyed) {
+      requestAnimationFrame(animate);
+      scrolling && updateScrollStatus() && zooming && render(zooming);
+    }
   };
 
   animate();
+
+  return () => {
+    destroyed = true;
+    element.removeEventListener("scroll", listener);
+  };
 };

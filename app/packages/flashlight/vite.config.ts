@@ -1,18 +1,13 @@
 import { UserConfig } from "vite";
 
 export default <UserConfig>{
-  esbuild: true,
+  esbuild: {},
   build: {
     lib: {
       entry: "src/index.ts",
       formats: ["es"],
     },
-    target: "es2015",
+    target: "es2022",
     minify: false,
-  },
-  resolve: {
-    alias: {
-      "@fiftyone/looker": "@fiftyone/looker/src/index.ts",
-    },
   },
 };

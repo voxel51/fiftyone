@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 export function argMin<T>(array: T[]): number {
@@ -9,16 +9,9 @@ export function argMin<T>(array: T[]): number {
 }
 
 export const getDims = (
-  horizontal: boolean,
   element: HTMLElement
 ): { width: number; height: number } => {
-  let { width, height } = element.getBoundingClientRect();
-
-  if (horizontal) {
-    let tmp = width;
-    width = height;
-    height = tmp;
-  }
+  const { width, height } = element.getBoundingClientRect();
 
   return { width, height };
 };
