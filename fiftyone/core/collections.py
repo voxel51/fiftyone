@@ -1541,10 +1541,10 @@ class SampleCollection(object):
     def _edit_sample_tags(self, update):
         ids = []
         ops = []
-        # size chosen to keep request smaller than 1MB
-        #   ( 35,000 IDs of 24 printable digits ~= 0.8 MB )
-        id_set_batch_size = 35_000
-        for _ids in fou.iter_batches(self.values("_id"), id_set_batch_size):
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+        for _ids in fou.iter_batches(self.values("_id"), batch_size):
             ids.extend(_ids)
             ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
 
@@ -1667,10 +1667,10 @@ class SampleCollection(object):
                 else:
                     label_ids = self.values(id_path)
 
-            # size chosen to keep request smaller than 1MB
-            #   ( 35,000 IDs of 24 printable digits ~= 0.8 MB )
-            id_set_batch_size = 35_000
-            for _label_ids in fou.iter_batches(label_ids, id_set_batch_size):
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
+            for _label_ids in fou.iter_batches(label_ids, batch_size):
                 _label_ids = [_id for _id in _label_ids if _id is not None]
                 if _label_ids:
                     ops.append(

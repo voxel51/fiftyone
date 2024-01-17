@@ -1594,6 +1594,30 @@ def get_default_batcher(iterable, progress=False, total=None):
         )
 
 
+def recommend_batch_size_for_value(value, alpha=0.9, max_size=None):
+    """Computes a recommended batch size for the given value type such that a
+    request involving a list of values of this size will be less than
+    ``alpha * fo.config.batcher_target_size_bytes`` bytes.
+
+    Args:
+        value: a value
+        alpha (0.9): a safety factor
+        max_size (None): an optional max batch size
+
+    Returns:
+         a recommended batch size
+    """
+    # Even if ``fo.config.default_batcher != "size"``, it's still reasonable to
+    # use the size threshold to limit the size of individual requests
+    target_size = fo.config.batcher_target_size_bytes
+    value_bytes = sys.getsizeof(value, 40)  # 40 is size of an ObjectId
+    batch_size = int(alpha * target_size / value_bytes)
+    if max_size is not None:
+        batch_size = min(batch_size, max_size)
+
+    return batch_size
+
+
 @contextmanager
 def disable_progress_bars():
     """Context manager that temporarily disables all progress bars.
