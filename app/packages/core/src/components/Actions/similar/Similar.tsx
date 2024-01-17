@@ -107,21 +107,22 @@ const SortBySimilarity = ({
     current && setState(current);
   }, [current]);
 
+  const meetsKRequirement = useMemo(() => {
+    if (state?.k === undefined) {
+      return false;
+    }
+
+    if (brainConfig?.maxK && state.k > brainConfig.maxK) {
+      return false;
+    }
+
+    return true;
+  }, [brainConfig?.maxK, state?.k]);
+
   // show warning if k is undefined or k > maxK
   useEffect(() => {
-    if (state.k == undefined) {
-      setShowMaxKWarning(true);
-    } else if (brainConfig?.maxK && state.k > brainConfig.maxK) {
-      setShowMaxKWarning(true);
-    } else {
-      setShowMaxKWarning(false);
-    }
-  }, [state.k, state.brainKey]);
-
-  const meetKRequirement = !(
-    (brainConfig?.maxK && (state?.k ?? 0 > brainConfig.maxK)) ||
-    state.k == undefined
-  );
+    setShowMaxKWarning(!meetsKRequirement);
+  }, [meetsKRequirement]);
 
   const loadingButton: ButtonDetail[] = isLoading
     ? [
@@ -160,7 +161,7 @@ const SortBySimilarity = ({
         ariaLabel: "Submit",
         tooltipText: "Search by similarity to the provided text",
         onClick: () =>
-          meetKRequirement &&
+          meetsKRequirement &&
           state.query &&
           state.query.length > 0 &&
           sortBySimilarity(state),
@@ -200,7 +201,7 @@ const SortBySimilarity = ({
               value={(state.query as string) ?? ""}
               setter={(value) => updateState({ query: value })}
               onEnter={() =>
-                meetKRequirement &&
+                meetsKRequirement &&
                 state.query &&
                 state.query.length > 0 &&
                 sortBySimilarity(state)
