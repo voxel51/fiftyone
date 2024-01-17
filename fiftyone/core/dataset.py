@@ -6738,7 +6738,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload_docs(hard=True)
 
     def clear_cache(self):
-        """Clears the dataset's in-memory cache."""
+        """Clears the dataset's in-memory cache.
+
+        Dataset caches may contain sample/frame singletons and
+        annotation/brain/evaluation/custom runs.
+        """
+        fos.Sample._clear(self._sample_collection_name)
+        if self._frame_collection_name is not None:
+            fofr.Frame._clear(self._frame_collection_name)
+
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()
