@@ -114,22 +114,6 @@ export default <T extends AbstractLooker>(
           constructor = ImageLooker;
         }
 
-        let sampleMediaFilePath = urls[mediaField];
-
-        if (constructor === ThreeDLooker) {
-          const orthographicProjectionField = Object.entries(sample)
-            .find(
-              (el) =>
-                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
-            )
-            ?.at(0) as string | undefined;
-          if (orthographicProjectionField) {
-            sampleMediaFilePath = urls[
-              `${orthographicProjectionField}.filepath`
-            ] as string;
-          }
-        }
-
         let config: ConstructorParameters<T>[1] = {
           fieldSchema: {
             ...fieldSchema,
@@ -146,13 +130,33 @@ export default <T extends AbstractLooker>(
           frameNumber: constructor === FrameLooker ? frameNumber : undefined,
           frameRate,
           sampleId: sample._id,
-          src: getSampleSrc(sampleMediaFilePath),
           support: isClip ? sample["support"] : undefined,
           dataset,
           mediaField,
           thumbnail,
           view,
         };
+
+        let sampleMediaFilePath = urls[mediaField];
+
+        if (constructor === ThreeDLooker) {
+          const orthographicProjectionField = Object.entries(sample)
+            .find(
+              (el) =>
+                el[1] && el[1]["_cls"] === "OrthographicProjectionMetadata"
+            )
+            ?.at(0) as string | undefined;
+          if (orthographicProjectionField) {
+            sampleMediaFilePath = urls[
+              `${orthographicProjectionField}.filepath`
+            ] as string;
+            config.isOpmAvailable = true;
+          } else {
+            config.isOpmAvailable = false;
+          }
+        }
+
+        config.src = getSampleSrc(sampleMediaFilePath);
 
         if (sample.group?.name) {
           config.group = {

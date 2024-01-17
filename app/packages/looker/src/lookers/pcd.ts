@@ -1,19 +1,22 @@
-import { getPcdElements } from "../elements";
+import { get3dElements } from "../elements";
 import { COMMON_SHORTCUTS } from "../elements/common";
-import { DEFAULT_PCD_OPTIONS, Optional, PcdState } from "../state";
+import { DEFAULT_3D_OPTIONS, ThreeDState } from "../state";
 import { AbstractLooker } from "./abstract";
 import { LookerUtils } from "./shared";
 
-export class ThreeDLooker extends AbstractLooker<PcdState> {
+export class ThreeDLooker extends AbstractLooker<ThreeDState> {
   getElements(config) {
-    return getPcdElements(config, this.updater, this.getDispatchEvent());
+    return get3dElements(config, this.updater, this.getDispatchEvent());
   }
 
   hasDefaultZoom(): boolean {
     return false;
   }
 
-  getInitialState(config: PcdState["config"], options: PcdState["options"]) {
+  getInitialState(
+    config: ThreeDState["config"],
+    options: ThreeDState["options"]
+  ) {
     options = {
       ...this.getDefaultOptions(),
       ...options,
@@ -28,12 +31,12 @@ export class ThreeDLooker extends AbstractLooker<PcdState> {
   }
 
   getDefaultOptions() {
-    return DEFAULT_PCD_OPTIONS;
+    return DEFAULT_3D_OPTIONS;
   }
 
-  updateOptions(options: Partial<PcdState["options"]>) {
+  updateOptions(options: Partial<ThreeDState["options"]>) {
     const reload = LookerUtils.shouldReloadSample(this.state.options, options);
-    const state: Partial<PcdState> = { options };
+    const state: Partial<ThreeDState> = { options };
     if (reload) {
       this.updater({
         ...state,

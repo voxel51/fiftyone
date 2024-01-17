@@ -6,7 +6,7 @@ import {
   FrameState,
   ImaVidState,
   ImageState,
-  PcdState,
+  ThreeDState,
   StateUpdate,
   VideoState,
 } from "../state";
@@ -270,7 +270,7 @@ export const getImaVidElements: GetElements<ImaVidState> = (
   );
 };
 
-export const getPcdElements: GetElements<PcdState> = (
+export const get3dElements: GetElements<ThreeDState> = (
   config,
   update,
   dispatchEvent
@@ -279,7 +279,7 @@ export const getPcdElements: GetElements<PcdState> = (
     node: common.LookerElement,
     children: [
       {
-        node: pcd.PcdElement,
+        node: pcd.ThreeDElement,
       },
       {
         node: common.CanvasElement,
@@ -290,20 +290,6 @@ export const getPcdElements: GetElements<PcdState> = (
       { node: common.TagsElement },
       {
         node: common.ThumbnailSelectorElement,
-      },
-      {
-        node: common.ControlsElement,
-        children: [
-          { node: frame.FrameNumberElement },
-          { node: common.PlusElement },
-          { node: common.MinusElement },
-          { node: common.CropToContentButtonElement },
-          { node: common.FullscreenButtonElement },
-          { node: common.ToggleOverlaysButtonElement },
-          { node: common.JSONButtonElement },
-          { node: common.OptionsButtonElement },
-          { node: common.HelpButtonElement },
-        ],
       },
       {
         node: common.OptionsPanelElement,
@@ -318,7 +304,7 @@ export const getPcdElements: GetElements<PcdState> = (
     ],
   };
 
-  return createElementsTree<PcdState, common.LookerElement<PcdState>>(
+  return createElementsTree<ThreeDState, common.LookerElement<ThreeDState>>(
     config,
     elements,
     update,
