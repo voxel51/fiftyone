@@ -27,6 +27,7 @@ DEFAULT_CLASSIFICATION_PATH = "google/vit-base-patch16-224"
 DEFAULT_DETECTION_PATH = "hustvl/yolos-tiny"
 DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
+DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
 
 def _has_text_and_image_features(model):
@@ -163,6 +164,19 @@ def _get_processor(model):
     return processor
 
 
+def _get_detector_from_processor(processor, model_name_or_path):
+    module_name = "transformers"
+    processor_class_name = f"{processor.__class__.__name__}"
+    detector_class_name = (
+        f"{processor_class_name.split('Processor')[0]}ForObjectDetection"
+    )
+    detector_class = getattr(
+        __import__(module_name, fromlist=[detector_class_name]),
+        detector_class_name,
+    )
+    return detector_class.from_pretrained(model_name_or_path)
+
+
 def convert_transformers_model(model, task=None):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
@@ -184,6 +198,8 @@ def convert_transformers_model(model, task=None):
 
     if model_type == "zero-shot-image-classification":
         return _convert_zero_shot_transformer_for_image_classification(model)
+    elif model_type == "zero-shot-object-detection":
+        return _convert_zero_shot_transformer_for_object_detection(model)
     elif model_type == "image-classification":
         return _convert_transformer_for_image_classification(model)
     elif model_type == "object-detection":
@@ -222,6 +238,11 @@ def _convert_transformer_for_semantic_segmentation(model):
 def _convert_zero_shot_transformer_for_image_classification(model):
     config = FiftyOneZeroShotTransformerConfig({"model": model})
     return FiftyOneZeroShotTransformerForImageClassification(config)
+
+
+def _convert_zero_shot_transformer_for_object_detection(model):
+    config = FiftyOneZeroShotTransformerConfig({"model": model})
+    return FiftyOneZeroShotTransformerForObjectDetection(config)
 
 
 def to_classification(results, id2label):
@@ -538,6 +559,8 @@ class FiftyOneZeroShotTransformer(
         return False
 
     def _load_processor(self):
+        if self.processor is not None:
+            return self.processor
         return _get_processor(self.model)
 
     def _load_model(self, config):
@@ -588,8 +611,8 @@ class FiftyOneZeroShotTransformerForImageClassificationConfig(
 class FiftyOneZeroShotTransformerForImageClassification(
     FiftyOneZeroShotTransformer
 ):
-    """FiftyOne wrapper around a ``transformers.models`` model for image
-    classification.
+    """FiftyOne wrapper around a ``transformers.models`` model for zero-shot
+    image classification.
 
     Args:
         config: a `FiftyOneZeroShotTransformerConfig`
@@ -724,6 +747,76 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
     def predict_all(self, args):
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs)
+
+
+class FiftyOneZeroShotTransformerForObjectDetectionConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    """Configuration for a :class:`FiftyOneZeroShotTransformerForObjectDetection`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        text_prompt: the text prompt to use, e.g., ``"A photo of"``
+        classes (None): a list of custom classes for zero-shot prediction
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_ZERO_SHOT_DETECTION_PATH
+
+
+class FiftyOneZeroShotTransformerForObjectDetection(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers.models`` model for zero shot
+    object detection.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerConfig`
+    """
+
+    def _load_model(self, config):
+        ## go from processor to detector
+        self.processor = transformers.AutoProcessor.from_pretrained(
+            config.name_or_path
+        )
+        if config.model is not None:
+            return config.model
+        else:
+            return _get_detector_from_processor(
+                self.processor, config.name_or_path
+            )
+
+    def _process_inputs(self, args):
+        text_prompts = self._get_text_prompts()
+        inputs = self.processor(
+            images=args, text=text_prompts, return_tensors="pt", padding=True
+        )
+        return inputs
+
+    def _predict(self, inputs, target_sizes):
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        results = self.processor.post_process_object_detection(
+            outputs, target_sizes=target_sizes
+        )
+        image_shapes = [i[::-1] for i in target_sizes]
+
+        id2label = {i: c for i, c in enumerate(self.classes)}
+        return to_detections(results, id2label, image_shapes)
+
+    def predict(self, arg):
+        target_sizes = [arg.shape[:-1][::-1]]
+        inputs = self._process_inputs(arg)
+        return self._predict(inputs, target_sizes)
+
+    def predict_all(self, args):
+        target_sizes = [i.shape[:-1][::-1] for i in args]
+        inputs = self._process_inputs(args)
+        return self._predict(inputs, target_sizes)
 
 
 class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
