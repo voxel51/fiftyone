@@ -2006,6 +2006,43 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "zero-shot-classification-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face `transformers` model for zero-shot image classification",
+            "source": "https://huggingface.co/docs/transformers/tasks/zero_shot_image_classification",
+            "size_bytes": 353976522,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
+                "config": {
+                    "entrypoint_fcn": "",
+                    "labels_path": "{{eta-resources}}/voc-labels.txt",
+                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
+                    "image_size": [224, 224],
+                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
+                    "image_std": [0.26862954, 0.26130258, 0.27577711]
+                }
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": [
+                "classification",
+                "logits",
+                "embeddings",
+                "torch",
+                "transformers",
+                "zero-shot"
+            ],
+            "date_added": "2024-01-17 14:25:51"
+        },
+        {
             "base_name": "clip-vit-base32-torch",
             "base_filename": "CLIP-ViT-B-32.pt",
             "version": null,
