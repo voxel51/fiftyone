@@ -567,6 +567,24 @@ class FiftyOneZeroShotTransformer(
         raise NotImplementedError("Subclass must implement predict()")
 
 
+class FiftyOneZeroShotTransformerForImageClassificationConfig(
+    FiftyOneZeroShotTransformerConfig
+):
+    """Configuration for a :class:`FiftyOneZeroShotTransformerForImageClassification`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        text_prompt: the text prompt to use, e.g., ``"A photo of"``
+        classes (None): a list of custom classes for zero-shot prediction
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH
+
+
 class FiftyOneZeroShotTransformerForImageClassification(
     FiftyOneZeroShotTransformer
 ):
