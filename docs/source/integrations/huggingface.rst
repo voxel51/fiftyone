@@ -111,7 +111,7 @@ method:
 .. code-block:: python
     :linenos:
 
-    dataset.apply_model(model, label_field="predictions")
+    dataset.apply_model(model, label_field="classif_predictions")
 
     session = fo.launch_app(dataset)
 
@@ -124,6 +124,7 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
     :linenos:
 
     from PIL import Image
+    import torch
     import fiftyone.utils.transformers as fout
 
     from transformers import ViTHybridForImageClassification, AutoProcessor
@@ -139,7 +140,7 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
         with torch.no_grad():
             result = transformers_model(**inputs)
 
-        sample["predictions"] = fout.to_classification(result, id2label)
+        sample["classif_predictions"] = fout.to_classification(result, id2label)
         sample.save()
 
 Finally, you can load `transformers` models directly from the
@@ -215,7 +216,7 @@ method:
 .. code-block:: python
     :linenos:
 
-    dataset.apply_model(model, label_field="predictions")
+    dataset.apply_model(model, label_field="det_predictions")
 
     session = fo.launch_app(dataset)
 
@@ -227,6 +228,8 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
 .. code-block:: python
 
     from PIL import Image
+    import torch
+
     import fiftyone.utils.transformers as fout
 
     from transformers import AutoModelForObjectDetection, AutoProcessor
@@ -246,7 +249,7 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
         result = processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
         )
-        sample["predictions"] = fout.to_detections(result, id2label, [image.size])
+        sample["det_predictions"] = fout.to_detections(result, id2label, [image.size])
         sample.save()
 
 Finally, you can load `transformers` models directly from the
@@ -310,7 +313,7 @@ method:
 .. code-block:: python
     :linenos:
 
-    dataset.apply_model(model, label_field="predictions")
+    dataset.apply_model(model, label_field="seg_predictions")
     dataset.default_mask_targets = model.config.id2label
 
     session = fo.launch_app(dataset)
@@ -343,7 +346,7 @@ to convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
             output, target_sizes=target_size
         )
 
-        sample["predictions"] = fout.to_segmentation(result)
+        sample["seg_predictions"] = fout.to_segmentation(result)
         sample.save()
 
 Finally, you can load `transformers` models directly from the
@@ -445,7 +448,7 @@ FiftyOne format:
 
     model = fout.convert_transformers_model(
         transformers_model,
-        task="image-classification",  # "image-classification" or "semantic-segmentation"
+        task="image-classification",  # or "semantic-segmentation"
     )
 
 .. note::
@@ -488,7 +491,9 @@ FiftyOne format:
     import fiftyone.utils.transformers as fout
 
     from transformers import OwlViTForObjectDetection
-    transformers_model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32")
+    transformers_model = OwlViTForObjectDetection.from_pretrained(
+        "google/owlvit-base-patch32"
+    )
 
     model = fout.convert_transformers_model(
         transformers_model,
@@ -512,7 +517,7 @@ you can request batch inference by passing the optional `batch_size` parameter:
 .. code-block:: python
     :linenos:
 
-    dataset.apply_model(model, label_field="predictions", batch_size=16)
+    dataset.apply_model(model, label_field="det_predictions", batch_size=16)
 
 The manual inference loops can be also executed using batch inference via the
 pattern below:
@@ -551,7 +556,7 @@ pattern below:
         )
         predictions.extend(fout.to_detections(results, id2label, image_sizes))
 
-    dataset.set_values("predictions", predictions)
+    dataset.set_values("det_predictions", predictions)
 
 .. note::
 
