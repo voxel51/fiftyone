@@ -10,19 +10,90 @@ import numpy as np
 
 from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
-from fiftyone.core.models import Model, EmbeddingsMixin
+from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
 
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")
 
 
-def convert_transformers_model(model):
+def _has_text_and_image_features(model):
+    return hasattr(model, "get_image_features") and hasattr(
+        model, "get_text_features"
+    )
+
+
+def _has_image_text_retrieval(model):
+    module_name = "transformers"
+    model_name = _get_model_type_string(model)
+    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
+    if hasattr(
+        __import__(module_name, fromlist=[itr_class_name]),
+        itr_class_name,
+    ):
+        return True
+    return False
+
+
+def _is_zero_shot_model(model):
+    ## Case 1: Has image and text features
+    if _has_text_and_image_features(model):
+        return True
+
+    ## Case 2: ImageAndTextRetrieval
+    if _has_image_text_retrieval(model):
+        return True
+
+
+def _get_base_model_name(model):
+    return str(type(model)).split(".")[-1][:-2].split("For")[0]
+
+
+def get_model_type(model, task=None):
+    """
+    Returns the model type as a string. If the model is a zero-shot model,
+    the task is appended to the model type.
+    """
+    zs = _is_zero_shot_model(model)
+
+    if task is not None and task not in (
+        "image-classification",
+        "object-detection",
+        "semantic-segmentation",
+    ):
+        raise ValueError(
+            f"Unknown task: {task}. Valid tasks are 'image-classification', 'object-detection', and 'semantic-segmentation'"
+        )
+    elif zs and task is None:
+        task = "image-classification"
+    elif not zs and task is None:
+        if _is_transformer_for_image_classification(model):
+            task = "image-classification"
+        elif _is_transformer_for_object_detection(model):
+            task = "object-detection"
+        elif _is_transformer_for_semantic_segmentation(model):
+            task = "semantic-segmentation"
+        elif _is_transformer_base_model(model):
+            task = "base-model"
+        else:
+            raise ValueError(f"Unknown model type: {model}")
+
+    if zs:
+        return "zero-shot-" + task
+    else:
+        return task
+
+
+def convert_transformers_model(model, task=None):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
 
     Args:
         model: a ``transformers.models`` model
+        task (None): the task of the model. Supported values are
+            ``"image-classification"``, ``"object-detection"``, and
+            ``"semantic-segmentation"``. If not specified, the task is
+            automatically inferred from the model
 
     Returns:
          a :class:`fiftyone.core.models.Model`
@@ -30,19 +101,34 @@ def convert_transformers_model(model):
     Raises:
         ValueError: if the model could not be converted
     """
-    if _is_transformer_for_image_classification(model):
+    model_type = get_model_type(model, task=task)
+
+    if model_type == "zero-shot-image-classification":
+        return _convert_zero_shot_transformer_for_image_classification(model)
+    elif model_type == "image-classification":
         return _convert_transformer_for_image_classification(model)
-    elif _is_transformer_for_object_detection(model):
+    elif model_type == "object-detection":
         return _convert_transformer_for_object_detection(model)
-    elif _is_transformer_for_semantic_segmentation(model):
+    elif model_type == "semantic-segmentation":
         return _convert_transformer_for_semantic_segmentation(model)
-    elif _is_transformer_base_model(model):
+    elif model_type == "base-model":
         return _convert_transformer_base_model(model)
     else:
         raise ValueError(
             "Unsupported model type; cannot convert %s to a FiftyOne model"
             % model
         )
+
+
+def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
+    model_name = str(type(base_model)).split(".")[-1][:-2].split("For")[0]
+    module_name = "transformers"
+    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
+    itr_class = getattr(
+        __import__(module_name, fromlist=[itr_class_name]),
+        itr_class_name,
+    )
+    return itr_class.from_pretrained(model_name_or_path)
 
 
 def _get_image_processor_fallback(model):
@@ -64,6 +150,19 @@ def _get_image_processor(model):
     except:
         image_processor = _get_image_processor_fallback(model)
     return image_processor
+
+
+def _get_processor(model):
+    try:
+        processor = transformers.AutoProcessor.from_pretrained(
+            model.config._name_or_path
+        )
+    except:
+        raise ValueError(
+            "Could not find a processor for model %s"
+            % model.config._name_or_path
+        )
+    return processor
 
 
 def to_classification(results, id2label):
@@ -194,6 +293,22 @@ class FiftyOneTransformerConfig(Config):
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
 
 
+class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneZeroShotTransformer`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+        text_prompt: the text prompt to use, e.g., ``"A photo of"``
+        classes (None): a list of custom classes for zero-shot prediction
+    """
+
+    def __init__(self, d):
+        self.text_prompt = self.parse_string(d, "text_prompt", default=None)
+        self.classes = self.parse_array(d, "classes", default=None)
+        super().__init__(d)
+
+
 class TransformerEmbeddingsMixin(EmbeddingsMixin):
     """Mixin for Transformers that can generate embeddings."""
 
@@ -228,6 +343,63 @@ class TransformerEmbeddingsMixin(EmbeddingsMixin):
             outputs = self.model.base_model(**inputs)
 
         return outputs.last_hidden_state[:, -1, :].cpu().numpy()
+
+
+class ZeroShotTransformerEmbeddingsMixin(EmbeddingsMixin):
+    """Mixin for Transformers that can generate embeddings."""
+
+    @property
+    def has_embeddings(self):
+        return _has_text_and_image_features(self.model)
+
+    def embed(self, arg):
+        return self._embed(arg)[0]
+
+    def embed_all(self, args):
+        return self._embed(args)
+
+    def _embed(self, args):
+        inputs = self.processor(images=args, return_tensors="pt")
+        with torch.no_grad():
+            image_features = self.model.base_model.get_image_features(**inputs)
+
+        return image_features.cpu().numpy()
+
+
+class ZeroShotTransformerPromptMixin(PromptMixin):
+    """Mixin for Transformers that can perform zero-shot prediction."""
+
+    @property
+    def can_embed_prompts(self):
+        return _has_text_and_image_features(self.model)
+
+    def embed_prompt(self, prompt):
+        """Generates an embedding for the given text prompt.
+
+        Args:
+            prompt: a text string
+
+        Returns:
+            a numpy vector
+        """
+        return self.embed_prompts([prompt])[0]
+
+    def embed_prompts(self, prompts):
+        """Generates an embedding for the given text prompts.
+
+        Args:
+            prompts: an iterable of text strings
+
+        Returns:
+            a ``num_prompts x num_dims`` array of prompt embeddings
+        """
+        return self._embed_prompts(prompts).detach().cpu().numpy()
+
+    def _embed_prompts(self, prompts):
+        inputs = self.processor(text=prompts, return_tensors="pt")
+        with torch.no_grad():
+            text_features = self.model.base_model.get_text_features(**inputs)
+        return text_features
 
 
 class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
@@ -269,6 +441,163 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
 
     def predict(self, arg):
         raise NotImplementedError("Subclass must implement predict()")
+
+
+class FiftyOneZeroShotTransformer(
+    ZeroShotTransformerEmbeddingsMixin, ZeroShotTransformerPromptMixin, Model
+):
+    """FiftyOne wrapper around a ``transformers.models`` model.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerConfig`
+    """
+
+    def __init__(self, config):
+        self.config = config
+        self.model = self._load_model(config)
+        self.processor = self._load_processor()
+        self._text_prompts = None
+        self.classes = config.classes
+
+    @property
+    def media_type(self):
+        return "image"
+
+    @property
+    def ragged_batches(self):
+        return False
+
+    @property
+    def transforms(self):
+        return None
+
+    @property
+    def preprocess(self):
+        return False
+
+    def _load_processor(self):
+        return _get_processor(self.model)
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        return transformers.AutoModel.from_pretrained(config.name_or_path)
+
+    def _get_text_prompts(self):
+        if self._text_prompts is not None:
+            return self._text_prompts
+
+        if self.classes is None and self.config.classes is None:
+            return None
+        elif self.classes is None:
+            self.classes = self.config.classes
+
+        if self.config.text_prompt is None:
+            self._text_prompts = self.classes
+        else:
+            self._text_prompts = [
+                "%s %s" % (self.config.text_prompt, c) for c in self.classes
+            ]
+        return self._text_prompts
+
+    def predict(self, arg):
+        raise NotImplementedError("Subclass must implement predict()")
+
+
+class FiftyOneZeroShotTransformerForImageClassification(
+    FiftyOneZeroShotTransformer
+):
+    """FiftyOne wrapper around a ``transformers.models`` model for image
+    classification.
+
+    Args:
+        config: a `FiftyOneZeroShotTransformerConfig`
+    """
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        model = transformers.AutoModel.from_pretrained(config.name_or_path)
+        if _has_image_text_retrieval(model):
+            model = _get_model_for_image_text_retrieval(
+                model, config.name_or_path
+            )
+        return model
+
+    def _predict_all_from_features(self, args):
+        text_prompts = self._get_text_prompts()
+        inputs = self.processor(
+            images=args, text=text_prompts, return_tensors="pt"
+        )
+
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        logits_per_image = (
+            outputs.logits_per_image.detach().cpu()
+        )  # this is the image-text similarity score
+
+        probs = logits_per_image.softmax(
+            dim=1
+        )  # we can take the softmax to get the label probabilities
+        conf = probs.max(
+            dim=1
+        ).values.numpy()  # the confidence of the most likely label
+        logits = (
+            logits_per_image.numpy()
+        )  # we can also take the logits and train a linear classifier on top
+        arg_max = (
+            probs.argmax(dim=1).numpy().astype(int)
+        )  # the argmax of the label probabilities
+        classifs = [
+            fol.Classification(
+                label=self.classes[arg_max[i]],
+                confidence=conf[i],
+                logits=logits[i],
+            )
+            for i in range(logits.shape[0])
+        ]
+
+        if len(classifs) == 1:
+            classifs = classifs[0]
+
+        return classifs
+
+    def _predict_all_from_retrieval(self, args):
+        return [self._predict_from_retrieval(arg) for arg in args]
+
+    def _predict_from_retrieval(self, arg):
+        text_prompts = self._get_text_prompts()
+        logits = []
+
+        with torch.no_grad():
+            for text_prompt in text_prompts:
+                inputs = self.processor(arg, text_prompt, return_tensors="pt")
+                outputs = self.model(**inputs)
+                logits.append(outputs.logits[0, :].item())
+
+        logits = np.array(logits)
+        probs = np.exp(logits) / np.sum(np.exp(logits))
+        conf = probs.max()
+        arg_max = int(probs.argmax())
+        label = self.classes[arg_max]
+
+        return fol.Classification(
+            label=label,
+            confidence=conf,
+            logits=logits,
+        )
+
+    def predict_all(self, args):
+        if _has_text_and_image_features(self.model):
+            return self._predict_all_from_features(args)
+        else:
+            return self._predict_all_from_retrieval(args)
+
+    def predict(self, arg):
+        return self.predict_all(arg)
 
 
 class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
@@ -419,3 +748,8 @@ def _convert_transformer_for_object_detection(model):
 def _convert_transformer_for_semantic_segmentation(model):
     config = FiftyOneTransformerConfig({"model": model})
     return FiftyOneTransformerForSemanticSegmentation(config)
+
+
+def _convert_zero_shot_transformer_for_image_classification(model):
+    config = FiftyOneZeroShotTransformerConfig({"model": model})
+    return FiftyOneZeroShotTransformerForImageClassification(config)
