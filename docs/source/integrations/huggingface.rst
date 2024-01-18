@@ -543,10 +543,8 @@ pattern below:
     predictions = []
     for paths in iter_batches(filepaths, batch_size):
         images = [Image.open(p) for p in paths]
-        inputs = image_processor(images, return_tensors="pt")
         image_sizes = [i.size for i in images]
         target_sizes = torch.tensor([image.size[::-1] for image in images])
-
         inputs = processor(images, return_tensors="pt")
         with torch.no_grad():
             outputs = transformers_model(**inputs)
@@ -555,7 +553,6 @@ pattern below:
             outputs, target_sizes=target_sizes
         )
         predictions.extend(fout.to_detections(results, id2label, image_sizes))
-        predictions.extend(fout.to_segmentation(results))
 
     dataset.set_values("det_predictions", predictions)
 
