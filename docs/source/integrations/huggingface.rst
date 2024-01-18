@@ -96,16 +96,16 @@ method:
         "google/vit-base-patch16-224"
     )
 
-    # ViT Hybrid
+    # ViT-Hybrid
     from transformers import ViTHybridForImageClassification
-    model = ViTHybridForImageClassification(
+    model = ViTHybridForImageClassification.from_pretrained(
         "google/vit-hybrid-base-bit-384"
     )
 
     # Any auto model
     from transformers import AutoModelForImageClassification
     model = AutoModelForImageClassification.from_pretrained(
-        "facebook/vit-msn-small"
+        "facebook/levit-128S"
     )
 
 .. code-block:: python
@@ -126,12 +126,9 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
     from PIL import Image
     import fiftyone.utils.transformers as fout
 
-    from transformers import AutoModelForImageClassification, AutoProcessor
-    transformers_model = AutoModelForImageClassification.from_pretrained(
-        "microsoft/beit-base-patch16-224"
-    )
-    image_processor = AutoImageProcessor.from_pretrained(
-        "microsoft/beit-base-patch16-224"
+    from transformers import ViTHybridForImageClassification, AutoProcessor
+    transformers_model = ViTHybridForImageClassification.from_pretrained(
+        "google/vit-hybrid-base-bit-384"
     )
     processor = AutoProcessor.from_pretrained("google/vit-hybrid-base-bit-384")
     id2label = transformers_model.config.id2label
