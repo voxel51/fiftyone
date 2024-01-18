@@ -240,8 +240,12 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
         image = Image.open(sample.filepath)
         inputs = processor(image, return_tensors="pt")
         with torch.no_grad():
-            result = transformers_model(**inputs)
+            outputs = transformers_model(**inputs)
 
+        target_sizes = torch.tensor([image.size[::-1]])
+        result = processor.post_process_object_detection(
+            outputs, target_sizes=target_sizes
+        )
         sample["predictions"] = fout.to_detections(result, id2label, [image.size])
         sample.save()
 
