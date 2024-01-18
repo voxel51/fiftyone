@@ -1,6 +1,6 @@
-.. _transformers-integration:
+.. _huggingface-integration:
 
-Transformers Integration
+Hugging Face Integration
 ========================
 
 .. default-role:: code
@@ -10,7 +10,7 @@ FiftyOne integrates natively with Hugging Face's
 you can load, fine-tune, and run inference with your favorite Transformers
 models on your FiftyOne datasets with just a few lines of code!
 
-.. _transformers-setup:
+.. _huggingface-setup:
 
 Setup
 _____
@@ -23,7 +23,7 @@ To get started with
 
     pip install transformers
 
-.. _transformers-inference:
+.. _huggingface-inference:
 
 Inference
 _________
@@ -47,7 +47,7 @@ on the following sample dataset:
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
-.. _transformers-image-classification:
+.. _huggingface-image-classification:
 
 Image classification
 --------------------
@@ -166,7 +166,7 @@ model's name or path as a keyword argument:
 
     session = fo.launch_app(dataset)
 
-.. _transformers-object-detection:
+.. _huggingface-object-detection:
 
 Object detection
 ----------------
@@ -269,7 +269,7 @@ name or path as a keyword argument:
 
     session = fo.launch_app(dataset)
 
-.. _transformers-semantic-segmentation:
+.. _huggingface-semantic-segmentation:
 
 Semantic segmentation
 ---------------------
@@ -360,7 +360,7 @@ model's name or path as a keyword argument:
 
     session = fo.launch_app(dataset)
 
-.. _transformers-zero-shot-classification:
+.. _huggingface-zero-shot-classification:
 
 Zero-shot classification
 ------------------------
@@ -446,7 +446,7 @@ FiftyOne format:
     Some zero-shot models are compatible with multiple tasks, so it is
     recommended that you specify the task type when converting the model.
 
-.. _transformers-zero-shot-detection:
+.. _huggingface-zero-shot-detection:
 
 Zero-shot object detection
 --------------------------
@@ -493,7 +493,7 @@ FiftyOne format:
     Some zero-shot models are compatible with multiple tasks, so it is
     recommended that you specify the task type when converting the model.
 
-.. _transformers-batch-inference:
+.. _huggingface-batch-inference:
 
 Batch inference
 ---------------
@@ -546,7 +546,7 @@ pattern below:
     See :ref:`this section <batch-updates>` for more information about
     performing batch updates to your FiftyOne datasets.
 
-.. _transformers-embeddings:
+.. _huggingface-embeddings:
 
 Embeddings
 __________
@@ -564,7 +564,7 @@ samples.
     detection, or base model, FiftyOne will extract embeddings from the
     `last_hidden_state` of the model's base encoder.
 
-.. _transformers-image-embeddings:
+.. _huggingface-image-embeddings:
 
 Image embeddings
 ----------------
@@ -645,7 +645,7 @@ see if the model can be used to generate embeddings:
     image = Image.open(dataset.first().filepath)
     embedding = model.embed(np.array(image))
 
-.. _transformers-text-embeddings:
+.. _huggingface-text-embeddings:
 
 Text embeddings
 ---------------
@@ -692,7 +692,7 @@ property:
     )
     print(model.can_embed_prompts)  # False
 
-.. _transformers-batch-embeddings:
+.. _huggingface-batch-embeddings:
 
 Batch embeddings
 ----------------
@@ -706,7 +706,7 @@ to
 
     dataset.compute_embeddings(model, embeddings_field="embeddings", batch_size=16)
 
-.. _transformers-patch-embeddings:
+.. _huggingface-patch-embeddings:
 
 Patch embeddings
 ----------------
@@ -737,7 +737,7 @@ method:
         embeddings_field="embeddings",
     )
 
-.. _transformers-brain-methods:
+.. _huggingface-brain-methods:
 
 Brain methods
 _____________
