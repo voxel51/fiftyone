@@ -338,14 +338,12 @@ to convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
         image = Image.open(sample.filepath)
         inputs = processor(image, return_tensors="pt")
         target_size = [image.size[::-1]]
-
         with torch.no_grad():
             output = transformers_model(**inputs)
 
         result = processor.post_process_semantic_segmentation(
             output, target_sizes=target_size
         )
-
         sample["seg_predictions"] = fout.to_segmentation(result)
         sample.save()
 
@@ -534,7 +532,6 @@ pattern below:
         "hustvl/yolos-tiny"
     )
     processor = AutoProcessor.from_pretrained("hustvl/yolos-tiny")
-
     id2label = transformers_model.config.id2label
 
     filepaths = dataset.values("filepath")
@@ -628,7 +625,6 @@ method:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
@@ -738,7 +734,6 @@ method:
     import fiftyone.zoo as foz
     import fiftyone.utils.transformers as fout
 
-    # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
 
     from transformers import BeitModel
