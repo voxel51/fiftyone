@@ -445,7 +445,7 @@ FiftyOne format:
 
     model = fout.convert_transformers_model(
         transformers_model,
-        task="classification",  # "classification" or "segmentation"
+        task="image-classification",  # "image-classification" or "semantic-segmentation"
     )
 
 .. note::
