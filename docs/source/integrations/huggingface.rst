@@ -295,9 +295,9 @@ method:
         "facebook/maskformer-swin-base-ade"
     )
 
-    # SegFormer
-    from transformers import SegFormerForSemanticSegmentation
-    model = SegFormerForSemanticSegmentation.from_pretrained(
+    # Segformer
+    from transformers import SegformerForSemanticSegmentation
+    model = SegformerForSemanticSegmentation.from_pretrained(
         "nvidia/segformer-b0-finetuned-ade-512-512"
     )
 
@@ -334,8 +334,14 @@ to convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
         inputs = processor(image, return_tensors="pt")
+        target_size = [image.size[::-1]]
+
         with torch.no_grad():
-            result = transformers_model(**inputs)
+            output = transformers_model(**inputs)
+
+        result = processor.post_process_semantic_segmentation(
+            output, target_sizes=target_size
+        )
 
         sample["predictions"] = fout.to_segmentation(result)
         sample.save()
