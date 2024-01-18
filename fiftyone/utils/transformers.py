@@ -609,7 +609,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
     def _predict_all_from_features(self, args):
         text_prompts = self._get_text_prompts()
         inputs = self.processor(
-            images=args, text=text_prompts, return_tensors="pt"
+            images=args, text=text_prompts, return_tensors="pt", padding=True
         )
 
         with torch.no_grad():
