@@ -133,6 +133,10 @@ async def aggregate_resolver(
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
 
+    if form.mixed and view.media_type == fom.GROUP and view.group_slices:
+        view = view.select_group_slices(_force_mixed=True)
+        view = fosv.get_extended_view(view, form.filters)
+
     if form.hidden_labels:
         view = view.exclude_labels(
             [
@@ -145,9 +149,6 @@ async def aggregate_resolver(
                 for l in form.hidden_labels
             ]
         )
-
-    if form.mixed and view.media_type == fom.GROUP and view.group_slices:
-        view = view.select_group_slices(_force_mixed=True)
 
     aggregations, deserializers = zip(
         *[_resolve_path_aggregation(path, view) for path in form.paths]

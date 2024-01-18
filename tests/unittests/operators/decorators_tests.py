@@ -56,7 +56,7 @@ class DirStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
-                time.sleep(0.01)
+                time.sleep(0.1)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # verify that max time is greater after adding files
@@ -69,7 +69,7 @@ class DirStateTests(unittest.TestCase):
             )
             dir_state2 = dir_state(tmpdirname)
             self.assertGreaterEqual(dir_state2, dir_state1)
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             shutil.rmtree(
                 os.path.join(tmpdirname, plugin_paths[1].rsplit("/", 1)[0])
@@ -82,11 +82,11 @@ class DirStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
-                time.sleep(0.01)
+                time.sleep(0.1)
                 os.makedirs(os.path.join(tmpdirname, p))
 
             # add wait for test to pass on older systems/python versions
-            time.sleep(0.01)
+            time.sleep(0.1)
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)

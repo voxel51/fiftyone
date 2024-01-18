@@ -385,7 +385,11 @@ _____________
 .. code-block:: python
 
     fo.Dataset.download_media(
-        self, media_fields=None, update=False, skip_failures=True
+        self,
+        media_fields=None,
+        update=False,
+        skip_failures=True,
+        progress=None,
     ):
         """Downloads the source media files for all samples in the collection.
 
@@ -402,12 +406,20 @@ _____________
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
         """
 
 .. code-block:: python
 
     fo.Dataset.download_context(
-        self, batch_size=100, clear=False, quiet=None, **kwargs
+        self,
+        batch_size=100,
+        clear=False,
+        progress=None,
+        **kwargs,
     ):
         """Returns a context that can be used to automatically pre-download
         media when iterating over samples in this collection.
@@ -417,9 +429,10 @@ _____________
                 media
             clear (False): whether to clear the media from the cache when the
                 context exits
-            quiet (None): whether to display (False) or not display (True) a
-                progress bar tracking the status of any downloads. By default,
-                ``fiftyone.config.show_progress_bars`` is used to set this
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
             **kwargs: valid keyword arguments for :meth:`download_media`
 
         Returns:
@@ -429,7 +442,11 @@ _____________
 .. code-block:: python
 
     fo.Dataset.get_local_paths(
-        self, media_field="filepath", download=True, skip_failures=True
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+        progress=None,
     ):
         """Returns a list of local paths to the media files in this collection.
 
@@ -440,6 +457,10 @@ _____________
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
 
         Returns:
             a list of local filepaths
@@ -515,7 +536,7 @@ _____________
 
 .. code-block:: python
 
-    fos.copy_files(inpaths, outpaths, skip_failures=False, progress=False):
+    fos.copy_files(inpaths, outpaths, skip_failures=False, progress=None):
         """Copies the files to the given locations.
 
         Args:
@@ -523,13 +544,14 @@ _____________
             outpaths: a list of output paths
             skip_failures (False): whether to gracefully continue without
                 raising an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the
-                status of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
 
-    fos.move_files(inpaths, outpaths, skip_failures=False, progress=False):
+    fos.move_files(inpaths, outpaths, skip_failures=False, progress=None):
         """Moves the files to the given locations.
 
         Args:
@@ -537,13 +559,14 @@ _____________
             outpaths: a list of output paths
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
 
-    fos.delete_files(paths, skip_failures=False, progress=False):
+    fos.delete_files(paths, skip_failures=False, progress=None):
         """Deletes the files from the given locations.
 
         For local paths, any empty directories are also recursively deleted from
@@ -553,8 +576,9 @@ _____________
             paths: a list of paths
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the operation
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
         """
 
 .. code-block:: python
@@ -568,7 +592,7 @@ _____________
         cache=False,
         overwrite=False,
         skip_failures=False,
-        progress=False,
+        progress=None,
     ):
         """Uploads the source media files for the given collection to the given
         remote directory.
@@ -597,8 +621,9 @@ _____________
                 remote files
             skip_failures (False): whether to gracefully continue without raising
                 an error if a remote operation fails
-            progress (False): whether to render a progress bar tracking the status
-                of the upload
+            progress (None): whether to render a progress bar (True/False), use the
+                default value ``fiftyone.config.show_progress_bars`` (None), or a
+                progress callback function to invoke instead
 
         Returns:
             the list of remote paths
@@ -652,16 +677,44 @@ collection being annotated, then you can simply pass `cloud_manifest=True`:
     The cloud manifest file must contain all media files in the sample
     collection being annotated.
 
+.. _teams-annotating-cloud-media-v7:
+
+Annotating cloud-backed datasets with V7 Darwin
+_______________________________________________
+
+When using FiftyOne to :ref:`annotate data with V7 Darwin <v7-integration>`,
+you can optionally follow the instructions below to instruct V7 to load media
+directly from S3, GCS, or Azure buckets rather than the default behavior of
+uploading copies of the media from your local machine.
+
+First, follow
+`these instructions <https://docs.v7labs.com/docs/external-storage-configuration>`_
+to configure external storage for V7. Then, simply provide the
+`external_storage` parameter to
+:meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>` and
+specify the sluggified external storage name:
+
+.. code-block:: python
+    :linenos:
+
+    anno_key = "cloud_annotations"
+
+    results = dataset.annotate(
+        anno_key,
+        label_field="ground_truth",
+        external_storage="example-darwin-storage-slug",
+        ...
+    )
+
 .. _teams-annotating-cloud-media-labelbox:
 
 Annotating cloud-backed datasets with Labelbox
 ______________________________________________
 
 When using FiftyOne to
-:ref:`annotate data with Labelbox <labelbox-integration>`,
-you can optionally follow the instructions below to instruct Labelbox to load media
-directly from S3 rather than the default behavior of uploading copies of the
-media.
+:ref:`annotate data with Labelbox <labelbox-integration>`, you can optionally
+follow the instructions below to instruct Labelbox to load media directly from
+S3 rather than the default behavior of uploading copies of the media.
 
 This assumes that you have configured the
 `S3 integration for Labelbox <https://docs.labelbox.com/docs/import-aws-s3-data>`_.

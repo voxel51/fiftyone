@@ -34,6 +34,10 @@ test.describe("quickstart", () => {
     // test navigation
     await grid.openFirstSample();
     await modal.waitForSampleLoadDomAttribute();
+
+    // test copy text
+    await modal.sidebar.getSidebarEntry("id").press(`Ctrl+KeyC`);
+    modal.assert.verifySampleNavigation("forward");
   });
 
   test("entry counts text when toPatches then groupedBy", async ({ grid }) => {
