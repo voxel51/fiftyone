@@ -6,15 +6,26 @@ Utilities for working with
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import logging
+
 import numpy as np
+
+import eta.core.utils as etau
 
 from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
 from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
+import fiftyone.zoo.models as fozm
 
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_CLASSIFICATION_PATH = "google/vit-base-patch16-224"
+DEFAULT_DETECTION_PATH = "hustvl/yolos-tiny"
+DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
 
 
 def _has_text_and_image_features(model):
@@ -43,6 +54,28 @@ def _is_zero_shot_model(model):
     ## Case 2: ImageAndTextRetrieval
     if _has_image_text_retrieval(model):
         return True
+
+
+def _get_model_type_string(model):
+    return str(type(model)).split(".")[-1][:-2]
+
+
+def _is_transformer_for_image_classification(model):
+    return "ForImageClassification" in _get_model_type_string(model)
+
+
+def _is_transformer_for_object_detection(model):
+    return "ForObjectDetection" in _get_model_type_string(model)
+
+
+def _is_transformer_for_semantic_segmentation(model):
+    ms = _get_model_type_string(model)
+    return "For" in ms and "Segmentation" in ms
+
+
+def _is_transformer_base_model(model):
+    model_type = _get_model_type_string(model)
+    return "Model" in model_type and "For" not in model_type
 
 
 def _get_base_model_name(model):
@@ -121,7 +154,7 @@ def convert_transformers_model(model, task=None):
 
 
 def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
-    model_name = str(type(base_model)).split(".")[-1][:-2].split("For")[0]
+    model_name = _get_base_model_name(base_model)
     module_name = "transformers"
     itr_class_name = f"{model_name}ForImageAndTextRetrieval"
     itr_class = getattr(
@@ -132,7 +165,7 @@ def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
 
 
 def _get_image_processor_fallback(model):
-    model_name = str(type(model)).split(".")[-1][:-2].split("For")[0]
+    model_name = _get_base_model_name(model)
     module_name = "transformers"
     processor_class_name = f"{model_name}ImageProcessor"
     processor_class = getattr(
@@ -280,7 +313,7 @@ def _convert_bounding_box(box, image_shape):
     ]
 
 
-class FiftyOneTransformerConfig(Config):
+class FiftyOneTransformerConfig(Config, fozm.HasZooModel):
     """Configuration for a :class:`FiftyOneTransformer`.
 
     Args:
@@ -291,6 +324,9 @@ class FiftyOneTransformerConfig(Config):
     def __init__(self, d):
         self.model = self.parse_raw(d, "model", default=None)
         self.name_or_path = self.parse_string(d, "name_or_path", default=None)
+        if etau.is_str(self.model):
+            self.name_or_path = self.model
+            self.model = None
 
 
 class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
@@ -453,11 +489,11 @@ class FiftyOneZeroShotTransformer(
     """
 
     def __init__(self, config):
+        self.classes = config.classes
+        self._text_prompts = None
         self.config = config
         self.model = self._load_model(config)
         self.processor = self._load_processor()
-        self._text_prompts = None
-        self.classes = config.classes
 
     @property
     def media_type(self):
@@ -600,6 +636,22 @@ class FiftyOneZeroShotTransformerForImageClassification(
         return self.predict_all(arg)
 
 
+class FiftyOneTransformerForImageClassificationConfig(
+    FiftyOneTransformerConfig
+):
+    """Configuration for a :class:`FiftyOneTransformerForImageClassification`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_CLASSIFICATION_PATH
+
+
 class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
     """FiftyOne wrapper around a ``transformers.models`` model for image
     classification.
@@ -628,6 +680,20 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
     def predict_all(self, args):
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs)
+
+
+class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneTransformerForObjectDetection`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_DETECTION_PATH
 
 
 class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
@@ -665,6 +731,22 @@ class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
         target_sizes = [i.shape[:-1][::-1] for i in args]
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
+
+
+class FiftyOneTransformerForSemanticSegmentationConfig(
+    FiftyOneTransformerConfig
+):
+    """Configuration for a :class:`FiftyOneTransformerForSemanticSegmentation`.
+
+    Args:
+        model (None): a ``transformers.models`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_SEGMENTATION_PATH
 
 
 class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
@@ -706,28 +788,6 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         target_sizes = [i.shape[:-1][::-1] for i in args]
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
-
-
-def _get_model_type_string(model):
-    return str(type(model)).split(".")[-1][:-2]
-
-
-def _is_transformer_for_image_classification(model):
-    return "ForImageClassification" in _get_model_type_string(model)
-
-
-def _is_transformer_for_object_detection(model):
-    return "ForObjectDetection" in _get_model_type_string(model)
-
-
-def _is_transformer_for_semantic_segmentation(model):
-    ms = _get_model_type_string(model)
-    return "For" in ms and "Segmentation" in ms
-
-
-def _is_transformer_base_model(model):
-    model_type = _get_model_type_string(model)
-    return "Model" in model_type and "For" not in model_type
 
 
 def _convert_transformer_base_model(model):
