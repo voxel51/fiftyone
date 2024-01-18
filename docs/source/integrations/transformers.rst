@@ -143,6 +143,33 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
         sample["classif_predictions"] = fout.to_classification(result, id2label)
         sample.save()
 
+
+Finally, you can load the `transformers` model directly from the :ref:`FiftyOne Model
+Zoo <model_zoo>`. To load a `transformers` classification model from the zoo,
+specify `"classification-transformer-torch"` as the first argument, and pass in
+the model's name or path as a keyword argument:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "classification-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="facebook/levit-128S", ## HF model name or path
+        cache=False
+    )
+
+    dataset.apply_model(model, label_field="levit")
+
+    session = fo.launch_app(dataset)
+
+
+Specifying `cache=False` is required if loading multiple `transformers` models
+for the same task type (e.g., image classification) in the same session.
+
 .. _transformers-object-detection:
 
 Object detection
@@ -232,6 +259,30 @@ to convert the predictions to :ref:`FiftyOne format <object-detection>`:
         )
         sample.save()
 
+
+Finally, you can load the `transformers` model directly from the :ref:`FiftyOne Model
+Zoo <model_zoo>`. To load a `transformers` detection model from the zoo,
+specify `"detection-transformer-torch"` as the first argument, and pass in
+the model's name or path as a keyword argument:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "detection-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="facebook/detr-resnet-50", ## HF model name or path
+        cache=False
+    )
+
+    dataset.apply_model(model, label_field="detr")
+
+    session = fo.launch_app(dataset)
+
+
 .. _transformers-semantic-segmentation:
 
 Semantic segmentation
@@ -307,6 +358,177 @@ utility to convert the predictions to
 
     dataset.default_mask_targets = transformers_model.config.id2label
 
+Finally, you can load the `transformers` model directly from the :ref:`FiftyOne Model
+Zoo <model_zoo>`. To load a `transformers` semantic segmentation model from the
+zoo, specify `"segmentation-transformer-torch"` as the first argument, and pass
+in the model's name or path as a keyword argument:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "segmentation-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="nvidia/segformer-b0-finetuned-ade-512-512", ## HF model name or path
+        cache=False
+    )
+
+    dataset.apply_model(model, label_field="segformer")
+
+    session = fo.launch_app(dataset)
+
+
+.. _transformers-zero-shot-classification:
+
+Zero-shot classification
+------------------------
+
+Zero-shot image classification models from `transformers` can be loaded
+directly from the :ref:`FiftyOne Model Zoo <model_zoo>`. To load a
+`transformers` zero-shot classification model from the zoo, specify
+`"zero-shot-classification-transformer-torch"` as the first argument, and pass
+in the model's name or path as a keyword argument. You can optionally pass in a
+list of label classes as a keyword argument `classes`:
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "zero-shot-classification-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="BAAI/AltCLIP", ## HF model name or path
+        classes=["cat", "dog", "bird", "fish", "turtle"], ## optional
+        cache=False
+    )
+
+
+Once loaded, you can pass the model directly to your FiftyOne dataset's
+:meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    dataset.apply_model(model, label_field="altclip")
+
+    session = fo.launch_app(dataset)
+
+
+Specifying `cache=False` is required if loading multiple `transformers` models
+for the same task type (e.g., zero-shot image classification) in the same
+session.
+
+You do not need to include a list of label classes at model load time. To
+generate embeddings for the samples in your dataset, for example, the following
+code is sufficient:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "zero-shot-classification-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="BAAI/AltCLIP", ## HF model name or path
+        cache=False
+    )
+
+    dataset.compute_embeddings(model, embeddings_field="altclip_embeddings")
+
+    session = fo.launch_app(dataset)
+
+You can also change the label classes at any time by setting the `classes`
+attribute of the model:
+
+.. code-block:: python
+    :linenos:
+
+    model.classes = ["cat", "dog", "bird", "fish", "turtle"]
+
+    dataset.apply_model(model, label_field="altclip")
+
+    session = fo.launch_app(dataset)
+
+
+The
+:func:`convert_transformers_model() <fiftyone.utils.transformers.convert_transformers_model>`
+utility also allows you to convert a zero-shot `transformers` models to FiftyOne
+format. Because some zero-shot models are compatible with multiple tasks, it is
+recommended that you specify the task type when converting the model.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.transformers as fout
+
+    from transformers import CLIPSegModel
+    transformers_model = CLIPSegModel.from_pretrained("CIDAS/clipseg-rd64-refined")
+
+    ## specify classification (as opposed to segmentation) task
+    model = fout.convert_transformers_model(
+        transformers_model,
+        task="classification",
+    )
+
+
+.. _transformers-zero-shot-detection:
+
+Zero-shot object detection
+--------------------------
+
+Zero-shot object detection models from `transformers` can be loaded directly
+from the :ref:`FiftyOne Model Zoo <model_zoo>`. To load a `transformers`
+zero-shot object detection model from the zoo, specify
+`"zero-shot-detection-transformer-torch"` as the first argument, and pass
+in the model's name or path as a keyword argument. You can optionally pass in a
+list of label classes as a keyword argument `classes`:
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model_type = "zero-shot-detection-transformer-torch"
+
+    model = foz.load_zoo_model(
+        model_type,
+        name_or_path="google/owlvit-base-patch32", ## HF model name or path
+        classes=["cat", "dog", "bird", "fish", "turtle"], ## optional
+        cache=False
+    )
+
+
+The
+:func:`convert_transformers_model() <fiftyone.utils.transformers.convert_transformers_model>`
+utility also allows you to convert a zero-shot `transformers` models to FiftyOne
+format. Because some zero-shot models are compatible with multiple tasks, it is
+recommended that you specify the task type when converting the model.
+
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.transformers as fout
+
+    from transformers import OwlViTForObjectDetection
+
+    transformers_model = OwlViTForObjectDetection.from_pretrained("google/owlvit-base-patch32")
+
+    model = fout.convert_transformers_model(
+        transformers_model,
+        task="object-detection",
+    )
+
 .. _transformers-batch-inference:
 
 Batch inference
@@ -366,13 +588,16 @@ Embeddings
 __________
 
 Any Transformer that supports image classification or object detection
-tasks can be used to compute embeddings for your samples.
+tasks — zero-shot or otherwise — can be used to compute embeddings for your
+samples.
 
 .. note::
 
-    Regardless of whether you use a classification, detection, or base model,
-    FiftyOne will extract embeddings from the final hidden state
-    (``last_hidden_state``) of the model's base encoder.
+    For non-zero-shot models, regardless of whether you use a classification,
+    detection, or base model, FiftyOne will extract embeddings from the final
+    hidden state (``last_hidden_state``) of the model's base encoder. For
+    zero-shot models, FiftyOne will use the `transformers` model's
+    `get_image_features()` method to extract embeddings.
 
 .. _transformers-image-embeddings:
 
@@ -404,6 +629,19 @@ method:
     model = DetaForImageObjectDetection.from_pretrained(
         "jozhang97/deta-swin-large-o365"
     )
+
+    # Embeddings from zero-shot classification model
+    from transformers import AutoModelForImageClassification
+    model = AutoModelForImageClassification.from_pretrained(
+        "BAAI/AltCLIP"
+    )
+
+    # Embeddings from zero-shot detection model
+    from transformers import OwlViTForObjectDetection
+    model = OwlViTForObjectDetection.from_pretrained(
+        "google/owlvit-base-patch32"
+    )
+
 
 .. code-block:: python
     :linenos:
@@ -441,6 +679,63 @@ property to see if the model can be used to generate embeddings:
     # Embed an image directly
     image = Image.open(dataset.first().filepath)
     embedding = model.embed(np.array(image))
+
+
+.. _transformers-text-embeddings:
+
+Text embeddings
+---------------
+
+Zero-shot image classification and object detection models from `transformers`
+can be used to compute embeddings for text. The `FiftyOne.Model <fiftyone.core.models.Model>`
+generated by converting a `transformers` zero-shot model, or loaded from the
+:ref:`FiftyOne Model Zoo <model_zoo>`, can be used to embed text directly via
+the :meth:`embed_prompt() <fiftyone.utils.transformers.ZeroShotTransformerPromptMixin.embed_prompt>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    # Load an example dataset
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+    dataset.select_fields().keep_fields()
+
+    model = foz.load_zoo_model(
+        "zero-shot-classification-transformer-torch",
+        name_or_path="BAAI/AltCLIP",
+        cache=False
+    )
+
+    print(model.embed_prompt("a photo of a dog"))
+
+
+You can check whether a model supports text embeddings by checking the
+:meth:`can_embed_prompts <fiftyone.utils.transformers.ZeroShotTransformerPromptMixin.embed_prompts>`
+property:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    ## A zero-shot model that supports text embeddings
+    model = foz.load_zoo_model(
+        "zero-shot-classification-transformer-torch",
+        name_or_path="BAAI/AltCLIP",
+        cache=False
+    )
+    print(model.can_embed_prompts)  # True
+
+    ## A classification model that does not support text embeddings
+    model = foz.load_zoo_model(
+        "classification-transformer-torch",
+        name_or_path="microsoft/beit-base-patch16-224",
+        cache=False
+    )
+    print(model.can_embed_prompts)  # False
 
 .. _transformers-batch-embeddings:
 
@@ -506,10 +801,30 @@ passed to :ref:`Brain methods <fiftyone-brain>` like
 
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
 
+    ## Classification model
     from transformers import BeitModel
     transformers_model = BeitModel.from_pretrained(
         "microsoft/beit-base-patch16-224-pt22k"
     )
+
+    ## Detection model
+    from transformers import DetaForObjectDetection
+    transformers_model = DetaForObjectDetection.from_pretrained(
+        "jozhang97/deta-swin-large"
+    )
+
+    ## Zero-shot classification model
+    from transformers import AutoModelForImageClassification
+    transformers_model = AutoModelForImageClassification.from_pretrained(
+        "BAAI/AltCLIP"
+    )
+
+    ## Zero-shot detection model
+    from transformers import OwlViTForObjectDetection
+    transformers_model = OwlViTForObjectDetection.from_pretrained(
+        "google/owlvit-base-patch32"
+    )
+
 
 .. code-block:: python
     :linenos:
@@ -526,3 +841,32 @@ passed to :ref:`Brain methods <fiftyone-brain>` like
 
     fob.compute_similarity(dataset, embeddings="embeddings", brain_key="sim2")
     fob.compute_visualization(dataset, embeddings="embeddings", brain_key="vis2")
+
+
+
+Because `transformers` zero-shot models can be used to embed text, they can also
+be used to construct similarity indexes on your datasets which support natural
+language queries. To access this functionality, you must pass the model by
+name into the brain method, with keyword arguments specifying the
+`name_or_path` (or `model`):
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.brain as fob
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
+
+    fob.compute_similarity(
+        dataset,
+        model_type="zero-shot-classification-transformer-torch",
+        model="BAAI/AltCLIP",
+        brain_key="sim3",
+    )
+
+    ## then query the dataset using natural language
+    view = dataset.sort_by_similarity("A photo of a dog", brain_key="sim3", k=25)
+
+    session = fo.launch_app(view)
