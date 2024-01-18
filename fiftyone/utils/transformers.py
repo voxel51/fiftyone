@@ -48,6 +48,18 @@ def _has_image_text_retrieval(model):
     return False
 
 
+def _has_detection_model(model):
+    module_name = "transformers"
+    model_name = _get_base_model_name(model)
+    detection_class_name = f"{model_name}ForObjectDetection"
+    if hasattr(
+        __import__(module_name, fromlist=[detection_class_name]),
+        detection_class_name,
+    ):
+        return True
+    return False
+
+
 def _is_zero_shot_model(model):
     ## Case 1: Has image and text features
     if _has_text_and_image_features(model):
@@ -108,7 +120,10 @@ def get_model_type(model, task=None):
             f"Unknown task: {task}. Valid tasks are 'image-classification', 'object-detection', and 'semantic-segmentation'"
         )
     elif zs and task is None:
-        task = "image-classification"
+        if _has_detection_model(model):
+            task = "object-detection"
+        else:
+            task = "image-classification"
     elif not zs and task is None:
         if _is_transformer_for_image_classification(model):
             task = "image-classification"
@@ -773,6 +788,8 @@ class FiftyOneZeroShotTransformerForObjectDetectionConfig(
         super().__init__(d)
         if self.model is None and self.name_or_path is None:
             self.name_or_path = DEFAULT_ZERO_SHOT_DETECTION_PATH
+        elif self.model is not None:
+            self.name_or_path = self.model.name_or_path
 
 
 class FiftyOneZeroShotTransformerForObjectDetection(
@@ -785,17 +802,36 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         config: a `FiftyOneZeroShotTransformerConfig`
     """
 
+    def __init__(self, config):
+        self.classes = config.classes
+        self.processor = None
+        self._text_prompts = None
+        self.config = config
+        self.processor = self._load_processor(config)
+        self.model = self._load_model(config)
+
+    def _load_processor(self, config):
+        if self.processor is not None:
+            return self.processor
+
+        name_or_path = config.name_or_path
+        if not name_or_path:
+            if config.model is not None:
+                name_or_path = config.model.name_or_path
+
+        return transformers.AutoProcessor.from_pretrained(name_or_path)
+
     def _load_model(self, config):
-        ## go from processor to detector
-        self.processor = transformers.AutoProcessor.from_pretrained(
-            config.name_or_path
-        )
+        name_or_path = config.name_or_path
+        if not name_or_path:
+            if config.model is not None:
+                name_or_path = config.model.name_or_path
+
         if config.model is not None:
             return config.model
         else:
-            return _get_detector_from_processor(
-                self.processor, config.name_or_path
-            )
+            ## go from processor to detector
+            return _get_detector_from_processor(self.processor, name_or_path)
 
     def _process_inputs(self, args):
         text_prompts = self._get_text_prompts()
