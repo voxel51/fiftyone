@@ -943,7 +943,7 @@ def _transform_video(
         if frames is not None:
             inpath = fos.to_readable(inpath)
             outdir, patt = os.path.split(outpath)
-            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+            with fos.LocalDir(outdir, "w", progress=False) as local_dir:
                 local_patt = os.path.join(local_dir, patt)
                 etav.sample_select_frames(
                     inpath,
@@ -956,7 +956,7 @@ def _transform_video(
             did_transform = True
         elif not etav.is_video_mime_type(inpath):
             indir, patt = os.path.split(inpath)
-            with fos.LocalDir(indir, "r", quiet=True) as local_dir:
+            with fos.LocalDir(indir, "r", progress=False) as local_dir:
                 local_inpath = os.path.join(local_dir, patt)
                 with fos.LocalFile(outpath, "w") as local_outpath:
                     with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
@@ -968,7 +968,7 @@ def _transform_video(
         elif not etav.is_video_mime_type(outpath):
             inpath = fos.to_readable(inpath)
             outdir, patt = os.path.split(outpath)
-            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+            with fos.LocalDir(outdir, "w", progress=False) as local_dir:
                 local_path = os.path.join(local_dir, patt)
                 with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
                     ffmpeg.run(inpath, local_path, verbose=verbose)

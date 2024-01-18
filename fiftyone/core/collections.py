@@ -85,21 +85,28 @@ class DownloadContext(object):
         batch_size: the sample batch size to use
         clear (None): whether to force clear the media from the cache when the
             context exits
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of any downloads. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (None): whether to render a progress bar tracking the progress
+            of any downloads (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
         **kwargs: valid keyword arguments for
             :meth:`fiftyone.core.collections.SampleCollection.download_media`
     """
 
     def __init__(
-        self, sample_collection, batch_size, clear=False, quiet=None, **kwargs
+        self,
+        sample_collection,
+        batch_size=None,
+        clear=False,
+        progress=None,
+        **kwargs,
     ):
         self.sample_collection = sample_collection
         self.batch_size = batch_size
         self.clear = clear
-        self.quiet = quiet
+        self.progress = progress
         self.media_fields = kwargs.pop("media_fields", None)
+        self.update = kwargs.pop("update", False)
         self.kwargs = kwargs
 
         self._filepaths = None
@@ -137,20 +144,14 @@ class DownloadContext(object):
         j = self._total + self.batch_size
         filepaths = self._filepaths[i:j]
 
-        if self.quiet:
-            with (
-                fou.SuppressLogging(level=logging.INFO),
-                fou.SetAttributes(fo.config, show_progress_bars=False),
-            ):
-                self._download_media(filepaths, **self.kwargs)
+        if self.update:
+            foc.media_cache.update(
+                filepaths=filepaths, progress=self.progress, **self.kwargs
+            )
         else:
-            self._download_media(filepaths, **self.kwargs)
-
-    def _download_media(self, filepaths, update=False, **kwargs):
-        if update:
-            foc.media_cache.update(filepaths=filepaths, **kwargs)
-        else:
-            foc.media_cache.get_local_paths(filepaths, download=True, **kwargs)
+            foc.media_cache.get_local_paths(
+                filepaths, download=True, progress=self.progress, **self.kwargs
+            )
 
     def _clear_media(self):
         foc.media_cache.clear(filepaths=self._filepaths)
@@ -1001,7 +1002,7 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement get_group()")
 
     def download_context(
-        self, batch_size=100, clear=False, quiet=None, **kwargs
+        self, batch_size=100, clear=False, progress=None, **kwargs
     ):
         """Returns a context that can be used to automatically pre-download
         media when iterating over samples in this collection.
@@ -1023,16 +1024,21 @@ class SampleCollection(object):
                 media
             clear (False): whether to clear the media from the cache when the
                 context exits
-            quiet (None): whether to display (False) or not display (True) a
-                progress bar tracking the status of any downloads. By default,
-                ``fiftyone.config.show_progress_bars`` is used to set this
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
             **kwargs: valid keyword arguments for :meth:`download_media`
 
         Returns:
             a :class:`DownloadContext`
         """
         return DownloadContext(
-            self, batch_size, clear=clear, quiet=quiet, **kwargs
+            self,
+            batch_size,
+            clear=clear,
+            progress=progress,
+            **kwargs,
         )
 
     @mutates_data
@@ -2961,7 +2967,11 @@ class SampleCollection(object):
         )
 
     def download_media(
-        self, media_fields=None, update=False, skip_failures=True
+        self,
+        media_fields=None,
+        update=False,
+        skip_failures=True,
+        progress=None,
     ):
         """Downloads the source media files for all samples in the collection.
 
@@ -2978,20 +2988,33 @@ class SampleCollection(object):
                 longer match
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
         """
         filepaths = self._get_media_paths(media_fields=media_fields)
 
         if update:
             foc.media_cache.update(
-                filepaths=filepaths, skip_failures=skip_failures
+                filepaths=filepaths,
+                skip_failures=skip_failures,
+                progress=progress,
             )
         else:
             foc.media_cache.get_local_paths(
-                filepaths, download=True, skip_failures=skip_failures
+                filepaths,
+                download=True,
+                skip_failures=skip_failures,
+                progress=progress,
             )
 
     def get_local_paths(
-        self, media_field="filepath", download=True, skip_failures=True
+        self,
+        media_field="filepath",
+        download=True,
+        skip_failures=True,
+        progress=None,
     ):
         """Returns a list of local paths to the media files in this collection.
 
@@ -3002,13 +3025,20 @@ class SampleCollection(object):
             download (True): whether to download any non-cached media files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar tracking the
+                progress of any downloads (True/False), use the default value
+                ``fiftyone.config.show_progress_bars`` (None), or a progress
+                callback function to invoke instead
 
         Returns:
             a list of local filepaths
         """
         filepaths = self._get_media_paths(media_fields=[media_field])
         return foc.media_cache.get_local_paths(
-            filepaths, download=download, skip_failures=skip_failures
+            filepaths,
+            download=download,
+            skip_failures=skip_failures,
+            progress=progress,
         )
 
     def clear_media(self, media_fields=None):
