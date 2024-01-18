@@ -19,8 +19,8 @@ let theme = extendMuiTheme({
     fontFamily: "Palanquin, sans-serif",
   },
   zIndex: {
-    // MUI default max is zIndex.tooltip=1500
-    operatorPalette: 1501,
+    // Samples modal zIndex is set to 1000
+    operatorPalette: 1001,
   },
   colorSchemes: {
     light: {

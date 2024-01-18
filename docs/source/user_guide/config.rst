@@ -55,14 +55,10 @@ FiftyOne supports the configuration options described below:
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batch_size`          | `FIFTYONE_DEFAULT_BATCH_SIZE`       | `None`                        | A default batch size to use when :ref:`applying models to datasets <model-zoo-apply>`. |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
-| `bulk_write_batch_size`       | `FIFTYONE_BULK_WRITE_BATCH_SIZE`    | `100,000`                     | Batch size to use for bulk writing MongoDB operations. Must be <= 100,000.             |
-|                               |                                     |                               |                                                                                        |
-|                               |                                     |                               | Default changes to 10,000 for the FiftyOne Teams SDK in                                |
-|                               |                                     |                               | :ref:`API connection mode <teams-api-connection>`.                                     |
-+-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `default_batcher`             | `FIFTYONE_DEFAULT_BATCHER`          | `latency`                     | Batching implementation to use in some batched database operations such as             |
-|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`. Supported values    |
-|                               |                                     |                               | are `latency`, `size`, and `static`.                                                   |
+|                               |                                     |                               | :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>` and                  |
+|                               |                                     |                               | :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`.          |
+|                               |                                     |                               | Supported values are `latency`, `size`, and `static`.                                  |
 |                               |                                     |                               |                                                                                        |
 |                               |                                     |                               | `latency` is the default, which uses a dynamic batch size to achieve a target latency  |
 |                               |                                     |                               | of `batcher_target_latency` between calls. The default changes to `size` for the       |
@@ -161,7 +157,6 @@ and the CLI:
             "batcher_static_size": 100,
             "batcher_target_latency": 0.2,
             "batcher_target_size_bytes": 1048576,
-            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",
@@ -212,7 +207,6 @@ and the CLI:
             "batcher_static_size": 100,
             "batcher_target_latency": 0.2,
             "batcher_target_size_bytes": 1048576,
-            "bulk_write_batch_size": 100000,
             "database_admin": true,
             "database_dir": "~/.fiftyone/var/lib/mongo",
             "database_name": "fiftyone",

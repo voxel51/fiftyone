@@ -21,6 +21,7 @@ import io
 import itertools
 import logging
 import multiprocessing
+import numbers
 import os
 import platform
 import re
@@ -1376,17 +1377,17 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
 DynamicBatcher = LatencyDynamicBatcher
 
 
-class BSONSizeDynamicBatcher(BaseDynamicBatcher):
+class ContentSizeDynamicBatcher(BaseDynamicBatcher):
     """Class for iterating over the elements of an iterable with a dynamic
-    batch size to achieve a desired BSON content size.
+    batch size to achieve a desired content size.
 
     The batch sizes emitted when iterating over this object are dynamically
-    scaled such that the total BSON size of the batch is as close as
+    scaled such that the total content size of the batch is as close as
     possible to a specified target size.
 
-    This batcher requires that backpressure feedback be manually provided,
-    so that the provided list is BSON-able in order to calculate an accurate
-    estimate of total batch content size to adjust next batch size.
+    This batcher requires that backpressure feedback be provided, either by
+    providing a BSON-able batch from which the content size can be computed,
+    or by manaully providing the content size.
 
     This class is often used in conjunction with a :class:`ProgressBar` to keep
     the user appraised on the status of a long-running task.
@@ -1397,7 +1398,7 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
 
         elements = range(int(1e7))
 
-        batcher = fou.BSONSizeDynamicBatcher(
+        batcher = fou.ContentSizeDynamicBatcher(
             elements, target_size=2**20, max_batch_beta=2.0
         )
 
@@ -1410,7 +1411,7 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
             print("batch size: %d" % len(batch))
             batcher.apply_backpressure(batch)
 
-        batcher = fou.BSONSizeDynamicBatcher(
+        batcher = fou.ContentSizeDynamicBatcher(
             elements,
             target_size=2**20,
             max_batch_beta=2.0,
@@ -1469,10 +1470,14 @@ class BSONSizeDynamicBatcher(BaseDynamicBatcher):
         )
         self._last_batch_content_size = 0
 
-    def apply_backpressure(self, bsonable_batch):
-        batch_content_size = sum(
-            len(json_util.dumps(obj)) for obj in bsonable_batch
-        )
+    def apply_backpressure(self, batch_or_size):
+        if isinstance(batch_or_size, numbers.Number):
+            batch_content_size = batch_or_size
+        else:
+            batch_content_size = sum(
+                len(json_util.dumps(obj)) for obj in batch_or_size
+            )
+
         self._last_batch_content_size = batch_content_size
         self._manually_applied_backpressure = True
 
@@ -1564,14 +1569,14 @@ def get_default_batcher(iterable, progress=False, total=None):
             iterable,
             target_latency=target_latency,
             init_batch_size=1,
-            max_batch_beta=2.0,
+            max_batch_beta=8.0,
             max_batch_size=100000,
             progress=progress,
             total=total,
         )
     elif default_batcher == "size":
         target_content_size = fo.config.batcher_target_size_bytes
-        return BSONSizeDynamicBatcher(
+        return ContentSizeDynamicBatcher(
             iterable,
             target_size=target_content_size,
             init_batch_size=1,
@@ -1589,6 +1594,30 @@ def get_default_batcher(iterable, progress=False, total=None):
         raise ValueError(
             f"Invalid fo.config.default_batcher: '{default_batcher}'"
         )
+
+
+def recommend_batch_size_for_value(value, alpha=0.9, max_size=None):
+    """Computes a recommended batch size for the given value type such that a
+    request involving a list of values of this size will be less than
+    ``alpha * fo.config.batcher_target_size_bytes`` bytes.
+
+    Args:
+        value: a value
+        alpha (0.9): a safety factor
+        max_size (None): an optional max batch size
+
+    Returns:
+         a recommended batch size
+    """
+    # Even if ``fo.config.default_batcher != "size"``, it's still reasonable to
+    # use the size threshold to limit the size of individual requests
+    target_size = fo.config.batcher_target_size_bytes
+    value_bytes = sys.getsizeof(value, 40)  # 40 is size of an ObjectId
+    batch_size = int(alpha * target_size / max(value_bytes, 1))
+    if max_size is not None:
+        batch_size = min(batch_size, max_size)
+
+    return batch_size
 
 
 @contextmanager

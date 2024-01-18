@@ -1691,7 +1691,10 @@ class SampleCollection(object):
     def _edit_sample_tags(self, update):
         ids = []
         ops = []
-        for _ids in fou.iter_batches(self.values("_id"), 100000):
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+        for _ids in fou.iter_batches(self.values("_id"), batch_size):
             ids.extend(_ids)
             ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
 
@@ -1816,14 +1819,18 @@ class SampleCollection(object):
                 else:
                     label_ids = self.values(id_path)
 
-            for _label_ids in fou.iter_batches(label_ids, 100000):
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
+            for _label_ids in fou.iter_batches(label_ids, batch_size):
                 _label_ids = [_id for _id in _label_ids if _id is not None]
-                ops.append(
-                    UpdateMany(
-                        {_id_path: {"$in": _label_ids}},
-                        update,
+                if _label_ids:
+                    ops.append(
+                        UpdateMany(
+                            {_id_path: {"$in": _label_ids}},
+                            update,
+                        )
                     )
-                )
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
@@ -2028,6 +2035,7 @@ class SampleCollection(object):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        progress=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -2168,6 +2176,9 @@ class SampleCollection(object):
                 document fields that are encountered
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         self._set_values(
             field_name,
@@ -2177,6 +2188,7 @@ class SampleCollection(object):
             expand_schema=expand_schema,
             dynamic=dynamic,
             validate=validate,
+            progress=progress,
             _allow_missing=_allow_missing,
             _sample_ids=_sample_ids,
             _frame_ids=_frame_ids,
@@ -2191,6 +2203,7 @@ class SampleCollection(object):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        progress=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -2269,6 +2282,7 @@ class SampleCollection(object):
                     expand_schema=expand_schema,
                     dynamic=dynamic,
                     validate=validate,
+                    progress=progress,
                     _allow_missing=_allow_missing,
                     _sample_ids=_sample_ids,
                     _frame_ids=_frame_ids,
@@ -2298,6 +2312,7 @@ class SampleCollection(object):
                     field=field,
                     skip_none=skip_none,
                     validate=validate,
+                    progress=progress,
                 )
             else:
                 self._set_sample_values(
@@ -2308,6 +2323,7 @@ class SampleCollection(object):
                     field=field,
                     skip_none=skip_none,
                     validate=validate,
+                    progress=progress,
                 )
         except:
             # Add a group field converts the dataset's type, so if it fails we
@@ -2330,6 +2346,7 @@ class SampleCollection(object):
         dynamic=False,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         """Sets the fields of the specified labels in the collection to the
         given values.
@@ -2372,6 +2389,9 @@ class SampleCollection(object):
                 document fields that are encountered
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         field, _ = self._expand_schema_from_values(
             field_name, values.values(), dynamic=dynamic, flat=True
@@ -2440,6 +2460,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=is_frame_field,
+                progress=progress,
             )
         else:
             _label_ids, _values = zip(*values.items())
@@ -2453,6 +2474,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=is_frame_field,
+                progress=progress,
             )
 
     def _expand_schema_from_values(
@@ -2604,6 +2626,7 @@ class SampleCollection(object):
         field=None,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2630,6 +2653,7 @@ class SampleCollection(object):
                 field=field,
                 skip_none=skip_none,
                 validate=validate,
+                progress=progress,
             )
         else:
             if sample_ids is not None:
@@ -2644,6 +2668,7 @@ class SampleCollection(object):
                 field=field,
                 skip_none=skip_none,
                 validate=validate,
+                progress=progress,
             )
 
     def _set_frame_values(
@@ -2656,6 +2681,7 @@ class SampleCollection(object):
         field=None,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2692,6 +2718,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=True,
+                progress=progress,
             )
         else:
             if frame_ids is None:
@@ -2708,6 +2735,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=True,
+                progress=progress,
             )
 
     def _set_doc_values(
@@ -2719,6 +2747,7 @@ class SampleCollection(object):
         skip_none=False,
         validate=True,
         frames=False,
+        progress=False,
     ):
         ops = []
         for _id, value in zip(ids, values):
@@ -2736,7 +2765,9 @@ class SampleCollection(object):
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
     def _set_list_values_by_id(
         self,
@@ -2749,6 +2780,7 @@ class SampleCollection(object):
         skip_none=False,
         validate=True,
         frames=False,
+        progress=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -2791,7 +2823,9 @@ class SampleCollection(object):
                 )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
     def _set_label_list_values(
         self,
@@ -2803,6 +2837,7 @@ class SampleCollection(object):
         skip_none=None,
         validate=True,
         frames=False,
+        progress=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -2830,9 +2865,11 @@ class SampleCollection(object):
             )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
-    def _set_labels(self, field_name, sample_ids, label_docs):
+    def _set_labels(self, field_name, sample_ids, label_docs, progress=False):
         if self._is_group_field(field_name):
             raise ValueError(
                 "This method does not support setting attached group fields "
@@ -2882,7 +2919,9 @@ class SampleCollection(object):
                 )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=is_frame_field, progress=progress
+            )
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
