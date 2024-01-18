@@ -89,6 +89,14 @@ def get_model_type(model, task=None):
     Returns the model type as a string. If the model is a zero-shot model,
     the task is appended to the model type.
     """
+
+    if task and isinstance(task, str):
+        if "zero-shot" in task:
+            if "detection" in task:
+                return "zero-shot-object-detection"
+            else:
+                return "zero-shot-image-classification"
+
     zs = _is_zero_shot_model(model)
 
     if task is not None and task not in (
