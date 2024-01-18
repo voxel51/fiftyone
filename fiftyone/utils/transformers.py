@@ -16,10 +16,11 @@ from fiftyone.core.config import Config
 import fiftyone.core.labels as fol
 from fiftyone.core.models import Model, EmbeddingsMixin, PromptMixin
 import fiftyone.core.utils as fou
-import fiftyone.zoo.models as fozm
+from fiftyone.zoo.models import HasZooModel
 
 torch = fou.lazy_import("torch")
 transformers = fou.lazy_import("transformers")
+
 
 logger = logging.getLogger(__name__)
 
@@ -30,182 +31,12 @@ DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
 
-def _has_text_and_image_features(model):
-    return hasattr(model.base_model, "get_image_features") and hasattr(
-        model.base_model, "get_text_features"
-    )
-
-
-def _has_image_text_retrieval(model):
-    module_name = "transformers"
-    model_name = _get_model_type_string(model)
-    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
-    if hasattr(
-        __import__(module_name, fromlist=[itr_class_name]),
-        itr_class_name,
-    ):
-        return True
-    return False
-
-
-def _has_detection_model(model):
-    module_name = "transformers"
-    model_name = _get_base_model_name(model)
-    detection_class_name = f"{model_name}ForObjectDetection"
-    if hasattr(
-        __import__(module_name, fromlist=[detection_class_name]),
-        detection_class_name,
-    ):
-        return True
-    return False
-
-
-def _is_zero_shot_model(model):
-    ## Case 1: Has image and text features
-    if _has_text_and_image_features(model):
-        return True
-
-    ## Case 2: ImageAndTextRetrieval
-    if _has_image_text_retrieval(model):
-        return True
-
-
-def _get_model_type_string(model):
-    return str(type(model)).split(".")[-1][:-2]
-
-
-def _is_transformer_for_image_classification(model):
-    return "ForImageClassification" in _get_model_type_string(model)
-
-
-def _is_transformer_for_object_detection(model):
-    return "ForObjectDetection" in _get_model_type_string(model)
-
-
-def _is_transformer_for_semantic_segmentation(model):
-    ms = _get_model_type_string(model)
-    return "For" in ms and "Segmentation" in ms
-
-
-def _is_transformer_base_model(model):
-    model_type = _get_model_type_string(model)
-    return "Model" in model_type and "For" not in model_type
-
-
-def _get_base_model_name(model):
-    return str(type(model)).split(".")[-1][:-2].split("For")[0]
-
-
-def get_model_type(model, task=None):
-    """
-    Returns the model type as a string. If the model is a zero-shot model,
-    the task is appended to the model type.
-    """
-
-    if task and isinstance(task, str):
-        if "zero-shot" in task:
-            if "detection" in task:
-                return "zero-shot-object-detection"
-            else:
-                return "zero-shot-image-classification"
-
-    zs = _is_zero_shot_model(model)
-
-    if task is not None and task not in (
-        "image-classification",
-        "object-detection",
-        "semantic-segmentation",
-    ):
-        raise ValueError(
-            f"Unknown task: {task}. Valid tasks are 'image-classification', 'object-detection', and 'semantic-segmentation'"
-        )
-    elif zs and task is None:
-        if _has_detection_model(model):
-            task = "object-detection"
-        else:
-            task = "image-classification"
-    elif not zs and task is None:
-        if _is_transformer_for_image_classification(model):
-            task = "image-classification"
-        elif _is_transformer_for_object_detection(model):
-            task = "object-detection"
-        elif _is_transformer_for_semantic_segmentation(model):
-            task = "semantic-segmentation"
-        elif _is_transformer_base_model(model):
-            task = "base-model"
-        else:
-            raise ValueError(f"Unknown model type: {model}")
-
-    if zs:
-        return "zero-shot-" + task
-    else:
-        return task
-
-
-def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
-    model_name = _get_base_model_name(base_model)
-    module_name = "transformers"
-    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
-    itr_class = getattr(
-        __import__(module_name, fromlist=[itr_class_name]),
-        itr_class_name,
-    )
-    return itr_class.from_pretrained(model_name_or_path)
-
-
-def _get_image_processor_fallback(model):
-    model_name = _get_base_model_name(model)
-    module_name = "transformers"
-    processor_class_name = f"{model_name}ImageProcessor"
-    processor_class = getattr(
-        __import__(module_name, fromlist=[processor_class_name]),
-        processor_class_name,
-    )
-    return processor_class.from_pretrained(model.config.model_name_or_path)
-
-
-def _get_image_processor(model):
-    try:
-        image_processor = transformers.AutoImageProcessor.from_pretrained(
-            model.config._name_or_path
-        )
-    except:
-        image_processor = _get_image_processor_fallback(model)
-    return image_processor
-
-
-def _get_processor(model):
-    try:
-        processor = transformers.AutoProcessor.from_pretrained(
-            model.config._name_or_path
-        )
-    except:
-        raise ValueError(
-            "Could not find a processor for model %s"
-            % model.config._name_or_path
-        )
-    return processor
-
-
-def _get_detector_from_processor(processor, model_name_or_path):
-    module_name = "transformers"
-    processor_class_name = f"{processor.__class__.__name__}"
-    detector_class_name = (
-        f"{processor_class_name.split('Processor')[0]}ForObjectDetection"
-    )
-    detector_class = getattr(
-        __import__(module_name, fromlist=[detector_class_name]),
-        detector_class_name,
-    )
-    return detector_class.from_pretrained(model_name_or_path)
-
-
 def convert_transformers_model(model, task=None):
     """Converts the given Hugging Face transformers model into a FiftyOne
     model.
 
     Args:
-        model: a ``transformers.models`` model
+        model: a ``transformers`` model
         task (None): the task of the model. Supported values are
             ``"image-classification"``, ``"object-detection"``, and
             ``"semantic-segmentation"``. If not specified, the task is
@@ -266,6 +97,60 @@ def _convert_zero_shot_transformer_for_image_classification(model):
 def _convert_zero_shot_transformer_for_object_detection(model):
     config = FiftyOneZeroShotTransformerConfig({"model": model})
     return FiftyOneZeroShotTransformerForObjectDetection(config)
+
+
+def get_model_type(model, task=None):
+    """Returns the string model type for the given model.
+
+    If the model is a zero-shot model, the task is appended to the model type.
+
+    Args:
+        model: a ``transformers.model`` model
+        task (None): an optional task type
+
+    Returns:
+        the model type string
+    """
+    if task and isinstance(task, str):
+        if "zero-shot" in task:
+            if "detection" in task:
+                return "zero-shot-object-detection"
+            else:
+                return "zero-shot-image-classification"
+
+    supported_tasks = (
+        "image-classification",
+        "object-detection",
+        "semantic-segmentation",
+    )
+    if task is not None and task not in supported_tasks:
+        raise ValueError(
+            f"Unknown task: {task}. Valid tasks are {supported_tasks}"
+        )
+
+    zs = _is_zero_shot_model(model)
+
+    if zs and task is None:
+        if _has_detection_model(model):
+            task = "object-detection"
+        else:
+            task = "image-classification"
+    elif not zs and task is None:
+        if _is_transformer_for_image_classification(model):
+            task = "image-classification"
+        elif _is_transformer_for_object_detection(model):
+            task = "object-detection"
+        elif _is_transformer_for_semantic_segmentation(model):
+            task = "semantic-segmentation"
+        elif _is_transformer_base_model(model):
+            task = "base-model"
+        else:
+            raise ValueError(f"Unknown model type: {model}")
+
+    if zs:
+        return "zero-shot-" + task
+
+    return task
 
 
 def to_classification(results, id2label):
@@ -383,11 +268,11 @@ def _convert_bounding_box(box, image_shape):
     ]
 
 
-class FiftyOneTransformerConfig(Config, fozm.HasZooModel):
+class FiftyOneTransformerConfig(Config, HasZooModel):
     """Configuration for a :class:`FiftyOneTransformer`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
     """
 
@@ -403,7 +288,7 @@ class FiftyOneZeroShotTransformerConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneZeroShotTransformer`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
@@ -509,7 +394,7 @@ class ZeroShotTransformerPromptMixin(PromptMixin):
 
 
 class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
-    """FiftyOne wrapper around a ``transformers.models`` model.
+    """FiftyOne wrapper around a ``transformers`` model.
 
     Args:
         config: a `FiftyOneTransformerConfig`
@@ -552,18 +437,18 @@ class FiftyOneTransformer(TransformerEmbeddingsMixin, Model):
 class FiftyOneZeroShotTransformer(
     ZeroShotTransformerEmbeddingsMixin, ZeroShotTransformerPromptMixin, Model
 ):
-    """FiftyOne wrapper around a ``transformers.models`` model.
+    """FiftyOne wrapper around a ``transformers`` model.
 
     Args:
         config: a `FiftyOneZeroShotTransformerConfig`
     """
 
     def __init__(self, config):
-        self.classes = config.classes
-        self._text_prompts = None
         self.config = config
+        self.classes = config.classes
         self.model = self._load_model(config)
         self.processor = self._load_processor()
+        self._text_prompts = None
 
     @property
     def media_type(self):
@@ -582,8 +467,6 @@ class FiftyOneZeroShotTransformer(
         return False
 
     def _load_processor(self):
-        if self.processor is not None:
-            return self.processor
         return _get_processor(self.model)
 
     def _load_model(self, config):
@@ -598,7 +481,8 @@ class FiftyOneZeroShotTransformer(
 
         if self.classes is None and self.config.classes is None:
             return None
-        elif self.classes is None:
+
+        if self.classes is None:
             self.classes = self.config.classes
 
         if self.config.text_prompt is None:
@@ -607,6 +491,7 @@ class FiftyOneZeroShotTransformer(
             self._text_prompts = [
                 "%s %s" % (self.config.text_prompt, c) for c in self.classes
             ]
+
         return self._text_prompts
 
     def predict(self, arg):
@@ -616,10 +501,11 @@ class FiftyOneZeroShotTransformer(
 class FiftyOneZeroShotTransformerForImageClassificationConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    """Configuration for a :class:`FiftyOneZeroShotTransformerForImageClassification`.
+    """Configuration for a
+    :class:`FiftyOneZeroShotTransformerForImageClassification`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
@@ -634,8 +520,8 @@ class FiftyOneZeroShotTransformerForImageClassificationConfig(
 class FiftyOneZeroShotTransformerForImageClassification(
     FiftyOneZeroShotTransformer
 ):
-    """FiftyOne wrapper around a ``transformers.models`` model for zero-shot
-    image classification.
+    """FiftyOne wrapper around a ``transformers`` model for zero-shot image
+    classification.
 
     Args:
         config: a `FiftyOneZeroShotTransformerConfig`
@@ -650,6 +536,7 @@ class FiftyOneZeroShotTransformerForImageClassification(
             model = _get_model_for_image_text_retrieval(
                 model, config.name_or_path
             )
+
         return model
 
     def _predict_all_from_features(self, args):
@@ -732,7 +619,7 @@ class FiftyOneTransformerForImageClassificationConfig(
     """Configuration for a :class:`FiftyOneTransformerForImageClassification`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
     """
 
@@ -743,7 +630,7 @@ class FiftyOneTransformerForImageClassificationConfig(
 
 
 class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.models`` model for image
+    """FiftyOne wrapper around a ``transformers`` model for image
     classification.
 
     Args:
@@ -775,10 +662,11 @@ class FiftyOneTransformerForImageClassification(FiftyOneTransformer):
 class FiftyOneZeroShotTransformerForObjectDetectionConfig(
     FiftyOneZeroShotTransformerConfig
 ):
-    """Configuration for a :class:`FiftyOneZeroShotTransformerForObjectDetection`.
+    """Configuration for a
+    :class:`FiftyOneZeroShotTransformerForObjectDetection`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
         text_prompt: the text prompt to use, e.g., ``"A photo of"``
         classes (None): a list of custom classes for zero-shot prediction
@@ -795,25 +683,21 @@ class FiftyOneZeroShotTransformerForObjectDetectionConfig(
 class FiftyOneZeroShotTransformerForObjectDetection(
     FiftyOneZeroShotTransformer
 ):
-    """FiftyOne wrapper around a ``transformers.models`` model for zero shot
-    object detection.
+    """FiftyOne wrapper around a ``transformers`` model for zero shot object
+    detection.
 
     Args:
         config: a `FiftyOneZeroShotTransformerConfig`
     """
 
     def __init__(self, config):
-        self.classes = config.classes
-        self.processor = None
-        self._text_prompts = None
         self.config = config
+        self.classes = config.classes
         self.processor = self._load_processor(config)
         self.model = self._load_model(config)
+        self._text_prompts = None
 
     def _load_processor(self, config):
-        if self.processor is not None:
-            return self.processor
-
         name_or_path = config.name_or_path
         if not name_or_path:
             if config.model is not None:
@@ -830,7 +714,6 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         if config.model is not None:
             return config.model
         else:
-            ## go from processor to detector
             return _get_detector_from_processor(self.processor, name_or_path)
 
     def _process_inputs(self, args):
@@ -867,7 +750,7 @@ class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForObjectDetection`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
     """
 
@@ -878,8 +761,7 @@ class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
 
 
 class FiftyOneTransformerForObjectDetection(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.models`` model for object
-    detection.
+    """FiftyOne wrapper around a ``transformers`` model for object detection.
 
     Args:
         config: a `FiftyOneTransformerConfig`
@@ -920,7 +802,7 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
     """Configuration for a :class:`FiftyOneTransformerForSemanticSegmentation`.
 
     Args:
-        model (None): a ``transformers.models`` model
+        model (None): a ``transformers`` model
         name_or_path (None): the name or path to a checkpoint file to load
     """
 
@@ -931,7 +813,7 @@ class FiftyOneTransformerForSemanticSegmentationConfig(
 
 
 class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
-    """FiftyOne wrapper around a ``transformers.models`` model for semantic
+    """FiftyOne wrapper around a ``transformers`` model for semantic
     segmentation.
 
     Args:
@@ -969,3 +851,125 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         target_sizes = [i.shape[:-1][::-1] for i in args]
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
+
+
+def _has_text_and_image_features(model):
+    return hasattr(model.base_model, "get_image_features") and hasattr(
+        model.base_model, "get_text_features"
+    )
+
+
+def _has_image_text_retrieval(model):
+    module_name = "transformers"
+    model_name = _get_model_type_string(model)
+    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
+    return hasattr(
+        __import__(module_name, fromlist=[itr_class_name]),
+        itr_class_name,
+    )
+
+
+def _has_detection_model(model):
+    module_name = "transformers"
+    model_name = _get_base_model_name(model)
+    detection_class_name = f"{model_name}ForObjectDetection"
+    return hasattr(
+        __import__(module_name, fromlist=[detection_class_name]),
+        detection_class_name,
+    )
+
+
+def _is_zero_shot_model(model):
+    if _has_text_and_image_features(model):
+        return True
+
+    if _has_image_text_retrieval(model):
+        return True
+
+    return False
+
+
+def _get_model_type_string(model):
+    return str(type(model)).split(".")[-1][:-2]
+
+
+def _is_transformer_for_image_classification(model):
+    return "ForImageClassification" in _get_model_type_string(model)
+
+
+def _is_transformer_for_object_detection(model):
+    return "ForObjectDetection" in _get_model_type_string(model)
+
+
+def _is_transformer_for_semantic_segmentation(model):
+    ms = _get_model_type_string(model)
+    return "For" in ms and "Segmentation" in ms
+
+
+def _is_transformer_base_model(model):
+    model_type = _get_model_type_string(model)
+    return "Model" in model_type and "For" not in model_type
+
+
+def _get_base_model_name(model):
+    return str(type(model)).split(".")[-1][:-2].split("For")[0]
+
+
+def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
+    model_name = _get_base_model_name(base_model)
+    module_name = "transformers"
+    itr_class_name = f"{model_name}ForImageAndTextRetrieval"
+    itr_class = getattr(
+        __import__(module_name, fromlist=[itr_class_name]),
+        itr_class_name,
+    )
+    return itr_class.from_pretrained(model_name_or_path)
+
+
+def _get_image_processor_fallback(model):
+    model_name = _get_base_model_name(model)
+    module_name = "transformers"
+    processor_class_name = f"{model_name}ImageProcessor"
+    processor_class = getattr(
+        __import__(module_name, fromlist=[processor_class_name]),
+        processor_class_name,
+    )
+    return processor_class.from_pretrained(model.config.model_name_or_path)
+
+
+def _get_image_processor(model):
+    try:
+        image_processor = transformers.AutoImageProcessor.from_pretrained(
+            model.config._name_or_path
+        )
+    except:
+        image_processor = _get_image_processor_fallback(model)
+
+    return image_processor
+
+
+def _get_processor(model):
+    try:
+        processor = transformers.AutoProcessor.from_pretrained(
+            model.config._name_or_path
+        )
+    except:
+        raise ValueError(
+            "Could not find a processor for model %s"
+            % model.config._name_or_path
+        )
+
+    return processor
+
+
+def _get_detector_from_processor(processor, model_name_or_path):
+    module_name = "transformers"
+    processor_class_name = f"{processor.__class__.__name__}"
+    detector_class_name = (
+        f"{processor_class_name.split('Processor')[0]}ForObjectDetection"
+    )
+    detector_class = getattr(
+        __import__(module_name, fromlist=[detector_class_name]),
+        detector_class_name,
+    )
+    return detector_class.from_pretrained(model_name_or_path)
