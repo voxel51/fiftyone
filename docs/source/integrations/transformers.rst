@@ -119,15 +119,18 @@ utility to convert the predictions to :ref:`FiftyOne format <classification>`:
     from PIL import Image
     import fiftyone.utils.transformers as fout
 
-    from transformers import AutoModelForImageClassification
+    from transformers import AutoModelForImageClassification, AutoProcessor
     transformers_model = AutoModelForImageClassification.from_pretrained(
         "google/vit-hybrid-base-bit-384"
     )
+    processor = AutoProcessor.from_pretrained("google/vit-hybrid-base-bit-384")
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
+        inputs = processor(image, return_tensors="pt")
+        with torch.no_grad():
+            result = transformers_model(**inputs)
         sample["predictions"] = fout.to_classification(result, id2label)
         sample.save()
 
@@ -223,15 +226,18 @@ to convert the predictions to :ref:`FiftyOne format <object-detection>`:
     from PIL import Image
     import fiftyone.utils.transformers as fout
 
-    from transformers import AutoModelForObjectDetection
+    from transformers import AutoModelForObjectDetection, AutoProcessor
     transformers_model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50"
     )
+    processor = AutoProcessor.from_pretrained("microsoft/conditional-detr-resnet-50")
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
+        inputs = processor(image, return_tensors="pt")
+        with torch.no_grad():
+            result = transformers_model(**inputs)
         sample["predictions"] = fout.to_detections(result, id2label, [image.size])
         sample.save()
 
@@ -314,14 +320,17 @@ utility to convert the predictions to
     from PIL import Image
     import fiftyone.utils.transformers as fout
 
-    from transformers import AutoModelForSemanticSegmentation
+    from transformers import AutoModelForSemanticSegmentation, AutoProcessor
     transformers_model = AutoModelForSemanticSegmentation.from_pretrained(
         "Intel/dpt-large-ade"
     )
+    processor = AutoProcessor.from_pretrained("Intel/dpt-large-ade")
 
     for sample in dataset.iter_samples(progress=True):
         image = Image.open(sample.filepath)
-        result = transformers_model(image)
+        inputs = processor(image, return_tensors="pt")
+        with torch.no_grad():
+            result = transformers_model(**inputs)
         sample["predictions"] = fout.to_segmentation(result)
         sample.save()
 
