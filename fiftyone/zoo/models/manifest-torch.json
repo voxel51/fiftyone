@@ -1912,14 +1912,7 @@
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForImageClassification",
-                "config": {
-                    "entrypoint_fcn": "",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -1948,14 +1941,7 @@
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForObjectDetection",
-                "config": {
-                    "entrypoint_fcn": "",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.DetectionOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -1984,14 +1970,7 @@
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneTransformerForSemanticSegmentation",
-                "config": {
-                    "entrypoint_fcn": "",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.SemanticSegmenterOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2014,14 +1993,7 @@
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForImageClassification",
-                "config": {
-                    "entrypoint_fcn": "",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
@@ -2051,14 +2023,7 @@
             "size_bytes": 353976522,
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.transformers.FiftyOneZeroShotTransformerForObjectDetection",
-                "config": {
-                    "entrypoint_fcn": "",
-                    "labels_path": "{{eta-resources}}/voc-labels.txt",
-                    "output_processor_cls": "fiftyone.utils.torch.DetectionOutputProcessor",
-                    "image_size": [224, 224],
-                    "image_mean": [0.48145466, 0.4578275, 0.40821073],
-                    "image_std": [0.26862954, 0.26130258, 0.27577711]
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": ["torch", "torchvision", "transformers"],
