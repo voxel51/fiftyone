@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CLASSIFICATION_PATH = "google/vit-base-patch16-224"
 DEFAULT_DETECTION_PATH = "hustvl/yolos-tiny"
 DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
+DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 
 
 def _has_text_and_image_features(model):
@@ -117,42 +118,6 @@ def get_model_type(model, task=None):
         return task
 
 
-def convert_transformers_model(model, task=None):
-    """Converts the given Hugging Face transformers model into a FiftyOne
-    model.
-
-    Args:
-        model: a ``transformers.models`` model
-        task (None): the task of the model. Supported values are
-            ``"image-classification"``, ``"object-detection"``, and
-            ``"semantic-segmentation"``. If not specified, the task is
-            automatically inferred from the model
-
-    Returns:
-         a :class:`fiftyone.core.models.Model`
-
-    Raises:
-        ValueError: if the model could not be converted
-    """
-    model_type = get_model_type(model, task=task)
-
-    if model_type == "zero-shot-image-classification":
-        return _convert_zero_shot_transformer_for_image_classification(model)
-    elif model_type == "image-classification":
-        return _convert_transformer_for_image_classification(model)
-    elif model_type == "object-detection":
-        return _convert_transformer_for_object_detection(model)
-    elif model_type == "semantic-segmentation":
-        return _convert_transformer_for_semantic_segmentation(model)
-    elif model_type == "base-model":
-        return _convert_transformer_base_model(model)
-    else:
-        raise ValueError(
-            "Unsupported model type; cannot convert %s to a FiftyOne model"
-            % model
-        )
-
-
 def _get_model_for_image_text_retrieval(base_model, model_name_or_path):
     model_name = _get_base_model_name(base_model)
     module_name = "transformers"
@@ -196,6 +161,67 @@ def _get_processor(model):
             % model.config._name_or_path
         )
     return processor
+
+
+def convert_transformers_model(model, task=None):
+    """Converts the given Hugging Face transformers model into a FiftyOne
+    model.
+
+    Args:
+        model: a ``transformers.models`` model
+        task (None): the task of the model. Supported values are
+            ``"image-classification"``, ``"object-detection"``, and
+            ``"semantic-segmentation"``. If not specified, the task is
+            automatically inferred from the model
+
+    Returns:
+         a :class:`fiftyone.core.models.Model`
+
+    Raises:
+        ValueError: if the model could not be converted
+    """
+    model_type = get_model_type(model, task=task)
+
+    if model_type == "zero-shot-image-classification":
+        return _convert_zero_shot_transformer_for_image_classification(model)
+    elif model_type == "image-classification":
+        return _convert_transformer_for_image_classification(model)
+    elif model_type == "object-detection":
+        return _convert_transformer_for_object_detection(model)
+    elif model_type == "semantic-segmentation":
+        return _convert_transformer_for_semantic_segmentation(model)
+    elif model_type == "base-model":
+        return _convert_transformer_base_model(model)
+    else:
+        raise ValueError(
+            "Unsupported model type; cannot convert %s to a FiftyOne model"
+            % model
+        )
+
+
+def _convert_transformer_base_model(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformer(config)
+
+
+def _convert_transformer_for_image_classification(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformerForImageClassification(config)
+
+
+def _convert_transformer_for_object_detection(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformerForObjectDetection(config)
+
+
+def _convert_transformer_for_semantic_segmentation(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformerForSemanticSegmentation(config)
+
+
+def _convert_zero_shot_transformer_for_image_classification(model):
+    config = FiftyOneZeroShotTransformerConfig({"model": model})
+    return FiftyOneZeroShotTransformerForImageClassification(config)
 
 
 def to_classification(results, id2label):
@@ -788,28 +814,3 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         target_sizes = [i.shape[:-1][::-1] for i in args]
         inputs = self.image_processor(args, return_tensors="pt")
         return self._predict(inputs, target_sizes)
-
-
-def _convert_transformer_base_model(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformer(config)
-
-
-def _convert_transformer_for_image_classification(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForImageClassification(config)
-
-
-def _convert_transformer_for_object_detection(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForObjectDetection(config)
-
-
-def _convert_transformer_for_semantic_segmentation(model):
-    config = FiftyOneTransformerConfig({"model": model})
-    return FiftyOneTransformerForSemanticSegmentation(config)
-
-
-def _convert_zero_shot_transformer_for_image_classification(model):
-    config = FiftyOneZeroShotTransformerConfig({"model": model})
-    return FiftyOneZeroShotTransformerForImageClassification(config)
