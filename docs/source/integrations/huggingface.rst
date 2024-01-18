@@ -523,8 +523,14 @@ pattern below:
     from fiftyone.core.utils import iter_batches
     import fiftyone.utils.transformers as fout
 
-    # Pick a detection model
-    transformers_model = ...
+    # Load a detection model and its corresponding processor
+    from transformers import YolosForObjectDetection, AutoProcessor
+    transformers_model = YolosForObjectDetection.from_pretrained(
+        "hustvl/yolos-tiny"
+    )
+    processor = AutoProcessor.from_pretrained("hustvl/yolos-tiny")
+
+
     id2label = transformers_model.config.id2label
 
     filepaths = dataset.values("filepath")
@@ -534,7 +540,15 @@ pattern below:
     for paths in iter_batches(filepaths, batch_size):
         images = [Image.open(p) for p in paths]
         image_sizes = [i.size for i in images]
-        results = transformers_model(images)
+        target_sizes = torch.tensor([image.size[::-1] for image in images])
+
+        inputs = processor(images, return_tensors="pt")
+        with torch.no_grad():
+            outputs = transformers_model(**inputs)
+
+        results = processor.post_process_object_detection(
+            outputs, target_sizes=target_sizes
+        )
         predictions.extend(fout.to_detections(results, id2label, image_sizes))
 
     dataset.set_values("predictions", predictions)
