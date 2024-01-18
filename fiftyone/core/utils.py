@@ -1611,7 +1611,7 @@ def recommend_batch_size_for_value(value, alpha=0.9, max_size=None):
     # use the size threshold to limit the size of individual requests
     target_size = fo.config.batcher_target_size_bytes
     value_bytes = sys.getsizeof(value, 40)  # 40 is size of an ObjectId
-    batch_size = int(alpha * target_size / value_bytes)
+    batch_size = int(alpha * target_size / max(value_bytes, 1))
     if max_size is not None:
         batch_size = min(batch_size, max_size)
 
