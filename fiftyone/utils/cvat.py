@@ -4323,24 +4323,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if frame_step is not None:
             data["frame_filter"] = "step=%d" % frame_step
 
-        if cloud_manifest:
-            self._parse_cloud_files(paths, data, cloud_manifest)
-
-            if self._supports_content_v2:
-                # @todo how else can a multipart/form-data POST be used
-                # instead of a application/x-www-form-urlencoded
-                files = {"foo": "bar"}
-            else:
-                files = {}
-            open_files = []
-        else:
-            files, open_files = self._parse_local_files(paths)
-
         if self._supports_content_v2:
             data["sorting_method"] = "predefined"
 
+        json = {}
+        if cloud_manifest:
+            self._parse_cloud_files(paths, data, cloud_manifest)
+            files = {}
+            open_files = []
+            if self._supports_content_v2:
+                json = data
+                data = {}
+        else:
+            files, open_files = self._parse_local_files(paths)
+
         try:
-            self.post(self.task_data_url(task_id), data=data, files=files)
+            self.post(
+                self.task_data_url(task_id), data=data, files=files, json=json
+            )
         except Exception as e:
             raise e
         finally:
@@ -4435,11 +4435,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         data["cloud_storage_id"] = cloud_storage_id
 
-        for idx, path in enumerate(paths):
-            # Samples are pre-sorted if using to cloud storage
-            data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
+        # Samples are pre-sorted if using to cloud storage
+        server_files = [_to_rel_url(path, root_dir) for path in paths]
+        server_files.append(manifest_filename)
 
-        data["server_files[%d]" % (idx + 1)] = manifest_filename
+        if self._supports_content_v2:
+            data["server_files"] = server_files
+        else:
+            for idx, f in enumerate(server_files):
+                data["server_files[%d]" % idx] = f
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
