@@ -655,9 +655,10 @@ class LocalDir(object):
             an error if a remote upload/download fails
         type_str ("files"): the type of file being processed. Used only for
             log messages. If None/empty, nothing will be logged
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of any uploads/downloads. By
-            default, ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (None): whether to render a progress bar tracking the progress
+            of any uploads/downloads (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
     """
 
     def __init__(
@@ -667,7 +668,7 @@ class LocalDir(object):
         basedir=None,
         skip_failures=False,
         type_str="files",
-        quiet=None,
+        progress=None,
     ):
         if mode not in ("r", "w"):
             raise ValueError("Unsupported mode '%s'" % mode)
@@ -680,13 +681,8 @@ class LocalDir(object):
         self._basedir = basedir
         self._skip_failures = skip_failures
         self._type_str = type_str
-        self._quiet = quiet
+        self._progress = progress
         self._tmpdir = None
-
-    @property
-    def quiet(self):
-        """Whether this object will log the status of any uploads/downloads."""
-        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         if is_local(self._path):
@@ -695,7 +691,7 @@ class LocalDir(object):
         self._tmpdir = make_temp_dir(basedir=self._basedir)
 
         if self._mode == "r":
-            progress = not self.quiet
+            progress = _parse_progress(self._progress)
 
             if progress and self._type_str:
                 logger.info("Downloading %s...", self._type_str)
@@ -716,7 +712,7 @@ class LocalDir(object):
 
         try:
             if self._mode == "w":
-                progress = not self.quiet
+                progress = _parse_progress(self._progress)
 
                 if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
@@ -851,9 +847,10 @@ class LocalFiles(object):
             an error if a remote upload/download fails
         type_str ("files"): the type of file being processed. Used only for
             log messages. If None/empty, nothing will be logged
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of any uploads/downloads. By
-            default, ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (None): whether to render a progress bar tracking the progress
+            of any uploads/downloads (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
     """
 
     def __init__(
@@ -863,7 +860,7 @@ class LocalFiles(object):
         basedir=None,
         skip_failures=False,
         type_str="files",
-        quiet=None,
+        progress=None,
     ):
         if not set(mode).issubset("rw"):
             raise ValueError("Unsupported mode '%s'" % mode)
@@ -876,16 +873,11 @@ class LocalFiles(object):
         self._basedir = basedir
         self._skip_failures = skip_failures
         self._type_str = type_str
-        self._quiet = quiet
+        self._progress = progress
         self._tmpdir = None
         self._filename_maker = None
         self._local_paths = None
         self._remote_paths = None
-
-    @property
-    def quiet(self):
-        """Whether this object will log the status of any uploads/downloads."""
-        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         local_paths = []
@@ -925,7 +917,7 @@ class LocalFiles(object):
         self._remote_paths = remote_paths
 
         if "r" in self._mode and self._remote_paths:
-            progress = not self.quiet
+            progress = _parse_progress(self._progress)
 
             if progress and self._type_str:
                 logger.info("Downloading %s...", self._type_str)
@@ -945,7 +937,7 @@ class LocalFiles(object):
 
         try:
             if "w" in self._mode and self._local_paths:
-                progress = not self.quiet
+                progress = _parse_progress(self._progress)
 
                 if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
@@ -987,21 +979,17 @@ class DeleteFiles(object):
             an error if a remote deletion fails
         type_str ("files"): the type of file being deleted. Used only for log
             messages. If None/empty, nothing will be logged
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of any uploads. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (None): whether to render a progress bar tracking the progress
+            of any deletions (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
     """
 
-    def __init__(self, skip_failures=False, type_str="files", quiet=None):
+    def __init__(self, skip_failures=False, type_str="files", progress=None):
         self._skip_failures = skip_failures
         self._type_str = type_str
-        self._quiet = quiet
+        self._progress = progress
         self._delpaths = None
-
-    @property
-    def quiet(self):
-        """Whether this instance will log the status of any deletions."""
-        return _parse_quiet(self._quiet)
 
     def delete(self, path):
         """Deletes the given file.
@@ -1020,7 +1008,7 @@ class DeleteFiles(object):
 
     def __exit__(self, *args):
         if self._delpaths:
-            progress = not self.quiet
+            progress = _parse_progress(self._progress)
 
             if progress and self._type_str:
                 logger.info("Uploading %s...", self._type_str)
@@ -1066,13 +1054,18 @@ class FileWriter(object):
             an error if a remote upload fails
         type_str ("files"): the type of file being processed. Used only for
             log messages. If None/empty, nothing will be logged
-        quiet (None): whether to display (False) or not display (True) a
-            progress bar tracking the status of any uploads. By default,
-            ``fiftyone.config.show_progress_bars`` is used to set this
+        progress (None): whether to render a progress bar tracking the progress
+            of any uploads (True/False), use the default value
+            ``fiftyone.config.show_progress_bars`` (None), or a progress
+            callback function to invoke instead
     """
 
     def __init__(
-        self, basedir=None, skip_failures=False, type_str="files", quiet=None
+        self,
+        basedir=None,
+        skip_failures=False,
+        type_str="files",
+        progress=None,
     ):
         if basedir is not None and not is_local(basedir):
             raise ValueError("basedir must be local; found '%s'" % basedir)
@@ -1080,16 +1073,11 @@ class FileWriter(object):
         self._basedir = basedir
         self._skip_failures = skip_failures
         self._type_str = type_str
-        self._quiet = quiet
+        self._progress = progress
         self._tmpdir = None
         self._filename_maker = None
         self._inpaths = None
         self._outpaths = None
-
-    @property
-    def quiet(self):
-        """Whether this writer will log the status of any uploads."""
-        return _parse_quiet(self._quiet)
 
     def __enter__(self):
         self._tmpdir = None
@@ -1101,7 +1089,7 @@ class FileWriter(object):
     def __exit__(self, *args):
         try:
             if self._inpaths:
-                progress = not self.quiet
+                progress = _parse_progress(self._progress)
 
                 if progress and self._type_str:
                     logger.info("Uploading %s...", self._type_str)
@@ -2126,7 +2114,7 @@ def upload_media(
     cache=False,
     overwrite=False,
     skip_failures=False,
-    progress=False,
+    progress=None,
 ):
     """Uploads the source media files for the given collection to the given
     remote directory.
@@ -2155,8 +2143,9 @@ def upload_media(
             remote files
         skip_failures (False): whether to gracefully continue without raising
             an error if a remote operation fails
-        progress (False): whether to render a progress bar tracking the status
-            of the upload
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         the list of remote paths
@@ -2661,8 +2650,8 @@ def _to_bytes(val, encoding="utf-8"):
     return b
 
 
-def _parse_quiet(quiet):
-    if quiet is None:
-        return not fo.config.show_progress_bars
+def _parse_progress(progress):
+    if progress is None:
+        return fo.config.show_progress_bars
 
-    return quiet
+    return progress

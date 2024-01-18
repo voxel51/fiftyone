@@ -2716,6 +2716,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         if batcher is not None and batcher.manual_backpressure:
+            # @todo can we infer content size from insert_many() above?
             batcher.apply_backpressure(dicts)
 
         return [str(d["_id"]) for d in dicts]
@@ -2764,7 +2765,11 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 d.pop("_id", None)
                 ops.append(InsertOne(d))  # adds `_id` to dict
 
-        foo.bulk_write(ops, self._sample_collection, ordered=False)
+        try:
+            self._sample_collection.bulk_write(ops, ordered=False)
+        except BulkWriteError as bwe:
+            msg = bwe.details["writeErrors"][0]["errmsg"]
+            raise ValueError(msg) from bwe
 
         for sample, d in zip(samples, dicts):
             doc = self._sample_dict_to_doc(d)
@@ -2774,6 +2779,7 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                 sample.frames.save()
 
         if batcher is not None and batcher.manual_backpressure:
+            # @todo can we infer content size from bulk_write() above?
             batcher.apply_backpressure(dicts)
 
     def _make_dict(self, sample, include_id=False):
@@ -2788,13 +2794,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
 
         return d
 
-    def _bulk_write(self, ops, ids=None, frames=False, ordered=False):
+    def _bulk_write(
+        self, ops, ids=None, frames=False, ordered=False, progress=False
+    ):
         if frames:
             coll = self._frame_collection
         else:
             coll = self._sample_collection
 
-        foo.bulk_write(ops, coll, ordered=ordered)
+        foo.bulk_write(ops, coll, ordered=ordered, progress=progress)
 
         if frames:
             fofr.Frame._reload_docs(self._frame_collection_name, frame_ids=ids)
@@ -6921,7 +6929,15 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
         self._reload_docs(hard=True)
 
     def clear_cache(self):
-        """Clears the dataset's in-memory cache."""
+        """Clears the dataset's in-memory cache.
+
+        Dataset caches may contain sample/frame singletons and
+        annotation/brain/evaluation/custom runs.
+        """
+        fos.Sample._clear(self._sample_collection_name)
+        if self._frame_collection_name is not None:
+            fofr.Frame._clear(self._frame_collection_name)
+
         self._annotation_cache.clear()
         self._brain_cache.clear()
         self._evaluation_cache.clear()

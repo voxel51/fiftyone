@@ -13,8 +13,12 @@ export class ModalSidebarPom {
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
 
+  getSidebarEntry(key: string) {
+    return this.locator.getByTestId(`sidebar-entry-${key}`);
+  }
+
   async getSidebarEntryText(key: string) {
-    return this.locator.getByTestId(key).textContent();
+    return this.getSidebarEntry(key).textContent();
   }
 
   async getSampleTagCount() {
@@ -53,9 +57,7 @@ class SidebarAsserter {
   constructor(private readonly modalSidebarPom: ModalSidebarPom) {}
 
   async verifySidebarEntryText(key: string, value: string) {
-    const text = await this.modalSidebarPom.locator
-      .getByTestId(`sidebar-entry-${key}`)
-      .textContent();
+    const text = await this.modalSidebarPom.getSidebarEntryText(key);
     expect(text).toBe(value);
   }
 

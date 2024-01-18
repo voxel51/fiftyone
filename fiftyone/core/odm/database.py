@@ -855,6 +855,7 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
                 coll.insert_many(batch, ordered=ordered)
                 ids.extend(b["_id"] for b in batch)
                 if batcher.manual_backpressure:
+                    # @todo can we infer content size from insert_many() above?
                     batcher.apply_backpressure(batch)
 
     except BulkWriteError as bwe:
@@ -864,18 +865,30 @@ def insert_documents(docs, coll, ordered=False, progress=None, num_docs=None):
     return ids
 
 
-def bulk_write(ops, coll, ordered=False):
+def bulk_write(ops, coll, ordered=False, progress=False):
     """Performs a batch of write operations on a collection.
 
     Args:
         ops: a list of pymongo operations
         coll: a pymongo collection
         ordered (False): whether the operations must be performed in order
+        progress (False): whether to render a progress bar (True/False), use
+            the default value ``fiftyone.config.show_progress_bars`` (None), or
+            a progress callback function to invoke instead
     """
+    batcher = fou.get_default_batcher(ops, progress=progress)
+
     try:
-        batch_size = fo.config.bulk_write_batch_size
-        for ops_batch in fou.iter_batches(ops, batch_size):
-            coll.bulk_write(list(ops_batch), ordered=ordered)
+        with batcher:
+            for batch in batcher:
+                batch = list(batch)
+                coll.bulk_write(batch, ordered=ordered)
+                if batcher.manual_backpressure:
+                    # @todo can we infer content size from bulk_write() above?
+                    # @todo do we need a more accurate measure of size here?
+                    content_size = sum(len(str(b)) for b in batch)
+                    batcher.apply_backpressure(content_size)
+
     except BulkWriteError as bwe:
         msg = bwe.details["writeErrors"][0]["errmsg"]
         raise ValueError(msg) from bwe
