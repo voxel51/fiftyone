@@ -31,8 +31,8 @@ DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
 
 def _has_text_and_image_features(model):
-    return hasattr(model, "get_image_features") and hasattr(
-        model, "get_text_features"
+    return hasattr(model.base_model, "get_image_features") and hasattr(
+        model.base_model, "get_text_features"
     )
 
 
