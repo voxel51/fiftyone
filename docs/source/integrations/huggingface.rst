@@ -602,14 +602,14 @@ method:
     )
 
     # Embeddings from detection model
-    from transformers import DetaForImageObjectDetection
-    model = DetaForImageObjectDetection.from_pretrained(
+    from transformers import DetaForObjectDetection
+    model = DetaForObjectDetection.from_pretrained(
         "jozhang97/deta-swin-large-o365"
     )
 
     # Embeddings from zero-shot classification model
-    from transformers import AutoModelForImageClassification
-    model = AutoModelForImageClassification.from_pretrained(
+    from transformers import AltCLIPModel
+    model = AltCLIPModel.from_pretrained(
         "BAAI/AltCLIP"
     )
 
