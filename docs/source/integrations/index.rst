@@ -126,10 +126,10 @@ on the cards below to see how!
     :tags: Brain,Embeddings,Vector-Search
 
 .. customcarditem::
-    :header: Transformers
+    :header: Hugging Face
     :description: Use our Hugging Face Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
-    :link: transformers.html
-    :image: ../_static/images/integrations/transformers.png
+    :link: huggingface.html
+    :image: ../_static/images/integrations/huggingface.png
     :tags: Model-Training,Model-Evaluation,Model-Zoo,Brain,Embeddings
 
 .. customcarditem::
@@ -191,7 +191,7 @@ on the cards below to see how!
     MongoDB <mongodb.rst>
     Milvus <milvus.rst>
     LanceDB <lancedb.rst>
-    Transformers <transformers.rst>
+    Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
     SuperGradients <super_gradients.rst>
     PyTorch Hub <pytorch_hub.rst>

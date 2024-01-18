@@ -1862,6 +1862,16 @@ class Model(etal.Model):
         return False
 
     @property
+    def can_embed_prompts(self):
+        """Whether this instance can generate prompt embeddings.
+
+        This method returns ``False`` by default. Methods that can generate
+        prompt embeddings will override this via implementing the
+        :class:`PromptMixin` interface.
+        """
+        return False
+
+    @property
     def ragged_batches(self):
         """True/False whether :meth:`transforms` may return tensors of
         different sizes. If True, then passing ragged lists of data to
