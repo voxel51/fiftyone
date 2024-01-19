@@ -80,7 +80,7 @@ class DirStateTests(unittest.TestCase):
     def test_rgrs_dir_state_change_with_rename(self):
         plugin_paths = ["@org1/plugin1", "@org2/plugin2"]
         plugin_file = "fiftyone.yml"
-        with (tempfile.TemporaryDirectory() as tmpdirname):
+        with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
                 time.sleep(0.1)
