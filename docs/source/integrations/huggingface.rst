@@ -236,7 +236,9 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
     transformers_model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50"
     )
-    processor = AutoProcessor.from_pretrained("microsoft/conditional-detr-resnet-50")
+    processor = AutoProcessor.from_pretrained(
+        "microsoft/conditional-detr-resnet-50"
+    )
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
@@ -249,7 +251,9 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
         result = processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
         )
-        sample["det_predictions"] = fout.to_detections(result, id2label, [image.size])
+        sample["det_predictions"] = fout.to_detections(
+            result, id2label, [image.size]
+        )
         sample.save()
 
 Finally, you can load `transformers` models directly from the
@@ -338,14 +342,12 @@ to convert the predictions to :ref:`FiftyOne format <semantic-segmentation>`:
         image = Image.open(sample.filepath)
         inputs = processor(image, return_tensors="pt")
         target_size = [image.size[::-1]]
-
         with torch.no_grad():
             output = transformers_model(**inputs)
 
         result = processor.post_process_semantic_segmentation(
             output, target_sizes=target_size
         )
-
         sample["seg_predictions"] = fout.to_segmentation(result)
         sample.save()
 
@@ -363,7 +365,7 @@ model's name or path as a keyword argument:
 
     model = foz.load_zoo_model(
         "segmentation-transformer-torch",
-        name_or_path="nvidia/segformer-b0-finetuned-ade-512-512",  # HF model name or path
+        name_or_path="nvidia/segformer-b0-finetuned-ade-512-512",
     )
 
     dataset.apply_model(model, label_field="segformer")
@@ -444,7 +446,9 @@ FiftyOne format:
     import fiftyone.utils.transformers as fout
 
     from transformers import CLIPSegModel
-    transformers_model = CLIPSegModel.from_pretrained("CIDAS/clipseg-rd64-refined")
+    transformers_model = CLIPSegModel.from_pretrained(
+        "CIDAS/clipseg-rd64-refined"
+    )
 
     model = fout.convert_transformers_model(
         transformers_model,
@@ -534,8 +538,6 @@ pattern below:
         "hustvl/yolos-tiny"
     )
     processor = AutoProcessor.from_pretrained("hustvl/yolos-tiny")
-
-
     id2label = transformers_model.config.id2label
 
     filepaths = dataset.values("filepath")
@@ -546,7 +548,6 @@ pattern below:
         images = [Image.open(p) for p in paths]
         image_sizes = [i.size for i in images]
         target_sizes = torch.tensor([image.size[::-1] for image in images])
-
         inputs = processor(images, return_tensors="pt")
         with torch.no_grad():
             outputs = transformers_model(**inputs)
@@ -630,7 +631,6 @@ method:
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
@@ -740,7 +740,6 @@ method:
     import fiftyone.zoo as foz
     import fiftyone.utils.transformers as fout
 
-    # Load an example dataset
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
 
     from transformers import BeitModel

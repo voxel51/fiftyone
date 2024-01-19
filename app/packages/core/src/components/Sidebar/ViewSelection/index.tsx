@@ -67,7 +67,6 @@ export default function ViewSelection() {
 
   const viewOptions = useMemo(
     () => [
-      fos.DEFAULT_SELECTED,
       ...items.map(({ id, name, color, description, slug, viewStages }) => ({
         id,
         name,

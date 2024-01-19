@@ -10,6 +10,14 @@ export function isPrimitiveType(type: string) {
   return PRIMITIVE_TYPES.includes(type);
 }
 
+export function isHex(value: string) {
+  return /[0-9a-f]{24}/g.test(value);
+}
+
+export function isObjectIdString(value: string) {
+  return isHex(value) && value.length === 24;
+}
+
 export type NumberKeyObjectType<V = unknown> = {
   [key: string]: V;
 };

@@ -130,35 +130,35 @@ on the cards below to see how!
     :description: Use our Hugging Face Transformers integration to run inference on your FiftyOne datasets with just a few lines of code.
     :link: huggingface.html
     :image: ../_static/images/integrations/huggingface.png
-    :tags: Model-Training,Model-Evaluation,Model-Zoo,Brain,Embeddings
+    :tags: Model-Training,Model-Evaluation,Models,Brain,Embeddings
 
 .. customcarditem::
     :header: Ultralytics
     :description: Load, fine-tune, and run inference with Ultralytics models on your FiftyOne datasets with just a few lines of code.
     :link: ultralytics.html
     :image: ../_static/images/integrations/ultralytics.jpg
-    :tags: Model-Training,Model-Evaluation,Model-Zoo
+    :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
     :header: SuperGradients
     :description: Use our SuperGradients integration to run inference with YOLO-NAS models on your FiftyOne datasets with just a few lines of code.
     :link: super_gradients.html
     :image: ../_static/images/integrations/super_gradients.png
-    :tags: Model-Training,Model-Evaluation,Model-Zoo
+    :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
     :header: PyTorch Hub
     :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
     :link: pytorch_hub.html
     :image: ../_static/images/integrations/pytorch.png
-    :tags: Model-Training,Model-Evaluation,Model-Zoo
+    :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
     :header: Lightning Flash
     :description: Train Flash models on FiftyOne datasets and use the FiftyOne App to visualize and improve your Flash models, all with just a few lines of code.
     :link: lightning_flash.html
     :image: ../_static/images/integrations/lightning_flash.png
-    :tags: Model-Training,Model-Evaluation,Model-Zoo
+    :tags: Model-Training,Model-Evaluation,Models
 
 .. End of integrations cards
 
