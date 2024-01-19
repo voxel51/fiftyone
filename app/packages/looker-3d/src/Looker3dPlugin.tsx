@@ -19,6 +19,7 @@ typeof window !== "undefined" &&
     type: PluginComponentType.Visualizer,
     activator: ({ dataset }) =>
       dataset.mediaType ??
-      dataset.groupMediaTypes.find((g) => g.mediaType === "point_cloud") !==
-        undefined,
+      dataset.groupMediaTypes.find(
+        (g) => g.mediaType === "point_cloud" || g.mediaType === "three_d"
+      ) !== undefined,
   });
