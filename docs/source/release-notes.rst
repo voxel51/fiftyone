@@ -3,32 +3,77 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
-.. _release-notes-teams-v1.5.4:
-
 FiftyOne Teams 1.5.4
 --------------------
-*Released January 17, 2023*
+*Released January 19, 2024*
 
 Includes all updates from :ref:`FiftyOne 0.23.3 <release-notes-v0.23.3>`, plus:
 
 General
 
+- Updated motor dependency to v3.3.0
+- Fixed an issue where API requests were not being prefixed with the correct
+  proxy url
+- Setting the `FIFTYONE_API_URI` environment variable will display the correct
+  API url in the App
+- Improved debug logs by adding the head and tail of large results
+
 .. _release-notes-v0.23.3:
 
 FiftyOne 0.23.3
 ---------------
-*Released January 17, 2023*
-
-News
+*Released January 19, 2024*
 
 App
 
+- Primitive values in DynamicEmbeddedDocument within ListField will be
+  displayed as comma separated values (previously, displayed as None)
+  in the sample modal
+  `3963 <https://github.com/voxel51/fiftyone/pull/3963>`_
+- Improved field visibility's show metadata toggle
+  `3926 <https://github.com/voxel51/fiftyone/pull/3926>`_
+- Fixed issues for unknown operator types and defaults
+  `3851 <https://github.com/voxel51/fiftyone/pull/3851>`_
+- Miscellaneous saved view improvements
+  `3974 <https://github.com/voxel51/fiftyone/pull/3974>`_
+- Fixed a bug where images in the sample modal errored when frame fields were added
+  to video slices in mixed datasets
+  `3966 <https://github.com/voxel51/fiftyone/pull/3966>`_
+- Fixed in-app sort by similarity for datasets with a color scheme
+  `3966 <https://github.com/voxel51/fiftyone/pull/3958>`_
+- Fixed issues where media and other urls were constructed incorrectly
+  `3976 <https://github.com/voxel51/fiftyone/pull/3976>`_
+- Fixed keyboard navigation for dropdowns throughout the FiftyOne App
+  `3965 <https://github.com/voxel51/fiftyone/pull/3965>`_
+
+Brain
+
+- Added support to :meth:`register_run() <fiftyone.brain.similarity.Similarity.register_run>`
+  for configuring whether run cleanup happens
+  `3978 <https://github.com/voxel51/fiftyone/pull/3978>`_
+
 Core
 
-Annotation
+- Fixed issues with embedded document field schemas
+  `4002 <https://github.com/voxel51/fiftyone/pull/4002>`_
+- Added toggle to :meth:`add_samples() <fiftyone.core.dataset.Dataset.add_samples>`
+  to hide progress bar
+  `2437 <https://github.com/voxel51/fiftyone/pull/2437>`_
+
+Models
+
+- Added prompt embedding capabilities for :ref:`OpenCLIP <model-zoo-open-clip-torch>` model
+  `3960 <https://github.com/voxel51/fiftyone/pull/3960>`_
+- Removed unnecessary ModelManager from model zoo
+  `3972 <https://github.com/voxel51/fiftyone/pull/3972>`_
 
 Plugins
 
+- Fixed issues with
+  :attr:`selected_labels <fiftyone.operators.executor.ExecutionContext.selected_labels>`
+  `3998 <https://github.com/voxel51/fiftyone/pull/3998>`_
+- Added a delete selected labels operator
+  `4001 <https://github.com/voxel51/fiftyone/pull/4001>`_
 
 .. _release-notes-teams-v1.5.3:
 
