@@ -6,16 +6,14 @@ import { useCallback, useState } from "react";
 import { ChromePicker } from "react-color";
 import { useRecoilState, useRecoilValue } from "recoil";
 import styled from "styled-components";
-import { ActionItem } from "../containers";
 import {
   ACTION_SHADE_BY,
   SHADE_BY_CHOICES,
   SHADE_BY_CUSTOM,
-  ShadeBy,
-  currentActionAtom,
-  customColorMapAtom,
-  shadeByAtom,
-} from "../state";
+} from "../constants";
+import { ActionItem } from "../containers";
+import { currentActionAtom, customColorMapAtom, shadeByAtom } from "../state";
+import { ShadeBy } from "../types";
 import { ActionPopOver } from "./shared";
 
 export const ChooseColorSpace = () => {
