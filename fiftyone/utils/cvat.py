@@ -3609,6 +3609,12 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         return self._server_version
 
     @property
+    def _supports_content_v2(self):
+        # Whether the CVAT server version supports the content-v2 API endpoint
+        # for working with cloud storages
+        return self._server_version >= Version("2.4.6")
+
+    @property
     def base_url(self):
         return self._url
 
@@ -3729,21 +3735,35 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
     def cloud_storage_url(self, cloud_storage_id):
         return "%s/%d" % (self.cloud_storages_url, cloud_storage_id)
 
-    def cloud_storages_content_url(self, cloud_storage_id, manifest=None):
-        url = "%s/content" % self.cloud_storage_url(cloud_storage_id)
+    def cloud_storages_content_url(
+        self, cloud_storage_id, manifest=None, prefix=None
+    ):
+        if self._supports_content_v2:
+            url = "%s/content-v2" % self.cloud_storage_url(cloud_storage_id)
+        else:
+            url = "%s/content" % self.cloud_storage_url(cloud_storage_id)
+
+        separator = "?"
         if manifest is not None:
-            url += "?manifest_path=%s" % manifest
+            url += "%smanifest_path=%s" % (separator, manifest)
+            separator = "&"
+
+        if prefix is not None:
+            url += "%sprefix=%s" % (separator, prefix)
+            separator = "&"
+
         return url
 
     def cloud_storages_search_url(self, provider_type=None, resource=None):
         url = self.cloud_storages_url + "?"
-        seperator = ""
+        separator = ""
         if provider_type is not None:
             url += "provider_type=%s" % provider_type
-            seperator = "&"
+            separator = "&"
 
         if resource is not None:
-            url += "%sresource=%s" % (seperator, resource)
+            url += "%sresource=%s" % (separator, resource)
+            separator = "&"
 
         return url
 
@@ -4309,18 +4329,24 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         if frame_step is not None:
             data["frame_filter"] = "step=%d" % frame_step
 
+        if self._supports_content_v2:
+            data["sorting_method"] = "predefined"
+
+        json = {}
         if cloud_manifest:
             self._parse_cloud_files(paths, data, cloud_manifest)
             files = {}
             open_files = []
+            if self._supports_content_v2:
+                json = data
+                data = {}
         else:
             files, open_files = self._parse_local_files(paths)
 
-        if self._server_version >= Version("2.4.6"):
-            data["sorting_method"] = "predefined"
-
         try:
-            self.post(self.task_data_url(task_id), data=data, files=files)
+            self.post(
+                self.task_data_url(task_id), data=data, files=files, json=json
+            )
         except Exception as e:
             raise e
         finally:
@@ -4383,7 +4409,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             # Image task
             for idx, path in enumerate(paths):
                 filename = os.path.basename(path)
-                if self._server_version < Version("2.4.6"):
+                if not self._supports_content_v2:
                     # IMPORTANT: older versions of CVAT organizes media within
                     # a task alphabetically by filename, so we must give CVAT
                     # filenames whose alphabetical order matches the order of `paths`
@@ -4415,11 +4441,15 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         )
         data["cloud_storage_id"] = cloud_storage_id
 
-        for idx, path in enumerate(paths):
-            # Samples are pre-sorted if using to cloud storage
-            data["server_files[%d]" % idx] = _to_rel_url(path, root_dir)
+        # Samples are pre-sorted if using to cloud storage
+        server_files = [_to_rel_url(path, root_dir) for path in paths]
+        server_files.append(manifest_filename)
 
-        data["server_files[%d]" % (idx + 1)] = manifest_filename
+        if self._supports_content_v2:
+            data["server_files"] = server_files
+        else:
+            for idx, f in enumerate(server_files):
+                data["server_files[%d]" % idx] = f
 
     def upload_samples(self, samples, anno_key, backend):
         """Uploads the given samples to CVAT according to the given backend's
@@ -6973,9 +7003,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "File system %s is not a valid CVAT cloud storage provider."
                 % str(file_system)
             )
-        endpoints = []
+        minio_endpoints = None
         if file_system == fos.FileSystem.MINIO:
-            endpoints = [p[1] for p in fos.minio_prefixes]
+            minio_endpoints = [p[1] for p in fos.minio_prefixes]
 
         provider_type = _CLOUD_PROVIDER_MAP[file_system]
         prefix, _ = fos.split_prefix(cloud_manifest)
@@ -6984,7 +7014,10 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
         manifest_filename = _to_rel_url(cloud_manifest, root_dir)
 
         cloud_storage_id = self._get_cloud_storage_id(
-            provider_type, resource, manifest_filename, endpoints=endpoints
+            provider_type,
+            resource,
+            manifest_filename,
+            endpoints=minio_endpoints,
         )
         return root_dir, manifest_filename, cloud_storage_id
 
@@ -7006,10 +7039,9 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
             if etau.is_str(result_endpoint):
                 result_endpoint = result_endpoint.rstrip("/") + "/"
 
-            if (
-                manifest_filename in result["manifests"]
-                and result_endpoint in endpoints
-            ):
+            valid_endpoint = endpoints is None or result_endpoint in endpoints
+
+            if manifest_filename in result["manifests"] and valid_endpoint:
                 cloud_storage_id = result["id"]
 
         if cloud_storage_id is None:
@@ -7040,10 +7072,16 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "system of samples '%s'" % (root_fs, paths_fs)
             )
 
-        content_url = self.cloud_storages_content_url(
-            cloud_storage_id, manifest=manifest_filename
-        )
-        manifest_files = self.get(content_url).json()
+        if self._supports_content_v2:
+            manifest_files = []
+            self._parse_v2_cloud_manifest(
+                manifest_files, cloud_storage_id, manifest_filename
+            )
+        else:
+            manifest_files = self._parse_v1_cloud_manifest(
+                cloud_storage_id, manifest_filename
+            )
+
         formatted_paths = set([_to_rel_url(p, root_dir) for p in paths])
         unspecified_paths = formatted_paths - set(manifest_files)
         if unspecified_paths:
@@ -7052,6 +7090,35 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                 "`%s` in cloud storage `%d`"
                 % (len(unspecified_paths), manifest_filename, cloud_storage_id)
             )
+
+    def _parse_v1_cloud_manifest(self, cloud_storage_id, manifest_filename):
+        content_url = self.cloud_storages_content_url(
+            cloud_storage_id, manifest=manifest_filename
+        )
+        manifest_files = self.get(content_url).json()
+        return manifest_files
+
+    def _parse_v2_cloud_manifest(
+        self, paths, cloud_storage_id, manifest_filename, prefix=None
+    ):
+        content_url = self.cloud_storages_content_url(
+            cloud_storage_id,
+            manifest=manifest_filename,
+            prefix=prefix,
+        )
+        manifest_files = self.get(content_url).json()
+        for content in manifest_files.get("content", []):
+            content_type = content.get("type", None)
+            content_name = content.get("name", None)
+            if content_type == "DIR":
+                if prefix is None:
+                    prefix = ""
+                prefix += content_name + "/"
+                self._parse_v2_cloud_manifest(
+                    paths, cloud_storage_id, manifest_filename, prefix=prefix
+                )
+            elif content_type == "REG":
+                paths.append(prefix + content_name)
 
     def _parse_specific_attributes(self, specific_attributes):
         return {k: v for (k, v) in parse_qsl(specific_attributes)}
