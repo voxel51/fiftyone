@@ -49,7 +49,7 @@ class DirStateTests(unittest.TestCase):
 
     def test_rgrs_dir_state_empty(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
-            self.assertGreater(dir_state(tmpdirname), 0)
+            self.assertNotEqual(dir_state(tmpdirname), 0)
 
     def test_rgrs_dir_state_change_with_delete(self):
         plugin_paths = ["@org1/plugin1/file1.txt", "@org2/plugin2/file2.txt"]
@@ -61,21 +61,21 @@ class DirStateTests(unittest.TestCase):
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
-            self.assertGreater(dir_state1, initial_dir_state)
+            self.assertNotEqual(dir_state1, initial_dir_state)
 
             # verify that max time is greater after deleting files
             shutil.rmtree(
                 os.path.join(tmpdirname, plugin_paths[0].rsplit("/", 1)[0])
             )
             dir_state2 = dir_state(tmpdirname)
-            self.assertGreaterEqual(dir_state2, dir_state1)
+            self.assertNotEqual(dir_state2, dir_state1)
             time.sleep(0.1)
 
             shutil.rmtree(
                 os.path.join(tmpdirname, plugin_paths[1].rsplit("/", 1)[0])
             )
             dir_state3 = dir_state(tmpdirname)
-            self.assertGreaterEqual(dir_state3, dir_state2)
+            self.assertNotEqual(dir_state3, dir_state2)
 
     def test_rgrs_dir_state_change_with_rename(self):
         plugin_paths = ["@org1/plugin1", "@org2/plugin2"]
@@ -93,11 +93,11 @@ class DirStateTests(unittest.TestCase):
             # add wait for test to pass on older systems/python versions
             time.sleep(0.1)
 
-            # verify that max time is greater after adding files
+            # verify that dir_state changes after adding files
             dir_state1 = dir_state(tmpdirname)
-            self.assertGreater(dir_state1, initial_dir_state)
+            self.assertNotEqual(dir_state1, initial_dir_state)
 
-            # verify that max time is greater after renaming plugin dir
+            # verify that dir_state is different after renaming plugin dir
             os.rename(
                 os.path.join(tmpdirname, plugin_paths[0]),
                 os.path.join(tmpdirname, plugin_paths[0] + "renamed"),
@@ -106,7 +106,7 @@ class DirStateTests(unittest.TestCase):
             # add wait for test to pass on older systems/python versions
             time.sleep(0.1)
             dir_state2 = dir_state(tmpdirname)
-            self.assertGreaterEqual(dir_state2, dir_state1)
+            self.assertNotEqual(dir_state2, dir_state1)
 
 
 async def dummy_coroutine_fn(duration):
