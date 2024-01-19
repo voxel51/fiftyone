@@ -8,8 +8,8 @@ import {
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
-  ShadeBy,
-} from "../../state";
+} from "../../constants";
+import { ShadeBy } from "../../types";
 import {
   CustomColorShader,
   Gradients,

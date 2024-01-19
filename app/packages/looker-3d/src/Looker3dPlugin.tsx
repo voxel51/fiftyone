@@ -22,4 +22,5 @@ typeof window !== "undefined" &&
       dataset.groupMediaTypes.find(
         (g) => g.mediaType === "point_cloud" || g.mediaType === "three_d"
       ) !== undefined,
+    label: "",
   });
