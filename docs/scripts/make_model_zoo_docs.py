@@ -143,7 +143,6 @@ _MODEL_TEMPLATE = """
         "{{ name }}",
         text_prompt="A photo of a",
         classes=["person", "dog", "cat", "bird", "car", "tree", "chair"],
-        cache=False,
     )
 
     dataset.apply_model(model, label_field="predictions")
