@@ -236,7 +236,9 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
     transformers_model = AutoModelForObjectDetection.from_pretrained(
         "microsoft/conditional-detr-resnet-50"
     )
-    processor = AutoProcessor.from_pretrained("microsoft/conditional-detr-resnet-50")
+    processor = AutoProcessor.from_pretrained(
+        "microsoft/conditional-detr-resnet-50"
+    )
     id2label = transformers_model.config.id2label
 
     for sample in dataset.iter_samples(progress=True):
@@ -249,7 +251,9 @@ convert the predictions to :ref:`FiftyOne format <object-detection>`:
         result = processor.post_process_object_detection(
             outputs, target_sizes=target_sizes
         )
-        sample["det_predictions"] = fout.to_detections(result, id2label, [image.size])
+        sample["det_predictions"] = fout.to_detections(
+            result, id2label, [image.size]
+        )
         sample.save()
 
 Finally, you can load `transformers` models directly from the
@@ -361,7 +365,7 @@ model's name or path as a keyword argument:
 
     model = foz.load_zoo_model(
         "segmentation-transformer-torch",
-        name_or_path="nvidia/segformer-b0-finetuned-ade-512-512",  # HF model name or path
+        name_or_path="nvidia/segformer-b0-finetuned-ade-512-512",
     )
 
     dataset.apply_model(model, label_field="segformer")
@@ -442,7 +446,9 @@ FiftyOne format:
     import fiftyone.utils.transformers as fout
 
     from transformers import CLIPSegModel
-    transformers_model = CLIPSegModel.from_pretrained("CIDAS/clipseg-rd64-refined")
+    transformers_model = CLIPSegModel.from_pretrained(
+        "CIDAS/clipseg-rd64-refined"
+    )
 
     model = fout.convert_transformers_model(
         transformers_model,
