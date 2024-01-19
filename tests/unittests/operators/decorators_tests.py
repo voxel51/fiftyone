@@ -78,12 +78,17 @@ class DirStateTests(unittest.TestCase):
             self.assertGreaterEqual(dir_state3, dir_state2)
 
     def test_rgrs_dir_state_change_with_rename(self):
-        plugin_paths = ["@org1/plugin1/file1.txt", "@org2/plugin2/file2.txt"]
-        with tempfile.TemporaryDirectory() as tmpdirname:
+        plugin_paths = ["@org1/plugin1", "@org2/plugin2"]
+        plugin_file = "fiftyone.yml"
+        with (tempfile.TemporaryDirectory() as tmpdirname):
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
                 time.sleep(0.1)
-                os.makedirs(os.path.join(tmpdirname, p))
+                plugin_dir = os.path.join(tmpdirname, p)
+                os.makedirs(plugin_dir)
+                fname = os.path.join(plugin_dir, plugin_file)
+                with open(fname, "a") as f:
+                    f.write("test")
 
             # add wait for test to pass on older systems/python versions
             time.sleep(0.1)
@@ -94,11 +99,12 @@ class DirStateTests(unittest.TestCase):
 
             # verify that max time is greater after renaming plugin dir
             os.rename(
-                os.path.join(tmpdirname, plugin_paths[0].rsplit("/", 1)[0]),
-                os.path.join(
-                    tmpdirname, plugin_paths[0].rsplit("/", 1)[0] + "renamed"
-                ),
+                os.path.join(tmpdirname, plugin_paths[0]),
+                os.path.join(tmpdirname, plugin_paths[0] + "renamed"),
             )
+
+            # add wait for test to pass on older systems/python versions
+            time.sleep(0.1)
             dir_state2 = dir_state(tmpdirname)
             self.assertGreaterEqual(dir_state2, dir_state1)
 
