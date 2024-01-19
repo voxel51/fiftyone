@@ -1,8 +1,4 @@
-import { Loading, useTheme } from "@fiftyone/components";
-import {
-  getLabelColor,
-  shouldShowLabelTag,
-} from "@fiftyone/looker/src/overlays/util";
+import { useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
@@ -23,6 +19,7 @@ import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
 import { CAMERA_POSITION_KEY, Environment } from "./Environment";
+import { ErrorBoundary } from "./ErrorBoundary";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
@@ -39,8 +36,8 @@ import {
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { useHotkey, usePathFilter } from "./hooks";
-import { OverlayLabel, load3dOverlays } from "./overlays";
+import { useHotkey } from "./hooks";
+import { OverlayLabel } from "./overlays";
 import { PointCloudMesh } from "./renderables";
 import { ThreeDLabels } from "./renderables/Labels";
 import {
@@ -70,19 +67,12 @@ export const Looker3d = () => {
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
-  const pathFilter = usePathFilter();
   const onSelectLabel = fos.useOnSelectLabel();
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
-  const colorScheme = useRecoilValue(fos.colorScheme);
-  const colorSchemeFields = colorScheme?.fields;
-  const labelAlpha = colorScheme.opacity;
-  const getFieldColor = useRecoilValue(fos.colorMap);
 
   const [pointCloudBounds, setPointCloudBounds] = React.useState<Box3>();
-  const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
-    useRecoilValue(fos.lookerOptions({ withFilter: true, modal: MODAL_TRUE }));
 
   const allPcdSlices = useRecoilValue(fos.allPcdSlices);
 
@@ -208,15 +198,6 @@ export const Looker3d = () => {
     () => toEulerFromDegreesArray(pcRotationSetting),
     [pcRotationSetting]
   );
-  const [overlayRotation, itemRotation] = useMemo(
-    () => [
-      toEulerFromDegreesArray(_.get(settings, "overlay.rotation", [0, 0, 0])),
-      toEulerFromDegreesArray(
-        _.get(settings, "overlay.itemRotation", [0, 0, 0])
-      ),
-    ],
-    [settings]
-  );
 
   const [hovering, setHovering] = useState(false);
   const setCurrentAction = useSetRecoilState(currentActionAtom);
@@ -241,7 +222,6 @@ export const Looker3d = () => {
   }, [clear, hovering]);
 
   const hoveringRef = useRef(false);
-  const tooltip = fos.useTooltip();
 
   useHotkey("KeyT", () => onChangeView("top"));
   useHotkey("KeyE", () => onChangeView("pov"));
@@ -398,36 +378,6 @@ export const Looker3d = () => {
   );
   const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
 
-  const overlays = useMemo(
-    () =>
-      load3dOverlays(sampleMap, selectedLabels, [], schema)
-        .map((l) => {
-          const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
-          const color = getLabelColor({
-            coloring,
-            path: l.path,
-            label: l,
-            isTagged,
-            labelTagColors,
-            customizeColorSetting,
-            embeddedDocType: l._cls,
-          });
-
-          return { ...l, color, id: l._id };
-        })
-        .filter((l) => pathFilter(l.path, l)),
-    [
-      coloring,
-      getFieldColor,
-      pathFilter,
-      sampleMap,
-      selectedLabels,
-      colorSchemeFields,
-      colorScheme,
-      schema,
-    ]
-  );
-
   if (filteredSamples.length === 0) {
     return (
       <Container style={{ padding: "2em" }}>
@@ -454,13 +404,9 @@ export const Looker3d = () => {
               bounds={pointCloudBounds}
             />
             <ThreeDLabels
-              rawOverlays={overlays}
-              itemRotation={itemRotation}
-              labelAlpha={labelAlpha}
-              overlayRotation={overlayRotation}
               handleSelect={handleSelect}
-              tooltip={tooltip}
-              useLegacyCoordinates={settings.useLegacyCoordinates}
+              sampleMap={sampleMap}
+              settings={settings}
             />
             <Suspense fallback={<SpinningCube />} />
             {filteredSamples}
@@ -498,37 +444,3 @@ export const Looker3d = () => {
     </ErrorBoundary>
   );
 };
-
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | string | null }
-> {
-  state = { error: null, hasError: false };
-
-  static getDerivedStateFromError = (error: Error) => ({
-    hasError: true,
-    error,
-  });
-
-  componentDidCatch(error: Error) {
-    this.setState({ error });
-  }
-
-  render() {
-    if (this.state.hasError) {
-      // useLoader from @react-three/fiber throws a raw string for PCD 404
-      // not an error
-      return (
-        <Loading dataCy={"looker3d"}>
-          <div data-cy="looker-error-info">
-            {this.state.error instanceof Error
-              ? this.state.error.message
-              : this.state.error}
-          </div>
-        </Loading>
-      );
-    }
-
-    return this.props.children;
-  }
-}
