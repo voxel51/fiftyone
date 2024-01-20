@@ -52,24 +52,26 @@ class DirStateTests(unittest.TestCase):
             self.assertNotEqual(dir_state(tmpdirname), 0)
 
     def test_rgrs_dir_state_change_with_delete(self):
-        plugin_paths = [
-            "@org1/plugin1/fiftyone.yml",
-            "@org2/plugin2/fiftyone.yml",
-        ]
+        plugin_paths = ["@org1/plugin1", "@org2/plugin2"]
+        plugin_files = ["fiftyone.yml", "plugin-code.py"]
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
                 time.sleep(0.1)
-                os.makedirs(os.path.join(tmpdirname, p))
+                plugin_dir = os.path.join(tmpdirname, p)
+                os.makedirs(plugin_dir)
+                for plugin_file in plugin_files:
+                    time.sleep(0.1)
+                    fname = os.path.join(plugin_dir, plugin_file)
+                    with open(fname, "a") as f:
+                        f.write("test")
 
             # verify that max time is greater after adding files
             dir_state1 = dir_state(tmpdirname)
             self.assertNotEqual(dir_state1, initial_dir_state)
 
             # verify that max time is greater after deleting files
-            shutil.rmtree(
-                os.path.join(tmpdirname, plugin_paths[0].rsplit("/", 1)[0])
-            )
+            shutil.rmtree(os.path.join(tmpdirname, plugin_paths[0]))
             dir_state2 = dir_state(tmpdirname)
             self.assertNotEqual(dir_state2, dir_state1)
             time.sleep(0.1)
@@ -78,7 +80,6 @@ class DirStateTests(unittest.TestCase):
                 os.path.join(tmpdirname, plugin_paths[1].rsplit("/", 1)[0])
             )
 
-            time.sleep(0.2)
             dir_state3 = dir_state(tmpdirname)
             self.assertNotEqual(dir_state3, dir_state2)
 
