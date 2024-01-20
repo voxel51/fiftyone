@@ -130,7 +130,7 @@ class PluginContext(object):
                 module_dir, fo.config.plugins_dir
             ).replace("/", ".")
             spec = importlib.util.spec_from_file_location(
-                module_name, module_path
+                module_name, module_path, submodule_search_locations=[]
             )
             module = importlib.util.module_from_spec(spec)
             sys.modules[module.__name__] = module
