@@ -25,8 +25,9 @@ Bugs
   :ref:`CVAT <cvat-integration>` for annotation
 - Fixed an issue where API requests were not being prefixed with the correct
   proxy URL
-- Fixed running `compute_similarity` over API connections with the
-  :ref:`MongoDB backend <mongodb-integration>`
+- Fixed running
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>`over API
+  connections with the :ref:`MongoDB backend <mongodb-integration>`
 
 .. _release-notes-v0.23.3:
 
