@@ -78,7 +78,7 @@ class DirStateTests(unittest.TestCase):
                 os.path.join(tmpdirname, plugin_paths[1].rsplit("/", 1)[0])
             )
 
-            time.sleep(0.1)
+            time.sleep(0.2)
             dir_state3 = dir_state(tmpdirname)
             self.assertNotEqual(dir_state3, dir_state2)
 
@@ -88,10 +88,10 @@ class DirStateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdirname:
             initial_dir_state = dir_state(tmpdirname)
             for p in plugin_paths:
+                plugin_dir = os.path.join(tmpdirname, p)
+                os.makedirs(plugin_dir)
                 for plugin_file in plugin_files:
                     time.sleep(0.1)
-                    plugin_dir = os.path.join(tmpdirname, p)
-                    os.makedirs(plugin_dir)
                     fname = os.path.join(plugin_dir, plugin_file)
                     with open(fname, "a") as f:
                         f.write("test")
@@ -112,7 +112,7 @@ class DirStateTests(unittest.TestCase):
             )
 
             # add wait for test to pass on older systems/python versions
-            time.sleep(0.1)
+            time.sleep(0.2)
             dir_state2 = dir_state(tmpdirname)
             self.assertNotEqual(dir_state2, dir_state1)
 
