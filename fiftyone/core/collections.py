@@ -82,44 +82,86 @@ class DownloadContext(object):
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        batch_size: the sample batch size to use
-        clear (False): whether to force clear the media from the cache when the
+        batch_size (None): a sample batch size to use for each download
+        target_size_bytes (None): a target content size, in bytes, for each
+            download batch
+        media_fields (None): a field or iterable of fields containing media to
+            download. By default, all media fields in the collection's
+            :meth:`app_config` are used
+        update (False): whether to re-download media whose checksums no longer
+            match
+        skip_failures (True): whether to gracefully continue without raising an
+            error if a remote file cannot be downloaded
+        clear (False): whether to clear the media from the cache when the
             context exits
         progress (None): whether to render a progress bar tracking the progress
             of any downloads (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
             callback function to invoke instead
-        **kwargs: valid keyword arguments for
-            :meth:`fiftyone.core.collections.SampleCollection.download_media`
     """
 
     def __init__(
         self,
         sample_collection,
-        batch_size,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        update=False,
+        skip_failures=True,
         clear=False,
         progress=None,
         **kwargs,
     ):
         self.sample_collection = sample_collection
         self.batch_size = batch_size
+        self.target_size_bytes = target_size_bytes
+        self.media_fields = media_fields
+        self.update = update
+        self.skip_failures = skip_failures
         self.clear = clear
         self.progress = progress
-        self.media_fields = kwargs.pop("media_fields", None)
-        self.update = kwargs.pop("update", False)
-        self.kwargs = kwargs
 
         self._filepaths = None
-        self._curr_batch_size = None
-        self._total = None
+        self._offset = None
+        self._batch_sizes = None
+        self._iter_batch_sizes = None
+        self._last_batch_size = None
+        self._curr_count = None
 
     def __enter__(self):
         self.sample_collection._download_context = self
-        self._filepaths = self.sample_collection._get_media_paths(
-            media_fields=self.media_fields
+
+        media_fields = _resolve_media_fields(
+            self.sample_collection, self.media_fields
         )
-        self._curr_batch_size = self.batch_size
-        self._total = 0
+        self._filepaths = self.sample_collection._get_media_paths(
+            media_fields=media_fields, as_dict=True
+        )
+
+        if self.batch_size is None and self.target_size_bytes is None:
+            self._download_batch(None)  # download everything now
+            return self
+
+        if self.target_size_bytes is not None:
+            self.sample_collection.compute_metadata()
+            sizes = self.sample_collection.values("metadata.size_bytes")
+
+            # estimate size of all media for each field
+            # @todo achieve a more accurate estimate here?
+            n = len(media_fields)
+            if n > 1:
+                sizes = [n * s for s in sizes]
+
+            batch_sizes = _partition_by_size(sizes, self.target_size_bytes)
+        else:
+            batch_sizes = itertools.repeat(self.batch_size)
+
+        self._offset = 0
+        self._batch_sizes = batch_sizes
+        self._iter_batch_sizes = iter(batch_sizes)
+        self._last_batch_size = 0
+        self._curr_count = 0
+
         return self
 
     def __exit__(self, *args):
@@ -132,29 +174,76 @@ class DownloadContext(object):
             self._clear_media()
 
     def next(self):
-        if self._curr_batch_size >= self.batch_size:
-            self._download_batch()
-            self._curr_batch_size = 0
+        if self._batch_sizes is None:
+            return
 
-        self._curr_batch_size += 1
-        self._total += 1
+        if self._curr_count >= self._last_batch_size:
+            batch_size = next(self._iter_batch_sizes)
+            self._download_batch(batch_size)
+            self._last_batch_size = batch_size
+            self._curr_count = 0
 
-    def _download_batch(self):
-        i = self._total
-        j = self._total + self.batch_size
-        filepaths = self._filepaths[i:j]
+        self._curr_count += 1
+        self._offset += 1
+
+    def _download_batch(self, batch_size):
+        i = self._offset or 0
+        j = i + batch_size if batch_size is not None else None
+        filepaths = itertools.chain.from_iterable(
+            f[i:j] for f in self._filepaths.values()
+        )
 
         if self.update:
             foc.media_cache.update(
-                filepaths=filepaths, progress=self.progress, **self.kwargs
+                filepaths=filepaths,
+                skip_failures=self.skip_failures,
+                progress=self.progress,
             )
         else:
             foc.media_cache.get_local_paths(
-                filepaths, download=True, progress=self.progress, **self.kwargs
+                filepaths,
+                download=True,
+                skip_failures=self.skip_failures,
+                progress=self.progress,
             )
 
     def _clear_media(self):
-        foc.media_cache.clear(filepaths=self._filepaths)
+        filepaths = itertools.chain.from_iterable(self._filepaths.values())
+        foc.media_cache.clear(filepaths=filepaths)
+
+
+def _resolve_media_fields(sample_collection, media_fields):
+    if media_fields is None:
+        media_fields = list(sample_collection._get_media_fields().keys())
+    elif etau.is_container(media_fields):
+        media_fields = list(media_fields)
+    else:
+        media_fields = [media_fields]
+
+    return media_fields
+
+
+def _partition_by_size(sizes, target_size):
+    batch_sizes = []
+
+    curr_count = 0
+    curr_size = 0
+    for size in sizes:
+        if curr_size + size > target_size:
+            if curr_count == 0:
+                batch_sizes.append(1)
+            else:
+                batch_sizes.append(curr_count)
+                curr_count = 1
+                curr_size = size
+        else:
+            curr_count += 1
+            curr_size += size
+
+    if curr_count > 0:
+        batch_sizes.append(curr_count)
+
+    return batch_sizes
 
 
 class SaveContext(object):
@@ -1002,7 +1091,14 @@ class SampleCollection(object):
         raise NotImplementedError("Subclass must implement get_group()")
 
     def download_context(
-        self, batch_size=100, clear=False, progress=None, **kwargs
+        self,
+        batch_size=None,
+        target_size_bytes=None,
+        media_fields=None,
+        update=False,
+        skip_failures=True,
+        clear=False,
+        progress=None,
     ):
         """Returns a context that can be used to automatically pre-download
         media when iterating over samples in this collection.
@@ -1014,31 +1110,48 @@ class SampleCollection(object):
 
             dataset = fo.load_dataset("a-cloud-backed-dataset")
 
+            # Download media in batches of 100 samples
             with dataset.download_context(batch_size=100):
                 for sample in dataset.iter_samples(progress=True):
                     assert fo.media_cache.is_local_or_cached(sample.filepath)
                     time.sleep(0.01)
 
+            # Download media in batches of 50MB
+            with dataset.download_context(target_size_bytes=50 * 1024 ** 2):
+                for sample in dataset.iter_samples(progress=True):
+                    assert fo.media_cache.is_local_or_cached(sample.filepath)
+                    time.sleep(0.01)
+
         Args:
-            batch_size (100): the sample batch size to use when downloading
-                media
+            batch_size (None): a sample batch size to use for each download
+            target_size_bytes (None): a target content size, in bytes, for each
+                download batch
+            media_fields (None): a field or iterable of fields containing media
+                to download. By default, all media fields in the collection's
+                :meth:`app_config` are used
+            update (False): whether to re-download media whose checksums no
+                longer match
+            skip_failures (True): whether to gracefully continue without
+                raising an error if a remote file cannot be downloaded
             clear (False): whether to clear the media from the cache when the
                 context exits
             progress (None): whether to render a progress bar tracking the
                 progress of any downloads (True/False), use the default value
                 ``fiftyone.config.show_progress_bars`` (None), or a progress
                 callback function to invoke instead
-            **kwargs: valid keyword arguments for :meth:`download_media`
 
         Returns:
             a :class:`DownloadContext`
         """
         return DownloadContext(
             self,
-            batch_size,
+            batch_size=batch_size,
+            target_size_bytes=target_size_bytes,
+            media_fields=media_fields,
+            update=update,
+            skip_failures=skip_failures,
             clear=clear,
             progress=progress,
-            **kwargs,
         )
 
     @mutates_data
@@ -3072,7 +3185,7 @@ class SampleCollection(object):
         filepaths = self._get_media_paths(media_fields=media_fields)
         return foc.media_cache.stats(filepaths=filepaths)
 
-    def _get_media_paths(self, media_fields=None):
+    def _get_media_paths(self, media_fields=None, as_dict=False):
         if media_fields is None:
             media_fields = list(self._get_media_fields().keys())
         elif etau.is_container(media_fields):
@@ -3089,12 +3202,17 @@ class SampleCollection(object):
 
             _media_fields.append(media_field)
 
-        if len(_media_fields) > 1:
-            return itertools.chain.from_iterable(
-                self.values(_media_fields, unwind=True)
-            )
+        filepaths = self.values(_media_fields, unwind=True)
 
-        return self.values(_media_fields[0], unwind=True)
+        if as_dict:
+            return dict(zip(_media_fields, filepaths))
+
+        if len(_media_fields) > 1:
+            filepaths = itertools.chain.from_iterable(filepaths)
+        else:
+            filepaths = filepaths[0]
+
+        return filepaths
 
     @mutates_data
     def apply_model(
