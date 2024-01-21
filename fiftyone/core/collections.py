@@ -83,7 +83,7 @@ class DownloadContext(object):
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         batch_size: the sample batch size to use
-        clear (None): whether to force clear the media from the cache when the
+        clear (False): whether to force clear the media from the cache when the
             context exits
         progress (None): whether to render a progress bar tracking the progress
             of any downloads (True/False), use the default value
@@ -96,7 +96,7 @@ class DownloadContext(object):
     def __init__(
         self,
         sample_collection,
-        batch_size=None,
+        batch_size,
         clear=False,
         progress=None,
         **kwargs,
