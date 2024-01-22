@@ -126,9 +126,10 @@ class PluginContext(object):
             if not os.path.isfile(module_path):
                 return
 
-            module_name = os.path.relpath(
-                module_dir, fo.config.plugins_dir
-            ).replace("/", ".")
+            # name used to import a plugin will be the name of the directory
+            # containing the fiftyone.yml file
+            module_name = module_dir.rsplit("/", 1)[-1]
+
             spec = importlib.util.spec_from_file_location(
                 module_name, module_path, submodule_search_locations=[]
             )
