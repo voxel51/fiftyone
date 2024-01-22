@@ -4,6 +4,11 @@ import { atom } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
 import { Actions, ShadeBy } from "./types";
 
+export const worldBoundsAtom = atom<THREE.Box3 | null>({
+  key: "worldBounds",
+  default: null,
+});
+
 export const shadeByAtom = atom<ShadeBy>({
   key: "shadeBy",
   default: SHADE_BY_HEIGHT,
