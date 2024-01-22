@@ -13,7 +13,7 @@ import {
 import * as common from "./common";
 import * as frame from "./frame";
 import * as image from "./image";
-import * as pcd from "./pcd";
+import * as pcd from "./three-d";
 import { createElementsTree, withEvents } from "./util";
 import * as video from "./video";
 import * as imavid from "./imavid";

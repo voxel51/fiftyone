@@ -1,7 +1,7 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom } from "recoil";
-import { SHADE_BY_HEIGHT } from "./constants";
+import { ACTION_GRID, SHADE_BY_HEIGHT } from "./constants";
 import { Actions, ShadeBy } from "./types";
 
 export const worldBoundsAtom = atom<THREE.Box3 | null>({
@@ -23,6 +23,11 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
       useJsonSerialization: true,
     }),
   ],
+});
+
+export const actionRenderListAtom = atom<[string, any[] | null][]>({
+  key: "actionRenderList",
+  default: [],
 });
 
 export const currentActionAtom = atom<Actions>({
