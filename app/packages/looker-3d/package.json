@@ -21,6 +21,7 @@
         "lodash": "^4.17.21",
         "react-color": "^2.19.3",
         "styled-components": "^6.1.8",
+        "swr": "^2.2.4",
         "three": "^0.160.1"
     },
     "devDependencies": {

@@ -1,18 +1,11 @@
-import { Loading, useTheme } from "@fiftyone/components";
+import { useTheme } from "@fiftyone/components";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import _ from "lodash";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { CAMERA_POSITION_KEY, Environment } from "./Environment";
@@ -21,21 +14,22 @@ import {
   defaultPluginSettings,
 } from "./Looker3dPlugin";
 import {
-  ChooseColorSpace,
-  Screenshot,
-  SetPointSizeButton,
-  SetViewButton,
-  SliceSelector,
-  ViewHelp,
-  ViewJSON,
-} from "./action-bar";
-import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
-import { ActionBarContainer, ActionsBar, Container } from "./containers";
+  ACTION_GRID,
+  ACTION_SET_EGO_VIEW,
+  ACTION_SET_PCDS,
+  ACTION_SET_POINT_SIZE,
+  ACTION_SET_TOP_VIEW,
+  ACTION_SHADE_BY,
+  ACTION_VIEW_HELP,
+  ACTION_VIEW_JSON,
+} from "./constants";
+import { Container } from "./containers";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
 import { OverlayLabel } from "./labels/loader";
 import { PointCloudMesh } from "./renderables";
 import {
+  actionRenderListAtom,
   currentActionAtom,
   currentPointSizeAtom,
   customColorMapAtom,
@@ -44,17 +38,23 @@ import {
   shadeByAtom,
 } from "./state";
 import { toEulerFromDegreesArray } from "./utils";
+import { Screenshot } from "./action-bar/Screenshot";
 
 type View = "pov" | "top";
 
-const MODAL_TRUE = true;
 const DEFAULT_GREEN = "#00ff00";
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
+
+type MediaTypePcdComponentProps = {
+  isHovering: boolean;
+};
 
 /**
  * This component renders the legacy point_cloud media type.
  */
-export const MediaTypePcdComponent = () => {
+export const MediaTypePcdComponent = ({
+  isHovering,
+}: MediaTypePcdComponentProps) => {
   const settings = fop.usePluginSettings<Looker3dPluginSettings>(
     "3d",
     defaultPluginSettings
@@ -62,6 +62,8 @@ export const MediaTypePcdComponent = () => {
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
   const onSelectLabel = fos.useOnSelectLabel();
+
+  const setActionBarItems = useSetRecoilState(actionRenderListAtom);
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
@@ -75,7 +77,7 @@ export const MediaTypePcdComponent = () => {
 
   useEffect(() => {
     // note: Object3D.DEFAULT_UP is not working for some reason
-    Object3D.DefaultUp = new Vector3(...settings.defaultUp).normalize();
+    Object3D.DEFAULT_UP = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
 
   useLayoutEffect(() => {
@@ -202,30 +204,7 @@ export const MediaTypePcdComponent = () => {
     [settings]
   );
 
-  const [hovering, setHovering] = useState(false);
   const setCurrentAction = useSetRecoilState(currentActionAtom);
-
-  const timeout = useRef<NodeJS.Timeout>(null);
-
-  const clear = useCallback(() => {
-    if (hoveringRef.current) return;
-    timeout.current && clearTimeout(timeout.current);
-    setHovering(false);
-    setCurrentAction(null);
-  }, [setCurrentAction]);
-
-  const update = useCallback(() => {
-    !hovering && setHovering(true);
-    timeout.current && clearTimeout(timeout.current);
-    timeout.current = setTimeout(clear, 3000);
-
-    return () => {
-      timeout.current && clearTimeout(timeout.current);
-    };
-  }, [clear, hovering]);
-
-  const hoveringRef = useRef(false);
-  const tooltip = fos.useTooltip();
 
   useHotkey("KeyT", () => onChangeView("top"));
   useHotkey("KeyE", () => onChangeView("pov"));
@@ -268,8 +247,26 @@ export const MediaTypePcdComponent = () => {
       set(fos.hiddenLabels, {});
       set(fos.currentModalSample, null);
     },
-    [sampleMap, jsonPanel, helpPanel, selectedLabels, hovering]
+    [sampleMap, jsonPanel, helpPanel, selectedLabels, isHovering]
   );
+
+  useEffect(() => {
+    const actionItems = [
+      [ACTION_GRID, []],
+      [ACTION_SET_POINT_SIZE, []],
+      [ACTION_SHADE_BY, []],
+      [ACTION_SET_TOP_VIEW, [onChangeView]],
+      [ACTION_SET_EGO_VIEW, [onChangeView]],
+      [ACTION_VIEW_JSON, [jsonPanel, sampleMap]],
+      [ACTION_VIEW_HELP, [helpPanel]],
+    ];
+
+    if (hasMultiplePcdSlices) {
+      actionItems.splice(0, 0, [ACTION_SET_PCDS, []]);
+    }
+
+    setActionBarItems(actionItems);
+  }, []);
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;
@@ -392,87 +389,23 @@ export const MediaTypePcdComponent = () => {
   }
 
   return (
-    <ErrorBoundary>
-      <Container onMouseOver={update} onMouseMove={update} data-cy={"looker3d"}>
-        <Canvas id={CANVAS_WRAPPER_ID} onClick={() => setCurrentAction(null)}>
-          <Screenshot />
-          <Environment
-            controlsRef={controlsRef}
-            cameraRef={cameraRef}
-            settings={settings}
-            isGridOn={isGridOn}
-            bounds={pointCloudBounds}
-          />
-          <ThreeDLabels
-            handleSelect={handleSelect}
-            sampleMap={sampleMap}
-            settings={settings}
-          />
-          {filteredSamples}
-        </Canvas>
-        {(hoveringRef.current || hovering) && (
-          <ActionBarContainer
-            data-cy="looker3d-action-bar"
-            onMouseEnter={() => (hoveringRef.current = true)}
-            onMouseLeave={() => (hoveringRef.current = false)}
-          >
-            {hasMultiplePcdSlices && <SliceSelector />}
-            <ActionsBar>
-              <ToggleGridHelper />
-              <SetPointSizeButton />
-              <ChooseColorSpace />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"top"}
-                label={"T"}
-                hint="Top View"
-              />
-              <SetViewButton
-                onChangeView={onChangeView}
-                view={"pov"}
-                label={"E"}
-                hint="Ego View"
-              />
-              <ViewJSON jsonPanel={jsonPanel} sample={sampleMap} />
-              <ViewHelp helpPanel={helpPanel} />
-            </ActionsBar>
-          </ActionBarContainer>
-        )}
-      </Container>
-    </ErrorBoundary>
+    <>
+      <Canvas id={CANVAS_WRAPPER_ID} onClick={() => setCurrentAction(null)}>
+        <Screenshot />
+        <Environment
+          controlsRef={controlsRef}
+          cameraRef={cameraRef}
+          settings={settings}
+          isGridOn={isGridOn}
+          bounds={pointCloudBounds}
+        />
+        <ThreeDLabels
+          handleSelect={handleSelect}
+          sampleMap={sampleMap}
+          settings={settings}
+        />
+        {filteredSamples}
+      </Canvas>
+    </>
   );
 };
-
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { error: Error | string | null }
-> {
-  state = { error: null, hasError: false };
-
-  static getDerivedStateFromError = (error: Error) => ({
-    hasError: true,
-    error,
-  });
-
-  componentDidCatch(error: Error) {
-    this.setState({ error });
-  }
-
-  render() {
-    if (this.state.hasError) {
-      // useLoader from @react-three/fiber throws a raw string for PCD 404
-      // not an error
-      return (
-        <Loading dataCy={"looker3d"}>
-          <div data-cy="looker-error-info">
-            {this.state.error instanceof Error
-              ? this.state.error.message
-              : this.state.error}
-          </div>
-        </Loading>
-      );
-    }
-
-    return this.props.children;
-  }
-}

@@ -21,7 +21,7 @@ export const ActionBarContainer = styled.div`
   bottom: 0;
   left: 0;
   opacity: 1;
-  z-index: 20;
+  z-index: 20000;
   justify-items: center;
   align-items: center;
   display: flex;
