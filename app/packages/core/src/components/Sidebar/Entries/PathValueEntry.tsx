@@ -296,7 +296,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
           >
             <div style={{ color: theme.text.secondary }}>{slice}</div>
             <div
-              data-cy={`sidebar-entry-${path}`}
+              data-cy={`sidebar-entry-${slice}-${path}`}
               style={{
                 ...add,
                 flex: 1,
