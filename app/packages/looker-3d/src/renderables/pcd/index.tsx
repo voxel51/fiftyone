@@ -2,7 +2,6 @@ import { useLoader } from "@react-three/fiber";
 import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
-import { computeMinMaxForColorBufferAttribute } from "../../../utils";
 import {
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
@@ -10,6 +9,7 @@ import {
   SHADE_BY_RGB,
 } from "../../constants";
 import { ShadeBy } from "../../types";
+import { computeMinMaxForColorBufferAttribute } from "../../utils";
 import {
   CustomColorShader,
   Gradients,

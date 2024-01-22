@@ -178,7 +178,7 @@ export class OssLoader extends AbstractFiftyoneLoader {
         }
 
         return (
-          document.querySelector(`canvas`)?.getAttribute("sample-loaded") ===
+          document.querySelector(`canvas`)?.getAttribute("canvas-loaded") ===
           "true"
         );
       },

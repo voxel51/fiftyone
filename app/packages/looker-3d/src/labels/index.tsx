@@ -6,15 +6,11 @@ import * as fos from "@fiftyone/state";
 import { get as _get } from "lodash";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { toEulerFromDegreesArray } from "../../utils";
+import { toEulerFromDegreesArray } from "../utils";
 import { usePathFilter } from "../hooks";
-import {
-  Cuboid,
-  CuboidProps,
-  PolyLineProps,
-  Polyline,
-  load3dOverlays,
-} from "../overlays";
+import { Cuboid, CuboidProps } from "./cuboid";
+import { load3dOverlays } from "./loader";
+import { PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
   handleSelect: (label: any) => void;
