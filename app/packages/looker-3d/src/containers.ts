@@ -79,6 +79,15 @@ export const Container = styled.div`
   justify-content: center;
 `;
 
+export const LevaContainer = styled.div`
+  position: absolute;
+  bottom: 3vh;
+  margin-bottom: 3vh;
+  right: 1vw;
+  z-index: 1000;
+  text-select: none;
+`;
+
 export const ViewButton = styled.div`
   line-height: 1rem;
   padding: 3px 6px;

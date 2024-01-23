@@ -1,3 +1,4 @@
+import { getSampleSrc } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useMemo } from "react";
 import useSWR, { Fetcher } from "swr";
@@ -32,19 +33,20 @@ interface StlReturnType extends ThreeDAsset {
 type MeshReturnType =
   | ObjReturnType
   | GltfReturnType
-  | StlReturnType
-  | PlyReturnType;
+  | PcdReturnType
+  | PlyReturnType
+  | StlReturnType;
 
-type Fo3dData = {
+export type Fo3dData = {
   objs: ObjReturnType[];
   gltfs: GltfReturnType[];
   stls: StlReturnType[];
+  pcds: PcdReturnType[];
   plys: PlyReturnType[];
 };
 
 type UseFo3dReturnType = {
   data: Fo3dData | null;
-  error: Error | null;
   isLoading: boolean;
 };
 
@@ -54,7 +56,7 @@ const fetcher: Fetcher<FiftyoneSceneRawJson, string> = async (url: string) =>
 /**
  * This hook parses the fo3d file.
  */
-export const useFo3d = (url: string) => {
+export const useFo3d = (url: string): UseFo3dReturnType => {
   const { data: rawData, error, isLoading } = useSWR(url, fetcher);
 
   const transformedData = useMemo(() => {
@@ -71,6 +73,7 @@ export const useFo3d = (url: string) => {
     const objs: ObjReturnType[] = [];
     const gltfs: GltfReturnType[] = [];
     const stls: StlReturnType[] = [];
+    const pcds: PcdReturnType[] = [];
     const plys: PlyReturnType[] = [];
 
     // do a depth first search of the scene
@@ -88,28 +91,38 @@ export const useFo3d = (url: string) => {
         };
 
         if (current["_cls"].toLocaleLowerCase().startsWith("gltf")) {
-          if (current["gltf_url"]) {
-            (meshObj as GltfReturnType).gltfUrl = current["gltf_url"];
+          if (current["gltf_path"]) {
+            (meshObj as GltfReturnType).gltfUrl = getSampleSrc(
+              current["gltf_path"]
+            );
           }
           gltfs.push(meshObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("obj")) {
-          if (current["obj_url"]) {
-            (meshObj as ObjReturnType).objUrl = current["obj_url"];
+          if (current["obj_path"]) {
+            (meshObj as ObjReturnType).objUrl = getSampleSrc(
+              current["obj_path"]
+            );
           }
 
-          if (current["mtl_url"]) {
-            (meshObj as ObjReturnType).mtlUrl = current["mtl_url"];
+          if (current["mtl_path"]) {
+            (meshObj as ObjReturnType).mtlUrl = getSampleSrc(
+              current["mtl_path"]
+            );
           }
 
           objs.push(meshObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("stl")) {
-          if (current["stl_url"]) {
-            (meshObj as StlReturnType).stlUrl = current["stl_url"];
+          if (current["stl_path"]) {
+            (meshObj as StlReturnType).stlUrl = getSampleSrc(
+              current["stl_path"]
+            );
           }
           stls.push(meshObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("ply")) {
-          if (current["ply_url"]) {
-            (meshObj as PlyReturnType).plyUrl = current["ply_url"];
+          if (current["ply_path"]) {
+            (meshObj as PlyReturnType).plyUrl = getSampleSrc(
+              current["ply_path"]
+            );
           }
           plys.push(meshObj);
         }
@@ -119,11 +132,11 @@ export const useFo3d = (url: string) => {
           visible: current.visible,
         };
 
-        if (current["pcd_url"]) {
-          pointcloud.pcdUrl = current["pcd_url"];
+        if (current["pcd_path"]) {
+          pointcloud.pcdUrl = getSampleSrc(current["pcd_path"]);
         }
 
-        objs.push(pointcloud);
+        pcds.push(pointcloud);
       }
 
       stack.push(...current.children);
@@ -133,28 +146,23 @@ export const useFo3d = (url: string) => {
       objs,
       gltfs,
       stls,
+      pcds,
       plys,
     };
   }, [rawData]);
 
   if (error) {
-    return {
-      data: null,
-      error,
-      isLoading,
-    };
+    throw new Error(JSON.stringify(error));
   }
 
   if (isLoading) {
     return {
       data: null,
-      error: null,
       isLoading,
     };
   }
 
   return {
-    error: null,
     isLoading: false,
     data: transformedData,
   } as UseFo3dReturnType;

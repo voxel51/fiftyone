@@ -29,3 +29,7 @@ export const SHADE_BY_CHOICES: { label: string; value: ShadeBy }[] = [
   { label: "Custom", value: SHADE_BY_CUSTOM },
   { label: "None", value: SHADE_BY_NONE },
 ];
+
+export const VOXEL51_THEME_COLOR = "#ff6f00";
+export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
+export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";

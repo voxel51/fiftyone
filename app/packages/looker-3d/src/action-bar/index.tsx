@@ -52,20 +52,21 @@ export const ActionBar = ({
     const components = [];
 
     if (actionNames.includes(ACTION_GRID)) {
-      components.push(<ToggleGridHelper />);
+      components.push(<ToggleGridHelper key="grid-helper" />);
     }
 
     if (actionNames.includes(ACTION_SET_POINT_SIZE)) {
-      components.push(<SetPointSizeButton />);
+      components.push(<SetPointSizeButton key="set-point-size" />);
     }
 
     if (actionNames.includes(ACTION_SHADE_BY)) {
-      components.push(<ChooseColorSpace />);
+      components.push(<ChooseColorSpace key="choose-color-space" />);
     }
 
     if (actionNames.includes(ACTION_SET_TOP_VIEW)) {
       components.push(
         <SetViewButton
+          key="set-top-view"
           onChangeView={
             actionBarRenderList.find(
               (actionCallbackPair) =>
@@ -82,6 +83,7 @@ export const ActionBar = ({
     if (actionNames.includes(ACTION_SET_EGO_VIEW)) {
       components.push(
         <SetViewButton
+          key="set-ego-view"
           onChangeView={
             actionBarRenderList.find(
               (actionCallbackPair) =>
@@ -102,7 +104,9 @@ export const ActionBar = ({
       const jsonPanel = args[0];
       const sample = args[1];
 
-      components.push(<ViewJSON jsonPanel={jsonPanel} sample={sample} />);
+      components.push(
+        <ViewJSON key="view-json" jsonPanel={jsonPanel} sample={sample} />
+      );
     }
 
     if (actionNames.includes(ACTION_VIEW_HELP)) {
@@ -111,7 +115,7 @@ export const ActionBar = ({
       )[1];
       const helpPanel = args[0];
 
-      components.push(<ViewHelp helpPanel={helpPanel} />);
+      components.push(<ViewHelp key="view-help" helpPanel={helpPanel} />);
     }
     return components;
   }, [actionBarRenderList, actionNames]);
