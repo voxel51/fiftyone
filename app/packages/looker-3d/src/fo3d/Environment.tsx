@@ -19,7 +19,7 @@ export const Fo3dEnvironment = () => {
       label: "Ambient light intensity",
     },
     directionalLightPosition: {
-      value: [10, 100, 10],
+      value: [100, 1000, 100],
       label: "Directional light position",
     },
     directionalLightIntensity: {
@@ -33,7 +33,7 @@ export const Fo3dEnvironment = () => {
 
   return (
     <>
-      {isGridOn && <gridHelper args={[100, 100]} />}
+      {isGridOn && <gridHelper args={[1000, 1000]} />}
       <GizmoHelper alignment="top-left">
         <GizmoViewport />
       </GizmoHelper>
@@ -42,6 +42,14 @@ export const Fo3dEnvironment = () => {
         position={directionalLightPosition}
         intensity={directionalLightIntensity}
       />
+      <pointLight position={[1000, 1000, 100]} />
+      <pointLight position={[-100, -100, -100]} />
+      <pointLight position={[100, 100, -100]} />
+      <pointLight position={[-100, 100, 100]} />
+      <pointLight position={[100, -100, 100]} />
+      <pointLight position={[100, -100, -100]} />
+      <pointLight position={[-100, 100, -100]} />
+      <pointLight position={[-100, -100, 100]} />
     </>
   );
 };
