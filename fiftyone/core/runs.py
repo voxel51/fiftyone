@@ -291,7 +291,7 @@ class BaseRun(Configurable):
         pass
 
     @mutates_data(data_obj_param="samples")
-    def register_run(self, samples, key, overwrite=True):
+    def register_run(self, samples, key, overwrite=True, cleanup=True):
         """Registers a run of this method under the given key on the given
         collection.
 
@@ -300,6 +300,8 @@ class BaseRun(Configurable):
             key: a run key
             overwrite (True): whether to allow overwriting an existing run of
                 the same type
+            cleanup (True): whether to execute an existing run's
+                :meth:`BaseRun.cleanup` method when overwriting it
         """
         if key is None:
             return
@@ -311,7 +313,9 @@ class BaseRun(Configurable):
         run_info = run_info_cls(
             key, version=version, timestamp=timestamp, config=self.config
         )
-        self.save_run_info(samples, run_info)
+        self.save_run_info(
+            samples, run_info, overwrite=overwrite, cleanup=cleanup
+        )
 
     def validate_run(self, samples, key, overwrite=True):
         """Validates that the collection can accept this run.
@@ -546,7 +550,7 @@ class BaseRun(Configurable):
 
     @classmethod
     @mutates_data(data_obj_param="samples")
-    def save_run_info(cls, samples, run_info, overwrite=True):
+    def save_run_info(cls, samples, run_info, overwrite=True, cleanup=True):
         """Saves the run information on the collection.
 
         Args:
@@ -554,12 +558,14 @@ class BaseRun(Configurable):
             run_info: a :class:`BaseRunInfo`
             overwrite (True): whether to overwrite an existing run with the
                 same key
+            cleanup (True): whether to execute an existing run's
+                :meth:`BaseRun.cleanup` method when overwriting it
         """
         key = run_info.key
 
         if key in cls.list_runs(samples):
             if overwrite:
-                cls.delete_run(samples, key)
+                cls.delete_run(samples, key, cleanup=cleanup)
             else:
                 raise ValueError(
                     "%s with key '%s' already exists"
@@ -790,28 +796,31 @@ class BaseRun(Configurable):
 
     @classmethod
     @mutates_data(data_obj_param="samples")
-    def delete_run(cls, samples, key):
+    def delete_run(cls, samples, key, cleanup=True):
         """Deletes the results associated with the given run key from the
         collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
             key: a run key
+            cleanup (True): whether to execute the run's
+                :meth:`BaseRun.cleanup` method
         """
         run_doc = cls._get_run_doc(samples, key)
 
-        try:
-            # Execute cleanup() method
-            run_info = cls.get_run_info(samples, key)
-            run = run_info.config.build()
-            run.cleanup(samples, key)
-        except Exception as e:
-            logger.warning(
-                "Failed to run cleanup() for the %s with key '%s': %s",
-                cls._run_str(),
-                key,
-                str(e),
-            )
+        if cleanup:
+            try:
+                # Execute cleanup() method
+                run_info = cls.get_run_info(samples, key)
+                run = run_info.config.build()
+                run.cleanup(samples, key)
+            except Exception as e:
+                logger.warning(
+                    "Failed to run cleanup() for the %s with key '%s': %s",
+                    cls._run_str(),
+                    key,
+                    str(e),
+                )
 
         dataset = samples._root_dataset
 
@@ -834,14 +843,16 @@ class BaseRun(Configurable):
 
     @classmethod
     @mutates_data(data_obj_param="samples")
-    def delete_runs(cls, samples):
+    def delete_runs(cls, samples, cleanup=True):
         """Deletes all runs from the collection.
 
         Args:
             samples: a :class:`fiftyone.core.collections.SampleCollection`
+            cleanup (True): whether to execute the run's
+                :meth:`BaseRun.cleanup` methods
         """
         for key in cls.list_runs(samples):
-            cls.delete_run(samples, key)
+            cls.delete_run(samples, key, cleanup=cleanup)
 
     @classmethod
     def _get_run_docs(cls, samples):

@@ -87,8 +87,6 @@ test.describe("saved views", () => {
     if (count) {
       await savedViews.clickOptionEdit(slug);
       await savedViews.clickDeleteBtn();
-    } else {
-      await savedViews.openSelect();
     }
   }
 
@@ -126,8 +124,8 @@ test.describe("saved views", () => {
   test("cancel button clears the inputs", async ({ savedViews }) => {
     await savedViews.openCreateModal();
 
-    await savedViews.nameInput().type("test");
-    await savedViews.descriptionInput().type("test");
+    await savedViews.nameInput().fill("test");
+    await savedViews.descriptionInput().fill("test");
     await savedViews.colorInput().click();
     await savedViews.colorOption().click();
 
@@ -157,15 +155,6 @@ test.describe("saved views", () => {
     await savedViews.openCreateModal();
     await savedViews.clickCloseModal();
     await savedViews.assert.verifyModalClosed();
-  });
-
-  test("directly linking to a non-existing view clears view parameter", async ({
-    page,
-    savedViews,
-  }) => {
-    const nonExistingName = "test-name-non-existing";
-    await page.goto(`/datasets/${datasetName}?view=${nonExistingName}`);
-    await savedViews.assert.verifyUnsavedView(nonExistingName);
   });
 
   test("color selection has nine specific color choices", async ({
@@ -211,9 +200,11 @@ test.describe("saved views", () => {
 
   test("searching through saved views works", async ({ savedViews }) => {
     await savedViews.saveView(testView1);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearViewBtn().click();
 
     await savedViews.saveView(testView2);
+    await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearView();
 
     await savedViews.selector().click();

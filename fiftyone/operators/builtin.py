@@ -36,7 +36,7 @@ class CloneSelectedSamples(foo.Operator):
         else:
             prop = inputs.str(
                 "msg",
-                label="You must select samples in the grid to clone",
+                label="You must select samples to clone",
                 view=types.Warning(),
             )
             prop.invalid = True
@@ -239,7 +239,7 @@ class DeleteSelectedSamples(foo.Operator):
         else:
             prop = inputs.str(
                 "msg",
-                label="You must select samples in the grid to delete",
+                label="You must select samples to delete",
                 view=types.Warning(),
             )
             prop.invalid = True
@@ -256,6 +256,47 @@ class DeleteSelectedSamples(foo.Operator):
 
         ctx.trigger("clear_selected_samples")
         ctx.trigger("reload_samples")
+
+
+class DeleteSelectedLabels(foo.Operator):
+    @property
+    def config(self):
+        return foo.OperatorConfig(
+            name="delete_selected_labels",
+            label="Delete selected labels",
+            dynamic=True,
+        )
+
+    def resolve_input(self, ctx):
+        inputs = types.Object()
+
+        count = len(ctx.selected_labels)
+        if count > 0:
+            label_text = "label" if count == 1 else "labels"
+            inputs.str(
+                "msg",
+                label=f"Delete {count} selected {label_text}?",
+                view=types.Warning(),
+            )
+        else:
+            prop = inputs.str(
+                "msg",
+                label="You must select labels to delete",
+                view=types.Warning(),
+            )
+            prop.invalid = True
+
+        view = types.View(label="Delete selected labels")
+        return types.Property(inputs, view=view)
+
+    def execute(self, ctx):
+        if not ctx.selected_labels:
+            return
+
+        ctx.dataset.delete_labels(labels=ctx.selected_labels)
+
+        ctx.trigger("clear_selected_labels")
+        ctx.trigger("reload_dataset")
 
 
 class DeleteSampleField(foo.Operator):
@@ -410,6 +451,7 @@ BUILTIN_OPERATORS = [
     RenameSampleField(_builtin=True),
     ClearSampleField(_builtin=True),
     DeleteSelectedSamples(_builtin=True),
+    DeleteSelectedLabels(_builtin=True),
     DeleteSampleField(_builtin=True),
     PrintStdout(_builtin=True),
     ListFiles(_builtin=True),

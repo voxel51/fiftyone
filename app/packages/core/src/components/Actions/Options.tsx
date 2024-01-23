@@ -235,6 +235,7 @@ const Lightning = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
+          dataCy: `lightning-mode-${value}`,
           onClick: () =>
             setThreshold(value === "disable" ? null : config ?? count),
         }))}

@@ -54,9 +54,10 @@ export const matchPath = <T extends OperationType>(
 
   const params = new URLSearchParams(search);
 
-  const proxy = params.get("proxy");
+  const proxy = decodeURIComponent(params.get("proxy") || "");
+
   if (proxy) {
-    pathname = pathname.replace(proxy, "").replace("//", "/");
+    pathname = `/${pathname.slice(proxy.length)}`.replace("//", "/");
   }
 
   const { regexp, keys } = compilePath(path);

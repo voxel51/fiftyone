@@ -47,3 +47,16 @@ export function getErrorsForView(props) {
 
 export * from "./generate-schema";
 export { default as autoFocus } from "./auto-focus";
+
+// Views that renders DynamicIO as a child component
+const COMPOSITE_VIEWS = [
+  "InferredView",
+  "ListView",
+  "ObjectView",
+  "OneOfView",
+  "TupleView",
+];
+
+export function isCompositeView(schema) {
+  return COMPOSITE_VIEWS.includes(schema?.view?.component);
+}

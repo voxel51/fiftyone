@@ -32,7 +32,10 @@ foue = fou.lazy_import("fiftyone.utils.eta")
 fouf = fou.lazy_import("fiftyone.utils.flash")
 foui = fou.lazy_import("fiftyone.utils.image")
 foup = fou.lazy_import("fiftyone.utils.patches")
+fous = fou.lazy_import("fiftyone.utils.super_gradients")
 fout = fou.lazy_import("fiftyone.utils.torch")
+foutr = fou.lazy_import("fiftyone.utils.transformers")
+fouu = fou.lazy_import("fiftyone.utils.ultralytics")
 
 
 logger = logging.getLogger(__name__)
@@ -57,23 +60,21 @@ def apply_model(
     skip_failures=True,
     output_dir=None,
     rel_dir=None,
+    progress=None,
     **kwargs,
 ):
-    """Applies the :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>` to the samples
-    in the collection.
+    """Applies the model to the samples in the collection.
 
     This method supports all of the following cases:
 
-    -   Applying an image :class:`Model` to an image collection
-    -   Applying an image :class:`Model` to the frames of a video collection
-    -   Applying a video :class:`Model` to a video collection
-    -   Applying a :class:`flash:flash.core.model.Task` to an image or video
-        collection
+    -   Applying an image model to an image collection
+    -   Applying an image model to the frames of a video collection
+    -   Applying a video model to a video collection
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         label_field ("predictions"): the name of the field in which to store
             the model predictions. When performing inference on video frames,
             the "frames." prefix is optional
@@ -100,6 +101,9 @@ def apply_model(
             ``output_dir`` that match the shape of the input paths. The path is
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
     """
@@ -117,11 +121,10 @@ def apply_model(
             **kwargs,
         )
 
+    model = _convert_model_if_necessary(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if samples.media_type == fom.IMAGE:
         fov.validate_image_collection(samples)
@@ -219,6 +222,7 @@ def apply_model(
                 confidence_thresh,
                 skip_failures,
                 filename_maker,
+                progress,
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
@@ -235,6 +239,7 @@ def apply_model(
                     batch_size,
                     skip_failures,
                     filename_maker,
+                    progress,
                 )
 
             return _apply_image_model_to_frames_single(
@@ -244,6 +249,7 @@ def apply_model(
                 confidence_thresh,
                 skip_failures,
                 filename_maker,
+                progress,
             )
 
         if use_data_loader:
@@ -256,6 +262,7 @@ def apply_model(
                 num_workers,
                 skip_failures,
                 filename_maker,
+                progress,
             )
 
         if batch_size is not None:
@@ -267,6 +274,7 @@ def apply_model(
                 batch_size,
                 skip_failures,
                 filename_maker,
+                progress,
             )
 
         return _apply_image_model_single(
@@ -276,18 +284,41 @@ def apply_model(
             confidence_thresh,
             skip_failures,
             filename_maker,
+            progress,
         )
-
-
-_BASE_FLASH_TYPE = "flash.core.model.Task"
 
 
 def _is_flash_model(model):
     for cls in inspect.getmro(type(model)):
-        if etau.get_class_name(cls) == _BASE_FLASH_TYPE:
+        if etau.get_class_name(cls) == "flash.core.model.Task":
             return True
 
     return False
+
+
+def _is_transformers_model(model):
+    return type(model).__module__.startswith("transformers.models.")
+
+
+def _is_ultralytics_model(model):
+    return type(model).__module__.startswith("ultralytics.")
+
+
+def _is_super_gradients_models(model):
+    return type(model).__module__.startswith("super_gradients.")
+
+
+def _convert_model_if_necessary(model):
+    if _is_transformers_model(model):
+        return foutr.convert_transformers_model(model)
+
+    if _is_ultralytics_model(model):
+        return fouu.convert_ultralytics_model(model)
+
+    if _is_super_gradients_models(model):
+        return fous.convert_super_gradients_model(model)
+
+    return model
 
 
 def _apply_image_model_single(
@@ -297,10 +328,11 @@ def _apply_image_model_single(
     confidence_thresh,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
 
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
             try:
                 img = foui.read(sample.local_path)
@@ -334,11 +366,12 @@ def _apply_image_model_batch(
     batch_size,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     samples_loader = fou.iter_batches(samples, batch_size)
 
-    with fou.ProgressBar(samples) as pb:
+    with fou.ProgressBar(samples, progress=progress) as pb:
         for sample_batch in samples_loader:
             try:
                 imgs = [
@@ -386,6 +419,7 @@ def _apply_image_model_data_loader(
     num_workers,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     samples_loader = fou.iter_batches(samples, batch_size)
@@ -393,7 +427,7 @@ def _apply_image_model_data_loader(
         samples, model, batch_size, num_workers, skip_failures
     )
 
-    with fou.ProgressBar(samples) as pb:
+    with fou.ProgressBar(samples, progress=progress) as pb:
         for sample_batch, imgs in zip(samples_loader, data_loader):
             try:
                 if isinstance(imgs, Exception):
@@ -438,12 +472,13 @@ def _apply_image_model_to_frames_single(
     confidence_thresh,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    with fou.ProgressBar(total=total_frame_count) as pb:
+    with fou.ProgressBar(total=total_frame_count, progress=progress) as pb:
         for idx, sample in enumerate(samples):
             if is_clips:
                 frames = etaf.FrameRange(*sample.support)
@@ -493,12 +528,13 @@ def _apply_image_model_to_frames_batch(
     batch_size,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     frame_counts, total_frame_count = _get_frame_counts(samples)
     is_clips = samples._dataset._is_clips
 
-    with fou.ProgressBar(total=total_frame_count) as pb:
+    with fou.ProgressBar(total=total_frame_count, progress=progress) as pb:
         for idx, sample in enumerate(samples):
             if is_clips:
                 frames = etaf.FrameRange(*sample.support)
@@ -553,11 +589,12 @@ def _apply_video_model(
     confidence_thresh,
     skip_failures,
     filename_maker,
+    progress,
 ):
     needs_samples = isinstance(model, SamplesMixin)
     is_clips = samples._dataset._is_clips
 
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
             if is_clips:
                 frames = etaf.FrameRange(*sample.support)
@@ -728,32 +765,28 @@ def compute_embeddings(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    progress=None,
     **kwargs,
 ):
     """Computes embeddings for the samples in the collection using the given
-    :class:`FiftyOne model <Model>` or
-    :class:`Lightning Flash model <flash:flash.core.model.Task>`.
+    model.
 
     This method supports all the following cases:
 
-    -   Using an image :class:`Model` to compute embeddings for an image
-        collection
-    -   Using an image :class:`Model` to compute frame embeddings for a video
-        collection
-    -   Using a video :class:`Model` to compute embeddings for a video
-        collection
-    -   Using an :ref:`ImageEmbedder <flash:image_embedder>` to compute
-        embeddings for an image collection
+    -   Using an image model to compute embeddings for an image collection
+    -   Using an image model to compute frame embeddings for a video collection
+    -   Using a video model to compute embeddings for a video collection
 
-    When using a :class:`FiftyOne model <Model>`, the model must expose
-    embeddings, i.e., :meth:`Model.has_embeddings` must return ``True``.
+    The ``model`` must expose embeddings, i.e., :meth:`Model.has_embeddings`
+    must return ``True``.
 
     If an ``embeddings_field`` is provided, the embeddings are saved to the
     samples; otherwise, the embeddings are returned in-memory.
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model` or :class:`flash:flash.core.model.Task>`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         embeddings_field (None): the name of a field in which to store the
             embeddings. When computing video frame embeddings, the "frames."
             prefix is optional
@@ -764,6 +797,9 @@ def compute_embeddings(
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample. Only
             applicable to :class:`Model` instances
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional model-specific keyword arguments passed through
             to the underlying inference implementation
 
@@ -795,11 +831,10 @@ def compute_embeddings(
             **kwargs,
         )
 
+    model = _convert_model_if_necessary(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s or %s; found %s"
-            % (Model, _BASE_FLASH_TYPE, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(
@@ -870,7 +905,7 @@ def compute_embeddings(
 
         if samples.media_type == fom.VIDEO and model.media_type == "video":
             return _compute_video_embeddings(
-                samples, model, embeddings_field, skip_failures
+                samples, model, embeddings_field, skip_failures, progress
             )
 
         batch_size = _parse_batch_size(batch_size, model, use_data_loader)
@@ -878,11 +913,16 @@ def compute_embeddings(
         if samples.media_type == fom.VIDEO and model.media_type == "image":
             if batch_size is not None:
                 return _compute_frame_embeddings_batch(
-                    samples, model, embeddings_field, batch_size, skip_failures
+                    samples,
+                    model,
+                    embeddings_field,
+                    batch_size,
+                    skip_failures,
+                    progress,
                 )
 
             return _compute_frame_embeddings_single(
-                samples, model, embeddings_field, skip_failures
+                samples, model, embeddings_field, skip_failures, progress
             )
 
         if use_data_loader:
@@ -893,33 +933,39 @@ def compute_embeddings(
                 batch_size,
                 num_workers,
                 skip_failures,
+                progress,
             )
 
         if batch_size is not None:
             return _compute_image_embeddings_batch(
-                samples, model, embeddings_field, batch_size, skip_failures
+                samples,
+                model,
+                embeddings_field,
+                batch_size,
+                skip_failures,
+                progress,
             )
 
         return _compute_image_embeddings_single(
-            samples, model, embeddings_field, skip_failures
+            samples, model, embeddings_field, skip_failures, progress
         )
 
 
 def _compute_image_embeddings_single(
-    samples, model, embeddings_field, skip_failures
+    samples, model, embeddings_field, skip_failures, progress
 ):
     samples = samples.select_fields()
     embeddings = []
 
     errors = False
 
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
             embedding = None
 
             try:
                 img = foui.read(sample.local_path)
-                embedding = model.embed(img)[0]
+                embedding = model.embed(img)
             except Exception as e:
                 if not skip_failures:
                     raise e
@@ -943,7 +989,7 @@ def _compute_image_embeddings_single(
 
 
 def _compute_image_embeddings_batch(
-    samples, model, embeddings_field, batch_size, skip_failures
+    samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
     samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
@@ -951,7 +997,7 @@ def _compute_image_embeddings_batch(
     embeddings = []
     errors = False
 
-    with fou.ProgressBar(samples) as pb:
+    with fou.ProgressBar(samples, progress=progress) as pb:
         for sample_batch in samples_loader:
             embeddings_batch = [None] * len(sample_batch)
 
@@ -991,7 +1037,13 @@ def _compute_image_embeddings_batch(
 
 
 def _compute_image_embeddings_data_loader(
-    samples, model, embeddings_field, batch_size, num_workers, skip_failures
+    samples,
+    model,
+    embeddings_field,
+    batch_size,
+    num_workers,
+    skip_failures,
+    progress,
 ):
     samples = samples.select_fields()
     samples_loader = fou.iter_batches(samples, batch_size)
@@ -1002,7 +1054,7 @@ def _compute_image_embeddings_data_loader(
     embeddings = []
     errors = False
 
-    with fou.ProgressBar(samples) as pb:
+    with fou.ProgressBar(samples, progress=progress) as pb:
         for sample_batch, imgs in zip(samples_loader, data_loader):
             embeddings_batch = [None] * len(sample_batch)
 
@@ -1042,7 +1094,7 @@ def _compute_image_embeddings_data_loader(
 
 
 def _compute_frame_embeddings_single(
-    samples, model, embeddings_field, skip_failures
+    samples, model, embeddings_field, skip_failures, progress
 ):
     samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
@@ -1050,7 +1102,7 @@ def _compute_frame_embeddings_single(
 
     embeddings_dict = {}
 
-    with fou.ProgressBar(total=total_frame_count) as pb:
+    with fou.ProgressBar(total=total_frame_count, progress=progress) as pb:
         for idx, sample in enumerate(samples):
             embeddings = []
 
@@ -1064,7 +1116,7 @@ def _compute_frame_embeddings_single(
                     sample.local_path, frames=frames
                 ) as video_reader:
                     for img in video_reader:
-                        embedding = model.embed(img)[0]
+                        embedding = model.embed(img)
 
                         if embeddings_field is not None:
                             sample.add_labels(
@@ -1101,7 +1153,7 @@ def _compute_frame_embeddings_single(
 
 
 def _compute_frame_embeddings_batch(
-    samples, model, embeddings_field, batch_size, skip_failures
+    samples, model, embeddings_field, batch_size, skip_failures, progress
 ):
     samples = samples.select_fields()
     frame_counts, total_frame_count = _get_frame_counts(samples)
@@ -1109,7 +1161,7 @@ def _compute_frame_embeddings_batch(
 
     embeddings_dict = {}
 
-    with fou.ProgressBar(total=total_frame_count) as pb:
+    with fou.ProgressBar(total=total_frame_count, progress=progress) as pb:
         for idx, sample in enumerate(samples):
             embeddings = []
 
@@ -1164,14 +1216,16 @@ def _compute_frame_embeddings_batch(
     return embeddings_dict
 
 
-def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
+def _compute_video_embeddings(
+    samples, model, embeddings_field, skip_failures, progress
+):
     samples = samples.select_fields()
     is_clips = samples._dataset._is_clips
 
     embeddings = []
     errors = False
 
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
             if is_clips:
                 frames = etaf.FrameRange(*sample.support)
@@ -1182,7 +1236,7 @@ def _compute_video_embeddings(samples, model, embeddings_field, skip_failures):
                 with etav.FFmpegVideoReader(
                     sample.local_path, frames=frames
                 ) as video_reader:
-                    embedding = model.embed(video_reader)[0]
+                    embedding = model.embed(video_reader)
 
             except Exception as e:
                 if not skip_failures:
@@ -1217,9 +1271,10 @@ def compute_patch_embeddings(
     batch_size=None,
     num_workers=None,
     skip_failures=True,
+    progress=None,
 ):
     """Computes embeddings for the image patches defined by ``patches_field``
-    of the samples in the collection using the given :class:`Model`.
+    of the samples in the collection using the given model.
 
     This method supports all the following cases:
 
@@ -1236,7 +1291,8 @@ def compute_patch_embeddings(
 
     Args:
         samples: a :class:`fiftyone.core.collections.SampleCollection`
-        model: a :class:`Model`
+        model: a :class:`Model`, Hugging Face Transformers model, Ultralytics
+            model, SuperGradients model, or Lightning Flash model
         patches_field: the name of the field defining the image patches in each
             sample to embed. Must be of type
             :class:`fiftyone.core.labels.Detection`,
@@ -1267,6 +1323,9 @@ def compute_patch_embeddings(
             Only applicable for Torch models
         skip_failures (True): whether to gracefully continue without raising an
             error if embeddings cannot be generated for a sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
 
     Returns:
         one of the following:
@@ -1285,10 +1344,10 @@ def compute_patch_embeddings(
             ``True`` and any errors are detected, this nested dict will contain
             missing or ``None`` values to indicate uncomputable embeddings
     """
+    model = _convert_model_if_necessary(model)
+
     if not isinstance(model, Model):
-        raise ValueError(
-            "Model must be a %s instance; found %s" % (Model, type(model))
-        )
+        raise ValueError("Unsupported model type: %s" % type(model))
 
     if not model.has_embeddings:
         raise ValueError(
@@ -1384,6 +1443,7 @@ def compute_patch_embeddings(
                 handle_missing,
                 batch_size,
                 skip_failures,
+                progress,
             )
 
         if use_data_loader:
@@ -1398,6 +1458,7 @@ def compute_patch_embeddings(
                 batch_size,
                 num_workers,
                 skip_failures,
+                progress,
             )
 
         return _embed_patches(
@@ -1410,6 +1471,7 @@ def compute_patch_embeddings(
             handle_missing,
             batch_size,
             skip_failures,
+            progress,
         )
 
 
@@ -1423,6 +1485,7 @@ def _embed_patches(
     handle_missing,
     batch_size,
     skip_failures,
+    progress,
 ):
     samples = samples.select_fields(patches_field)
 
@@ -1431,7 +1494,7 @@ def _embed_patches(
     else:
         embeddings_dict = {}
 
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
             embeddings = None
 
@@ -1519,6 +1582,7 @@ def _embed_patches_data_loader(
     batch_size,
     num_workers,
     skip_failures,
+    progress,
 ):
     samples = samples.select_fields(patches_field)
 
@@ -1538,7 +1602,7 @@ def _embed_patches_data_loader(
     else:
         embeddings_dict = {}
 
-    with fou.ProgressBar(samples) as pb:
+    with fou.ProgressBar(samples, progress=progress) as pb:
         for sample, patches in pb(zip(samples, data_loader)):
             embeddings = None
 
@@ -1586,6 +1650,7 @@ def _embed_frame_patches(
     handle_missing,
     batch_size,
     skip_failures,
+    progress,
 ):
     _patches_field = samples._FRAMES_PREFIX + patches_field
     samples = samples.select_fields(_patches_field)
@@ -1597,7 +1662,7 @@ def _embed_frame_patches(
     else:
         embeddings_dict = {}
 
-    with fou.ProgressBar(total=total_frame_count) as pb:
+    with fou.ProgressBar(total=total_frame_count, progress=progress) as pb:
         for idx, sample in enumerate(samples):
             if is_clips:
                 frames = etaf.FrameRange(*sample.support)
@@ -1867,6 +1932,16 @@ class Model(etal.Model):
         This method returns ``False`` by default. Methods that can generate
         embeddings will override this via implementing the
         :class:`EmbeddingsMixin` interface.
+        """
+        return False
+
+    @property
+    def can_embed_prompts(self):
+        """Whether this instance can generate prompt embeddings.
+
+        This method returns ``False`` by default. Methods that can generate
+        prompt embeddings will override this via implementing the
+        :class:`PromptMixin` interface.
         """
         return False
 
