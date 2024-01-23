@@ -1,3 +1,4 @@
+import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -5,7 +6,10 @@ import { Leva, useControls } from "leva";
 import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { Vector3 } from "three";
-import { Looker3dPluginSettings } from "../Looker3dPlugin";
+import {
+  Looker3dPluginSettings,
+  defaultPluginSettings,
+} from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import {
   ACTION_GRID,
@@ -21,6 +25,7 @@ import { useFo3d } from "../hooks";
 import { actionRenderListAtomFamily } from "../state";
 import { Fo3dEnvironment } from "./Environment";
 import { Objs } from "./Objs";
+import { Pcds } from "./Pcds";
 import {
   getMediaUrlForFo3dSample,
   getVisibilityMapFromFo3dParsed,
@@ -28,20 +33,22 @@ import {
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-type MediaTypeFo3dComponentProps = {
-  settings: Looker3dPluginSettings;
-};
+type MediaTypeFo3dComponentProps = {};
 
-export const MediaTypeFo3dComponent = ({
-  settings,
-}: MediaTypeFo3dComponentProps) => {
+export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
 
+  const settings = usePluginSettings<Looker3dPluginSettings>(
+    "3d",
+    defaultPluginSettings
+  );
+
   const defaultCameraPosition = useMemo(() => {
+    return [1, 1, 5];
     // todo: sync with local storage
     if (settings.defaultCameraPosition) {
       return new Vector3(
@@ -120,6 +127,7 @@ export const MediaTypeFo3dComponent = ({
           <Fo3dEnvironment />
 
           <Objs objs={fo3dParsed.objs} visibilityMap={visibilityMap} />
+          <Pcds pcds={fo3dParsed.pcds} visibilityMap={visibilityMap} />
         </Suspense>
       </Canvas>
     </>
