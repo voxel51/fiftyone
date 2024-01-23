@@ -1,3 +1,4 @@
+import * as fos from "@fiftyone/state";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import {
@@ -15,7 +16,6 @@ import { actionRenderListAtomFamily } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
-import * as fos from "@fiftyone/state";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewHelp } from "./ViewHelp";
@@ -28,7 +28,12 @@ export const ActionBar = ({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) => {
-  const isFo3d = useRecoilValue(fos.hasFo3dSlice);
+  const isFo3dSlice = useRecoilValue(fos.fo3dSlice);
+  const mediaType = useRecoilValue(fos.mediaType);
+  const isFo3d = useMemo(
+    () => isFo3dSlice || mediaType === "three_d",
+    [isFo3dSlice, mediaType]
+  );
   const actionBarRenderList = useRecoilValue(
     actionRenderListAtomFamily(isFo3d ? "fo3d" : "pcd")
   );
