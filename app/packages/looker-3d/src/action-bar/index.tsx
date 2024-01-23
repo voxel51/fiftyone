@@ -11,10 +11,11 @@ import {
   ACTION_VIEW_JSON,
 } from "../constants";
 import { ActionBarContainer, ActionsBar } from "../containers";
-import { actionRenderListAtom } from "../state";
+import { actionRenderListAtomFamily } from "../state";
 import { ChooseColorSpace } from "./ColorSpace";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
+import * as fos from "@fiftyone/state";
 import { SliceSelector } from "./SliceSelector";
 import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewHelp } from "./ViewHelp";
@@ -27,7 +28,10 @@ export const ActionBar = ({
   onMouseEnter: () => void;
   onMouseLeave: () => void;
 }) => {
-  const actionBarRenderList = useRecoilValue(actionRenderListAtom);
+  const isFo3d = useRecoilValue(fos.hasFo3dSlice);
+  const actionBarRenderList = useRecoilValue(
+    actionRenderListAtomFamily(isFo3d ? "fo3d" : "pcd")
+  );
   const actionNames = useMemo(
     () =>
       actionBarRenderList.map((actionCallbackPair) => actionCallbackPair[0]),

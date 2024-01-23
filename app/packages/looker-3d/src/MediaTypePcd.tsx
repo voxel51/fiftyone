@@ -29,7 +29,7 @@ import { ThreeDLabels } from "./labels";
 import { OverlayLabel } from "./labels/loader";
 import { PointCloudMesh } from "./renderables";
 import {
-  actionRenderListAtom,
+  actionRenderListAtomFamily,
   currentActionAtom,
   currentPointSizeAtom,
   customColorMapAtom,
@@ -63,7 +63,9 @@ export const MediaTypePcdComponent = ({
   const dataset = useRecoilValue(fos.dataset);
   const onSelectLabel = fos.useOnSelectLabel();
 
-  const setActionBarItems = useSetRecoilState(actionRenderListAtom);
+  const setActionBarItems = useSetRecoilState(
+    actionRenderListAtomFamily("pcd")
+  );
 
   const cameraRef = React.useRef<Camera>();
   const controlsRef = React.useRef();
