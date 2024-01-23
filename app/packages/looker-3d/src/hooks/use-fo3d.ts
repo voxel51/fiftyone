@@ -4,29 +4,29 @@ import { useMemo } from "react";
 import useSWR, { Fetcher } from "swr";
 import { FiftyoneSceneRawJson } from "../utils";
 
-interface ThreeDAsset {
+export interface ThreeDAsset {
   name: string;
   visible: boolean;
 }
 
-interface GltfReturnType extends ThreeDAsset {
+export interface GltfReturnType extends ThreeDAsset {
   gltfUrl?: string;
 }
 
-interface ObjReturnType extends ThreeDAsset {
+export interface ObjReturnType extends ThreeDAsset {
   objUrl?: string;
   mtlUrl?: string;
 }
 
-interface PcdReturnType extends ThreeDAsset {
+export interface PcdReturnType extends ThreeDAsset {
   pcdUrl?: string;
 }
 
-interface PlyReturnType extends ThreeDAsset {
+export interface PlyReturnType extends ThreeDAsset {
   plyUrl?: string;
 }
 
-interface StlReturnType extends ThreeDAsset {
+export interface StlReturnType extends ThreeDAsset {
   stlUrl?: string;
 }
 

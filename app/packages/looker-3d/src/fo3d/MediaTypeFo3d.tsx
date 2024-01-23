@@ -1,15 +1,18 @@
 import * as fos from "@fiftyone/state";
-import { OrbitControls, TransformControls } from "@react-three/drei";
+import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { Leva, useControls } from "leva";
-import { useCallback, useEffect, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
+import { Vector3 } from "three";
+import { Looker3dPluginSettings } from "../Looker3dPlugin";
 import { SpinningCube } from "../SpinningCube";
 import {
   ACTION_GRID,
   ACTION_SET_TOP_VIEW,
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
+  VOXEL51_COMPLEMENTARY_COLOR,
   VOXEL51_THEME_COLOR,
   VOXEL51_THEME_COLOR_MUTED,
 } from "../constants";
@@ -17,6 +20,7 @@ import { LevaContainer } from "../containers";
 import { useFo3d } from "../hooks";
 import { actionRenderListAtomFamily } from "../state";
 import { Fo3dEnvironment } from "./Environment";
+import { Objs } from "./Objs";
 import {
   getMediaUrlForFo3dSample,
   getVisibilityMapFromFo3dParsed,
@@ -24,12 +28,31 @@ import {
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
-export const MediaTypeFo3dComponent = () => {
+type MediaTypeFo3dComponentProps = {
+  settings: Looker3dPluginSettings;
+};
+
+export const MediaTypeFo3dComponent = ({
+  settings,
+}: MediaTypeFo3dComponentProps) => {
   const sample = useRecoilValue(fos.fo3dSample);
   const mediaField = useRecoilValue(fos.selectedMediaField(true));
 
   const jsonPanel = fos.useJSONPanel();
   const helpPanel = fos.useHelpPanel();
+
+  const defaultCameraPosition = useMemo(() => {
+    // todo: sync with local storage
+    if (settings.defaultCameraPosition) {
+      return new Vector3(
+        settings.defaultCameraPosition.x,
+        settings.defaultCameraPosition.y,
+        settings.defaultCameraPosition.z
+      );
+    } else {
+      return new Vector3(1, 1, 20);
+    }
+  }, [settings]);
 
   const setActionBarItems = useSetRecoilState(
     actionRenderListAtomFamily("fo3d")
@@ -53,19 +76,19 @@ export const MediaTypeFo3dComponent = () => {
     [mediaField, sample]
   );
 
-  const { data: fo3dParsed, isLoading } = useFo3d(mediaUrl);
+  const { data: fo3dParsed, isLoading: isParsingFo3d } = useFo3d(mediaUrl);
 
   // todo: if the object is checked expand its children as well
-  const rootVisibilityMap = useMemo(
+  const defaultVisibilityMap = useMemo(
     () => getVisibilityMapFromFo3dParsed(fo3dParsed),
     [fo3dParsed]
   );
 
-  const values = useControls("Visibility", rootVisibilityMap ?? {}, [
-    rootVisibilityMap,
+  const visibilityMap = useControls("Visibility", defaultVisibilityMap ?? {}, [
+    defaultVisibilityMap,
   ]);
 
-  if (isLoading) {
+  if (isParsingFo3d) {
     return (
       <Canvas>
         <SpinningCube />
@@ -81,6 +104,7 @@ export const MediaTypeFo3dComponent = () => {
             colors: {
               accent1: VOXEL51_THEME_COLOR_MUTED,
               accent2: VOXEL51_THEME_COLOR,
+              accent3: VOXEL51_COMPLEMENTARY_COLOR,
             },
           }}
           fill
@@ -90,15 +114,13 @@ export const MediaTypeFo3dComponent = () => {
       </LevaContainer>
 
       <Canvas id={CANVAS_WRAPPER_ID}>
-        <OrbitControls />
-        <Fo3dEnvironment />
+        <Suspense fallback={<SpinningCube />}>
+          <PerspectiveCamera makeDefault position={defaultCameraPosition} />
+          <OrbitControls />
+          <Fo3dEnvironment />
 
-        <TransformControls mode="translate">
-          <mesh>
-            <boxGeometry args={[1, 1, 1]} />
-            <meshStandardMaterial color="hotpink" />
-          </mesh>
-        </TransformControls>
+          <Objs objs={fo3dParsed.objs} visibilityMap={visibilityMap} />
+        </Suspense>
       </Canvas>
     </>
   );

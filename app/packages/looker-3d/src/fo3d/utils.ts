@@ -1,7 +1,23 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
-import { Fo3dData } from "../hooks";
+import { Fo3dData, ThreeDAsset } from "../hooks";
 
-export const getVisibilityMapFromFo3dParsed = (fo3dParsed: Fo3dData) => {
+export const getIdentifierForAsset = (asset: ThreeDAsset): string => {
+  const assetUrlProperty = Object.keys(asset).find((key) =>
+    key.endsWith("Url")
+  );
+
+  if (!assetUrlProperty) {
+    return asset.name ?? `unknown-${asset.constructor.name}`;
+  }
+
+  return asset.name.length > 0
+    ? asset.name
+    : asset[assetUrlProperty].split("/").pop();
+};
+
+export const getVisibilityMapFromFo3dParsed = (
+  fo3dParsed: Fo3dData
+): Record<string, boolean> => {
   if (!fo3dParsed) return null;
 
   const { gltfs, objs, stls, pcds, plys } = fo3dParsed;
@@ -9,29 +25,23 @@ export const getVisibilityMapFromFo3dParsed = (fo3dParsed: Fo3dData) => {
   const visibilityMap = {};
 
   for (const gltf of gltfs) {
-    const key =
-      gltf.name.length > 0 ? gltf.name : gltf.gltfUrl.split("/").pop();
-    visibilityMap[key] = true;
+    visibilityMap[getIdentifierForAsset(gltf)] = true;
   }
 
   for (const obj of objs) {
-    const key = obj.name.length > 0 ? obj.name : obj.objUrl.split("/").pop();
-    visibilityMap[key] = true;
+    visibilityMap[getIdentifierForAsset(obj)] = true;
   }
 
   for (const stl of stls) {
-    const key = stl.name.length > 0 ? stl.name : stl.stlUrl.split("/").pop();
-    visibilityMap[key] = true;
+    visibilityMap[getIdentifierForAsset(stl)] = true;
   }
 
   for (const pcd of pcds) {
-    const key = pcd.name.length > 0 ? pcd.name : pcd.pcdUrl.split("/").pop();
-    visibilityMap[key] = true;
+    visibilityMap[getIdentifierForAsset(pcd)] = true;
   }
 
   for (const ply of plys) {
-    const key = ply.name.length > 0 ? ply.name : ply.plyUrl.split("/").pop();
-    visibilityMap[key] = true;
+    visibilityMap[getIdentifierForAsset(ply)] = true;
   }
 
   return visibilityMap;
