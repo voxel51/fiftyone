@@ -1,6 +1,6 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
-import { atom } from "recoil";
+import { atom, atomFamily } from "recoil";
 import { ACTION_GRID, SHADE_BY_HEIGHT } from "./constants";
 import { Actions, ShadeBy } from "./types";
 
@@ -25,7 +25,10 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
   ],
 });
 
-export const actionRenderListAtom = atom<[string, any[] | null][]>({
+export const actionRenderListAtomFamily = atomFamily<
+  [string, any[] | null][],
+  "pcd" | "fo3d"
+>({
   key: "actionRenderList",
   default: [],
 });
