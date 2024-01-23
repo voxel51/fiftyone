@@ -26,6 +26,7 @@ import { actionRenderListAtomFamily } from "../state";
 import { Fo3dEnvironment } from "./Environment";
 import { Objs } from "./Objs";
 import { Pcds } from "./Pcds";
+import { Plys } from "./Plys";
 import {
   getMediaUrlForFo3dSample,
   getVisibilityMapFromFo3dParsed,
@@ -48,7 +49,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   );
 
   const defaultCameraPosition = useMemo(() => {
-    return [1, 1, 5];
+    return new Vector3(1, 1, 5);
     // todo: sync with local storage
     if (settings.defaultCameraPosition) {
       return new Vector3(
@@ -128,6 +129,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
           <Objs objs={fo3dParsed.objs} visibilityMap={visibilityMap} />
           <Pcds pcds={fo3dParsed.pcds} visibilityMap={visibilityMap} />
+          <Plys plys={fo3dParsed.plys} visibilityMap={visibilityMap} />
         </Suspense>
       </Canvas>
     </>
