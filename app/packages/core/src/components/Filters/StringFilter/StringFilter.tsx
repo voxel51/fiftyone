@@ -106,6 +106,7 @@ const StringFilter = ({
             placeholder={`+ ${
               isFilterMode ? "filter" : "set visibility"
             } by ${name}`}
+            cy={`sidebar-search-${path}`}
             component={ResultComponent}
             onSelect={onSelect}
             inputStyle={{

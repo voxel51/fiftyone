@@ -228,6 +228,10 @@ class SampleSingleton(DocumentSingleton):
             for sample in samples.values():
                 sample._reset_backing_doc()
 
+    def _clear(cls, collection_name):
+        """Removes all samples for the given collection from the cache."""
+        cls._instances.pop(collection_name, None)
+
 
 class FrameSingleton(DocumentSingleton):
     """Singleton metaclass for :class:`fiftyone.core.frame.Frame`.
@@ -501,3 +505,7 @@ class FrameSingleton(DocumentSingleton):
 
         for sample_id, fn in reset:
             samples[sample_id].pop(fn)
+
+    def _clear(cls, collection_name):
+        """Removes all frames for the given collection from the cache."""
+        cls._instances.pop(collection_name, None)

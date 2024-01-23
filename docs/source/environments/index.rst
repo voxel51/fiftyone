@@ -524,37 +524,37 @@ On Mac or Windows, use `mongodb://host.docker.internal` for your URI.
 Cloud storage
 _____________
 
-You can work with data in cloud storage buckets in FiftyOne by mounting the
-buckets as local drives on a cloud compute instance.
+For prototyping, it is *possible* to work with data in cloud storage buckets in
+FiftyOne by mounting the buckets as local drives.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
 :ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>`
 environments.
 
-.. note::
+.. warning::
 
-    Want native cloud data support?
+    Mounting cloud buckets using the techniques below is not performant and is
+    not recommended or officially supported. It is useful only for prototyping.
 
-    `Contact us <https://voxel51.com/get-fiftyone-teams>`_ about
-    :ref:`FiftyOne Teams <fiftyone-teams>`, an open source-compatible
-    enterprise deployment of FiftyOne with multiuser collaboration features,
-    native cloud dataset support, and much more!
+    Our recommended, scalable approach to work with cloud-backed data is
+    :ref:`FiftyOne Teams <fiftyone-teams>`, an enterprise deployment of
+    FiftyOne with multiuser collaboration features, native cloud dataset
+    support, and much more!
 
 .. _aws:
 
 AWS
 ~~~
 
-If your data is stored in an AWS S3 bucket, we recommend mounting the bucket as
-a local drive on an EC2 instance and then accessing the data using the standard
-workflow for remote data.
+If your data is stored in an AWS S3 bucket, you can mount the bucket as a local
+drive on an EC2 instance and then access the data using the standard workflow
+for remote data.
 
 The steps below outline the process.
 
 **Step 1**
 
 `Create an EC2 instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_.
-We recommend a Linux instance.
 
 **Step 2**
 
@@ -575,10 +575,9 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
 Mount the S3 bucket as a local drive.
 
-We recommend using `s3fs-fuse <https://github.com/s3fs-fuse/s3fs-fuse>`_ for
-this. You will need to make a `.passwd-s3fs` file that contains your AWS
-credentials as outlined in the
-`s3fs-fuse README <https://github.com/s3fs-fuse/s3fs-fuse>`_.
+You can use `s3fs-fuse <https://github.com/s3fs-fuse/s3fs-fuse>`_ to do this.
+You will need to make a `.passwd-s3fs` file that contains your AWS credentials
+as outlined in the `s3fs-fuse README <https://github.com/s3fs-fuse/s3fs-fuse>`_.
 
 .. code-block:: shell
 
@@ -599,16 +598,15 @@ it locally in your browser using :ref:`remote sessions <remote-data>`.
 Google Cloud
 ~~~~~~~~~~~~
 
-If your data is stored in a Google Cloud storage bucket, we recommend mounting
-the bucket as a local drive on a GC compute instance and then accessing the
-data using the standard workflow for remote data.
+If your data is stored in a Google Cloud storage bucket, you can mount the
+bucket as a local drive on a GC compute instance and then access the data using
+the standard workflow for remote data.
 
 The steps below outline the process.
 
 **Step 1**
 
 `Create a GC compute instance <https://cloud.google.com/compute/docs/quickstart-linux>`_.
-We recommend a Linux instance.
 
 **Step 2**
 
@@ -629,8 +627,8 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
 Mount the GCS bucket as a local drive.
 
-We recommend using `gcsfuse <https://github.com/GoogleCloudPlatform/gcsfuse>`_
-to do this:
+You can use `gcsfuse <https://github.com/GoogleCloudPlatform/gcsfuse>`_ to do
+this:
 
 .. code-block:: shell
 
@@ -649,20 +647,20 @@ it locally in your browser using :ref:`remote sessions <remote-data>`.
 Microsoft Azure
 ~~~~~~~~~~~~~~~
 
-If your data is stored in an Azure storage bucket, we recommend mounting the
-bucket as a local drive on an Azure compute instance and then accessing the
-data using the standard workflow for remote data.
+If your data is stored in an Azure storage bucket, you can mount the bucket as
+a local drive on an Azure compute instance and then access the data using the
+standard workflow for remote data.
 
 The steps below outline the process.
 
 **Step 1**
 
 `Create an Azure compute instance <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal>`_.
-We recommend a Linux instance.
 
 **Step 2**
 
-Now `ssh into the instance <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal#connect-to-virtual-machine>`_
+Now
+`ssh into the instance <https://docs.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-portal#connect-to-virtual-machine>`_
 and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
 .. code-block:: shell
@@ -679,9 +677,8 @@ and :ref:`install FiftyOne <installing-fiftyone>` if necessary.
 
 Mount the Azure storage container in the instance.
 
-This is fairly straight forward if your data is stored in a blob container.
-We recommend using `blobfuse <https://github.com/Azure/azure-storage-fuse>`_
-for this.
+This is fairly straightforward if your data is stored in a blob container.
+You can use `blobfuse <https://github.com/Azure/azure-storage-fuse>`_ for this.
 
 **Step 4**
 

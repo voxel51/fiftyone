@@ -213,6 +213,7 @@ from .core.utils import (
     disable_progress_bars,
     pprint,
     pformat,
+    report_progress,
     ProgressBar,
 )
 from .core.view import DatasetView

@@ -166,7 +166,13 @@ class COCOEvaluation(DetectionEvaluation):
         return _coco_evaluation_single_iou(gts, preds, eval_key, self.config)
 
     def generate_results(
-        self, samples, matches, eval_key=None, classes=None, missing=None
+        self,
+        samples,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+        progress=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -188,6 +194,9 @@ class COCOEvaluation(DetectionEvaluation):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`DetectionResults`
@@ -209,7 +218,9 @@ class COCOEvaluation(DetectionEvaluation):
             thresholds,
             iou_threshs,
             classes,
-        ) = _compute_pr_curves(samples, self.config, classes=classes)
+        ) = _compute_pr_curves(
+            samples, self.config, classes=classes, progress=progress
+        )
 
         return COCODetectionResults(
             samples,
@@ -633,7 +644,7 @@ def _compute_matches(
     return matches
 
 
-def _compute_pr_curves(samples, config, classes=None):
+def _compute_pr_curves(samples, config, classes=None, progress=None):
     gt_field = config.gt_field
     pred_field = config.pred_field
     iou_threshs = config.iou_threshs
@@ -650,7 +661,7 @@ def _compute_pr_curves(samples, config, classes=None):
         _classes = set()
 
     logger.info("Performing IoU sweep...")
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:

@@ -1,10 +1,10 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
+import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
-import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -57,6 +57,12 @@ export class ModalPom {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",
       () => true
+    );
+  }
+
+  getSampleNavigation(direction: "forward" | "backward") {
+    return this.locator.getByTestId(
+      `nav-${direction === "forward" ? "right" : "left"}-button`
     );
   }
 
@@ -234,5 +240,10 @@ class ModalAsserter {
       .getByTestId("looker")
       .count();
     expect(actualLookerCount).toBe(expectedCount);
+  }
+
+  async verifySampleNavigation(direction: "forward" | "backward") {
+    const navigation = this.modalPom.getSampleNavigation(direction);
+    await expect(navigation).toBeVisible();
   }
 }

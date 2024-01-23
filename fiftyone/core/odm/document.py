@@ -306,9 +306,12 @@ class MongoEngineBaseDocument(SerializableDocument):
     def get_field(self, field_name):
         chunks = field_name.split(".", 1)
         if len(chunks) > 1:
-            value = getattr(self, chunks[0])
-            if value is not None:
-                return value.get_field(chunks[1])
+            try:
+                value = getattr(self, chunks[0])
+                if value is not None:
+                    return value.get_field(chunks[1])
+            except AttributeError:
+                pass
 
             if self.has_field(field_name):
                 return None
