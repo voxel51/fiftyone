@@ -56,7 +56,7 @@ class BatcherTests(unittest.TestCase):
             ):
                 batcher = fou.get_default_batcher(iterable)
                 self.assertTrue(
-                    isinstance(batcher, fou.BSONSizeDynamicBatcher)
+                    isinstance(batcher, fou.ContentSizeDynamicBatcher)
                 )
                 self.assertEqual(batcher.target_measurement, target_size)
 
@@ -79,6 +79,55 @@ class BatcherTests(unittest.TestCase):
         with batcher:
             batches = [batch for batch in batcher]
             self.assertListEqual(batches, [iterable])
+
+    @drop_datasets
+    def test_batching_static_default(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_static_custom(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            with patch.object(fo.config, "batcher_static_size", 1):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_default(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_custom(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_latency", 1e-6):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_default(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_custom(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_size_bytes", 1):
+                self._test_batching()
+
+    def _test_batching(self):
+        n = 100
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample(filepath=f"{i}.jpg") for i in range(n)])
+
+        embeddings = np.random.randn(n, 512)
+        dataset.set_values("embeddings", embeddings)
+
+        self.assertEqual(len(dataset), n)
+        self.assertEqual(len(dataset.exists("embeddings")), n)
+
+        sample = dataset.view().first()
+        self.assertIsInstance(sample.embeddings, np.ndarray)
 
 
 class CoreUtilsTests(unittest.TestCase):
@@ -452,6 +501,44 @@ class TestLoadDataset(unittest.TestCase):
         mock_get_db_conn.assert_called_once()
         mock_db.datasets.find_one.assert_called_once_with(
             {"_id": identifier}, {"name": True}
+        )
+
+
+class ProgressBarTests(unittest.TestCase):
+    def _test_correct_value(self, progress, global_progress, quiet, expected):
+        with fou.SetAttributes(fo.config, show_progress_bars=global_progress):
+            with fou.ProgressBar([], progress=progress, quiet=quiet) as pb:
+                assert pb._progress == expected
+
+    def test_progress_none_uses_global(self):
+        self._test_correct_value(
+            progress=None, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=None, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_progress_overwrites_global(self):
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=True, global_progress=False, quiet=None, expected=True
+        )
+        self._test_correct_value(
+            progress=False, global_progress=True, quiet=None, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=None, expected=False
+        )
+
+    def test_quiet_overwrites_all(self):
+        # Careful, we expect here to have progress the opposite value of quiet
+        self._test_correct_value(
+            progress=True, global_progress=True, quiet=True, expected=False
+        )
+        self._test_correct_value(
+            progress=False, global_progress=False, quiet=False, expected=True
         )
 
 

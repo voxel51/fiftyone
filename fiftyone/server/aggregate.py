@@ -114,6 +114,7 @@ HistogramValuesResponses = gql.union(
     ),
 )
 
+
 HISTOGRAM_VALUES_TYPES = {
     fo.DateField,
     fo.DateTimeField,

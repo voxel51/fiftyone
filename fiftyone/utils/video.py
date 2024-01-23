@@ -101,6 +101,7 @@ def reencode_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Re-encodes the videos in the sample collection as H.264 MP4s that can be
@@ -156,6 +157,9 @@ def reencode_videos(
             an error if a video cannot be re-encoded
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -172,6 +176,7 @@ def reencode_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -194,6 +199,7 @@ def transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Transforms the videos in the sample collection according to the provided
@@ -262,6 +268,9 @@ def transform_videos(
             an error if a video cannot be transformed
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -284,6 +293,7 @@ def transform_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -307,6 +317,7 @@ def sample_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     """Samples the videos in the sample collection into directories of
@@ -408,6 +419,9 @@ def sample_videos(
             an error if a video cannot be sampled
         verbose (False): whether to log the ``ffmpeg`` commands that are
             executed
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for ``eta.core.video.FFmpeg(**kwargs)``
     """
     fov.validate_video_collection(sample_collection)
@@ -432,6 +446,7 @@ def sample_videos(
         delete_originals=delete_originals,
         skip_failures=skip_failures,
         verbose=verbose,
+        progress=progress,
         **kwargs,
     )
 
@@ -735,6 +750,7 @@ def _transform_videos(
     delete_originals=False,
     skip_failures=False,
     verbose=False,
+    progress=None,
     **kwargs,
 ):
     if output_field is None:
@@ -755,7 +771,7 @@ def _transform_videos(
     if frames is None:
         frames = itertools.repeat(None)
 
-    with fou.ProgressBar(total=len(view)) as pb:
+    with fou.ProgressBar(total=view, progress=progress) as pb:
         for sample, _frames in pb(zip(view, frames)):
             inpath = sample[media_field]
 
@@ -927,7 +943,7 @@ def _transform_video(
         if frames is not None:
             inpath = fos.to_readable(inpath)
             outdir, patt = os.path.split(outpath)
-            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+            with fos.LocalDir(outdir, "w", progress=False) as local_dir:
                 local_patt = os.path.join(local_dir, patt)
                 etav.sample_select_frames(
                     inpath,
@@ -940,7 +956,7 @@ def _transform_video(
             did_transform = True
         elif not etav.is_video_mime_type(inpath):
             indir, patt = os.path.split(inpath)
-            with fos.LocalDir(indir, "r", quiet=True) as local_dir:
+            with fos.LocalDir(indir, "r", progress=False) as local_dir:
                 local_inpath = os.path.join(local_dir, patt)
                 with fos.LocalFile(outpath, "w") as local_outpath:
                     with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
@@ -952,7 +968,7 @@ def _transform_video(
         elif not etav.is_video_mime_type(outpath):
             inpath = fos.to_readable(inpath)
             outdir, patt = os.path.split(outpath)
-            with fos.LocalDir(outdir, "w", quiet=True) as local_dir:
+            with fos.LocalDir(outdir, "w", progress=False) as local_dir:
                 local_path = os.path.join(local_dir, patt)
                 with etav.FFmpeg(fps=fps, size=size, **kwargs) as ffmpeg:
                     ffmpeg.run(inpath, local_path, verbose=verbose)

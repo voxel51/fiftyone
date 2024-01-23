@@ -312,6 +312,7 @@ def compute_metadata(
     num_workers=None,
     skip_failures=True,
     warn_failures=False,
+    progress=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -327,6 +328,9 @@ def compute_metadata(
             error if metadata cannot be computed for a sample
         warn_failures (False): whether to log a warning if metadata cannot
             be computed for a sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -339,10 +343,15 @@ def compute_metadata(
         )
 
     if num_workers <= 1:
-        _compute_metadata(sample_collection, overwrite=overwrite)
+        _compute_metadata(
+            sample_collection, overwrite=overwrite, progress=progress
+        )
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
+            progress=progress,
         )
 
     if skip_failures and not warn_failures:
@@ -451,7 +460,9 @@ def get_image_info(f):
     return width, height, len(img.getbands())
 
 
-def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
+def _compute_metadata(
+    sample_collection, overwrite=False, batch_size=1000, progress=None
+):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -470,7 +481,7 @@ def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
     values = {}
 
     try:
-        with fou.ProgressBar(total=num_samples) as pb:
+        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
             for args in pb(inputs):
                 sample_id, metadata = _do_compute_metadata(args)
                 values[sample_id] = metadata
@@ -484,7 +495,11 @@ def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
 
 
 def _compute_metadata_multi(
-    sample_collection, num_workers, overwrite=False, batch_size=1000
+    sample_collection,
+    num_workers,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -505,7 +520,7 @@ def _compute_metadata_multi(
 
     try:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_samples) as pb:
+            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
                 for sample_id, metadata in pb(
                     pool.imap_unordered(_do_compute_metadata, inputs)
                 ):

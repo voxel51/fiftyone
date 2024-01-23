@@ -36,6 +36,7 @@ def evaluate_segmentations(
     eval_key=None,
     mask_targets=None,
     method=None,
+    progress=None,
     **kwargs,
 ):
     """Evaluates the specified semantic segmentation masks in the given
@@ -86,6 +87,9 @@ def evaluate_segmentations(
             supported values are
             ``fo.evaluation_config.segmentation_backends.keys()`` and the
             default is ``fo.evaluation_config.default_segmentation_backend``
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments for the constructor of the
             :class:`SegmentationEvaluationConfig` being used
 
@@ -104,7 +108,10 @@ def evaluate_segmentations(
     eval_method.register_samples(samples, eval_key)
 
     results = eval_method.evaluate_samples(
-        samples, eval_key=eval_key, mask_targets=mask_targets
+        samples,
+        eval_key=eval_key,
+        mask_targets=mask_targets,
+        progress=progress,
     )
     eval_method.save_run_results(samples, eval_key, results)
 
@@ -177,7 +184,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
             if processing_frames:
                 dataset.add_frame_field(dice_field, fof.FloatField)
 
-    def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
+    def evaluate_samples(
+        self, samples, eval_key=None, mask_targets=None, progress=None
+    ):
         """Evaluates the predicted segmentation masks in the given samples with
         respect to the specified ground truth masks.
 
@@ -188,6 +197,9 @@ class SegmentationEvaluation(foe.EvaluationMethod):
                 contain a subset of the possible classes if you wish to
                 evaluate a subset of the semantic classes. By default, the
                 observed pixel values are used as labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`SegmentationResults` instance
@@ -311,7 +323,9 @@ class SimpleEvaluation(SegmentationEvaluation):
         config: a :class:`SimpleEvaluationConfig`
     """
 
-    def evaluate_samples(self, samples, eval_key=None, mask_targets=None):
+    def evaluate_samples(
+        self, samples, eval_key=None, mask_targets=None, progress=None
+    ):
         pred_field = self.config.pred_field
         gt_field = self.config.gt_field
 
@@ -324,7 +338,9 @@ class SimpleEvaluation(SegmentationEvaluation):
             values, classes = zip(*sorted(mask_targets.items()))
         else:
             logger.info("Computing possible mask values...")
-            values, classes = _get_mask_values(samples, pred_field, gt_field)
+            values, classes = _get_mask_values(
+                samples, pred_field, gt_field, progress=progress
+            )
 
         _samples = samples.select_fields([gt_field, pred_field])
         _samples.download_media(media_fields=[gt_field, pred_field])
@@ -347,7 +363,7 @@ class SimpleEvaluation(SegmentationEvaluation):
                 dice_field = "%s_dice" % eval_key
 
         logger.info("Evaluating segmentations...")
-        for sample in _samples.iter_samples(progress=True):
+        for sample in _samples.iter_samples(progress=progress):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -592,7 +608,7 @@ def _compute_accuracy_precision_recall(confusion_matrix, values, average):
     return metrics["accuracy"], metrics["precision"], metrics["recall"]
 
 
-def _get_mask_values(samples, pred_field, gt_field):
+def _get_mask_values(samples, pred_field, gt_field, progress=None):
     _samples = samples.select_fields([gt_field, pred_field])
     pred_field, processing_frames = samples._handle_frame_field(pred_field)
     gt_field, _ = samples._handle_frame_field(gt_field)
@@ -600,7 +616,7 @@ def _get_mask_values(samples, pred_field, gt_field):
     values = set()
     is_rgb = False
 
-    for sample in _samples.iter_samples(progress=True):
+    for sample in _samples.iter_samples(progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:

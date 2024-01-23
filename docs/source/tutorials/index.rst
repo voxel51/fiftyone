@@ -131,6 +131,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/pointe.png
     :tags: Dataset-Curation,Filtering,Visualization
 
+.. customcarditem::
+    :header: Monocular Depth Estimation with Hugging Face
+    :description: Metrics for monocular depth estimation can be deceiving. Run MDE models on your data and visualize their predictions with FiftyOne.
+    :link: monocular_depth_estimation.html
+    :image: ../_static/images/tutorials/monocular_depth_estimation.png
+    :tags: Model-Evaluation,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -169,3 +176,4 @@ your datasets and turn your good models into *great models*.
    Embeddings with Qdrant <qdrant.ipynb>
    Fine-tuning YOLOv8 models <yolov8.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
+   Monocular depth estimation <monocular_depth_estimation.ipynb>

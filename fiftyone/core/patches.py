@@ -862,8 +862,14 @@ def _make_patches_view(
         root: True,
     }
 
+    if "." in field:
+        project[field.split(".", 1)[0] + "._cls"] = True  # embedded fields
+
     if other_fields is not None:
-        project.update({f: True for f in other_fields})
+        for f in other_fields:
+            project[f] = True
+            if "." in f:
+                project[f.split(".", 1)[0] + "._cls"] = True  # embedded fields
 
     if sample_collection._is_frames:
         project["_sample_id"] = True
