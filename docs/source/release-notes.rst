@@ -25,6 +25,9 @@ Bugs
   :ref:`CVAT <cvat-integration>` for annotation
 - Fixed an issue where API requests were not being prefixed with the correct
   proxy URL
+- Fixed running
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>` over API
+  connections with the :ref:`MongoDB backend <mongodb-integration>`
 
 .. _release-notes-v0.23.3:
 
@@ -74,8 +77,8 @@ Brain
 - Added support for passing model kwargs to
   :func:`compute_similarity() <fiftyone.brain.compute_similarity>` and
   :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
-- Fixed issues with similarity searches on views using the
-  :ref:`MongoDB backend <mongodb-integration>`
+- Fixed issues with similarity searches on views and with pre-computed embeddings
+  using the :ref:`MongoDB backend <mongodb-integration>`
 
 Core
 
