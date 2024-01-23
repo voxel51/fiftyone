@@ -29,9 +29,11 @@ export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
       .map((obj) => {
         const { objUrl, mtlUrl } = obj;
         return (
-          <ObjErrorBoundary>
-            <ObjMesh key={objUrl} objUrl={objUrl} mtlUrl={mtlUrl} />
-          </ObjErrorBoundary>
+          <group key={objUrl}>
+            <ObjErrorBoundary>
+              <ObjMesh objUrl={objUrl} mtlUrl={mtlUrl} />
+            </ObjErrorBoundary>
+          </group>
         );
       });
   }, [objs, visibilityMap]);

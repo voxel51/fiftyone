@@ -22,9 +22,11 @@ export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
       .map((pcd) => {
         const { pcdUrl } = pcd;
         return (
-          <PcdErrorBoundary>
-            <PcdMesh key={pcdUrl} pcdUrl={pcdUrl} />
-          </PcdErrorBoundary>
+          <group key={pcdUrl}>
+            <PcdErrorBoundary>
+              <PcdMesh pcdUrl={pcdUrl} />
+            </PcdErrorBoundary>
+          </group>
         );
       });
   }, [pcds, visibilityMap]);
