@@ -18,8 +18,10 @@
         "@mui/material": "^5.15.5",
         "@react-three/drei": "^9.96.1",
         "@react-three/fiber": "^8.15.14",
+        "leva": "^0.9.35",
         "lodash": "^4.17.21",
         "react-color": "^2.19.3",
+        "recoil": "^0.7.7",
         "styled-components": "^6.1.8",
         "swr": "^2.2.4",
         "three": "^0.160.1"
