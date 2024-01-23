@@ -3,12 +3,12 @@ import { generateSchema } from "../utils";
 import DynamicIO from "./DynamicIO";
 
 export default function InferredView(props) {
-  const { data, schema } = props;
-  const readOnly = schema?.readOnly || schema?.view?.readOnly;
-  const generatedSchema = generateSchema(data || schema?.default, {
-    label: schema?.view?.label,
-    readOnly,
+  const { schema = {} } = props;
+  const { view = {}, default: defaultValue, readOnly } = schema;
+  const generatedSchema = generateSchema(defaultValue, {
+    label: view.label,
+    readOnly: readOnly || view.readOnly,
   });
-
-  return <DynamicIO {...props} schema={generatedSchema} />;
+  const schemaWithDefault = { ...generatedSchema, default: defaultValue };
+  return <DynamicIO {...props} schema={schemaWithDefault} />;
 }

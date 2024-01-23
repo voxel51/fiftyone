@@ -62,7 +62,7 @@ export function resolveURL(params: {
   }
 
   // go to dataset
-  return `${path}/datasets/${encodeURIComponent(
-    params.nextDataset
-  )}${newSearch}`;
+  return `${
+    path.endsWith("/") ? path.slice(0, -1) : path
+  }/datasets/${encodeURIComponent(params.nextDataset)}${newSearch}`;
 }

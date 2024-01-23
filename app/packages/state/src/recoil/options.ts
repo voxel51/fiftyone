@@ -24,13 +24,14 @@ export const selectedMediaFieldAtomFamily = graphQLSyncFragmentAtomFamily<
     fragments: [datasetFragment, mediaFieldsFragment],
     keys: ["dataset"],
     default: "filepath",
-    read: (data, prev) => {
+    read: (data, prev, modal) => {
+      const key = modal ? "modalMediaField" : "gridMediaField";
       if (!data || data.name !== prev?.name)
         // reset to configured default on dataset change
         return data.sampleFields
           .map((field) => field.path)
-          .includes(data.appConfig.gridMediaField)
-          ? data.appConfig.gridMediaField
+          .includes(data.appConfig[key])
+          ? data.appConfig[key]
           : "filepath";
 
       // return the stored value

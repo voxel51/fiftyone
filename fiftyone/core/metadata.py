@@ -55,7 +55,9 @@ class Metadata(DynamicEmbeddedDocument):
         Returns:
             a :class:`Metadata`
         """
-        if fos.is_local(path):
+        path, is_local = fo.media_cache.use_cached_path(path)
+
+        if is_local:
             return cls._build_for_local(path, mime_type=mime_type)
 
         url = fos.get_url(path)
@@ -121,10 +123,12 @@ class ImageMetadata(Metadata):
         if not etau.is_str(img_or_path):
             return cls._build_for_img(img_or_path, mime_type=mime_type)
 
-        if fos.is_local(img_or_path):
-            return cls._build_for_local(img_or_path, mime_type=mime_type)
+        img_path, is_local = fo.media_cache.use_cached_path(img_or_path)
 
-        url = fos.get_url(img_or_path)
+        if is_local:
+            return cls._build_for_local(img_path, mime_type=mime_type)
+
+        url = fos.get_url(img_path)
         return cls._build_for_url(url, mime_type=mime_type)
 
     @classmethod
@@ -223,7 +227,9 @@ class VideoMetadata(Metadata):
         Returns:
             a :class:`VideoMetadata`
         """
-        if fos.is_local(video_path):
+        video_path, is_local = fo.media_cache.use_cached_path(video_path)
+
+        if is_local:
             return cls._build_for_local(video_path, mime_type=mime_type)
 
         url = fos.get_url(video_path)
@@ -306,6 +312,7 @@ def compute_metadata(
     num_workers=None,
     skip_failures=True,
     warn_failures=False,
+    progress=None,
 ):
     """Populates the ``metadata`` field of all samples in the collection.
 
@@ -321,6 +328,9 @@ def compute_metadata(
             error if metadata cannot be computed for a sample
         warn_failures (False): whether to log a warning if metadata cannot
             be computed for a sample
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
@@ -333,10 +343,15 @@ def compute_metadata(
         )
 
     if num_workers <= 1:
-        _compute_metadata(sample_collection, overwrite=overwrite)
+        _compute_metadata(
+            sample_collection, overwrite=overwrite, progress=progress
+        )
     else:
         _compute_metadata_multi(
-            sample_collection, num_workers, overwrite=overwrite
+            sample_collection,
+            num_workers,
+            overwrite=overwrite,
+            progress=progress,
         )
 
     if skip_failures and not warn_failures:
@@ -445,7 +460,9 @@ def get_image_info(f):
     return width, height, len(img.getbands())
 
 
-def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
+def _compute_metadata(
+    sample_collection, overwrite=False, batch_size=1000, progress=None
+):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
 
@@ -464,7 +481,7 @@ def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
     values = {}
 
     try:
-        with fou.ProgressBar(total=num_samples) as pb:
+        with fou.ProgressBar(total=num_samples, progress=progress) as pb:
             for args in pb(inputs):
                 sample_id, metadata = _do_compute_metadata(args)
                 values[sample_id] = metadata
@@ -478,7 +495,11 @@ def _compute_metadata(sample_collection, overwrite=False, batch_size=1000):
 
 
 def _compute_metadata_multi(
-    sample_collection, num_workers, overwrite=False, batch_size=1000
+    sample_collection,
+    num_workers,
+    overwrite=False,
+    batch_size=1000,
+    progress=None,
 ):
     if not overwrite:
         sample_collection = sample_collection.exists("metadata", False)
@@ -499,7 +520,7 @@ def _compute_metadata_multi(
 
     try:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_samples) as pb:
+            with fou.ProgressBar(total=num_samples, progress=progress) as pb:
                 for sample_id, metadata in pb(
                     pool.imap_unordered(_do_compute_metadata, inputs)
                 ):

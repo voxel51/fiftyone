@@ -1,3 +1,6 @@
 # Shared GraphQL schema requires approval from both frontend and backend
 
 /package/graphql @voxel51/backend-devs @voxel51/frontend-devs
+
+# deployment is really an Aloha Shirt thing
+/deployment @voxel51/aloha-shirts

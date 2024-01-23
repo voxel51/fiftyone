@@ -20,6 +20,7 @@ import yarl
 
 import eta.core.utils as etau
 
+import fiftyone as fo
 from fiftyone.core.service import MediaCacheService
 from fiftyone.core.config import HTTPRetryConfig
 import fiftyone.core.storage as fos
@@ -143,6 +144,29 @@ class MediaCache(object):
         fs, _, exists, _ = self._parse_filepath(filepath)
         return fs == fos.FileSystem.LOCAL or exists
 
+    def use_cached_path(self, filepath):
+        """Converts ``filepath`` to local path if it exists, otherwise
+        returns ``filepath``. Also returns whether the returned path is local.
+
+        Args:
+            filepath: a filepath
+
+        Returns:
+            Tuple of the (possibly locally-cached) filepath, and whether the
+            returned path is local
+        """
+        # Function will report exists as True if we have previously
+        #   failed to download it, so we must override that protection. In this
+        #   function, we'd prefer to err on the side of returning the original
+        #   unless we're certain the local path exists.
+        fs, local_path, exists, _ = self._parse_filepath(
+            filepath, check_exists=True, override_retry_protection=True
+        )
+        if fs == fos.FileSystem.LOCAL or exists:
+            return local_path, True
+        else:
+            return filepath, False
+
     def get_remote_file_metadata(self, filepath, skip_failures=True):
         """Retrieves the file metadata for the given remote file, if possible.
 
@@ -164,7 +188,12 @@ class MediaCache(object):
 
         return metadata
 
-    def get_remote_file_metadatas(self, filepaths, skip_failures=True):
+    def get_remote_file_metadatas(
+        self,
+        filepaths,
+        skip_failures=True,
+        progress=None,
+    ):
         """Returns a dictionary mapping any uncached remote filepaths in the
         provided list to file metadata dicts retrieved from the remote source.
 
@@ -175,6 +204,9 @@ class MediaCache(object):
             filepaths: an iterable of filepaths
             skip_failures (True): whether to gracefully continue without
                 raising an error if a file's metadata cannot be computed
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a dict mapping filepaths to file metadata dicts or ``None``
@@ -194,7 +226,7 @@ class MediaCache(object):
         if not tasks:
             return {}
 
-        return _get_file_metadata(tasks, self.num_workers)
+        return _get_file_metadata(tasks, self.num_workers, progress)
 
     def get_remote_metadata(self, filepath, skip_failures=True):
         """Retrieves the :class:`fiftyone.core.metadata.Metadata` instance for
@@ -213,7 +245,9 @@ class MediaCache(object):
 
         return metadata
 
-    def get_remote_metadatas(self, filepaths, skip_failures=True):
+    def get_remote_metadatas(
+        self, filepaths, skip_failures=True, progress=None
+    ):
         """Returns a dictionary mapping any uncached remote filepaths in the
         provided list to :class:`fiftyone.core.metadata.Metadata` instances
         computed from the remote source.
@@ -225,6 +259,9 @@ class MediaCache(object):
             filepaths: an iterable of filepaths
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file's metadata cannot be computed
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a dict mapping remote filepaths to
@@ -245,7 +282,7 @@ class MediaCache(object):
         if not tasks:
             return {}
 
-        return _get_metadata(tasks, self.num_workers)
+        return _get_metadata(tasks, self.num_workers, progress)
 
     def get_local_path(self, filepath, download=True, skip_failures=True):
         """Retrieves the local path for the given file.
@@ -282,7 +319,13 @@ class MediaCache(object):
 
         return local_path
 
-    def get_local_paths(self, filepaths, download=True, skip_failures=True):
+    def get_local_paths(
+        self,
+        filepaths,
+        download=True,
+        skip_failures=True,
+        progress=None,
+    ):
         """Retrieves the local paths for the given files.
 
         Args:
@@ -290,6 +333,9 @@ class MediaCache(object):
             download (True): whether to download uncached remote files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             the list of local filepaths
@@ -313,7 +359,7 @@ class MediaCache(object):
                 tasks.append(task)
 
         if tasks:
-            _download_media(tasks, self.num_workers)
+            _download_media(tasks, self.num_workers, progress)
 
         return local_paths
 
@@ -324,6 +370,7 @@ class MediaCache(object):
         method="copy",
         overwrite=True,
         skip_failures=True,
+        progress=None,
     ):
         """Adds the given files to your local media cache and associates them
         with the given remote paths.
@@ -344,6 +391,9 @@ class MediaCache(object):
                 already cached files
             skip_failures (True): whether to gracefully continue without
                 raising an error if a file cannot be cached
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         supported_methods = ("copy", "move")
         if method not in supported_methods:
@@ -372,7 +422,7 @@ class MediaCache(object):
                 tasks.append(task)
 
         if tasks:
-            _cache_media(tasks, self.num_workers)
+            _cache_media(tasks, self.num_workers, progress)
 
     def get_url(self, remote_path, method="GET", hours=1):
         """Retrieves a URL for accessing the given remote file.
@@ -394,7 +444,7 @@ class MediaCache(object):
         client = fos.get_client(path=remote_path)
         return _get_url(client, remote_path, method=method, hours=hours)
 
-    def update(self, filepaths=None, skip_failures=True):
+    def update(self, filepaths=None, skip_failures=True, progress=None):
         """Re-downloads any cached files whose checksum no longer matches their
         remote source.
 
@@ -409,6 +459,9 @@ class MediaCache(object):
                 By default, the entire cache is updated
             skip_failures (True): whether to gracefully continue without
                 raising an error if a remote file cannot be downloaded
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         if filepaths is None:
             filepaths = _get_cached_filepaths(self)
@@ -428,7 +481,7 @@ class MediaCache(object):
         if not tasks:
             return
 
-        checksums = _get_checksums(tasks, self.num_workers)
+        checksums = _get_checksums(tasks, self.num_workers, progress)
 
         tasks = []
         for filepath, checksum in checksums.items():
@@ -460,7 +513,7 @@ class MediaCache(object):
                 tasks.append(task)
 
         if tasks:
-            _download_media(tasks, self.num_workers)
+            _download_media(tasks, self.num_workers, progress)
 
     def garbage_collect(self, _logger=None):
         """Executes the cache's garbage collection routine.
@@ -491,7 +544,9 @@ class MediaCache(object):
                 if fs != fos.FileSystem.LOCAL and exists:
                     _pop_cache(local_path)
 
-    def _parse_filepath(self, filepath, check_exists=True):
+    def _parse_filepath(
+        self, filepath, check_exists=True, override_retry_protection=False
+    ):
         fs = fos.get_file_system(filepath)
 
         # Always return `exists=True` for local filepaths
@@ -509,7 +564,7 @@ class MediaCache(object):
 
         # If the file does not exist and we were unable to download it in the
         # first place, report that the file exists to avoid retried downloads
-        if not exists:
+        if not override_retry_protection and not exists:
             result = _get_cache_result(local_path)
             if result is not None:
                 _, success, _ = result
@@ -751,15 +806,19 @@ def _delete_file(local_path):
         pass
 
 
-def _download_media(tasks, num_workers):
-    logger.info("Downloading media...")
+def _download_media(tasks, num_workers, progress):
+    progress = _parse_progress(progress)
+
+    if progress:
+        logger.info("Downloading media...")
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task in pb(tasks):
                 _do_download_media(task)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
+            with fou.ProgressBar(total=len(tasks), progress=progress) as pb:
                 results = pool.imap_unordered(_do_download_media, tasks)
                 for _ in pb(results):
                     pass
@@ -787,21 +846,25 @@ def _do_download_media(arg):
     _write_cache_result(remote_path, local_path, success, checksum)
 
 
-def _cache_media(tasks, num_workers):
+def _cache_media(tasks, num_workers, progress):
     num_tasks = len(tasks)
 
     if num_tasks == 1:
         _do_cache_media(tasks[0])
         return
 
-    logger.info("Caching media...")
+    progress = _parse_progress(progress)
+
+    if progress:
+        logger.info("Caching media...")
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar(total=num_tasks) as pb:
+        with fou.ProgressBar(total=num_tasks, progress=progress) as pb:
             for task in pb(tasks):
                 _do_cache_media(task)
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=num_tasks) as pb:
+            with fou.ProgressBar(total=num_tasks, progress=progress) as pb:
                 results = pool.imap_unordered(_do_cache_media, tasks)
                 for _ in pb(results):
                     pass
@@ -888,18 +951,22 @@ async def _async_write_cache_result(filepath, local_path, success, checksum):
         await f.write("%s,%d,%s" % (filepath, int(success), checksum or ""))
 
 
-def _get_checksums(tasks, num_workers):
+def _get_checksums(tasks, num_workers, progress):
     checksums = {}
 
-    logger.info("Getting checksums...")
+    progress = _parse_progress(progress)
+
+    if progress:
+        logger.info("Getting checksums...")
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task in pb(tasks):
                 filepath, checksum = _do_get_checksum(task)
                 checksums[filepath] = checksum
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
+            with fou.ProgressBar(total=len(tasks), progress=progress) as pb:
                 results = pool.imap_unordered(_do_get_checksum, tasks)
                 for filepath, checksum in pb(results):
                     checksums[filepath] = checksum
@@ -922,18 +989,22 @@ def _do_get_checksum(arg):
     return remote_path, checksum
 
 
-def _get_file_metadata(tasks, num_workers):
+def _get_file_metadata(tasks, num_workers, progress):
     metadata = {}
 
-    logger.info("Getting file metadata...")
+    progress = _parse_progress(progress)
+
+    if progress:
+        logger.info("Getting file metadata...")
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task in pb(tasks):
                 filepath, _meta = _do_get_file_metadata(task)
                 metadata[filepath] = _meta
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
+            with fou.ProgressBar(total=len(tasks), progress=progress) as pb:
                 results = pool.imap_unordered(_do_get_file_metadata, tasks)
                 for filepath, _meta in pb(results):
                     metadata[filepath] = _meta
@@ -956,18 +1027,22 @@ def _do_get_file_metadata(arg):
     return remote_path, metadata
 
 
-def _get_metadata(tasks, num_workers):
+def _get_metadata(tasks, num_workers, progress):
     metadata = {}
 
-    logger.info("Getting metadata...")
+    progress = _parse_progress(progress)
+
+    if progress:
+        logger.info("Getting metadata...")
+
     if not num_workers or num_workers <= 1:
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for task in pb(tasks):
                 filepath, _meta = _do_get_metadata(task)
                 metadata[filepath] = _meta
     else:
         with multiprocessing.dummy.Pool(processes=num_workers) as pool:
-            with fou.ProgressBar(total=len(tasks)) as pb:
+            with fou.ProgressBar(total=len(tasks), progress=progress) as pb:
                 results = pool.imap_unordered(_do_get_metadata, tasks)
                 for filepath, _meta in pb(results):
                     metadata[filepath] = _meta
@@ -1006,3 +1081,10 @@ def _get_url(client, remote_path, **kwargs):
         return client.generate_signed_url(remote_path, **kwargs)
 
     return remote_path
+
+
+def _parse_progress(progress):
+    if progress is None:
+        return fo.config.show_progress_bars
+
+    return progress
