@@ -138,6 +138,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/monocular_depth_estimation.png
     :tags: Model-Evaluation,Visualization
 
+.. customcarditem::
+    :header: Visualizaing Data with Dimensionality Reduction
+    :description: Compare and contrast dimensionality reduction techniques for visualizing your data in FiftyOne.
+    :link: dimension_reduction.html
+    :image: ../_static/images/tutorials/dimension_reduction.png
+    :tags: Brain,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -177,3 +184,4 @@ your datasets and turn your good models into *great models*.
    Fine-tuning YOLOv8 models <yolov8.ipynb>
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
+   Dimensionality reduction <dimension_reduction.ipynb>
