@@ -402,14 +402,17 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         datasets = self._client.get_datasets()
         return [d.uid for d in datasets]
 
-    def delete_datasets(self, dataset_ids):
+    def delete_datasets(self, dataset_ids, progress=None):
         """Deletes the given datasets from the Labelbox server.
 
         Args:
             dataset_ids: an iterable of dataset IDs
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         logger.info("Deleting datasets...")
-        with fou.ProgressBar() as pb:
+        with fou.ProgressBar(progress=progress) as pb:
             for dataset_id in pb(list(dataset_ids)):
                 dataset = self._client.get_dataset(dataset_id)
                 dataset.delete()
@@ -1550,6 +1553,7 @@ def import_from_labelbox(
     label_prefix=None,
     download_dir=None,
     labelbox_id_field="labelbox_id",
+    progress=None,
 ):
     """Imports the labels from the Labelbox project into the FiftyOne dataset.
 
@@ -1606,6 +1610,9 @@ def import_from_labelbox(
             samples
         labelbox_id_field ("labelbox_id"): the sample field to lookup/store the
             IDs of the Labelbox DataRows
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(dataset, media_type=(fomm.IMAGE, fomm.VIDEO))
     is_video = dataset.media_type == fomm.VIDEO
@@ -1627,7 +1634,7 @@ def import_from_labelbox(
     d_list = fos.read_json(json_path)
 
     # ref: https://github.com/Labelbox/labelbox/blob/7c79b76310fa867dd38077e83a0852a259564da1/exporters/coco-exporter/coco_exporter.py#L33
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for d in pb(d_list):
             labelbox_id = d["DataRow ID"]
 
@@ -1694,6 +1701,7 @@ def export_to_labelbox(
     labelbox_id_field="labelbox_id",
     label_field=None,
     frame_labels_field=None,
+    progress=None,
 ):
     """Exports labels from the FiftyOne samples to Labelbox format.
 
@@ -1750,6 +1758,9 @@ def export_to_labelbox(
                 when constructing the exported frame labels
 
             By default, no frame labels are exported
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection(
         sample_collection, media_type=(fomm.IMAGE, fomm.VIDEO)
@@ -1792,7 +1803,7 @@ def export_to_labelbox(
 
     # Export the labels
     annos = []
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
             if labelbox_id is None:
@@ -1861,7 +1872,10 @@ def download_labels_from_labelbox(labelbox_project, outpath=None):
 
 
 def upload_media_to_labelbox(
-    labelbox_dataset, sample_collection, labelbox_id_field="labelbox_id"
+    labelbox_dataset,
+    sample_collection,
+    labelbox_id_field="labelbox_id",
+    progress=None,
 ):
     """Uploads the raw media for the FiftyOne samples to Labelbox.
 
@@ -1875,11 +1889,14 @@ def upload_media_to_labelbox(
             :class:`fiftyone.core.collections.SampleCollection`
         labelbox_id_field ("labelbox_id"): the sample field in which to store
             the IDs of the Labelbox DataRows
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     # @todo use `create_data_rows()` to optimize performance
     # @todo handle API rate limits
     # Reference: https://labelbox.com/docs/python-api/data-rows
-    with fou.ProgressBar() as pb:
+    with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(sample_collection):
             try:
                 has_id = sample[labelbox_id_field] is not None
@@ -1928,15 +1945,11 @@ def upload_labels_to_labelbox(
     else:
         annos = annos_or_ndjson_path
 
-    requests = []
     count = 0
     for anno_batch in fou.iter_batches(annos, batch_size):
         count += 1
         name = "%s-upload-request-%d" % (labelbox_project.name, count)
-        request = labelbox_project.upload_annotations(name, anno_batch)
-        requests.append(request)
-
-    return requests
+        labelbox_project.upload_annotations(name, anno_batch)
 
 
 def convert_labelbox_export_to_import(inpath, outpath=None, video_outdir=None):

@@ -11,6 +11,8 @@ export type Color =
   | "Orange"
   | "Purple";
 
+const defaultColor = "Gray";
+
 export class SavedViewsPom {
   readonly page: Page;
   readonly assert: SavedViewAsserter;
@@ -46,9 +48,9 @@ export class SavedViewsPom {
   }
 
   async saveViewInputs({ name, description, color, newColor }) {
-    await this.nameInput().type(name);
-    await this.descriptionInput().type(description);
-    await this.colorInput(color).click();
+    await this.nameInput().fill(name, { timeout: 2000 });
+    await this.descriptionInput().fill(description, { timeout: 2000 });
+    await this.colorInput(color).click({ timeout: 2000 });
     await this.colorOption(newColor).click();
   }
 
@@ -88,7 +90,7 @@ export class SavedViewsPom {
     await this.saveButton().click();
   }
 
-  async clickColor(color: Color = "Gray") {
+  async clickColor(color: Color = defaultColor) {
     await this.colorInput(color).click();
   }
 
@@ -98,10 +100,6 @@ export class SavedViewsPom {
 
   async clickCloseModal() {
     await this.closeModalBtn().click();
-  }
-
-  selectorContainer() {
-    return this.locator.getByTestId("saved-views-selection-container");
   }
 
   selector() {
@@ -119,7 +117,7 @@ export class SavedViewsPom {
   }
 
   saveNewViewBtn() {
-    return this.locator.getByTestId("saved-views-create-new");
+    return this.page.getByTestId("saved-views-create-new");
   }
 
   canClearView() {
@@ -127,12 +125,12 @@ export class SavedViewsPom {
   }
 
   async openSelect() {
-    await this.selector().click();
+    await this.selector().click({ timeout: 2000 });
   }
 
   async openCreateModal() {
     await this.openSelect();
-    await this.saveNewViewBtn().click();
+    await this.saveNewViewBtn().click({ timeout: 2000 });
   }
 
   async savedViewCount(name: string) {
@@ -140,7 +138,9 @@ export class SavedViewsPom {
   }
 
   savedViewOption(slug: string) {
-    return this.locator.getByTestId(`saved-views-${slug}-selection-option`);
+    return this.page
+      .getByTestId("selection-view")
+      .getByTestId(`saved-views-${slug}-selection-option`);
   }
 
   async savedViewOptionCount(slug: string) {
@@ -155,12 +155,15 @@ export class SavedViewsPom {
     return this.dialogLocator.getByTestId("saved-views-input-description");
   }
 
-  colorInput(c: Color = "Gray") {
+  colorInput(c: Color = defaultColor) {
     return this.dialogLocator.getByRole("combobox").getByText(c);
   }
 
   colorOption(c: Color = "Purple") {
-    return this.dialogLocator.getByRole("option", { name: c });
+    return this.colorListContainer().getByRole("option", {
+      name: c,
+      exact: true,
+    });
   }
 
   saveButton() {
@@ -175,7 +178,9 @@ export class SavedViewsPom {
   }
 
   colorListContainer() {
-    return this.dialogLocator.getByRole("listbox");
+    return this.page
+      .getByTestId("selection-view")
+      .filter({ hasText: defaultColor });
   }
 
   nameError() {
@@ -183,7 +188,7 @@ export class SavedViewsPom {
   }
 
   searchInput() {
-    return this.locator
+    return this.page
       .getByTestId("saved-views-selection-search-container")
       .getByTestId("saved-views-selection-search-input");
   }
@@ -212,7 +217,7 @@ class SavedViewAsserter {
     await expect(desc).toBeEmpty();
   }
 
-  async verifyDefaultColor(color: Color = "Gray") {
+  async verifyDefaultColor(color: Color = defaultColor) {
     await expect(this.svp.colorInput(color)).toBeVisible();
   }
 
@@ -235,13 +240,14 @@ class SavedViewAsserter {
   async verifyAllInputClear() {
     await expect(this.svp.nameInput()).toBeEmpty();
     await expect(this.svp.descriptionInput()).toBeEmpty();
-    await expect(this.svp.colorInput("Gray")).toBeVisible();
+    await expect(this.svp.colorInput(defaultColor)).toBeVisible();
   }
 
   async verifyCancelBtnClearsAll() {
     const cancelBtn = this.svp.cancelButton();
     await cancelBtn.click();
 
+    await this.svp.openCreateModal();
     await this.verifyAllInputClear();
   }
 
@@ -263,7 +269,7 @@ class SavedViewAsserter {
     await expect(colorListBox).toBeVisible();
     // verify default
     await expect(
-      colorListBox.getByRole("option", { name: "Gray" })
+      colorListBox.getByRole("option", { name: defaultColor })
     ).toBeInViewport();
 
     colorList.forEach(async (color: string) => {

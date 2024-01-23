@@ -1,32 +1,8 @@
 import React from "react";
 
-import styled from "styled-components";
-
 import { useTheme } from "@fiftyone/components";
 import { Close } from "@mui/icons-material";
-
-const Box = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-`;
-
-const SearchInput = styled.input`
-  width: 100%;
-  margin: 0.5rem 0.75rem;
-  border-radius: 4px;
-  cursor: ${({ disabled }) =>
-    disabled ? "not-allowed" : "pointer"} !important;
-  padding: 0.25rem 0.5rem;
-  color: ${({ theme }) => theme.text.primary};
-  background: ${({ theme }) => theme.background.level3};
-  border: 1px solid ${({ theme }) => theme.primary.plainBorder};
-
-  &:focus {
-    border: 1px solid ${({ theme }) => theme.primary.softBorder};
-    outline: none;
-  }
-`;
+import { CustomSearchBox, SearchInput } from "./styledComponents";
 
 export const SearchBox = ({
   id,
@@ -47,22 +23,12 @@ export const SearchBox = ({
 }) => {
   const theme = useTheme();
   const {
-    background: { level1 },
-    primary: { plainBorder },
     text: { secondary },
   } = theme;
   return (
-    <Box
-      data-cy={`${id}-selection-search-container`}
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 9999,
-        background: level1,
-        borderBottom: `1px solid ${plainBorder}`,
-      }}
-    >
+    <CustomSearchBox data-cy={`${id}-selection-search-container`}>
       <SearchInput
+        autoFocus
         data-cy={`${id}-selection-search-input`}
         disabled={disabled}
         value={searchTerm}
@@ -79,6 +45,8 @@ export const SearchBox = ({
           e.stopPropagation();
         }}
         onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           if (!disabled) {
             (e.target as HTMLInputElement).focus();
           }
@@ -86,7 +54,9 @@ export const SearchBox = ({
       />
       {searchValue && (
         <Close
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             setSearchTerm("");
             debouncedSearch("");
           }}
@@ -95,10 +65,11 @@ export const SearchBox = ({
             cursor: "pointer",
             color: secondary,
             position: "absolute",
-            right: 20,
+            right: "1rem",
+            top: "1.75rem",
           }}
         />
       )}
-    </Box>
+    </CustomSearchBox>
   );
 };

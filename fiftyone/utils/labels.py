@@ -24,6 +24,7 @@ def objects_to_segmentations(
     rel_dir=None,
     overwrite=False,
     save_mask_targets=False,
+    progress=None,
 ):
     """Converts the instance segmentations or polylines in the specified field
     of the collection into semantic segmentation masks.
@@ -62,6 +63,9 @@ def objects_to_segmentations(
             if it exists
         save_mask_targets (False): whether to store the ``mask_targets`` on the
             dataset
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -89,7 +93,7 @@ def objects_to_segmentations(
                 idempotent=False,
             )
 
-        for sample in samples.iter_samples(autosave=True, progress=True):
+        for sample in samples.iter_samples(autosave=True, progress=progress):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -157,6 +161,7 @@ def export_segmentations(
     rel_dir=None,
     update=True,
     overwrite=False,
+    progress=None,
 ):
     """Exports the segmentations (or heatmaps) stored as in-database arrays in
     the specified field to images on disk.
@@ -180,6 +185,9 @@ def export_segmentations(
         update (True): whether to delete the arrays from the database
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
@@ -199,7 +207,7 @@ def export_segmentations(
             idempotent=False,
         )
 
-        for sample in samples.iter_samples(autosave=True, progress=True):
+        for sample in samples.iter_samples(autosave=True, progress=progress):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -230,7 +238,11 @@ def export_segmentations(
 
 
 def import_segmentations(
-    sample_collection, in_field, update=True, delete_images=False
+    sample_collection,
+    in_field,
+    update=True,
+    delete_images=False,
+    progress=None,
 ):
     """Imports the segmentations (or heatmaps) stored on disk in the specified
     field to in-database arrays.
@@ -245,6 +257,9 @@ def import_segmentations(
             :class:`fiftyone.core.labels.Heatmap` field
         update (True): whether to delete the image paths from the labels
         delete_images (False): whether to delete any imported images from disk
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
@@ -256,7 +271,7 @@ def import_segmentations(
     in_field, processing_frames = samples._handle_frame_field(in_field)
 
     with fos.DeleteFiles() as df:
-        for sample in samples.iter_samples(autosave=True, progress=True):
+        for sample in samples.iter_samples(autosave=True, progress=progress):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -290,6 +305,7 @@ def transform_segmentations(
     update=True,
     update_mask_targets=False,
     overwrite=False,
+    progress=None,
 ):
     """Transforms the segmentations in the given field according to the
     provided targets map.
@@ -323,6 +339,9 @@ def transform_segmentations(
             dataset to reflect the transformed targets
         overwrite (False): whether to delete ``output_dir`` prior to exporting
             if it exists
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Segmentation
@@ -354,7 +373,7 @@ def transform_segmentations(
         else:
             writer = context.enter_context(fos.FileWriter())
 
-        for sample in samples.iter_samples(autosave=True, progress=True):
+        for sample in samples.iter_samples(autosave=True, progress=progress):
             if processing_frames:
                 images = sample.frames.values()
             else:
@@ -414,6 +433,7 @@ def segmentations_to_detections(
     out_field,
     mask_targets=None,
     mask_types="stuff",
+    progress=None,
 ):
     """Converts the semantic segmentations masks in the specified field of the
     collection into :class:`fiftyone.core.labels.Detections` with instance
@@ -447,6 +467,9 @@ def segmentations_to_detections(
             -   ``"thing"`` if all classes are thing classes
             -   a dict mapping pixel values (2D masks) or RGB hex strings (3D
                 masks) to ``"stuff"`` or ``"thing"`` for each class
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -460,7 +483,7 @@ def segmentations_to_detections(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -477,7 +500,12 @@ def segmentations_to_detections(
 
 
 def instances_to_polylines(
-    sample_collection, in_field, out_field, tolerance=2, filled=True
+    sample_collection,
+    in_field,
+    out_field,
+    tolerance=2,
+    filled=True,
+    progress=None,
 ):
     """Converts the instance segmentations in the specified field of the
     collection into :class:`fiftyone.core.labels.Polylines` instances.
@@ -496,6 +524,9 @@ def instances_to_polylines(
         tolerance (2): a tolerance, in pixels, when generating approximate
             polylines for each region. Typical values are 1-3 pixels
         filled (True): whether the polylines should be filled
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -507,7 +538,7 @@ def instances_to_polylines(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -530,6 +561,7 @@ def segmentations_to_polylines(
     mask_targets=None,
     mask_types="stuff",
     tolerance=2,
+    progress=None,
 ):
     """Converts the semantic segmentations masks in the specified field of the
     collection into :class:`fiftyone.core.labels.Polylines` instances.
@@ -564,6 +596,9 @@ def segmentations_to_polylines(
                 masks) to ``"stuff"`` or ``"thing"`` for each class
         tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection,
@@ -577,7 +612,7 @@ def segmentations_to_polylines(
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -595,7 +630,9 @@ def segmentations_to_polylines(
             )
 
 
-def classification_to_detections(sample_collection, in_field, out_field):
+def classification_to_detections(
+    sample_collection, in_field, out_field, progress=None
+):
     """Converts the :class:`fiftyone.core.labels.Classification` field of the
     collection into a :class:`fiftyone.core.labels.Detections` field containing
     a single detection whose bounding box spans the entire image.
@@ -607,6 +644,9 @@ def classification_to_detections(sample_collection, in_field, out_field):
             field
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
@@ -616,7 +656,7 @@ def classification_to_detections(sample_collection, in_field, out_field):
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:
@@ -635,7 +675,9 @@ def classification_to_detections(sample_collection, in_field, out_field):
             image[out_field] = fol.Detections(detections=[detection])
 
 
-def classifications_to_detections(sample_collection, in_field, out_field):
+def classifications_to_detections(
+    sample_collection, in_field, out_field, progress=None
+):
     """Converts the :class:`fiftyone.core.labels.Classifications` field of the
     collection into a :class:`fiftyone.core.labels.Detections` field containing
     detections whose bounding boxes span the entire image with one detection
@@ -648,6 +690,9 @@ def classifications_to_detections(sample_collection, in_field, out_field):
             field
         out_field: the name of the :class:`fiftyone.core.labels.Detections`
             field to populate
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
     """
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications
@@ -657,7 +702,7 @@ def classifications_to_detections(sample_collection, in_field, out_field):
     in_field, processing_frames = samples._handle_frame_field(in_field)
     out_field, _ = samples._handle_frame_field(out_field)
 
-    for sample in samples.iter_samples(autosave=True, progress=True):
+    for sample in samples.iter_samples(autosave=True, progress=progress):
         if processing_frames:
             images = sample.frames.values()
         else:

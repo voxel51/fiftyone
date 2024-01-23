@@ -1,4 +1,4 @@
-import * as React from "react";
+import React from "react";
 import { Button } from "@fiftyone/components";
 import ExplorerActions from "./ExplorerActions";
 import FileTable from "./FileTable";
@@ -68,7 +68,7 @@ export default function FileExplorer({
   const fsError = fsInfo?.error;
 
   return (
-    <div>
+    <Box>
       <Box>
         <TextField
           size="small"
@@ -120,6 +120,7 @@ export default function FileExplorer({
         aria-describedby="alert-dialog-description"
         PaperProps={{ sx: { backgroundImage: "none" } }}
         maxWidth={false}
+        sx={{ zIndex: (theme) => theme.zIndex.operatorPalette + 1 }}
       >
         <ModalContent>
           <Grid container direction="row" spacing={1}>
@@ -209,6 +210,6 @@ export default function FileExplorer({
           </Grid>
         </ModalContent>
       </Dialog>
-    </div>
+    </Box>
   );
 }

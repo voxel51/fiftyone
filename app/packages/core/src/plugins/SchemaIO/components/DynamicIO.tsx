@@ -1,9 +1,9 @@
 import { PluginComponentType, useActivePlugins } from "@fiftyone/plugins";
-import { isPrimitiveType } from "@fiftyone/utilities";
-import { get } from "lodash";
+import { isNullish } from "@fiftyone/utilities";
+import { get, isEqual } from "lodash";
 import React, { useEffect } from "react";
-import { getComponent, getErrorsForView } from "../utils";
 import { isPathUserChanged } from "../hooks";
+import { getComponent, getErrorsForView, isCompositeView } from "../utils";
 
 export default function DynamicIO(props) {
   const { data, schema, onChange, path, parentSchema, relativePath } = props;
@@ -19,9 +19,10 @@ export default function DynamicIO(props) {
   // todo: need to improve initializing default value in state
   useEffect(() => {
     if (
-      isPrimitiveType(type) &&
-      data !== defaultValue &&
-      !isPathUserChanged(path)
+      !isCompositeView(schema) &&
+      !isEqual(data, defaultValue) &&
+      !isPathUserChanged(path) &&
+      !isNullish(defaultValue)
     ) {
       onChange(path, defaultValue);
     }

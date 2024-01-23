@@ -20,6 +20,7 @@ export const LastOption = styled(Box)<{ disabled?: boolean }>`
   cursor: ${({ disabled }) =>
     disabled ? "not-allowed" : "pointer"} !important;
 
+  z-index: 999;
   &:hover {
     background: ${({ disabled, theme }) =>
       disabled ? "none" : theme.background.level2} !important;

@@ -135,6 +135,28 @@ class RegressionTests(unittest.TestCase):
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
 
+    @drop_datasets
+    def test_evaluate_regressions_embedded_fields(self):
+        dataset = self._make_regression_dataset()
+
+        dataset.add_sample_field(
+            "embedded",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        dataset.rename_sample_field("predictions", "embedded.predictions")
+        dataset.rename_sample_field("ground_truth", "embedded.ground_truth")
+
+        results = dataset.evaluate_regressions(
+            "embedded.predictions",
+            gt_field="embedded.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        results.print_metrics()
+
     def test_custom_regression_evaluation(self):
         dataset = self._make_regression_dataset()
 
@@ -602,6 +624,29 @@ class ClassificationTests(unittest.TestCase):
 
         self.assertNotIn("eval2", dataset.list_evaluations())
         self.assertNotIn("eval2", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_classifications_embedded_fields(self):
+        dataset = self._make_classification_dataset()
+
+        dataset.add_sample_field(
+            "embedded",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        dataset.rename_sample_field("predictions", "embedded.predictions")
+        dataset.rename_sample_field("ground_truth", "embedded.ground_truth")
+
+        results = dataset.evaluate_classifications(
+            "embedded.predictions",
+            gt_field="embedded.ground_truth",
+            eval_key="eval",
+            method="simple",
+        )
+
+        results.report()
+        results.print_report()
 
     def test_custom_classification_evaluation(self):
         dataset = self._make_classification_dataset()
@@ -1732,6 +1777,44 @@ class DetectionsTests(unittest.TestCase):
         with self.assertRaises(KeyError):
             detection["eval2"]
 
+    @drop_datasets
+    def test_evaluate_detections_embedded_fields(self):
+        dataset = self._make_detections_dataset()
+
+        dataset.add_sample_field(
+            "embedded",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        dataset.rename_sample_field("predictions", "embedded.predictions")
+        dataset.rename_sample_field("ground_truth", "embedded.ground_truth")
+
+        _, gt_eval_field = dataset._get_label_field_path(
+            "embedded.ground_truth", "eval"
+        )
+        _, pred_eval_field = dataset._get_label_field_path(
+            "embedded.predictions", "eval"
+        )
+
+        results = dataset.evaluate_detections(
+            "embedded.predictions",
+            gt_field="embedded.ground_truth",
+            eval_key="eval",
+            method="coco",
+        )
+
+        schema = dataset.get_field_schema(flat=True)
+        self.assertIn("eval_tp", schema)
+        self.assertIn("eval_fp", schema)
+        self.assertIn("eval_fn", schema)
+        self.assertIn(gt_eval_field, schema)
+        self.assertIn(gt_eval_field + "_id", schema)
+        self.assertIn(gt_eval_field + "_iou", schema)
+        self.assertIn(pred_eval_field, schema)
+        self.assertIn(pred_eval_field + "_id", schema)
+        self.assertIn(pred_eval_field + "_iou", schema)
+
     def test_custom_detection_evaluation(self):
         dataset = self._make_detections_dataset()
 
@@ -2768,6 +2851,33 @@ class SegmentationTests(unittest.TestCase):
         self.assertNotIn("eval2_accuracy", dataset.get_field_schema())
         self.assertNotIn("eval2_precision", dataset.get_field_schema())
         self.assertNotIn("eval2_recall", dataset.get_field_schema())
+
+    @drop_datasets
+    def test_evaluate_segmentations_embedded_fields(self):
+        dataset = self._make_segmentation_dataset()
+
+        dataset.add_sample_field(
+            "embedded",
+            fo.EmbeddedDocumentField,
+            embedded_doc_type=fo.DynamicEmbeddedDocument,
+        )
+
+        dataset.rename_sample_field("predictions", "embedded.predictions")
+        dataset.rename_sample_field("ground_truth", "embedded.ground_truth")
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # suppress missing masks warning
+
+            results = dataset.evaluate_segmentations(
+                "embedded.predictions",
+                gt_field="embedded.ground_truth",
+                eval_key="eval",
+                method="simple",
+                mask_targets={0: "background", 1: "cat", 2: "dog"},
+            )
+
+        results.report()
+        results.print_report()
 
     def test_custom_segmentation_evaluation(self):
         dataset = self._make_segmentation_dataset()
