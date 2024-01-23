@@ -2,10 +2,10 @@ import * as fos from "@fiftyone/state";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { MediaTypeFo3dComponent } from "./MediaTypeFo3d";
 import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
+import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { currentActionAtom } from "./state";
 
 /**

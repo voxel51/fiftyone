@@ -24,7 +24,7 @@ export const SpinningCube = () => {
       <ambientLight intensity={0.5} />
 
       <mesh ref={meshRef}>
-        <boxBufferGeometry args={[0.5, 0.5, 0.5]} />
+        <boxGeometry args={[0.5, 0.5, 0.5]} />
         <MeshWobbleMaterial
           attach="material"
           color={new Color("#fe6d05")}
