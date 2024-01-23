@@ -29,9 +29,9 @@ export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
       .map((obj) => {
         const { objUrl, mtlUrl } = obj;
         return (
-          <MeshErrorBoundary>
+          <ObjErrorBoundary>
             <ObjMesh key={objUrl} objUrl={objUrl} mtlUrl={mtlUrl} />
-          </MeshErrorBoundary>
+          </ObjErrorBoundary>
         );
       });
   }, [objs, visibilityMap]);
@@ -40,7 +40,7 @@ export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
 };
 
 // create error boundary for individual mesh
-class MeshErrorBoundary extends React.Component {
+class ObjErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false };
