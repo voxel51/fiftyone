@@ -1,12 +1,13 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
-import { useMemo } from "react";
-import useSWR, { Fetcher } from "swr";
+import { useEffect, useMemo, useState } from "react";
+import { Matrix4 } from "three";
 import { FiftyoneSceneRawJson } from "../utils";
 
 export interface ThreeDAsset {
   name: string;
   visible: boolean;
+  matrix: Matrix4;
 }
 
 export interface GltfReturnType extends ThreeDAsset {
@@ -57,7 +58,19 @@ const fetcher: Fetcher<FiftyoneSceneRawJson, string> = async (url: string) =>
  * This hook parses the fo3d file.
  */
 export const useFo3d = (url: string): UseFo3dReturnType => {
-  const { data: rawData, error, isLoading } = useSWR(url, fetcher);
+  const [isLoading, setIsLoading] = useState(true);
+  const [rawData, setRawData] = useState<FiftyoneSceneRawJson | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const response: FiftyoneSceneRawJson = await getFetchFunction()(
+        "GET",
+        url
+      );
+      setRawData(response);
+      setIsLoading(false);
+    })();
+  }, [url]);
 
   const transformedData = useMemo(() => {
     if (!rawData) {
@@ -88,6 +101,9 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
         const meshObj: MeshReturnType = {
           name: current.name,
           visible: current.visible,
+          matrix: new Matrix4().fromArray(
+            current.local_transform_matrix.flat()
+          ),
         };
 
         if (current["_cls"].toLocaleLowerCase().startsWith("gltf")) {
@@ -130,6 +146,9 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
         const pointcloud: PcdReturnType = {
           name: current.name,
           visible: current.visible,
+          matrix: new Matrix4().fromArray(
+            current.local_transform_matrix.flat()
+          ),
         };
 
         if (current["pcd_path"]) {
@@ -150,10 +169,6 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       plys,
     };
   }, [rawData]);
-
-  if (error) {
-    throw new Error(JSON.stringify(error));
-  }
 
   if (isLoading) {
     return {

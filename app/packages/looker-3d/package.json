@@ -23,7 +23,6 @@
         "react-color": "^2.19.3",
         "recoil": "^0.7.7",
         "styled-components": "^6.1.8",
-        "swr": "^2.2.4",
         "three": "^0.160.1"
     },
     "devDependencies": {

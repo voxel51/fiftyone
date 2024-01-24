@@ -22,7 +22,12 @@ export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
       .map((pcd) => {
         const { pcdUrl } = pcd;
         return (
-          <group key={pcdUrl}>
+          <group
+            key={pcdUrl}
+            modelViewMatrix={pcd.matrix}
+            matrixWorld={pcd.matrix}
+            matrixAutoUpdate={true}
+          >
             <PcdErrorBoundary>
               <PcdMesh pcdUrl={pcdUrl} />
             </PcdErrorBoundary>
