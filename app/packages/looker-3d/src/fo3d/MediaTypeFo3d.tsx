@@ -31,6 +31,7 @@ import {
   getMediaUrlForFo3dSample,
   getVisibilityMapFromFo3dParsed,
 } from "./utils";
+import { ThreeDLabels } from "../labels";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -121,12 +122,11 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         />
       </LevaContainer>
 
-      <Canvas id={CANVAS_WRAPPER_ID}>
+      <Canvas id={CANVAS_WRAPPER_ID} shadows>
         <Suspense fallback={<SpinningCube />}>
           <PerspectiveCamera makeDefault position={defaultCameraPosition} />
           <OrbitControls />
           <Fo3dEnvironment />
-
           <Objs objs={fo3dParsed.objs} visibilityMap={visibilityMap} />
           <Pcds pcds={fo3dParsed.pcds} visibilityMap={visibilityMap} />
           <Plys plys={fo3dParsed.plys} visibilityMap={visibilityMap} />
