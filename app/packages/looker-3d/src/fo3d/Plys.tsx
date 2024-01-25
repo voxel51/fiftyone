@@ -1,6 +1,6 @@
 import { useLoader } from "@react-three/fiber";
 import React, { useEffect, useMemo, useState } from "react";
-import { Mesh, MeshPhongMaterial, MeshStandardMaterial } from "three";
+import { Mesh, MeshPhongMaterial } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { PlyReturnType } from "../hooks";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
@@ -10,7 +10,8 @@ type PlysProps = {
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 };
 
-const PlyMesh = ({ plyUrl }: { plyUrl: string }) => {
+const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
+  const { plyUrl, position, quaternion, scale } = ply;
   const points = useLoader(PLYLoader, plyUrl);
   const [mesh, setMesh] = useState(null);
 
@@ -19,7 +20,7 @@ const PlyMesh = ({ plyUrl }: { plyUrl: string }) => {
       points.computeVertexNormals();
 
       const material = new MeshPhongMaterial({
-        color: 0xffffff,
+        color: 0xff00ff,
       });
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);
@@ -27,7 +28,14 @@ const PlyMesh = ({ plyUrl }: { plyUrl: string }) => {
   }, [points]);
 
   if (mesh) {
-    return <primitive object={mesh} />;
+    return (
+      <primitive
+        object={mesh}
+        position={position}
+        quaternion={quaternion}
+        scale={scale}
+      />
+    );
   }
 
   return null;
@@ -38,12 +46,11 @@ export const Plys = ({ plys, visibilityMap }: PlysProps) => {
     return plys
       .filter((ply) => visibilityMap[getIdentifierForAsset(ply)])
       .map((ply) => {
-        const { plyUrl } = ply;
         return (
-          <group key={plyUrl}>
-            {/* <PlyErrorBoundary> */}
-            <PlyMesh plyUrl={plyUrl} />
-            {/* </PlyErrorBoundary> */}
+          <group key={ply.plyUrl}>
+            <PlyErrorBoundary>
+              <PlyMesh ply={ply} />
+            </PlyErrorBoundary>
           </group>
         );
       });
