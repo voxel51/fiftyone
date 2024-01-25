@@ -2322,16 +2322,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             samples = pb(samples)
 
             download_context = getattr(self, "_download_context", None)
-            download = download_context is not None
-            if download:
-                exit_context.enter_context(download_context)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for sample in samples:
-                if download:
+                if download_context is not None:
                     download_context.next()
 
                 yield sample
@@ -2436,16 +2433,13 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
             groups = pb(groups)
 
             download_context = getattr(self, "_download_context", None)
-            download = download_context is not None
-            if download:
-                exit_context.enter_context(download_context)
 
             if autosave:
                 save_context = foc.SaveContext(self, batch_size=batch_size)
                 exit_context.enter_context(save_context)
 
             for group in groups:
-                if download:
+                if download_context is not None:
                     download_context.next()
 
                 yield group
