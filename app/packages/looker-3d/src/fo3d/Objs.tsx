@@ -59,11 +59,13 @@ class ObjErrorBoundary extends React.Component {
   }
 
   render() {
+    // @ts-ignore
     if (this.state.hasError) {
       // todo: add indicator in canvas that asset failed loading
       return null;
     }
 
+    // @ts-ignore
     return this.props.children;
   }
 }
