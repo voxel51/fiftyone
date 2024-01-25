@@ -3759,7 +3759,7 @@ class SampleCollection(object):
 
         Args:
             run_key: a run key
-            **kwargs: JSON serializable config parameters
+            **kwargs: JSON serializable data
 
         Returns:
             a :class:`fiftyone.core.runs.RunResults`
