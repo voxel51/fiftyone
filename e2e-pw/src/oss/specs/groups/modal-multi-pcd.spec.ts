@@ -12,7 +12,6 @@ const test = base.extend<{ grid: GridPom; modal: ModalPom }>({
   },
 });
 
-// todo: skipping pcd because slice navigation behavior is different
 const datasetName = getUniqueDatasetNameWithPrefix(`modal-multi-pcd`);
 
 test.beforeAll(async ({ fiftyoneLoader }) => {
