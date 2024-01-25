@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.23.3"
+VERSION = "0.23.4"
 
 
 def get_version():
@@ -75,7 +75,7 @@ INSTALL_REQUIRES = [
     "xmltodict",
     "universal-analytics-python3>=1.0.1,<2",
     # internal packages
-    "fiftyone-brain>=0.15.0,<0.16",
+    "fiftyone-brain>=0.16.0,<0.17",
     "fiftyone-db>=0.4,<2.0",
     "voxel51-eta>=0.12.4,<0.13",
 ]
