@@ -4135,35 +4135,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@mui/joy@npm:^5.0.0-beta.11":
-  version: 5.0.0-beta.11
-  resolution: "@mui/joy@npm:5.0.0-beta.11"
-  dependencies:
-    "@babel/runtime": ^7.23.1
-    "@mui/base": 5.0.0-beta.20
-    "@mui/core-downloads-tracker": ^5.14.14
-    "@mui/system": ^5.14.14
-    "@mui/types": ^7.2.6
-    "@mui/utils": ^5.14.13
-    clsx: ^2.0.0
-    prop-types: ^15.8.1
-  peerDependencies:
-    "@emotion/react": ^11.5.0
-    "@emotion/styled": ^11.3.0
-    "@types/react": ^17.0.0 || ^18.0.0
-    react: ^17.0.0 || ^18.0.0
-    react-dom: ^17.0.0 || ^18.0.0
-  peerDependenciesMeta:
-    "@emotion/react":
-      optional: true
-    "@emotion/styled":
-      optional: true
-    "@types/react":
-      optional: true
-  checksum: c4b24b1a11432b8f59d93ff7fcdf5977d9ad3419b91d0c8f2ddc8e2a66f1f4ae4eef615bcf2be04a4e952ea651b7c8f91be0536f7cc0cbec50a997c9448f934f
-  languageName: node
-  linkType: hard
-
 "@mui/material@npm:^5.15.5":
   version: 5.15.5
   resolution: "@mui/material@npm:5.15.5"
