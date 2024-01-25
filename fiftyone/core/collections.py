@@ -3663,13 +3663,16 @@ class SampleCollection(object):
         """
         return fors.Run.list_runs(self, **kwargs)
 
-    def init_run(self):
+    def init_run(self, **kwargs):
         """Initializes a config instance for a new run.
+
+        Args:
+            **kwargs: JSON serializable config parameters
 
         Returns:
             a :class:`fiftyone.core.runs.RunConfig`
         """
-        return fors.RunConfig()
+        return fors.RunConfig(**kwargs)
 
     def register_run(
         self,
@@ -3751,17 +3754,18 @@ class SampleCollection(object):
 
         fors.Run.update_run_config(self, run_key, config)
 
-    def init_run_results(self, run_key):
+    def init_run_results(self, run_key, **kwargs):
         """Initializes a results instance for the run with the given key.
 
         Args:
             run_key: a run key
+            **kwargs: JSON serializable data
 
         Returns:
             a :class:`fiftyone.core.runs.RunResults`
         """
         info = fors.Run.get_run_info(self, run_key)
-        return fors.RunResults(self, info.config, run_key)
+        return fors.RunResults(self, info.config, run_key, **kwargs)
 
     def save_run_results(self, run_key, results, overwrite=True, cache=True):
         """Saves run results for the run with the given key.
