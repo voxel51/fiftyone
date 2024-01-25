@@ -119,6 +119,9 @@ class DownloadContext(object):
         progress=None,
         **kwargs,
     ):
+        if batch_size is None and target_size_bytes is None:
+            target_size_bytes = fo.media_cache_config.download_size_bytes
+
         self.sample_collection = sample_collection
         self.batch_size = batch_size
         self.target_size_bytes = target_size_bytes
