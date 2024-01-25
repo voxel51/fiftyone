@@ -34,7 +34,7 @@ export const Fo3dEnvironment = () => {
   return (
     <>
       {isGridOn && <gridHelper args={[1000, 1000]} />}
-      <GizmoHelper alignment="top-left">
+      <GizmoHelper alignment="top-left" margin={[80, 100]}>
         <GizmoViewport />
       </GizmoHelper>
       <ambientLight intensity={ambientLightIntensity} />
