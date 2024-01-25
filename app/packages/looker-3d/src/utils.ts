@@ -2,18 +2,16 @@ import {
   BufferAttribute,
   InterleavedBufferAttribute,
   Vector3Tuple,
+  Vector4Tuple,
 } from "three";
 
 export type FiftyoneSceneRawJson = {
   _cls: string;
   name: string;
   visible: boolean;
-  local_transform_matrix: [
-    [number, number, number, number],
-    [number, number, number, number],
-    [number, number, number, number],
-    [number, number, number, number]
-  ];
+  position: Vector3Tuple;
+  quaternion: Vector4Tuple;
+  scale: Vector3Tuple;
   children: FiftyoneSceneRawJson[];
 };
 
@@ -25,11 +23,13 @@ class InvalidSceneError extends Error {}
  */
 export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   if (
-    !Object.hasOwn(scene, "visible") ||
-    !Object.hasOwn(scene, "local_transform_matrix") ||
-    !Object.hasOwn(scene, "children") ||
     !Object.hasOwn(scene, "_cls") ||
     !Object.hasOwn(scene, "name") ||
+    !Object.hasOwn(scene, "visible") ||
+    !Object.hasOwn(scene, "position") ||
+    !Object.hasOwn(scene, "quaternion") ||
+    !Object.hasOwn(scene, "scale") ||
+    !Object.hasOwn(scene, "children") ||
     !Array.isArray(scene.children)
   ) {
     throw new InvalidSceneError();

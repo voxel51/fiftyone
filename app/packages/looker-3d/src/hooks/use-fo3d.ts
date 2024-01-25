@@ -1,13 +1,15 @@
 import { getSampleSrc } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
-import { Matrix4 } from "three";
+import { Quaternion, Vector3 } from "three";
 import { FiftyoneSceneRawJson } from "../utils";
 
 export interface ThreeDAsset {
   name: string;
   visible: boolean;
-  matrix: Matrix4;
+  position: Vector3;
+  quaternion: Quaternion;
+  scale: Vector3;
 }
 
 export interface GltfReturnType extends ThreeDAsset {
@@ -50,9 +52,6 @@ type UseFo3dReturnType = {
   data: Fo3dData | null;
   isLoading: boolean;
 };
-
-const fetcher: Fetcher<FiftyoneSceneRawJson, string> = async (url: string) =>
-  getFetchFunction()("GET", url);
 
 /**
  * This hook parses the fo3d file.
@@ -97,65 +96,72 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
         continue;
       }
 
-      if (current["_cls"].toLocaleLowerCase().endsWith("mesh")) {
-        const meshObj: MeshReturnType = {
-          name: current.name,
-          visible: current.visible,
-          matrix: new Matrix4().fromArray(
-            current.local_transform_matrix.flat()
-          ),
-        };
+      const currentObj: ThreeDAsset = {
+        name: current.name,
+        visible: current.visible,
+        position: new Vector3(
+          current.position[0],
+          current.position[1],
+          current.position[2]
+        ),
+        quaternion: new Quaternion(
+          current.quaternion[0],
+          current.quaternion[1],
+          current.quaternion[2],
+          current.quaternion[3]
+        ),
+        scale: new Vector3(
+          current.scale[0],
+          current.scale[1],
+          current.scale[2]
+        ),
+      };
 
+      if (current["_cls"].toLocaleLowerCase().endsWith("mesh")) {
         if (current["_cls"].toLocaleLowerCase().startsWith("gltf")) {
           if (current["gltf_path"]) {
-            (meshObj as GltfReturnType).gltfUrl = getSampleSrc(
+            (currentObj as GltfReturnType).gltfUrl = getSampleSrc(
               current["gltf_path"]
             );
           }
-          gltfs.push(meshObj);
+          gltfs.push(currentObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("obj")) {
           if (current["obj_path"]) {
-            (meshObj as ObjReturnType).objUrl = getSampleSrc(
+            (currentObj as ObjReturnType).objUrl = getSampleSrc(
               current["obj_path"]
             );
           }
 
           if (current["mtl_path"]) {
-            (meshObj as ObjReturnType).mtlUrl = getSampleSrc(
+            (currentObj as ObjReturnType).mtlUrl = getSampleSrc(
               current["mtl_path"]
             );
           }
 
-          objs.push(meshObj);
+          objs.push(currentObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("stl")) {
           if (current["stl_path"]) {
-            (meshObj as StlReturnType).stlUrl = getSampleSrc(
+            (currentObj as StlReturnType).stlUrl = getSampleSrc(
               current["stl_path"]
             );
           }
-          stls.push(meshObj);
+          stls.push(currentObj);
         } else if (current["_cls"].toLocaleLowerCase().startsWith("ply")) {
           if (current["ply_path"]) {
-            (meshObj as PlyReturnType).plyUrl = getSampleSrc(
+            (currentObj as PlyReturnType).plyUrl = getSampleSrc(
               current["ply_path"]
             );
           }
-          plys.push(meshObj);
+          plys.push(currentObj);
         }
       } else if (current["_cls"].endsWith("Pointcloud")) {
-        const pointcloud: PcdReturnType = {
-          name: current.name,
-          visible: current.visible,
-          matrix: new Matrix4().fromArray(
-            current.local_transform_matrix.flat()
-          ),
-        };
-
         if (current["pcd_path"]) {
-          pointcloud.pcdUrl = getSampleSrc(current["pcd_path"]);
+          (currentObj as PcdReturnType).pcdUrl = getSampleSrc(
+            current["pcd_path"]
+          );
         }
 
-        pcds.push(pointcloud);
+        pcds.push(currentObj);
       }
 
       stack.push(...current.children);
