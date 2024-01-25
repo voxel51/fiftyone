@@ -8,8 +8,8 @@ from fiftyone.core.threed import GLTFMesh, Pointcloud, Scene
 class TestScene(unittest.TestCase):
     def setUp(self):
         self.scene = Scene()
-        self.scene.add(GLTFMesh(gltf_url="/path/to/gltf.gltf"))
-        self.scene.add(Pointcloud(pcd_url="/path/to/pcd.pcd"))
+        self.scene.add(GLTFMesh("gltf", gltf_path="/path/to/gltf.gltf"))
+        self.scene.add(Pointcloud("pcd", pcd_path="/path/to/pcd.pcd"))
 
     def test_export_invalid_extension(self):
         with self.assertRaises(ValueError):

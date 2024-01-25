@@ -199,10 +199,17 @@ class TestObject3DSerialization(unittest.TestCase):
         self.assertEqual(dict_data["name"], "TestObject")
         self.assertTrue(dict_data["visible"])
 
-        np.testing.assert_array_almost_equal(
-            np.array(dict_data["local_transform_matrix"]),
-            obj.local_transform_matrix,
+        np.testing.assert_equal(
+            dict_data["position"], np.array([1.0, 2.0, 3.0])
         )
+
+        np.testing.assert_almost_equal(
+            dict_data["quaternion"],
+            np.array([0.5, -0.5, 0.5, 0.5]),
+            decimal=5,
+        )
+
+        np.testing.assert_equal(dict_data["scale"], np.array([1.5, 2.0, 0.5]))
 
         self.assertEqual(len(dict_data["children"]), 1)
         child_dict = dict_data["children"][0]
@@ -217,18 +224,27 @@ class TestObject3DSerialization(unittest.TestCase):
     def test_from_dict(self):
         test_dict = {
             "name": "TestObject",
-            "local_transform_matrix": [
-                [1, 0, 0, 10],
-                [0, 0, -1, 20],
-                [0, 1, 0, 30],
-                [0, 0, 0, 1],
-            ],
+            "position": [10, 20, 30],
+            "quaternion": [0.70710678, 0, 0, 0.70710678],
+            "scale": [1, 1, 1],
             "visible": True,
         }
 
         obj = Object3D._from_dict(test_dict)
         self.assertEqual(obj.name, "TestObject")
         self.assertEqual(obj.visible, True)
+        np.testing.assert_almost_equal(
+            obj.local_transform_matrix,
+            np.array(
+                [
+                    [1, 0, 0, 10],
+                    [0, 0, -1, 20],
+                    [0, 1, 0, 30],
+                    [0, 0, 0, 1],
+                ]
+            ),
+            decimal=5,
+        )
         np.testing.assert_equal(obj.position.to_arr(), np.array([10, 20, 30]))
         np.testing.assert_almost_equal(
             obj.rotation.to_arr(), np.array([1.5708, 0, 0]), decimal=5

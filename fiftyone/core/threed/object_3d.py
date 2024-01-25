@@ -10,6 +10,7 @@ from typing import Literal
 
 import numpy as np
 from pydantic.dataclasses import dataclass
+from typing import List, Tuple
 from scipy.spatial.transform import Rotation
 
 import fiftyone.core.utils as fou
@@ -113,7 +114,14 @@ class Object3D:
         return self._position
 
     @position.setter
-    def position(self, value: Vector3):
+    def position(self, value: Vector3 | List[float] | Tuple[float, ...]):
+        if isinstance(value, (list, tuple)) and len(value) == 3:
+            value = Vector3(*value)
+        elif not isinstance(value, Vector3):
+            raise ValueError(
+                "position must be a Vector3 or a list/tuple of length 3"
+            )
+
         self._position = value
         self._update_matrix()
 
@@ -123,7 +131,13 @@ class Object3D:
         return self._rotation
 
     @rotation.setter
-    def rotation(self, value: Euler):
+    def rotation(self, value: Euler | List[float] | Tuple[float, ...]):
+        if isinstance(value, (list, tuple)) and len(value) == 3:
+            value = Euler(*value)
+        elif not isinstance(value, Euler):
+            raise ValueError(
+                "rotation must be a Euler or a list/tuple of length 3"
+            )
         self._rotation = value
         self._quaternion = value.to_quaternion()
         self._update_matrix()
@@ -134,7 +148,13 @@ class Object3D:
         return self._quaternion
 
     @quaternion.setter
-    def quaternion(self, value: Quaternion):
+    def quaternion(self, value: Quaternion | List[float] | Tuple[float, ...]):
+        if isinstance(value, (list, tuple)) and len(value) == 4:
+            value = Quaternion(*value)
+        elif not isinstance(value, Quaternion):
+            raise ValueError(
+                "quaternion must be a Quaternion or a list/tuple of length 4"
+            )
         self._quaternion = value
         self._rotation = value.to_euler()
         self._update_matrix()
@@ -145,13 +165,29 @@ class Object3D:
         return self._scale
 
     @scale.setter
-    def scale(self, value: Vector3):
+    def scale(
+        self, value: Vector3 | int | float | List[float] | Tuple[float, ...]
+    ):
+        if isinstance(value, (int, float)):
+            value = Vector3(value, value, value)
+        elif isinstance(value, (list, tuple)) and len(value) == 3:
+            value = Vector3(*value)
+        elif not isinstance(value, Vector3):
+            raise ValueError(
+                "scale must be a Vector3 or a list/tuple of length 3"
+            )
         self._scale = value
         self._update_matrix()
 
     @property
     def local_transform_matrix(self):
-        """The local transform matrix of the object."""
+        """The local transform matrix of the object.
+
+        Setting this property also decomposes the matrix into
+        its constituent position, quaternion, and scale components.
+        However, decomposition of matrices with skew / shear components (non-uniform scaling)
+        might have unexpected results.
+        """
         return self._local_transform_matrix
 
     @local_transform_matrix.setter
@@ -228,7 +264,9 @@ class Object3D:
             "_cls": self.__class__.__name__,
             "name": self.name,
             "visible": self.visible,
-            "local_transform_matrix": self.local_transform_matrix.tolist(),
+            "position": self.position.to_arr().tolist(),
+            "quaternion": self.quaternion.to_arr().tolist(),
+            "scale": self.scale.to_arr().tolist(),
             "children": [child._to_dict() for child in self.children],
         }
 
@@ -262,15 +300,17 @@ class Object3D:
                     "name",
                     "visible",
                     "children",
+                    "position",
+                    "quaternion",
+                    "scale",
                     "local_transform_matrix",
                 ]
             },
         )
 
-        matrix_data = dict_data.get(
-            "local_transform_matrix", np.eye(4).tolist()
-        )
-        obj.local_transform_matrix = np.array(matrix_data)
+        obj.position = Vector3(*dict_data.get("position", [0, 0, 0]))
+        obj.quaternion = Quaternion(*dict_data.get("quaternion", [0, 0, 0, 1]))
+        obj.scale = Vector3(*dict_data.get("scale", [1, 1, 1]))
 
         # recursively handle children
         for child_json in dict_data.get("children", []):
