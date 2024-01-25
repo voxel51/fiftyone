@@ -1,18 +1,24 @@
 import { useLoader } from "@react-three/fiber";
 import React, { useEffect, useMemo, useState } from "react";
 import { Mesh, MeshPhongMaterial } from "three";
-import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
-import { PlyReturnType } from "../hooks";
+import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
+import { StlReturnType } from "../hooks";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 
-type PlysProps = {
-  plys: PlyReturnType[];
+type StlsProps = {
+  stls: StlReturnType[];
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 };
 
-const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
-  const { plyUrl, position, quaternion, scale } = ply;
-  const points = useLoader(PLYLoader, plyUrl);
+/**
+ *  Renders a single STL mesh.
+ *
+ *  A 3D model in a STL format describes only the surface geometry of a 3D object
+ *  without any representation of color, texture or other common CAD model attributes.
+ */
+const StlMesh = ({ stl }: { stl: StlReturnType }) => {
+  const { stlUrl, position, quaternion, scale } = stl;
+  const points = useLoader(STLLoader, stlUrl);
   const [mesh, setMesh] = useState(null);
 
   useEffect(() => {
@@ -41,26 +47,26 @@ const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
   return null;
 };
 
-export const Plys = ({ plys, visibilityMap }: PlysProps) => {
-  const plyMeshes = useMemo(() => {
-    return plys
-      .filter((ply) => visibilityMap[getIdentifierForAsset(ply)])
-      .map((ply) => {
+export const Stls = ({ stls, visibilityMap }: StlsProps) => {
+  const stlMeshes = useMemo(() => {
+    return stls
+      .filter((stl) => visibilityMap[getIdentifierForAsset(stl)])
+      .map((stl) => {
         return (
-          <group key={ply.plyUrl}>
-            <PlyErrorBoundary>
-              <PlyMesh ply={ply} />
-            </PlyErrorBoundary>
+          <group key={stl.stlUrl}>
+            <StlErrorBoundary>
+              <StlMesh stl={stl} />
+            </StlErrorBoundary>
           </group>
         );
       });
-  }, [plys, visibilityMap]);
+  }, [stls, visibilityMap]);
 
-  return <group>{plyMeshes}</group>;
+  return <group>{stlMeshes}</group>;
 };
 
 // create error boundary for individual mesh
-class PlyErrorBoundary extends React.Component {
+class StlErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false };
