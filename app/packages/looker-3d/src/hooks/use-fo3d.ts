@@ -88,7 +88,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     const pcds: PcdReturnType[] = [];
     const plys: PlyReturnType[] = [];
 
-    // do a depth first search of the scene
+    // do a depth first search of the scene and collect all renderables
     const stack = [rawData];
     while (stack.length > 0) {
       const current = stack.pop();

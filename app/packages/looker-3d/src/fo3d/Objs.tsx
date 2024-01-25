@@ -10,8 +10,8 @@ type ObjsProps = {
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 };
 
-const ObjMesh = ({ objUrl, mtlUrl }: { objUrl: string; mtlUrl: string }) => {
-  // todo: if materials don't load, we should still load the mesh
+const ObjMesh = ({ obj }: { obj: ObjReturnType }) => {
+  const { objUrl, mtlUrl, position, quaternion, scale } = obj;
   const materials = useLoader(MTLLoader, mtlUrl);
 
   const mesh = useLoader(OBJLoader, objUrl, (loader) => {
@@ -19,7 +19,14 @@ const ObjMesh = ({ objUrl, mtlUrl }: { objUrl: string; mtlUrl: string }) => {
     loader.setMaterials(materials);
   });
 
-  return <primitive object={mesh} />;
+  return (
+    <primitive
+      object={mesh}
+      position={position}
+      quaternion={quaternion}
+      scale={scale}
+    />
+  );
 };
 
 export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
@@ -27,11 +34,10 @@ export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
     return objs
       .filter((obj) => visibilityMap[getIdentifierForAsset(obj)])
       .map((obj) => {
-        const { objUrl, mtlUrl } = obj;
         return (
-          <group key={objUrl}>
+          <group key={obj.objUrl}>
             <ObjErrorBoundary>
-              <ObjMesh objUrl={objUrl} mtlUrl={mtlUrl} />
+              <ObjMesh obj={obj} />
             </ObjErrorBoundary>
           </group>
         );
