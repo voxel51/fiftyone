@@ -74,7 +74,7 @@ INSTALL_REQUIRES = [
     "yarl",
     "wcmatch",
     # internal packages
-    "fiftyone-brain>=0.15.0,<0.16",
+    "fiftyone-brain>=0.16.0,<0.17",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
     "voxel51-eta>=0.12.4,<0.13",
 ]
@@ -122,7 +122,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.15.4",
+    version="0.15.5rc3",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

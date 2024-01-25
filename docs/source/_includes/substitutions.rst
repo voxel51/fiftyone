@@ -121,6 +121,7 @@
 .. |SimilarityConfig| replace:: :class:`SimilarityConfig <fiftyone.brain.similarity.SimilarityConfig>`
 .. |SimilarityIndex| replace:: :class:`SimilarityIndex <fiftyone.brain.similarity.SimilarityIndex>`
 
+.. |Visualization| replace:: :class:`Visualization <fiftyone.brain.visualization.Visualization>`
 .. |VisualizationConfig| replace:: :class:`VisualizationConfig <fiftyone.brain.visualization.VisualizationConfig>`
 .. |VisualizationResults| replace:: :class:`VisualizationResults <fiftyone.brain.visualization.VisualizationResults>`
 
