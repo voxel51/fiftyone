@@ -52,7 +52,7 @@ COMPATIBLE_VERSIONS = ">=0.19,<0.24"
 # Package metadata
 _META = metadata("fiftyone")
 NAME = _META["name"]
-VERSION = "0.23.3"  # open source compatibility version
+VERSION = "0.23.4"  # open source compatibility version
 TEAMS_VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
 AUTHOR = _META["author"]
