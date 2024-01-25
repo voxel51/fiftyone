@@ -9,10 +9,19 @@ type PcdsProps = {
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
 };
 
-const PcdMesh = ({ pcdUrl }: { pcdUrl: string }) => {
+const PcdMesh = ({ pcd }: { pcd: PcdReturnType }) => {
+  const { position, quaternion, scale, pcdUrl, name } = pcd;
+
   const points = useLoader(PCDLoader, pcdUrl);
 
-  return <primitive object={points} />;
+  return (
+    <primitive
+      object={points}
+      position={position}
+      quaternion={quaternion}
+      scale={scale}
+    />
+  );
 };
 
 export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
@@ -20,23 +29,17 @@ export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
     return pcds
       .filter((pcd) => visibilityMap[getIdentifierForAsset(pcd)])
       .map((pcd) => {
-        const { pcdUrl } = pcd;
         return (
-          <group
-            key={pcdUrl}
-            modelViewMatrix={pcd.matrix}
-            matrixWorld={pcd.matrix}
-            matrixAutoUpdate={true}
-          >
+          <group key={pcd.pcdUrl}>
             <PcdErrorBoundary>
-              <PcdMesh pcdUrl={pcdUrl} />
+              <PcdMesh pcd={pcd} />
             </PcdErrorBoundary>
           </group>
         );
       });
   }, [pcds, visibilityMap]);
 
-  return <group>{pcdMeshes}</group>;
+  return <>{pcdMeshes}</>;
 };
 
 // create error boundary for individual mesh
