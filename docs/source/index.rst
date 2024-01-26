@@ -72,22 +72,22 @@ learn how:
     :image_title: PyTorch
 
 .. customimagelink::
-    :image_link: integrations/lightning_flash.html
+    :image_link: integrations/models/lightning_flash.html
     :image_src: https://voxel51.com/images/integrations/pytorch-lightning-128.png
     :image_title: PyTorch Lightning
 
 .. customimagelink::
-    :image_link: integrations/huggingface.html
+    :image_link: integrations/models/huggingface.html
     :image_src: https://voxel51.com/images/integrations/hugging-face-128.png
     :image_title: Hugging Face
 
 .. customimagelink::
-    :image_link: integrations/ultralytics.html
+    :image_link: integrations/models/ultralytics.html
     :image_src: https://voxel51.com/images/integrations/ultralytics-128.png
     :image_title: Ultralytics
 
 .. customimagelink::
-    :image_link: integrations/super_gradients.html
+    :image_link: integrations/models/super_gradients.html
     :image_src: https://voxel51.com/images/integrations/super-gradients-128.png
     :image_title: SuperGradients
 
@@ -102,47 +102,47 @@ learn how:
     :image_title: Detectron2
 
 .. customimagelink::
-    :image_link: integrations/qdrant.html
+    :image_link: integrations/vector_search/qdrant.html
     :image_src: https://voxel51.com/images/integrations/qdrant-128.png
     :image_title: Qdrant
 
 .. customimagelink::
-    :image_link: integrations/redis.html
+    :image_link: integrations/vector_search/redis.html
     :image_src: https://voxel51.com/images/integrations/redis-128.png
     :image_title: Redis
 
 .. customimagelink::
-    :image_link: integrations/pinecone.html
+    :image_link: integrations/vector_search/pinecone.html
     :image_src: https://voxel51.com/images/integrations/pinecone-128.png
     :image_title: Pinecone
 
 .. customimagelink::
-    :image_link: integrations/mongodb.html
+    :image_link: integrations/vector_search/mongodb.html
     :image_src: https://voxel51.com/images/integrations/mongodb-128.png
     :image_title: MongoDB
 
 .. customimagelink::
-    :image_link: integrations/milvus.html
+    :image_link: integrations/vector_search/milvus.html
     :image_src: https://voxel51.com/images/integrations/milvus-128.png
     :image_title: Milvus
 
 .. customimagelink::
-    :image_link: integrations/lancedb.html
+    :image_link: integrations/vector_search/lancedb.html
     :image_src: https://voxel51.com/images/integrations/lancedb-128.png
     :image_title: LanceDB
 
 .. customimagelink::
-    :image_link: integrations/activitynet.html
+    :image_link: integrations/datasets/activitynet.html
     :image_src: https://voxel51.com/images/integrations/activitynet-128.png
     :image_title: ActivityNet
 
 .. customimagelink::
-    :image_link: integrations/coco.html
+    :image_link: integrations/datasets/coco.html
     :image_src: https://voxel51.com/images/integrations/coco-128.png
     :image_title: COCO
 
 .. customimagelink::
-    :image_link: integrations/open_images.html
+    :image_link: integrations/datasets/open_images.html
     :image_src: https://voxel51.com/images/integrations/open-images-128.png
     :image_title: Open Images
 
@@ -162,22 +162,22 @@ learn how:
     :image_title: Plotly
 
 .. customimagelink::
-    :image_link: integrations/cvat.html
+    :image_link: integrations/annotation/cvat.html
     :image_src: https://voxel51.com/images/integrations/cvat-128.png
     :image_title: CVAT
 
 .. customimagelink::
-    :image_link: integrations/labelstudio.html
+    :image_link: integrations/annotation/labelstudio.html
     :image_src: https://voxel51.com/images/integrations/labelstudio-128.png
     :image_title: Label Studio
 
 .. customimagelink::
-    :image_link: integrations/v7.html
+    :image_link: integrations/annotation/v7.html
     :image_src: https://voxel51.com/images/integrations/v7-128.png
     :image_title: V7
 
 .. customimagelink::
-    :image_link: integrations/labelbox.html
+    :image_link: integrations/annotation/labelbox.html
     :image_src: https://voxel51.com/images/integrations/labelbox-128.png
     :image_title: Labelbox
 
