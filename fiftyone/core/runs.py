@@ -110,7 +110,14 @@ class BaseRunConfig(Config):
         Returns:
             a list of attributes
         """
-        return ["type", "method", "cls"] + super().attributes()
+        return ["cls", "type", "method"] + super().attributes()
+
+    @classmethod
+    def _virtual_attributes(cls):
+        """A list of attributes that are serialized but should *not* be treated
+        as parameters when loading the config class from the database.
+        """
+        return ["cls", "type", "method"]
 
     @classmethod
     def from_dict(cls, d):
@@ -123,9 +130,11 @@ class BaseRunConfig(Config):
         Returns:
             a :class:`BaseRunConfig`
         """
-        config_cls = d.pop("cls", None)
-        type = d.pop("type", None)
-        d.pop("method", None)
+        config_cls = d.get("cls", None)
+        type = d.get("type", None)
+
+        for key in cls._virtual_attributes():
+            d.pop(key, None)
 
         try:
             config_cls = etau.get_class(config_cls)
@@ -1086,8 +1095,14 @@ class RunConfig(BaseRunConfig):
     """
 
     def __init__(self, **kwargs):
+        method = None
         for name, value in kwargs.items():
-            setattr(self, name, value)
+            if name == "method":
+                method = value
+            else:
+                setattr(self, name, value)
+
+        self._method = method
 
     @property
     def type(self):
@@ -1095,7 +1110,15 @@ class RunConfig(BaseRunConfig):
 
     @property
     def method(self):
-        return None
+        return self._method
+
+    @method.setter
+    def method(self, method):
+        self._method = method
+
+    @classmethod
+    def _virtual_attributes(cls):
+        return ["cls", "type"]
 
 
 class Run(BaseRun):
