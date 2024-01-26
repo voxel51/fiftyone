@@ -2,7 +2,7 @@ import { FlashlightConfig, Response } from "@fiftyone/flashlight";
 import { zoomAspectRatio } from "@fiftyone/looker";
 import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
 import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
@@ -10,8 +10,6 @@ import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
 const PAGE_SIZE = 20;
 
 const processSamplePageData = (
-  offset: number,
-  store: fos.LookerStore<fos.Lookers>,
   data: fos.ResponseFrom<foq.paginateSamplesQuery>,
   zoom?: boolean
 ) => {
@@ -19,10 +17,6 @@ const processSamplePageData = (
     if (edge.node.__typename === "%other") {
       throw new Error("unexpected sample type");
     }
-
-    const node = edge.node as fos.ModalSample;
-    store.samples.set(node.sample._id, node);
-    store.indices.set(offset + i, node.sample._id);
 
     return {
       aspectRatio: zoom
@@ -39,7 +33,6 @@ const defaultZoom = selector({
 });
 
 const useFlashlightPager = (
-  store: fos.LookerStore<fos.Lookers>,
   pageSelector: RecoilValueReadOnly<
     (page: number, pageSize: number) => VariablesOf<foq.paginateSamplesQuery>
   >,
@@ -48,7 +41,6 @@ const useFlashlightPager = (
   const environment = useRelayEnvironment();
   const page = useRecoilValue(pageSelector);
   const zoom = useRecoilValue(zoomSelector || defaultZoom);
-  const [isEmpty, setIsEmpty] = useState(false);
   const handleError = useErrorHandler();
 
   const pager = useMemo(() => {
@@ -59,40 +51,30 @@ const useFlashlightPager = (
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
           foq.paginateSamples,
-          variables
+          variables,
+
+          { networkCacheConfig: {}, fetchPolicy: "store-or-network" }
         ).subscribe({
           next: (data) => {
-            const items = processSamplePageData(
-              pageNumber * PAGE_SIZE,
-              store,
-              data,
-              zoomValue
-            );
+            const items = processSamplePageData(data, zoomValue);
 
             subscription.unsubscribe();
-            !pageNumber && setIsEmpty(!items.length);
-
             resolve({
               items,
-              nextRequestKey: data.samples.pageInfo.hasNextPage
-                ? pageNumber + 1
-                : null,
+              next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
+              previous: pageNumber > 0 ? pageNumber - 1 : null,
             });
           },
           error: handleError,
         });
       });
     };
-  }, [environment, handleError, page, store, zoom]);
+  }, [environment, handleError, page, zoom]);
 
   const ref = useRef<FlashlightConfig<number>["get"]>(pager);
   ref.current = pager;
 
-  return {
-    isEmpty,
-    reset: page,
-    page: (page: number) => ref.current(page),
-  };
+  return ref;
 };
 
 export default useFlashlightPager;

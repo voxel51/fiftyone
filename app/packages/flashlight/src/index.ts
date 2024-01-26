@@ -1,271 +1,367 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
+import { closest } from "./closest";
 import { MARGIN } from "./constants";
-import { Get, ItemData, Options, Render, RowData, State } from "./state";
-import { flashlight, flashlightContainer } from "./styles.module.css";
-import tile from "./tile";
-import { argMin, getDims } from "./util";
+import { EventCallback, Load, PageChange } from "./events";
+import Row, { Render } from "./row";
+import { Response, Section } from "./section";
+import { flashlight } from "./styles.module.css";
 import { createScrollReader } from "./zooming";
-export type { Render, Response } from "./state";
 
-export type FlashlightOptions = Partial<Options>;
+export { Load, PageChange } from "./events";
+export { Response } from "./section";
+
+export type Get<K> = (key: K) => Promise<Response<K>>;
 
 export interface FlashlightConfig<K> {
   get: Get<K>;
   render: Render;
   key: K;
-  options: FlashlightOptions;
+  rowAspectRatioThreshold: number;
 }
 
 export default class Flashlight<K> extends EventTarget {
-  public container: HTMLDivElement;
-  public element: HTMLDivElement;
-  public state: State<K>;
+  readonly #config: FlashlightConfig<K>;
+  readonly #element = document.createElement("div");
 
-  private readonly config: FlashlightConfig<K>;
+  #scrollReader?: ReturnType<typeof createScrollReader>;
+
+  #forward: Section<K>;
+  #backward: Section<K>;
+
+  readonly #keys = new Map<string, K>();
+  #page: K;
 
   constructor(config: FlashlightConfig<K>) {
     super();
-    this.config = config;
-    this.container = this.createContainer();
-    this.element = document.createElement("div");
-    this.element.classList.add(flashlight);
-    this.state = this.getEmptyState(config);
+    this.#config = { ...config };
 
-    document.addEventListener("visibilitychange", () => this.render());
+    this.#forward = new Section(this.#config.key);
 
-    createScrollReader(
-      this.element,
-      (zooming) => this.render(zooming),
-      () => {
-        return (
-          (this.state.width /
-            (this.state.containerHeight *
-              Math.max(this.state.options.rowAspectRatioThreshold, 1))) *
-          500
-        );
-      }
-    );
+    this.#element.classList.add(flashlight);
 
-    this.element.appendChild(this.container);
+    this.#page = config.key;
   }
 
-  isAttached() {
-    return Boolean(this.element.parentElement);
+  get attached() {
+    return Boolean(this.#element.parentElement);
+  }
+
+  addEventListener(type: "load", callback: EventCallback<Load<K>>): void;
+  addEventListener(
+    type: "pagechange",
+    callback: EventCallback<PageChange<K>>
+  ): void;
+  addEventListener(
+    type: string,
+    callback: EventListenerOrEventListenerObject
+  ): void {
+    super.addEventListener(type, callback);
+  }
+
+  removeEventListener(type: "load", callback: EventCallback<Load<K>>): void;
+  removeEventListener(
+    type: "pagechange",
+    callback: EventCallback<PageChange<K>>
+  ): void;
+  removeEventListener(
+    type: string,
+    callback: EventListenerOrEventListenerObject
+  ): void {
+    super.removeEventListener(type, callback);
   }
 
   attach(element: HTMLElement | string): void {
+    if (this.attached) {
+      throw new Error("flashlight is attached");
+    }
+
     if (typeof element === "string") {
       element = document.getElementById(element);
     }
 
-    const { width, height } = getDims(element);
+    element.appendChild(this.#element);
 
-    this.state.width = width - 16;
-    this.state.containerHeight = height;
-
-    element.appendChild(this.element);
-
-    this.get();
+    this.#fill();
   }
 
   detach(): void {
-    if (this.isAttached()) {
-      this.element.parentNode.removeChild(this.element);
+    if (!this.attached) {
+      throw new Error("flashlight is not attached");
     }
+
+    this.#element.parentElement.removeChild(this.#element);
   }
 
-  get(): Promise<void> | null {
-    return this.state
-      .get(this.state.currentRequestKey)
-      .then(({ items, nextRequestKey }) => {
-        this.state.currentRequestKey = nextRequestKey;
+  get #backwardTop() {
+    return this.#backward.height;
+  }
 
-        for (const { id } of items) {
-          this.state.itemIndexMap[id] = this.state.nextItemIndex;
-          this.state.nextItemIndex++;
+  get #forwardBottom() {
+    return this.#forward.height || MARGIN;
+  }
+
+  get #containerHeight() {
+    return this.#forwardBottom + this.#backwardTop + 48;
+  }
+
+  get #height() {
+    return this.#element.parentElement.getBoundingClientRect().height;
+  }
+
+  get #padding() {
+    return this.#height * 0.75;
+  }
+
+  get #width() {
+    return this.#element.getBoundingClientRect().width - 16;
+  }
+
+  async #fill() {
+    const result = await this.#next();
+    this.#backward.start = result.edge;
+    this.#backward.end = this.#backward.start
+      ? {
+          remainder: [],
+          key: this.#backward.start.key,
         }
+      : undefined;
 
-        items = [...this.state.currentRemainder, ...items];
+    while (this.#containerHeight < this.#height) {
+      await this.#next();
 
-        let sections = this.tile(items, true);
+      if (this.#backward.end && !this.#backward.end?.key) break;
+    }
 
-        const lastSection = sections[sections.length - 1];
-        if (
-          Boolean(nextRequestKey) &&
-          lastSection &&
-          lastSection.length !== NUM_ROWS_PER_SECTION
-        ) {
-          this.state.currentRowRemainder = lastSection;
-          sections = sections.slice(0, -1);
-        } else {
-          this.state.currentRowRemainder = [];
-        }
+    let offset = 0;
+    if (this.#backward.start) {
+      offset = (await this.#previous()).offset;
+    }
 
-        sections.forEach((rows) => {
-          const sectionElement = new SectionElement(
-            this.state.sections.length,
-            this.state.itemIndexMap[rows[0].items[0].id],
-            rows,
-            this.state.render,
-            this.config.horizontal,
-            this.getOnItemClick()
+    requestAnimationFrame(() => {
+      this.#scrollReader = createScrollReader(
+        this.#element,
+        (zooming) => this.#render(zooming),
+        () => {
+          return (
+            (this.#width /
+              (this.#height *
+                Math.max(this.#config.rowAspectRatioThreshold, 1))) *
+            300
           );
-          sectionElement.set(this.state.height, this.state.width);
-          this.state.sections.push(sectionElement);
-
-          this.state.height += sectionElement.getHeight();
-          this.state.clean.add(sectionElement.index);
-        });
-
-        if (sections.length) {
-          if (this.config.horizontal) {
-            this.container.style.minWidth = `${this.state.height}px`;
-          } else {
-            this.container.style.minHeight = `${this.state.height}px`;
-          }
         }
+      );
 
-        const headSection = this.state.sections[this.state.sections.length - 1];
+      this.#render(false, offset);
 
-        this.state.currentRequestKey = nextRequestKey;
-        this.loading = false;
-
-        if (
-          this.state.height <= this.state.containerHeight ||
-          (!sections.length && nextRequestKey) ||
-          (headSection && this.state.shownSections.has(headSection.index))
-        ) {
-          this.requestMore();
-        }
-
-        if (
-          this.state.height >= this.state.containerHeight ||
-          nextRequestKey === null
-        ) {
-          this.render();
-        }
-      });
-  }
-
-  private hideSection(index: number) {
-    const section = this.state.sections[index];
-    if (!section || !section.isShown()) {
-      return;
-    }
-
-    section.hide();
-  }
-
-  private render(zooming = false) {
-    if (
-      this.state.sections.length === 0 &&
-      this.state.currentRequestKey === null
-    ) {
-      return;
-    }
-
-    const top = this.element.scrollTop;
-
-    const index = argMin(
-      this.state.sections.map((section) => Math.abs(section.getTop() - top))
-    );
-
-    this.state.firstSection = Math.max(index - 2, 0);
-    let revealing = this.state.sections[this.state.firstSection];
-    let revealingIndex = this.state.firstSection;
-
-    while (
-      revealing &&
-      revealing.getTop() <= top + this.state.containerHeight
-    ) {
-      revealingIndex = revealing.index + 1;
-      revealing = this.state.sections[revealingIndex];
-    }
-
-    this.state.lastSection = !revealing ? revealingIndex - 1 : revealingIndex;
-
-    this.state.activeSection = this.state.firstSection;
-    let activeSection = this.state.sections[this.state.activeSection];
-
-    if (!activeSection) {
-      return;
-    }
-
-    while (activeSection.getBottom() - MARGIN <= top) {
-      if (this.state.sections[this.state.activeSection + 1]) {
-        this.state.activeSection += 1;
-        activeSection = this.state.sections[this.state.activeSection];
-      } else break;
-    }
-
-    let i = this.state.firstSection;
-    while (i <= this.state.lastSection) {
-      this.state.shownSections.add(i);
-      i++;
-    }
-    [...Array.from(this.state.shownSections)].forEach((index) => {
-      if (index < this.state.firstSection || index > this.state.lastSection) {
-        this.hideSection(index);
-      }
+      this.dispatchEvent(new Load(this.#config.key));
     });
-
-    this.showSections(zooming);
-
-    if (this.state.lastSection === this.state.sections.length - 1) {
-      this.requestMore();
-    }
   }
 
-  private tile(items: ItemData[], useRowRemainder = false): RowData[][] {
-    let { rows, remainder } = tile(
+  async #get(key: K) {
+    const result = await this.#config.get(key);
+    result.items.forEach(({ id }) => this.#keys.set(id, key));
+    return result;
+  }
+
+  async #next() {
+    const end = this.#forward.end;
+    this.#forward.end = undefined;
+
+    const data = await this.#get(end.key);
+    const { rows, remainder } = this.#tile(
+      [...end.remainder, ...data.items],
+      this.#forwardBottom
+    );
+    this.#forward.end =
+      data.next !== null
+        ? {
+            key: data.next,
+            remainder,
+          }
+        : undefined;
+    this.#forwardRows.push(...rows);
+
+    let offset = 0;
+    if (this.#forward.end && this.#forwardRows.length > 10) {
+      const height =
+        this.#forwardBottom -
+        this.#forwardRows[this.#forwardRows.length - 1].height -
+        MARGIN;
+      this.#backwardRows = this.#forwardRows.reverse();
+      this.#backwardRows.forEach((row) => (row.from = height - row.from));
+      this.#backward = {
+        start: this.#forward.start,
+        end: { key: end.key, remainder: [] },
+      };
+      this.#forwardRows = [];
+      this.#forward = {
+        start: { key: data.next, remainder: [] },
+        end: { key: data.next, remainder },
+      };
+    }
+
+    return {
+      edge: data.previous
+        ? {
+            key: data.previous,
+            remainder: [],
+          }
+        : undefined,
+      offset,
+    };
+  }
+
+  async #previous() {
+    const start = this.#backward.start;
+    this.#backward.start = undefined;
+
+    const data = await this.#get(start.key);
+    const items = [...data.items, ...start.remainder].reverse();
+    const { rows, remainder, offset } = this.#tile(
       items,
-      this.state.options.rowAspectRatioThreshold
+      this.#backwardTop,
+      true
+    );
+    this.#backward.start =
+      data.previous !== null
+        ? {
+            key: data.previous,
+            remainder,
+          }
+        : undefined;
+    this.#backwardRows.push(...rows);
+
+    if (this.#backward.start && this.#backwardRows.length > 10) {
+      this.#forwardRows = this.#backwardRows.reverse();
+      this.#forward = {
+        end: this.#backward.end,
+        start: { key: start.key, remainder: [] },
+      };
+      this.#backwardRows = [];
+      this.#backward = {
+        start: { key: data.previous, remainder },
+      };
+    }
+
+    return { offset };
+  }
+
+  #render(zooming: boolean, offset = 0) {
+    const hide = this.#shown;
+
+    hide.forEach((row) => row.hide());
+
+    this.#shown = new Set();
+
+    let bottom: number = undefined;
+    let index: number = undefined;
+    let top: number = undefined;
+
+    let pageTop: number = undefined;
+    let pageRow: Row = undefined;
+    const scrollTop = this.#element.scrollTop + offset;
+
+    const forward = closest(
+      this.#forwardRows,
+      this.#element.scrollTop + offset - this.#padding - this.#backwardTop,
+      (row) => row.from
     );
 
-    this.state.currentRemainder = remainder;
+    if (this.#backwardRows.length) {
+      const backward = closest(
+        this.#backwardRows,
+        this.#backwardTop - (this.#element.scrollTop + offset - this.#padding),
+        (row) => row.from + row.height
+      );
+      index = backward.index;
 
-    if (useRowRemainder) {
-      rows = [...this.state.currentRowRemainder, ...rows];
+      if (
+        index >= this.#backwardRows.length - 1 &&
+        this.#backward.start?.key !== undefined
+      ) {
+        this.#previous().then(({ offset }) =>
+          requestAnimationFrame(() => this.#render(false, offset))
+        );
+      }
+
+      if (!forward || Math.abs(backward.delta) < Math.abs(forward.delta)) {
+        top =
+          this.#backwardTop -
+          this.#backwardRows[index].from -
+          this.#backwardRows[index].height;
+        bottom = top + this.#height + this.#padding;
+        while (top < bottom && index >= 0) {
+          const row = this.#backwardRows[index];
+          row.show(
+            this.#backwardContainer,
+            false,
+            "bottom",
+            zooming,
+            this.#config.render
+          );
+          const next = top - scrollTop;
+          if (next > 0 && (pageTop === undefined || next < pageTop)) {
+            pageTop = next;
+            pageRow = row;
+          }
+          top += row.height + MARGIN;
+          this.#shown.add(row);
+          index--;
+        }
+      }
     }
 
-    return new Array(Math.ceil(rows.length / NUM_ROWS_PER_SECTION))
-      .fill(0)
-      .map((_) => rows.splice(0, NUM_ROWS_PER_SECTION));
-  }
+    if (forward) {
+      index = forward.index;
+      top = this.#backwardTop + this.#forwardRows[forward.index].from;
+      bottom = scrollTop + this.#height + this.#padding;
+      while (top < bottom && this.#forwardRows[index]) {
+        const row = this.#forwardRows[index];
+        row.show(
+          this.#forwardContainer,
+          false,
+          "top",
+          zooming,
+          this.#config.render
+        );
+        top += row.height + MARGIN;
 
-  private getEmptyState(config: FlashlightConfig<K>): State<K> {
-    const state = {
-      currentRequestKey: config.initialRequestKey,
-      containerHeight: null,
-      width: null,
-      height: config.options.offset || 0,
-      ...config,
-      currentRemainder: [],
-      currentRowRemainder: [],
-      items: [],
-      sections: [],
-      activeSection: 0,
-      firstSection: 0,
-      lastSection: 0,
-      options: {
-        offset: 0,
-        rowAspectRatioThreshold: 5,
-        ...config.options,
-      },
-      clean: new Set<number>(),
-      shownSections: new Set<number>(),
-      itemIndexMap: {},
-      nextItemIndex: 0,
-    };
+        const next = top - scrollTop;
+        if (next > 0 && (pageTop === undefined || next < pageTop)) {
+          pageTop = next;
+          pageRow = row;
+        }
+        this.#shown.add(row);
+        index++;
+      }
+    }
 
-    return state;
-  }
+    if (
+      (!forward || index >= this.#forwardRows.length - 1) &&
+      this.#forward.end?.key !== undefined
+    ) {
+      this.#next().then(({ offset }) => {
+        requestAnimationFrame(() => this.#render(false, offset));
+      });
+    }
 
-  private createContainer(): HTMLDivElement {
-    const container = document.createElement("div");
-    container.classList.add(flashlightContainer);
-    return container;
+    console.log(this.#forwardBottom);
+    this.#forwardContainer.style.height = this.#forwardBottom + "px";
+    this.#backwardContainer.style.height = this.#backwardTop + 48 + "px";
+    this.#forwardContainer.parentElement.style.top =
+      this.#backwardTop + 48 + "px";
+
+    if (offset) {
+      this.#scrollReader.adjust(offset);
+    }
+
+    const page = this.#keys.get(pageRow.id);
+
+    if (!zooming && page !== this.#page) {
+      this.#page = page;
+      // this.dispatchEvent(new PageChange(page));
+    }
   }
 }

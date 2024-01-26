@@ -10,7 +10,7 @@ export default (items: number[], threshold: number): number[] => {
     const key = `${start}:${end}`;
     if (!cache.has(key)) {
       const aspectRatio = items
-        .slice(start, end + 1)
+        .slice(start, end)
         .reduce((sum, aspectRatio) => sum + aspectRatio, 0);
       const delta = threshold - aspectRatio;
       cache.set(key, {
@@ -22,19 +22,23 @@ export default (items: number[], threshold: number): number[] => {
     return cache.get(key);
   };
 
-  const cache = new Map<string, ReturnType<typeof row>>();
+  const cache = new Map<string, { delta: number; score: number }>();
 
   const nodes = new Map<number, { parent: number; score: () => number }>();
-  const search = (item: number, score: number, parent?: number) => {
-    let end = item;
+  const search = (item: number, parent?: number) => {
+    const score = () => {
+      if (parent === undefined) {
+        return 0;
+      }
+
+      return row(parent, item).score + nodes.get(parent).score();
+    };
 
     const exists = nodes.has(item);
-
-    if (!exists || nodes.get(item).score() >= score) {
+    if (!exists || nodes.get(item).score() >= score()) {
       nodes.set(item, {
         parent,
-        score: () =>
-          row(parent, item).score + (nodes.get(parent)?.score() ?? 0),
+        score,
       });
     }
 
@@ -42,6 +46,7 @@ export default (items: number[], threshold: number): number[] => {
       return;
     }
 
+    let end = item + 1;
     while (end < items.length) {
       const edge = row(item, end);
       end++;
@@ -54,15 +59,28 @@ export default (items: number[], threshold: number): number[] => {
         continue;
       }
 
-      search(end, score + edge.score, item);
+      search(end, item);
     }
 
     return;
   };
 
-  search(0, 0);
+  search(0);
 
-  let cursor = items.length - 1;
+  const keys = Array.from(nodes.keys()).sort((a, b) => b - a);
+
+  let cursor = keys[0];
+  let score = nodes.get(keys[0]).score();
+  for (const next of keys.slice(1)) {
+    const nextScore = nodes.get(next).score();
+    if (nextScore > score) {
+      break;
+    }
+
+    score = nextScore;
+    cursor = next;
+  }
+
   const result = [];
   while (cursor) {
     result.push(cursor);

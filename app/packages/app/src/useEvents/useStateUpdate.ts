@@ -14,7 +14,11 @@ const useStateUpdate: EventHandlerHook = ({
 
   return useCallback(
     (payload: any) => {
-      const state = processState(session.current, payload.state);
+      const state = processState(
+        session.current,
+        payload.state,
+        new URLSearchParams(router.history.location.search)
+      );
       const stateless = env().VITE_NO_STATE;
       const path = resolveURL({
         currentPathname: router.history.location.pathname,

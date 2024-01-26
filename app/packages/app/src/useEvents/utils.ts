@@ -1,5 +1,5 @@
 import { ColorSchemeInput, subscribeBefore } from "@fiftyone/relay";
-import { Session, State, ensureColorScheme } from "@fiftyone/state";
+import { ensureColorScheme, Session, State } from "@fiftyone/state";
 import { env, toCamelCase } from "@fiftyone/utilities";
 import { atom } from "recoil";
 import { DatasetPageQuery } from "../pages/datasets/__generated__/DatasetPageQuery.graphql";
@@ -13,7 +13,8 @@ export const appReadyState = atom<AppReadyState>({
 
 export const processState = (
   session: Session,
-  state: any
+  state: any,
+  params: URLSearchParams
 ): Partial<LocationState<DatasetPageQuery>> => {
   const unsubscribe = subscribeBefore<DatasetPageQuery>(({ data }) => {
     session.colorScheme = ensureColorScheme(
@@ -33,6 +34,8 @@ export const processState = (
     session.selectedSamples = new Set(state.selected);
     session.sessionSpaces = state.spaces || session.sessionSpaces;
     session.fieldVisibilityStage = state.field_visibility_stage || undefined;
+
+    session.sessionPage = parseInt(params.get("page") || "") || 0;
 
     unsubscribe();
   });

@@ -7,18 +7,10 @@ export const createScrollReader = (
   render: (zooming: boolean) => void,
   getScrollSpeedThreshold: () => number
 ) => {
-  let destroyed = false;
-  let prior = 0;
-  let scrolling = false;
-  let timer = undefined;
+  let prior: number;
+  let timer: number;
   let zooming = false;
-
-  const listener = () => {
-    scrolling = true;
-    updateScrollStatus() && !zooming && render(zooming);
-  };
-
-  element.addEventListener("scroll", listener);
+  let destroyed = false;
 
   const updateScrollStatus = () => {
     const threshold = getScrollSpeedThreshold();
@@ -26,22 +18,22 @@ export const createScrollReader = (
       return false;
     }
 
-    if (!prior) {
-      if (Math.abs(element.scrollTop - prior) > threshold) {
-        zooming = true;
-        if (timer !== undefined) {
-          clearTimeout(timer);
-          timer = undefined;
-        }
-        timer = setTimeout(function () {
-          zooming = false;
-          timer = undefined;
-          render(false);
-        }, 350);
-      } else if (timer === undefined) {
-        scrolling = false;
+    if (
+      prior === undefined ||
+      Math.abs(element.scrollTop - prior) > threshold
+    ) {
+      zooming = prior !== undefined;
+      if (timer !== undefined) {
+        clearTimeout(timer);
+        timer = undefined;
       }
+      timer = setTimeout(function () {
+        zooming = false;
+        timer = undefined;
+        render(false);
+      }, 300);
     }
+
     prior = element.scrollTop;
 
     return true;
@@ -50,14 +42,21 @@ export const createScrollReader = (
   const animate = () => {
     if (!destroyed) {
       requestAnimationFrame(animate);
-      scrolling && updateScrollStatus() && zooming && render(zooming);
+      if (element.parentElement) {
+        updateScrollStatus();
+        render(zooming);
+      }
     }
   };
 
   animate();
 
-  return () => {
-    destroyed = true;
-    element.removeEventListener("scroll", listener);
+  return {
+    adjust: (offset: number) => {
+      element.scroll(0, element.scrollTop + offset);
+    },
+    destroy: () => {
+      destroyed = true;
+    },
   };
 };

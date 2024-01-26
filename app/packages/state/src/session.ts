@@ -5,7 +5,7 @@ import {
 } from "@fiftyone/relay";
 import { SpaceNodeJSON } from "@fiftyone/spaces";
 import { useCallback } from "react";
-import { DefaultValue, RecoilState, atom, selector } from "recoil";
+import { atom, DefaultValue, RecoilState, selector } from "recoil";
 import { State } from "./recoil";
 
 export const SPACES_DEFAULT = {
@@ -29,6 +29,7 @@ export interface Session {
   readOnly: boolean;
   selectedSamples: Set<string>;
   selectedLabels: State.SelectedLabel[];
+  sessionPage: number;
   sessionSpaces: SpaceNodeJSON;
   sessionGroupSlice?: string;
   fieldVisibilityStage?: State.FieldVisibilityStage;
@@ -54,6 +55,7 @@ export const SESSION_DEFAULT: Session = {
     defaultMaskTargetsColors: [],
   },
   fieldVisibilityStage: undefined,
+  sessionPage: 0,
 };
 
 type SetterKeys = keyof Omit<
