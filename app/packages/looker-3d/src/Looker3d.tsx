@@ -7,7 +7,6 @@ import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { currentActionAtom } from "./state";
-import { settings } from "@fiftyone/looker/src/elements/common/actions";
 
 /**
  * This component is responsible for rendering both "3d" as well as "point_cloud" media types.
