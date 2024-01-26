@@ -16,7 +16,7 @@ class ObjMesh(Mesh):
     ):
         super().__init__(name=name, **kwargs)
 
-        if not obj_path.endswith(".obj"):
+        if not obj_path.lower().endswith(".obj"):
             raise ValueError("OBJ mesh must be a .obj file")
 
         self.obj_path = obj_path
@@ -37,7 +37,7 @@ class GLTFMesh(Mesh):
     def __init__(self, name: str, gltf_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not gltf_path.endswith(".gltf"):
+        if not gltf_path.lower().endswith(".gltf"):
             raise ValueError("GLTF mesh must be a .gltf file")
 
         self.gltf_path = gltf_path
@@ -50,7 +50,7 @@ class PlyMesh(Mesh):
     def __init__(self, name: str, ply_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not ply_path.endswith(".ply"):
+        if not ply_path.lower().endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
 
         self.ply_path = ply_path
@@ -63,7 +63,7 @@ class StlMesh(Mesh):
     def __init__(self, name: str, stl_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not stl_path.endswith(".stl"):
+        if not stl_path.lower().endswith(".stl"):
             raise ValueError("STL mesh must be a .stl file")
 
         self.stl_path = stl_path
