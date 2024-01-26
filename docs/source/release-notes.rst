@@ -3,6 +3,33 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.5
+--------------------
+*Released January 25, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.4 <release-notes-v0.23.4>`, plus:
+
+Bugs
+
+- Fixed a proxy URL bug that prevented custom JS panels from launching
+
+.. _release-notes-v0.23.4:
+
+FiftyOne 0.23.4
+---------------
+*Released January 25, 2024*
+
+Core
+
+- Added support for passing kwargs directly when creating custom runs
+  `#4039 <https://github.com/voxel51/fiftyone/pull/4039>`_
+
+Brain
+
+- Added support for registering
+  :ref:`custom visualization methods <brain-visualization-api>`
+  `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
+
 FiftyOne Teams 1.5.4
 --------------------
 *Released January 19, 2024*
