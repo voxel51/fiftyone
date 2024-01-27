@@ -1,11 +1,11 @@
 import { useLoader } from "@react-three/fiber";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Mesh, MeshPhongMaterial } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjReturnType } from "../hooks";
+import { getColorFromPoolBasedOnHash } from "../utils";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
-import { COLOR_POOL } from "../constants";
 
 type ObjsProps = {
   objs: ObjReturnType[];
@@ -21,16 +21,10 @@ const ObjMeshDefaultMaterial = ({ obj }: { obj: ObjReturnType }) => {
       return;
     }
 
-    // create hash from obj url to generate a unique color from color pool
-    const hash = objUrl.split("").reduce((acc, char, idx) => {
-      const charCode = char.charCodeAt(0);
-      return acc + charCode * idx;
-    }, 0);
-    const color = COLOR_POOL[hash % COLOR_POOL.length];
     mesh.traverse((child) => {
       if (child instanceof Mesh) {
         child.material = new MeshPhongMaterial({
-          color,
+          color: getColorFromPoolBasedOnHash(objUrl),
         });
       }
     });

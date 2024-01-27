@@ -4,6 +4,7 @@ import { Mesh, MeshPhongMaterial } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import { StlReturnType } from "../hooks";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
+import { getColorFromPoolBasedOnHash } from "../utils";
 
 type StlsProps = {
   stls: StlReturnType[];
@@ -26,7 +27,7 @@ const StlMesh = ({ stl }: { stl: StlReturnType }) => {
       points.computeVertexNormals();
 
       const material = new MeshPhongMaterial({
-        color: 0xff00ff,
+        color: getColorFromPoolBasedOnHash(stlUrl),
       });
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);

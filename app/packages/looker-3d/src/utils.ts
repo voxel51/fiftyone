@@ -4,6 +4,7 @@ import {
   Vector3Tuple,
   Vector4Tuple,
 } from "three";
+import { COLOR_POOL } from "./constants";
 
 export type FiftyoneSceneRawJson = {
   _cls: string;
@@ -91,4 +92,12 @@ export const computeMinMaxForColorBufferAttribute = (
   }
 
   return { min: minX, max: maxX };
+};
+
+export const getColorFromPoolBasedOnHash = (str: string) => {
+  const hash = str.split("").reduce((acc, char, idx) => {
+    const charCode = char.charCodeAt(0);
+    return acc + charCode * idx;
+  }, 0);
+  return COLOR_POOL[hash % COLOR_POOL.length];
 };
