@@ -4,6 +4,7 @@ import { Mesh, MeshPhongMaterial } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { PlyReturnType } from "../hooks";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
+import { getColorFromPoolBasedOnHash } from "../utils";
 
 type PlysProps = {
   plys: PlyReturnType[];
@@ -20,7 +21,7 @@ const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
       points.computeVertexNormals();
 
       const material = new MeshPhongMaterial({
-        color: 0xff00ff,
+        color: getColorFromPoolBasedOnHash(plyUrl),
       });
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);

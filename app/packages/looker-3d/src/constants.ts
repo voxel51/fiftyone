@@ -35,24 +35,24 @@ export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
 export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";
 
 export const COLOR_POOL = [
-  0xff5733, // Vibrant Red
   0x33ff57, // Bright Green
-  0x3357ff, // Soft Blue
+  0x50c878, // Emerald
+  0xadff2f, // Green Yellow
+  0x006400, // Dark Green
+  0xff5733, // Vibrant Red
+  0xdc143c, // Crimson
   0xffff33, // Lemon Yellow
-  0xff33ff, // Magenta
-  0x33ffff, // Cyan
-  0xff875f, // Coral
-  0x8a2be2, // Blue Violet
-  0xdeb887, // Burly Wood
-  0x5f9ea0, // Cadet Blue
-  0x7fff00, // Chartreuse
+  0xffd700, // Gold
+  0xff69b4, // Hot Pink
+  0xff8c00, // Dark Orange
+  0x20b2aa, // Light Sea Green
+  0x8fbc8f, // Dark Sea Green
+  0xf4a460, // Sandy Brown
+  0xcd853f, // Peru
   0xd2691e, // Chocolate
   0xff7f50, // Coral
-  0x6495ed, // Cornflower Blue
-  0xdc143c, // Crimson
-  0x00ffff, // Cyan
-  0x00008b, // Dark Blue
-  0x008b8b, // Dark Cyan
-  0xb8860b, // Dark Golden Rod
-  0xa9a9a9, // Dark Gray
+  0x708090, // Slate Gray
+  0x2f4f4f, // Dark Slate Gray
+  0xffebcd, // Blanched Almond
+  0xf5f5dc, // Beige
 ];
