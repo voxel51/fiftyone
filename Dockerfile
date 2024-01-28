@@ -94,8 +94,8 @@ RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 # Install FiftyOne from source
 #
 
-COPY dist dist
-RUN pip --no-cache-dir install dist/*.whl && rm -rf dist
+COPY . dist
+RUN pip --no-cache-dir install dist/. && rm -rf dist
 
 # Use this instead if you want the latest FiftyOne release
 # RUN pip --no-cache-dir install fiftyone

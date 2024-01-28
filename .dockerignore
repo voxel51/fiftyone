@@ -1,3 +1,3 @@
-*
+tests
+docs
 !Dockerfile
-!dist
