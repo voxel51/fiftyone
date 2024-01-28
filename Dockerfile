@@ -116,8 +116,4 @@ ENV FIFTYONE_DATABASE_DIR=${ROOT_DIR}/db \
 #
 # Default behavior
 #
-
-CMD ipython
-
-# Use this if you want the default behavior to instead be to launch the App
-# CMD python /usr/local/lib/python/dist-packages/fiftyone/server/main.py --port 5151
+CMD python /usr/local/lib/python/dist-packages/fiftyone/server/main.py --port 5151
