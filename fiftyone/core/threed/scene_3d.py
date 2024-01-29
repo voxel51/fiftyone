@@ -55,7 +55,7 @@ class Scene(Object3D):
                     "floats"
                 )
 
-        self.default_camera_position = default_camera_position
+        self._default_camera_position = default_camera_position
 
     def export(self, path: str):
         """Export the scene to a .fo3d file."""
@@ -68,9 +68,9 @@ class Scene(Object3D):
             json.dump(scene, f)
 
     def _to_dict_extra(self):
-        if self.default_camera_position:
+        if self._default_camera_position:
             return {
-                "default_camera_position": self.default_camera_position.to_arr().tolist(),
+                "default_camera_position": self._default_camera_position.to_arr().tolist(),
             }
         else:
             return {}
