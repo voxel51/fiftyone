@@ -74,7 +74,12 @@ class Quaternion:
 
 
 class Object3D:
-    """The base class for all 3D objects in the scene."""
+    """The base class for all 3D objects in the scene.
+
+    Args:
+        name (""): the name of the object
+        visible (True): default visibility of the object in the scene
+    """
 
     def __init__(self, name="", visible=True):
         self.name = name
@@ -288,25 +293,31 @@ class Object3D:
         cls_name = dict_data.get("_cls", "Object3D")
         clz = getattr(threed, cls_name, Object3D)
 
-        obj = clz(
-            name=dict_data.get("name", ""),
-            visible=dict_data.get("visible", True),
-            **{
-                k: v
-                for k, v in dict_data.items()
-                if k
-                not in [
-                    "_cls",
-                    "name",
-                    "visible",
-                    "children",
-                    "position",
-                    "quaternion",
-                    "scale",
-                    "local_transform_matrix",
-                ]
-            },
-        )
+        clz_main_args = {
+            k: v
+            for k, v in dict_data.items()
+            if k
+            not in [
+                "_cls",
+                "name",
+                "visible",
+                "children",
+                "position",
+                "quaternion",
+                "scale",
+                "local_transform_matrix",
+            ]
+        }
+
+        if cls_name == "Scene":
+            # `Scene` has no name or visibility
+            obj = clz(**clz_main_args)
+        else:
+            obj = clz(
+                name=dict_data.get("name", ""),
+                visible=dict_data.get("visible", True),
+                **clz_main_args,
+            )
 
         obj.position = Vector3(*dict_data.get("position", [0, 0, 0]))
         obj.quaternion = Quaternion(*dict_data.get("quaternion", [0, 0, 0, 1]))
