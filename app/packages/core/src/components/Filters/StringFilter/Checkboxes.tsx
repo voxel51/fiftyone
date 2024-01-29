@@ -14,6 +14,7 @@ import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
+import { pathSearchCount } from "./state";
 import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
@@ -103,7 +104,7 @@ const useValues = ({
 
   let allValues = selected.map((value) => ({
     value,
-    count: hasCount ? counts.get(value) || 0 : null,
+    count: hasCount ? counts.get(value) ?? null : null,
     loading: unlocked && loading,
   }));
   const objectId = useRecoilValue(fos.isObjectIdField(path));
@@ -186,7 +187,8 @@ const Checkboxes = ({
             loading={loading}
             count={
               typeof count !== "number" || !isFilterMode || keypoints
-                ? undefined
+                ? // only string and id fields use pathSearchCount
+                  pathSearchCount({ modal, path, value: value as string })
                 : count
             }
             setValue={(checked: boolean) => {
