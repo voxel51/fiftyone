@@ -7,11 +7,17 @@ Fiftyone 3D Scene.
 """
 import json
 
-from .object_3d import Object3D
+from .object_3d import Object3D, Vector3
+from typing import List
 
 
 class Scene(Object3D):
     """Represents the scene graph and contains a hierarchy of Object3Ds.
+
+    Args:
+        default_camera_position (None): the default camera position to use when
+            viewing the scene. If it is `None`, the default camera position is
+            the bounding box of the scene.
 
     Usage::
 
@@ -33,6 +39,24 @@ class Scene(Object3D):
             assert dataset.media_type == "3d"
     """
 
+    def __init__(self, default_camera_position: Vector3 | List[float] = None):
+        super().__init__(name="Scene", visible=True)
+
+        if default_camera_position is not None:
+            if (
+                isinstance(default_camera_position, list)
+                and len(default_camera_position) == 3
+            ):
+                default_camera_position = Vector3(*default_camera_position)
+
+            if not isinstance(default_camera_position, Vector3):
+                raise ValueError(
+                    "default_camera_position must be a Vector3 or a list of 3 "
+                    "floats"
+                )
+
+        self.default_camera_position = default_camera_position
+
     def export(self, path: str):
         """Export the scene to a .fo3d file."""
         if not path.endswith(".fo3d"):
@@ -42,6 +66,14 @@ class Scene(Object3D):
 
         with open(path, "w") as f:
             json.dump(scene, f)
+
+    def _to_dict_extra(self):
+        if self.default_camera_position:
+            return {
+                "default_camera_position": self.default_camera_position.to_arr().tolist(),
+            }
+        else:
+            return {}
 
     @staticmethod
     def from_fo3d(path: str):
