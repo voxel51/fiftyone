@@ -7,8 +7,9 @@ OpenCLIP Integration
 
 FiftyOne's model zoo is integrated with the
 `OpenCLIP <https://github.com/mlfoundations/open_clip>`_ library,
-an open source implementation of OpenAI's CLIP (Contrastive Language-Image Pre-training) 
-model! Easily run inference with any variation you want with a few lines of code!
+an open source implementation of OpenAI's CLIP (Contrastive Language-Image 
+Pre-training) model! Easily run inference with any variation you want with a few
+ lines of code!
 
 .. _openclip-setup:
 
@@ -23,7 +24,8 @@ To get started with OpenCLIP, install the `open_clip_torch` package:
    pip install open_clip_torch
 
 
-It also helps to make sure `timm <https://pypi.org/project/timm/>`_ package is up to date as well 
+It also helps to make sure `timm <https://pypi.org/project/timm/>`_ package is 
+up to date as well 
 
 .. code-block:: shell
     :linenos:
@@ -35,7 +37,8 @@ It also helps to make sure `timm <https://pypi.org/project/timm/>`_ package is u
 Loading from the Model Zoo
 __________________________
 
-To begin, you can load the original ViT-B-32 OpenAI pretrained model with just the following:
+To begin, you can load the original ViT-B-32 OpenAI pretrained model with just 
+the following:
 
 .. code-block:: python
     :linenos:
@@ -43,8 +46,11 @@ To begin, you can load the original ViT-B-32 OpenAI pretrained model with just t
     model = foz.load_zoo_model("open-clip-torch")
 
 
-You can also specify different model architectures and pretrained weights by passing in optional parameters.
-Pretrained models can be loaded directly from OpenCLIP or from hf-hub.
+You can also specify different model architectures and pretrained weights by 
+passing in optional parameters. Pretrained models can be loaded directly from 
+OpenCLIP or from 
+[Hugging Face's Model Hub](https://huggingface.co/docs/hub/models-the-hub), 
+`hf-hub`.
 
 .. code-block:: python
     :linenos:
@@ -116,9 +122,10 @@ For example we can inference as such:
 Compare Different Models in Embedding Panel
 ____________________________________________
 
-Another application of OpenCLIP is comparing different embedding visualizations by utilizing different models!
-Let's compare the original OpenAI CLIP model to MetaCLIP. We will also perform a quick zero shot classification
-to color the embeddings:
+Another application of OpenCLIP is comparing different embedding visualizations 
+by utilizing different models! Let's compare the original OpenAI CLIP model to 
+MetaCLIP. We will also perform a quick zero shot classification to color the 
+embeddings:
 
 .. code-block:: python
     :linenos:
