@@ -224,7 +224,7 @@ def _do_get_plugin_info(task):
         logger.debug("Failed to retrieve plugin info for %s: %s", spec, e)
 
 
-def _get_target_view(ctx, target):
+def get_target_view(ctx, target):
     if target == "SELECTED_SAMPLES":
         return ctx.view.select(ctx.selected)
 
@@ -234,7 +234,7 @@ def _get_target_view(ctx, target):
     return ctx.view
 
 
-def _list_target_views(ctx, inputs):
+def list_target_views(ctx, inputs):
     has_view = ctx.view != ctx.dataset.view()
     has_selected = bool(ctx.selected)
     default_target = "DATASET"
@@ -243,14 +243,14 @@ def _list_target_views(ctx, inputs):
         target_choices.add_choice(
             "DATASET",
             label="Entire dataset",
-            description="Run model on the entire dataset",
+            description="Run on the entire dataset",
         )
 
         if has_view:
             target_choices.add_choice(
                 "CURRENT_VIEW",
                 label="Current view",
-                description="Run model on the current view",
+                description="Run on the current view",
             )
             default_target = "CURRENT_VIEW"
 
@@ -258,7 +258,7 @@ def _list_target_views(ctx, inputs):
             target_choices.add_choice(
                 "SELECTED_SAMPLES",
                 label="Selected samples",
-                description="Run model on the selected samples",
+                description="Run on the selected samples",
             )
             default_target = "SELECTED_SAMPLES"
 
@@ -276,7 +276,7 @@ def _serialize_view(view):
     return json.loads(json_util.dumps(view._serialize()))
 
 
-def _set_view(ctx, view):
+def set_view(ctx, view):
     ctx.trigger(
         "set_view",
         params=dict(view=_serialize_view(view)),
