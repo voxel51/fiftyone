@@ -1,5 +1,5 @@
 import { useLoader } from "@react-three/fiber";
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { Mesh, MeshPhongMaterial } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
@@ -10,11 +10,20 @@ import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 type ObjsProps = {
   objs: ObjReturnType[];
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+  onLoad?: () => void;
 };
 
-const ObjMeshDefaultMaterial = ({ obj }: { obj: ObjReturnType }) => {
+const ObjMeshDefaultMaterial = ({
+  obj,
+  onLoad,
+}: {
+  obj: ObjReturnType;
+  onLoad?: () => void;
+}) => {
   const { objUrl, position, quaternion, scale } = obj;
-  const mesh = useLoader(OBJLoader, objUrl);
+  const mesh = useLoader(OBJLoader, objUrl, () => {
+    onLoad?.();
+  });
 
   useEffect(() => {
     if (!mesh) {
@@ -40,7 +49,13 @@ const ObjMeshDefaultMaterial = ({ obj }: { obj: ObjReturnType }) => {
   );
 };
 
-const ObjMeshWithCustomMaterial = ({ obj }: { obj: ObjReturnType }) => {
+const ObjMeshWithCustomMaterial = ({
+  obj,
+  onLoad,
+}: {
+  obj: ObjReturnType;
+  onLoad?: () => void;
+}) => {
   const { objUrl, mtlUrl, position, quaternion, scale } = obj;
 
   const materials = useLoader(MTLLoader, mtlUrl);
@@ -49,6 +64,7 @@ const ObjMeshWithCustomMaterial = ({ obj }: { obj: ObjReturnType }) => {
       materials.preload();
       loader.setMaterials(materials);
     }
+    onLoad?.();
   });
 
   return (
@@ -61,7 +77,16 @@ const ObjMeshWithCustomMaterial = ({ obj }: { obj: ObjReturnType }) => {
   );
 };
 
-export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
+export const Objs = ({ objs, visibilityMap, onLoad }: ObjsProps) => {
+  const totalMeshLoaded = useRef(0);
+
+  const onMeshLoad = useCallback(() => {
+    totalMeshLoaded.current += 1;
+    if (totalMeshLoaded.current === objs.length) {
+      onLoad?.();
+    }
+  }, [objs, onLoad]);
+
   const objMeshes = useMemo(() => {
     return objs
       .filter((obj) => visibilityMap[getIdentifierForAsset(obj)])
@@ -70,9 +95,9 @@ export const Objs = ({ objs, visibilityMap }: ObjsProps) => {
           <group key={obj.objUrl}>
             <ObjErrorBoundary>
               {obj.mtlUrl ? (
-                <ObjMeshWithCustomMaterial obj={obj} />
+                <ObjMeshWithCustomMaterial obj={obj} onLoad={onMeshLoad} />
               ) : (
-                <ObjMeshDefaultMaterial obj={obj} />
+                <ObjMeshDefaultMaterial obj={obj} onLoad={onMeshLoad} />
               )}
             </ObjErrorBoundary>
           </group>

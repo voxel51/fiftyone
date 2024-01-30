@@ -1,3 +1,4 @@
+import { Vector3 } from "three";
 import { ShadeBy } from "./types";
 
 export const ACTION_GRID = "grid";
@@ -14,6 +15,8 @@ export const SHADE_BY_HEIGHT = "height";
 export const SHADE_BY_RGB = "rgb";
 export const SHADE_BY_CUSTOM = "custom";
 export const SHADE_BY_NONE = "none";
+
+export const DEFAULT_CAMERA_POSITION = () => new Vector3(0, 5, -5).clone();
 
 export const ACTIONS = [
   { label: "Color By", value: ACTION_SHADE_BY },

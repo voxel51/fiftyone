@@ -41,11 +41,14 @@ type MeshReturnType =
   | StlReturnType;
 
 export type Fo3dData = {
-  objs: ObjReturnType[];
-  gltfs: GltfReturnType[];
-  stls: StlReturnType[];
-  pcds: PcdReturnType[];
-  plys: PlyReturnType[];
+  defaultCameraPosition?: Vector3 | null;
+  assets: {
+    objs: ObjReturnType[];
+    gltfs: GltfReturnType[];
+    stls: StlReturnType[];
+    pcds: PcdReturnType[];
+    plys: PlyReturnType[];
+  };
 };
 
 type UseFo3dReturnType = {
@@ -167,12 +170,25 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       stack.push(...current.children);
     }
 
+    let cameraPosition: Vector3 | null = null;
+
+    if (rawData.default_camera_position?.length === 3) {
+      cameraPosition = new Vector3(
+        rawData.default_camera_position[0],
+        rawData.default_camera_position[1],
+        rawData.default_camera_position[2]
+      );
+    }
+
     return {
-      objs,
-      gltfs,
-      stls,
-      pcds,
-      plys,
+      defaultCameraPosition: cameraPosition,
+      assets: {
+        objs,
+        gltfs,
+        stls,
+        pcds,
+        plys,
+      },
     };
   }, [rawData]);
 
