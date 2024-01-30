@@ -85,9 +85,6 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         return self._embed_prompts(prompts).detach().cpu().numpy()
 
     def _load_model(self, config):
-        device = self.config.device
-        if device is None:
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
         (
             self._model,
             _,
@@ -95,7 +92,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
-            device=device,
+            device=self.device,
         )
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         return self._model
