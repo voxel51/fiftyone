@@ -225,6 +225,19 @@ def _do_get_plugin_info(task):
 
 
 def get_target_view(ctx, target):
+    """
+    Get the target view for the current context. This is a helper function that
+    returns the view based on the `target` parameter. To be used in conjunction
+    with `list_target_views()`.
+
+    Args:
+        ctx: the current context
+        target: the target view
+
+    Returns:
+        the target view
+
+    """
     if target == "SELECTED_SAMPLES":
         return ctx.view.select(ctx.selected)
 
@@ -235,6 +248,21 @@ def get_target_view(ctx, target):
 
 
 def list_target_views(ctx, inputs):
+    """
+    List the available target views for the current context. This is a helper
+    function that sets the `target` parameter based on the current context. Use
+    it in the `inputs` method of a plugin to allow the user to select the target
+    view from selected samples, the current view, or the entire dataset. To be
+    used in conjunction with `get_target_view()`.
+
+    Args:
+        ctx: the current context
+        inputs: the inputs object
+
+    Returns:
+        None
+
+    """
     has_view = ctx.view != ctx.dataset.view()
     has_selected = bool(ctx.selected)
     default_target = "DATASET"
@@ -277,6 +305,19 @@ def _serialize_view(view):
 
 
 def set_view(ctx, view):
+    """
+    Set the view of the current context. This is a helper function that
+    triggers the `set_view` event. It performs serialization of the view
+    before triggering the event.
+
+    Args:
+        ctx: the current context
+        view: the view to set
+
+    Returns:
+        None
+
+    """
     ctx.trigger(
         "set_view",
         params=dict(view=_serialize_view(view)),
