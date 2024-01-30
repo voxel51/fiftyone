@@ -29,7 +29,7 @@ It also helps to make sure `timm <https://pypi.org/project/timm/>`_ package is u
 .. _openclip-loadzoo:
 
 Loading from the Model Zoo
-_________
+__________________________
 
 To begin, you can load the original ViT-B-32 OpenAI pretrained model with just the following:
 
@@ -78,7 +78,7 @@ Pretrained models can be loaded directly from OpenCLIP or from hf-hub.
 .. _openclip_inference:
 
 Inference with a Prompt and Set Classes
-_________
+________________________________________
 
 With OpenCLIP, you can also optionally specify a text prompt 
 to help guide a model towards a solution as well as only specify
@@ -110,7 +110,7 @@ For example we can inference as such:
 .. _openclip_embeddings:
 
 Compare Different Models in Embedding Panel
-_________
+____________________________________________
 
 Another application of OpenCLIP is comparing different embedding visualizations by utilizing different models!
 Let's compare the original OpenAI CLIP model to MetaCLIP. We will also perform a quick zero shot classification
