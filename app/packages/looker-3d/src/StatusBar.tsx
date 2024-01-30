@@ -110,9 +110,6 @@ export const StatusBar = ({
             }}
           >
             <CameraInfo cameraRef={cameraRef} />
-            <CameraInfo cameraRef={cameraRef} />
-            <CameraInfo cameraRef={cameraRef} />
-            <CameraInfo cameraRef={cameraRef} />
 
             <StatusTunnel.In>
               <Perf style={{ position: "absolute", top: "4em" }} />
