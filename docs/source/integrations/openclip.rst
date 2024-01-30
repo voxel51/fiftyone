@@ -18,12 +18,16 @@ _____
 To get started with OpenCLIP, install the `open_clip_torch` package:
 
 .. code-block:: shell
+   :linenos:
+
    pip install open_clip_torch
 
 
 It also helps to make sure `timm <https://pypi.org/project/timm/>`_ package is up to date as well 
 
 .. code-block:: shell
+    :linenos:
+
     pip install timm --upgrade
 
 .. _openclip-loadzoo:
