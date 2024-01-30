@@ -13,6 +13,7 @@ from bs4 import BeautifulSoup
 import yaml
 
 import fiftyone.core.utils as fou
+from fiftyone.operators import types
 from fiftyone.utils.github import GitHubRepository
 from fiftyone.plugins.core import PLUGIN_METADATA_FILENAMES
 
@@ -219,3 +220,51 @@ def _do_get_plugin_info(task):
             spec = gh_repo
 
         logger.debug("Failed to retrieve plugin info for %s: %s", spec, e)
+
+
+def _get_target_view(ctx, target):
+    if target == "SELECTED_SAMPLES":
+        return ctx.view.select(ctx.selected)
+
+    if target == "DATASET":
+        return ctx.dataset
+
+    return ctx.view
+
+
+def _list_target_views(ctx, inputs):
+    has_view = ctx.view != ctx.dataset.view()
+    has_selected = bool(ctx.selected)
+    default_target = "DATASET"
+    if has_view or has_selected:
+        target_choices = types.RadioGroup()
+        target_choices.add_choice(
+            "DATASET",
+            label="Entire dataset",
+            description="Run model on the entire dataset",
+        )
+
+        if has_view:
+            target_choices.add_choice(
+                "CURRENT_VIEW",
+                label="Current view",
+                description="Run model on the current view",
+            )
+            default_target = "CURRENT_VIEW"
+
+        if has_selected:
+            target_choices.add_choice(
+                "SELECTED_SAMPLES",
+                label="Selected samples",
+                description="Run model on the selected samples",
+            )
+            default_target = "SELECTED_SAMPLES"
+
+        inputs.enum(
+            "target",
+            target_choices.values(),
+            default=default_target,
+            view=target_choices,
+        )
+    else:
+        ctx.params["target"] = "DATASET"
