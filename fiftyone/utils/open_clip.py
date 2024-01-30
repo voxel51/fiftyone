@@ -92,7 +92,7 @@ class TorchOpenClipModel(fout.TorchImageModel, fom.PromptMixin):
         ) = open_clip.create_model_and_transforms(
             config.clip_model,
             pretrained=config.pretrained,
-            device=config.device,
+            device=self.device,
         )
         self._tokenizer = open_clip.get_tokenizer(config.clip_model)
         return self._model
