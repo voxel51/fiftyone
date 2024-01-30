@@ -23,6 +23,7 @@ from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 from .decorators import coroutine_timeout
 from .message import GeneratedMessage, MessageType
 from .registry import OperatorRegistry
+from .operations import Operations
 
 logger = logging.getLogger(__name__)
 
@@ -442,6 +443,7 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
+        self._ops = Operations(self)
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -598,6 +600,11 @@ class ExecutionContext(object):
             resolver_fn=self._secrets_client.get_secret_sync,
             required_keys=self._required_secret_keys,
         )
+
+    @property
+    def ops(self):
+        """A :class:`fiftyone.operators.Operations` instance."""
+        return self._ops
 
     def secret(self, key):
         """Retrieves the secret with the given key.
