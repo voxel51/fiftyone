@@ -166,3 +166,56 @@ Here is the final result!
 .. image:: /images/integrations/clip-compare.gif
    :alt: clip-compare
    :align: center
+
+
+.. _openclip-for-text-similarity-search:
+
+Text Similarity Search
+_______________________
+
+OpenCLIP can also be used for text similarity search! To use a specific 
+pretrained-checkpoint pair for text similarity search, pass these in as a 
+dictionary via the `model_kwargs` argument to `compute_similarity()`. For 
+example, for MetaCLIP, we can do the following:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.brain as fob
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.brain as fob
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    text_prompt="A photo of a"
+
+    model_params = {
+        "clip_model": 'ViT-B-32-quickgelu',
+        "pretrained": 'metaclip_400m',
+        "text_prompt": text_prompt,
+    }
+
+    fob.compute_similarity(
+        dataset,
+        model="open-clip-torch",
+        model_kwargs=model_params,
+        brain_key="sim_metaclip"
+    )
+
+
+You can then search by similarity in Python:
+
+.. code-block:: python
+    :linenos:
+
+    query = "kites flying in the sky"
+    dataset.sort_by_similarity(
+        query, 
+        k=25,
+        brain_key="sim_metaclip"
+    )
+
+
+or in the App!
