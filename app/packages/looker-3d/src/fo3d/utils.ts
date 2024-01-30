@@ -16,7 +16,7 @@ export const getIdentifierForAsset = (asset: ThreeDAsset): string => {
 };
 
 export const getVisibilityMapFromFo3dParsed = (
-  fo3dParsed: Fo3dData
+  fo3dParsed: Fo3dData["assets"]
 ): Record<string, boolean> => {
   if (!fo3dParsed) return null;
 

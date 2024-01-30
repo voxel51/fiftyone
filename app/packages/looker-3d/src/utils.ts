@@ -14,6 +14,8 @@ export type FiftyoneSceneRawJson = {
   quaternion: Vector4Tuple;
   scale: Vector3Tuple;
   children: FiftyoneSceneRawJson[];
+
+  default_camera_position?: Vector3Tuple | null;
 };
 
 class InvalidSceneError extends Error {}
