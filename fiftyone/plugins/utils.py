@@ -5,11 +5,13 @@ FiftyOne plugin utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from bson import json_util
 import logging
 import multiprocessing.dummy
 import os
 
 from bs4 import BeautifulSoup
+import json
 import yaml
 
 import fiftyone.core.utils as fou
@@ -268,3 +270,14 @@ def _list_target_views(ctx, inputs):
         )
     else:
         ctx.params["target"] = "DATASET"
+
+
+def _serialize_view(view):
+    return json.loads(json_util.dumps(view._serialize()))
+
+
+def _set_view(ctx, view):
+    ctx.trigger(
+        "set_view",
+        params=dict(view=_serialize_view(view)),
+    )
