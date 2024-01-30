@@ -150,6 +150,7 @@ on the cards below to see how!
     :header: OpenCLIP
     :description: Use our OpenCLIP integration to run inference with CLIP models on your FiftyOne datasets with just a few lines of code.
     :link: openclip.html
+    :image: ../_static/images/integrations/openai.png
     :tags: Brain,Embeddings,Model-Evaluation,Models
 
 .. customcarditem::
@@ -200,6 +201,6 @@ on the cards below to see how!
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
     SuperGradients <super_gradients.rst>
+    OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>
-    OpenCLIP <openclip.rst>
