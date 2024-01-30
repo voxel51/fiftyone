@@ -7,7 +7,7 @@ OpenCLIP Integration
 
 FiftyOne's model zoo is integrated with the
 `OpenCLIP <https://github.com/mlfoundations/open_clip>`_ library,
-an open source implenetation of OpenAi's CLIP (Contrastive Language-Image Pre-training) 
+an open source implementation of OpenAI's CLIP (Contrastive Language-Image Pre-training) 
 model! Easily run inference with any variation you want with a few lines of code!
 
 .. _openclip-setup:
