@@ -9,7 +9,7 @@ FiftyOne's model zoo is integrated with the
 `OpenCLIP <https://github.com/mlfoundations/open_clip>`_ library,
 an open source implementation of OpenAI's CLIP (Contrastive Language-Image 
 Pre-training) model! Easily run inference with any variation you want with a few
- lines of code!
+lines of code!
 
 .. _openclip-setup:
 
@@ -48,9 +48,7 @@ the following:
 
 You can also specify different model architectures and pretrained weights by 
 passing in optional parameters. Pretrained models can be loaded directly from 
-OpenCLIP or from 
-[Hugging Face's Model Hub](https://huggingface.co/docs/hub/models-the-hub), 
-`hf-hub`.
+OpenCLIP or from `Hugging Face's Model Hub <https://huggingface.co/docs/hub/models-the-hub>`_, `hf-hub`.
 
 .. code-block:: python
     :linenos:
@@ -113,7 +111,7 @@ For example we can inference as such:
 
     session = fo.launch_app(dataset)
 
-.. image:: /images/integrations/zsc-openclip.png
+.. image:: ../images/integrations/zsc-openclip.png
    :alt: zero-shot-classification-example
    :align: center
 
@@ -163,7 +161,7 @@ embeddings:
 
 Here is the final result!
 
-.. image:: /images/integrations/clip-compare.gif
+.. image:: ../images/integrations/clip-compare.gif
    :alt: clip-compare
    :align: center
 
