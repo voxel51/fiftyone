@@ -1,12 +1,12 @@
 .. _openclip-integration:
 
-OpenClip Integration
+OpenCLIP Integration
 ===========================
 
 .. default-role:: code
 
 FiftyOne's model zoo is integrated with the
-`OpenClip <https://github.com/mlfoundations/open_clip>`_ library,
+`OpenCLIP <https://github.com/mlfoundations/open_clip>`_ library,
 an open source implenetation of OpenAi's CLIP (Contrastive Language-Image Pre-training) 
 model! Easily run inference with any variation you want with a few lines of code!
 
@@ -15,7 +15,7 @@ model! Easily run inference with any variation you want with a few lines of code
 Setup
 _____
 
-To get started with OpenClip, install the `open_clip_torch` package:
+To get started with OpenCLIP, install the `open_clip_torch` package:
 
 .. code-block:: shell
    pip install open_clip_torch
@@ -40,7 +40,7 @@ To begin, you can load the original ViT-B-32 OpenAI pretrained model with just t
 
 
 You can also specify different model architectures and pretrained weights by passing in optional parameters.
-Pretrained models can be loaded directly from OpenClip or from hf-hub.
+Pretrained models can be loaded directly from OpenCLIP or from hf-hub.
 
 .. code-block:: python
     :linenos:
@@ -80,7 +80,7 @@ Pretrained models can be loaded directly from OpenClip or from hf-hub.
 Inference with a Prompt and Set Classes
 _________
 
-With OpenClip, you can also optionally specify a text prompt 
+With OpenCLIP, you can also optionally specify a text prompt 
 to help guide a model towards a solution as well as only specify
 a certain number of classes to output during zero shot classification. 
 For example we can inference as such:
@@ -112,8 +112,8 @@ For example we can inference as such:
 Compare Different Models in Embedding Panel
 _________
 
-Another application of OpenClip is comparing different embedding visualizations by utilizing different models!
-Let's compare the original OpenAI clip model to MetaClip. We will also perform a quick zero shot classification
+Another application of OpenCLIP is comparing different embedding visualizations by utilizing different models!
+Let's compare the original OpenAI CLIP model to MetaCLIP. We will also perform a quick zero shot classification
 to color the embeddings:
 
 .. code-block:: python
