@@ -260,6 +260,11 @@ class Object(BaseType):
         view = kwargs.get("view", Notice(label=label))
         return self.view(name, view, **kwargs)
 
+    def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
+        return self.define_property(
+            name, ViewTargetProperty(ctx, view_type), **kwargs
+        )
+
     def clone(self):
         """Clones the definition of the object.
 
@@ -686,6 +691,7 @@ class Choice(View):
     def __init__(self, value, **kwargs):
         super().__init__(**kwargs)
         self.value = value
+        self.include = True
 
     def clone(self):
         """Clones the :class:`Choice`.
@@ -723,7 +729,11 @@ class Choices(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.choices = kwargs.get("choices", [])
+        self._choices = kwargs.get("choices", [])
+
+    @property
+    def choices(self):
+        return [choice for choice in self._choices if choice.include]
 
     def values(self):
         """Returns the choice values for this instance.
@@ -1596,3 +1606,51 @@ class PromptView(View):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+
+class ViewTargetChoices(Choices):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.entire_dataset = Choice(
+            "DATASET",
+            label="Entire dataset",
+            description="Run on the entire dataset",
+            include=False,
+        )
+        self.current_view = Choice(
+            "CURRENT_VIEW",
+            label="Current view",
+            description="Run on the current view",
+            include=False,
+        )
+        self.selected_samples = Choice(
+            "SELECTED_SAMPLES",
+            label="Selected samples",
+            description="Run on the selected samples",
+            include=False,
+        )
+
+
+class ViewTargetProperty(Property):
+    def __init__(self, ctx, view_type=RadioGroup, **kwargs):
+        has_custom_view = ctx.view != ctx.dataset.view()
+        has_selected = bool(ctx.selected)
+        default_target = "DATASET"
+        choices = ViewTargetChoices()
+        choice_view = view_type()
+
+        if has_custom_view or has_selected:
+            choices.entire_dataset.include = True
+
+            if has_custom_view:
+                choices.current_view.include = True
+                default_target = "CURRENT_VIEW"
+
+            if has_selected:
+                self.choices.selected_samples.include = True
+                default_target = "SELECTED_SAMPLES"
+
+        type = Enum(choices.values())
+        super().__init__(
+            type, default=default_target, view=choice_view, **kwargs
+        )

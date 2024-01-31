@@ -501,6 +501,17 @@ class ExecutionContext(object):
 
         return self._view
 
+    def target_view(self, param_name="view_target"):
+        """The target :class:`fiftyone.core.view.DatasetView` for the operator
+        being executed.
+        """
+        target = self.request_params.get(param_name, None)
+        if target == "SELECTED_SAMPLES":
+            return self.view.select(self.selected)
+        if target == "DATASET":
+            return self.dataset
+        return self.view
+
     @property
     def selected(self):
         """The list of selected sample IDs (if any)."""
