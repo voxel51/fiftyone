@@ -60,7 +60,6 @@ export const MediaTypePcdComponent = ({
   );
   const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
-  const onSelectLabel = fos.useOnSelectLabel();
 
   const setActionBarItems = useSetRecoilState(
     actionRenderListAtomFamily("pcd")
@@ -77,7 +76,6 @@ export const MediaTypePcdComponent = ({
   const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
 
   useEffect(() => {
-    // note: Object3D.DEFAULT_UP is not working for some reason
     Object3D.DEFAULT_UP = new Vector3(...settings.defaultUp).normalize();
   }, [settings]);
 
