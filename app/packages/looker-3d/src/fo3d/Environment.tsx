@@ -1,5 +1,7 @@
 import { GizmoHelper, GizmoViewport } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import { useRecoilValue } from "recoil";
+import { Box3, Group } from "three";
 import { VOXEL51_THEME_COLOR } from "../constants";
 import { isGridOnAtom } from "../state";
 import { Lights } from "./Lights";
@@ -20,8 +22,25 @@ const OriginHelper = () => {
   );
 };
 
-export const Fo3dEnvironment = () => {
+export const Fo3dEnvironment = ({
+  assetsGroupRef,
+  allAssetsLoaded,
+  sceneBoundingBox,
+  setSceneBoundingBox,
+}: {
+  allAssetsLoaded: boolean;
+  assetsGroupRef: React.RefObject<Group>;
+  sceneBoundingBox: Box3;
+  setSceneBoundingBox: (box: Box3) => void;
+}) => {
   const isGridOn = useRecoilValue(isGridOnAtom);
+
+  useFrame(() => {
+    if (!sceneBoundingBox && allAssetsLoaded && assetsGroupRef.current) {
+      const box = new Box3().setFromObject(assetsGroupRef.current);
+      setSceneBoundingBox(box);
+    }
+  });
 
   return (
     <>

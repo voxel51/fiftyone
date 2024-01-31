@@ -21,9 +21,7 @@ const ObjMeshDefaultMaterial = ({
   onLoad?: () => void;
 }) => {
   const { objUrl, position, quaternion, scale } = obj;
-  const mesh = useLoader(OBJLoader, objUrl, () => {
-    onLoad?.();
-  });
+  const mesh = useLoader(OBJLoader, objUrl);
 
   useEffect(() => {
     if (!mesh) {
@@ -37,6 +35,8 @@ const ObjMeshDefaultMaterial = ({
         });
       }
     });
+
+    onLoad?.();
   }, [mesh]);
 
   return (
@@ -64,8 +64,13 @@ const ObjMeshWithCustomMaterial = ({
       materials.preload();
       loader.setMaterials(materials);
     }
-    onLoad?.();
   });
+
+  useEffect(() => {
+    if (mesh) {
+      onLoad?.();
+    }
+  }, [mesh]);
 
   return (
     <primitive
