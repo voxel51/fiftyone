@@ -12,7 +12,7 @@ import {
   useState,
 } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { Box3, Vector3 } from "three";
+import { Box3, Object3D, Vector3 } from "three";
 import {
   Looker3dPluginSettings,
   defaultPluginSettings,
@@ -59,6 +59,18 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     defaultPluginSettings
   );
 
+  const upVector = useMemo(() => {
+    // todo: remove this after dev-demos
+    return new Vector3(0, 1, 0);
+
+    if (settings?.defaultUp?.length === 3) {
+      return new Vector3(...settings.defaultUp).normalize();
+    }
+
+    // default to z-up (three.js default is y-up)
+    return new Vector3(0, 0, 1);
+  }, [settings]);
+
   const setActionBarItems = useSetRecoilState(
     actionRenderListAtomFamily("fo3d")
   );
@@ -75,6 +87,10 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       [ACTION_VIEW_HELP, [helpPanel]],
     ]);
   }, [onChangeView, jsonPanel, sample, helpPanel, setActionBarItems]);
+
+  useEffect(() => {
+    Object3D.DEFAULT_UP = upVector.clone();
+  }, [settings]);
 
   const mediaUrl = useMemo(
     () => getMediaUrlForFo3dSample(sample, mediaField),
@@ -105,6 +121,8 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   const defaultCameraPositionComputed = useMemo(() => {
     /**
+     * (todo: we should discard (2) since per-dataset camera position no longer makes sense)
+     *
      * This is the order of precedence for the camera position:
      * 1. If the user has set a default camera position in the scene itself, use that
      * 2. If the user has set a default camera position in the plugin settings, use that
@@ -183,20 +201,23 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         />
       </LevaContainer>
 
-      <Canvas id={CANVAS_WRAPPER_ID} shadows>
+      <Canvas id={CANVAS_WRAPPER_ID}>
         <Suspense fallback={<SpinningCube />}>
-          <PerspectiveCamera
-            makeDefault
-            position={defaultCameraPositionComputed}
-            ref={cameraRef}
-          />
-          <OrbitControls />
           <Fo3dEnvironment
             allAssetsLoaded={allAssetsLoaded}
             assetsGroupRef={assetsGroupRef}
             sceneBoundingBox={sceneBoundingBox}
+            upVector={upVector}
             setSceneBoundingBox={setSceneBoundingBox}
           />
+          <PerspectiveCamera
+            makeDefault
+            position={defaultCameraPositionComputed}
+            up={upVector}
+            ref={cameraRef}
+          />
+          <OrbitControls />
+
           <group ref={assetsGroupRef} visible={Boolean(sceneBoundingBox)}>
             <Objs
               onLoad={() => setAreObjsRendered(true)}

@@ -1,6 +1,8 @@
 import {
   BufferAttribute,
   InterleavedBufferAttribute,
+  Quaternion,
+  Vector3,
   Vector3Tuple,
   Vector4Tuple,
 } from "three";
@@ -102,4 +104,17 @@ export const getColorFromPoolBasedOnHash = (str: string) => {
     return acc + charCode * idx;
   }, 0);
   return COLOR_POOL[hash % COLOR_POOL.length];
+};
+
+export const getGridQuaternionFromUpVector = (upVectorNormalized: Vector3) => {
+  // calculate angle between custom up direction and default up direction (y-axis in three-js)
+  const angle = Math.acos(upVectorNormalized.dot(new Vector3(0, 1, 0)));
+
+  // calculate axis perpendicular to both the default up direction and the custom up direction
+  const axis = new Vector3()
+    .crossVectors(new Vector3(0, 1, 0), upVectorNormalized)
+    .normalize();
+
+  // quaternion to represent the rotation around an axis perpendicular to both the default up direction and the custom up direction
+  return new Quaternion().setFromAxisAngle(axis, angle);
 };
