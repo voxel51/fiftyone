@@ -1,32 +1,55 @@
 import { useLoader } from "@react-three/fiber";
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Mesh, MeshPhongMaterial } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { PlyReturnType } from "../hooks";
-import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 import { getColorFromPoolBasedOnHash } from "../utils";
+import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 
 type PlysProps = {
   plys: PlyReturnType[];
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+  onLoad?: () => void;
 };
 
-const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
+const PlyMesh = ({
+  ply,
+  onLoad,
+}: {
+  ply: PlyReturnType;
+  onLoad?: () => void;
+}) => {
   const { plyUrl, position, quaternion, scale } = ply;
-  const points = useLoader(PLYLoader, plyUrl);
+  const geometry = useLoader(PLYLoader, plyUrl);
   const [mesh, setMesh] = useState(null);
 
   useEffect(() => {
-    if (points) {
-      points.computeVertexNormals();
+    if (geometry) {
+      // todo: check if geometry is meshes or points
+      // todo: no need to compute vertex normals for points
+      geometry.computeVertexNormals();
+      geometry.center();
 
+      // todo: use points material for points
       const material = new MeshPhongMaterial({
         color: getColorFromPoolBasedOnHash(plyUrl),
       });
-      const newMesh = new Mesh(points, material);
+      const newMesh = new Mesh(geometry, material);
       setMesh(newMesh);
+
+      // hack to wait for geometry to be loaded
+      // todo: find a better way to do this
+      setTimeout(() => {
+        onLoad?.();
+      }, 50);
     }
-  }, [points]);
+  }, [geometry]);
 
   if (mesh) {
     return (
@@ -42,7 +65,16 @@ const PlyMesh = ({ ply }: { ply: PlyReturnType }) => {
   return null;
 };
 
-export const Plys = ({ plys, visibilityMap }: PlysProps) => {
+export const Plys = ({ plys, visibilityMap, onLoad }: PlysProps) => {
+  const totalPlysLoaded = useRef(0);
+
+  const onPlyLoad = useCallback(() => {
+    totalPlysLoaded.current += 1;
+    if (totalPlysLoaded.current === plys.length) {
+      onLoad?.();
+    }
+  }, [plys, onLoad]);
+
   const plyMeshes = useMemo(() => {
     return plys
       .filter((ply) => visibilityMap[getIdentifierForAsset(ply)])
@@ -50,7 +82,7 @@ export const Plys = ({ plys, visibilityMap }: PlysProps) => {
         return (
           <group key={ply.plyUrl}>
             <PlyErrorBoundary>
-              <PlyMesh ply={ply} />
+              <PlyMesh ply={ply} onLoad={onPlyLoad} />
             </PlyErrorBoundary>
           </group>
         );

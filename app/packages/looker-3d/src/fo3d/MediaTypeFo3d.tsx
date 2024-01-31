@@ -86,17 +86,21 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
 
-  const [objsLoaded, setObjsLoaded] = useState(false);
-  // todo: reinit to fals
-  const [pcdsLoaded, setPcdsLoaded] = useState(true);
-  const [plysLoaded, setPlysLoaded] = useState(true);
-  const [stlsLoaded, setStlsLoaded] = useState(true);
+  const [areObjsRendered, setAreObjsRendered] = useState(false);
+  const [arePcdsRendered, setArePcdsRendered] = useState(false);
+  const [arePlysRendered, setArePlysRendered] = useState(false);
+  const [areStlsRendered, setAreStlsRendered] = useState(false);
 
   const allAssetsLoaded = useMemo(() => {
-    return [objsLoaded, pcdsLoaded, plysLoaded, stlsLoaded].every(
-      (loaded) => loaded
-    );
-  }, [objsLoaded, pcdsLoaded, plysLoaded, stlsLoaded]);
+    const objsReady = fo3dParsed?.assets.objs.length === 0 || areObjsRendered;
+    const pcdsReady = fo3dParsed?.assets.pcds.length === 0 || arePcdsRendered;
+    const plysReady = fo3dParsed?.assets.plys.length === 0 || arePlysRendered;
+    const stlsReady = fo3dParsed?.assets.stls.length === 0 || areStlsRendered;
+
+    return objsReady && pcdsReady && plysReady && stlsReady;
+  }, [areObjsRendered, arePcdsRendered, arePlysRendered, areStlsRendered]);
+
+  const [sceneBoundingBox, setSceneBoundingBox] = useState<Box3>();
 
   const defaultCameraPositionComputed = useMemo(() => {
     /**
@@ -129,10 +133,9 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       );
     }
 
-    if (assetsGroupRef.current && allAssetsLoaded) {
-      const box = new Box3().setFromObject(assetsGroupRef.current);
-      const center = box.getCenter(new Vector3());
-      const size = box.getSize(new Vector3());
+    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
+      const center = sceneBoundingBox.getCenter(new Vector3());
+      const size = sceneBoundingBox.getSize(new Vector3());
 
       return new Vector3(
         center.x,
@@ -142,7 +145,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     }
 
     return DEFAULT_CAMERA_POSITION();
-  }, [settings, isParsingFo3d, fo3dParsed, allAssetsLoaded, assetsGroupRef]);
+  }, [settings, isParsingFo3d, fo3dParsed, sceneBoundingBox]);
 
   // todo: if the object is checked expand its children as well
   const defaultVisibilityMap = useMemo(
@@ -187,16 +190,33 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
             ref={cameraRef}
           />
           <OrbitControls />
-          <Fo3dEnvironment />
-          <group ref={assetsGroupRef}>
+          <Fo3dEnvironment
+            allAssetsLoaded={allAssetsLoaded}
+            assetsGroupRef={assetsGroupRef}
+            sceneBoundingBox={sceneBoundingBox}
+            setSceneBoundingBox={setSceneBoundingBox}
+          />
+          <group ref={assetsGroupRef} visible={Boolean(sceneBoundingBox)}>
             <Objs
-              onLoad={() => setObjsLoaded(true)}
+              onLoad={() => setAreObjsRendered(true)}
               objs={fo3dParsed.assets.objs}
               visibilityMap={visibilityMap}
             />
-            <Pcds pcds={fo3dParsed.assets.pcds} visibilityMap={visibilityMap} />
-            <Plys plys={fo3dParsed.assets.plys} visibilityMap={visibilityMap} />
-            <Stls stls={fo3dParsed.assets.stls} visibilityMap={visibilityMap} />
+            <Pcds
+              onLoad={() => setArePcdsRendered(true)}
+              pcds={fo3dParsed.assets.pcds}
+              visibilityMap={visibilityMap}
+            />
+            <Plys
+              onLoad={() => setArePlysRendered(true)}
+              plys={fo3dParsed.assets.plys}
+              visibilityMap={visibilityMap}
+            />
+            <Stls
+              onLoad={() => setAreStlsRendered(true)}
+              stls={fo3dParsed.assets.stls}
+              visibilityMap={visibilityMap}
+            />
           </group>
           <StatusTunnel.Out />
         </Suspense>

@@ -1,5 +1,5 @@
 import { useLoader } from "@react-three/fiber";
-import React, { useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { PcdReturnType } from "../hooks";
 import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
@@ -7,12 +7,25 @@ import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 type PcdsProps = {
   pcds: PcdReturnType[];
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+  onLoad?: () => void;
 };
 
-const PcdMesh = ({ pcd }: { pcd: PcdReturnType }) => {
-  const { position, quaternion, scale, pcdUrl, name } = pcd;
+const PcdMesh = ({
+  pcd,
+  onLoad,
+}: {
+  pcd: PcdReturnType;
+  onLoad?: () => void;
+}) => {
+  const { position, quaternion, scale, pcdUrl } = pcd;
 
   const points = useLoader(PCDLoader, pcdUrl);
+
+  useEffect(() => {
+    if (points) {
+      onLoad?.();
+    }
+  }, [points, onLoad]);
 
   return (
     <primitive
@@ -24,7 +37,16 @@ const PcdMesh = ({ pcd }: { pcd: PcdReturnType }) => {
   );
 };
 
-export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
+export const Pcds = ({ pcds, visibilityMap, onLoad }: PcdsProps) => {
+  const totalPcdsLoaded = useRef(0);
+
+  const onPcdLoad = useCallback(() => {
+    totalPcdsLoaded.current += 1;
+    if (totalPcdsLoaded.current === pcds.length) {
+      onLoad?.();
+    }
+  }, [pcds, onLoad]);
+
   const pcdMeshes = useMemo(() => {
     return pcds
       .filter((pcd) => visibilityMap[getIdentifierForAsset(pcd)])
@@ -32,7 +54,7 @@ export const Pcds = ({ pcds, visibilityMap }: PcdsProps) => {
         return (
           <group key={pcd.pcdUrl}>
             <PcdErrorBoundary>
-              <PcdMesh pcd={pcd} />
+              <PcdMesh pcd={pcd} onLoad={onPcdLoad} />
             </PcdErrorBoundary>
           </group>
         );

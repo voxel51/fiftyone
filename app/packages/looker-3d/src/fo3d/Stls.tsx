@@ -1,14 +1,21 @@
 import { useLoader } from "@react-three/fiber";
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Mesh, MeshPhongMaterial } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import { StlReturnType } from "../hooks";
-import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 import { getColorFromPoolBasedOnHash } from "../utils";
+import { getIdentifierForAsset, getVisibilityMapFromFo3dParsed } from "./utils";
 
 type StlsProps = {
   stls: StlReturnType[];
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+  onLoad?: () => void;
 };
 
 /**
@@ -17,7 +24,13 @@ type StlsProps = {
  *  A 3D model in a STL format describes only the surface geometry of a 3D object
  *  without any representation of color, texture or other common CAD model attributes.
  */
-const StlMesh = ({ stl }: { stl: StlReturnType }) => {
+const StlMesh = ({
+  stl,
+  onLoad,
+}: {
+  stl: StlReturnType;
+  onLoad?: () => void;
+}) => {
   const { stlUrl, position, quaternion, scale } = stl;
   const points = useLoader(STLLoader, stlUrl);
   const [mesh, setMesh] = useState(null);
@@ -31,6 +44,8 @@ const StlMesh = ({ stl }: { stl: StlReturnType }) => {
       });
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);
+
+      onLoad?.();
     }
   }, [points]);
 
@@ -48,7 +63,16 @@ const StlMesh = ({ stl }: { stl: StlReturnType }) => {
   return null;
 };
 
-export const Stls = ({ stls, visibilityMap }: StlsProps) => {
+export const Stls = ({ stls, visibilityMap, onLoad }: StlsProps) => {
+  const totalStlsLoaded = useRef(0);
+
+  const onStlLoad = useCallback(() => {
+    totalStlsLoaded.current += 1;
+    if (totalStlsLoaded.current === stls.length) {
+      onLoad?.();
+    }
+  }, [stls, onLoad]);
+
   const stlMeshes = useMemo(() => {
     return stls
       .filter((stl) => visibilityMap[getIdentifierForAsset(stl)])
@@ -56,7 +80,7 @@ export const Stls = ({ stls, visibilityMap }: StlsProps) => {
         return (
           <group key={stl.stlUrl}>
             <StlErrorBoundary>
-              <StlMesh stl={stl} />
+              <StlMesh stl={stl} onLoad={onStlLoad} />
             </StlErrorBoundary>
           </group>
         );
