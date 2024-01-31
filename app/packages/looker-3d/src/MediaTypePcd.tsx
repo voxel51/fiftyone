@@ -13,6 +13,7 @@ import {
   Looker3dPluginSettings,
   defaultPluginSettings,
 } from "./Looker3dPlugin";
+import { Screenshot } from "./action-bar/Screenshot";
 import {
   ACTION_GRID,
   ACTION_SET_EGO_VIEW,
@@ -26,7 +27,6 @@ import {
 import { Container } from "./containers";
 import { useHotkey } from "./hooks";
 import { ThreeDLabels } from "./labels";
-import { OverlayLabel } from "./labels/loader";
 import { PointCloudMesh } from "./renderables";
 import {
   actionRenderListAtomFamily,
@@ -38,7 +38,6 @@ import {
   shadeByAtom,
 } from "./state";
 import { toEulerFromDegreesArray } from "./utils";
-import { Screenshot } from "./action-bar/Screenshot";
 
 type View = "pov" | "top";
 
@@ -89,19 +88,6 @@ export const MediaTypePcdComponent = ({
       canvas.querySelector("canvas")?.setAttribute("sample-loaded", "true");
     }
   }, []);
-
-  const handleSelect = useCallback(
-    (label: OverlayLabel) => {
-      onSelectLabel({
-        detail: {
-          id: label._id,
-          field: label.path[label.path.length - 1],
-          sampleId: label.sampleId,
-        },
-      });
-    },
-    [onSelectLabel]
-  );
 
   const shadeBy = useRecoilValue(shadeByAtom);
   const [customColorMap, setCustomColorMap] =
@@ -401,11 +387,7 @@ export const MediaTypePcdComponent = ({
           isGridOn={isGridOn}
           bounds={pointCloudBounds}
         />
-        <ThreeDLabels
-          handleSelect={handleSelect}
-          sampleMap={sampleMap}
-          settings={settings}
-        />
+        <ThreeDLabels sampleMap={sampleMap} />
         {filteredSamples}
       </Canvas>
     </>

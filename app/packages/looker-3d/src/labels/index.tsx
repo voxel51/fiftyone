@@ -2,30 +2,34 @@ import {
   getLabelColor,
   shouldShowLabelTag,
 } from "@fiftyone/looker/src/overlays/util";
+import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { get as _get } from "lodash";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { toEulerFromDegreesArray } from "../utils";
+import {
+  Looker3dPluginSettings,
+  defaultPluginSettings,
+} from "../Looker3dPlugin";
 import { usePathFilter } from "../hooks";
+import { toEulerFromDegreesArray } from "../utils";
 import { Cuboid, CuboidProps } from "./cuboid";
-import { load3dOverlays } from "./loader";
+import { OverlayLabel, load3dOverlays } from "./loader";
 import { PolyLineProps, Polyline } from "./polyline";
 
 export interface ThreeDLabelsProps {
-  handleSelect: (label: any) => void;
-  sampleMap: any;
-  settings: any;
+  sampleMap: Record<string, any>;
 }
 
-export const ThreeDLabels = ({
-  handleSelect,
-  sampleMap,
-  settings,
-}: ThreeDLabelsProps) => {
+export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
 
+  const settings = fop.usePluginSettings<Looker3dPluginSettings>(
+    "3d",
+    defaultPluginSettings
+  );
+  const onSelectLabel = fos.useOnSelectLabel();
   const getFieldColor = useRecoilValue(fos.colorMap);
   const pathFilter = usePathFilter();
   const colorScheme = useRecoilValue(fos.colorScheme);
@@ -33,6 +37,19 @@ export const ThreeDLabels = ({
   const tooltip = fos.useTooltip();
   const colorSchemeFields = colorScheme?.fields;
   const labelAlpha = colorScheme.opacity;
+
+  const handleSelect = useCallback(
+    (label: OverlayLabel) => {
+      onSelectLabel({
+        detail: {
+          id: label._id,
+          field: label.path[label.path.length - 1],
+          sampleId: label.sampleId,
+        },
+      });
+    },
+    [onSelectLabel]
+  );
 
   const [overlayRotation, itemRotation] = useMemo(
     () => [
@@ -61,7 +78,7 @@ export const ThreeDLabels = ({
 
           return { ...l, color, id: l._id };
         })
-        .filter((l) => fos.pathFilter(l.path.join("."), l)),
+        .filter((l) => pathFilter(l.path.join("."), l)),
     [
       coloring,
       getFieldColor,
