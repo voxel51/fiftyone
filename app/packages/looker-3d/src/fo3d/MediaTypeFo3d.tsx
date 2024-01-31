@@ -31,6 +31,7 @@ import {
 } from "../constants";
 import { LevaContainer, StatusBarRootContainer } from "../containers";
 import { useFo3d } from "../hooks";
+import { ThreeDLabels } from "../labels";
 import { actionRenderListAtomFamily } from "../state";
 import { Fo3dEnvironment } from "./Environment";
 import { Objs } from "./Objs";
@@ -219,6 +220,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
             />
           </group>
           <StatusTunnel.Out />
+          <ThreeDLabels sampleMap={{ fo3d: sample }} />
         </Suspense>
       </Canvas>
       <StatusBarRootContainer>
