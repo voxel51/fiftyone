@@ -56,9 +56,26 @@ def get_header_token(authorization: str):
 
 
 def get_token_from_request(request):
+    cookie_name = get_session_cookie_name()
     header = request.headers.get("Authorization", None)
-    cookie = request.cookies.get("next-auth.session-token", None)
+    cookie = request.cookies.get(cookie_name, None)
     if header:
         return get_header_token(header)
     elif cookie:
         return cookie
+
+
+def get_session_cookie_name():
+    _SECURE_COOKIE: bool = bool(
+        os.environ[key].lower() in ["true", "1"]
+        if (key := "CAS_SECURE_COOKIE") in os.environ
+        else True
+    )
+
+    COOKIE_NAME = (
+        "__Secure-next-auth.session-token"
+        if _SECURE_COOKIE
+        else "next-auth.session-token"
+    )
+
+    return COOKIE_NAME
