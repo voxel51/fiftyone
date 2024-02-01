@@ -491,6 +491,9 @@ class ExecutionContext(object):
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
+        if dataset is None:
+            return None
+
         self._view = fosv.get_view(
             dataset,
             stages=stages,

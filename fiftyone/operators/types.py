@@ -260,11 +260,6 @@ class Object(BaseType):
         view = kwargs.get("view", Notice(label=label))
         return self.view(name, view, **kwargs)
 
-    def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
-        return self.define_property(
-            name, ViewTargetProperty(ctx, view_type), **kwargs
-        )
-
     def clone(self):
         """Clones the definition of the object.
 
@@ -274,6 +269,12 @@ class Object(BaseType):
         clone = Object()
         clone.properties = self.properties.copy()
         return clone
+
+    def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
+        view_type = view_type or RadioGroup
+        property = ViewTargetProperty(ctx, view_type)
+        self.add_property(name, property)
+        return property
 
     def to_json(self):
         """Converts the object definition to JSON.
@@ -688,10 +689,10 @@ class Choice(View):
         caption (None): a caption for the :class:`Choice`
     """
 
-    def __init__(self, value, **kwargs):
+    def __init__(self, value, include=True, **kwargs):
         super().__init__(**kwargs)
         self.value = value
-        self.include = True
+        self.include = include
 
     def clone(self):
         """Clones the :class:`Choice`.
@@ -753,8 +754,16 @@ class Choices(View):
             the :class:`Choice` that was added
         """
         choice = Choice(value, **kwargs)
-        self.choices.append(choice)
+        self.append(choice)
         return choice
+
+    def append(self, choice):
+        """Appends a :class:`Choice` to the list of choices.
+
+        Args:
+            choice: a :class:`Choice` instance
+        """
+        self._choices.append(choice)
 
     def clone(self):
         clone = super().clone()
@@ -1608,9 +1617,10 @@ class PromptView(View):
         super().__init__(**kwargs)
 
 
-class ViewTargetChoices(Choices):
-    def __init__(self, **kwargs):
+class ViewTargetOptions(object):
+    def __init__(self, choices_view, **kwargs):
         super().__init__(**kwargs)
+        self.choices_view = choices_view
         self.entire_dataset = Choice(
             "DATASET",
             label="Entire dataset",
@@ -1629,28 +1639,48 @@ class ViewTargetChoices(Choices):
             description="Run on the selected samples",
             include=False,
         )
+        [
+            choices_view.append(choice)
+            for choice in [
+                self.entire_dataset,
+                self.current_view,
+                self.selected_samples,
+            ]
+        ]
+
+    def values(self):
+        return self.choices_view.values()
 
 
 class ViewTargetProperty(Property):
     def __init__(self, ctx, view_type=RadioGroup, **kwargs):
-        has_custom_view = ctx.view != ctx.dataset.view()
+        has_dataset = ctx.dataset is not None
+        has_view = ctx.view is not None
+        has_custom_view = (
+            has_dataset and has_view
+        ) and ctx.view != ctx.dataset
         has_selected = bool(ctx.selected)
         default_target = "DATASET"
-        choices = ViewTargetChoices()
         choice_view = view_type()
+        options = ViewTargetOptions(choice_view)
+        self._options = options
 
         if has_custom_view or has_selected:
-            choices.entire_dataset.include = True
+            options.entire_dataset.include = True
 
             if has_custom_view:
-                choices.current_view.include = True
+                options.current_view.include = True
                 default_target = "CURRENT_VIEW"
 
             if has_selected:
-                self.choices.selected_samples.include = True
+                options.selected_samples.include = True
                 default_target = "SELECTED_SAMPLES"
 
-        type = Enum(choices.values())
+        type = Enum(options.values())
         super().__init__(
             type, default=default_target, view=choice_view, **kwargs
         )
+
+    @property
+    def options(self):
+        return self._options
