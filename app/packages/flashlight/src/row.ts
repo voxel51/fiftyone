@@ -5,29 +5,30 @@
 import { MARGIN } from "./constants";
 import { flashlightRow, flashlightRowHidden } from "./styles.module.css";
 
-export interface ItemData {
-  id?: string;
+export interface ItemData<V> {
+  id?: symbol;
   aspectRatio: number;
+  data: V;
 }
 
 export type Render = (
-  id: string,
+  id: symbol,
   element: HTMLDivElement,
   dimensions: [number, number],
   soft: boolean,
   disable: boolean
 ) => (() => void) | void;
 
-export default class Row {
+export default class Row<V> {
   #hidden: boolean;
 
   #from: number;
   readonly #width: number;
 
   readonly #container: HTMLDivElement = document.createElement("div");
-  readonly #row: { item: ItemData; element: HTMLDivElement }[];
+  readonly #row: { item: ItemData<V>; element: HTMLDivElement }[];
 
-  constructor(items: ItemData[], from: number, width: number) {
+  constructor(items: ItemData<V>[], from: number, width: number) {
     this.#container.classList.add(flashlightRow);
 
     this.#row = items.map((item) => {
@@ -90,6 +91,12 @@ export default class Row {
     return Boolean(this.#container.parentElement);
   }
 
+  delete() {
+    this.#row.forEach((f) => {
+      delete f.item.data;
+    });
+  }
+
   hide(): void {
     if (!this.attached) {
       throw new Error("row is not attached");
@@ -113,14 +120,16 @@ export default class Row {
     }
 
     if (!this.attached) {
-      this.#container.style[attr] = `${this.#from}px`;
       element.appendChild(this.#container);
     }
+
+    this.#container.style[attr] = `${this.#from}px`;
+    this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
 
     !this.#hidden &&
       this.#row.forEach(({ element, item }) => {
         const width = item.aspectRatio * this.height;
-        render(item.id, element, [width, this.height], soft, false);
+        render(item.id, element, [width, this.height], soft, hidden);
       });
   }
 }

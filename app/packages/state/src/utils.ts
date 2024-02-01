@@ -193,7 +193,9 @@ const fetchRelay: FetchFunction = async (
 export const getEnvironment = () =>
   new Environment({
     network: Network.create(fetchRelay),
-    store: new Store(new RecordSource()),
+    store: new Store(new RecordSource(), {
+      gcReleaseBufferSize: 0,
+    }),
   });
 
 let currentEnvironment: Environment = getEnvironment();

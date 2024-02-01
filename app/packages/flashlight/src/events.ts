@@ -1,3 +1,7 @@
+/**
+ * Copyright 2017-2024, Voxel51, Inc.
+ */
+
 export class Load<K> extends Event {
   constructor(readonly page: K) {
     super("load");

@@ -40,7 +40,7 @@
         "relay-compiler": "^14.1.0",
         "relay-runtime": "^14.1.0",
         "typedoc": "^0.23.21",
-        "typescript": "^4.7.4",
+        "typescript": "5.3.2",
         "typescript-plugin-css-modules": "^5.0.2",
         "vite": "^3.2.7",
         "vite-plugin-eslint": "^1.8.1",

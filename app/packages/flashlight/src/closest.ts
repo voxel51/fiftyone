@@ -1,9 +1,13 @@
+/**
+ * Copyright 2017-2024, Voxel51, Inc.
+ */
+
 import Row from "./row";
 
-export function closest(
-  rows: Row[],
+export function closest<V>(
+  rows: Row<V>[],
   target: number,
-  top: (row: Row) => number,
+  top: (row: Row<V>) => number,
   lo = 0,
   hi = rows.length - 1
 ): { index: number; delta: number } {

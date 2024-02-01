@@ -1,43 +1,39 @@
 /**
  * Copyright 2017-2024, Voxel51, Inc.
  */
-import { closest } from "./closest";
-import { MARGIN } from "./constants";
+
 import { EventCallback, Load, PageChange } from "./events";
-import Row, { Render } from "./row";
+import { Render } from "./row";
 import { Response, Section } from "./section";
 import { flashlight } from "./styles.module.css";
 import { createScrollReader } from "./zooming";
 
 export { Load, PageChange } from "./events";
-export { Response } from "./section";
+export type { Response } from "./section";
+export type Get<K, V> = (key: K) => Promise<Response<K, V>>;
 
-export type Get<K> = (key: K) => Promise<Response<K>>;
-
-export interface FlashlightConfig<K> {
-  get: Get<K>;
+export interface FlashlightConfig<K, V> {
+  get: Get<K, V>;
   render: Render;
   key: K;
   rowAspectRatioThreshold: number;
 }
 
-export default class Flashlight<K> extends EventTarget {
-  readonly #config: FlashlightConfig<K>;
+export default class Flashlight<K, V> extends EventTarget {
+  readonly #config: FlashlightConfig<K, V>;
   readonly #element = document.createElement("div");
 
   #scrollReader?: ReturnType<typeof createScrollReader>;
 
-  #forward: Section<K>;
-  #backward: Section<K>;
+  #forward: Section<K, V>;
+  #backward: Section<K, V>;
 
-  readonly #keys = new Map<string, K>();
+  readonly #keys = new WeakMap<symbol, K>();
   #page: K;
 
-  constructor(config: FlashlightConfig<K>) {
+  constructor(config: FlashlightConfig<K, V>) {
     super();
-    this.#config = { ...config };
-
-    this.#forward = new Section(this.#config.key);
+    this.#config = config;
 
     this.#element.classList.add(flashlight);
 
@@ -94,16 +90,8 @@ export default class Flashlight<K> extends EventTarget {
     this.#element.parentElement.removeChild(this.#element);
   }
 
-  get #backwardTop() {
-    return this.#backward.height;
-  }
-
-  get #forwardBottom() {
-    return this.#forward.height || MARGIN;
-  }
-
   get #containerHeight() {
-    return this.#forwardBottom + this.#backwardTop + 48;
+    return this.#forward.height + this.#backward.height;
   }
 
   get #height() {
@@ -111,49 +99,117 @@ export default class Flashlight<K> extends EventTarget {
   }
 
   get #padding() {
-    return this.#height * 0.75;
+    return this.#height * 0.5;
   }
 
   get #width() {
     return this.#element.getBoundingClientRect().width - 16;
   }
 
-  async #fill() {
-    const result = await this.#next();
-    this.#backward.start = result.edge;
-    this.#backward.end = this.#backward.start
-      ? {
-          remainder: [],
-          key: this.#backward.start.key,
+  async #next(render = true) {
+    const forward = async (key) => {
+      const { items, next, previous } = await this.#get(key);
+
+      return {
+        items,
+        next,
+        previous,
+      };
+    };
+
+    await this.#forward.next(forward, (runner) => {
+      if (!render) {
+        runner();
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        const { section } = runner();
+        const before = this.#containerHeight;
+        let offset: false | number = false;
+        if (section) {
+          const backward = this.#forward;
+          this.#forward = section;
+          this.#forward.attach(this.#element);
+
+          this.#backward.remove();
+          this.#backward = backward;
+          offset = before - this.#containerHeight - 48;
         }
-      : undefined;
 
-    while (this.#containerHeight < this.#height) {
-      await this.#next();
+        this.#render(false, offset);
+      });
+    });
+  }
 
-      if (this.#backward.end && !this.#backward.end?.key) break;
+  async #previous(render = true) {
+    const backward = async (key) => {
+      const { items, next, previous } = await this.#get(key);
+
+      return {
+        items: [...items].reverse(),
+        next: previous,
+        previous: next,
+      };
+    };
+
+    await this.#backward.next(backward, (runner) => {
+      if (!render) {
+        runner();
+        return;
+      }
+      requestAnimationFrame(() => {
+        const { section, offset } = runner();
+        if (section) {
+          const forward = this.#backward;
+          this.#backward = section;
+          this.#backward.attach(this.#element);
+
+          this.#forward.remove();
+          this.#forward = forward;
+        }
+
+        this.#render(false, typeof offset === "number" ? -offset : false);
+      });
+    });
+  }
+
+  async #fill() {
+    this.#forward = new Section(
+      { key: this.#config.key, remainder: [] },
+      "forward",
+      this.#config.rowAspectRatioThreshold,
+      this.#width
+    );
+    this.#forward.attach(this.#element);
+
+    await this.#next(false);
+
+    while (this.#containerHeight < this.#height + this.#padding * 2) {
+      await this.#next(false);
     }
 
-    let offset = 0;
-    if (this.#backward.start) {
-      offset = (await this.#previous()).offset;
-    }
+    await this.#previous(false);
 
     requestAnimationFrame(() => {
-      this.#scrollReader = createScrollReader(
-        this.#element,
-        (zooming) => this.#render(zooming),
-        () => {
-          return (
-            (this.#width /
-              (this.#height *
-                Math.max(this.#config.rowAspectRatioThreshold, 1))) *
-            300
-          );
-        }
-      );
+      this.#render(false, -this.#backward.height + 48);
 
-      this.#render(false, offset);
+      requestAnimationFrame(() => {
+        this.#scrollReader = createScrollReader(
+          this.#element,
+          (zooming) => {
+            this.#render(zooming);
+          },
+          () => {
+            return (
+              (this.#width /
+                (this.#height *
+                  Math.max(this.#config.rowAspectRatioThreshold, 1))) *
+              500
+            );
+          }
+        );
+      });
 
       this.dispatchEvent(new Load(this.#config.key));
     });
@@ -161,207 +217,72 @@ export default class Flashlight<K> extends EventTarget {
 
   async #get(key: K) {
     const result = await this.#config.get(key);
+    if (!this.#backward) {
+      this.#backward = new Section(
+        result.previous !== null
+          ? { key: result.previous, remainder: [] }
+          : undefined,
+        "backward",
+        this.#config.rowAspectRatioThreshold,
+        this.#width
+      );
+      this.#backward.attach(this.#element);
+    }
+
     result.items.forEach(({ id }) => this.#keys.set(id, key));
     return result;
   }
 
-  async #next() {
-    const end = this.#forward.end;
-    this.#forward.end = undefined;
+  #render(zooming: boolean, offset: number | false = false) {
+    const top = this.#element.scrollTop - (offset === false ? 0 : offset);
 
-    const data = await this.#get(end.key);
-    const { rows, remainder } = this.#tile(
-      [...end.remainder, ...data.items],
-      this.#forwardBottom
+    const backward = this.#backward.render(
+      top + this.#height + this.#padding,
+      (n) => n > top - this.#padding,
+      zooming,
+      this.#config.render,
+      top + 48
     );
-    this.#forward.end =
-      data.next !== null
-        ? {
-            key: data.next,
-            remainder,
-          }
-        : undefined;
-    this.#forwardRows.push(...rows);
 
-    let offset = 0;
-    if (this.#forward.end && this.#forwardRows.length > 10) {
-      const height =
-        this.#forwardBottom -
-        this.#forwardRows[this.#forwardRows.length - 1].height -
-        MARGIN;
-      this.#backwardRows = this.#forwardRows.reverse();
-      this.#backwardRows.forEach((row) => (row.from = height - row.from));
-      this.#backward = {
-        start: this.#forward.start,
-        end: { key: end.key, remainder: [] },
-      };
-      this.#forwardRows = [];
-      this.#forward = {
-        start: { key: data.next, remainder: [] },
-        end: { key: data.next, remainder },
-      };
+    if (backward.more) this.#previous();
+
+    const forward = this.#forward.render(
+      top - this.#padding - this.#backward.height,
+      (n) => {
+        return n < top + this.#height + this.#padding - this.#backward.height;
+      },
+      zooming,
+      this.#config.render,
+      top - this.#backward.height + 48
+    );
+
+    if (forward.more) this.#next();
+
+    let pageRow = forward.match?.row;
+
+    if (!pageRow || backward.match.delta < forward.match.delta) {
+      pageRow = backward.match.row;
     }
 
-    return {
-      edge: data.previous
-        ? {
-            key: data.previous,
-            remainder: [],
-          }
-        : undefined,
-      offset,
-    };
-  }
-
-  async #previous() {
-    const start = this.#backward.start;
-    this.#backward.start = undefined;
-
-    const data = await this.#get(start.key);
-    const items = [...data.items, ...start.remainder].reverse();
-    const { rows, remainder, offset } = this.#tile(
-      items,
-      this.#backwardTop,
-      true
-    );
-    this.#backward.start =
-      data.previous !== null
-        ? {
-            key: data.previous,
-            remainder,
-          }
-        : undefined;
-    this.#backwardRows.push(...rows);
-
-    if (this.#backward.start && this.#backwardRows.length > 10) {
-      this.#forwardRows = this.#backwardRows.reverse();
-      this.#forward = {
-        end: this.#backward.end,
-        start: { key: start.key, remainder: [] },
-      };
-      this.#backwardRows = [];
-      this.#backward = {
-        start: { key: data.previous, remainder },
-      };
-    }
-
-    return { offset };
-  }
-
-  #render(zooming: boolean, offset = 0) {
-    const hide = this.#shown;
-
-    hide.forEach((row) => row.hide());
-
-    this.#shown = new Set();
-
-    let bottom: number = undefined;
-    let index: number = undefined;
-    let top: number = undefined;
-
-    let pageTop: number = undefined;
-    let pageRow: Row = undefined;
-    const scrollTop = this.#element.scrollTop + offset;
-
-    const forward = closest(
-      this.#forwardRows,
-      this.#element.scrollTop + offset - this.#padding - this.#backwardTop,
-      (row) => row.from
-    );
-
-    if (this.#backwardRows.length) {
-      const backward = closest(
-        this.#backwardRows,
-        this.#backwardTop - (this.#element.scrollTop + offset - this.#padding),
-        (row) => row.from + row.height
-      );
-      index = backward.index;
-
-      if (
-        index >= this.#backwardRows.length - 1 &&
-        this.#backward.start?.key !== undefined
-      ) {
-        this.#previous().then(({ offset }) =>
-          requestAnimationFrame(() => this.#render(false, offset))
-        );
-      }
-
-      if (!forward || Math.abs(backward.delta) < Math.abs(forward.delta)) {
-        top =
-          this.#backwardTop -
-          this.#backwardRows[index].from -
-          this.#backwardRows[index].height;
-        bottom = top + this.#height + this.#padding;
-        while (top < bottom && index >= 0) {
-          const row = this.#backwardRows[index];
-          row.show(
-            this.#backwardContainer,
-            false,
-            "bottom",
-            zooming,
-            this.#config.render
-          );
-          const next = top - scrollTop;
-          if (next > 0 && (pageTop === undefined || next < pageTop)) {
-            pageTop = next;
-            pageRow = row;
-          }
-          top += row.height + MARGIN;
-          this.#shown.add(row);
-          index--;
-        }
+    if (pageRow && !zooming) {
+      const page = this.#keys.get(pageRow.id);
+      if (page !== this.#page) {
+        this.#page = page;
+        this.dispatchEvent(new PageChange(page));
       }
     }
 
-    if (forward) {
-      index = forward.index;
-      top = this.#backwardTop + this.#forwardRows[forward.index].from;
-      bottom = scrollTop + this.#height + this.#padding;
-      while (top < bottom && this.#forwardRows[index]) {
-        const row = this.#forwardRows[index];
-        row.show(
-          this.#forwardContainer,
-          false,
-          "top",
-          zooming,
-          this.#config.render
-        );
-        top += row.height + MARGIN;
-
-        const next = top - scrollTop;
-        if (next > 0 && (pageTop === undefined || next < pageTop)) {
-          pageTop = next;
-          pageRow = row;
-        }
-        this.#shown.add(row);
-        index++;
-      }
+    if (offset === false) {
+      return;
     }
 
-    if (
-      (!forward || index >= this.#forwardRows.length - 1) &&
-      this.#forward.end?.key !== undefined
-    ) {
-      this.#next().then(({ offset }) => {
-        requestAnimationFrame(() => this.#render(false, offset));
-      });
+    if (this.#scrollReader && top) {
+      this.#element.scroll(0, top);
     }
-
-    console.log(this.#forwardBottom);
-    this.#forwardContainer.style.height = this.#forwardBottom + "px";
-    this.#backwardContainer.style.height = this.#backwardTop + 48 + "px";
-    this.#forwardContainer.parentElement.style.top =
-      this.#backwardTop + 48 + "px";
-
-    if (offset) {
-      this.#scrollReader.adjust(offset);
-    }
-
-    const page = this.#keys.get(pageRow.id);
-
-    if (!zooming && page !== this.#page) {
-      this.#page = page;
-      // this.dispatchEvent(new PageChange(page));
+    this.#forward.top = this.#backward.height;
+    this.#backward.top = 0;
+    if (!this.#scrollReader && top) {
+      this.#element.scroll(0, top);
     }
   }
 }
