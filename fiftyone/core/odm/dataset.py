@@ -306,14 +306,14 @@ class ColorScheme(EmbeddedDocument):
 
     def to_dict(self, extended=False):
         d = super().to_dict(extended)
-        d["id"] = str(d.pop("_id"))
+        d["id"] = str(d.pop("_id", ObjectId()))
 
         return d
 
     @classmethod
     def from_dict(cls, d):
         d = dict(**d)
-        d["_id"] = ObjectId(d["id"])
+        d["_id"] = ObjectId(d.get("id", None))
         return super().from_dict(d)
 
 
