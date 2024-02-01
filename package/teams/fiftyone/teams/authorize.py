@@ -63,13 +63,13 @@ _GRAPHQL_FIELDS = {
 
 _GRAPHQL_NEEDS_VIEWER = {
     # queries
-    "aggregate": lambda v: v["datasetName"],
+    "aggregate": lambda v: v["dataset"],
     "dataset": lambda v: v["name"],
     "aggregations": lambda v: v["form"]["dataset"],
     "lightning": lambda v: v["input"]["dataset"],
     "samples": lambda v: v["dataset"],
     "sample": lambda v: v["dataset"],
-    "saved_views": lambda v: v.get("name", []),
+    "saved_views": lambda v: v["name"],
     "schema_for_view_stages": lambda v: v["name"],
 }
 
