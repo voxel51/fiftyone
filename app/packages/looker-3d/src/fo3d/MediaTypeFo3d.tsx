@@ -2,7 +2,7 @@ import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Leva, useControls } from "leva";
+import { Leva } from "leva";
 import {
   Suspense,
   useCallback,
@@ -34,14 +34,8 @@ import { useFo3d } from "../hooks";
 import { ThreeDLabels } from "../labels";
 import { actionRenderListAtomFamily } from "../state";
 import { Fo3dEnvironment } from "./Environment";
-import { Objs } from "./Objs";
-import { Pcds } from "./Pcds";
-import { Plys } from "./Plys";
-import { Stls } from "./Stls";
-import {
-  getMediaUrlForFo3dSample,
-  getVisibilityMapFromFo3dParsed,
-} from "./utils";
+import { FoScene } from "./FoScene";
+import { getMediaUrlForFo3dSample } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
 
@@ -60,9 +54,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   );
 
   const upVector = useMemo(() => {
-    // todo: remove this after dev-demos
-    return new Vector3(0, 1, 0);
-
     if (settings?.defaultUp?.length === 3) {
       return new Vector3(...settings.defaultUp).normalize();
     }
@@ -97,25 +88,30 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     [mediaField, sample]
   );
 
-  const { data: fo3dParsed, isLoading: isParsingFo3d } = useFo3d(mediaUrl);
+  const { sceneGraph: foSceneGraph, isLoading: isParsingFo3d } =
+    useFo3d(mediaUrl);
 
   const assetsGroupRef = useRef<THREE.Group>();
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
 
-  const [areObjsRendered, setAreObjsRendered] = useState(false);
-  const [arePcdsRendered, setArePcdsRendered] = useState(false);
-  const [arePlysRendered, setArePlysRendered] = useState(false);
-  const [areStlsRendered, setAreStlsRendered] = useState(false);
+  // const [areObjsRendered, setAreObjsRendered] = useState(false);
+  // const [arePcdsRendered, setArePcdsRendered] = useState(false);
+  // const [arePlysRendered, setArePlysRendered] = useState(false);
+  // const [areStlsRendered, setAreStlsRendered] = useState(false);
 
-  const allAssetsLoaded = useMemo(() => {
-    const objsReady = fo3dParsed?.assets.objs.length === 0 || areObjsRendered;
-    const pcdsReady = fo3dParsed?.assets.pcds.length === 0 || arePcdsRendered;
-    const plysReady = fo3dParsed?.assets.plys.length === 0 || arePlysRendered;
-    const stlsReady = fo3dParsed?.assets.stls.length === 0 || areStlsRendered;
+  // const allAssetsLoaded = useMemo(() => {
+  //   // todo: fix
+  //   return true;
+  //   // const objsReady = fo3dParsed?.assets.objs.length === 0 || areObjsRendered;
+  //   // const pcdsReady = fo3dParsed?.assets.pcds.length === 0 || arePcdsRendered;
+  //   // const plysReady = fo3dParsed?.assets.plys.length === 0 || arePlysRendered;
+  //   // const stlsReady = fo3dParsed?.assets.stls.length === 0 || areStlsRendered;
 
-    return objsReady && pcdsReady && plysReady && stlsReady;
-  }, [areObjsRendered, arePcdsRendered, arePlysRendered, areStlsRendered]);
+  //   // return objsReady && pcdsReady && plysReady && stlsReady;
+  // }, [areObjsRendered, arePcdsRendered, arePlysRendered, areStlsRendered]);
+
+  const [isSceneDoneLoading, setIsSceneDoneLoading] = useState(true);
 
   const [sceneBoundingBox, setSceneBoundingBox] = useState<Box3>();
 
@@ -134,7 +130,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       return DEFAULT_CAMERA_POSITION();
     }
 
-    const defaultCameraPosition = fo3dParsed.defaultCameraPosition;
+    const defaultCameraPosition = foSceneGraph.defaultCameraPosition;
 
     if (defaultCameraPosition) {
       return new Vector3(
@@ -164,17 +160,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     }
 
     return DEFAULT_CAMERA_POSITION();
-  }, [settings, isParsingFo3d, fo3dParsed, sceneBoundingBox]);
-
-  // todo: if the object is checked expand its children as well
-  const defaultVisibilityMap = useMemo(
-    () => getVisibilityMapFromFo3dParsed(fo3dParsed?.assets),
-    [fo3dParsed]
-  );
-
-  const visibilityMap = useControls("Visibility", defaultVisibilityMap ?? {}, [
-    defaultVisibilityMap,
-  ]);
+  }, [settings, isParsingFo3d, foSceneGraph, sceneBoundingBox]);
 
   if (isParsingFo3d) {
     return (
@@ -204,7 +190,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       <Canvas id={CANVAS_WRAPPER_ID}>
         <Suspense fallback={<SpinningCube />}>
           <Fo3dEnvironment
-            allAssetsLoaded={allAssetsLoaded}
+            allAssetsLoaded={isSceneDoneLoading}
             assetsGroupRef={assetsGroupRef}
             sceneBoundingBox={sceneBoundingBox}
             upVector={upVector}
@@ -218,26 +204,13 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
           />
           <OrbitControls />
 
-          <group ref={assetsGroupRef} visible={Boolean(sceneBoundingBox)}>
-            <Objs
-              onLoad={() => setAreObjsRendered(true)}
-              objs={fo3dParsed.assets.objs}
-              visibilityMap={visibilityMap}
-            />
-            <Pcds
-              onLoad={() => setArePcdsRendered(true)}
-              pcds={fo3dParsed.assets.pcds}
-              visibilityMap={visibilityMap}
-            />
-            <Plys
-              onLoad={() => setArePlysRendered(true)}
-              plys={fo3dParsed.assets.plys}
-              visibilityMap={visibilityMap}
-            />
-            <Stls
-              onLoad={() => setAreStlsRendered(true)}
-              stls={fo3dParsed.assets.stls}
-              visibilityMap={visibilityMap}
+          <group
+            ref={assetsGroupRef}
+            // visible={Boolean(sceneBoundingBox)}
+          >
+            <FoScene
+              scene={foSceneGraph}
+              setIsSceneDoneLoading={setIsSceneDoneLoading}
             />
           </group>
           <StatusTunnel.Out />
