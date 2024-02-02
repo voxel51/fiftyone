@@ -49,6 +49,11 @@ const CameraInfo = ({
           {cameraPosition.x.toFixed(2)}, {cameraPosition.y.toFixed(2)},{" "}
           {cameraPosition.z.toFixed(2)}
         </Text>
+        <Text variant="caption">
+          {cameraRef.current.rotation.x.toFixed(2)},{" "}
+          {cameraRef.current.rotation.y.toFixed(2)},{" "}
+          {cameraRef.current.rotation.z.toFixed(2)}
+        </Text>
       </div>
     </div>
   );

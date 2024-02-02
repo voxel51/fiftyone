@@ -9,6 +9,7 @@ import {
   StlAsset,
 } from "../hooks";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
+import { AssetWrapper } from "./AssetWrapper";
 import { Obj } from "./Obj";
 import { Pcd } from "./Pcd";
 import { Ply } from "./Ply";
@@ -26,8 +27,10 @@ const getAssetForNode = (node: FoSceneNode) => {
 
   const label = getLabelForSceneNode(node);
 
+  let jsx: JSX.Element = null;
+
   if (node.asset instanceof ObjAsset) {
-    return (
+    jsx = (
       <Obj
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
         obj={node.asset as ObjAsset}
@@ -37,7 +40,7 @@ const getAssetForNode = (node: FoSceneNode) => {
       />
     );
   } else if (node.asset instanceof PcdAsset) {
-    return (
+    jsx = (
       <Pcd
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
         pcd={node.asset as PcdAsset}
@@ -47,7 +50,7 @@ const getAssetForNode = (node: FoSceneNode) => {
       />
     );
   } else if (node.asset instanceof PlyAsset) {
-    return (
+    jsx = (
       <Ply
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
         ply={node.asset as PlyAsset}
@@ -57,7 +60,7 @@ const getAssetForNode = (node: FoSceneNode) => {
       />
     );
   } else if (node.asset instanceof StlAsset) {
-    return (
+    jsx = (
       <Stl
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
         stl={node.asset as StlAsset}
@@ -68,7 +71,15 @@ const getAssetForNode = (node: FoSceneNode) => {
     );
   }
 
-  return null;
+  if (!jsx) {
+    return null;
+  }
+
+  return (
+    <AssetWrapper key={jsx.key}>
+      <AssetErrorBoundary>{jsx}</AssetErrorBoundary>
+    </AssetWrapper>
+  );
 };
 
 const getR3fNodeFromFo3dNode = (
@@ -86,9 +97,7 @@ const getR3fNodeFromFo3dNode = (
   const jsx = getAssetForNode(node);
 
   if (!node.children || node.children.length === 0) {
-    return jsx ? (
-      <AssetErrorBoundary key={jsx.key}>{jsx}</AssetErrorBoundary>
-    ) : null;
+    return jsx;
   }
 
   return (
@@ -98,7 +107,7 @@ const getR3fNodeFromFo3dNode = (
       quaternion={node.quaternion}
       scale={node.scale}
     >
-      {jsx && <AssetErrorBoundary key={jsx.key}>{jsx}</AssetErrorBoundary>}
+      {jsx && jsx}
       {node.children.map((child) =>
         getR3fNodeFromFo3dNode(child, visibilityMap)
       )}
