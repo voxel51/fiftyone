@@ -41,21 +41,13 @@ export const COLOR_POOL = [
   0x33ff57, // Bright Green
   0x50c878, // Emerald
   0xadff2f, // Green Yellow
-  0x006400, // Dark Green
   0xff5733, // Vibrant Red
   0xdc143c, // Crimson
-  0xffff33, // Lemon Yellow
-  0xffd700, // Gold
   0xff69b4, // Hot Pink
-  0xff8c00, // Dark Orange
   0x20b2aa, // Light Sea Green
-  0x8fbc8f, // Dark Sea Green
   0xf4a460, // Sandy Brown
   0xcd853f, // Peru
-  0xd2691e, // Chocolate
   0xff7f50, // Coral
   0x708090, // Slate Gray
-  0x2f4f4f, // Dark Slate Gray
-  0xffebcd, // Blanched Almond
   0xf5f5dc, // Beige
 ];

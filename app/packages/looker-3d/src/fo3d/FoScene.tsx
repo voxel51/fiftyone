@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import {
   FoSceneGraph,
   FoSceneNode,
+  GltfAsset,
   ObjAsset,
   PcdAsset,
   PlyAsset,
@@ -10,6 +11,7 @@ import {
 } from "../hooks";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { AssetWrapper } from "./AssetWrapper";
+import { Gltf } from "./Gltf";
 import { Obj } from "./Obj";
 import { Pcd } from "./Pcd";
 import { Ply } from "./Ply";
@@ -64,6 +66,16 @@ const getAssetForNode = (node: FoSceneNode) => {
       <Stl
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
         stl={node.asset as StlAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof GltfAsset) {
+    jsx = (
+      <Gltf
+        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        gltf={node.asset as GltfAsset}
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
