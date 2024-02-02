@@ -5,26 +5,30 @@ export const Lights = () => {
     ambientLightIntensity,
     directionalLightPosition,
     directionalLightIntensity,
-  } = useControls("Lights", {
-    ambientLightIntensity: {
-      value: 0.5,
-      min: 0,
-      max: 1,
-      step: 0.01,
-      label: "Ambient light intensity",
+  } = useControls(
+    "Lights",
+    {
+      ambientLightIntensity: {
+        value: 0.5,
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "Ambient light intensity",
+      },
+      directionalLightPosition: {
+        value: [100, 1000, 100],
+        label: "Directional light position",
+      },
+      directionalLightIntensity: {
+        value: 0.5,
+        min: 0,
+        max: 1,
+        step: 0.01,
+        label: "Directional light intensity",
+      },
     },
-    directionalLightPosition: {
-      value: [100, 1000, 100],
-      label: "Directional light position",
-    },
-    directionalLightIntensity: {
-      value: 0.5,
-      min: 0,
-      max: 1,
-      step: 0.01,
-      label: "Directional light intensity",
-    },
-  });
+    { collapsed: true }
+  );
 
   return (
     <>
