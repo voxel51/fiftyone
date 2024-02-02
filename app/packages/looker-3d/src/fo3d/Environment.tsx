@@ -1,6 +1,5 @@
 import { GizmoHelper, GizmoViewport } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
-import { useMemo } from "react";
+import { useLayoutEffect, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Box3, Group, Vector3 } from "three";
 import { VOXEL51_THEME_COLOR } from "../constants";
@@ -26,12 +25,10 @@ const OriginHelper = () => {
 
 export const Fo3dEnvironment = ({
   assetsGroupRef,
-  allAssetsLoaded,
   sceneBoundingBox,
   setSceneBoundingBox,
   upVector,
 }: {
-  allAssetsLoaded: boolean;
   assetsGroupRef: React.RefObject<Group>;
   sceneBoundingBox: Box3;
   upVector: Vector3;
@@ -44,12 +41,26 @@ export const Fo3dEnvironment = ({
     [upVector]
   );
 
-  useFrame(() => {
-    if (!sceneBoundingBox && allAssetsLoaded && assetsGroupRef.current) {
+  useLayoutEffect(() => {
+    const getBoundingBox = () => {
+      if (!assetsGroupRef.current) {
+        return;
+      }
+
       const box = new Box3().setFromObject(assetsGroupRef.current);
-      setSceneBoundingBox(box);
-    }
-  });
+      console.log("box max is ", box.max[0]);
+      if (Math.abs(box.max[0]) === Infinity) {
+        setTimeout(getBoundingBox, 50);
+      } else {
+        setSceneBoundingBox(box);
+      }
+    };
+
+    // this is a hack, yet to find a robust way to know when the scene is done loading
+    // callbacks in loaders are not reliable
+    // check every 50ms for scene's bounding box
+    setTimeout(getBoundingBox, 50);
+  }, [assetsGroupRef]);
 
   return (
     <>

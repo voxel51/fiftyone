@@ -8,7 +8,6 @@ import {
   PlyAsset,
   StlAsset,
 } from "../hooks";
-import { useLoadingManagerStatus } from "../hooks/use-loading-manager-status";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { Obj } from "./Obj";
 import { Pcd } from "./Pcd";
@@ -18,7 +17,6 @@ import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 interface FoSceneProps {
   scene: FoSceneGraph;
-  setIsSceneDoneLoading: (isSceneDoneLoading: boolean) => void;
 }
 
 const getAssetForNode = (node: FoSceneNode) => {
@@ -118,7 +116,7 @@ const getR3fSceneFromFo3dScene = (
       quaternion={scene.quaternion}
       scale={scene.scale}
     >
-      {scene.children.map((child, index) => {
+      {scene.children.map((child) => {
         return getR3fNodeFromFo3dNode(child, visibilityMap);
       })}
     </group>
@@ -131,13 +129,15 @@ export const FoScene = ({ scene }: FoSceneProps) => {
     [scene]
   );
 
-  useLoadingManagerStatus();
-
   const visibilityMap = useControls("Visibility", defaultVisibilityMap ?? {}, [
     defaultVisibilityMap,
   ]);
 
   const sceneR3f = useMemo(() => {
+    if (!scene) {
+      return null;
+    }
+
     const r3fScene = getR3fSceneFromFo3dScene(scene, visibilityMap);
     return r3fScene;
   }, [scene, visibilityMap]);
