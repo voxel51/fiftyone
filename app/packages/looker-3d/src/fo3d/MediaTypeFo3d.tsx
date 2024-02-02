@@ -211,8 +211,14 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   }, [settings]);
 
   useEffect(() => {
-    if (sceneBoundingBox && Math.abs(sceneBoundingBox.max.x) !== Infinity) {
-      cameraRef.current.lookAt(sceneBoundingBox.getCenter(new Vector3()));
+    if (
+      sceneBoundingBox &&
+      Math.abs(sceneBoundingBox.max.x) !== Infinity &&
+      orbitControlsRef.current
+    ) {
+      orbitControlsRef.current.target.copy(
+        sceneBoundingBox.getCenter(new Vector3())
+      );
     }
   }, [sceneBoundingBox]);
 

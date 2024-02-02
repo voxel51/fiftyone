@@ -71,7 +71,7 @@ export const Fo3dEnvironment = ({
         <GizmoViewport />
       </GizmoHelper>
       <OriginHelper />
-      <Lights />
+      <Lights upVector={upVector} sceneBoundingBox={sceneBoundingBox} />
     </>
   );
 };
