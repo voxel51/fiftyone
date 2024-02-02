@@ -4,60 +4,50 @@ import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
 import { FiftyoneSceneRawJson } from "../utils";
 
-export interface ThreeDAsset {
+export class GltfAsset {
+  constructor(readonly gltfUrl?: string) {}
+}
+
+export class ObjAsset {
+  constructor(readonly objUrl?: string, readonly mtlUrl?: string) {}
+}
+
+export class PcdAsset {
+  constructor(readonly pcdUrl?: string) {}
+}
+
+export class PlyAsset {
+  constructor(readonly plyUrl?: string) {}
+}
+
+export class StlAsset {
+  constructor(readonly stlUrl?: string) {}
+}
+
+export type MeshAsset = GltfAsset | ObjAsset | PcdAsset | PlyAsset | StlAsset;
+
+export type FoSceneNode = {
   name: string;
-  visible: boolean;
+  asset?: MeshAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
-}
+  visible: boolean;
+  children?: Array<FoSceneNode> | null;
+};
 
-export interface GltfReturnType extends ThreeDAsset {
-  gltfUrl?: string;
-}
-
-export interface ObjReturnType extends ThreeDAsset {
-  objUrl?: string;
-  mtlUrl?: string;
-}
-
-export interface PcdReturnType extends ThreeDAsset {
-  pcdUrl?: string;
-}
-
-export interface PlyReturnType extends ThreeDAsset {
-  plyUrl?: string;
-}
-
-export interface StlReturnType extends ThreeDAsset {
-  stlUrl?: string;
-}
-
-type MeshReturnType =
-  | ObjReturnType
-  | GltfReturnType
-  | PcdReturnType
-  | PlyReturnType
-  | StlReturnType;
-
-export type Fo3dData = {
+export type FoSceneGraph = Omit<FoSceneNode, "name" | "visible"> & {
   defaultCameraPosition?: Vector3 | null;
-  assets: {
-    objs: ObjReturnType[];
-    gltfs: GltfReturnType[];
-    stls: StlReturnType[];
-    pcds: PcdReturnType[];
-    plys: PlyReturnType[];
-  };
+  children?: Array<FoSceneNode> | null;
 };
 
 type UseFo3dReturnType = {
-  data: Fo3dData | null;
+  sceneGraph: FoSceneGraph | null;
   isLoading: boolean;
 };
 
 /**
- * This hook parses the fo3d file.
+ * This hook parses the fo3d file into a FiftyOne scene graph.
  */
 export const useFo3d = (url: string): UseFo3dReturnType => {
   const [isLoading, setIsLoading] = useState(true);
@@ -74,101 +64,67 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     })();
   }, [url]);
 
-  const transformedData = useMemo(() => {
+  const sceneGraph = useMemo(() => {
     if (!rawData) {
-      return {
-        gltfs: [],
-        objs: [],
-        pcds: [],
-        plys: [],
-        stls: [],
-      };
+      return null;
     }
 
-    const objs: ObjReturnType[] = [];
-    const gltfs: GltfReturnType[] = [];
-    const stls: StlReturnType[] = [];
-    const pcds: PcdReturnType[] = [];
-    const plys: PlyReturnType[] = [];
+    const buildSceneGraph = (node: FiftyoneSceneRawJson["children"][0]) => {
+      let asset: MeshAsset;
 
-    // do a depth first search of the scene and collect all renderables
-    const stack = [rawData];
-    while (stack.length > 0) {
-      const current = stack.pop();
-      if (!current) {
-        continue;
+      if (node["_cls"].toLocaleLowerCase().endsWith("mesh")) {
+        if (node["_cls"].toLocaleLowerCase().startsWith("gltf")) {
+          if (node["gltf_path"]) {
+            asset = new GltfAsset(getSampleSrc(node["gltf_path"]));
+          }
+        } else if (node["_cls"].toLocaleLowerCase().startsWith("obj")) {
+          if (node["obj_path"]) {
+            const objPath = node["obj_path"];
+            const mtlPath = node["mtl_path"];
+            if (mtlPath) {
+              asset = new ObjAsset(
+                getSampleSrc(objPath),
+                getSampleSrc(mtlPath)
+              );
+            } else {
+              asset = new ObjAsset(getSampleSrc(objPath));
+            }
+          }
+        } else if (node["_cls"].toLocaleLowerCase().startsWith("stl")) {
+          if (node["stl_path"]) {
+            asset = new StlAsset(getSampleSrc(node["stl_path"]));
+          }
+        } else if (node["_cls"].toLocaleLowerCase().startsWith("ply")) {
+          if (node["ply_path"]) {
+            asset = new PlyAsset(getSampleSrc(node["ply_path"]));
+          }
+        }
+      } else if (node["_cls"].endsWith("Pointcloud")) {
+        if (node["pcd_path"]) {
+          asset = new PcdAsset(getSampleSrc(node["pcd_path"]));
+        }
       }
 
-      const currentObj: ThreeDAsset = {
-        name: current.name,
-        visible: current.visible,
+      return {
+        asset,
+        name: node.name,
+        visible: node.visible,
         position: new Vector3(
-          current.position[0],
-          current.position[1],
-          current.position[2]
+          node.position[0],
+          node.position[1],
+          node.position[2]
         ),
         quaternion: new Quaternion(
-          current.quaternion[0],
-          current.quaternion[1],
-          current.quaternion[2],
-          current.quaternion[3]
+          node.quaternion[0],
+          node.quaternion[1],
+          node.quaternion[2],
+          node.quaternion[3]
         ),
-        scale: new Vector3(
-          current.scale[0],
-          current.scale[1],
-          current.scale[2]
-        ),
+        scale: new Vector3(node.scale[0], node.scale[1], node.scale[2]),
+        children:
+          node.children?.length > 0 ? node.children.map(buildSceneGraph) : null,
       };
-
-      if (current["_cls"].toLocaleLowerCase().endsWith("mesh")) {
-        if (current["_cls"].toLocaleLowerCase().startsWith("gltf")) {
-          if (current["gltf_path"]) {
-            (currentObj as GltfReturnType).gltfUrl = getSampleSrc(
-              current["gltf_path"]
-            );
-          }
-          gltfs.push(currentObj);
-        } else if (current["_cls"].toLocaleLowerCase().startsWith("obj")) {
-          if (current["obj_path"]) {
-            (currentObj as ObjReturnType).objUrl = getSampleSrc(
-              current["obj_path"]
-            );
-          }
-
-          if (current["mtl_path"]) {
-            (currentObj as ObjReturnType).mtlUrl = getSampleSrc(
-              current["mtl_path"]
-            );
-          }
-
-          objs.push(currentObj);
-        } else if (current["_cls"].toLocaleLowerCase().startsWith("stl")) {
-          if (current["stl_path"]) {
-            (currentObj as StlReturnType).stlUrl = getSampleSrc(
-              current["stl_path"]
-            );
-          }
-          stls.push(currentObj);
-        } else if (current["_cls"].toLocaleLowerCase().startsWith("ply")) {
-          if (current["ply_path"]) {
-            (currentObj as PlyReturnType).plyUrl = getSampleSrc(
-              current["ply_path"]
-            );
-          }
-          plys.push(currentObj);
-        }
-      } else if (current["_cls"].endsWith("Pointcloud")) {
-        if (current["pcd_path"]) {
-          (currentObj as PcdReturnType).pcdUrl = getSampleSrc(
-            current["pcd_path"]
-          );
-        }
-
-        pcds.push(currentObj);
-      }
-
-      stack.push(...current.children);
-    }
+    };
 
     let cameraPosition: Vector3 | null = null;
 
@@ -180,27 +136,35 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       );
     }
 
-    return {
+    const foSceneGraph: FoSceneGraph = {
       defaultCameraPosition: cameraPosition,
-      assets: {
-        objs,
-        gltfs,
-        stls,
-        pcds,
-        plys,
-      },
+      position: new Vector3(
+        rawData.position[0],
+        rawData.position[1],
+        rawData.position[2]
+      ),
+      quaternion: new Quaternion(
+        rawData.quaternion[0],
+        rawData.quaternion[1],
+        rawData.quaternion[2],
+        rawData.quaternion[3]
+      ),
+      scale: new Vector3(rawData.scale[0], rawData.scale[1], rawData.scale[2]),
+      children: rawData.children.map(buildSceneGraph),
     };
+
+    return foSceneGraph;
   }, [rawData]);
 
   if (isLoading) {
     return {
-      data: null,
+      sceneGraph: null,
       isLoading,
     };
   }
 
   return {
+    sceneGraph,
     isLoading: false,
-    data: transformedData,
   } as UseFo3dReturnType;
 };

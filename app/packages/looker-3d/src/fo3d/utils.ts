@@ -1,48 +1,53 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
-import { Fo3dData, ThreeDAsset } from "../hooks";
+import { FoSceneGraph, FoSceneNode } from "../hooks";
 
-export const getIdentifierForAsset = (asset: ThreeDAsset): string => {
-  const assetUrlProperty = Object.keys(asset).find((key) =>
+export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
+  if (!node.asset) return null;
+
+  const assetUrlProperty = Object.keys(node.asset ?? []).find((key) =>
     key.endsWith("Url")
   );
 
-  if (!assetUrlProperty) {
-    return asset.name ?? `unknown-${asset.constructor.name}`;
+  return node.asset[assetUrlProperty];
+};
+
+export const getLabelForSceneNode = (node: FoSceneNode): string => {
+  if (node.name?.length > 0) {
+    return node.name;
   }
 
-  return asset.name.length > 0
-    ? asset.name
-    : asset[assetUrlProperty].split("/").pop();
+  const assetUrl = getAssetUrlForSceneNode(node);
+
+  if (!assetUrl) {
+    return `unknown-${node.asset.constructor.name}`;
+  }
+
+  // return the filename without the extension
+  return assetUrl.split("/").pop().split(".")[0];
 };
 
 export const getVisibilityMapFromFo3dParsed = (
-  fo3dParsed: Fo3dData["assets"]
+  foSceneGraph: FoSceneGraph
 ): Record<string, boolean> => {
-  if (!fo3dParsed) return null;
+  if (!foSceneGraph) return null;
 
-  const { gltfs, objs, stls, pcds, plys } = fo3dParsed;
+  const visibilityMap: Record<string, boolean> = {};
 
-  const visibilityMap = {};
+  // do a DFS of the scene graph and set visibility
+  // todo: if node names are assumed to be not unique,
+  // we should concatenate parents' names to the label to make it unique
+  const visitNodeDfs = (node: FoSceneNode) => {
+    const label = getLabelForSceneNode(node);
+    visibilityMap[label] = node.visible;
 
-  for (const gltf of gltfs) {
-    visibilityMap[getIdentifierForAsset(gltf)] = true;
-  }
+    if (node.children) {
+      for (const child of node.children) {
+        visitNodeDfs(child);
+      }
+    }
+  };
 
-  for (const obj of objs) {
-    visibilityMap[getIdentifierForAsset(obj)] = true;
-  }
-
-  for (const stl of stls) {
-    visibilityMap[getIdentifierForAsset(stl)] = true;
-  }
-
-  for (const pcd of pcds) {
-    visibilityMap[getIdentifierForAsset(pcd)] = true;
-  }
-
-  for (const ply of plys) {
-    visibilityMap[getIdentifierForAsset(ply)] = true;
-  }
+  foSceneGraph.children.forEach(visitNodeDfs);
 
   return visibilityMap;
 };
