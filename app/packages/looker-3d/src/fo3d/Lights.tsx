@@ -59,7 +59,7 @@ export const Lights = ({
         label: "Ambient light intensity",
       },
       directionalLightIntensity: {
-        value: 0.8,
+        value: 0.5,
         min: 0,
         max: 1,
         step: 0.01,
@@ -69,6 +69,10 @@ export const Lights = ({
     { collapsed: true }
   );
 
+  const directionalLightScaled = useMemo(() => {
+    return directionalLightIntensity * Math.PI;
+  }, [directionalLightIntensity]);
+
   return (
     <>
       <ambientLight intensity={ambientLightIntensity} />
@@ -77,7 +81,7 @@ export const Lights = ({
           <directionalLight
             key={`directional-light-${position.x}-${position.y}-${position.z}`}
             position={position}
-            intensity={directionalLightIntensity}
+            intensity={directionalLightScaled}
           />
         );
       })}

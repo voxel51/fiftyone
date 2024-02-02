@@ -37,8 +37,11 @@ class GLTFMesh(Mesh):
     def __init__(self, name: str, gltf_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
 
-        if not gltf_path.lower().endswith(".gltf"):
-            raise ValueError("GLTF mesh must be a .gltf file")
+        if not (
+            gltf_path.lower().endswith(".gltf")
+            or gltf_path.lower().endswith(".glb")
+        ):
+            raise ValueError("GLTF mesh must be a .gltf or .glb file")
 
         self.gltf_path = gltf_path
 

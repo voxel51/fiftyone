@@ -10,12 +10,11 @@ import { Lights } from "./Lights";
 const OriginHelper = () => {
   return (
     <group>
-      <axesHelper />
       <mesh>
-        <sphereGeometry args={[0.01, 16, 16]} />
+        <sphereGeometry args={[0.02, 16, 16]} />
         <meshBasicMaterial
           color={VOXEL51_THEME_COLOR}
-          opacity={0.1}
+          opacity={0.2}
           transparent
         />
       </mesh>
