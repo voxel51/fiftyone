@@ -95,24 +95,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
 
-  // const [areObjsRendered, setAreObjsRendered] = useState(false);
-  // const [arePcdsRendered, setArePcdsRendered] = useState(false);
-  // const [arePlysRendered, setArePlysRendered] = useState(false);
-  // const [areStlsRendered, setAreStlsRendered] = useState(false);
-
-  // const allAssetsLoaded = useMemo(() => {
-  //   // todo: fix
-  //   return true;
-  //   // const objsReady = fo3dParsed?.assets.objs.length === 0 || areObjsRendered;
-  //   // const pcdsReady = fo3dParsed?.assets.pcds.length === 0 || arePcdsRendered;
-  //   // const plysReady = fo3dParsed?.assets.plys.length === 0 || arePlysRendered;
-  //   // const stlsReady = fo3dParsed?.assets.stls.length === 0 || areStlsRendered;
-
-  //   // return objsReady && pcdsReady && plysReady && stlsReady;
-  // }, [areObjsRendered, arePcdsRendered, arePlysRendered, areStlsRendered]);
-
-  const [isSceneDoneLoading, setIsSceneDoneLoading] = useState(true);
-
   const [sceneBoundingBox, setSceneBoundingBox] = useState<Box3>();
 
   const defaultCameraPositionComputed = useMemo(() => {
@@ -152,11 +134,26 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       const center = sceneBoundingBox.getCenter(new Vector3());
       const size = sceneBoundingBox.getSize(new Vector3());
 
-      return new Vector3(
-        center.x,
-        center.y + size.y / 2,
-        center.z + Math.max(size.x, size.y, size.z) * 2.5
-      );
+      if (upVector.y === 1) {
+        return new Vector3(
+          center.x,
+          center.y + Math.max(size.y / 2, 1.5),
+          center.z + Math.max(size.x, size.y, size.z) * 2
+        );
+      } else if (upVector.x === 1) {
+        return new Vector3(
+          center.x + Math.max(size.x / 2, 1.5),
+          center.y + Math.max(size.x, size.y, size.z) * 2,
+          center.z
+        );
+      } else {
+        // assume z-up
+        return new Vector3(
+          center.x,
+          center.y + Math.max(size.x, size.y, size.z) * 2,
+          center.z + Math.max(1.5, size.z / 2)
+        );
+      }
     }
 
     return DEFAULT_CAMERA_POSITION();
@@ -190,10 +187,9 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       <Canvas id={CANVAS_WRAPPER_ID}>
         <Suspense fallback={<SpinningCube />}>
           <Fo3dEnvironment
-            allAssetsLoaded={isSceneDoneLoading}
             assetsGroupRef={assetsGroupRef}
-            sceneBoundingBox={sceneBoundingBox}
             upVector={upVector}
+            sceneBoundingBox={sceneBoundingBox}
             setSceneBoundingBox={setSceneBoundingBox}
           />
           <PerspectiveCamera
@@ -204,14 +200,8 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
           />
           <OrbitControls />
 
-          <group
-            ref={assetsGroupRef}
-            // visible={Boolean(sceneBoundingBox)}
-          >
-            <FoScene
-              scene={foSceneGraph}
-              setIsSceneDoneLoading={setIsSceneDoneLoading}
-            />
+          <group ref={assetsGroupRef} visible={Boolean(sceneBoundingBox)}>
+            <FoScene scene={foSceneGraph} />
           </group>
           <StatusTunnel.Out />
           <ThreeDLabels sampleMap={{ fo3d: sample }} />
