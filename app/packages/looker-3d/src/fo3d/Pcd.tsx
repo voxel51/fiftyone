@@ -4,11 +4,13 @@ import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import { PcdAsset } from "../hooks";
 
 export const Pcd = ({
+  name,
   pcd,
   position,
   quaternion,
   scale,
 }: {
+  name: string;
   pcd: PcdAsset;
   position: Vector3;
   quaternion: Quaternion;

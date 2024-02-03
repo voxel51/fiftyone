@@ -1,6 +1,7 @@
 import { useControls } from "leva";
 import { useMemo } from "react";
 import {
+  FbxAsset,
   FoSceneGraph,
   FoSceneNode,
   GltfAsset,
@@ -11,6 +12,7 @@ import {
 } from "../hooks";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { AssetWrapper } from "./AssetWrapper";
+import { Fbx } from "./Fbx";
 import { Gltf } from "./Gltf";
 import { Obj } from "./Obj";
 import { Pcd } from "./Pcd";
@@ -35,6 +37,7 @@ const getAssetForNode = (node: FoSceneNode) => {
     jsx = (
       <Obj
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
         obj={node.asset as ObjAsset}
         position={node.position}
         quaternion={node.quaternion}
@@ -45,6 +48,7 @@ const getAssetForNode = (node: FoSceneNode) => {
     jsx = (
       <Pcd
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
         pcd={node.asset as PcdAsset}
         position={node.position}
         quaternion={node.quaternion}
@@ -55,6 +59,7 @@ const getAssetForNode = (node: FoSceneNode) => {
     jsx = (
       <Ply
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
         ply={node.asset as PlyAsset}
         position={node.position}
         quaternion={node.quaternion}
@@ -65,6 +70,7 @@ const getAssetForNode = (node: FoSceneNode) => {
     jsx = (
       <Stl
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
         stl={node.asset as StlAsset}
         position={node.position}
         quaternion={node.quaternion}
@@ -75,7 +81,19 @@ const getAssetForNode = (node: FoSceneNode) => {
     jsx = (
       <Gltf
         key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
         gltf={node.asset as GltfAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof FbxAsset) {
+    jsx = (
+      <Fbx
+        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        name={node.name}
+        fbx={node.asset as FbxAsset}
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}

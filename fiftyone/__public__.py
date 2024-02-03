@@ -158,6 +158,7 @@ from .core.runs import (
 )
 from .core.sample import Sample
 from .core.threed import (
+    FBXMesh,
     GLTFMesh,
     ObjMesh,
     PlyMesh,

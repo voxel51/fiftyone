@@ -12,11 +12,13 @@ import { getColorFromPoolBasedOnHash } from "../utils";
  *  without any representation of color, texture or other common CAD model attributes.
  */
 export const Stl = ({
+  name,
   stl: { stlUrl },
   position,
   quaternion,
   scale,
 }: {
+  name: string;
   stl: StlAsset;
   position: Vector3;
   quaternion: Quaternion;

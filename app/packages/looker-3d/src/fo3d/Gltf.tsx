@@ -1,15 +1,17 @@
 import { useGLTF } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
 import { GltfAsset } from "../hooks";
+import { useAnimationSelect } from "../hooks/use-animation-select";
 
 export const Gltf = ({
+  name,
   gltf: { gltfUrl },
   position,
   quaternion,
   scale,
 }: {
+  name: string;
   gltf: GltfAsset;
   position: Vector3;
   quaternion: Quaternion;
@@ -20,16 +22,7 @@ export const Gltf = ({
 
   let mixer = useMemo(() => new AnimationMixer(scene), [scene]);
 
-  useEffect(() => {
-    animations.forEach((clip) => {
-      const action = mixer.clipAction(clip);
-      action.play();
-    });
-  }, [animations, mixer]);
-
-  useFrame((state, delta) => {
-    mixer.update(delta);
-  });
+  useAnimationSelect(name, animations, mixer);
 
   if (scene) {
     return (

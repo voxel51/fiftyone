@@ -4,6 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
 import { FiftyoneSceneRawJson } from "../utils";
 
+export class FbxAsset {
+  constructor(readonly fbxUrl?: string) {}
+}
+
 export class GltfAsset {
   constructor(readonly gltfUrl?: string) {}
 }
@@ -24,7 +28,13 @@ export class StlAsset {
   constructor(readonly stlUrl?: string) {}
 }
 
-export type MeshAsset = GltfAsset | ObjAsset | PcdAsset | PlyAsset | StlAsset;
+export type MeshAsset =
+  | FbxAsset
+  | GltfAsset
+  | ObjAsset
+  | PcdAsset
+  | PlyAsset
+  | StlAsset;
 
 export type FoSceneNode = {
   name: string;
@@ -73,7 +83,11 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       let asset: MeshAsset;
 
       if (node["_cls"].toLocaleLowerCase().endsWith("mesh")) {
-        if (node["_cls"].toLocaleLowerCase().startsWith("gltf")) {
+        if (node["_cls"].toLocaleLowerCase().startsWith("fbx")) {
+          if (node["fbx_path"]) {
+            asset = new FbxAsset(getSampleSrc(node["fbx_path"]));
+          }
+        } else if (node["_cls"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltf_path"]) {
             asset = new GltfAsset(getSampleSrc(node["gltf_path"]));
           }
