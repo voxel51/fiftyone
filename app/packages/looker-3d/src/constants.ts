@@ -37,6 +37,10 @@ export const VOXEL51_THEME_COLOR = "#ff6f00";
 export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
 export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";
 
+export const PANEL_ORDER_VISIBILITY = -1;
+export const PANEL_ORDER_LIGHTS = 1;
+export const PANEL_ORDER_ANIMATIONS = 2;
+
 export const COLOR_POOL = [
   0x33ff57, // Bright Green
   0x50c878, // Emerald

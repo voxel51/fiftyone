@@ -1,6 +1,7 @@
-import { useControls } from "leva";
+import { folder, useControls } from "leva";
 import { useMemo } from "react";
 import { Box3, Vector3 } from "three";
+import { PANEL_ORDER_LIGHTS } from "../constants";
 
 export const Lights = ({
   upVector,
@@ -48,25 +49,32 @@ export const Lights = ({
     }
   }, [upVector, sceneBoundingBox]);
 
-  const { ambientLightIntensity, directionalLightIntensity } = useControls(
-    "Lights",
-    {
-      ambientLightIntensity: {
-        value: 0.1,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Ambient light intensity",
-      },
-      directionalLightIntensity: {
-        value: 0.5,
-        min: 0,
-        max: 1,
-        step: 0.01,
-        label: "Directional light intensity",
-      },
-    },
-    { collapsed: true }
+  const [{ ambientLightIntensity, directionalLightIntensity }] = useControls(
+    () => {
+      return {
+        Lights: folder(
+          {
+            ambientLightIntensity: {
+              value: 0.1,
+              min: 0,
+              max: 1,
+              step: 0.01,
+              label: "Ambient light intensity",
+            },
+            directionalLightIntensity: {
+              value: 0.5,
+              min: 0,
+              max: 1,
+              step: 0.01,
+              label: "Directional light intensity",
+            },
+          },
+          {
+            order: PANEL_ORDER_LIGHTS,
+          }
+        ),
+      };
+    }
   );
 
   const directionalLightScaled = useMemo(() => {

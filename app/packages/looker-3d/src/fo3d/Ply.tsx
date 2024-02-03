@@ -6,11 +6,13 @@ import { PlyAsset } from "../hooks";
 import { getColorFromPoolBasedOnHash } from "../utils";
 
 export const Ply = ({
+  name,
   ply: { plyUrl },
   position,
   quaternion,
   scale,
 }: {
+  name: string;
   ply: PlyAsset;
   position: Vector3;
   quaternion: Quaternion;

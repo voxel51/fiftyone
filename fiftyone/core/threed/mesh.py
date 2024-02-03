@@ -33,6 +33,19 @@ class ObjMesh(Mesh):
         }
 
 
+class FBXMesh(Mesh):
+    def __init__(self, name: str, fbx_path: str, **kwargs):
+        super().__init__(name=name, **kwargs)
+
+        if not (fbx_path.lower().endswith(".fbx")):
+            raise ValueError("FBX mesh must be a .fbx file")
+
+        self.gltf_path = fbx_path
+
+    def _to_dict_extra(self):
+        return {"fbx_path": self.gltf_path}
+
+
 class GLTFMesh(Mesh):
     def __init__(self, name: str, gltf_path: str, **kwargs):
         super().__init__(name=name, **kwargs)
@@ -41,7 +54,7 @@ class GLTFMesh(Mesh):
             gltf_path.lower().endswith(".gltf")
             or gltf_path.lower().endswith(".glb")
         ):
-            raise ValueError("GLTF mesh must be a .gltf or .glb file")
+            raise ValueError("gLTF mesh must be a .gltf or .glb file")
 
         self.gltf_path = gltf_path
 

@@ -62,11 +62,13 @@ const ObjMeshWithCustomMaterial = ({
 };
 
 export const Obj = ({
+  name,
   obj,
   position,
   quaternion,
   scale,
 }: {
+  name: string;
   obj: ObjAsset;
   position: Vector3;
   quaternion: Quaternion;

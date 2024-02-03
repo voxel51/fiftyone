@@ -47,7 +47,6 @@ export const Fo3dEnvironment = ({
       }
 
       const box = new Box3().setFromObject(assetsGroupRef.current);
-      console.log("box max is ", box.max[0]);
       if (Math.abs(box.max[0]) === Infinity) {
         setTimeout(getBoundingBox, 50);
       } else {
@@ -61,10 +60,71 @@ export const Fo3dEnvironment = ({
     setTimeout(getBoundingBox, 50);
   }, [assetsGroupRef]);
 
+  const [gridSize, numGridLines] = useMemo(() => {
+    if (
+      !sceneBoundingBox ||
+      Math.abs(sceneBoundingBox.max.x) === Infinity ||
+      !upVector
+    ) {
+      return [100, 100];
+    }
+
+    const center = sceneBoundingBox.getCenter(new Vector3());
+    let maxInOrthoNormalPlane: number;
+
+    // account for the possibility that the scene is not centered at the origin
+    let offset: number;
+
+    if (upVector.x === 1) {
+      maxInOrthoNormalPlane = Math.max(
+        sceneBoundingBox.max.y - sceneBoundingBox.min.y,
+        sceneBoundingBox.max.z - sceneBoundingBox.min.z
+      );
+      offset = Math.max(
+        sceneBoundingBox.max.y,
+        Math.abs(sceneBoundingBox.min.y),
+        sceneBoundingBox.max.z,
+        Math.abs(sceneBoundingBox.min.z)
+      );
+    } else if (upVector.y === 1) {
+      maxInOrthoNormalPlane = Math.max(
+        sceneBoundingBox.max.x - sceneBoundingBox.min.x,
+        sceneBoundingBox.max.z - sceneBoundingBox.min.z
+      );
+      offset = Math.max(
+        sceneBoundingBox.max.x,
+        Math.abs(sceneBoundingBox.min.x),
+        sceneBoundingBox.max.z,
+        Math.abs(sceneBoundingBox.min.z)
+      );
+    } else {
+      maxInOrthoNormalPlane = Math.max(
+        sceneBoundingBox.max.x - sceneBoundingBox.min.x,
+        sceneBoundingBox.max.y - sceneBoundingBox.min.y
+      );
+      offset = Math.max(
+        sceneBoundingBox.max.x,
+        Math.abs(sceneBoundingBox.min.x),
+        sceneBoundingBox.max.y,
+        Math.abs(sceneBoundingBox.min.y)
+      );
+    }
+
+    // add 20% padding
+    // 2.5 is an arbitrary multiplier for offset
+    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.2) + offset * 2.5;
+    const numLines = Math.ceil(gridSize);
+
+    return [gridSize, numLines];
+  }, [sceneBoundingBox, upVector]);
+
   return (
     <>
       {isGridOn && (
-        <gridHelper args={[1000, 1000]} quaternion={gridHelperQuarternion} />
+        <gridHelper
+          args={[gridSize, numGridLines]}
+          quaternion={gridHelperQuarternion}
+        />
       )}
       <GizmoHelper alignment="top-left" margin={[80, 100]}>
         <GizmoViewport />
