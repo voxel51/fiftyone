@@ -16,7 +16,7 @@ const useRouter = () => {
     router.current && router.current.cleanup();
 
     return createRouter<Queries>(environment, makeRoutes(), handleError);
-  }, []);
+  }, [handleError]);
 
   return { context: router.current.context, environment };
 };

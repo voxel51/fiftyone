@@ -105,6 +105,11 @@ export default class Row<V> {
     this.#container.remove();
   }
 
+  switch(attr) {
+    this.#container.style[attr] = `${this.#from}px`;
+    this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
+  }
+
   show(
     element: HTMLDivElement,
     hidden: boolean,
@@ -120,11 +125,10 @@ export default class Row<V> {
     }
 
     if (!this.attached) {
+      this.#container.style[attr] = `${this.#from}px`;
+      this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
       element.appendChild(this.#container);
     }
-
-    this.#container.style[attr] = `${this.#from}px`;
-    this.#container.style[attr === "bottom" ? "top" : "bottom"] = "unset";
 
     !this.#hidden &&
       this.#row.forEach(({ element, item }) => {

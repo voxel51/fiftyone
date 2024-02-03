@@ -62,17 +62,19 @@ const useFlashlightPager = (
           foq.paginateSamples,
           variables,
 
-          { networkCacheConfig: {}, fetchPolicy: "network-only" }
+          { networkCacheConfig: {}, fetchPolicy: "store-or-network" }
         ).subscribe({
           next: (data) => {
             const items = processSamplePageData(store, data, zoomValue);
 
-            subscription.unsubscribe();
             resolve({
               items,
               next: data.samples.pageInfo.hasNextPage ? pageNumber + 1 : null,
               previous: pageNumber > 0 ? pageNumber - 1 : null,
             });
+            try {
+              subscription.unsubscribe();
+            } catch {}
           },
           error: handleError,
         });

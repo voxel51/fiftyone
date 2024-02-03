@@ -2,20 +2,23 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
-const DELTA = 1.5;
-
 // adapted from https://medium.com/google-design/google-photos-45b714dfbed1
-export default (items: number[], threshold: number): number[] => {
+export default (
+  items: number[],
+  threshold: number,
+  remainder: boolean
+): number[] => {
   const row = (start: number, end: number) => {
     const key = `${start}:${end}`;
     if (!cache.has(key)) {
       const aspectRatio = items
         .slice(start, end)
         .reduce((sum, aspectRatio) => sum + aspectRatio, 0);
-      const delta = threshold - aspectRatio;
+      const delta = 2 + threshold - aspectRatio;
+
       cache.set(key, {
         delta,
-        score: Math.pow(Math.abs(delta), 2),
+        score: Math.pow(Math.abs(delta), 3),
       });
     }
 
@@ -24,7 +27,10 @@ export default (items: number[], threshold: number): number[] => {
 
   const cache = new Map<string, { delta: number; score: number }>();
 
-  const nodes = new Map<number, { parent: number; score: () => number }>();
+  const nodes = new Map<
+    number,
+    { parent: number; score: () => number; length: () => number }
+  >();
   const search = (item: number, parent?: number) => {
     const score = () => {
       if (parent === undefined) {
@@ -34,11 +40,20 @@ export default (items: number[], threshold: number): number[] => {
       return row(parent, item).score + nodes.get(parent).score();
     };
 
+    const length = () => {
+      if (parent === undefined) {
+        return 1;
+      }
+
+      return 1 + nodes.get(parent).length();
+    };
+
     const exists = nodes.has(item);
     if (!exists || nodes.get(item).score() >= score()) {
       nodes.set(item, {
         parent,
         score,
+        length,
       });
     }
 
@@ -47,19 +62,21 @@ export default (items: number[], threshold: number): number[] => {
     }
 
     let end = item + 1;
-    while (end < items.length) {
+    while (end <= items.length) {
       const edge = row(item, end);
-      end++;
 
-      if (edge.delta + DELTA < 0) {
+      if (edge.delta < 0 && end - item > 1) {
         break;
       }
 
-      if (edge.delta > DELTA) {
-        continue;
+      if (edge.delta < 0 && end - item === 1) {
+        search(end, item);
       }
 
-      search(end, item);
+      if (edge.delta > 0) {
+        search(end, item);
+      }
+      end++;
     }
 
     return;
@@ -71,14 +88,22 @@ export default (items: number[], threshold: number): number[] => {
 
   let cursor = keys[0];
   let score = nodes.get(keys[0]).score();
-  for (const next of keys.slice(1)) {
-    const nextScore = nodes.get(next).score();
-    if (nextScore > score) {
-      break;
-    }
+  const length = nodes.get(keys[0]).length();
 
-    score = nextScore;
-    cursor = next;
+  if (remainder) {
+    for (const next of keys.slice(1)) {
+      const nextScore = nodes.get(next).score();
+      const nextLength = nodes.get(next).length();
+
+      if (nextLength < length - 1) {
+        break;
+      }
+
+      if (nextScore < score) {
+        score = nextScore;
+        cursor = next;
+      }
+    }
   }
 
   const result = [];

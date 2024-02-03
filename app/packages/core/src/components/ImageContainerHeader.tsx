@@ -95,7 +95,6 @@ const ImageContainerHeader = () => {
               showBounds={false}
               persistValue={false}
               showValue={false}
-              onChange={true}
               style={{ padding: 0, margin: 0 }}
             />
           </div>

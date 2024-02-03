@@ -84,6 +84,10 @@ export const createRouter = <T extends OperationType>(
   >();
 
   const update = (location: FiftyOneLocation, action?: Action) => {
+    if (action === "REPLACE") {
+      return;
+    }
+
     requestAnimationFrame(() =>
       subscribers.forEach(([_, onPending]) => onPending && onPending())
     );

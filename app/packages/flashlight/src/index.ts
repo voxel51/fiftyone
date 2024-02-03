@@ -185,7 +185,10 @@ export default class Flashlight<K, V> extends EventTarget {
 
     await this.#next(false);
 
-    while (this.#containerHeight < this.#height + this.#padding * 2) {
+    while (
+      this.#containerHeight < this.#height + this.#padding * 2 &&
+      !this.#forward.finished
+    ) {
       await this.#next(false);
     }
 
@@ -205,7 +208,7 @@ export default class Flashlight<K, V> extends EventTarget {
               (this.#width /
                 (this.#height *
                   Math.max(this.#config.rowAspectRatioThreshold, 1))) *
-              500
+              200
             );
           }
         );
@@ -236,6 +239,7 @@ export default class Flashlight<K, V> extends EventTarget {
   #render(zooming: boolean, offset: number | false = false) {
     const top = this.#element.scrollTop - (offset === false ? 0 : offset);
 
+    console.log(zooming);
     const backward = this.#backward.render(
       top + this.#height + this.#padding,
       (n) => n > top - this.#padding,

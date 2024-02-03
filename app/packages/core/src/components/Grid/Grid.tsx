@@ -1,9 +1,8 @@
 import Flashlight, { PageChange } from "@fiftyone/flashlight";
 import * as fos from "@fiftyone/state";
-import { sessionAtom } from "@fiftyone/state";
 import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
-import React, { useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   atom,
   useRecoilCallback,
@@ -20,40 +19,43 @@ import { pageParameters, rowAspectRatioThreshold } from "./recoil";
 const Contain = styled.div`
   position: relative;
   display: block;
-
   height: 100%;
   width: 100%;
-`;
-
-const BarContain = styled.div`
-  width: 100px;
-
-  height: 100%;
-  position: absolute;
-  right 0;
-  top: 0;
 `;
 
 const Drag = styled(animated.div)`
   z-index: 10000000;
   width: 100%;
-  background: orange;
-  height: 10px;
+  background: ${({ theme }) => theme.primary.plainColor};
+  height: 4px;
   position: absolute;
   right: 0;
   cursor: pointer;
+  box-shadow: rgb(26, 26, 26) 0px 2px 20px;
+  border-radius: 3px 0 0 3px;
+  cursor: row-resize;
+  width: 30px;
+
+  &:hover {
+    width: 40px;
+    height: 6px;
+    margin-top: -1px;
+  }
+
+  transition-property: margin-top, height, width;
+  transition-duration: 0.25s;
+  transition-timing-function: ease-in-out;
 `;
 
-const sessionPage = sessionAtom({
+const sessionPage = fos.sessionAtom({
   key: "sessionPage",
   default: 0,
 });
 
-const dra = atom({ key: "dra", default: false });
+const showGridPixels = atom({ key: "showGridPixels", default: true });
 
 function Grid() {
   const id = useMemo(() => uuid(), []);
-
   const threshold = useRecoilValue(rowAspectRatioThreshold);
   const { page, store } = useFlashlightPager(pageParameters);
   const lookerOptions = fos.useLookerOptions(false);
@@ -67,12 +69,11 @@ function Grid() {
     []
   );
 
-  const d = useRecoilValue(dra);
+  const showPixels = useRecoilValue(showGridPixels);
 
   const setPage = useSetRecoilState(sessionPage);
-  useLayoutEffect(() => {
-    if (d) {
-      document.getElementById(id)?.classList.add(pixels);
+  useEffect(() => {
+    if (showPixels) {
       return;
     }
 
@@ -107,20 +108,18 @@ function Grid() {
     const pagechange = (e: PageChange<number>) => setPage(e.page);
 
     flashlight.addEventListener("pagechange", pagechange);
-    flashlight.attach(id);
     flashlight.addEventListener("load", () => {
-      rr?.classList.remove(pixels);
+      document.getElementById(id)?.classList.remove(pixels);
     });
-
-    const rr = document.getElementById(id);
+    flashlight.attach(id);
 
     return () => {
-      rr?.classList.add(pixels);
+      document.getElementById(id)?.classList.add(pixels);
       flashlight.removeEventListener("pagechange", pagechange);
       flashlight.detach();
     };
   }, [
-    d,
+    showPixels,
     getPage,
     id,
     page,
@@ -139,67 +138,74 @@ function Grid() {
     />
   );
 }
-const Bar = () => {
-  const [{ y }, api] = useSpring(() => ({ y: 0 }));
-
-  // Set the drag hook and define component movement based on gesture data
-  const bind = useDrag(({ down, movement: [_, my] }) => {
-    api.start({ y: down ? my : 0, immediate: down });
-  });
-
-  const page = useRecoilValue(sessionPage);
-  const ref = useRef<HTMLDivElement>(undefined);
-
+const Bar = ({ height }) => {
+  const [page, setPage] = useRecoilState(sessionPage);
   const count = useRecoilValue(fos.datasetSampleCount);
 
-  const [height, setHeight] = useState<DOMRect>();
-  useLayoutEffect(() => {
-    ref.current && setHeight(ref.current.getBoundingClientRect());
-  }, [ref]);
-  const [dragging, setDragging] = useRecoilState(dra);
-  const set = useSetRecoilState(sessionPage);
+  const [{ y }, api] = useSpring(() => ({
+    y: ((page * 20) / count) * (height - 48) + 48,
+  }));
 
-  return (
-    <BarContain ref={ref}>
-      <Drag {...bind()} style={{ top: y }} />
-    </BarContain>
-  );
+  if (page * 20 >= count) {
+    throw new Error("WRONG");
+  }
+
+  const bind = useDrag(({ down, movement: [_, my] }) => {
+    setDragging(down && my !== 0);
+
+    const base = ((page * 20) / count) * (height - 48);
+    api.start({
+      y: down ? my + base + 48 : base + 48,
+      immediate: down,
+    });
+
+    !down && setPage(Math.floor((((base + my) / (height - 48)) * count) / 20));
+  });
+
+  useEffect(() => {
+    api.start({ y: ((page * 20) / count) * (height - 48) + 48 });
+  }, [api, count, page, height]);
+
+  const setDragging = useSetRecoilState(showGridPixels);
+
+  return <Drag {...bind()} style={{ top: y, right: 0 }} />;
 };
 
 const Wrap = () => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [height, setHeight] = useState<DOMRect>();
+  const set = useSetRecoilState(showGridPixels);
+
+  const observer = useMemo(() => {
+    let timeout;
+    return new ResizeObserver(() => {
+      set(true);
+
+      timeout && clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setHeight(ref.current?.getBoundingClientRect());
+        set(false);
+      }, 1000);
+    });
+  }, [set]);
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+    const el = ref.current;
+    observer.observe(el);
+
+    return () => {
+      observer.unobserve(el);
+    };
+  }, [observer, ref]);
+
   return (
-    <Contain>
+    <Contain ref={ref}>
       <Grid />
-      <Bar />
+      {height && <Bar height={height?.height} />}
     </Contain>
   );
 };
 
-export default Wrap;
-
-/**
- * () => {
-          down.current = true;
-          const rrr = () => {
-            setDragging(false);
-            document.removeEventListener("mouseup", rrr);
-            document.removeEventListener("mousemove", move);
-            const pa = Math.floor(
-              ((parseInt(rref.current.style.top) / height?.height) * count) / 20
-            );
-            console.log(pa);
-            set(pa);
-          };
-          const move = (e) => {
-            if (!down.current) {
-              return;
-            }
-            console.log(e);
-            !dragging && setDragging(true);
-            rref.current.style.top =
-              parseInt(rref.current.style.top) + e.movementY + "px";
-          };
-          document.addEventListener("mousemove", move);
-          document.addEventListener("mouseup", rrr);
-        }
- */
+export default React.memo(Wrap);

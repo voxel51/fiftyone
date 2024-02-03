@@ -14,7 +14,7 @@ export const gridZoom = atom<number>({
 
 export const gridZoomRange = atom<[number, number]>({
   key: "gridZoomRange",
-  default: [0, 10],
+  default: [1, 10],
 });
 
 export const rowAspectRatioThreshold = selector<number>({

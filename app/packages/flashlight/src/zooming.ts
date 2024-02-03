@@ -35,7 +35,7 @@ export const createScrollReader = (
         timer = undefined;
         scrolling = false;
         render(false);
-      }, 300);
+      }, 1000);
     }
 
     prior = element.scrollTop;

@@ -16,7 +16,7 @@ export interface Response<K, V> {
 
 interface Edge<K, V> {
   key?: K;
-  remainder: ItemData<V>[];
+  remainder?: ItemData<V>[];
 }
 
 export class Section<K, V> {
@@ -41,6 +41,9 @@ export class Section<K, V> {
     this.#section.classList.add(flashlightSection);
     this.#section.appendChild(this.#container);
     this.#section.classList.add(direction);
+  }
+  get finished() {
+    return Boolean(this.#end && !this.#end.key);
   }
 
   get length() {
@@ -86,7 +89,7 @@ export class Section<K, V> {
     render: (run: () => { section: Section<K, V>; offset: number }) => void
   ) {
     if (!this.#end) {
-      return 0;
+      return;
     }
     const end = this.#end;
     this.#end = undefined;
@@ -96,7 +99,8 @@ export class Section<K, V> {
     render(() => {
       const { rows, remainder } = this.#tile(
         [...end.remainder, ...data.items],
-        this.#height
+        this.#height,
+        Boolean(data.next)
       );
 
       if (!this.#start) {
@@ -112,7 +116,7 @@ export class Section<K, V> {
               key: data.next,
               remainder,
             }
-          : undefined;
+          : {};
       this.#rows.push(...rows);
 
       const height = rows.reduce((acc, cur) => acc + cur.height + MARGIN, 0);
@@ -228,21 +232,23 @@ export class Section<K, V> {
   #reverse() {
     const from = this.#height;
     this.#rows.reverse();
-
+    this.#direction = this.#direction === "backward" ? "forward" : "backward";
     this.#rows.forEach((row) => {
       row.from = from - row.from - row.height;
+      row.switch(this.#direction === "backward" ? "bottom" : "top");
     });
     this.#section.classList.remove(this.#direction);
-    this.#direction = this.#direction === "backward" ? "forward" : "backward";
+
     this.#section.classList.add(this.#direction);
   }
 
   #tile(
     items: ItemData<V>[],
-    from: number
+    from: number,
+    useRemainder: boolean
   ): { rows: Row<V>[]; remainder: ItemData<V>[]; offset: number } {
     const data = items.map(({ aspectRatio }) => aspectRatio);
-    const breakpoints = tile(data, this.threshold);
+    const breakpoints = tile(data, this.threshold, useRemainder);
 
     let previous = 0;
     let offset = 0;
