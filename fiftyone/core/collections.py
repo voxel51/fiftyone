@@ -121,7 +121,7 @@ class DownloadContext(object):
         self.clear = clear
         self.progress = progress
 
-        self._filepaths = None
+        self._filepaths_dict = None
         self._offset = None
         self._batch_sizes = None
         self._iter_batch_sizes = None
@@ -134,7 +134,7 @@ class DownloadContext(object):
         media_fields = _resolve_media_fields(
             self.sample_collection, self.media_fields
         )
-        self._filepaths = self.sample_collection._get_media_paths(
+        self._filepaths_dict = self.sample_collection._get_media_paths(
             media_fields=media_fields, as_dict=True
         )
 
@@ -143,15 +143,7 @@ class DownloadContext(object):
             return self
 
         if self.target_size_bytes is not None:
-            self.sample_collection.compute_metadata()
-            sizes = self.sample_collection.values("metadata.size_bytes")
-
-            # estimate size of all media for each field
-            # @todo achieve a more accurate estimate here?
-            n = len(media_fields)
-            if n > 1:
-                sizes = [n * s if s is not None else None for s in sizes]
-
+            sizes = _get_sizes(self.sample_collection, self._filepaths_dict)
             batch_sizes = _partition_by_size(sizes, self.target_size_bytes)
         else:
             batch_sizes = itertools.repeat(self.batch_size)
@@ -190,7 +182,7 @@ class DownloadContext(object):
         i = self._offset or 0
         j = i + batch_size if batch_size is not None else None
         filepaths = itertools.chain.from_iterable(
-            f[i:j] for f in self._filepaths.values()
+            f[i:j] for f in self._filepaths_dict.values()
         )
 
         if self.update:
@@ -208,7 +200,9 @@ class DownloadContext(object):
             )
 
     def _clear_media(self):
-        filepaths = itertools.chain.from_iterable(self._filepaths.values())
+        filepaths = itertools.chain.from_iterable(
+            self._filepaths_dict.values()
+        )
         foc.media_cache.clear(filepaths=filepaths)
 
 
@@ -223,17 +217,48 @@ def _resolve_media_fields(sample_collection, media_fields):
     return media_fields
 
 
-def _partition_by_size(sizes, target_size):
-    missing_inds = [i for i, s in enumerate(sizes) if s is None]
-    if missing_inds:
-        valid_sizes = [s for s in sizes if s is not None]
-        if valid_sizes:
-            avg_size = sum(valid_sizes) / len(valid_sizes)
-            for i in missing_inds:
-                sizes[i] = avg_size
-        else:
-            return [len(sizes)]
+def _get_sizes(sample_collection, filepaths_dict):
+    media_fields = sorted(filepaths_dict.keys())
 
+    # If all sizes are already available, use them
+    if media_fields == ["filepath"] and not sample_collection.exists(
+        "metadata.size_bytes", bool=False
+    ):
+        return sample_collection.values("metadata.size_bytes")
+
+    filepaths = itertools.chain.from_iterable(filepaths_dict.values())
+    metadata_dict = fomt.get_metadata(filepaths)
+
+    sizes_dict = {}
+    for media_field in media_fields:
+        filepaths = filepaths_dict[media_field]
+        metadatas = [metadata_dict.get(f, None) for f in filepaths]
+        sizes = [m.size_bytes if m is not None else None for m in metadatas]
+        sizes_dict[media_field] = _fill_missing(sizes, default=0)
+
+    return [sum(sizes) for sizes in zip(*sizes_dict.values())]
+
+
+def _fill_missing(sizes, default=None):
+    missing_inds = [i for i, s in enumerate(sizes) if s is None]
+    if not missing_inds:
+        return sizes
+
+    valid_sizes = [s for s in sizes if s is not None]
+    if not valid_sizes:
+        if default is None:
+            return None
+
+        return [default] * len(sizes)
+
+    avg_size = sum(valid_sizes) / len(valid_sizes)
+    for i in missing_inds:
+        sizes[i] = avg_size
+
+    return sizes
+
+
+def _partition_by_size(sizes, target_size):
     batch_sizes = []
 
     curr_count = 0
