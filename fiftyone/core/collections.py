@@ -150,7 +150,7 @@ class DownloadContext(object):
             # @todo achieve a more accurate estimate here?
             n = len(media_fields)
             if n > 1:
-                sizes = [n * s for s in sizes]
+                sizes = [n * s if s is not None else None for s in sizes]
 
             batch_sizes = _partition_by_size(sizes, self.target_size_bytes)
         else:
@@ -224,6 +224,16 @@ def _resolve_media_fields(sample_collection, media_fields):
 
 
 def _partition_by_size(sizes, target_size):
+    missing_inds = [i for i, s in enumerate(sizes) if s is None]
+    if missing_inds:
+        valid_sizes = [s for s in sizes if s is not None]
+        if valid_sizes:
+            avg_size = sum(valid_sizes) / len(valid_sizes)
+            for i in missing_inds:
+                sizes[i] = avg_size
+        else:
+            return [len(sizes)]
+
     batch_sizes = []
 
     curr_count = 0
