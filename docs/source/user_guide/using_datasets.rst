@@ -2943,7 +2943,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 .. note::
 
     Did you know? You customize your App config in various ways, from
-    environment varibables to directly editing a |Session| object's config.
+    environment variables to directly editing a |Session| object's config.
     See :ref:`this page <configuring-fiftyone-app>` for more details.
 
 .. _temporal-detection:
@@ -2951,7 +2951,7 @@ dataset and configuring the App's colorscale in various ways on-the-fly:
 Temporal detection
 ------------------
 
-The |TemporalDetection| class represents an event occuring during a specified
+The |TemporalDetection| class represents an event occurring during a specified
 range of frames in a video.
 
 The :attr:`label <fiftyone.core.labels.TemporalDetection.label>` attribute
@@ -3198,7 +3198,7 @@ properties:
 
 If you have multiple geometries of each type that you wish to store on a single
 sample, then you can use the |GeoLocations| class and its appropriate
-properites to do so.
+properties to do so.
 
 .. code-block:: python
     :linenos:
@@ -3898,7 +3898,7 @@ The simplest way to define custom embedded documents on your datasets is to
 declare empty |DynamicEmbeddedDocument| field(s) and then incrementally
 populate new :ref:`dynamic attributes <dynamic-attributes>` as needed.
 
-To illusrate, let's start by defining an empty embedded document field:
+To illustrate, let's start by defining an empty embedded document field:
 
 .. code-block:: python
     :linenos:
