@@ -193,6 +193,8 @@ export const resolveGroups = (
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
+
+  console.log(groups);
   const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
     return map;
@@ -204,13 +206,21 @@ export const resolveGroups = (
       : { ...group };
   });
 
+  const metadata = groups.find(({ name }) => name === "metadata");
+  if (!metadata) {
+    groups.unshift({
+      name: "metadata",
+      expanded: true,
+      paths: [],
+    });
+  }
+
   const tags = groups.find(({ name }) => name === "tags");
-
   groups = groups.filter(({ name }) => name !== "tags");
-
   groups.unshift({
     name: "tags",
-    expanded: tags.expanded,
+    expanded: tags?.expanded,
+    paths: [],
   });
 
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
@@ -220,17 +230,23 @@ export const resolveGroups = (
     present
   );
 
-  updater("labels", fieldsMatcher(sampleFields, labelsMatcher(), present));
+  updater(
+    "labels",
+    fieldsMatcher(sampleFields, labelsMatcher(), present),
+    true
+  );
 
   frameFields.length &&
     updater(
       "frame labels",
-      fieldsMatcher(frameFields, labelsMatcher(), present, "frames.")
+      fieldsMatcher(frameFields, labelsMatcher(), present, "frames."),
+      true
     );
 
   updater(
     "primitives",
-    fieldsMatcher(sampleFields, primitivesMatcher, present)
+    fieldsMatcher(sampleFields, primitivesMatcher, present),
+    true
   );
 
   sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
@@ -245,7 +261,8 @@ export const resolveGroups = (
       present.add(`frames.${name}`);
       updater(
         `frames.${name}`,
-        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`)
+        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
+        true
       );
     });
 
@@ -270,13 +287,13 @@ const groupUpdater = (
     groups[i].paths = filterPaths(groups[i].paths, schema);
   }
 
-  return (name: string, paths: string[]) => {
+  return (name: string, paths: string[], expanded = false) => {
     if (paths.length === 0) return;
     paths.forEach((path) => present.add(path));
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push({ name, paths, expanded: false });
+      groups.push({ name, paths, expanded });
       groupNames.push(name);
       return;
     }

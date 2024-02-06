@@ -313,4 +313,46 @@ describe("test sidebar groups resolution", () => {
       "metadata.num_channels",
     ]);
   });
+
+  it("resolves merges with improper dataset app config", () => {
+    const mockSidebarGroups = [
+      {
+        name: "improper",
+        paths: ["ground_truth"],
+        expanded: true,
+      },
+    ];
+
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      [],
+      mockSidebarGroups
+    );
+
+    const tags = test[0];
+    expect(tags.name).toBe("tags");
+    expect(tags.paths).toEqual([]);
+
+    const metadata = test[1];
+    expect(metadata.name).toBe("metadata");
+    expect(metadata.expanded).toBe(true);
+    expect(metadata.paths).toEqual([
+      "metadata.size_types",
+      "metadata.mime_type",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+    ]);
+
+    const improper = test[2];
+    expect(improper.name).toBe("improper");
+    expect(improper.paths).toEqual(["ground_truth"]);
+    expect(improper.expanded).toBe(true);
+
+    const labels = test[3];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions"]);
+    expect(labels.expanded).toBe(true);
+  });
 });
