@@ -194,7 +194,6 @@ export const resolveGroups = (
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
 
-  console.log(groups);
   const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
     return map;
