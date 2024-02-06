@@ -287,7 +287,7 @@ describe("test sidebar groups resolution", () => {
     expect(labels.name).toBe("labels");
     expect(labels.paths).toEqual(["predictions", "ground_truth"]);
 
-    const primitives = test[3];
+    const primitives = test[2];
     expect(primitives.name).toEqual("primitives");
     expect(primitives.paths).toEqual(["id", "filepath", "uniqueness"]);
     expect(primitives.expanded).toBe(true);
