@@ -18,6 +18,10 @@ let theme = extendMuiTheme({
   typography: {
     fontFamily: "Palanquin, sans-serif",
   },
+  zIndex: {
+    // Samples modal zIndex is set to 1000
+    operatorPalette: 1001,
+  },
   colorSchemes: {
     light: {
       palette: {

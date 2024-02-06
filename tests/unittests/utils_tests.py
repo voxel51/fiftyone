@@ -56,7 +56,7 @@ class BatcherTests(unittest.TestCase):
             ):
                 batcher = fou.get_default_batcher(iterable)
                 self.assertTrue(
-                    isinstance(batcher, fou.BSONSizeDynamicBatcher)
+                    isinstance(batcher, fou.ContentSizeDynamicBatcher)
                 )
                 self.assertEqual(batcher.target_measurement, target_size)
 
@@ -79,6 +79,55 @@ class BatcherTests(unittest.TestCase):
         with batcher:
             batches = [batch for batch in batcher]
             self.assertListEqual(batches, [iterable])
+
+    @drop_datasets
+    def test_batching_static_default(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_static_custom(self):
+        with patch.object(fo.config, "default_batcher", "static"):
+            with patch.object(fo.config, "batcher_static_size", 1):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_default(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_latency_custom(self):
+        with patch.object(fo.config, "default_batcher", "latency"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_latency", 1e-6):
+                self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_default(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            self._test_batching()
+
+    @drop_datasets
+    def test_batching_size_custom(self):
+        with patch.object(fo.config, "default_batcher", "size"):
+            # test a value that forces batch size == 1
+            with patch.object(fo.config, "batcher_target_size_bytes", 1):
+                self._test_batching()
+
+    def _test_batching(self):
+        n = 100
+        dataset = fo.Dataset()
+        dataset.add_samples([fo.Sample(filepath=f"{i}.jpg") for i in range(n)])
+
+        embeddings = np.random.randn(n, 512)
+        dataset.set_values("embeddings", embeddings)
+
+        self.assertEqual(len(dataset), n)
+        self.assertEqual(len(dataset.exists("embeddings")), n)
+
+        sample = dataset.view().first()
+        self.assertIsInstance(sample.embeddings, np.ndarray)
 
 
 class CoreUtilsTests(unittest.TestCase):

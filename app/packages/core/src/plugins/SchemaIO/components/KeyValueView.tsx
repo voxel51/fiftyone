@@ -10,9 +10,17 @@ import {
 import React from "react";
 import { HeaderView } from ".";
 import { getComponentProps } from "../utils";
+import { isPlainObject } from "lodash";
 
 export default function KeyValueView(props) {
   const { path, schema, data, nested } = props;
+  const defaultValue = schema?.default;
+
+  const keyValue = isPlainObject(data)
+    ? data
+    : isPlainObject(defaultValue)
+    ? defaultValue
+    : {};
 
   return (
     <Box {...getComponentProps(props, "container")}>
@@ -23,7 +31,7 @@ export default function KeyValueView(props) {
       >
         <Table {...getComponentProps(props, "table")}>
           <TableBody {...getComponentProps(props, "tableBody")}>
-            {Object.entries(data).map(([key, value]) => (
+            {Object.entries(keyValue).map(([key, value]) => (
               <TableRow
                 key={`${path}-${key}`}
                 sx={{ "&:last-child td, &:last-child th": { border: 0 } }}

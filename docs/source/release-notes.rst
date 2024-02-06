@@ -3,6 +3,150 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.5
+--------------------
+*Released January 25, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.4 <release-notes-v0.23.4>`, plus:
+
+Bugs
+
+- Fixed a proxy URL bug that prevented custom JS panels from launching
+
+.. _release-notes-v0.23.4:
+
+FiftyOne 0.23.4
+---------------
+*Released January 25, 2024*
+
+Core
+
+- Added support for passing kwargs directly when creating custom runs
+  `#4039 <https://github.com/voxel51/fiftyone/pull/4039>`_
+
+Brain
+
+- Added support for registering
+  :ref:`custom visualization methods <brain-visualization-api>`
+  `#4038 <https://github.com/voxel51/fiftyone/pull/4038>`_
+
+FiftyOne Teams 1.5.4
+--------------------
+*Released January 19, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.3 <release-notes-v0.23.3>`, plus:
+
+General
+
+- Optimized
+  :meth:`export() <fiftyone.core.collections.SampleCollection.export>` calls
+  involving cloud-backed media
+- Deployments with their `FIFTYONE_API_URI` environment variable set will now
+  display the API URI to users in the Teams App
+- Improved debug logs by adding the head and tail of large results
+- Updated `motor` dependency to 3.3.0
+
+Bugs
+
+- Fixed a regression when exporting cloud-backed media to
+  :ref:`CVAT <cvat-integration>` for annotation
+- Fixed an issue where API requests were not being prefixed with the correct
+  proxy URL
+- Fixed running
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>` over API
+  connections with the :ref:`MongoDB backend <mongodb-integration>`
+
+.. _release-notes-v0.23.3:
+
+FiftyOne 0.23.3
+---------------
+*Released January 19, 2024*
+
+News
+
+- Released a :ref:`Hugging Face integration <huggingface-integration>` for
+  running inference with `transformers` models on your FiftyOne datasets!
+- Released a :ref:`SuperGradients integration <super-gradients-integration>`
+  for running inference with YOLO-NAS architectures!
+
+App
+
+- Primitive values in |DynamicEmbeddedDocument| list fields are now displayed
+  as comma-separated values (previously displayed as None) in the sample modal
+  `#3963 <https://github.com/voxel51/fiftyone/pull/3963>`_
+- Improved field visibility's show metadata toggle
+  `#3926 <https://github.com/voxel51/fiftyone/pull/3926>`_
+- Fixed issues for unknown operator types and defaults
+  `#3851 <https://github.com/voxel51/fiftyone/pull/3851>`_
+- Miscellaneous saved view improvements
+  `#3974 <https://github.com/voxel51/fiftyone/pull/3974>`_
+- Fixed a bug where images in the sample modal errored when frame fields were
+  added to video slices in mixed datasets
+  `#3966 <https://github.com/voxel51/fiftyone/pull/3966>`_
+- Fixed in-App sort by similarity for datasets with a color scheme
+  `#3966 <https://github.com/voxel51/fiftyone/pull/3958>`_
+- Fixed issues where media and other URLs were constructed incorrectly
+  `#3976 <https://github.com/voxel51/fiftyone/pull/3976>`_
+- Fixed keyboard navigation for dropdowns throughout the App
+  `#3965 <https://github.com/voxel51/fiftyone/pull/3965>`_
+
+Brain
+
+- Added support for passing
+  :ref:`Hugging Face <huggingface-integration>`,
+  :ref:`Ultralytics <ultralytics-integration>`, and
+  :ref:`SuperGradients <super-gradients-integration>` models directly brain
+  methods
+  `#4004 <https://github.com/voxel51/fiftyone/pull/4004>`_
+- Added support to :meth:`register_run() <fiftyone.brain.similarity.Similarity.register_run>`
+  for configuring whether run cleanup happens
+  `#3978 <https://github.com/voxel51/fiftyone/pull/3978>`_
+- Added support for passing model kwargs to
+  :func:`compute_similarity() <fiftyone.brain.compute_similarity>` and
+  :func:`compute_visualization() <fiftyone.brain.compute_visualization>`
+- Fixed issues with similarity searches on views and with pre-computed embeddings
+  using the :ref:`MongoDB backend <mongodb-integration>`
+
+Core
+
+- Added dynamic batching to bulk writes like
+  :meth:`set_values() <fiftyone.core.collections.SampleCollection.set_values>`
+  `#4015 <https://github.com/voxel51/fiftyone/pull/4015>`_
+- Added support for customizing progress bar rendering at method level
+  `#3979 <https://github.com/voxel51/fiftyone/pull/3979>`_
+- Include sample/frame singletons when clearing dataset cache via
+  :meth:`clear_cache() <fiftyone.core.dataset.Dataset.clear_cache>`
+  `#4016 <https://github.com/voxel51/fiftyone/pull/4016>`_
+- Fixed issues with embedded document field schemas
+  `#4002 <https://github.com/voxel51/fiftyone/pull/4002>`_
+
+Models
+
+- Added support for directly passing
+  :ref:`Ultralytics models <ultralytics-integration>` models to
+  :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+- Added GPU support for :ref:`OpenCLIP <model-zoo-open-clip-torch>` models
+  `#3986 <https://github.com/voxel51/fiftyone/pull/3986>`_
+- Added prompt embedding capabilities to
+  :ref:`OpenCLIP <model-zoo-open-clip-torch>` models
+  `#3960 <https://github.com/voxel51/fiftyone/pull/3960>`_
+
+Plugins
+
+- Added a builtin `delete_selected_labels` operator
+  `#4001 <https://github.com/voxel51/fiftyone/pull/4001>`_
+- Updated
+  :attr:`ctx.selected_labels <fiftyone.operators.executor.ExecutionContext.selected_labels>`
+  format to be consistent with other SDK methods
+  `#3998 <https://github.com/voxel51/fiftyone/pull/3998>`_
+
+Tutorials
+
+- Added a
+  :doc:`monocular depth estimation </tutorials/monocular_depth_estimation>`
+  tutorial
+  `#3991 <https://github.com/voxel51/fiftyone/pull/3991>`_
+
 .. _release-notes-teams-v1.5.3:
 
 FiftyOne Teams 1.5.3

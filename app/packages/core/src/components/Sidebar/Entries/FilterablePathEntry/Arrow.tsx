@@ -27,7 +27,7 @@ export default ({
     return (
       <Tooltip text={<AddIndex />} placement="top-center">
         <Arrow
-          data-cy={`sidebar-field-arrow-${id}`}
+          data-cy={`sidebar-field-arrow-disabled-${id}`}
           style={{ margin: 0, color: theme.text.secondary }}
         />
       </Tooltip>
@@ -36,7 +36,7 @@ export default ({
 
   return (
     <Arrow
-      data-cy={`sidebar-field-arrow-${id}`}
+      data-cy={`sidebar-field-arrow-enabled-${id}`}
       style={{
         cursor: "pointer",
         margin: 0,
