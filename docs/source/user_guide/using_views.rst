@@ -93,7 +93,7 @@ Or, you can access individual samples in a view by their ID or filepath:
 .. note::
 
     Accessing samples in a |DatasetView| returns |SampleView| objects, not
-    |Sample| objects. The two classes are largely interchangable, but
+    |Sample| objects. The two classes are largely interchangeable, but
     |SampleView| provides some extra features. See
     :ref:`filtering sample contents <filtering-sample-contents>` for more
     details.
@@ -708,7 +708,7 @@ stage to filter the contents of arbitrarily-typed fields:
     When you create a |DatasetView| that contains filtered detections or
     classifications, the other labels are not removed from the source dataset,
     even if you :meth:`save() <fiftyone.core.sample.Sample.save>` a
-    |SampleView| after modifying the filtered detections. This is becauase each
+    |SampleView| after modifying the filtered detections. This is because each
     label is updated individually, and other labels in the field are left
     unchanged.
 
@@ -1111,7 +1111,7 @@ detection dataset:
 
 .. note::
 
-    You can pass the optional `other_fields` pararmeter to
+    You can pass the optional `other_fields` parameter to
     :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
     to specify additional read-only sample-level fields that each patch should
     include from their parent samples.
@@ -1296,7 +1296,7 @@ ___________
 
 Most view stages naturally support video datasets. For example, stages that
 refer to fields can be applied to the frame-level fields of video samples by
-prepending ``"frames."`` to the relevent parameters:
+prepending ``"frames."`` to the relevant parameters:
 
 .. code-block:: python
     :linenos:
@@ -1548,7 +1548,7 @@ constructing frame expressions.
 
 .. note::
 
-    You can pass optional `tol` and `min_len` pararmeters to
+    You can pass optional `tol` and `min_len` parameters to
     :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
     configure a missing frame tolerance and minimum length for clips generated
     from frame-level fields or expressions.
@@ -1652,7 +1652,7 @@ as shown below:
 
 .. warning::
 
-    Trajectory views can contain signficantly more frames than their source
+    Trajectory views can contain significantly more frames than their source
     collection, since the number of frames is now `O(# boxes)` rather than
     `O(# video frames)`.
 
