@@ -190,7 +190,7 @@ export default <T extends AbstractLooker>(
           const imavidKey = snapshot
             .getLoadable(
               groupAtoms.imaVidStoreKey({
-                groupByFieldValueString: groupByFieldValueTransformed,
+                groupByFieldValue: groupByFieldValueTransformed,
                 modal: isModal,
               })
             )
