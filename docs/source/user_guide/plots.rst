@@ -967,7 +967,7 @@ cells in which they were defined and shown.
 
     :meth:`session.freeze() <fiftyone.core.session.Session.freeze>` and
     :meth:`plot.freeze() <fiftyone.core.plots.base.ResponsivePlot.freeze>` are
-    only appliclable when working in notebook contexts.
+    only applicable when working in notebook contexts.
 
 .. _saving-plots:
 

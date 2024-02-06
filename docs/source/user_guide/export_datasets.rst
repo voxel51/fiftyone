@@ -1945,7 +1945,7 @@ the `labels_path` parameter instead of `export_dir`:
         LABELS_PATH=/path/for/voc-labels
         LABEL_FIELD=ground_truth  # for example
 
-        # Export labaels
+        # Export labels
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.VOCDetectionDataset \
@@ -2575,8 +2575,8 @@ Datasets of this type are exported in the following format:
 where `labels/` contains the semantic segmentations stored as images.
 
 By default, the masks will be stored as PNG images, but you can customize this
-by pasing the optional `mask_format` parameter. The masks will be stored as 8
-bit images if they contain at most 256 classes, otherise 16 bits will be used.
+by passing the optional `mask_format` parameter. The masks will be stored as 8
+bit images if they contain at most 256 classes, otherwise 16 bits will be used.
 
 Unlabeled images have no corresponding file in `labels/`.
 
