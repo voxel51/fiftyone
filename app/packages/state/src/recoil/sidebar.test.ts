@@ -251,7 +251,7 @@ describe("test sidebar groups resolution", () => {
     const mockSidebarGroups = [
       {
         name: "labels",
-        paths: ["ground_truth", "predictions"],
+        paths: ["predictions", "ground_truth"],
         expanded: true,
       },
       {
@@ -282,6 +282,25 @@ describe("test sidebar groups resolution", () => {
     const tags = test[0];
     expect(tags.name).toBe("tags");
     expect(tags.paths).toEqual([]);
+
+    const labels = test[1];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions", "ground_truth"]);
+
+    const primitives = test[3];
+    expect(primitives.name).toEqual("primitives");
+    expect(primitives.paths).toEqual(["id", "filepath", "uniqueness"]);
+    expect(primitives.expanded).toBe(true);
+
+    const other = test[3];
+    expect(other.name).toEqual("other");
+    expect(other.paths).toEqual(["dict_field", "list_field"]);
+
+    const testA = test[4];
+    expect(testA.name).toBe("test group a");
+
+    const testB = test[5];
+    expect(testB.name).toBe("test group b");
 
     const metadata = test[6];
     expect(metadata.name).toBe("metadata");
