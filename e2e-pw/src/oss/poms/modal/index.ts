@@ -153,9 +153,7 @@ export class ModalPom {
     slice: string,
     allowErrorInfo = false
   ) {
-    const currentSlice = await this.sidebar.getSidebarEntryText(
-      `sidebar-entry-${groupField}`
-    );
+    const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
     await looker.click({ position: { x: 10, y: 60 } });
