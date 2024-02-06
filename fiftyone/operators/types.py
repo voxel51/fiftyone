@@ -271,6 +271,33 @@ class Object(BaseType):
         return clone
 
     def view_target(self, ctx, name="view_target", view_type=None, **kwargs):
+        """Defines a view target property.
+
+        Examples::
+
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        vt = inputs.view_target(ctx)
+        # or add the property directly
+        # vt = types.ViewTargetProperty(ctx)
+        # inputs.add_property("view_target", vt)
+        return types.Property(inputs)
+
+        # in execute()
+        target_view = ctx.target_view()
+
+        Args:
+            ctx: the :class:`fiftyone.operators.ExecutionContext`
+            name: the name of the property
+            view_type (RadioGroup): the view type to use (RadioGroup, Dropdown,
+                etc.)
+
+        Returns:
+            a :class:`ViewTargetProperty`
+        """
         view_type = view_type or RadioGroup
         property = ViewTargetProperty(ctx, view_type)
         self.add_property(name, property)
@@ -1653,12 +1680,30 @@ class ViewTargetOptions(object):
 
 
 class ViewTargetProperty(Property):
+    """Displays a view target selector.
+
+    Examples::
+
+        import fiftyone.operators.types as types
+
+        # in resolve_input
+        inputs = types.Object()
+        vt = inputs.view_target(ctx)
+        # or add the property directly
+        # vt = types.ViewTargetProperty(ctx)
+        # inputs.add_property("view_target", vt)
+        return types.Property(inputs)
+
+        # in execute()
+        target_view = ctx.target_view()
+
+    Args:
+        ctx: the :class:`fiftyone.operators.ExecutionContext`
+        view_type (RadioGroup): the type of view to use (RadioGroup or Dropdown)
+    """
+
     def __init__(self, ctx, view_type=RadioGroup, **kwargs):
-        has_dataset = ctx.dataset is not None
-        has_view = ctx.view is not None
-        has_custom_view = (
-            has_dataset and has_view
-        ) and ctx.view != ctx.dataset
+        has_custom_view = ctx.has_custom_view
         has_selected = bool(ctx.selected)
         default_target = "DATASET"
         choice_view = view_type()
