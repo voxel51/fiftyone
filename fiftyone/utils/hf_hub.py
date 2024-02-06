@@ -10,8 +10,9 @@ Utilities for working with
 import os
 import shutil
 
-# import fiftyone as fo
+import fiftyone as fo
 import fiftyone.core.labels as fol
+import fiftyone.core.dataset as fod
 import fiftyone.types as fot
 import huggingface_hub as hfh
 
@@ -38,6 +39,7 @@ import fiftyone.utils.huggingface_hub as fouh
 
 # Load the dataset
 dataset = fouh.load_from_hub("{repo_id}")
+## can also pass in any other dataset kwargs, like `name`, `persistent`, etc.
 
 # Launch the App
 session = fo.launch_app(dataset)
@@ -136,3 +138,17 @@ def push_to_hub(dataset, repo_name, private=True, **data_card_kwargs):
 
     ## Clean up
     shutil.rmtree(tmp_dir)
+
+
+def load_from_hub(repo_id, **kwargs):
+    download_dir = os.path.join(
+        fo.config.default_dataset_dir, "huggingface/hub", repo_id
+    )
+    hfh.snapshot_download(
+        repo_id=repo_id, repo_type="dataset", local_dir=download_dir
+    )
+
+    dataset = fod.Dataset.from_dir(
+        download_dir, dataset_type=fot.FiftyOneDataset, **kwargs
+    )
+    return dataset
