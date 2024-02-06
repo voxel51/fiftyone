@@ -164,15 +164,21 @@ export default <T extends AbstractLooker>(
           const { groupBy } = snapshot
             .getLoadable(groupAtoms.dynamicGroupParameters)
             .valueMaybe();
-          const groupByFieldValue = String(
-            get(sample, getSanitizedGroupByExpression(groupBy))
+          const groupByFieldValue = get(
+            sample,
+            getSanitizedGroupByExpression(groupBy)
           );
+          const groupByFieldValueTransformed = groupByFieldValue
+            ? String(groupByFieldValue)
+            : null;
 
           const totalFrameCountPromise = getPromise(
-            dynamicGroupsElementCount(groupByFieldValue)
+            dynamicGroupsElementCount(groupByFieldValueTransformed)
           );
           const page = snapshot
-            .getLoadable(groupAtoms.dynamicGroupPageSelector(groupByFieldValue))
+            .getLoadable(
+              groupAtoms.dynamicGroupPageSelector(groupByFieldValueTransformed)
+            )
             .valueMaybe();
 
           const firstFrameNumber = isModal
@@ -183,7 +189,10 @@ export default <T extends AbstractLooker>(
 
           const imavidKey = snapshot
             .getLoadable(
-              groupAtoms.imaVidStoreKey({ groupByFieldValue, modal: isModal })
+              groupAtoms.imaVidStoreKey({
+                groupByFieldValueString: groupByFieldValueTransformed,
+                modal: isModal,
+              })
             )
             .valueOrThrow();
 
