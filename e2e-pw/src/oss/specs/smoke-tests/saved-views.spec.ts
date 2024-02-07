@@ -54,7 +54,7 @@ const testView2: SaveViewParams = {
   slug: "test-2",
 };
 
-const datasetName = getUniqueDatasetNameWithPrefix("smoke-quickstart");
+const datasetName = getUniqueDatasetNameWithPrefix("quickstart-saved-views");
 
 const test = base.extend<{ savedViews: SavedViewsPom }>({
   savedViews: async ({ page }, use) => {
@@ -64,9 +64,15 @@ const test = base.extend<{ savedViews: SavedViewsPom }>({
 
 test.describe("saved views", () => {
   test.beforeAll(async ({ fiftyoneLoader }) => {
-    await fiftyoneLoader.loadZooDataset("quickstart", datasetName, {
-      max_samples: 5,
-    });
+    await fiftyoneLoader.executePythonCode(`
+      import fiftyone as fo
+
+      dataset_name = "${datasetName}"
+      dataset = fo.Dataset(name=dataset_name)
+      dataset.persistent = True
+
+      dataset.add_sample(fo.Sample(filepath="image1.jpg"))
+    `);
   });
 
   test.beforeEach(async ({ page, fiftyoneLoader, savedViews }) => {
@@ -210,6 +216,7 @@ test.describe("saved views", () => {
     await savedViews.assert.verifySearch("test 3", [], ["test-1", "test-2"]);
     await savedViews.assert.verifySearch("test", ["test-1", "test-2"], []);
 
+    await savedViews.openSelect();
     await savedViews.deleteView("test-1");
     await savedViews.selector().click();
     await savedViews.deleteView("test-2");
