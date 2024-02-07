@@ -63,24 +63,26 @@ export class SavedViewsPom {
     await this.colorOption(newColor).click();
   }
 
+  async waitUntilModalHidden() {
+    await this.dialogLocator.waitFor({ state: "hidden" });
+  }
+
   async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
     await this.saveButton().click();
-  }
-
-  async saveView2() {
-    await this.saveButton().click();
+    await this.waitUntilModalHidden();
   }
 
   async deleteView(name: string) {
     await this.savedViewOption(name).hover();
     await this.optionEdit(name).click();
-    await this.clickDeleteBtn();
+    await this.deleteViewClick();
   }
 
   async deleteViewClick() {
     await this.clickDeleteBtn();
+    await this.waitUntilModalHidden();
   }
 
   async editView(
@@ -90,13 +92,16 @@ export class SavedViewsPom {
     newColor: Color
   ) {
     await this.nameInput().clear();
-    await this.nameInput().type(name);
+    await this.nameInput().pressSequentially(name);
     await this.descriptionInput().clear();
-    await this.descriptionInput().type(description);
-    await this.colorInput(color).click();
+    await this.descriptionInput().pressSequentially(description);
+    // need to force click otherwise intercepted by material-ui
+    // eslint-disable-next-line playwright/no-force-option
+    await this.colorInputContainer().click({ force: true });
     await this.colorOption(newColor).click();
 
     await this.saveButton().click();
+    await this.waitUntilModalHidden();
   }
 
   async clickColor(color: Color = defaultColor) {
@@ -104,7 +109,13 @@ export class SavedViewsPom {
   }
 
   async clearView() {
-    await this.clearViewBtn().click();
+    if (await this.canClearView()) {
+      const urlBeforeClear = this.page.url();
+      await this.clearViewBtn().click();
+      await this.page.waitForFunction((urlBeforeClear) => {
+        return window.location.href !== urlBeforeClear;
+      }, urlBeforeClear);
+    }
   }
 
   async clickCloseModal() {
@@ -116,9 +127,7 @@ export class SavedViewsPom {
   }
 
   clearViewBtn() {
-    return this.selector()
-      .getByTestId("saved-views-btn-selection-clear")
-      .first();
+    return this.locator.getByTestId("saved-views-btn-selection-clear").first();
   }
 
   closeModalBtn() {
@@ -164,8 +173,14 @@ export class SavedViewsPom {
     return this.dialogLocator.getByTestId("saved-views-input-description");
   }
 
+  colorInputContainer() {
+    return this.dialogLocator.getByTestId(
+      "saved-views-input-color-selection-selection"
+    );
+  }
+
   colorInput(c: Color = defaultColor) {
-    return this.dialogLocator.getByRole("combobox").getByText(c);
+    return this.colorInputContainer().getByText(c);
   }
 
   colorOption(c: Color = "Purple") {
@@ -207,7 +222,8 @@ export class SavedViewsPom {
   }
 
   async clickDeleteBtn() {
-    return this.deleteBtn().click();
+    await this.deleteBtn().click();
+    await this.waitUntilModalHidden();
   }
 }
 
@@ -322,7 +338,7 @@ class SavedViewAsserter {
     excluded: string[]
   ) {
     await this.svp.searchInput().clear();
-    await this.svp.searchInput().type(term);
+    await this.svp.searchInput().pressSequentially(term);
 
     if (expectedResult.length) {
       await this.svp

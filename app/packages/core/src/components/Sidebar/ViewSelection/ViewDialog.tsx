@@ -194,6 +194,9 @@ export default function ViewDialog(props: Props) {
 
   return (
     <Dialog
+      // see https://github.com/mui/material-ui/issues/10341
+      disablePortal
+      disableEnforceFocus
       open={isOpen}
       onClose={() => {
         setIsOpen(false);
