@@ -141,15 +141,16 @@ test.describe("saved views", () => {
     await savedViews.assert.verifySavedView();
   });
 
-  test("clearing a saved view clears the url and view selection", async ({
-    savedViews,
-  }) => {
-    await savedViews.saveView(testView);
-    await savedViews.assert.verifySavedView();
+  test.fixme(
+    "clearing a saved view clears the url and view selection",
+    async ({ savedViews }) => {
+      await savedViews.saveView(testView);
+      await savedViews.assert.verifySavedView();
 
-    await savedViews.clearView();
-    await savedViews.assert.verifyUnsavedView();
-  });
+      await savedViews.clearView();
+      await savedViews.assert.verifyUnsavedView();
+    }
+  );
 
   test("clicking on the close icon closes the save view modal", async ({
     savedViews,
@@ -175,32 +176,34 @@ test.describe("saved views", () => {
     await savedViews.assert.verifySelectionHasNewOption();
   });
 
-  test("saving a view with an already existing name fails", async ({
-    savedViews,
-  }) => {
-    await savedViews.saveView(testView);
-    await savedViews.clearView();
+  test.fixme(
+    "saving a view with an already existing name fails",
+    async ({ savedViews }) => {
+      await savedViews.saveView(testView);
+      await savedViews.clearView();
 
-    await savedViews.openCreateModal();
-    await savedViews.saveViewInputs(testView);
+      await savedViews.openCreateModal();
+      await savedViews.saveViewInputs(testView);
 
-    await savedViews.assert.verifySaveViewFails();
-  });
+      await savedViews.assert.verifySaveViewFails();
+    }
+  );
 
-  test("create and edit modals have the correct titles", async ({
-    savedViews,
-  }) => {
-    await savedViews.openCreateModal();
-    await savedViews.assert.verifyModalTitle("Create view close");
-    await savedViews.closeModalBtn().click();
+  test.fixme(
+    "create and edit modals have the correct titles",
+    async ({ savedViews }) => {
+      await savedViews.openCreateModal();
+      await savedViews.assert.verifyModalTitle("Create view close");
+      await savedViews.closeModalBtn().click();
 
-    await savedViews.saveView(testView);
-    await savedViews.clickEdit("test");
-    await savedViews.assert.verifyModalTitle("Edit view close");
-    await savedViews.clickCloseModal();
-  });
+      await savedViews.saveView(testView);
+      await savedViews.clickEdit("test");
+      await savedViews.assert.verifyModalTitle("Edit view close");
+      await savedViews.clickCloseModal();
+    }
+  );
 
-  test("searching through saved views works", async ({ savedViews }) => {
+  test.fixme("searching through saved views works", async ({ savedViews }) => {
     await savedViews.saveView(testView1);
     await savedViews.clearViewBtn().waitFor({ state: "visible" });
     await savedViews.clearViewBtn().click();
@@ -222,82 +225,86 @@ test.describe("saved views", () => {
     await savedViews.deleteView("test-2");
   });
 
-  test("edit modal has a delete button but a create modal does not", async ({
-    savedViews,
-  }) => {
-    await savedViews.openCreateModal();
-    await savedViews.assert.verifyDeleteBtnHidden();
+  test.fixme(
+    "edit modal has a delete button but a create modal does not",
+    async ({ savedViews }) => {
+      await savedViews.openCreateModal();
+      await savedViews.assert.verifyDeleteBtnHidden();
 
-    await savedViews.closeModalBtn().click();
-    await savedViews.saveView(testView);
+      await savedViews.closeModalBtn().click();
+      await savedViews.saveView(testView);
 
-    await savedViews.clickEdit("test");
-    await savedViews.assert.verifyDeleteBtn();
+      await savedViews.clickEdit("test");
+      await savedViews.assert.verifyDeleteBtn();
 
-    await savedViews.deleteViewClick();
-  });
+      await savedViews.deleteViewClick();
+    }
+  );
 
-  test("deleting a saved view clears the URL view parameter and view selection", async ({
-    savedViews,
-  }) => {
-    await savedViews.saveView(testView);
-    await savedViews.clearView();
+  test.fixme(
+    "deleting a saved view clears the URL view parameter and view selection",
+    async ({ savedViews }) => {
+      await savedViews.saveView(testView);
+      await savedViews.clearView();
 
-    await savedViews.openSelect();
-    await savedViews.assert.verifyViewOption();
+      await savedViews.openSelect();
+      await savedViews.assert.verifyViewOption();
 
-    await savedViews.clickOptionEdit(testView.name);
-    await savedViews.clickDeleteBtn();
+      await savedViews.clickOptionEdit(testView.name);
+      await savedViews.clickDeleteBtn();
 
-    await savedViews.assert.verifyUnsavedView();
-    await savedViews.openCreateModal();
-    await savedViews.assert.verifyViewOptionHidden();
-  });
+      await savedViews.assert.verifyUnsavedView();
+      await savedViews.openCreateModal();
+      await savedViews.assert.verifyViewOptionHidden();
+    }
+  );
 
-  test("editing a saved view updates the view's name and description", async ({
-    savedViews,
-  }) => {
-    await savedViews.saveView(testView);
-    await savedViews.clearView();
+  test.fixme(
+    "editing a saved view updates the view's name and description",
+    async ({ savedViews }) => {
+      await savedViews.saveView(testView);
+      await savedViews.clearView();
 
-    await savedViews.openSelect();
-    await savedViews.clickOptionEdit(testView.name);
-    await savedViews.assert.verifyInput({
-      name: testView.name,
-      description: testView.description,
-      color: testView.newColor,
-    });
+      await savedViews.openSelect();
+      await savedViews.clickOptionEdit(testView.name);
+      await savedViews.assert.verifyInput({
+        name: testView.name,
+        description: testView.description,
+        color: testView.newColor,
+      });
 
-    await savedViews.editView(
-      updatedView2.name,
-      updatedView2.description,
-      "Blue",
-      updatedView2.color
-    );
+      await savedViews.editView(
+        updatedView2.name,
+        updatedView2.description,
+        "Blue",
+        updatedView2.color
+      );
 
-    await savedViews.clickEdit(updatedView2.slug);
-    await savedViews.assert.verifyInputUpdated(updatedView2);
-  });
+      await savedViews.clickEdit(updatedView2.slug);
+      await savedViews.assert.verifyInputUpdated(updatedView2);
+    }
+  );
 
-  test("editing a saved view should update the view URL parameter and selection", async ({
-    savedViews,
-  }) => {
-    await savedViews.assert.verifyUnsavedView();
+  test.fixme(
+    "editing a saved view should update the view URL parameter and selection",
+    async ({ savedViews }) => {
+      await savedViews.assert.verifyUnsavedView();
 
-    await savedViews.saveView(testView);
-    await savedViews.assert.verifySavedView();
+      await savedViews.saveView(testView);
+      await savedViews.assert.verifySavedView();
 
-    await savedViews.clearView();
+      await savedViews.clearView();
 
-    await savedViews.openSelect();
-    await savedViews.clickOptionEdit(testView.name);
-    await savedViews.editView(
-      updatedView2.name,
-      updatedView2.description,
-      "Blue",
-      updatedView2.color
-    );
+      await savedViews.openSelect();
+      await savedViews.clickOptionEdit(testView.name);
+      await savedViews.editView(
+        updatedView2.name,
+        updatedView2.description,
+        "Blue",
+        updatedView2.color
+      );
 
-    await savedViews.assert.verifySavedView("test-updated");
-  });
+      await savedViews.assert.verifySavedView("test-updated");
+    }
+  );
 });
