@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import * as THREE from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
 import {
+  PCD_SHADING_GRADIENTS,
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
@@ -34,19 +35,6 @@ type ColorMinMax = {
   min: number;
   max: number;
 };
-
-const ShadingGradients: Gradients = [
-  [0.0, "rgb(165,0,38)"],
-  [0.111, "rgb(215,48,39)"],
-  [0.222, "rgb(244,109,67)"],
-  [0.333, "rgb(253,174,97)"],
-  [0.444, "rgb(254,224,144)"],
-  [0.555, "rgb(224,243,248)"],
-  [0.666, "rgb(171,217,233)"],
-  [0.777, "rgb(116,173,209)"],
-  [0.888, "rgb(69,117,180)"],
-  [1.0, "rgb(49,54,149)"],
-];
 
 export const PointCloudMesh = ({
   defaultShadingColor,
@@ -98,7 +86,7 @@ export const PointCloudMesh = ({
       case SHADE_BY_HEIGHT:
         return (
           <ShadeByHeight
-            gradients={ShadingGradients}
+            gradients={PCD_SHADING_GRADIENTS}
             min={minZ}
             max={boundingBox.max.z}
             pointSize={pointSizeNum}
@@ -110,7 +98,7 @@ export const PointCloudMesh = ({
         return (
           <ShadeByIntensity
             {...colorMinMax}
-            gradients={ShadingGradients}
+            gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />
