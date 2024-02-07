@@ -56,6 +56,13 @@ export const aggregationQuery = graphQLSelectorFamily<
       const dataset = get(selectors.datasetName);
       if (!dataset) return null;
 
+      const useSidebarSampleId = !root && modal && !get(groupId) && !mixed;
+      const sampleIds = useSidebarSampleId ? [get(sidebarSampleId)] : [];
+
+      if (useSidebarSampleId && sampleIds[0] === null) {
+        return null;
+      }
+
       const lightningFilters =
         lightning ||
         (!modal &&
@@ -80,10 +87,7 @@ export const aggregationQuery = graphQLSelectorFamily<
         hiddenLabels: !root ? get(selectors.hiddenLabelsArray) : [],
         paths,
         mixed,
-        sampleIds:
-          !root && modal && !get(groupId) && !mixed
-            ? [get(sidebarSampleId)]
-            : [],
+        sampleIds,
         slices: mixed ? null : get(currentSlices(modal)), // when mixed, slice is not needed
         slice: get(groupSlice),
         view: customView ? customView : !root ? get(viewAtoms.view) : [],
