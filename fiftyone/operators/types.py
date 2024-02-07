@@ -794,7 +794,7 @@ class Choices(View):
 
     def clone(self):
         clone = super().clone()
-        clone.choices = [choice.clone() for choice in self.choices]
+        clone._choices = [choice.clone() for choice in self.choices]
         return clone
 
     def to_json(self):
@@ -1645,6 +1645,14 @@ class PromptView(View):
 
 
 class ViewTargetOptions(object):
+    """Represents the options for a :class:`ViewTargetProperty`.
+
+    Attributes:
+        entire_dataset: a :class:`Choice` for the entire dataset
+        current_view: a :class:`Choice` for the current view
+        selected_samples: a :class:`Choice` for the selected samples
+    """
+
     def __init__(self, choices_view, **kwargs):
         super().__init__(**kwargs)
         self.choices_view = choices_view
@@ -1696,6 +1704,9 @@ class ViewTargetProperty(Property):
 
         # in execute()
         target_view = ctx.target_view()
+
+    Attributes:
+        options: a :class:`ViewTargetOptions` instance
 
     Args:
         ctx: the :class:`fiftyone.operators.ExecutionContext`
