@@ -31,7 +31,6 @@ class Aggregate(HTTPEndpoint):
         if sample_ids:
             view = fov.make_optimized_select_view(view, sample_ids)
 
-        return {"aggregate": []}
         aggregate_result = view.aggregate(
             [foa.Aggregation._from_dict(agg) for agg in aggregations]
         )
