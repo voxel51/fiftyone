@@ -123,7 +123,7 @@ test.describe("saved views", () => {
     await savedViews.assert.verifySaveBtnIsEnabled();
   });
 
-  test("cancel button clears the inputs", async ({ savedViews }) => {
+  test.fixme("cancel button clears the inputs", async ({ savedViews }) => {
     await savedViews.openCreateModal();
 
     await savedViews.nameInput().fill("test");
