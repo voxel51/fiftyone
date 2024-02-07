@@ -5,6 +5,7 @@ FiftyOne internal utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 
 from fiftyone.internal.constants import (
@@ -66,9 +67,10 @@ def get_token_from_request(request):
 
 
 def get_session_cookie_name():
+    secure_cookie_env_name = "CAS_SECURE_COOKIE"
     _SECURE_COOKIE: bool = bool(
-        os.environ[key].lower() in ["true", "1"]
-        if (key := "CAS_SECURE_COOKIE") in os.environ
+        os.environ[secure_cookie_env_name].lower() in ["true", "1"]
+        if secure_cookie_env_name in os.environ
         else True
     )
 
