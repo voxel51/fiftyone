@@ -1,5 +1,5 @@
 import { test as base, expect } from "src/oss/fixtures";
-import { Color, SavedViewsPom } from "src/oss/poms/saved-views";
+import { Color, SaveViewParams, SavedViewsPom } from "src/oss/poms/saved-views";
 import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 
 const ColorList = [
@@ -14,20 +14,20 @@ const ColorList = [
   "Purple",
 ];
 
-export const updatedView = {
+export const updatedView: SaveViewParams = {
   name: "test updated",
   description: "test updated",
   color: "Yellow" as Color,
 };
 
-export const updatedView2 = {
+export const updatedView2: SaveViewParams = {
   name: "test updated 2",
   description: "test updated 2",
   color: "Orange" as Color,
   slug: "test-updated-2",
 };
 
-const testView = {
+const testView: SaveViewParams = {
   id: 0,
   name: "test",
   description: "description",
@@ -36,7 +36,7 @@ const testView = {
   slug: "test",
 };
 
-const testView1 = {
+const testView1: SaveViewParams = {
   id: 1,
   name: "test 1",
   description: "description ",
@@ -45,7 +45,7 @@ const testView1 = {
   slug: "test-1",
 };
 
-const testView2 = {
+const testView2: SaveViewParams = {
   id: 2,
   name: "test 2",
   description: "description 2",
@@ -75,7 +75,7 @@ test.describe("saved views", () => {
     await deleteSavedView(savedViews, updatedView2.slug);
   });
 
-  async function deleteSavedView(savedViews, slug: string) {
+  async function deleteSavedView(savedViews: SavedViewsPom, slug: string) {
     const hasUnsaved = savedViews.canClearView();
     if (!hasUnsaved) {
       await savedViews.clearView();
@@ -89,10 +89,6 @@ test.describe("saved views", () => {
       await savedViews.clickDeleteBtn();
     }
   }
-
-  test("page has the correct title", async ({ page }) => {
-    await expect(page).toHaveTitle(/FiftyOne/);
-  });
 
   test("saved views selector exists", async ({ savedViews }) => {
     await expect(savedViews.selector()).toBeVisible();

@@ -11,6 +11,15 @@ export type Color =
   | "Orange"
   | "Purple";
 
+export type SaveViewParams = {
+  name: string;
+  description: string;
+  color: Color;
+  id?: number;
+  newColor?: Color;
+  slug?: string;
+};
+
 const defaultColor = "Gray";
 
 export class SavedViewsPom {
@@ -47,14 +56,14 @@ export class SavedViewsPom {
     return this.savedViewOption(slug).getByTestId("btn-edit-selection");
   }
 
-  async saveViewInputs({ name, description, color, newColor }) {
+  async saveViewInputs({ name, description, color, newColor }: SaveViewParams) {
     await this.nameInput().fill(name, { timeout: 2000 });
     await this.descriptionInput().fill(description, { timeout: 2000 });
     await this.colorInput(color).click({ timeout: 2000 });
     await this.colorOption(newColor).click();
   }
 
-  async saveView(view) {
+  async saveView(view: SaveViewParams) {
     await this.openCreateModal();
     await this.saveViewInputs(view);
     await this.saveButton().click();
