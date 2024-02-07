@@ -1,5 +1,6 @@
 import { Vector3 } from "three";
 import { ShadeBy } from "./types";
+import { Gradients } from "./renderables/pcd/shaders";
 
 export const ACTION_GRID = "grid";
 export const ACTION_SHADE_BY = "shadeBy";
@@ -38,8 +39,9 @@ export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
 export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";
 
 export const PANEL_ORDER_VISIBILITY = -1;
-export const PANEL_ORDER_LIGHTS = 1;
-export const PANEL_ORDER_ANIMATIONS = 2;
+export const PANEL_ORDER_PCD_CONTROLS = 1;
+export const PANEL_ORDER_LIGHTS = 2;
+export const PANEL_ORDER_ANIMATIONS = 3;
 
 export const COLOR_POOL = [
   0x33ff57, // Bright Green
@@ -54,4 +56,17 @@ export const COLOR_POOL = [
   0xff7f50, // Coral
   0x708090, // Slate Gray
   0xf5f5dc, // Beige
+];
+
+export const PCD_SHADING_GRADIENTS: Gradients = [
+  [0.0, "rgb(165,0,38)"],
+  [0.111, "rgb(215,48,39)"],
+  [0.222, "rgb(244,109,67)"],
+  [0.333, "rgb(253,174,97)"],
+  [0.444, "rgb(254,224,144)"],
+  [0.555, "rgb(224,243,248)"],
+  [0.666, "rgb(171,217,233)"],
+  [0.777, "rgb(116,173,209)"],
+  [0.888, "rgb(69,117,180)"],
+  [1.0, "rgb(49,54,149)"],
 ];

@@ -50,31 +50,30 @@ export const Lights = ({
   }, [upVector, sceneBoundingBox]);
 
   const [{ ambientLightIntensity, directionalLightIntensity }] = useControls(
-    () => {
-      return {
-        Lights: folder(
-          {
-            ambientLightIntensity: {
-              value: 0.1,
-              min: 0,
-              max: 1,
-              step: 0.01,
-              label: "Ambient light intensity",
-            },
-            directionalLightIntensity: {
-              value: 0.5,
-              min: 0,
-              max: 1,
-              step: 0.01,
-              label: "Directional light intensity",
-            },
+    () => ({
+      Lights: folder(
+        {
+          ambientLightIntensity: {
+            value: 0.1,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            label: "Ambient light intensity",
           },
-          {
-            order: PANEL_ORDER_LIGHTS,
-          }
-        ),
-      };
-    }
+          directionalLightIntensity: {
+            value: 0.5,
+            min: 0,
+            max: 1,
+            step: 0.01,
+            label: "Directional light intensity",
+          },
+        },
+        {
+          order: PANEL_ORDER_LIGHTS,
+          collapsed: true,
+        }
+      ),
+    })
   );
 
   const directionalLightScaled = useMemo(() => {
