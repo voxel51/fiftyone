@@ -4,13 +4,10 @@ import * as foq from "@fiftyone/relay";
 import * as fos from "@fiftyone/state";
 import { useMemo, useRef } from "react";
 import { useErrorHandler } from "react-error-boundary";
-import { VariablesOf, fetchQuery, useRelayEnvironment } from "react-relay";
+import { fetchQuery, useRelayEnvironment, VariablesOf } from "react-relay";
 import { RecoilValueReadOnly, selector, useRecoilValue } from "recoil";
 
 const PAGE_SIZE = 20;
-class Weird {
-  constructor() {}
-}
 
 const processSamplePageData = (
   store: WeakMap<symbol, object>,
@@ -30,7 +27,7 @@ const processSamplePageData = (
         ? zoomAspectRatio(edge.node.sample, edge.node.aspectRatio)
         : edge.node.aspectRatio,
       id,
-      data: { d: new Weird(), edge: edge.node },
+      data: edge.node,
     };
   });
 };
@@ -56,6 +53,7 @@ const useFlashlightPager = (
     return async (pageNumber: number) => {
       const variables = page(pageNumber, PAGE_SIZE);
       const zoomValue = await zoom();
+
       return new Promise<Response<number, object>>((resolve) => {
         const subscription = fetchQuery<foq.paginateSamplesQuery>(
           environment,
