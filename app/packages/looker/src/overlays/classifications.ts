@@ -12,13 +12,14 @@ import {
   NONFINITE,
   VideoState,
 } from "../state";
+import { getFieldInfo } from "../util";
 import {
   CONTAINS,
+  isShown,
   Overlay,
   PointInfo,
   RegularLabel,
   SelectData,
-  isShown,
 } from "./base";
 import { getLabelColor, sizeBytes } from "./util";
 
@@ -60,6 +61,9 @@ export class ClassificationsOverlay<
       isTagged,
       labelTagColors,
       customizeColorSetting,
+      embeddedDocType: getFieldInfo(field.split("."), state.config.fieldSchema)
+        .embeddedDocType.split(".")
+        .slice(-1)[0],
     });
   }
 
@@ -108,7 +112,7 @@ export class ClassificationsOverlay<
           result = {
             field: field,
             label,
-            type: label._cls,
+            type: this.getCls(field, state),
             color: this.getColor(state, field, label),
           };
         }
@@ -122,7 +126,8 @@ export class ClassificationsOverlay<
     const labels = this.getFilteredAndFlat(state);
     const width = Math.max(
       ...labels.map(
-        ([_, label]) => ctx.measureText(this.getLabelText(state, label)).width
+        ([field, label]) =>
+          ctx.measureText(this.getLabelText(field, state, label)).width
       )
     );
     const newBoxes = {};
@@ -165,16 +170,18 @@ export class ClassificationsOverlay<
   }
 
   protected getFiltered(state: Readonly<State>): Labels<Label> {
-    return this.labels.map(([field, labels]) => [
-      field,
-      Array.isArray(labels)
-        ? labels.filter(
-            (label) =>
-              MOMENT_CLASSIFICATIONS.includes(label._cls) &&
-              isShown(state, field, label)
-          )
-        : [],
-    ]);
+    return this.labels.map(([field, labels]) => {
+      return [
+        field,
+        Array.isArray(labels)
+          ? labels.filter(
+              (label) =>
+                MOMENT_CLASSIFICATIONS.includes(this.getCls(field, state)) &&
+                isShown(state, field, label)
+            )
+          : [],
+      ];
+    });
   }
 
   getFilteredAndFlat(state: Readonly<State>, sort = true): [string, Label][] {
@@ -229,7 +236,7 @@ export class ClassificationsOverlay<
     field: string,
     label: Label
   ): { top: number; box?: BoundingBox } {
-    const text = this.getLabelText(state, label);
+    const text = this.getLabelText(field, state, label);
     if (text.length === 0) {
       return { top };
     }
@@ -284,8 +291,14 @@ export class ClassificationsOverlay<
     };
   }
 
-  private getLabelText(state: Readonly<State>, label: Label): string {
-    let text = state.options.showLabel ? `${getText(label)}` : "";
+  private getLabelText(
+    field: string,
+    state: Readonly<State>,
+    label: Label
+  ): string {
+    let text = state.options.showLabel
+      ? `${getText(this.getCls(field, state), label)}`
+      : "";
 
     if (state.options.showConfidence && !isNaN(label.confidence as number)) {
       text.length && (text += " ");
@@ -321,11 +334,16 @@ export class ClassificationsOverlay<
     return [];
   }
   updateLabelData() {}
+
+  getCls(field: string, state: Readonly<State>) {
+    return getFieldInfo(field.split("."), state.config.fieldSchema)
+      .embeddedDocType.split(".")
+      .slice(-1)[0];
+  }
 }
 
 export interface TemporalDetectionLabel extends Classification {
   support: [number, number];
-  _cls: "TemporalDetection";
 }
 
 export class TemporalDetectionOverlay extends ClassificationsOverlay<
@@ -335,21 +353,23 @@ export class TemporalDetectionOverlay extends ClassificationsOverlay<
   getFiltered(state: Readonly<VideoState>) {
     return this.labels.map<
       [string, (TemporalDetectionLabel | ClassificationLabel)[]]
-    >(([field, labels]) => [
-      field,
-      labels.filter((label) => {
-        const shown = isShown(state, field, label) && label.label;
-        if (label._cls === TEMPORAL_DETECTION) {
-          return (
-            shown &&
-            label.support[0] <= state.frameNumber &&
-            label.support[1] >= state.frameNumber
-          );
-        }
+    >(([field, labels]) => {
+      return [
+        field,
+        labels.filter((label) => {
+          const shown = isShown(state, field, label) && label.label;
+          if (this.getCls(field, state) === TEMPORAL_DETECTION) {
+            return (
+              shown &&
+              label.support[0] <= state.frameNumber &&
+              label.support[1] >= state.frameNumber
+            );
+          }
 
-        return shown;
-      }),
-    ]);
+          return shown;
+        }),
+      ];
+    });
   }
 }
 
@@ -359,8 +379,8 @@ export const getClassificationPoints = (
   return [];
 };
 
-const getText = (label) => {
-  if (label._cls === REGRESSION) {
+const getText = (_cls: string, label) => {
+  if (_cls === REGRESSION) {
     return label.value;
   }
 

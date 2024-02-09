@@ -17,9 +17,11 @@ import {
 
 import {
   AppError,
+  Field,
   getFetchParameters,
   GraphQLError,
   NetworkError,
+  Schema,
   ServerError,
 } from "@fiftyone/utilities";
 import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
@@ -586,3 +588,16 @@ function compareObjectArr(arr1: object[], arr2: object[]): boolean {
 
   return JSON.stringify(sortedArr1) === JSON.stringify(sortedArr2);
 }
+
+export const getFieldInfo = (
+  keys: string[],
+  schema: Schema
+): Field | undefined => {
+  let field: Field;
+  for (let index = 0; index < keys.length; index++) {
+    field = schema[keys[index]];
+    schema = field?.fields;
+  }
+
+  return field;
+};

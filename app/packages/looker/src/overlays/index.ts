@@ -2,11 +2,14 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 import {
-  DYNAMIC_EMBEDDED_DOCUMENT,
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  EMBEDDED_DOCUMENT_FIELD,
   LABEL_LISTS_MAP,
+  Schema,
 } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
+import { getFieldInfo } from "../util";
 import { Overlay } from "./base";
 import {
   ClassificationLabel,
@@ -29,7 +32,17 @@ const fromLabelList = (overlayType, list_key) => (field, labels) =>
 
 export { ClassificationsOverlay };
 
-export const FROM_FO = {
+function withPath<T>(obj: { [key: string]: T }) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [`fiftyone.core.labels.${k}`, v])
+  );
+}
+
+function withArrayPath(path: string[]) {
+  return path.map((p) => `fiftyone.core.labels.${p}`);
+}
+
+export const FROM_FO = withPath({
   Detection: fromLabel(DetectionOverlay),
   Detections: fromLabelList(DetectionOverlay, "detections"),
   Heatmap: fromLabel(HeatmapOverlay),
@@ -38,9 +51,9 @@ export const FROM_FO = {
   Polyline: fromLabel(PolylineOverlay),
   Polylines: fromLabelList(PolylineOverlay, "polylines"),
   Segmentation: fromLabel(SegmentationOverlay),
-};
+});
 
-export const POINTS_FROM_FO = {
+export const POINTS_FROM_FO = withPath({
   Detection: (label) => getDetectionPoints([label]),
   Detections: (label) => getDetectionPoints(label.detections),
   Heatmap: (label) => getHeatmapPoints([label]),
@@ -49,15 +62,18 @@ export const POINTS_FROM_FO = {
   Polyline: (label) => getPolylinePoints([label]),
   Poylines: (label) => getPolylinePoints(label.polylines),
   Segmentation: (label) => getSegmentationPoints([label]),
-};
+});
+
+const LABEL_LISTS = withPath(LABEL_LISTS_MAP);
 
 export const loadOverlays = <State extends BaseState>(
   sample: {
     [key: string]: any;
   },
+  schema: Schema,
   video = false
 ): Overlay<State>[] => {
-  const { classifications, overlays } = accumulateOverlays(sample);
+  const { classifications, overlays } = accumulateOverlays(sample, schema);
 
   if (classifications.length > 0) {
     const overlay = video
@@ -69,11 +85,18 @@ export const loadOverlays = <State extends BaseState>(
   return overlays;
 };
 
+const TAGS = new Set(withArrayPath(LABEL_TAGS_CLASSES));
+
+const EMBEDDED_FIELDS = Object.freeze(
+  new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD])
+);
+
 const accumulateOverlays = <State extends BaseState>(
   data: {
     [key: string]: any;
   },
-  prefix = "",
+  schema: Schema,
+  prefix = [],
   depth = 1
 ): {
   classifications: Labels<TemporalDetectionLabel | ClassificationLabel>;
@@ -88,27 +111,31 @@ const accumulateOverlays = <State extends BaseState>(
       continue;
     }
 
-    if (depth && label._cls === DYNAMIC_EMBEDDED_DOCUMENT) {
-      const nestedResult = accumulateOverlays(label, `${field}.`, depth - 1);
-      classifications.push(...nestedResult.classifications);
-      overlays.push(...nestedResult.overlays);
+    const fieldInfo = getFieldInfo([...prefix, field], schema);
+    const docType = fieldInfo?.embeddedDocType;
+    const path = [...prefix, field].join(".");
+
+    if (docType in FROM_FO) {
+      overlays.push(...FROM_FO[docType](path, label));
+      continue;
+    }
+    if (TAGS.has(docType)) {
+      classifications.push([
+        path,
+        docType in LABEL_LISTS ? label[LABEL_LISTS[docType]] : [label],
+      ]);
       continue;
     }
 
-    if (label._cls in FROM_FO) {
-      const labelOverlays = FROM_FO[label._cls](
-        `${prefix}${field}`,
+    if (depth && EMBEDDED_FIELDS.has(fieldInfo?.ftype)) {
+      const nestedResult = accumulateOverlays(
         label,
-        this
+        schema,
+        [...prefix, field],
+        depth - 1
       );
-      overlays.push(...labelOverlays);
-    } else if (LABEL_TAGS_CLASSES.includes(label._cls)) {
-      classifications.push([
-        `${prefix}${field}`,
-        label._cls in LABEL_LISTS_MAP
-          ? label[LABEL_LISTS_MAP[label._cls]]
-          : [label],
-      ]);
+      classifications.push(...nestedResult.classifications);
+      overlays.push(...nestedResult.overlays);
     }
   }
 

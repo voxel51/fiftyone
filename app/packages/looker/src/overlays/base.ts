@@ -3,6 +3,7 @@
  */
 
 import { BaseState, Coordinates, NONFINITE } from "../state";
+import { getFieldInfo } from "../util";
 import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -14,7 +15,6 @@ export enum CONTAINS {
 
 export interface BaseLabel {
   id: string;
-  _cls: string;
   frame_number?: number;
   tags: string[];
   index?: number;
@@ -99,6 +99,7 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({
+    config,
     options: {
       coloring,
       customizeColorSetting,
@@ -113,6 +114,9 @@ export abstract class CoordinateOverlay<
       isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
+      embeddedDocType: getFieldInfo(this.field.split("."), config.fieldSchema)
+        .embeddedDocType.split(".")
+        .slice(-1)[0],
     });
   }
 

@@ -14,13 +14,13 @@ import {
   FrameChunkResponse,
   FrameSample,
   LabelData,
-  Optional,
   StateUpdate,
   VideoSample,
   VideoState,
 } from "../state";
 import { addToBuffers, createWorker, removeFromBuffers } from "../util";
 
+import { Schema } from "@fiftyone/utilities";
 import LRUCache from "lru-cache";
 import { CHUNK_SIZE, MAX_FRAME_CACHE_SIZE_BYTES } from "../constants";
 import { getFrameNumber } from "../elements/util";
@@ -49,6 +49,7 @@ interface AcquireReaderOptions {
   dispatchEvent: (eventType: string, detail: any) => void;
   coloring: Coloring;
   customizeColorSetting: CustomizeColor[];
+  schema: Schema;
 }
 
 const { acquireReader, addFrame } = (() => {
@@ -91,6 +92,7 @@ const { acquireReader, addFrame } = (() => {
     dataset,
     view,
     group,
+    schema,
   }: AcquireReaderOptions): string => {
     streamSize = 0;
     nextRange = [frameNumber, Math.min(frameCount, CHUNK_SIZE + frameNumber)];
@@ -120,11 +122,9 @@ const { acquireReader, addFrame } = (() => {
 
       for (let i = 0; i < frames.length; i++) {
         const frameSample = frames[i];
-        const prefixedFrameSample = Object.fromEntries(
-          Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-        );
+        const prefixedFrameSample = withFrames(frameSample);
 
-        const overlays = loadOverlays(prefixedFrameSample);
+        const overlays = loadOverlays(prefixedFrameSample, schema);
         overlays.forEach((overlay) => {
           streamSize += overlay.getSizeBytes();
         });
@@ -340,18 +340,19 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       Object.fromEntries(
         Object.entries(sample).filter(([fieldName]) => fieldName !== "frames")
       ),
+      this.state.config.fieldSchema,
       true
     );
 
     const providedFrames = sample.frames?.length
       ? sample.frames
       : [{ frame_number: 1 }];
+
+    const schema = withFrames(
+      this.state.config.fieldSchema.frames.fields || {}
+    );
     const providedFrameOverlays = providedFrames.map((frameSample) =>
-      loadOverlays(
-        Object.fromEntries(
-          Object.entries(frameSample).map(([k, v]) => ["frames." + k, v])
-        )
-      )
+      loadOverlays(withFrames(frameSample), schema)
     );
 
     const frames = providedFrames.map((frameSample, i) => ({
@@ -448,6 +449,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       dataset: this.state.config.dataset,
       group: this.state.config.group,
       view: this.state.config.view,
+      schema: withFrames(this.state.config.fieldSchema.frames.fields || {}),
     });
   }
 
@@ -553,3 +555,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
     );
   }
 }
+
+const withFrames = <T extends { [key: string]: unknown }>(obj: T): T =>
+  Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => ["frames." + k, v])
+  ) as T;

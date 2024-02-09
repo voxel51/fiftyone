@@ -1,4 +1,5 @@
-import { DYNAMIC_EMBEDDED_DOCUMENT } from "@fiftyone/utilities";
+import { DYNAMIC_EMBEDDED_DOCUMENT_FIELD, Schema } from "@fiftyone/utilities";
+import { get } from "lodash";
 import { MIN_PIXELS } from "./constants";
 import { POINTS_FROM_FO } from "./overlays";
 import { Overlay } from "./overlays/base";
@@ -102,18 +103,24 @@ export const zoomToContent = <
 
 export const zoomAspectRatio = (
   sample: object,
+  schema: Schema,
   mediaAspectRatio: number
 ): number => {
   let points = [];
 
-  const recurse = (data: object, follow: boolean) => {
-    Object.entries(data).forEach(([_, label]) => {
-      if (label && label._cls in POINTS_FROM_FO) {
-        points = [...points, ...POINTS_FROM_FO[label._cls](label)];
+  const recurse = (data: object, follow: boolean, prefix = "") => {
+    Object.entries(data).forEach(([field, label]) => {
+      const docType = get(schema, prefix + field)?.embeddedDocType;
+      if (label && docType in POINTS_FROM_FO) {
+        points = [...points, ...POINTS_FROM_FO[docType](label)];
       }
 
-      if (follow && label._cls === DYNAMIC_EMBEDDED_DOCUMENT)
-        recurse(label, false);
+      if (
+        follow &&
+        get(schema, prefix + field, schema).ftype ===
+          DYNAMIC_EMBEDDED_DOCUMENT_FIELD
+      )
+        recurse(label, false, `${field}.`);
     });
   };
 

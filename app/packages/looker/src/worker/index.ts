@@ -11,6 +11,7 @@ import {
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
+  Schema,
   setFetchFunction,
   Stage,
   VALID_LABEL_TYPES,
@@ -197,7 +198,8 @@ const processLabels = async (
   customizeColorSetting: ProcessSample["customizeColorSetting"],
   colorscale: ProcessSample["colorscale"],
   labelTagColors: ProcessSample["labelTagColors"],
-  selectedLabelTags: ProcessSample["selectedLabelTags"]
+  selectedLabelTags: ProcessSample["selectedLabelTags"],
+  schema: Schema
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -237,7 +239,8 @@ const processLabels = async (
           customizeColorSetting,
           colorscale,
           labelTagColors,
-          selectedLabelTags
+          selectedLabelTags,
+          schema
         );
         buffers.push(...moreBuffers);
       }
@@ -293,6 +296,7 @@ export interface ProcessSample {
   colorscale: Colorscale;
   selectedLabelTags: string[];
   sources: { [path: string]: string };
+  schema: Schema;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
@@ -306,6 +310,7 @@ const processSample = ({
   colorscale,
   selectedLabelTags,
   labelTagColors,
+  schema,
 }: ProcessSample) => {
   mapId(sample);
 
@@ -323,7 +328,8 @@ const processSample = ({
         customizeColorSetting,
         colorscale,
         labelTagColors,
-        selectedLabelTags
+        selectedLabelTags,
+        schema
       ),
     ];
   }
@@ -341,7 +347,8 @@ const processSample = ({
             customizeColorSetting,
             colorscale,
             labelTagColors,
-            selectedLabelTags
+            selectedLabelTags,
+            schema
           )
         )
         .flat(),
