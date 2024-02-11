@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { getSampleSrc } from "@fiftyone/state/src/recoil/utils";

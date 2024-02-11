@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generates documentation for FiftyOne.
 #
-# Copyright 2017-2023, Voxel51, Inc.
+# Copyright 2017-2024, Voxel51, Inc.
 # voxel51.com
 #
 
