@@ -275,19 +275,27 @@ class Object(BaseType):
 
         Examples::
 
+            import fiftyone.operators.types as types
 
-        import fiftyone.operators.types as types
+            #
+            # in resolve_input()
+            #
 
-        # in resolve_input
-        inputs = types.Object()
-        vt = inputs.view_target(ctx)
-        # or add the property directly
-        # vt = types.ViewTargetProperty(ctx)
-        # inputs.add_property("view_target", vt)
-        return types.Property(inputs)
+            inputs = types.Object()
 
-        # in execute()
-        target_view = ctx.target_view()
+            vt = inputs.view_target(ctx)
+
+            # or add the property directly
+            # vt = types.ViewTargetProperty(ctx)
+            # inputs.add_property("view_target", vt)
+
+            return types.Property(inputs)
+
+            #
+            # in execute()
+            #
+
+            target_view = ctx.target_view()
 
         Args:
             ctx: the :class:`fiftyone.operators.ExecutionContext`
