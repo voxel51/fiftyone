@@ -69,7 +69,7 @@ const StringFilter = ({
     path,
     resultsAtom
   );
-  const { onSelect, selectedMap } = useOnSelect(modal, path, selectedAtom);
+  const onSelect = useOnSelect(modal, path, selectedAtom);
   const skeleton =
     useRecoilValue(isInKeypointsField(path)) && name === "keypoints";
   const theme = useTheme();
@@ -127,7 +127,6 @@ const StringFilter = ({
           excludeAtom={excludeAtom}
           isMatchingAtom={isMatchingAtom}
           modal={modal}
-          selectedMap={selectedMap}
         />
       </StringFilterContainer>
     </NamedStringFilterContainer>
