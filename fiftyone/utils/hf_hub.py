@@ -33,13 +33,16 @@ datasets = fou.lazy_import(
 )
 
 
-def push_to_hub(dataset, repo_name, private=True, **data_card_kwargs):
+def push_to_hub(
+    dataset, repo_name, private=True, exist_ok=False, **data_card_kwargs
+):
     """Push a FiftyOne dataset to the Hugging Face Hub.
 
     Args:
         dataset: a FiftyOne dataset
         repo_name: the name of the dataset repo to create
         private (True): whether the repo should be private
+        exist_ok (False): if True, do not raise an error if repo already exists.
         data_card_kwargs: additional keyword arguments to pass to the
             `DatasetCard` constructor
     """
@@ -56,7 +59,9 @@ def push_to_hub(dataset, repo_name, private=True, **data_card_kwargs):
 
     ## Create the dataset repo
     repo_id = os.path.join(hf_username, repo_name)
-    hfh.create_repo(repo_id, repo_type="dataset", private=private)
+    hfh.create_repo(
+        repo_id, repo_type="dataset", private=private, exist_ok=exist_ok
+    )
 
     ## Upload the dataset to the repo
     api = hfh.HfApi()
