@@ -30,8 +30,8 @@ _________
 
 All
 `Transformers models <https://huggingface.co/docs/transformers/index#supported-models-and-frameworks>`_
-that support image classification, object detection, and semantic segmentation
-can be passed directly to your FiftyOne dataset's
+that support image classification, object detection, semantic segmentation, or
+monocular depth estimation tasks can be passed directly to your FiftyOne dataset's
 :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
 method.
 
@@ -371,6 +371,57 @@ model's name or path as a keyword argument:
     dataset.apply_model(model, label_field="segformer")
 
     session = fo.launch_app(dataset)
+
+
+.. _huggingface-monocular-depth-estimation:
+
+Monocular depth estimation
+--------------------------
+
+You can pass a `transformers` monocular depth estimation model directly to your
+FiftyOne dataset's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
+method:
+
+.. code-block:: python
+    :linenos:
+
+    # DPT
+    from transformers import DPTForDepthEstimation
+    model = DPTForDepthEstimation.from_pretrained("Intel/dpt-large")
+
+    # GLPN
+    from transformers import GLPNForDepthEstimation
+    model = GLPNForDepthEstimation.from_pretrained("vinvino02/glpn-kitti")
+
+
+.. code-block:: python
+    :linenos:
+
+    dataset.apply_model(model, label_field="depth_predictions")
+
+    session = fo.launch_app(dataset)
+
+Alternatively, you can load `transformers` depth estimation models directly from
+the :ref:`FiftyOne Model Zoo <model-zoo>`!
+
+To load a `transformers` depth estimation model from the zoo, specify
+`"depth-estimation-transformer-torch"` as the first argument, and pass in the
+model's name or path as a keyword argument:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+
+    model = foz.load_zoo_model(
+        "depth-estimation-transformer-torch",
+        name_or_path="Intel/dpt-hybrid-midas"",
+    )
+
+    dataset.apply_model(model, label_field="dpt_hybrid_midas")
+
+    session = fo.launch_app(dataset)
+
 
 .. _huggingface-zero-shot-classification:
 
