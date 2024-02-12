@@ -22,7 +22,7 @@ export class ModalSidebarPom {
   }
 
   async getSampleTagCount() {
-    return Number(await this.getSidebarEntryText("sidebar-entry-tags"));
+    return Number(await this.getSidebarEntryText("tags"));
   }
 
   async getLabelTagCount() {
@@ -35,11 +35,11 @@ export class ModalSidebarPom {
   }
 
   async getSampleId() {
-    return this.getSidebarEntryText("sidebar-entry-id");
+    return this.getSidebarEntryText("id");
   }
 
   async getSampleFilepath(abs = true) {
-    const absPath = await this.getSidebarEntryText("sidebar-entry-filepath");
+    const absPath = await this.getSidebarEntryText("filepath");
 
     if (!abs) {
       return absPath.split("/").at(-1);

@@ -170,9 +170,7 @@ const Tag = ({
   const tagging = useRecoilValue(fos.anyTagging);
   const ref = useRef<HTMLDivElement>(null);
   useOutsideClick(ref, () => open && setOpen(false));
-  const lightning = useRecoilValue(fos.lightning);
-  const unlocked = fos.useLightingUnlocked();
-  const disabled = tagging || (lightning && !modal && !unlocked);
+  const disabled = tagging;
 
   lookerRef &&
     useEventHandler(lookerRef.current, "play", () => {

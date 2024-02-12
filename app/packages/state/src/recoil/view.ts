@@ -238,9 +238,17 @@ export const dynamicGroupViewQuery = selectorFamily<
       // todo: sanitize expressions
       const groupBySanitized = getSanitizedGroupByExpression(groupBy);
 
-      const groupByValue = groupByFieldValueExplicit
-        ? String(groupByFieldValueExplicit)
-        : String(get(groupByFieldValue));
+      let groupByValue;
+
+      if (groupByFieldValueExplicit) {
+        groupByValue = String(groupByFieldValueExplicit);
+      } else {
+        groupByValue = get(groupByFieldValue);
+
+        if (groupByValue) {
+          groupByValue = String(groupByValue);
+        }
+      }
 
       const viewStages: State.Stage[] = [
         {
