@@ -415,7 +415,7 @@ model's name or path as a keyword argument:
 
     model = foz.load_zoo_model(
         "depth-estimation-transformer-torch",
-        name_or_path="Intel/dpt-hybrid-midas"",
+        name_or_path="Intel/dpt-hybrid-midas",
     )
 
     dataset.apply_model(model, label_field="dpt_hybrid_midas")
