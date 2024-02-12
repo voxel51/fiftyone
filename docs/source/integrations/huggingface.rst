@@ -906,3 +906,89 @@ model:
 
 Hugging Face Hub
 ________________
+
+FiftyOne's Hugging Face Hub integration allows you to push datasets to and load
+datasets from the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_.
+
+.. _huggingface-hub-setup:
+
+Setup
+-----
+
+If you haven't already, install the `huggingface_hub` and `datasets` packages, 
+and log in to your Hugging Face account:
+
+.. code-block:: shell
+
+    pip -U install "huggingface_hub[cli]" datasets
+    huggingface-cli login
+
+
+You may be prompted to enter an access token for reading or writing datasets. 
+If you don't have an access token, you can create one in your Hugging Face
+account settings `<https://huggingface.co/settings/tokens>`_.
+
+
+.. _huggingface-hub-push:
+
+Pushing datasets to the Hub
+---------------------------
+
+If you have a FiftyOne dataset that you'd like to share with the world, you can
+push it to the Hugging Face Hub with just a few lines of code, using 
+:meth:`push_to_hub() <fiftyone.utils.hf_hub.push_to_hub>`!
+
+
+.. _huggingface-hub-basic-push:
+
+Basic recipe for pushing a dataset to the Hub
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To push a |Dataset| to the Hub, simply pass the dataset to the 
+:meth:`push_to_hub() <fiftyone.utils.hf_hub.push_to_hub>` method, along with a
+name for the dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.zoo as foz
+    import fiftyone.utils.hf_hub as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+
+    # upload view to HF hub
+    fouh.push_to_hub(dataset, "quickstart")
+
+
+This will create a repo on the hugging face hub in your account with the name 
+`quickstart` and upload the dataset to it. 
+
+💡 You can check your Hugging Face username with `huggingface_hub.whoami()["name"]`
+
+
+You can also push a |DatasetView| to the Hub in the same way:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+    import fiftyone.utils.hf_hub as fouh
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    ## create a view containing only the first 10 samples
+    view = dataset.take(10)
+
+    # upload view to HF hub
+    fouh.push_to_hub(view, "quickstart-10")
+
+
+If you want to keep your dataset private, you can pass `private=True` to the
+:meth:`push_to_hub() <fiftyone.utils.hf_hub.push_to_hub>` method:
+
+.. code-block:: python
+    :linenos:
+
+    fouh.push_to_hub(dataset, "quickstart", private=True)
+
+
