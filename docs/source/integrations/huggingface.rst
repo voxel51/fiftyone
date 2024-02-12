@@ -8,12 +8,20 @@ Hugging Face Integration
 FiftyOne integrates natively with Hugging Face's
 `Transformers <https://huggingface.co/docs/transformers>`_ library, so
 you can load, fine-tune, and run inference with your favorite Transformers
-models on your FiftyOne datasets with just a few lines of code!
+models on your FiftyOne datasets with just a few lines of code! What's more, 
+FiftyOne also integrates with the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_, 
+so you can push datasets to and load datasets from the Hub with ease.
 
-.. _huggingface-setup:
+.. _huggingface-transformers:
+
+Transformers
+____________
+
+
+.. _huggingface-transformers-setup:
 
 Setup
-_____
+-----
 
 To get started with
 `Transformers <https://huggingface.co/docs/transformers>`_, just install the
@@ -23,10 +31,11 @@ To get started with
 
     pip install transformers
 
-.. _huggingface-inference:
+
+.. _huggingface-transformers-inference:
 
 Inference
-_________
+---------
 
 All
 `Transformers models <https://huggingface.co/docs/transformers/index#supported-models-and-frameworks>`_
@@ -47,10 +56,10 @@ on the following sample dataset:
     dataset = foz.load_zoo_dataset("quickstart", max_samples=25)
     dataset.select_fields().keep_fields()
 
-.. _huggingface-image-classification:
+.. _huggingface-transformers-image-classification:
 
 Image classification
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 You can pass `transformers` classification models directly to FiftyOne
 dataset's
@@ -164,10 +173,10 @@ model's name or path as a keyword argument:
 
     session = fo.launch_app(dataset)
 
-.. _huggingface-object-detection:
+.. _huggingface-transformers-object-detection:
 
 Object detection
-----------------
+^^^^^^^^^^^^^^^^
 
 You can pass `transformers` detection models directly to your FiftyOne
 dataset's
@@ -277,10 +286,10 @@ name or path as a keyword argument:
 
     session = fo.launch_app(dataset)
 
-.. _huggingface-semantic-segmentation:
+.. _huggingface-transformers-semantic-segmentation:
 
 Semantic segmentation
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 You can pass a `transformers` semantic segmentation model directly to your
 FiftyOne dataset's
@@ -373,10 +382,10 @@ model's name or path as a keyword argument:
     session = fo.launch_app(dataset)
 
 
-.. _huggingface-monocular-depth-estimation:
+.. _huggingface-transformers-monocular-depth-estimation:
 
 Monocular depth estimation
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You can pass a `transformers` monocular depth estimation model directly to your
 FiftyOne dataset's :meth:`apply_model() <fiftyone.core.collections.SampleCollection.apply_model>`
@@ -423,10 +432,10 @@ model's name or path as a keyword argument:
     session = fo.launch_app(dataset)
 
 
-.. _huggingface-zero-shot-classification:
+.. _huggingface-transformers-zero-shot-classification:
 
 Zero-shot classification
-------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 Zero-shot image classification models from `transformers` can be loaded 
 directly from the :ref:`FiftyOne Model Zoo <model-zoo>`!
@@ -511,10 +520,10 @@ FiftyOne format:
     Some zero-shot models are compatible with multiple tasks, so it is
     recommended that you specify the task type when converting the model.
 
-.. _huggingface-zero-shot-detection:
+.. _huggingface-transformers-zero-shot-detection:
 
 Zero-shot object detection
---------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Zero-shot object detection models from `transformers` can be loaded directly
 from the :ref:`FiftyOne Model Zoo <model-zoo>`!
@@ -560,7 +569,7 @@ FiftyOne format:
     Some zero-shot models are compatible with multiple tasks, so it is
     recommended that you specify the task type when converting the model.
 
-.. _huggingface-batch-inference:
+.. _huggingface-transformers-batch-inference:
 
 Batch inference
 ---------------
@@ -615,10 +624,10 @@ pattern below:
     See :ref:`this section <batch-updates>` for more information about
     performing batch updates to your FiftyOne datasets.
 
-.. _huggingface-embeddings:
+.. _huggingface-transformers-embeddings:
 
 Embeddings
-__________
+----------
 
 Any `transformers` model that supports image classification or object detection
 tasks — zero-shot or otherwise — can be used to compute embeddings for your 
@@ -633,10 +642,10 @@ samples.
     detection, or base model, FiftyOne will extract embeddings from the
     `last_hidden_state` of the model's base encoder.
 
-.. _huggingface-image-embeddings:
+.. _huggingface-transformers-image-embeddings:
 
 Image embeddings
-----------------
+^^^^^^^^^^^^^^^^
 
 To compute embeddings for images, you can pass the `transformers` model
 directly to your FiftyOne dataset's
@@ -713,10 +722,10 @@ see if the model can be used to generate embeddings:
     image = Image.open(dataset.first().filepath)
     embedding = model.embed(np.array(image))
 
-.. _huggingface-text-embeddings:
+.. _huggingface-transformers-text-embeddings:
 
 Text embeddings
----------------
+^^^^^^^^^^^^^^^
 
 Zero-shot image classification and object detection models from `transformers`
 can also be used to compute embeddings for text:
@@ -760,10 +769,10 @@ property:
     )
     print(model.can_embed_prompts)  # False
 
-.. _huggingface-batch-embeddings:
+.. _huggingface-transformers-batch-embeddings:
 
 Batch embeddings
-----------------
+^^^^^^^^^^^^^^^^
 
 You can request batch inference by passing the optional `batch_size` parameter
 to
@@ -774,10 +783,10 @@ to
 
     dataset.compute_embeddings(model, embeddings_field="embeddings", batch_size=16)
 
-.. _huggingface-patch-embeddings:
+.. _huggingface-transformers-patch-embeddings:
 
 Patch embeddings
-----------------
+^^^^^^^^^^^^^^^^
 
 You can compute embeddings for image patches by passing `transformers` models
 directly to your FiftyOne dataset's
@@ -804,10 +813,10 @@ method:
         embeddings_field="embeddings",
     )
 
-.. _huggingface-brain-methods:
+.. _huggingface-transformers-brain-methods:
 
 Brain methods
-_____________
+-------------
 
 Because `transformers` models can be used to compute embeddings, they can be
 passed to :ref:`Brain methods <fiftyone-brain>` like
@@ -891,3 +900,9 @@ model:
     view = dataset.sort_by_similarity("A photo of a dog", k=25)
 
     session = fo.launch_app(view)
+
+
+.. _huggingface-hub:
+
+Hugging Face Hub
+________________
