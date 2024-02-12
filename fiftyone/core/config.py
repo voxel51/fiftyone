@@ -734,6 +734,12 @@ class MediaCacheConfig(EnvConfig):
             env_var="MINIO_PROFILE",
             default=None,
         )
+        self.extra_client_kwargs = self.parse_dict(
+            d,
+            "extra_client_kwargs",
+            env_var="FIFTYONE_MEDIA_EXTRA_CLIENT_KWARGS",
+            default=None,
+        )
 
         self._set_defaults()
 
