@@ -10,6 +10,7 @@ Utilities for working with
 import importlib.util
 import inspect
 import io
+import logging
 import os
 import shutil
 import sys
@@ -22,6 +23,10 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.utils as fou
 import fiftyone.types as fot
 import huggingface_hub as hfh
+
+
+logger = logging.getLogger(__name__)
+
 
 datasets = fou.lazy_import(
     "datasets", callback=lambda: fou.ensure_package("datasets")
@@ -292,7 +297,7 @@ def _is_classification_field(feature):
 
 
 def _add_classification_field(fo_dataset, hf_dataset, feature_name):
-    print(f"Adding classification field {feature_name} to dataset")
+    logger.info(f"Adding classification field {feature_name} to dataset")
     fo_dataset.add_sample_field(
         feature_name,
         fo.EmbeddedDocumentField,
@@ -372,7 +377,7 @@ def _is_detection_field(feature):
 
 
 def _add_detections_field(fo_dataset, hf_dataset, feature_name):
-    print(f"Adding detections field {feature_name} to dataset")
+    logger.info(f"Adding detections field {feature_name} to dataset")
 
     image_widths = fo_dataset.values("metadata.width")
     image_heights = fo_dataset.values("metadata.height")
@@ -415,7 +420,7 @@ def _add_detections_field(fo_dataset, hf_dataset, feature_name):
 
 def _convert_hf_type_to_fiftyone(fo_dataset, hf_dataset, feature_name):
     feature_type = hf_dataset.features[feature_name]
-    print(f"Converting feature {feature_name} of type {feature_type}")
+    logger.info(f"Converting feature {feature_name} of type {feature_type}")
 
     if isinstance(feature_type, datasets.features.Value):
         fo_dtype = _convert_hf_value_dtype(feature_type)
@@ -441,7 +446,7 @@ def _convert_hf_dataset_to_fiftyone(
 ):
     if "name" not in kwargs:
         kwargs["name"] = repo_id
-    print("Converting dataset")
+    logger.info("Converting dataset")
     fo_dataset = fo.Dataset(**kwargs)
     download_dir = _get_download_dir(repo_id)
     if image_field is None:
@@ -470,7 +475,7 @@ def _convert_hf_dataset_to_fiftyone(
     if isinstance(hf_dataset, datasets.DatasetDict):
         split_names = list(hf_dataset.keys())
         for split_name in split_names:
-            print(f"Processing split '{split_name}'")
+            logger.info(f"Processing split '{split_name}'")
             split = hf_dataset[split_name]
             _add_split_to_fo_dataset(
                 fo_dataset,
