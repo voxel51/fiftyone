@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import { useState } from "react";
 import { Copy as CopyIcon, Close as CloseIcon } from "@fiftyone/components";
