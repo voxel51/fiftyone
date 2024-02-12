@@ -119,6 +119,15 @@ def _create_dataset_card(repo_id, dataset, **dataset_card_kwargs):
 
 
 def push_to_hub(dataset, repo_name, private=True, **data_card_kwargs):
+    """Push a FiftyOne dataset to the Hugging Face Hub.
+
+    Args:
+        dataset: a FiftyOne dataset
+        repo_name: the name of the dataset repo to create
+        private (True): whether the repo should be private
+        data_card_kwargs: additional keyword arguments to pass to the
+            `DatasetCard` constructor
+    """
     ### export the dataset to a temp local dir
     tmp_dir = f"/tmp/{repo_name}"
 
@@ -521,6 +530,16 @@ def _load_from_hub_with_script(repo_id, *args, **kwargs):
 
 
 def load_from_hub(repo_id, *args, **kwargs):
+    """Load a dataset from the Hugging Face Hub.
+
+    Args:
+        repo_id: the ID of the dataset repo to load
+        *args: additional arguments to pass to `datasets.load_dataset`
+        **kwargs: additional keyword arguments to pass to the `Dataset` constructor
+
+    Returns:
+        a :class:`fiftyone.core.Dataset`
+    """
     if _is_convertable_to_fiftyone(repo_id):
         return _load_from_hub_with_script(repo_id, *args, **kwargs)
     else:
