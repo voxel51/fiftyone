@@ -22,11 +22,11 @@ class Object3D:
     """The base class for all 3D objects in the scene.
 
     Args:
-        name (""): the name of the object
+        name: the name of the object
         visible (True): default visibility of the object in the scene
     """
 
-    def __init__(self, name="", visible=True):
+    def __init__(self, name: str, visible=True):
         self.name = name
         self.visible = visible
 

@@ -1,8 +1,17 @@
+"""
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
+
+from math import pi as PI
+
+from pydantic import field_validator
 from pydantic.dataclasses import dataclass
 
-from .transformation import Vector3
 from .object_3d import Object3D
-from math import pi as PI
+from .transformation import Vec3UnionType, Vector3
+from .validators import convert_list_to_vec3
 
 COLOR_DEFAULT_WHITE = "#ffffff"
 
@@ -18,6 +27,12 @@ class Light(Object3D):
 
     color: str = COLOR_DEFAULT_WHITE
     intensity: float = 1.0
+
+    def _to_dict_extra(self):
+        return super()._to_dict_extra() | {
+            "color": self.color,
+            "intensity": self.intensity,
+        }
 
 
 @dataclass
@@ -42,7 +57,16 @@ class DirectionalLight(Light):
         target ([0,0,0]): the target of the light
     """
 
-    target: Vector3 = Vector3(0, 0, 0)
+    target: Vec3UnionType = Vector3(0, 0, 0)
+
+    _normalize_target = field_validator("target", mode="before")(
+        convert_list_to_vec3
+    )
+
+    def _to_dict_extra(self):
+        return super()._to_dict_extra() | {
+            "target": self.target.to_arr().tolist()
+        }
 
 
 @dataclass
@@ -50,13 +74,18 @@ class PointLight(Light):
     """Represents a point light.
 
     Args:
-        position (Vector3): the position of the light
         distance (0.0): the distance at which the light's intensity is zero
         decay (2.0): the amount the light dims along the distance of the light
     """
 
     distance: float = 0.0
     decay: float = 2.0
+
+    def _to_dict_extra(self):
+        return super()._to_dict_extra() | {
+            "distance": self.distance,
+            "decay": self.decay,
+        }
 
 
 @dataclass
@@ -71,8 +100,21 @@ class SpotLight(Light):
         penumbra (0.0): the angle of the penumbra of the light's spotlight, in radians
     """
 
-    target: Vector3 = Vector3(0, 0, 0)
+    target: Vec3UnionType = Vector3(0, 0, 0)
     distance: float = 0.0
     decay: float = 2.0
     angle: float = PI / 3
     penumbra: float = 0.0
+
+    _normalize_target = field_validator("target", mode="before")(
+        convert_list_to_vec3
+    )
+
+    def _to_dict_extra(self):
+        return super()._to_dict_extra() | {
+            "target": self.target.to_arr().tolist(),
+            "distance": self.distance,
+            "decay": self.decay,
+            "angle": self.angle,
+            "penumbra": self.penumbra,
+        }

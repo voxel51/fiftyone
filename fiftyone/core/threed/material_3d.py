@@ -1,6 +1,12 @@
-from pydantic.dataclasses import dataclass
+"""
+| Copyright 2017-2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 
 from typing import Literal
+
+from pydantic.dataclasses import dataclass
 
 COLOR_DEFAULT_GRAY = "#808080"
 COLOR_DEFAULT_DARK_GRAY = "#111111"
@@ -22,6 +28,13 @@ class Material3D:
     transparent: bool = False
     vertex_colors: bool = False
 
+    def as_dict(self):
+        return {
+            "opacity": self.opacity,
+            "transparent": self.transparent,
+            "vertex_colors": self.vertex_colors,
+        }
+
 
 @dataclass
 class PointcloudMaterial(Material3D):
@@ -42,12 +55,23 @@ class PointcloudMaterial(Material3D):
     point_size: float = 0.5
     attenuate_by_distance: bool = False
 
+    def as_dict(self):
+        return super().as_dict() | {
+            "shading_mode": self.shading_mode,
+            "custom_color": self.custom_color,
+            "point_size": self.point_size,
+            "attenuate_by_distance": self.attenuate_by_distance,
+        }
+
 
 @dataclass
 class MeshMaterial(Material3D):
     """Represents a mesh material."""
 
     wireframe: bool = False
+
+    def as_dict(self):
+        return super().as_dict() | {"wireframe": self.wireframe}
 
 
 @dataclass
@@ -62,6 +86,9 @@ class MeshBasicMaterial(MeshMaterial):
     """
 
     color: str = COLOR_DEFAULT_GRAY
+
+    def as_dict(self):
+        return super().as_dict() | {"color": self.color}
 
 
 @dataclass
@@ -87,6 +114,15 @@ class MeshLambertMaterial(MeshMaterial):
     emissive_intensity: float = 0.0
     reflectivity: float = 1.0
     refraction_ratio: float = 0.98
+
+    def as_dict(self):
+        return super().as_dict() | {
+            "color": self.color,
+            "emissive_color": self.emissive_color,
+            "emissive_intensity": self.emissive_intensity,
+            "reflectivity": self.reflectivity,
+            "refraction_ratio": self.refraction_ratio,
+        }
 
 
 @dataclass
@@ -114,6 +150,17 @@ class MeshPhongMaterial(MeshMaterial):
     specular_color: str = COLOR_DEFAULT_DARK_GRAY
     reflectivity: float = 1.0
     refraction_ratio: float = 0.98
+
+    def as_dict(self):
+        return super().as_dict() | {
+            "color": self.color,
+            "emissive_color": self.emissive_color,
+            "emissive_intensity": self.emissive_intensity,
+            "shininess": self.shininess,
+            "specular_color": self.specular_color,
+            "reflectivity": self.reflectivity,
+            "refraction_ratio": self.refraction_ratio,
+        }
 
 
 @dataclass
