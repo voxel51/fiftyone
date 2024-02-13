@@ -910,6 +910,10 @@ ________________
 FiftyOne's Hugging Face Hub integration allows you to push datasets to and load
 datasets from the `Hugging Face Hub <https://huggingface.co/docs/hub/index>`_.
 
+💡 Want to see 20+ Hugging Face datasets visualized with FiftyOne? Browse them
+for free at `try.fiftyone.ai <https://try.fiftyone.ai/datasets?page=1&pageSize=25&search=tags%3Ahugging-face>`_,
+where they are catalogued with the tag `hugging-face`.
+
 .. _huggingface-hub-setup:
 
 Setup
