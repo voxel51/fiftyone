@@ -1076,7 +1076,6 @@ the `fiftyone.core.dataset.Dataset` constructor to the
 will be passed through to the `fiftyone.core.dataset.Dataset` constructor when
 the dataset is loaded.
 
-
 .. _huggingface-hub-loading-hf-datasets:
 
 Loading Hugging Face datasets from the Hub
@@ -1132,6 +1131,14 @@ loading the Hugging Face dataset using the `datasets` library:
 
     # launch app
     session = fo.launch_app(dataset)
+
+
+For datasets with multiple splits, you can load a specific split by passing the
+`split` argument to the :meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>`.
+Additionally, if a dataset has multiple sub-datasets, such as `SVHN <https://huggingface.co/datasets/svhn>`_, 
+you can specify the sub-dataset to load via a second positional argument. 
+Generally speaking, :meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>`
+will pass any positional arguments it receives to the `datasets.load_dataset()`.
 
 
 .. _huggingface-hub-loading-custom-datasets:
