@@ -58,3 +58,6 @@ class Quaternion:
     def to_arr(self):
         """Convert the quaternion to a numpy array."""
         return np.array([self.x, self.y, self.z, self.w])
+
+
+Vec3UnionType = Vector3 | list[float] | tuple[float]

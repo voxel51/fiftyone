@@ -6,10 +6,72 @@ Fiftyone 3D Scene.
 |
 """
 import json
+from typing import List, Optional
 
-from .object_3d import Object3D, Vector3
 from pydantic.dataclasses import dataclass
-from typing import List
+
+from .object_3d import Object3D
+from .transformation import Vec3UnionType, Vector3
+from .validators import vec3_normalizing_validator
+
+
+@dataclass
+class CameraConfig:
+    """Represents the configuration of a 3D camera.
+
+    Args:
+        position (None): the position of the camera
+        look_at (None): the point the camera is looking at
+        up (None): the up vector of the camera
+        fov (None): the field of view of the camera
+        aspect (None): the aspect ratio of the camera
+        near (None): the near clipping plane of the camera
+        far (None): the far clipping plane of the camera
+    """
+
+    position: Optional[Vec3UnionType] = None
+    look_at: Optional[Vec3UnionType] = None
+    up: Optional[Vec3UnionType] = None
+
+    fov: float | None = None
+    aspect: float | None = None
+    near: float | None = None
+    far: float | None = None
+
+    _ensure_position_is_normalized: classmethod = vec3_normalizing_validator(
+        "position"
+    )
+    _ensure_look_at_is_normalized: classmethod = vec3_normalizing_validator(
+        "look_at"
+    )
+    _ensure_up_is_normalized: classmethod = vec3_normalizing_validator("up")
+
+    def as_dict(self):
+        return {
+            "position": self.position.to_arr().tolist()
+            if self.position
+            else None,
+            "look_at": self.look_at.to_arr().tolist()
+            if self.look_at
+            else None,
+            "up": self.up.to_arr().tolist() if self.up else None,
+            "fov": self.fov,
+            "aspect": self.aspect,
+            "near": self.near,
+            "far": self.far,
+        }
+
+    @staticmethod
+    def from_dict(d):
+        return CameraConfig(
+            position=d.get("position"),
+            look_at=d.get("look_at"),
+            up=d.get("up"),
+            fov=d.get("fov"),
+            aspect=d.get("aspect"),
+            near=d.get("near"),
+            far=d.get("far"),
+        )
 
 
 @dataclass(frozen=True)
