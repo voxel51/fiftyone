@@ -25,6 +25,10 @@ What's New
   `#3973 <https://github.com/voxel51/fiftyone/pull/3973>`_
 - Added :class:`fiftyone.operators.types.ViewTargetProperty` to make it simpler to add view selection to a :class:`fiftyone.operators.Operator`
   `#4076 <https://github.com/voxel51/fiftyone/pull/4076>`_
+- Added support for apply monocular depth estimation transformers from the 
+  Hugging Face `transformers` library directly to FiftyOne datasets
+  `#4082 <https://github.com/voxel51/fiftyone/pull/4035>`_
+  
 
 Bugs
 
