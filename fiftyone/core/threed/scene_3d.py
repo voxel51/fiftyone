@@ -8,7 +8,16 @@ Fiftyone 3D Scene.
 import json
 
 from .object_3d import Object3D, Vector3
+from pydantic.dataclasses import dataclass
 from typing import List
+
+
+@dataclass(frozen=True)
+class SceneConfig:
+    """Represents the configuration of a 3D scene."""
+
+    default_camera_position: Vector3 | List[float] | None = None
+    default_up = Vector3(0, 1, 0)
 
 
 class Scene(Object3D):

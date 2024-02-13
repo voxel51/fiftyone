@@ -3,6 +3,11 @@
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+from typing import Literal
+
+from pydantic.dataclasses import dataclass
+
+from .material_3d import Material3D
 from .object_3d import Object3D
 
 

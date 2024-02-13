@@ -4,6 +4,14 @@
 |
 """
 
+from .lights import AmbientLight, DirectionalLight, PointLight, SpotLight
+from .material_3d import (
+    MeshBasicMaterial,
+    MeshDepthMaterial,
+    MeshLambertMaterial,
+    MeshPhongMaterial,
+    PointcloudMaterial,
+)
 from .mesh import *
 from .object_3d import *
 from .pointcloud import *
