@@ -313,7 +313,7 @@ class ColorScheme(EmbeddedDocument):
     @classmethod
     def from_dict(cls, d):
         d = dict(**d)
-        d["_id"] = ObjectId(d["id"])
+        d["_id"] = ObjectId(d.get("id", None))
         return super().from_dict(d)
 
 

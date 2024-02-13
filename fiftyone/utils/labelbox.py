@@ -151,7 +151,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supports_video_sample_fields(self):
-        return False  # @todo resolve FiftyOne bug to allow this to be True
+        return True
 
     @property
     def requires_label_schema(self):
@@ -585,7 +585,10 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
-        is_video = samples.media_type == fomm.VIDEO
+        is_video = (samples.media_type == fomm.VIDEO) or (
+            samples.media_type == fomm.GROUP
+            and samples.group_media_types[samples.group_slice] == fomm.VIDEO
+        )
 
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
@@ -641,8 +644,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
-        is_video = results._samples.media_type == fomm.VIDEO
-
+        is_video = (results._samples.media_type == fomm.VIDEO) or (
+            results._samples.media_type == fomm.GROUP
+            and results._samples.group_media_types[
+                results._samples.group_slice
+            ]
+            == fomm.VIDEO
+        )
         annotations = {}
 
         if classes_as_attrs:
@@ -675,7 +683,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 video_d_list = self._get_video_labels(d["Label"])
                 frames = {}
                 for label_d in video_d_list:
-                    frame_number = label_d["frameNumber"]
+                    frame_number = int(label_d["frameNumber"])
                     frame_id = frame_id_map[sample_id][frame_number]
                     labels_dict = _parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
@@ -693,20 +701,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     label_schema,
                 )
 
-            else:
-                labels_dict = _parse_image_labels(
-                    d["Label"], frame_size, class_attr=class_attr
+            labels_dict = _parse_image_labels(
+                d["Label"], frame_size, class_attr=class_attr
+            )
+            if not classes_as_attrs:
+                labels_dict = self._process_label_fields(
+                    label_schema, labels_dict
                 )
-                if not classes_as_attrs:
-                    labels_dict = self._process_label_fields(
-                        label_schema, labels_dict
-                    )
-                annotations = self._add_labels_to_results(
-                    annotations,
-                    labels_dict,
-                    sample_id,
-                    label_schema,
-                )
+            annotations = self._add_labels_to_results(
+                annotations,
+                labels_dict,
+                sample_id,
+                label_schema,
+            )
 
         return annotations
 
@@ -1013,6 +1020,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return metadata
 
     def _get_video_labels(self, label_dict):
+        if "frames" not in label_dict:
+            return {}
+
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
@@ -2297,28 +2307,34 @@ def _parse_attributes(cd_list):
     attributes = {}
 
     for cd in cd_list:
-        name = cd["value"]
-        if "answer" in cd:
-            answer = cd["answer"]
-            if isinstance(answer, list):
-                # Dropdown
-                answers = [_parse_attribute(a["value"]) for a in answer]
-                if len(answers) == 1:
-                    answers = answers[0]
+        if isinstance(cd, list):
+            attributes.update(_parse_attributes(cd))
 
-                attributes[name] = answers
+        else:
+            name = cd["value"]
+            if "answer" in cd:
+                answer = cd["answer"]
+                if isinstance(answer, list):
+                    # Dropdown
+                    answers = [_parse_attribute(a["value"]) for a in answer]
+                    if len(answers) == 1:
+                        answers = answers[0]
 
-            elif isinstance(answer, dict):
-                # Radio question
-                attributes[name] = _parse_attribute(answer["value"])
-            else:
-                # Free text
-                attributes[name] = _parse_attribute(answer)
+                    attributes[name] = answers
 
-        if "answers" in cd:
-            # Checklist
-            answer = cd["answers"]
-            attributes[name] = [_parse_attribute(a["value"]) for a in answer]
+                elif isinstance(answer, dict):
+                    # Radio question
+                    attributes[name] = _parse_attribute(answer["value"])
+                else:
+                    # Free text
+                    attributes[name] = _parse_attribute(answer)
+
+            if "answers" in cd:
+                # Checklist
+                answer = cd["answers"]
+                attributes[name] = [
+                    _parse_attribute(a["value"]) for a in answer
+                ]
 
     return attributes
 

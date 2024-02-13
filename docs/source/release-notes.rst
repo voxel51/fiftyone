@@ -318,7 +318,7 @@ Features
 - Added support for manually marking delegated operations
   :ref:`as failed <teams-runs-mark-as-failed>`
 - Added support for
-  :ref:`monioring the progress <teams-runs-monitoring-progress>`
+  :ref:`monitoring the progress <teams-runs-monitoring-progress>`
   of delegated operations
 - Improved handling of plugin secrets
 - Added the ability to attach authorization tokens to media/asset requests
