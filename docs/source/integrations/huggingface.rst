@@ -992,3 +992,251 @@ If you want to keep your dataset private, you can pass `private=True` to the
     fouh.push_to_hub(dataset, "quickstart", private=True)
 
 
+.. _huggingface-hub-dataset-card-push:
+
+Customizing the dataset card
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When you push a dataset to the Hub, FiftyOne will automatically generate a
+`dataset card <https://huggingface.co/docs/hub/en/datasets-cards>`_ for it. You 
+can customize the dataset card by passing any keyword arguments that are 
+accepted by the `datasets.DatasetCardData` constructor to the 
+:meth:`push_to_hub() <fiftyone.utils.hf_hub.push_to_hub>` method. For example,
+you can specify the dataset's license:
+
+.. code-block:: python
+    :linenos:
+
+    fouh.push_to_hub(
+        dataset,
+        "quickstart",
+        license="CC-BY-SA-4.0",
+    )
+
+
+For a full list of the available keyword arguments, 
+see `this example <https://github.com/huggingface/hub-docs/blob/main/datasetcard.md?plain=1>`_.
+
+
+.. _huggingface-hub-loading-datasets:
+
+Loading datasets from the Hub
+------------------------------
+
+When it comes to loading datasets from the Hugging Face Hub, there is a wide
+range of possible formats the dataset can be in. Broadly speaking, these are 
+divided into three categories:
+
+1. FiftyOne datasets, like the ones you push to the Hub using 
+   :meth:`push_to_hub() <fiftyone.utils.hf_hub.push_to_hub>`.
+2. Hugging Face datasets that adhere to standards for representing 
+   image classification and object detection tasks. 
+3. Custom datasets that don't adhere to any standard format.
+
+The `fiftyone.utils.hf_hub` module provides a single method, 
+:meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>`, that can load
+datasets from the Hub in any of these formats, when given the correct arguments.
+
+
+.. _huggingface-hub-loading-fiftyone-datasets:
+
+Loading FiftyOne datasets from the Hub
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To load a FiftyOne dataset from the Hub, simply pass the `repo_id` containing
+the dataset to the :meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>`
+method. For example, to load the `quickstart` dataset that we pushed to the Hub
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.hf_hub as fouh
+
+    # load from HF hub
+    quickstart = fouh.load_from_hub(
+        "<your-hf-username>/quickstart", 
+        name="hf-quickstart-dataset",
+        persistent=True
+    )
+
+    # launch app
+    session = fo.launch_app(quickstart)
+
+
+Notice that we passed the `name` and `persistent` arguments to the 
+:meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>` method. These are
+keyword arguments that are accepted by the `fiftyone.core.dataset.Dataset`
+constructor. In fact, you can pass any keyword arguments that are accepted by
+the `fiftyone.core.dataset.Dataset` constructor to the 
+:meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>` method, and they
+will be passed through to the `fiftyone.core.dataset.Dataset` constructor when
+the dataset is loaded.
+
+
+.. _huggingface-hub-loading-hf-datasets:
+
+Loading Hugging Face datasets from the Hub
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Many of the common computer vision datasets available on the Hugging Face Hub
+adhere to standards for representing 
+`image classification <https://huggingface.co/docs/datasets/en/image_classification>`_ 
+and `object detection <https://huggingface.co/docs/datasets/en/object_detection>`_
+tasks. In particular, classes are enumerated via `ClassLabel`, and bounding
+boxes are stored in COCO format.
+
+If the Hugging Face repo containing this dataset has a `fiftyone.py` file — even
+if it's just a stub — you can load the dataset using the 
+:meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>` method, and FiftyOne
+will automatically convert it to a FiftyOne dataset:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.hf_hub as fouh
+
+    # load from HF hub
+    pokemon = fouh.load_from_hub(
+        "jamarks/pokemon_copy", 
+        name="pokemon",
+    )
+
+    # launch app
+    session = fo.launch_app(pokemon)
+
+
+💡 As a dataset author, even if you uploaded your dataset to the Hub in a non-FiftyOne
+format, consider adding a `fiftyone.py` file to your repo to make it easier for
+FiftyOne users to load your dataset!
+
+If the Hugging Face repo containing the dataset does not have a `fiftyone.py`
+then you can still load the dataset using the :class:`DefaultHuggingFaceLoader`, after
+loading the Hugging Face dataset using the `datasets` library:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone.utils.hf_hub as fouh
+    import datasets
+
+    # load from HF hub
+    hf_dataset = load_dataset("cppe-5", split='train')
+
+    # load using the default loader
+    loader = fouh.DefaultHuggingFaceLoader("cppe-5", hf_dataset)
+    dataset = loader.load()
+
+    # launch app
+    session = fo.launch_app(dataset)
+
+
+.. _huggingface-hub-loading-custom-datasets:
+
+Loading custom datasets from the Hub
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If the dataset you want to load from the Hub doesn't adhere to any standard
+format, you can define a custom loader to load it. To do this, subclass the
+:class:`fiftyone.utils.hf_hub.BaseHuggingFaceLoader` class and implement the 
+`load()` method.
+
+As a simple example, let's write a loader for the 
+`Fashionpedia detection dataset <https://huggingface.co/datasets/detection-datasets/fashionpedia`_,
+which has detections in VOC format:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.hf_hub as fouh
+    import datasets
+
+    import fiftyone as fo
+    import fiftyone.utils.hf_hub as fouh
+    import datasets
+
+    class FashionpediaLoader(fouh.BaseHuggingFaceLoader):
+
+        def load(self):
+            if isinstance(self.hf_dataset, datasets.DatasetDict):
+                split_names = list(self.hf_dataset.keys())
+                self.hf_dataset = self.hf_dataset[split_names[0]]
+            if "name" in self.kwargs:
+                self.kwargs.pop("name")
+            dataset = fo.Dataset(name="fashionopedia-val", **self.kwargs)
+            
+            label_classes = self.hf_dataset.features['objects'].feature['category'].names
+
+            samples = []
+
+            download_dir = fouh._get_download_dir(self.repo_id)
+
+            for i, item in enumerate(self.hf_dataset):
+                image = item['image']
+                basename = f"image_{i}"
+                save_path = fouh._save_PIL_image_to_disk(image, download_dir, basename)
+                
+                width, height = item['width'], item['height']
+
+                objs = item['objects']
+                categories = objs['category']
+                bboxes = objs['bbox']
+                dets = []
+                
+                for cat, bbox in zip(categories, bboxes):
+                    x0, y0, x1, y1 = bbox
+                    x0n, y0n, x1n, y1n = x0/width, y0/height, x1/width, y1/height
+                    fo_bbox = [x0n, y0n, x1n-x0n, y1n-y0n]
+                    label = label_classes[cat]
+                    dets.append(fo.Detection(label=label, bounding_box=fo_bbox))
+
+                detections = fo.Detections(detections=dets)
+
+                samples.append(fo.Sample(filepath=save_path, objs=detections))
+            dataset.add_samples(samples)
+            return dataset
+
+
+That's all that we need! If this is stored in a `fiftyone.py` file in the repo
+containing the Fashionpedia dataset, we can load the dataset using the
+:meth:`load_from_hub() <fiftyone.utils.hf_hub.load_from_hub>` method. For instance,
+`this copy <https://huggingface.co/datasets/jamarks/fashionpedia-copy>`_ of the 
+Fashionpedia dataset available on the Hub can be loaded as follows: 
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.hf_hub as fouh
+    # load from HF hub
+    dataset = fouh.load_from_hub("jamarks/fashionpedia-copy")
+
+    # launch app
+    session = fo.launch_app(dataset)
+
+
+How does this work? When a `fiftyone.py` file is present in the repo, FiftyOne
+will download the file and parse it for a class that subclasses 
+:class:`fiftyone.utils.hf_hub.BaseHuggingFaceLoader`. If it finds one, it will 
+use that class to load the dataset. If it doesn't find one, it will use the
+:class:`DefaultHuggingFaceLoader` to load the dataset.
+
+We can also convert the dataset to a FiftyOne dataset directly using the
+`FashionpediaLoader` we defined:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.hf_hub as fouh
+    import datasets
+
+    # load from HF hub
+    hf_dataset = datasets.load_dataset("jamarks/fashionpedia-copy")
+    loader = FashionpediaLoader("fashionpedia", hf_dataset)
+    dataset = loader.load()
+
+    # launch app
+    session = fo.launch_app(dataset)
+
+
