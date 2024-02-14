@@ -42,6 +42,7 @@ export const PANEL_ORDER_VISIBILITY = -1;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
 export const PANEL_ORDER_LIGHTS = 2;
 export const PANEL_ORDER_ANIMATIONS = 3;
+export const PANEL_ORDER_SETTINGS = 1000;
 
 export const COLOR_POOL = [
   0x33ff57, // Bright Green
