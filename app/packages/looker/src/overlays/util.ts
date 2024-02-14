@@ -2,13 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import {
-  COLOR_BY,
-  Field,
-  getColor,
-  REGRESSION,
-  Schema,
-} from "@fiftyone/utilities";
+import { COLOR_BY, getColor, REGRESSION } from "@fiftyone/utilities";
 import colorString from "color-string";
 import { INFO_COLOR } from "../constants";
 import {
@@ -326,17 +320,4 @@ const getLabelColorByValue = ({
     key = embeddedDocType === REGRESSION ? "value" : "label";
     return getColor(coloring.pool, coloring.seed, label[key]);
   }
-};
-
-export const getFieldInfo = (
-  keys: string[],
-  schema: Schema
-): Field | undefined => {
-  let field: Field;
-  for (let index = 0; index < keys.length; index++) {
-    field = schema[keys[index]];
-    schema = field?.fields;
-  }
-
-  return field;
 };

@@ -113,7 +113,7 @@ const imputeOverlayFromPath = async (
 ) => {
   // handle all list types here
   if (cls === DETECTIONS) {
-    label.detections.forEach((detection) =>
+    label?.detections?.forEach((detection) =>
       imputeOverlayFromPath(
         field,
         detection,
@@ -393,6 +393,7 @@ interface FrameChunkResponse extends FrameChunk {
   colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
+  schema: Schema;
 }
 
 const createReader = ({
@@ -408,6 +409,7 @@ const createReader = ({
   dataset,
   view,
   group,
+  schema,
 }: {
   chunkSize: number;
   coloring: Coloring;
@@ -421,6 +423,7 @@ const createReader = ({
   dataset: string;
   view: Stage[];
   group: BaseConfig["group"];
+  schema: Schema;
 }): FrameStream => {
   let cancelled = false;
 
@@ -460,6 +463,7 @@ const createReader = ({
               colorscale,
               labelTagColors,
               selectedLabelTags,
+              schema,
             });
             frameNumber = range[1] + 1;
           } catch (error) {
@@ -503,7 +507,7 @@ const getSendChunk =
             value.colorscale,
             value.labelTagColors,
             value.selectedLabelTags,
-            schema
+            value.schema
           )
         )
       ).then((buffers) => {
@@ -546,6 +550,7 @@ interface SetStream {
   dataset: string;
   view: Stage[];
   group: BaseConfig["group"];
+  schema: Schema;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -563,6 +568,7 @@ const setStream = ({
   dataset,
   view,
   group,
+  schema,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -580,6 +586,7 @@ const setStream = ({
     dataset,
     view,
     group,
+    schema,
   });
 
   stream.reader.read().then(getSendChunk(uuid));

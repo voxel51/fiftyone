@@ -165,6 +165,7 @@ const { acquireReader, addFrame } = (() => {
       dataset,
       view,
       group,
+      schema,
     });
     return subscription;
   };
@@ -348,11 +349,8 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       ? sample.frames
       : [{ frame_number: 1 }];
 
-    const schema = withFrames(
-      this.state.config.fieldSchema.frames.fields || {}
-    );
     const providedFrameOverlays = providedFrames.map((frameSample) =>
-      loadOverlays(withFrames(frameSample), schema)
+      loadOverlays(withFrames(frameSample), this.state.config.fieldSchema)
     );
 
     const frames = providedFrames.map((frameSample, i) => ({
@@ -449,7 +447,7 @@ export class VideoLooker extends AbstractLooker<VideoState, VideoSample> {
       dataset: this.state.config.dataset,
       group: this.state.config.group,
       view: this.state.config.view,
-      schema: withFrames(this.state.config.fieldSchema.frames.fields || {}),
+      schema: this.state.config.fieldSchema,
     });
   }
 

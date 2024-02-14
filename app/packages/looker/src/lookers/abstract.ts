@@ -700,6 +700,7 @@ export abstract class AbstractLooker<
       labelTagColors: this.state.options.labelTagColors,
       selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,
+      schema: this.state.config.fieldSchema,
       uuid: messageUUID,
     } as ProcessSample);
   }
