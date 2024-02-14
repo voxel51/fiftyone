@@ -6,16 +6,13 @@
 
 from math import pi as PI
 
-from pydantic.dataclasses import dataclass
-
 from .object_3d import Object3D
 from .transformation import Vec3UnionType, Vector3
-from .validators import vec3_normalizing_validator
+from .validators import normalize_to_vec3
 
 COLOR_DEFAULT_WHITE = "#ffffff"
 
 
-@dataclass
 class Light(Object3D):
     """Base class for 3D lights.
 
@@ -24,8 +21,17 @@ class Light(Object3D):
         intensity (1.0): the intensity of the light in the range [0, 1]
     """
 
-    color: str = COLOR_DEFAULT_WHITE
-    intensity: float = 1.0
+    def __init__(
+        self,
+        color: str = COLOR_DEFAULT_WHITE,
+        intensity: float = 1.0,
+        **kwargs,
+    ):
+        # remove 'name' from kwargs, if present
+        kwargs = {k: v for k, v in kwargs.items() if k != "name"}
+        super().__init__(name=self.__class__.__name__, **kwargs)
+        self.color = color
+        self.intensity = intensity
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
@@ -34,17 +40,23 @@ class Light(Object3D):
         }
 
 
-@dataclass
 class AmbientLight(Light):
     """Represents an ambient light.
 
     This light globally illuminates all objects in the scene equally.
     """
 
-    pass
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in [
+            ("name", self.name),
+            ("color", self.color),
+            ("intensity", self.intensity),
+        ]:
+            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+        return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
 
-@dataclass
 class DirectionalLight(Light):
     """Represents a directional light.
 
@@ -54,11 +66,34 @@ class DirectionalLight(Light):
 
     Args:
         target ([0,0,0]): the target of the light
+        color ("#ffffff"): the color of the light
+        intensity (1.0): the intensity of the light in the range [0, 1]
+        kwargs: arbitrary keyword arguments for
+            :class:`fiftyone.core.threed.Object3D` base class
     """
 
     target: Vec3UnionType = Vector3(0, 0, 0)
 
-    _ensure_target_is_normalized = vec3_normalizing_validator("target")
+    def __init__(
+        self,
+        target: Vec3UnionType = Vector3(0, 0, 0),
+        color: str = COLOR_DEFAULT_WHITE,
+        intensity: float = 1.0,
+        **kwargs,
+    ):
+        super().__init__(color=color, intensity=intensity, **kwargs)
+        self.target = normalize_to_vec3(target)
+
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in [
+            ("name", self.name),
+            ("target", self.target),
+            ("color", self.color),
+            ("intensity", self.intensity),
+        ]:
+            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+        return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
@@ -66,7 +101,6 @@ class DirectionalLight(Light):
         }
 
 
-@dataclass
 class PointLight(Light):
     """Represents a point light.
 
@@ -75,8 +109,29 @@ class PointLight(Light):
         decay (2.0): the amount the light dims along the distance of the light
     """
 
-    distance: float = 0.0
-    decay: float = 2.0
+    def __init__(
+        self,
+        distance: float = 0.0,
+        decay: float = 2.0,
+        color: str = COLOR_DEFAULT_WHITE,
+        intensity: float = 1.0,
+        **kwargs,
+    ):
+        super().__init__(color=color, intensity=intensity, **kwargs)
+        self.distance = distance
+        self.decay = decay
+
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in [
+            ("name", self.name),
+            ("distance", self.distance),
+            ("decay", self.decay),
+            ("color", self.color),
+            ("intensity", self.intensity),
+        ]:
+            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+        return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
@@ -85,7 +140,6 @@ class PointLight(Light):
         }
 
 
-@dataclass
 class SpotLight(Light):
     """Represents a spot light.
 
@@ -97,13 +151,38 @@ class SpotLight(Light):
         penumbra (0.0): the angle of the penumbra of the light's spotlight, in radians
     """
 
-    target: Vec3UnionType = Vector3(0, 0, 0)
-    distance: float = 0.0
-    decay: float = 2.0
-    angle: float = PI / 3
-    penumbra: float = 0.0
+    def __init__(
+        self,
+        target: Vec3UnionType = None,
+        distance: float = 0.0,
+        decay: float = 2.0,
+        angle: float = PI / 3,
+        penumbra: float = 0.0,
+        color: str = COLOR_DEFAULT_WHITE,
+        intensity: float = 1.0,
+        **kwargs,
+    ):
+        super().__init__(color=color, intensity=intensity, **kwargs)
+        self.target = normalize_to_vec3(target) if target else Vector3(0, 0, 0)
+        self.distance = distance
+        self.decay = decay
+        self.angle = angle
+        self.penumbra = penumbra
 
-    _ensure_target_is_normalized = vec3_normalizing_validator("target")
+    def __repr__(self):
+        kwargs_list = []
+        for k, v in [
+            ("name", self.name),
+            ("target", self.target),
+            ("distance", self.distance),
+            ("decay", self.decay),
+            ("angle", self.angle),
+            ("penumbra", self.penumbra),
+            ("color", self.color),
+            ("intensity", self.intensity),
+        ]:
+            kwargs_list.append(f"{k}={v if not isinstance(v, (str)) else v!r}")
+        return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
