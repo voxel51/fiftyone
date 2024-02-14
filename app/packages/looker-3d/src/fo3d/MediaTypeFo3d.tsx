@@ -1,18 +1,19 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, RootState } from "@react-three/fiber";
 import { Leva } from "leva";
 import {
   Suspense,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
-import { Box3, Object3D, Vector3 } from "three";
+import { Box3, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   Looker3dPluginSettings,
@@ -74,6 +75,10 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const orbitControlsRef = useRef<OrbitControlsImpl>();
+
+  const onCanvasCreated = useCallback((state: RootState) => {
+    cameraRef.current = state.camera as PerspectiveCamera;
+  }, []);
 
   const [sceneBoundingBox, setSceneBoundingBox] = useState<Box3>();
 
@@ -249,7 +254,11 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         />
       </LevaContainer>
 
-      <Canvas id={CANVAS_WRAPPER_ID}>
+      <Canvas
+        id={CANVAS_WRAPPER_ID}
+        camera={{ position: defaultCameraPositionComputed, up: upVector }}
+        onCreated={onCanvasCreated}
+      >
         <Suspense fallback={<SpinningCube />}>
           <Fo3dEnvironment
             assetsGroupRef={assetsGroupRef}
@@ -257,14 +266,12 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
             sceneBoundingBox={sceneBoundingBox}
             setSceneBoundingBox={setSceneBoundingBox}
           />
-          <PerspectiveCamera
+          <OrbitControls
+            ref={orbitControlsRef}
             makeDefault
-            position={defaultCameraPositionComputed}
-            matrixAutoUpdate={true}
-            up={upVector}
-            ref={cameraRef}
+            minPolarAngle={0}
+            maxPolarAngle={Math.PI / 1.75}
           />
-          <OrbitControls ref={orbitControlsRef} />
 
           <group ref={assetsGroupRef} visible={Boolean(sceneBoundingBox)}>
             <FoScene scene={foSceneGraph} />

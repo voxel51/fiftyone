@@ -1,5 +1,8 @@
-import { useControls } from "leva";
-import { useMemo } from "react";
+import { Bounds, useBounds } from "@react-three/drei";
+import { ThreeEvent } from "@react-three/fiber";
+import { folder, useControls } from "leva";
+import { useCallback, useMemo } from "react";
+import { PANEL_ORDER_SETTINGS } from "../constants";
 import {
   FbxAsset,
   FoSceneGraph,
@@ -19,6 +22,7 @@ import { Pcd } from "./Pcd";
 import { Ply } from "./Ply";
 import { Stl } from "./Stl";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
+import { SelectToZoom } from "./SelectToZoom";
 
 interface FoSceneProps {
   scene: FoSceneGraph;
@@ -32,11 +36,12 @@ const getAssetForNode = (node: FoSceneNode) => {
   const label = getLabelForSceneNode(node);
 
   let jsx: JSX.Element = null;
+  const key = `${label}-${node.position.x}-${node.position.y}-${node.position.z}`;
 
   if (node.asset instanceof ObjAsset) {
     jsx = (
       <Obj
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         obj={node.asset as ObjAsset}
         position={node.position}
@@ -47,7 +52,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   } else if (node.asset instanceof PcdAsset) {
     jsx = (
       <Pcd
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         pcd={node.asset as PcdAsset}
         position={node.position}
@@ -58,7 +63,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   } else if (node.asset instanceof PlyAsset) {
     jsx = (
       <Ply
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         ply={node.asset as PlyAsset}
         position={node.position}
@@ -69,7 +74,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   } else if (node.asset instanceof StlAsset) {
     jsx = (
       <Stl
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         stl={node.asset as StlAsset}
         position={node.position}
@@ -80,7 +85,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   } else if (node.asset instanceof GltfAsset) {
     jsx = (
       <Gltf
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         gltf={node.asset as GltfAsset}
         position={node.position}
@@ -91,7 +96,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   } else if (node.asset instanceof FbxAsset) {
     jsx = (
       <Fbx
-        key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
+        key={key}
         name={node.name}
         fbx={node.asset as FbxAsset}
         position={node.position}
@@ -172,6 +177,21 @@ export const FoScene = ({ scene }: FoSceneProps) => {
     defaultVisibilityMap,
   ]);
 
+  const [{ selectToZoom }] = useControls(() => ({
+    Settings: folder(
+      {
+        selectToZoom: {
+          value: false,
+          label: "Select to zoom",
+        },
+      },
+      {
+        order: PANEL_ORDER_SETTINGS,
+        collapsed: true,
+      }
+    ),
+  }));
+
   const sceneR3f = useMemo(() => {
     if (!scene) {
       return null;
@@ -180,6 +200,18 @@ export const FoScene = ({ scene }: FoSceneProps) => {
     const r3fScene = getR3fSceneFromFo3dScene(scene, visibilityMap);
     return r3fScene;
   }, [scene, visibilityMap]);
+
+  if (!sceneR3f) {
+    return null;
+  }
+
+  if (selectToZoom) {
+    return (
+      <Bounds margin={1} fit clip observe>
+        <SelectToZoom>{sceneR3f}</SelectToZoom>
+      </Bounds>
+    );
+  }
 
   return sceneR3f;
 };
