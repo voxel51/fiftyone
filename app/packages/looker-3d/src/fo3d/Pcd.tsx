@@ -11,6 +11,7 @@ import {
   SHADE_BY_CUSTOM,
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
+  SHADE_BY_NONE,
   SHADE_BY_RGB,
 } from "../constants";
 import { PcdAsset } from "../hooks";
@@ -20,9 +21,18 @@ import {
   ShadeByHeight,
   ShadeByIntensity,
 } from "../renderables/pcd/shaders";
-import { currentPointSizeAtom, isPointSizeAttenuatedAtom } from "../state";
+import {
+  currentPointSizeAtom,
+  customColorMapAtom,
+  isPointSizeAttenuatedAtom,
+  shadeByAtom,
+} from "../state";
 
-const usePcdControls = () => {
+const usePcdControls = (name: string) => {
+  const [shadeBy, setShadeBy] = useRecoilState(shadeByAtom);
+  // todo: might not be a good idea to keep this in local storage without a well-defined eviction strategy
+  const [customColorMap, setCustomColorMap] =
+    useRecoilState(customColorMapAtom);
   const [pointSize, setPointSize] = useRecoilState(currentPointSizeAtom);
   const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useRecoilState(
     isPointSizeAttenuatedAtom
@@ -41,35 +51,65 @@ const usePcdControls = () => {
 
   useControls(
     () => ({
-      PointClouds: folder(
+      ["Pointcloud Settings"]: folder(
         {
           pointSize: {
             value: pointSizeNum,
             min: 0.1,
-            max: 100,
+            max: 20,
             step: 0.1,
             onChange: onChangeTextBox,
             label: "Points Size",
+            order: -2,
+          },
+          shadeBy: {
+            value: shadeBy,
+            options: [
+              SHADE_BY_NONE,
+              SHADE_BY_HEIGHT,
+              SHADE_BY_INTENSITY,
+              SHADE_BY_RGB,
+              SHADE_BY_CUSTOM,
+            ],
+            label: "Shade By",
+            onChange: setShadeBy,
+            order: -1,
+          },
+          [`${name} color`]: {
+            value: customColorMap[name] || "#ffffff",
+            label: `${name} color`,
+            onChange: (newColor: string) => {
+              setCustomColorMap((prev) => {
+                if (!prev) return { [name]: newColor };
+                return { ...prev, [name]: newColor };
+              });
+            },
+            render: () => {
+              if (shadeBy === SHADE_BY_CUSTOM) return true;
+              return false;
+            },
           },
           isPointSizeAttenuated: {
             value: isPointSizeAttenuated,
             onChange: setIsPointSizeAttenuated,
             label: "Attenuated",
+            order: 1000,
           },
         },
         {
           order: PANEL_ORDER_PCD_CONTROLS,
-          collapsed: false,
+          collapsed: true,
         }
       ),
     }),
-    [pointSizeNum, onChangeTextBox]
+    [pointSizeNum, shadeBy, onChangeTextBox]
   );
 
   return {
+    shadeBy,
+    customColorMap,
     pointSize: pointSizeNum,
     isPointSizeAttenuated,
-    shadeBy: "height",
   };
 };
 
@@ -87,12 +127,14 @@ export const Pcd = ({
   scale: Vector3;
 }) => {
   const points = useLoader(PCDLoader, pcd.pcdUrl);
-  const { pointSize, isPointSizeAttenuated, shadeBy } = usePcdControls();
-
-  console.log("point size is ", pointSize);
+  const { customColorMap, pointSize, isPointSizeAttenuated, shadeBy } =
+    usePcdControls(name);
 
   const pointsMaterial = useMemo(() => {
     const pointSizeNum = Number(pointSize);
+
+    // to trigger rerender
+    const key = `${name}-${pointSizeNum}-${isPointSizeAttenuated}-${shadeBy}-${customColorMap[name]}`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -103,7 +145,7 @@ export const Pcd = ({
             min={0}
             // todo
             max={1000}
-            key={pointSizeNum}
+            key={key}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />
@@ -130,10 +172,10 @@ export const Pcd = ({
       case SHADE_BY_CUSTOM:
         return (
           <CustomColorShader
+            key={key}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
-            // color={customColor}
-            color={"red"}
+            color={customColorMap[name] || "#ffffff"}
           />
         );
       default:
@@ -149,7 +191,7 @@ export const Pcd = ({
           />
         );
     }
-  }, [shadeBy, pointSize, isPointSizeAttenuated]);
+  }, [shadeBy, pointSize, isPointSizeAttenuated, customColorMap]);
 
   return (
     <>
