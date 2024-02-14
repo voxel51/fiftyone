@@ -16,6 +16,13 @@ import shutil
 import sys
 
 import PIL
+from PIL import (
+    JpegImagePlugin,
+    PngImagePlugin,
+    WebPImagePlugin,
+    GifImagePlugin,
+    MpoImagePlugin,
+)
 
 import fiftyone as fo
 import fiftyone.core.labels as fol
@@ -211,18 +218,18 @@ def _find_subclasses_in_module(module, base_class):
 def _save_PIL_image_to_disk(image, path, basename):
     ext = ".jpeg"
 
-    if isinstance(image, PIL.PngImagePlugin.PngImageFile):
+    if isinstance(image, PngImagePlugin.PngImageFile):
         ext = ".png"
         save_path = os.path.join(path, basename + ext)
         if not os.path.exists(save_path):
             image.save(save_path)
-    elif isinstance(image, PIL.JpegImagePlugin.JpegImageFile):
+    elif isinstance(image, JpegImagePlugin.JpegImageFile):
         save_path = os.path.join(path, basename + ext)
         if not os.path.exists(save_path):
             image.save(save_path)
     elif isinstance(
         image,
-        (PIL.MpoImagePlugin.MpoImageFile, PIL.WebPImagePlugin.WebPImageFile),
+        (MpoImagePlugin.MpoImageFile, WebPImagePlugin.WebPImageFile),
     ):
         save_path = os.path.join(path, basename + ext)
         if os.path.exists(save_path):
@@ -233,13 +240,14 @@ def _save_PIL_image_to_disk(image, path, basename):
 
         with open(save_path, "wb") as file:
             file.write(image_bytes.getvalue())
-    elif isinstance(image, PIL.GifImagePlugin.GifImageFile):
+    elif isinstance(image, GifImagePlugin.GifImageFile):
         save_path = os.path.join(path, basename + ext)
         if os.path.exists(save_path):
             return save_path
         image.convert("RGB").save(save_path, "JPEG")
     else:
-        raise ValueError(f"Image type {type(image)} not supported")
+        return Warning(f"Image type {type(image)} not supported")
+        # raise ValueError(f"Image type {type(image)} not supported")
 
     return save_path
 
@@ -429,21 +437,22 @@ def _convert_hf_type_to_fiftyone(fo_dataset, hf_dataset, feature_name):
 
     if isinstance(feature_type, datasets.features.Value):
         fo_dtype = _convert_hf_value_dtype(feature_type)
-        fo_dataset.add_sample_field(feature_name, fo_dtype)
-        vals = hf_dataset[feature_name]
-        fo_dataset.set_values(feature_name, vals)
+        _feature_name = "hf_id" if feature_name == "id" else feature_name
+        fo_dataset.add_sample_field(_feature_name, fo_dtype)
+        vals = hf_dataset[_feature_name]
+        fo_dataset.set_values(_feature_name, vals)
     elif _is_classification_field(feature_type):
-        _add_classification_field(fo_dataset, hf_dataset, feature_name)
+        _add_classification_field(fo_dataset, hf_dataset, _feature_name)
     elif _is_detection_field(feature_type):
-        _add_detections_field(fo_dataset, hf_dataset, feature_name)
+        _add_detections_field(fo_dataset, hf_dataset, _feature_name)
     elif isinstance(feature_type, datasets.Sequence):
         subfeature = feature_type.feature
         fo_subtype = _convert_hf_value_dtype(subfeature)
         fo_dataset.add_sample_field(
-            feature_name, fo.ListField, subfield=fo_subtype
+            _feature_name, fo.ListField, subfield=fo_subtype
         )
-        vals = hf_dataset[feature_name]
-        fo_dataset.set_values(feature_name, vals)
+        vals = hf_dataset[_feature_name]
+        fo_dataset.set_values(_feature_name, vals)
 
 
 def _convert_hf_dataset_to_fiftyone(
