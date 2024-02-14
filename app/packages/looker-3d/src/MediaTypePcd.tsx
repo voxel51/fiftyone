@@ -75,10 +75,6 @@ export const MediaTypePcdComponent = ({
 
   const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
 
-  useEffect(() => {
-    Object3D.DEFAULT_UP = new Vector3(...settings.defaultUp).normalize();
-  }, [settings]);
-
   useLayoutEffect(() => {
     const canvas = document.getElementById(CANVAS_WRAPPER_ID);
 
@@ -94,6 +90,18 @@ export const MediaTypePcdComponent = ({
   const isPointSizeAttenuated = useRecoilValue(isPointSizeAttenuatedAtom);
   const isPointcloudDataset = useRecoilValue(fos.isPointcloudDataset);
 
+  const upVectorNormalized = useMemo(
+    () =>
+      settings.defaultUp
+        ? new Vector3(...settings.defaultUp).normalize()
+        : new Vector3(0, 0, 1),
+    [settings]
+  );
+
+  useEffect(() => {
+    Object3D.DEFAULT_UP = upVectorNormalized.clone();
+  }, [upVectorNormalized]);
+
   const topCameraPosition = useMemo(() => {
     if (!pointCloudBounds) {
       return [1, 1, 20];
@@ -105,14 +113,12 @@ export const MediaTypePcdComponent = ({
       pointCloudBounds.max?.z
     );
 
-    const upVectorNormalized = new Vector3(...settings.defaultUp).normalize();
-
     // we want the camera to be along the up vector
     // the scaling factor determines by how much
     const scalingFactor = !isNaN(absMax) ? absMax * 2 : 20;
     const upVectorScaled = upVectorNormalized.multiplyScalar(scalingFactor);
     return [upVectorScaled.x, upVectorScaled.y, upVectorScaled.z];
-  }, [pointCloudBounds, settings]);
+  }, [pointCloudBounds, upVectorNormalized]);
 
   const defaultCameraPosition = useMemo(() => {
     const lastSavedCameraPosition =
