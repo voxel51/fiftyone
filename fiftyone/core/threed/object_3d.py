@@ -6,14 +6,15 @@ Fiftyone 3D Scene.
 |
 """
 import uuid
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from scipy.spatial.transform import Rotation
 
 import fiftyone.core.utils as fou
 
-from .transformation import Euler, Quaternion, Vector3
+from .transformation import Euler, Quaternion, Vec3UnionType, Vector3
+from .validators import normalize_to_vec3
 
 threed = fou.lazy_import("fiftyone.core.threed")
 
@@ -24,18 +25,35 @@ class Object3D:
     Args:
         name: the name of the object
         visible (True): default visibility of the object in the scene
+        position (None): the position of the object in object space. If
+        quaternion (None): the quaternion of the object in object space
+        scale (None): the scale of the object in object space
     """
 
-    def __init__(self, name: str, visible=True):
+    def __init__(
+        self,
+        name: str,
+        visible=True,
+        position: Optional[Vec3UnionType] = None,
+        scale: Optional[Vec3UnionType] = None,
+        quaternion: Optional[Quaternion] = None,
+    ):
         self.name = name
         self.visible = visible
 
-        self._position = Vector3()
+        self._position = normalize_to_vec3(position) if position else Vector3()
+        self._scale = (
+            normalize_to_vec3(scale) if scale else Vector3(1.0, 1.0, 1.0)
+        )
+        self._quaternion = quaternion or Quaternion()
+
         self._rotation = Euler()
-        self._quaternion = Quaternion()
-        self._scale = Vector3(1.0, 1.0, 1.0)
+
         self._local_transform_matrix = np.eye(4)
         self._uuid = str(uuid.uuid4())
+
+        if position or quaternion or scale:
+            self._update_matrix()
 
         self.children = []
 
@@ -64,15 +82,8 @@ class Object3D:
         return self._position
 
     @position.setter
-    def position(self, value: Vector3 | List[float] | Tuple[float, ...]):
-        if isinstance(value, (list, tuple)) and len(value) == 3:
-            value = Vector3(*value)
-        elif not isinstance(value, Vector3):
-            raise ValueError(
-                "position must be a Vector3 or a list/tuple of length 3"
-            )
-
-        self._position = value
+    def position(self, value: Vec3UnionType):
+        self._position = normalize_to_vec3(value)
         self._update_matrix()
 
     @property
@@ -115,18 +126,8 @@ class Object3D:
         return self._scale
 
     @scale.setter
-    def scale(
-        self, value: Vector3 | int | float | List[float] | Tuple[float, ...]
-    ):
-        if isinstance(value, (int, float)):
-            value = Vector3(value, value, value)
-        elif isinstance(value, (list, tuple)) and len(value) == 3:
-            value = Vector3(*value)
-        elif not isinstance(value, Vector3):
-            raise ValueError(
-                "scale must be a Vector3 or a list/tuple of length 3"
-            )
-        self._scale = value
+    def scale(self, value: Vec3UnionType):
+        self._scale = normalize_to_vec3(value)
         self._update_matrix()
 
     @property
@@ -208,7 +209,7 @@ class Object3D:
         """Remove all children from this object."""
         self.children = []
 
-    def _to_dict(self):
+    def as_dict(self):
         """Converts the object to a dict."""
         data = {
             "_cls": self.__class__.__name__,
@@ -217,7 +218,7 @@ class Object3D:
             "position": self.position.to_arr().tolist(),
             "quaternion": self.quaternion.to_arr().tolist(),
             "scale": self.scale.to_arr().tolist(),
-            "children": [child._to_dict() for child in self.children],
+            "children": [child.as_dict() for child in self.children],
         }
 
         # add object-specific data

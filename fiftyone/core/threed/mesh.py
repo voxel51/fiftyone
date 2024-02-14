@@ -66,9 +66,7 @@ class ObjMesh(Mesh):
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
-        super().__init__(
-            name=name, default_material=default_material, **kwargs
-        )
+        super().__init__(name=name, material=default_material, **kwargs)
 
         if not obj_path.lower().endswith(".obj"):
             raise ValueError("OBJ mesh must be a .obj file")
@@ -111,9 +109,7 @@ class FBXMesh(Mesh):
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
-        super().__init__(
-            name=name, default_material=default_material, **kwargs
-        )
+        super().__init__(name=name, material=default_material, **kwargs)
 
         if not (fbx_path.lower().endswith(".fbx")):
             raise ValueError("FBX mesh must be a .fbx file")
@@ -149,9 +145,7 @@ class GLTFMesh(Mesh):
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
-        super().__init__(
-            name=name, default_material=default_material, **kwargs
-        )
+        super().__init__(name=name, material=default_material, **kwargs)
 
         if not (
             gltf_path.lower().endswith(".gltf")
@@ -193,9 +187,7 @@ class PlyMesh(Mesh):
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
-        super().__init__(
-            name=name, default_material=default_material, **kwargs
-        )
+        super().__init__(name=name, material=default_material, **kwargs)
 
         if not ply_path.lower().endswith(".ply"):
             raise ValueError("PLY mesh must be a .ply file")
@@ -231,9 +223,7 @@ class StlMesh(Mesh):
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
-        super().__init__(
-            name=name, default_material=default_material, **kwargs
-        )
+        super().__init__(name=name, material=default_material, **kwargs)
 
         if not stl_path.lower().endswith(".stl"):
             raise ValueError("STL mesh must be a .stl file")

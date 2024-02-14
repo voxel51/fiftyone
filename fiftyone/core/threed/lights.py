@@ -6,12 +6,11 @@
 
 from math import pi as PI
 
-from pydantic import field_validator
 from pydantic.dataclasses import dataclass
 
 from .object_3d import Object3D
 from .transformation import Vec3UnionType, Vector3
-from .validators import convert_list_to_vec3
+from .validators import vec3_normalizing_validator
 
 COLOR_DEFAULT_WHITE = "#ffffff"
 
@@ -59,9 +58,7 @@ class DirectionalLight(Light):
 
     target: Vec3UnionType = Vector3(0, 0, 0)
 
-    _normalize_target = field_validator("target", mode="before")(
-        convert_list_to_vec3
-    )
+    _ensure_target_is_normalized = vec3_normalizing_validator("target")
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
@@ -106,9 +103,7 @@ class SpotLight(Light):
     angle: float = PI / 3
     penumbra: float = 0.0
 
-    _normalize_target = field_validator("target", mode="before")(
-        convert_list_to_vec3
-    )
+    _ensure_target_is_normalized = vec3_normalizing_validator("target")
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
