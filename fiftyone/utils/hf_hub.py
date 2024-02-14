@@ -439,7 +439,7 @@ def _convert_hf_type_to_fiftyone(fo_dataset, hf_dataset, feature_name):
         fo_dtype = _convert_hf_value_dtype(feature_type)
         _feature_name = "hf_id" if feature_name == "id" else feature_name
         fo_dataset.add_sample_field(_feature_name, fo_dtype)
-        vals = hf_dataset[_feature_name]
+        vals = hf_dataset[feature_name]
         fo_dataset.set_values(_feature_name, vals)
     elif _is_classification_field(feature_type):
         _add_classification_field(fo_dataset, hf_dataset, _feature_name)
@@ -451,7 +451,7 @@ def _convert_hf_type_to_fiftyone(fo_dataset, hf_dataset, feature_name):
         fo_dataset.add_sample_field(
             _feature_name, fo.ListField, subfield=fo_subtype
         )
-        vals = hf_dataset[_feature_name]
+        vals = hf_dataset[feature_name]
         fo_dataset.set_values(_feature_name, vals)
 
 
