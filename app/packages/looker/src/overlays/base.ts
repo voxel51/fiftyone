@@ -2,8 +2,8 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
+import { getCls } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
-import { getFieldInfo } from "../util";
 import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
 // in numerical order (CONTAINS_BORDER takes precedence over CONTAINS_CONTENT)
@@ -114,9 +114,7 @@ export abstract class CoordinateOverlay<
       isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
-      embeddedDocType: getFieldInfo(this.field.split("."), config.fieldSchema)
-        .embeddedDocType.split(".")
-        .slice(-1)[0],
+      embeddedDocType: getCls(this.field, config.fieldSchema),
     });
   }
 

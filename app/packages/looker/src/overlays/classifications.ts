@@ -2,7 +2,7 @@
  * Copyright 2017-2023, Voxel51, Inc.
  */
 
-import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
+import { getCls, REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";
 
 import { INFO_COLOR, MOMENT_CLASSIFICATIONS } from "../constants";
 import {
@@ -12,7 +12,6 @@ import {
   NONFINITE,
   VideoState,
 } from "../state";
-import { getFieldInfo } from "../util";
 import {
   CONTAINS,
   isShown,
@@ -61,9 +60,7 @@ export class ClassificationsOverlay<
       isTagged,
       labelTagColors,
       customizeColorSetting,
-      embeddedDocType: getFieldInfo(field.split("."), state.config.fieldSchema)
-        .embeddedDocType.split(".")
-        .slice(-1)[0],
+      embeddedDocType: getCls(field, state.config.fieldSchema),
     });
   }
 
@@ -336,9 +333,7 @@ export class ClassificationsOverlay<
   updateLabelData() {}
 
   getCls(field: string, state: Readonly<State>) {
-    return getFieldInfo(field.split("."), state.config.fieldSchema)
-      .embeddedDocType.split(".")
-      .slice(-1)[0];
+    return getCls(field, state.config.fieldSchema);
   }
 }
 

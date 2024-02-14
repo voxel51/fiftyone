@@ -1,12 +1,12 @@
 import * as fos from "@fiftyone/looker/src/state";
 import { SampleData } from "@fiftyone/state";
+import { getCls, Schema } from "@fiftyone/utilities";
 
 const RENDERABLE = ["Detection", "Polyline"];
 const RENDERABLE_LIST = ["Detections", "Polylines"];
 
 export type OverlayLabel = {
   _id: string;
-  _cls: string;
   path: string[];
   selected: boolean;
   color?: string;
@@ -18,7 +18,9 @@ export const load3dOverlayForSample = (
   sampleId: string,
   samples: SampleData | fos.Sample[],
   selectedLabels: Record<string, unknown>,
-  currentPath = []
+  currentPath = [],
+  schema: Schema,
+  prefix: string
 ) => {
   let overlays: OverlayLabel[] = [];
 
@@ -32,21 +34,27 @@ export const load3dOverlayForSample = (
       continue;
     }
 
-    if (RENDERABLE.includes(label._cls)) {
+    const path = `${prefix}${labelKey}`;
+
+    const cls = getCls(path, schema);
+
+    if (RENDERABLE.includes(cls)) {
       overlays.push({
         ...label,
         sampleId,
         path: [...currentPath, labelKey].filter((k) => !!k),
         selected: label._id in selectedLabels,
       });
-    } else if (RENDERABLE_LIST.includes(label._cls)) {
+    } else if (RENDERABLE_LIST.includes(cls)) {
       overlays = [
         ...overlays,
         ...load3dOverlayForSample(
           sampleId,
           label[label._cls.toLowerCase()],
           selectedLabels,
-          labelKey ? [...currentPath, labelKey] : [...currentPath]
+          labelKey ? [...currentPath, labelKey] : [...currentPath],
+          schema,
+          `${path}.`
         ),
       ];
     }
@@ -58,7 +66,8 @@ export const load3dOverlayForSample = (
 export const load3dOverlays = (
   samples: { [sliceOrFilename: string]: SampleData } | fos.Sample[],
   selectedLabels: Record<string, unknown>,
-  currentPath = []
+  currentPath = [],
+  schema
 ) => {
   const overlays = [];
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
@@ -71,7 +80,9 @@ export const load3dOverlays = (
         sampleWrapper.sample._id,
         sampleWrapper.sample,
         selectedLabels,
-        currentPath
+        currentPath,
+        schema,
+        ""
       )
     );
   }

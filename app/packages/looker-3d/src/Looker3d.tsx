@@ -1,13 +1,12 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import {
-  getHashLabel,
   getLabelColor,
-  isValidColor,
   shouldShowLabelTag,
 } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { COLOR_BY, getColor } from "@fiftyone/utilities";
+import { fieldSchema } from "@fiftyone/state";
+import { getCls } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -23,11 +22,6 @@ import React, {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
-import { CAMERA_POSITION_KEY, Environment } from "./Environment";
-import {
-  Looker3dPluginSettings,
-  defaultPluginSettings,
-} from "./Looker3dPlugin";
 import {
   ChooseColorSpace,
   Screenshot,
@@ -39,14 +33,19 @@ import {
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
+import {
+  defaultPluginSettings,
+  Looker3dPluginSettings,
+} from "./Looker3dPlugin";
 import {
   Cuboid,
   CuboidProps,
-  OverlayLabel,
-  PolyLineProps,
-  Polyline,
   load3dOverlays,
+  OverlayLabel,
+  Polyline,
+  PolyLineProps,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
 import {
@@ -397,6 +396,7 @@ export const Looker3d = () => {
       isPointcloudDataset,
     ]
   );
+  const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
 
   const overlays = useMemo(
     () =>
@@ -404,6 +404,7 @@ export const Looker3d = () => {
         .map((l) => {
           const path = l.path.join(".");
           const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
+          const embeddedDocType = getCls(path, schema);
           const color = getLabelColor({
             coloring,
             path,
@@ -411,9 +412,10 @@ export const Looker3d = () => {
             isTagged,
             labelTagColors,
             customizeColorSetting,
+            embeddedDocType,
           });
 
-          return { ...l, color, id: l._id };
+          return { ...l, color, id: l._id, _cls: embeddedDocType };
         })
         .filter((l) => pathFilter(l.path.join("."), l)),
     [
@@ -424,6 +426,7 @@ export const Looker3d = () => {
       selectedLabels,
       colorSchemeFields,
       colorScheme,
+      schema,
     ]
   );
 

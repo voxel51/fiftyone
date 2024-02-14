@@ -4,12 +4,13 @@
 import {
   DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
   EMBEDDED_DOCUMENT_FIELD,
+  getCls,
+  getFieldInfo,
   LABEL_LISTS_MAP,
   Schema,
 } from "@fiftyone/utilities";
 import { LABEL_TAGS_CLASSES } from "../constants";
 import { BaseState } from "../state";
-import { getFieldInfo } from "../util";
 import { Overlay } from "./base";
 import {
   ClassificationLabel,
@@ -32,17 +33,7 @@ const fromLabelList = (overlayType, list_key) => (field, labels) =>
 
 export { ClassificationsOverlay };
 
-function withPath<T>(obj: { [key: string]: T }) {
-  return Object.fromEntries(
-    Object.entries(obj).map(([k, v]) => [`fiftyone.core.labels.${k}`, v])
-  );
-}
-
-function withArrayPath(path: string[]) {
-  return path.map((p) => `fiftyone.core.labels.${p}`);
-}
-
-export const FROM_FO = withPath({
+export const FROM_FO = {
   Detection: fromLabel(DetectionOverlay),
   Detections: fromLabelList(DetectionOverlay, "detections"),
   Heatmap: fromLabel(HeatmapOverlay),
@@ -51,9 +42,9 @@ export const FROM_FO = withPath({
   Polyline: fromLabel(PolylineOverlay),
   Polylines: fromLabelList(PolylineOverlay, "polylines"),
   Segmentation: fromLabel(SegmentationOverlay),
-});
+};
 
-export const POINTS_FROM_FO = withPath({
+export const POINTS_FROM_FO = {
   Detection: (label) => getDetectionPoints([label]),
   Detections: (label) => getDetectionPoints(label.detections),
   Heatmap: (label) => getHeatmapPoints([label]),
@@ -62,9 +53,9 @@ export const POINTS_FROM_FO = withPath({
   Polyline: (label) => getPolylinePoints([label]),
   Poylines: (label) => getPolylinePoints(label.polylines),
   Segmentation: (label) => getSegmentationPoints([label]),
-});
+};
 
-const LABEL_LISTS = withPath(LABEL_LISTS_MAP);
+const LABEL_LISTS = LABEL_LISTS_MAP;
 
 export const loadOverlays = <State extends BaseState>(
   sample: {
@@ -85,7 +76,7 @@ export const loadOverlays = <State extends BaseState>(
   return overlays;
 };
 
-const TAGS = new Set(withArrayPath(LABEL_TAGS_CLASSES));
+const TAGS = new Set(LABEL_TAGS_CLASSES);
 
 const EMBEDDED_FIELDS = Object.freeze(
   new Set([EMBEDDED_DOCUMENT_FIELD, DYNAMIC_EMBEDDED_DOCUMENT_FIELD])
@@ -111,9 +102,9 @@ const accumulateOverlays = <State extends BaseState>(
       continue;
     }
 
-    const fieldInfo = getFieldInfo([...prefix, field], schema);
-    const docType = fieldInfo?.embeddedDocType;
     const path = [...prefix, field].join(".");
+    const fieldInfo = getFieldInfo(path, schema);
+    const docType = getCls(path, schema);
 
     if (docType in FROM_FO) {
       overlays.push(...FROM_FO[docType](path, label));
