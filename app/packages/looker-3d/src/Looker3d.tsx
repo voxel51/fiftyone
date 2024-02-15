@@ -6,7 +6,6 @@ import {
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
 import { fieldSchema } from "@fiftyone/state";
-import { getCls } from "@fiftyone/utilities";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -22,6 +21,11 @@ import React, {
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { Box3, Camera, Object3D, PerspectiveCamera, Vector3 } from "three";
 import { toEulerFromDegreesArray } from "../utils";
+import { CAMERA_POSITION_KEY, Environment } from "./Environment";
+import {
+  Looker3dPluginSettings,
+  defaultPluginSettings,
+} from "./Looker3dPlugin";
 import {
   ChooseColorSpace,
   Screenshot,
@@ -33,19 +37,14 @@ import {
 } from "./action-bar";
 import { ToggleGridHelper } from "./action-bar/ToggleGridHelper";
 import { ActionBarContainer, ActionsBar, Container } from "./containers";
-import { CAMERA_POSITION_KEY, Environment } from "./Environment";
 import { useHotkey, usePathFilter } from "./hooks";
-import {
-  defaultPluginSettings,
-  Looker3dPluginSettings,
-} from "./Looker3dPlugin";
 import {
   Cuboid,
   CuboidProps,
-  load3dOverlays,
   OverlayLabel,
-  Polyline,
   PolyLineProps,
+  Polyline,
+  load3dOverlays,
 } from "./overlays";
 import { PointCloudMesh } from "./renderables";
 import {
@@ -107,7 +106,7 @@ export const Looker3d = () => {
       onSelectLabel({
         detail: {
           id: label._id,
-          field: label.path[label.path.length - 1],
+          field: label.path,
           sampleId: label.sampleId,
         },
       });
@@ -400,24 +399,22 @@ export const Looker3d = () => {
 
   const overlays = useMemo(
     () =>
-      load3dOverlays(sampleMap, selectedLabels)
+      load3dOverlays(sampleMap, selectedLabels, [], schema)
         .map((l) => {
-          const path = l.path.join(".");
           const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
-          const embeddedDocType = getCls(path, schema);
           const color = getLabelColor({
             coloring,
-            path,
+            path: l.path,
             label: l,
             isTagged,
             labelTagColors,
             customizeColorSetting,
-            embeddedDocType,
+            embeddedDocType: l._cls,
           });
 
-          return { ...l, color, id: l._id, _cls: embeddedDocType };
+          return { ...l, color, id: l._id };
         })
-        .filter((l) => pathFilter(l.path.join("."), l)),
+        .filter((l) => pathFilter(l.path, l)),
     [
       coloring,
       getFieldColor,
