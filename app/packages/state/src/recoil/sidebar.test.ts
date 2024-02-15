@@ -185,9 +185,9 @@ const mockFields = {
   ],
 };
 
-describe("ResolveGroups works", () => {
-  it("dataset groups should resolve when curent is undefined", () => {
-    const test = sidebar.resolveGroups(mockFields.sampleFields, []);
+describe("test sidebar groups resolution", () => {
+  it("resolves with sample fields", () => {
+    const test = sidebar.resolveGroups(mockFields.sampleFields, [], [], []);
 
     expect(test.length).toBe(5);
     expect(test[0].name).toBe("tags");
@@ -202,7 +202,7 @@ describe("ResolveGroups works", () => {
     expect(test[4].paths.length).toBe(2);
   });
 
-  it("when dataset appconfig does not have sidebarGroups settings, use default settings", () => {
+  it("resolves merges of current client setting", () => {
     const mockSidebarGroups = [
       { name: "tags", paths: [], expanded: true },
       {
@@ -234,7 +234,8 @@ describe("ResolveGroups works", () => {
     const test = sidebar.resolveGroups(
       mockFields.sampleFields,
       [],
-      mockSidebarGroups
+      mockSidebarGroups,
+      []
     );
 
     expect(test.length).toBe(7);
@@ -244,5 +245,114 @@ describe("ResolveGroups works", () => {
     expect(test[5].expanded).toBeFalsy();
     expect(test[6].name).toBe("test group b");
     expect(test[6].expanded).toBeFalsy();
+  });
+
+  it("resolves merges with dataset app config", () => {
+    const mockSidebarGroups = [
+      {
+        name: "labels",
+        paths: ["predictions", "ground_truth"],
+        expanded: true,
+      },
+      {
+        name: "primitives",
+        paths: ["id", "filepath", "uniqueness"],
+        expanded: true,
+      },
+      { name: "other", paths: ["dict_field", "list_field"] },
+      { name: "test group a", paths: [] },
+      { name: "test group b", paths: [] },
+      {
+        name: "metadata",
+        paths: [],
+        expanded: true,
+      },
+      { name: "tags", paths: [], expanded: true },
+    ];
+
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      [],
+      mockSidebarGroups
+    );
+
+    expect(test.length).toBe(7);
+
+    const tags = test[0];
+    expect(tags.name).toBe("tags");
+    expect(tags.paths).toEqual([]);
+
+    const labels = test[1];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions", "ground_truth"]);
+
+    const primitives = test[2];
+    expect(primitives.name).toEqual("primitives");
+    expect(primitives.paths).toEqual(["id", "filepath", "uniqueness"]);
+    expect(primitives.expanded).toBe(true);
+
+    const other = test[3];
+    expect(other.name).toEqual("other");
+    expect(other.paths).toEqual(["dict_field", "list_field"]);
+
+    const testA = test[4];
+    expect(testA.name).toBe("test group a");
+
+    const testB = test[5];
+    expect(testB.name).toBe("test group b");
+
+    const metadata = test[6];
+    expect(metadata.name).toBe("metadata");
+    expect(metadata.expanded).toBe(true);
+    expect(metadata.paths).toEqual([
+      "metadata.size_types",
+      "metadata.mime_type",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+    ]);
+  });
+
+  it("resolves merges with improper dataset app config", () => {
+    const mockSidebarGroups = [
+      {
+        name: "improper",
+        paths: ["ground_truth"],
+        expanded: true,
+      },
+    ];
+
+    const test = sidebar.resolveGroups(
+      mockFields.sampleFields,
+      [],
+      [],
+      mockSidebarGroups
+    );
+
+    const tags = test[0];
+    expect(tags.name).toBe("tags");
+    expect(tags.paths).toEqual([]);
+
+    const metadata = test[1];
+    expect(metadata.name).toBe("metadata");
+    expect(metadata.expanded).toBe(true);
+    expect(metadata.paths).toEqual([
+      "metadata.size_types",
+      "metadata.mime_type",
+      "metadata.width",
+      "metadata.height",
+      "metadata.num_channels",
+    ]);
+
+    const improper = test[2];
+    expect(improper.name).toBe("improper");
+    expect(improper.paths).toEqual(["ground_truth"]);
+    expect(improper.expanded).toBe(true);
+
+    const labels = test[3];
+    expect(labels.name).toBe("labels");
+    expect(labels.paths).toEqual(["predictions"]);
+    expect(labels.expanded).toBe(true);
   });
 });

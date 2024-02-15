@@ -43,7 +43,10 @@ export const SliceSelector = () => {
 
   return (
     <>
-      <ActionItem title="Select point clouds">
+      <ActionItem
+        data-cy={"looker3d-select-slices"}
+        title="Select point clouds"
+      >
         <div onClick={handleActionClick}>{activeSlicesLabel}</div>
       </ActionItem>
 
@@ -70,7 +73,7 @@ const PcdsSelector = () => {
   return (
     <ActionPopOver>
       <PopoutSectionTitle>Select point clouds</PopoutSectionTitle>
-      <div>
+      <div data-cy={"looker3d-slice-checkboxes"}>
         {allPcdSlices.map((slice) => {
           return (
             <Checkbox

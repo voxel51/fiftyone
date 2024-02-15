@@ -113,7 +113,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.23.3"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.23.4"]}
 
 
 with open("README.md", "r") as fh:
@@ -122,7 +122,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.15.5",
+    version="0.15.6rc3",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"

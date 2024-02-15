@@ -544,7 +544,9 @@ export const activeModalSample = selector({
   key: "activeModalSample",
   get: ({ get }) => {
     if (get(pinned3d)) {
-      return get(activePcdSlicesToSampleMap)[get(pinned3DSampleSlice)]?.sample;
+      const slices = get(activePcdSlices);
+      const key = slices.length === 1 ? slices[0] : get(pinned3DSampleSlice);
+      return get(activePcdSlicesToSampleMap)[key]?.sample;
     }
 
     return get(modalSample).sample;

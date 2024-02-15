@@ -2,7 +2,7 @@ import { LoadingDots, useTheme } from "@fiftyone/components";
 import { Checkbox as MaterialCheckbox } from "@mui/material";
 import { animated } from "@react-spring/web";
 import React, { useMemo } from "react";
-import { RecoilValueReadOnly, constSelector } from "recoil";
+import { constSelector, RecoilValueReadOnly } from "recoil";
 import styled from "styled-components";
 import { prettify } from "../../utils/generic";
 import { ItemAction } from "../Actions/ItemAction";
@@ -17,7 +17,7 @@ interface CheckboxProps<T> {
   loading?: boolean;
   value: boolean;
   setValue?: (value: boolean) => void;
-  count?: number;
+  count?: number | RecoilValueReadOnly<number>;
   subcountAtom?: RecoilValueReadOnly<number>;
   disabled?: boolean;
   muted?: boolean;
@@ -56,7 +56,7 @@ function Checkbox<T>({
   const [text, coloring] = getValueString(formatter ? formatter(name) : name);
 
   const countAtom = useMemo(
-    () => (typeof count === "number" ? constSelector(count) : null),
+    () => (typeof count === "number" ? constSelector(count) : count ?? null),
     [count]
   );
 

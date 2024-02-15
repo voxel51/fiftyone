@@ -296,7 +296,7 @@ const SlicesLoadable = ({ path }: { path: string }) => {
           >
             <div style={{ color: theme.text.secondary }}>{slice}</div>
             <div
-              data-cy={`sidebar-entry-${path}`}
+              data-cy={`sidebar-entry-${slice}-${path}`}
               style={{
                 ...add,
                 flex: 1,
@@ -333,16 +333,16 @@ const useSlicesData = <T extends unknown>(path: string) => {
 
   const data = { ...loadable.contents };
 
-  let field = useRecoilValue(fos.field(keys[0]));
+  const target = useRecoilValue(fos.field(keys[0]));
   slices.forEach((slice) => {
     let sliceData = data[slice].sample;
+    let field = target;
 
     for (let index = 0; index < keys.length; index++) {
       if (!sliceData) {
         break;
       }
       const key = keys[index];
-
       sliceData = sliceData[field?.dbField || key];
 
       if (keys[index + 1]) {
