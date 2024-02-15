@@ -2364,7 +2364,7 @@ def _make_client(fs, bucket=None, region=None, num_workers=None):
     if num_workers is None:
         num_workers = fo.media_cache_config.num_workers
 
-    kwargs = {}
+    kwargs = (fo.media_cache_config.extra_client_kwargs or {}).get(fs, {})
 
     if num_workers is not None and num_workers > 10:
         kwargs["max_pool_connections"] = num_workers

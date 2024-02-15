@@ -99,7 +99,8 @@ def _get_linux_download():
     path = pathlib.Path("/etc/os-release")
     with open(path) as stream:
         reader = csv.reader(stream, delimiter="=")
-        d = dict(reader)
+        # filter empty lines
+        d = dict(line for line in reader if line)
 
     for k, v in LINUX_DOWNLOADS[d["ID"]].items():
         if d["VERSION_ID"].startswith(k):
@@ -124,7 +125,7 @@ def _get_download():
 MONGODB_BINARIES = ["mongod"]
 
 
-VERSION = "1.1"
+VERSION = "1.1.1"
 
 
 def get_version():
