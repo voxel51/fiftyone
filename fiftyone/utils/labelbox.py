@@ -66,6 +66,9 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         upload_media (True): whether to download cloud media to your local
             cache and upload it to Labelbox (True) or to just pass the cloud
             paths directly (False)
+        iam_integration_name ("DEFAULT"): the name of the IAM integration to
+            associate with the created Labelbox dataset (or "DEFAULT" for the
+            default integration or "NONE" for no integration)
     """
 
     def __init__(
@@ -79,6 +82,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         members=None,
         classes_as_attrs=True,
         upload_media=True,
+        iam_integration_name="DEFAULT",
         **kwargs,
     ):
         super().__init__(name, label_schema, media_field=media_field, **kwargs)
@@ -88,6 +92,7 @@ class LabelboxBackendConfig(foua.AnnotationBackendConfig):
         self.members = members
         self.classes_as_attrs = classes_as_attrs
         self.upload_media = upload_media
+        self.iam_integration_name = iam_integration_name
 
         # store privately so these aren't serialized
         self._api_key = api_key
@@ -156,7 +161,7 @@ class LabelboxBackend(foua.AnnotationBackend):
 
     @property
     def supports_video_sample_fields(self):
-        return False  # @todo resolve FiftyOne bug to allow this to be True
+        return True
 
     @property
     def requires_label_schema(self):
@@ -312,6 +317,26 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             self._protocol,
             self._url,
             project_id,
+        )
+
+    def get_iam_integration_by_name(self, integration_name):
+        """Returns a handle to the Labelbox IAM integration with the given name.
+
+        Args:
+            integration_name: the name of the IAM integration
+
+        Returns:
+            a ``labelbox.schema.iam_integration.IAMIntegration`` object
+        """
+        organization = self._client.get_organization()
+        iam_integrations = organization.get_iam_integrations()
+        for integration in iam_integrations:
+            if integration.name == integration_name:
+                return integration
+
+        raise ValueError(
+            f"Could not find IAM integration with name {integration_name} "
+            f"in Labelbox"
         )
 
     def get_project_users(self, project=None, project_id=None):
@@ -566,7 +591,12 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return new_media_paths, new_sample_ids
 
     def upload_data(
-        self, samples, dataset_name, media_field="filepath", upload_media=True
+        self,
+        samples,
+        dataset_name,
+        media_field="filepath",
+        upload_media=True,
+        iam_integration_name="DEFAULT",
     ):
         """Uploads the media for the given samples to Labelbox.
 
@@ -584,6 +614,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             upload_media (True): whether to download cloud media to your local
                 cache and upload it to Labelbox (True) or to just pass the
                 cloud paths directly (False)
+            iam_integration_name ("DEFAULT"): the name of the IAM integration
+                to associate with the created Labelbox dataset (or "DEFAULT"
+                for the default integration or "NONE" for no integration)
         """
         media_paths, sample_ids = samples.values([media_field, "id"])
         if upload_media:
@@ -613,7 +646,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 )
 
         if upload_info:
-            lb_dataset = self._client.create_dataset(name=dataset_name)
+            # Set IAM integration
+            if iam_integration_name == "DEFAULT":
+                iam_integration = "DEFAULT"
+            elif iam_integration_name == "NONE":
+                iam_integration = None
+            else:
+                iam_integration = self.get_iam_integration_by_name(
+                    iam_integration_name
+                )
+
+            lb_dataset = self._client.create_dataset(
+                name=dataset_name, iam_integration=iam_integration
+            )
             task = lb_dataset.create_data_rows(upload_info)
             task.wait_till_done()
             if task.errors:
@@ -640,7 +685,11 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         project_name = config.project_name
         members = config.members
         classes_as_attrs = config.classes_as_attrs
-        is_video = samples.media_type == fomm.VIDEO
+        iam_integration_name = config.iam_integration_name
+        is_video = (samples.media_type == fomm.VIDEO) or (
+            samples.media_type == fomm.GROUP
+            and samples.group_media_types[samples.group_slice] == fomm.VIDEO
+        )
 
         for label_field, label_info in label_schema.items():
             if label_info["existing_field"]:
@@ -659,6 +708,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
             project_name,
             media_field=media_field,
             upload_media=upload_media,
+            iam_integration_name=iam_integration_name,
         )
         global_keys = samples.values("id")
 
@@ -701,8 +751,13 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
 
         project = self._client.get_project(project_id)
         labels_json = self._download_project_labels(project=project)
-        is_video = results._samples.media_type == fomm.VIDEO
-
+        is_video = (results._samples.media_type == fomm.VIDEO) or (
+            results._samples.media_type == fomm.GROUP
+            and results._samples.group_media_types[
+                results._samples.group_slice
+            ]
+            == fomm.VIDEO
+        )
         annotations = {}
 
         if classes_as_attrs:
@@ -735,7 +790,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                 video_d_list = self._get_video_labels(d["Label"])
                 frames = {}
                 for label_d in video_d_list:
-                    frame_number = label_d["frameNumber"]
+                    frame_number = int(label_d["frameNumber"])
                     frame_id = frame_id_map[sample_id][frame_number]
                     labels_dict = _parse_image_labels(
                         label_d, frame_size, class_attr=class_attr
@@ -753,20 +808,19 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
                     label_schema,
                 )
 
-            else:
-                labels_dict = _parse_image_labels(
-                    d["Label"], frame_size, class_attr=class_attr
+            labels_dict = _parse_image_labels(
+                d["Label"], frame_size, class_attr=class_attr
+            )
+            if not classes_as_attrs:
+                labels_dict = self._process_label_fields(
+                    label_schema, labels_dict
                 )
-                if not classes_as_attrs:
-                    labels_dict = self._process_label_fields(
-                        label_schema, labels_dict
-                    )
-                annotations = self._add_labels_to_results(
-                    annotations,
-                    labels_dict,
-                    sample_id,
-                    label_schema,
-                )
+            annotations = self._add_labels_to_results(
+                annotations,
+                labels_dict,
+                sample_id,
+                label_schema,
+            )
 
         return annotations
 
@@ -1073,6 +1127,9 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
         return metadata
 
     def _get_video_labels(self, label_dict):
+        if "frames" not in label_dict:
+            return {}
+
         url = label_dict["frames"]
         headers = {"Authorization": "Bearer %s" % self._api_key}
         response = requests.get(url, headers=headers)
@@ -2366,28 +2423,34 @@ def _parse_attributes(cd_list):
     attributes = {}
 
     for cd in cd_list:
-        name = cd["value"]
-        if "answer" in cd:
-            answer = cd["answer"]
-            if isinstance(answer, list):
-                # Dropdown
-                answers = [_parse_attribute(a["value"]) for a in answer]
-                if len(answers) == 1:
-                    answers = answers[0]
+        if isinstance(cd, list):
+            attributes.update(_parse_attributes(cd))
 
-                attributes[name] = answers
+        else:
+            name = cd["value"]
+            if "answer" in cd:
+                answer = cd["answer"]
+                if isinstance(answer, list):
+                    # Dropdown
+                    answers = [_parse_attribute(a["value"]) for a in answer]
+                    if len(answers) == 1:
+                        answers = answers[0]
 
-            elif isinstance(answer, dict):
-                # Radio question
-                attributes[name] = _parse_attribute(answer["value"])
-            else:
-                # Free text
-                attributes[name] = _parse_attribute(answer)
+                    attributes[name] = answers
 
-        if "answers" in cd:
-            # Checklist
-            answer = cd["answers"]
-            attributes[name] = [_parse_attribute(a["value"]) for a in answer]
+                elif isinstance(answer, dict):
+                    # Radio question
+                    attributes[name] = _parse_attribute(answer["value"])
+                else:
+                    # Free text
+                    attributes[name] = _parse_attribute(answer)
+
+            if "answers" in cd:
+                # Checklist
+                answer = cd["answers"]
+                attributes[name] = [
+                    _parse_attribute(a["value"]) for a in answer
+                ]
 
     return attributes
 
