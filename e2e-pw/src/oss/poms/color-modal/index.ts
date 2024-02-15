@@ -81,7 +81,7 @@ export class ColorModalPom {
       .click({ force: true });
   }
 
-  async addNewPairs(pairs) {
+  async addNewPairs(pairs: { value: string; color: string }[]) {
     for (let i = 0; i < pairs.length; i++) {
       await this.addANewPair(pairs[i].value, pairs[i].color, i);
     }

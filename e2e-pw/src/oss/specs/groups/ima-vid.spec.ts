@@ -8,10 +8,7 @@ import { getUniqueDatasetNameWithPrefix } from "src/oss/utils";
 import { createBlankImage } from "src/shared/media-factory/image";
 
 const NUM_VIDEOS = 2;
-const FRAME_COLORS = {
-  0: "#ff0000",
-  1: "#00ff00",
-};
+const FRAME_COLORS = ["#ff0000", "#00ff00"];
 const NUM_FRAMES_PER_VIDEO = 150;
 
 const datasetName = getUniqueDatasetNameWithPrefix(`group-ima-vid`);

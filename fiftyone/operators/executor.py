@@ -491,6 +491,9 @@ class ExecutionContext(object):
         filters = self.request_params.get("filters", None)
         extended = self.request_params.get("extended", None)
 
+        if dataset is None:
+            return None
+
         self._view = fosv.get_view(
             dataset,
             stages=stages,
@@ -500,6 +503,30 @@ class ExecutionContext(object):
         )
 
         return self._view
+
+    def target_view(self, param_name="view_target"):
+        """The target :class:`fiftyone.core.view.DatasetView` for the operator
+        being executed.
+        """
+        target = self.params.get(param_name, None)
+        if target == "SELECTED_SAMPLES":
+            return self.view.select(self.selected)
+        if target == "DATASET":
+            return self.dataset
+        return self.view
+
+    @property
+    def has_custom_view(self):
+        """Whether the operator has a custom view."""
+        stages = self.request_params.get("view", None)
+        filters = self.request_params.get("filters", None)
+        extended = self.request_params.get("extended", None)
+        has_stages = stages is not None and stages != [] and stages != {}
+        has_filters = filters is not None and filters != [] and filters != {}
+        has_extended = (
+            extended is not None and extended != [] and extended != {}
+        )
+        return has_stages or has_filters or has_extended
 
     @property
     def selected(self):

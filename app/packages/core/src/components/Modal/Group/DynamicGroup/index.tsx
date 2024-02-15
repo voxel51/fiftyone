@@ -1,6 +1,6 @@
 import * as fos from "@fiftyone/state";
 import React, { useEffect } from "react";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { NestedGroup } from "./NestedGroup";
 import { NonNestedDynamicGroup } from "./NonNestedGroup";
 import { useDynamicGroupSamples } from "./useDynamicGroupSamples";
@@ -11,6 +11,11 @@ export const DynamicGroup = () => {
   const { queryRef } = useDynamicGroupSamples();
 
   const shouldRenderImaVid = useRecoilValue(fos.shouldRenderImaVidLooker);
+  const [dynamicGroupsViewMode, setDynamicGroupsViewMode] = useRecoilState(
+    fos.dynamicGroupsViewMode
+  );
+  const isOrderedDynamicGroup = useRecoilValue(fos.isOrderedDynamicGroup);
+
   const setDynamicGroupCurrentElementIndex = useSetRecoilState(
     fos.dynamicGroupCurrentElementIndex
   );
@@ -25,6 +30,14 @@ export const DynamicGroup = () => {
       setDynamicGroupCurrentElementIndex(imaVidIndex);
     }
   }, [shouldRenderImaVid, imaVidIndex, setDynamicGroupCurrentElementIndex]);
+
+  useEffect(() => {
+    // if dynamic group view mode is video but dynamic group is not ordered,
+    // we want to set view mode back to pagination (default)
+    if (dynamicGroupsViewMode === "video" && !isOrderedDynamicGroup) {
+      setDynamicGroupsViewMode("pagination");
+    }
+  }, [dynamicGroupsViewMode, isOrderedDynamicGroup]);
 
   return (
     <>
