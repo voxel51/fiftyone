@@ -108,8 +108,6 @@ class TorchOpenWorldModel(fout.TorchImageModel):
         pipeline = cfg.test_dataloader.dataset.pipeline
         self.runner.pipeline = mmengine.dataset.Compose(pipeline)
         self.runner.model.eval()
-       
-
         return self.runner.model
 
     def _generate_detections(self, img, texts, index):
@@ -135,14 +133,6 @@ class TorchOpenWorldModel(fout.TorchImageModel):
             if 0 in pred_instances['bboxes'].shape:
                 return fo.Detections(detections=[])
 
-            print(pred_instances)
-            print(pred_instances['bboxes'])
-            print(pred_instances['labels'])
-            print(pred_instances['scores'])
-            print(type(pred_instances['bboxes']))
-            print(type(pred_instances['labels']))
-            print(type(pred_instances['scores']))
-
             bboxes = pred_instances['bboxes']
             labels = pred_instances['labels']
             confs = pred_instances['scores']
@@ -151,7 +141,7 @@ class TorchOpenWorldModel(fout.TorchImageModel):
                 fo.Detection(label=self.classes[l], confidence=c, bounding_box=b)
                 for (l, c, b) in zip(labels, confs, bboxes)
             ]
-            
+
         return fo.Detections(detections=detections)
     
     def _predict_all(self, imgs):
