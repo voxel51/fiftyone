@@ -1933,7 +1933,9 @@
                     "config_yolo_file":{
                         "yolov8_l_syncbn_fast_8xb16-500e_coco.py": "https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_l_syncbn_fast_8xb16-500e_coco.py?download=true",
                         "yolov8_m_syncbn_fast_8xb16-500e_coco.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_m_syncbn_fast_8xb16-500e_coco.py?download=true",
-                        "yolov8_s_syncbn_fast_8xb16-500e_coco.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_s_syncbn_fast_8xb16-500e_coco.py?download=true"
+                        "yolov8_s_syncbn_fast_8xb16-500e_coco.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_s_syncbn_fast_8xb16-500e_coco.py?download=true",
+                        "default_runtime.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/default_runtime.py?download=true",
+                        "det_p5_tta.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/det_p5_tta.py?download=true"
                     }
                 }
             },
