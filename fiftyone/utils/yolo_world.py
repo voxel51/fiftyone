@@ -1,5 +1,5 @@
 """
-CLIP model wrapper for the FiftyOne Model Zoo.
+YOLO WORLD model wrapper for the FiftyOne Model Zoo.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
