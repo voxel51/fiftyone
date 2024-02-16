@@ -78,7 +78,6 @@ class TorchOpenWorldModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             )
 
         for yolo_model in self.model_yolo_path:
-            
             if not os.path.isfile(os.path.join(fo.config.model_zoo_dir, yolo_model)):
                 logger.info("Downloading {} model...".format(yolo_model))
                 etaw.download_file(
@@ -128,7 +127,7 @@ class TorchOpenWorldModel(fout.TorchImageModel):
             output = self.runner.model.test_step(data_batch)[0]
 
             self.runner.model.class_names = texts
-            
+
             pred_instances = output.pred_instances
 
             pred_instances = pred_instances.cpu().numpy()
@@ -136,6 +135,14 @@ class TorchOpenWorldModel(fout.TorchImageModel):
             if 0 in pred_instances['bboxes'].shape:
                 return fo.Detections(detections=[])
 
+            print(pred_instances)
+            print(pred_instances['bboxes'])
+            print(pred_instances['labels'])
+            print(pred_instances['scores'])
+            print(type(pred_instances['bboxes']))
+            print(type(pred_instances['labels']))
+            print(type(pred_instances['scores']))
+            
             bboxes = pred_instances['bboxes']
             labels = pred_instances['labels']
             confs = pred_instances['scores']
