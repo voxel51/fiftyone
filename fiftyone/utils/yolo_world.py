@@ -47,13 +47,14 @@ class TorchOpenWorldModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         super().__init__(d)
 
         self.classes = d["classes"]
-
-        self.yolo_model = self.parse_dict(
+        
+        self.yolo_model = self.parse_string(
             d, "yolo_world_model", default="yolov8l-world"
         )
 
         self.config_file_url = self.parse_dict(d, "config_file_url")[self.yolo_model]
         self.model_url = self.parse_dict(d, "model_url")[self.yolo_model]
+        self.model_yolo_path = self.parse_dict(d, "config_yolo_file")
 
         self.config_file_path = os.path.join(
             fo.config.model_zoo_dir, "{}.py".format(self.yolo_model) 
@@ -62,7 +63,7 @@ class TorchOpenWorldModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
         self.model_path = os.path.join(
             fo.config.model_zoo_dir, "{}.pth".format(self.yolo_model)
         )
-    
+
     def download_config_model_if_necessary(self):
         if not os.path.isfile(self.config_file_path):
             logger.info("Downloading YOLO WORLD config...")
@@ -75,6 +76,14 @@ class TorchOpenWorldModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
             etaw.download_file(
                 self.model_url, path=self.model_path
             )
+
+        for yolo_model in self.model_yolo_path:
+            
+            if not os.path.isfile(os.path.join(fo.config.model_zoo_dir, yolo_model)):
+                logger.info("Downloading {} model...".format(yolo_model))
+                etaw.download_file(
+                    self.model_yolo_path[yolo_model], path=os.path.join(fo.config.model_zoo_dir, yolo_model)
+                )
 
 class TorchOpenWorldModel(fout.TorchImageModel):
     """Torch implementation of YOLO WORLD from
@@ -100,6 +109,8 @@ class TorchOpenWorldModel(fout.TorchImageModel):
         pipeline = cfg.test_dataloader.dataset.pipeline
         self.runner.pipeline = mmengine.dataset.Compose(pipeline)
         self.runner.model.eval()
+       
+
         return self.runner.model
 
     def _generate_detections(self, img, texts, index):
@@ -112,16 +123,12 @@ class TorchOpenWorldModel(fout.TorchImageModel):
             inputs=data_info["inputs"].unsqueeze(0),
             data_samples=[data_info["data_samples"]],
         )
-
         
-        
-        with torch.no_grad(), torch.cuda.amp.autocast():
-            print("------------------- HEREXXX -------------------")
-            print(self.runner.model.test_step(data_batch))
+        with torch.no_grad(), mmengine.runner.amp.autocast(enabled=False):
             output = self.runner.model.test_step(data_batch)[0]
+
             self.runner.model.class_names = texts
-
-
+            
             pred_instances = output.pred_instances
 
             pred_instances = pred_instances.cpu().numpy()
@@ -140,47 +147,13 @@ class TorchOpenWorldModel(fout.TorchImageModel):
 
         return fo.Detections(detections=detections)
     
-
-        '''
-        if 0 in bboxes.shape:
-            return fo.Detections(detections=[])
-
-        bboxes = self._convert_bboxes(bboxes, width, height)
-        labels = [class_names[l] for l in labels]
-        detections = [
-            fo.Detection(label=l, confidence=c, bounding_box=b)
-            for (l, c, b) in zip(labels, confs, bboxes)
-        ]
-        '''
-        #return fo.Detections(detections=detections)
-
     def _predict_all(self, imgs):
         if isinstance(imgs, (list, tuple)):
             imgs = torch.stack(imgs)
 
-        height, width = imgs.size()[-2:]
-        frame_size = (width, height)
-
         if self._using_gpu:
             imgs = imgs.cuda()
 
-        return [self._generate_detections(img, self.classes, index) for index, img in enumerate(imgs)]
+        self.text = [[item] for item in self.classes]
 
-        print("------------------- HEREX -------------------")
-        print(self.runner)
-        
-
-        
-
-        '''   
-        pred_instances = pred_instances.cpu().numpy()
-        detections = sv.Detections(
-            xyxy=pred_instances['bboxes'],
-            class_id=pred_instances['labels'],
-            confidence=pred_instances['scores']
-        )
-        '''
-
-        return self._output_processor(
-            output, frame_size, confidence_thresh=self.config.confidence_thresh
-        )
+        return [self._generate_detections(img, self.text, index) for index, img in enumerate(imgs)]

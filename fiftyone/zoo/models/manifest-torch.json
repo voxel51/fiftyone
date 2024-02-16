@@ -1917,23 +1917,28 @@
                     "labels_path": "{{eta-resources}}/voc-labels.txt",
                     "output_processor_cls": "fiftyone.utils.torch.ClassifierOutputProcessor",
                     "model_url": {
-                        "yolov8s-world":"https://huggingface.co/wondervictor/YOLO-World/resolve/main/yolo_world_s_clip_base_dual_vlpan_2e-3adamw_32xb16_100e_o365_goldg_train_pretrained-18bea4d2.pth?download=true",
-                        "yolov8m-world":"https://huggingface.co/wondervictor/YOLO-World/resolve/main/yolo_world_m_clip_base_dual_vlpan_2e-3adamw_32xb16_100e_o365_goldg_train_pretrained-2b7bd1be.pth?download=true",
-                        "yolov8l-world":"https://huggingface.co/wondervictor/YOLO-World/resolve/main/yolo_world_l_clip_base_dual_vlpan_2e-3adamw_32xb16_100e_o365_goldg_train_pretrained-0e566235.pth?download=true",
-                        "yolov8lx-world":"https://huggingface.co/wondervictor/YOLO-World/blob/main/yolo_world_l_clip_base_dual_vlpan_2e-3adamw_32xb16_100e_o365_goldg_cc3mlite_train_pretrained-7a5eea3b.pth?download=true"
+                        "yolov8s-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8s-world.pth?download=true",
+                        "yolov8m-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8m-world.pth?download=true",
+                        "yolov8l-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8l-world.pth?download=true",
+                        "yolov8lx-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8lx-world.pth?download=true"
 
                     },
                     "config_file_url": {
-                        "yolov8s-world":"https://huggingface.co/spaces/stevengrove/YOLO-World/resolve/main/configs/pretrain/yolo_world_s_dual_3block_2e-4_100e_4x8gpus_obj365v1_goldg_train_lvis_minival.py?download=true",
-                        "yolov8m-world":"https://huggingface.co/spaces/stevengrove/YOLO-World/resolve/main/configs/pretrain/",
-                        "yolov8l-world":"https://huggingface.co/spaces/stevengrove/YOLO-World/resolve/main/configs/pretrain/yolo_world_l_t2i_bn_2e-4_100e_4x8gpus_obj365v1_goldg_train_lvis_minival.py?download=true",
-                        "yolov8lx-world":"https://huggingface.co/spaces/stevengrove/YOLO-World/resolve/main/configs/pretrain/"
+                        "yolov8s-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8s-world.py?download=true",
+                        "yolov8m-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8m-world.py?download=true",
+                        "yolov8l-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8l-world.py?download=true",
+                        "yolov8lx-world":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8lx-world.py?download=true"
 
+                    },
+                    "config_yolo_file":{
+                        "yolov8_l_syncbn_fast_8xb16-500e_coco.py": "https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_l_syncbn_fast_8xb16-500e_coco.py?download=true",
+                        "yolov8_m_syncbn_fast_8xb16-500e_coco.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_m_syncbn_fast_8xb16-500e_coco.py?download=true",
+                        "yolov8_s_syncbn_fast_8xb16-500e_coco.py":"https://huggingface.co/adonaivera/YOLO-World/resolve/main/yolov8_s_syncbn_fast_8xb16-500e_coco.py?download=true"
                     }
                 }
             },
             "requirements": {
-                "packages": ["torch", "torchvision", "mmengine>=0.7.0", "mmcv"],
+                "packages": ["torch", "torchvision", "mmcv", "mmengine" ],
                 "cpu": {
                     "support": true
                 },
