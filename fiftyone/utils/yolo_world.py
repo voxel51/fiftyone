@@ -142,16 +142,16 @@ class TorchOpenWorldModel(fout.TorchImageModel):
             print(type(pred_instances['bboxes']))
             print(type(pred_instances['labels']))
             print(type(pred_instances['scores']))
-            
+
             bboxes = pred_instances['bboxes']
             labels = pred_instances['labels']
             confs = pred_instances['scores']
 
             detections = [
-                fo.Detection(label=l, confidence=c, bounding_box=b)
+                fo.Detection(label=self.classes[l], confidence=c, bounding_box=b)
                 for (l, c, b) in zip(labels, confs, bboxes)
             ]
-
+            
         return fo.Detections(detections=detections)
     
     def _predict_all(self, imgs):
