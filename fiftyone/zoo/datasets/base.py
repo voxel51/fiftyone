@@ -26,6 +26,7 @@ import fiftyone.utils.kitti as foukt
 import fiftyone.utils.lfw as foul
 import fiftyone.utils.openimages as fouo
 import fiftyone.utils.sama as fous
+import fiftyone.utils.places as foup
 import fiftyone.utils.ucf101 as fouu
 import fiftyone.zoo.datasets as fozd
 
@@ -3217,6 +3218,60 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class PlacesDataset(FiftyOneDataset):
+    def __init__(
+        self,
+        classes=None,
+        num_workers=None,
+        shuffle=None,
+        seed=None,
+        max_samples=None,
+    ):
+        self.classes = classes
+        self.num_workers = num_workers
+        self.shuffle = shuffle
+        self.seed = seed
+        self.max_samples = max_samples
+
+    @property
+    def name(self):
+        return "places"
+
+    @property
+    def tags(self):
+        return (
+            "image",
+            "classification",
+        )
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return False
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes, downloaded = foup.download_places_dataset_split(
+            dataset_dir,
+            split,
+            raw_dir=self._get_raw_dir(dataset_dir),
+        )
+
+        dataset_type = fot.PlacesDataset()
+
+        if not downloaded:
+            num_samples = None
+
+        return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # To store full annotation files so that they never have to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
+
+
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3244,6 +3299,7 @@ AVAILABLE_DATASETS = {
     "quickstart-groups": QuickstartGroupsDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
+    "places": PlacesDataset,
 }
 
 
