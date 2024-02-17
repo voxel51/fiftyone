@@ -887,3 +887,15 @@ class LegacyFiftyOneDataset(Dataset):
         import fiftyone.utils.data as foud
 
         return foud.LegacyFiftyOneDatasetExporter
+
+
+class PlacesDataset(ImageClassificationDataset):
+    """A labeled dataset consisting of images and their associated lables
+    saved in
+    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.places as foup
+
+        return foup.PlacesDatasetImporter
