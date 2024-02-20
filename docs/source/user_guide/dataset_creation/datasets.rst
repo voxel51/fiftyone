@@ -2154,13 +2154,16 @@ to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`obj.names`, the bounding box coordinates are expressed as relative coordinates
-in `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
-`[0, 1]`.
+`obj.names`, all coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional confidence in `[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2404,13 +2407,16 @@ to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`names`, the bounding box coordinates are expressed as relative coordinates in
-`[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
-`[0, 1]`.
+`names`, all coordinates are expressed as relative values in `[0, 1] x [0, 1]`,
+and `<confidence>` is an optional confidence in `[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`. The label file
 path for each image is obtained by replacing `images/` with `labels/` in the
