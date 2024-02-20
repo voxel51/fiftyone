@@ -25,6 +25,9 @@ class Mesh(Object3D):
     def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
         super().__init__(**kwargs)
 
+        if isinstance(material, dict):
+            material = MeshMaterial._from_dict(material)
+
         self.default_material = material or MeshLambertMaterial()
 
     def set_default_material(self, material: MeshMaterial):
@@ -36,7 +39,7 @@ class Mesh(Object3D):
         self.default_material = material
 
     def _to_dict_extra(self):
-        return {"default_material": self.default_material.as_dict()}
+        return {"defaultMaterial": self.default_material.as_dict()}
 
 
 class ObjMesh(Mesh):
@@ -80,8 +83,8 @@ class ObjMesh(Mesh):
 
     def _to_dict_extra(self):
         return super()._to_dict_extra() | {
-            "obj_path": self.obj_path,
-            "mtl_path": self.mtl_path,
+            "objPath": self.obj_path,
+            "mtlPath": self.mtl_path,
         }
 
 
@@ -117,7 +120,7 @@ class FBXMesh(Mesh):
         self.gltf_path = fbx_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"fbx_path": self.gltf_path}
+        return super()._to_dict_extra() | {"fbxPath": self.gltf_path}
 
 
 class GLTFMesh(Mesh):
@@ -156,7 +159,7 @@ class GLTFMesh(Mesh):
         self.gltf_path = gltf_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"gltf_path": self.gltf_path}
+        return super()._to_dict_extra() | {"gltfPath": self.gltf_path}
 
 
 class PlyMesh(Mesh):
@@ -196,7 +199,7 @@ class PlyMesh(Mesh):
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"ply_path": self.ply_path}
+        return super()._to_dict_extra() | {"plyPath": self.ply_path}
 
 
 class StlMesh(Mesh):
@@ -231,4 +234,4 @@ class StlMesh(Mesh):
         self.stl_path = stl_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"stl_path": self.stl_path}
+        return super()._to_dict_extra() | {"stlPath": self.stl_path}

@@ -107,6 +107,10 @@ class PointLight(Light):
     Args:
         distance (0.0): the distance at which the light's intensity is zero
         decay (2.0): the amount the light dims along the distance of the light
+        color ("#ffffff"): the color of the light
+        intensity (1.0): the intensity of the light in the range [0, 1]
+        kwargs: arbitrary keyword arguments for
+            :class:`fiftyone.core.threed.Object3D` base class
     """
 
     def __init__(
@@ -149,6 +153,10 @@ class SpotLight(Light):
         decay (2.0): the amount the light dims along the distance of the light
         angle (PI / 3): the angle of the light's spotlight, in radians
         penumbra (0.0): the angle of the penumbra of the light's spotlight, in radians
+        color ("#ffffff"): the color of the light
+        intensity (1.0): the intensity of the light in the range [0, 1]
+        kwargs: arbitrary keyword arguments for
+            :class:`fiftyone.core.threed.Object3D` base class
     """
 
     def __init__(

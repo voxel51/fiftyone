@@ -6,7 +6,10 @@
 
 from typing import Literal
 
+import fiftyone.core.utils as fou
 from pydantic.dataclasses import dataclass
+
+threed = fou.lazy_import("fiftyone.core.threed")
 
 COLOR_DEFAULT_GRAY = "#808080"
 COLOR_DEFAULT_DARK_GRAY = "#111111"
@@ -30,10 +33,20 @@ class Material3D:
 
     def as_dict(self):
         return {
+            "_type": self.__class__.__name__,
             "opacity": self.opacity,
             "transparent": self.transparent,
-            "vertex_colors": self.vertex_colors,
+            "vertexColors": self.vertex_colors,
         }
+
+    @staticmethod
+    def _from_dict(d):
+        cls_name: str = d.pop("_type")
+        if not cls_name.endswith("Material"):
+            raise ValueError("Invalid material type")
+
+        clz = getattr(threed, cls_name)
+        return clz(**d)
 
 
 @dataclass
@@ -57,10 +70,10 @@ class PointcloudMaterial(Material3D):
 
     def as_dict(self):
         return super().as_dict() | {
-            "shading_mode": self.shading_mode,
-            "custom_color": self.custom_color,
-            "point_size": self.point_size,
-            "attenuate_by_distance": self.attenuate_by_distance,
+            "shadingMode": self.shading_mode,
+            "customColor": self.custom_color,
+            "pointSize": self.point_size,
+            "attenuateByDistance": self.attenuate_by_distance,
         }
 
 
@@ -106,7 +119,7 @@ class MeshLambertMaterial(MeshMaterial):
             This is the color emitted by the material itself independent of the light.
         emissive_intensity (0.0): the intensity of the emissive color
         reflectivity (1.0): the reflectivity of the material
-        refraction_ratio (0.98): the refraction ratio of the material
+        refraction_ratio (0.98): the refraction ratio (IOR) of the material
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -118,10 +131,10 @@ class MeshLambertMaterial(MeshMaterial):
     def as_dict(self):
         return super().as_dict() | {
             "color": self.color,
-            "emissive_color": self.emissive_color,
-            "emissive_intensity": self.emissive_intensity,
+            "emissiveColor": self.emissive_color,
+            "emissiveIntensity": self.emissive_intensity,
             "reflectivity": self.reflectivity,
-            "refraction_ratio": self.refraction_ratio,
+            "refractionRatio": self.refraction_ratio,
         }
 
 
@@ -154,12 +167,12 @@ class MeshPhongMaterial(MeshMaterial):
     def as_dict(self):
         return super().as_dict() | {
             "color": self.color,
-            "emissive_color": self.emissive_color,
-            "emissive_intensity": self.emissive_intensity,
+            "emissiveColor": self.emissive_color,
+            "emissiveIntensity": self.emissive_intensity,
             "shininess": self.shininess,
-            "specular_color": self.specular_color,
+            "specularColor": self.specular_color,
             "reflectivity": self.reflectivity,
-            "refraction_ratio": self.refraction_ratio,
+            "refractionRatio": self.refraction_ratio,
         }
 
 
