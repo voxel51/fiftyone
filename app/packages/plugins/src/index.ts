@@ -1,7 +1,7 @@
 import { useOperators } from "@fiftyone/operators";
 import * as fos from "@fiftyone/state";
 import * as fou from "@fiftyone/utilities";
-import { getFetchFunction, getFetchOrigin } from "@fiftyone/utilities";
+import { getFetchFunction, getFetchParameters } from "@fiftyone/utilities";
 import * as _ from "lodash";
 import React, { FunctionComponent, useEffect, useMemo, useState } from "react";
 import * as recoil from "recoil";
@@ -96,6 +96,7 @@ class PluginDefinition {
 
 export async function loadPlugins() {
   const plugins = await fetchPluginsMetadata();
+  const { pathPrefix } = getFetchParameters();
   for (const plugin of plugins) {
     usingRegistry().registerPluginDefinition(plugin);
     if (plugin.hasJS) {
@@ -106,7 +107,7 @@ export async function loadPlugins() {
         continue;
       }
       try {
-        await loadScript(name, `${getFetchOrigin()}${scriptPath}`);
+        await loadScript(name, pathPrefix + scriptPath);
       } catch (e) {
         console.error(`Plugin "${name}": failed to load!`);
         console.error(e);

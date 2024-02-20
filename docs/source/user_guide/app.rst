@@ -167,7 +167,7 @@ Remote sessions
 _______________
 
 If your data is stored on a remote machine, you can forward a session from
-the remote machine to your local machine and seemlessly browse your remote
+the remote machine to your local machine and seamlessly browse your remote
 dataset from you web browser.
 
 Check out the :ref:`environments page <environments>` for more information on
@@ -1099,7 +1099,7 @@ customizing the rendering of your labels, including whether to show object
 labels, confidences, or the tooltip. The default settings for these parameters
 can be configured via the :ref:`App config <app-config>`.
 
-Keyboard shortcuts are availble for almost every action. Click the `?` icon
+Keyboard shortcuts are available for almost every action. Click the `?` icon
 in the controls HUD or use the `?` keyboard shortcut to display the list of
 available actions and their associated hotkeys.
 

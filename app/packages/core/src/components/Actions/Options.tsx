@@ -193,6 +193,10 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
     return options;
   }, [isOrderedDynamicGroup, hasGroupSlices]);
 
+  if (!modal && !isOrderedDynamicGroup) {
+    return null;
+  }
+
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>
@@ -235,6 +239,7 @@ const Lightning = () => {
         options={["disable", "enable"].map((value) => ({
           text: value,
           title: value,
+          dataCy: `lightning-mode-${value}`,
           onClick: () =>
             setThreshold(value === "disable" ? null : config ?? count),
         }))}

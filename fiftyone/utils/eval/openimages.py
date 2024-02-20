@@ -1,7 +1,7 @@
 """
 Open Images-style detection evaluation.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -219,7 +219,13 @@ class OpenImagesEvaluation(DetectionEvaluation):
         )
 
     def generate_results(
-        self, samples, matches, eval_key=None, classes=None, missing=None
+        self,
+        samples,
+        matches,
+        eval_key=None,
+        classes=None,
+        missing=None,
+        progress=None,
     ):
         """Generates aggregate evaluation results for the samples.
 
@@ -238,6 +244,9 @@ class OpenImagesEvaluation(DetectionEvaluation):
                 purposes
             missing (None): a missing label string. Any unmatched objects are
                 given this label for results purposes
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a :class:`OpenImagesDetectionResults`

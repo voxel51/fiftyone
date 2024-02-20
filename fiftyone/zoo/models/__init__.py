@@ -1,7 +1,7 @@
 """
 The FiftyOne Model Zoo.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -227,8 +227,10 @@ def load_zoo_model(
     Returns:
         a :class:`fiftyone.core.models.Model`
     """
-    if cache and name in _MODELS:
-        return _MODELS[name]
+    if cache:
+        key = _get_cache_key(name, **kwargs)
+        if key is not None and key in _MODELS:
+            return _MODELS[key]
 
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -252,8 +254,8 @@ def load_zoo_model(
 
     model = fom.load_model(config_dict, model_path=model_path, **kwargs)
 
-    if cache:
-        _MODELS[name] = model
+    if cache and key is not None:
+        _MODELS[key] = model
 
     return model
 
@@ -428,3 +430,17 @@ def _get_latest_model(base_name):
         return manifest.get_latest_model_with_base_name(base_name)
     except etam.ModelError:
         raise ValueError("No models found with base name '%s'" % base_name)
+
+
+def _get_cache_key(name, **kwargs):
+    if not kwargs:
+        return name
+
+    try:
+        # convert to str because kwargs may contain unhashable types like lists
+        return str(
+            (("name", name),)
+            + tuple((k, kwargs[k]) for k in sorted(kwargs.keys()))
+        )
+    except:
+        return None

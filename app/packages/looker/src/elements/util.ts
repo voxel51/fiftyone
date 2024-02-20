@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { BaseState, StateUpdate } from "../state";
@@ -83,7 +83,7 @@ const stringifyNumber = function (
   pad: boolean = false
 ): string {
   let str = "";
-  if (pad && number <= 10) {
+  if (pad && number < 10) {
     str += "0" + number;
   } else if (number === 0) {
     str = "0";

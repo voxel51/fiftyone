@@ -1,7 +1,7 @@
 """
 Annotation utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -991,6 +991,7 @@ def load_annotations(
     dest_field=None,
     unexpected="prompt",
     cleanup=False,
+    progress=None,
     **kwargs,
 ):
     """Downloads the labels from the given annotation run from the annotation
@@ -1019,6 +1020,9 @@ def load_annotations(
                 or ``None`` if there aren't any
         cleanup (False): whether to delete any informtation regarding this run
             from the annotation backend after loading the annotations
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: keyword arguments for the run's
             :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
             method
@@ -1068,6 +1072,7 @@ def load_annotations(
                         results,
                         label_field,
                         label_info=label_info,
+                        progress=progress,
                     )
                 else:
                     _merge_labels(
@@ -1079,6 +1084,7 @@ def load_annotations(
                         label_info=label_info,
                         global_attrs=global_attrs,
                         class_attrs=class_attrs,
+                        progress=progress,
                     )
             else:
                 # Unexpected labels
@@ -1107,10 +1113,21 @@ def load_annotations(
                     )
 
                     if anno_type == "scalar":
-                        _merge_scalars(dataset, annos, results, new_field)
+                        _merge_scalars(
+                            dataset,
+                            annos,
+                            results,
+                            new_field,
+                            progress=progress,
+                        )
                     else:
                         _merge_labels(
-                            dataset, annos, results, new_field, anno_type
+                            dataset,
+                            annos,
+                            results,
+                            new_field,
+                            anno_type,
+                            progress=progress,
                         )
                 else:
                     if label_field:
@@ -1256,7 +1273,9 @@ def _prompt_field(dataset, label_type, label_field, label_schema):
     return new_field
 
 
-def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
+def _merge_scalars(
+    dataset, anno_dict, results, label_field, label_info=None, progress=None
+):
     if label_info is None:
         label_info = {}
 
@@ -1290,7 +1309,7 @@ def _merge_scalars(dataset, anno_dict, results, label_field, label_info=None):
     num_deletions = 0
 
     logger.info("Loading scalars for field '%s'...", label_field)
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         sample_annos = anno_dict.get(sample.id, None)
 
         if is_frame_field:
@@ -1355,6 +1374,7 @@ def _merge_labels(
     label_info=None,
     global_attrs=None,
     class_attrs=None,
+    progress=None,
 ):
     if label_info is None:
         label_info = {}
@@ -1472,7 +1492,7 @@ def _merge_labels(
     # Add/merge labels from the annotation task
     sample_ids = list(anno_dict.keys())
     view = view.select(sample_ids).select_fields(label_field)
-    for sample in view.iter_samples(progress=True):
+    for sample in view.iter_samples(progress=progress):
         sample_id = sample.id
         sample_annos = anno_dict[sample_id]
 
@@ -2294,7 +2314,13 @@ class DrawConfig(etaa.AnnotationConfig):
 
 
 def draw_labeled_images(
-    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
+    samples,
+    output_dir,
+    rel_dir=None,
+    label_fields=None,
+    config=None,
+    progress=None,
+    **kwargs,
 ):
     """Renders annotated versions of the images in the collection with the
     specified label data overlaid to the given directory.
@@ -2319,6 +2345,9 @@ def draw_labeled_images(
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 
@@ -2335,7 +2364,7 @@ def draw_labeled_images(
     output_ext = fo.config.default_image_ext
 
     outpaths = []
-    for sample in samples.iter_samples(progress=True):
+    for sample in samples.iter_samples(progress=progress):
         outpath = filename_maker.get_output_path(
             sample.filepath, output_ext=output_ext
         )
@@ -2375,7 +2404,13 @@ def draw_labeled_image(
 
 
 def draw_labeled_videos(
-    samples, output_dir, rel_dir=None, label_fields=None, config=None, **kwargs
+    samples,
+    output_dir,
+    rel_dir=None,
+    label_fields=None,
+    config=None,
+    progress=None,
+    **kwargs,
 ):
     """Renders annotated versions of the videos in the collection with the
     specified label data overlaid to the given directory.
@@ -2400,6 +2435,9 @@ def draw_labeled_videos(
             If omitted, all compatiable fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
         **kwargs: optional keyword arguments specifying parameters of the
             default :class:`DrawConfig` to override
 
@@ -2419,7 +2457,7 @@ def draw_labeled_videos(
     num_videos = len(samples)
 
     outpaths = []
-    for idx, sample in enumerate(samples, 1):
+    for idx, sample in enumerate(samples.iter_samples(progress=progress), 1):
         if is_clips:
             logger.info("Drawing labels for clip %d/%d", idx, num_videos)
             base, ext = os.path.splitext(sample.filepath)

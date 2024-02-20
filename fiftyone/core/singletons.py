@@ -1,7 +1,7 @@
 """
 FiftyOne singleton implementations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -227,6 +227,10 @@ class SampleSingleton(DocumentSingleton):
             samples = cls._instances.pop(collection_name)
             for sample in samples.values():
                 sample._reset_backing_doc()
+
+    def _clear(cls, collection_name):
+        """Removes all samples for the given collection from the cache."""
+        cls._instances.pop(collection_name, None)
 
 
 class FrameSingleton(DocumentSingleton):
@@ -501,3 +505,7 @@ class FrameSingleton(DocumentSingleton):
 
         for sample_id, fn in reset:
             samples[sample_id].pop(fn)
+
+    def _clear(cls, collection_name):
+        """Removes all frames for the given collection from the cache."""
+        cls._instances.pop(collection_name, None)

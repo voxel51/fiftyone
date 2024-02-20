@@ -23,7 +23,7 @@
     "devDependencies": {
         "@vitest/ui": "^0.34.6",
         "typescript": "^4.7.4",
-        "vite": "^3.2.7",
+        "vite": "^3.2.8",
         "vite-plugin-externals": "^0.5.0",
         "vitest": "^0.34.6"
     },

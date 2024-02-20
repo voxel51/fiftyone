@@ -496,6 +496,10 @@ to a specific list of bucket(s):
     do not wish to provide a single set of credentials to cover all buckets
     that your team plans to use within a given cloud storage provider.
 
+Alternatively, credentials can be updated programmatically with the
+:meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`
+method in the Management SDK.
+
 Any cloud credentials uploaded via this method will automatically be used by
 the Teams UI when any user attempts to load media associated with the
 appropriate provider or specific bucket.

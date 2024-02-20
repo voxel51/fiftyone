@@ -1,7 +1,7 @@
 """
 Package-wide constants.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -44,7 +44,7 @@ RESOURCES_DIR = os.path.join(FIFTYONE_DIR, "resources")
 # This setting may be ``None`` if this client has no compatibility with other
 # versions
 #
-COMPATIBLE_VERSIONS = ">=0.19,<0.24"
+COMPATIBLE_VERSIONS = ">=0.19,<0.25"
 
 # Package metadata
 _META = metadata("fiftyone")

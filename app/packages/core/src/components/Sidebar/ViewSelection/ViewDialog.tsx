@@ -1,11 +1,12 @@
-import { Selection, useTheme } from "@fiftyone/components";
-import { DatasetViewOption } from "@fiftyone/components/src/components/Selection/Option";
 import {
   COLOR_OPTIONS,
   COLOR_OPTIONS_MAP,
   DEFAULT_COLOR,
   DEFAULT_COLOR_OPTION,
-} from "@fiftyone/components/src/components/Selection/SelectionColors";
+  DatasetViewOption,
+  Selection,
+  useTheme,
+} from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
 import { extendedStages } from "@fiftyone/state";
 import { toSlug } from "@fiftyone/utilities";
@@ -82,7 +83,7 @@ export default function ViewDialog(props: Props) {
     COLOR_OPTIONS_MAP[initialColor] || DEFAULT_COLOR_OPTION;
 
   const [colorOption, setColorOption] = useState<DatasetViewOption>({
-    label: theColorOption.id,
+    label: theColorOption.label,
     color: theColorOption.color,
     id: theColorOption.id,
     description: "",
@@ -109,7 +110,7 @@ export default function ViewDialog(props: Props) {
         COLOR_OPTIONS_MAP[viewContent.color] || DEFAULT_COLOR_OPTION;
 
       setColorOption({
-        label: theColorOption?.id,
+        label: theColorOption?.label,
         color: theColorOption?.color,
         id: theColorOption?.id,
         description: "",
@@ -187,13 +188,20 @@ export default function ViewDialog(props: Props) {
     initialName,
   ]);
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <Dialog
+      // might have to disablePortal or disableEnforceFocus if we run into issues
+      // see https://github.com/mui/material-ui/issues/10341
       open={isOpen}
       onClose={() => {
         setIsOpen(false);
         resetValues();
       }}
+      hideBackdrop
     >
       <DialogBody
         style={{
@@ -254,7 +262,7 @@ export default function ViewDialog(props: Props) {
               selected={colorOption}
               setSelected={(item) => setColorOption(item)}
               items={COLOR_OPTIONS}
-              compact
+              hideActions
               readonly
             />
           </InputContainer>

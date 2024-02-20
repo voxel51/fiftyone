@@ -4,7 +4,7 @@ Sphinx configuration file.
 For a full list of available options, see:
 https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -100,6 +100,9 @@ rst_prolog = """
 # scrolling handling, and we don't appear to have any notebook content that
 # requires it
 nbsphinx_requirejs_path = ""
+
+# Don't execute notbooks during the build process
+nbsphinx_execute = "never"
 
 # Adds helpful external links to the built HTML
 ref = "v%s" % foc.VERSION

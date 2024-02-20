@@ -1,7 +1,7 @@
 """
 Utilities for working with datasets in YOLO format.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -9,6 +9,7 @@ import logging
 import os
 import warnings
 
+import numpy as np
 import yaml
 
 import eta.core.utils as etau
@@ -1082,24 +1083,30 @@ def _get_yolo_v5_labels_path(image_path):
 
 def _parse_yolo_row(row, classes):
     row_vals = row.split()
-    target, xc, yc, w, h = row_vals[:5]
+    target = row_vals[0]
+    confidence = None
+    if len(row_vals) < 7: # box case
+        xc, yc, w, h = map(float, row_vals[1:5])
+        minx = xc - 0.5 * w
+        miny = yc - 0.5 * h
+
+        if len(row_vals) > 5:
+            confidence = float(row_vals[5])
+
+    else: # polygon case
+        vertices = list(map(float, row_vals[1:]))
+        vertices = np.reshape(vertices, (-1, 2))
+        minx, miny = vertices.min(axis=0)
+        maxx, maxy = vertices.max(axis=0)
+        w = maxx - minx
+        h = maxy - miny
 
     try:
         label = classes[int(target)]
     except:
         label = str(target)
 
-    bounding_box = [
-        (float(xc) - 0.5 * float(w)),
-        (float(yc) - 0.5 * float(h)),
-        float(w),
-        float(h),
-    ]
-
-    if len(row_vals) > 5:
-        confidence = float(row_vals[5])
-    else:
-        confidence = None
+    bounding_box = [minx, miny, w, h]
 
     return fol.Detection(
         label=label, bounding_box=bounding_box, confidence=confidence

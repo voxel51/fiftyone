@@ -1,7 +1,7 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -2429,6 +2429,30 @@ class DatasetTests(unittest.TestCase):
         self.assertIsNotNone(frame.predictions.detections[0].field)
         with self.assertRaises(AttributeError):
             frame.predictions.detections[0].field_copy
+
+    @drop_datasets
+    def test_clear_cache(self):
+        samples = [fo.Sample(filepath=f"{i}.mp4") for i in range(10)]
+        sample1 = samples[0]
+        sample1.frames[1] = fo.Frame()
+        frame1 = sample1.frames[1]
+
+        dataset = fo.Dataset()
+        dataset.add_samples(samples)
+
+        also_sample1 = dataset.first()
+        also_frame1 = also_sample1.frames[1]
+
+        self.assertTrue(also_sample1 is sample1)
+        self.assertTrue(also_frame1 is frame1)
+
+        dataset.clear_cache()
+
+        not_sample1 = dataset.first()
+        not_frame1 = not_sample1.frames[1]
+
+        self.assertFalse(not_sample1 is sample1)
+        self.assertFalse(not_frame1 is frame1)
 
     @drop_datasets
     def test_classes(self):

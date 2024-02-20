@@ -1,7 +1,7 @@
 """
 FiftyOne config.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -153,12 +153,6 @@ class FiftyOneConfig(EnvConfig):
             "default_batch_size",
             env_var="FIFTYONE_DEFAULT_BATCH_SIZE",
             default=None,
-        )
-        self.bulk_write_batch_size = self.parse_int(
-            d,
-            "bulk_write_batch_size",
-            env_var="FIFTYONE_BULK_WRITE_BATCH_SIZE",
-            default=100_000,  # mongodb limit
         )
         self.default_batcher = self.parse_string(
             d,

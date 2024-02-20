@@ -1,12 +1,12 @@
 import React from "react";
-import { extendTheme as extendJoyTheme, Theme } from "@mui/joy/styles";
 import {
   createTheme,
   Experimental_CssVarsProvider as CssVarsProvider,
+  experimental_extendTheme as extendMuiTheme,
 } from "@mui/material/styles";
 import { ThemeContext as LegacyTheme } from "styled-components";
 
-let theme = extendJoyTheme({
+let theme = extendMuiTheme({
   colorSchemes: {
     light: createTheme({
       palette: {

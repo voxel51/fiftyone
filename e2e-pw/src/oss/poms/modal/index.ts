@@ -1,10 +1,10 @@
 import { expect, Locator, Page } from "src/oss/fixtures";
 import { EventUtils } from "src/shared/event-utils";
 import { Duration } from "../../utils";
+import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 import { ModalGroupActionsPom } from "./group-actions";
 import { ModalSidebarPom } from "./modal-sidebar";
 import { ModalVideoControlsPom } from "./video-controls";
-import { ModalTaggerPom } from "../action-row/tagger/modal-tagger";
 
 export class ModalPom {
   readonly groupCarousel: Locator;
@@ -45,6 +45,10 @@ export class ModalPom {
     return this.locator.getByTestId("looker3d");
   }
 
+  get looker3dActionBar() {
+    return this.locator.getByTestId("looker3d-action-bar");
+  }
+
   get carousel() {
     return this.locator.getByTestId("group-carousel");
   }
@@ -57,6 +61,12 @@ export class ModalPom {
     return this.eventUtils.getEventReceivedPromiseForPredicate(
       "looker-attached",
       () => true
+    );
+  }
+
+  getSampleNavigation(direction: "forward" | "backward") {
+    return this.locator.getByTestId(
+      `nav-${direction === "forward" ? "right" : "left"}-button`
     );
   }
 
@@ -147,9 +157,7 @@ export class ModalPom {
     slice: string,
     allowErrorInfo = false
   ) {
-    const currentSlice = await this.sidebar.getSidebarEntryText(
-      `sidebar-entry-${groupField}`
-    );
+    const currentSlice = await this.sidebar.getSidebarEntryText(groupField);
     const lookers = this.groupCarousel.getByTestId("looker");
     const looker = lookers.filter({ hasText: slice }).first();
     await looker.click({ position: { x: 10, y: 60 } });
@@ -183,6 +191,17 @@ export class ModalPom {
 
   async clickOnLooker3d() {
     return this.looker3d.click();
+  }
+
+  async toggleLooker3dSlice(slice: string) {
+    await this.looker3dActionBar.getByTestId("looker3d-select-slices").click();
+
+    await this.looker3dActionBar
+      .getByTestId("looker3d-slice-checkboxes")
+      .getByTestId(`checkbox-${slice}`)
+      .click();
+
+    await this.clickOnLooker3d();
   }
 
   async clickOnLooker() {
@@ -234,5 +253,10 @@ class ModalAsserter {
       .getByTestId("looker")
       .count();
     expect(actualLookerCount).toBe(expectedCount);
+  }
+
+  async verifySampleNavigation(direction: "forward" | "backward") {
+    const navigation = this.modalPom.getSampleNavigation(direction);
+    await expect(navigation).toBeVisible();
   }
 }

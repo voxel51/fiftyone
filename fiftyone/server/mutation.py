@@ -1,7 +1,7 @@
 """
 FiftyOne Server mutations.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -10,6 +10,7 @@ import strawberry as gql
 import typing as t
 
 import eta.core.serial as etas
+import eta.core.utils as etau
 
 import fiftyone.constants as foc
 import fiftyone.core.dataset as fod
@@ -31,8 +32,17 @@ from fiftyone.server.query import (
     SidebarGroup,
     SavedView,
 )
-from fiftyone.server.scalars import BSON, BSONArray, JSON, JSONArray
+from fiftyone.server.scalars import BSON, BSONArray, JSON
 from fiftyone.server.view import get_view
+
+
+_CONVERSION_STAGES = {
+    fos.ToClips,
+    fos.ToEvaluationPatches,
+    fos.ToFrames,
+    fos.ToPatches,
+    fos.ToTrajectories,
+}
 
 
 @gql.input
@@ -216,6 +226,19 @@ class Mutation(SetColorScheme):
                 if form.slice
                 else None,
             )
+
+            # special case for group datasets where conversion stage is added
+            # `result_view` will output a `mixed` media type dataset but a real
+            # type, e.g. "image", is needed
+            is_in_conversion_stage = False
+            if form.add_stages:
+                is_in_conversion_stage = any(
+                    etau.get_class(stage.get("_cls")) in _CONVERSION_STAGES
+                    for stage in form.add_stages
+                )
+
+            if result_view.media_type == "mixed" and is_in_conversion_stage:
+                result_view._set_media_type(ds.group_media_types[form.slice])
 
             result_view = _build_result_view(result_view, form)
 

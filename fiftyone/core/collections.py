@@ -1,7 +1,7 @@
 """
 Interface for sample collections.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -830,8 +830,9 @@ class SampleCollection(object):
         """Returns an iterator over the samples in the collection.
 
         Args:
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -855,8 +856,9 @@ class SampleCollection(object):
 
         Args:
             group_slices (None): an optional subset of group slices to load
-            progress (False): whether to render a progress bar tracking the
-                iterator's progress
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             autosave (False): whether to automatically save changes to samples
                 emitted by this iterator
             batch_size (None): a batch size to use when autosaving samples. Can
@@ -1539,7 +1541,10 @@ class SampleCollection(object):
     def _edit_sample_tags(self, update):
         ids = []
         ops = []
-        for _ids in fou.iter_batches(self.values("_id"), 100000):
+        batch_size = fou.recommend_batch_size_for_value(
+            ObjectId(), max_size=100000
+        )
+        for _ids in fou.iter_batches(self.values("_id"), batch_size):
             ids.extend(_ids)
             ops.append(UpdateMany({"_id": {"$in": _ids}}, update))
 
@@ -1662,14 +1667,18 @@ class SampleCollection(object):
                 else:
                     label_ids = self.values(id_path)
 
-            for _label_ids in fou.iter_batches(label_ids, 100000):
+            batch_size = fou.recommend_batch_size_for_value(
+                ObjectId(), max_size=100000
+            )
+            for _label_ids in fou.iter_batches(label_ids, batch_size):
                 _label_ids = [_id for _id in _label_ids if _id is not None]
-                ops.append(
-                    UpdateMany(
-                        {_id_path: {"$in": _label_ids}},
-                        update,
+                if _label_ids:
+                    ops.append(
+                        UpdateMany(
+                            {_id_path: {"$in": _label_ids}},
+                            update,
+                        )
                     )
-                )
 
         if ops:
             self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
@@ -1871,6 +1880,7 @@ class SampleCollection(object):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        progress=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -2011,6 +2021,9 @@ class SampleCollection(object):
                 document fields that are encountered
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         self._set_values(
             field_name,
@@ -2020,6 +2033,7 @@ class SampleCollection(object):
             expand_schema=expand_schema,
             dynamic=dynamic,
             validate=validate,
+            progress=progress,
             _allow_missing=_allow_missing,
             _sample_ids=_sample_ids,
             _frame_ids=_frame_ids,
@@ -2034,6 +2048,7 @@ class SampleCollection(object):
         expand_schema=True,
         dynamic=False,
         validate=True,
+        progress=False,
         _allow_missing=False,
         _sample_ids=None,
         _frame_ids=None,
@@ -2112,6 +2127,7 @@ class SampleCollection(object):
                     expand_schema=expand_schema,
                     dynamic=dynamic,
                     validate=validate,
+                    progress=progress,
                     _allow_missing=_allow_missing,
                     _sample_ids=_sample_ids,
                     _frame_ids=_frame_ids,
@@ -2141,6 +2157,7 @@ class SampleCollection(object):
                     field=field,
                     skip_none=skip_none,
                     validate=validate,
+                    progress=progress,
                 )
             else:
                 self._set_sample_values(
@@ -2151,6 +2168,7 @@ class SampleCollection(object):
                     field=field,
                     skip_none=skip_none,
                     validate=validate,
+                    progress=progress,
                 )
         except:
             # Add a group field converts the dataset's type, so if it fails we
@@ -2172,6 +2190,7 @@ class SampleCollection(object):
         dynamic=False,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         """Sets the fields of the specified labels in the collection to the
         given values.
@@ -2214,6 +2233,9 @@ class SampleCollection(object):
                 document fields that are encountered
             validate (True): whether to validate that the values are compliant
                 with the dataset schema before adding them
+            progress (False): whether to render a progress bar (True/False),
+                use the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         field, _ = self._expand_schema_from_values(
             field_name, values.values(), dynamic=dynamic, flat=True
@@ -2282,6 +2304,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=is_frame_field,
+                progress=progress,
             )
         else:
             _label_ids, _values = zip(*values.items())
@@ -2295,6 +2318,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=is_frame_field,
+                progress=progress,
             )
 
     def _expand_schema_from_values(
@@ -2446,6 +2470,7 @@ class SampleCollection(object):
         field=None,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2472,6 +2497,7 @@ class SampleCollection(object):
                 field=field,
                 skip_none=skip_none,
                 validate=validate,
+                progress=progress,
             )
         else:
             if sample_ids is not None:
@@ -2486,6 +2512,7 @@ class SampleCollection(object):
                 field=field,
                 skip_none=skip_none,
                 validate=validate,
+                progress=progress,
             )
 
     def _set_frame_values(
@@ -2498,6 +2525,7 @@ class SampleCollection(object):
         field=None,
         skip_none=False,
         validate=True,
+        progress=False,
     ):
         if len(list_fields) > 1:
             raise ValueError(
@@ -2534,6 +2562,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=True,
+                progress=progress,
             )
         else:
             if frame_ids is None:
@@ -2550,6 +2579,7 @@ class SampleCollection(object):
                 skip_none=skip_none,
                 validate=validate,
                 frames=True,
+                progress=progress,
             )
 
     def _set_doc_values(
@@ -2561,6 +2591,7 @@ class SampleCollection(object):
         skip_none=False,
         validate=True,
         frames=False,
+        progress=False,
     ):
         ops = []
         for _id, value in zip(ids, values):
@@ -2578,7 +2609,9 @@ class SampleCollection(object):
             ops.append(UpdateOne({"_id": _id}, {"$set": {field_name: value}}))
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
     def _set_list_values_by_id(
         self,
@@ -2591,6 +2624,7 @@ class SampleCollection(object):
         skip_none=False,
         validate=True,
         frames=False,
+        progress=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -2633,7 +2667,9 @@ class SampleCollection(object):
                 )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
     def _set_label_list_values(
         self,
@@ -2645,6 +2681,7 @@ class SampleCollection(object):
         skip_none=None,
         validate=True,
         frames=False,
+        progress=False,
     ):
         root = list_field
         leaf = field_name[len(root) + 1 :]
@@ -2672,9 +2709,11 @@ class SampleCollection(object):
             )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=frames)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=frames, progress=progress
+            )
 
-    def _set_labels(self, field_name, sample_ids, label_docs):
+    def _set_labels(self, field_name, sample_ids, label_docs, progress=False):
         if self._is_group_field(field_name):
             raise ValueError(
                 "This method does not support setting attached group fields "
@@ -2724,7 +2763,9 @@ class SampleCollection(object):
                 )
 
         if ops:
-            self._dataset._bulk_write(ops, ids=ids, frames=is_frame_field)
+            self._dataset._bulk_write(
+                ops, ids=ids, frames=is_frame_field, progress=progress
+            )
 
     def _delete_labels(self, ids, fields=None):
         self._dataset.delete_labels(ids=ids, fields=fields)
@@ -2735,6 +2776,7 @@ class SampleCollection(object):
         num_workers=None,
         skip_failures=True,
         warn_failures=False,
+        progress=None,
     ):
         """Populates the ``metadata`` field of all samples in the collection.
 
@@ -2748,6 +2790,9 @@ class SampleCollection(object):
                 raising an error if metadata cannot be computed for a sample
             warn_failures (False): whether to log a warning if metadata cannot
                 be computed for a sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
         """
         fomt.compute_metadata(
             self,
@@ -2755,6 +2800,7 @@ class SampleCollection(object):
             num_workers=num_workers,
             skip_failures=skip_failures,
             warn_failures=warn_failures,
+            progress=progress,
         )
 
     def apply_model(
@@ -2768,6 +2814,7 @@ class SampleCollection(object):
         skip_failures=True,
         output_dir=None,
         rel_dir=None,
+        progress=None,
         **kwargs,
     ):
         """Applies the model to the samples in the collection.
@@ -2810,6 +2857,9 @@ class SampleCollection(object):
                 subdirectories in ``output_dir`` that match the shape of the
                 input paths. The path is converted to an absolute path (if
                 necessary) via :func:`fiftyone.core.storage.normalize_path`
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
         """
@@ -2824,6 +2874,7 @@ class SampleCollection(object):
             skip_failures=skip_failures,
             output_dir=output_dir,
             rel_dir=rel_dir,
+            progress=progress,
             **kwargs,
         )
 
@@ -2834,6 +2885,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        progress=None,
         **kwargs,
     ):
         """Computes embeddings for the samples in the collection using the
@@ -2868,6 +2920,9 @@ class SampleCollection(object):
                 raising an error if embeddings cannot be generated for a
                 sample. Only applicable to :class:`fiftyone.core.models.Model`
                 instances
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional model-specific keyword arguments passed through
                 to the underlying inference implementation
 
@@ -2897,6 +2952,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             num_workers=num_workers,
             skip_failures=skip_failures,
+            progress=progress,
             **kwargs,
         )
 
@@ -2911,6 +2967,7 @@ class SampleCollection(object):
         batch_size=None,
         num_workers=None,
         skip_failures=True,
+        progress=None,
     ):
         """Computes embeddings for the image patches defined by
         ``patches_field`` of the samples in the collection using the given
@@ -2964,6 +3021,9 @@ class SampleCollection(object):
                 applicable for Torch-based models
             skip_failures (True): whether to gracefully continue without
                 raising an error if embeddings cannot be generated for a sample
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             one of the following:
@@ -2994,6 +3054,7 @@ class SampleCollection(object):
             alpha=alpha,
             handle_missing=handle_missing,
             skip_failures=skip_failures,
+            progress=progress,
         )
 
     def evaluate_regressions(
@@ -3003,6 +3064,7 @@ class SampleCollection(object):
         eval_key=None,
         missing=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the regression predictions in this collection with respect
@@ -3041,6 +3103,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.regression_backends.keys()`` and the
                 default is ``fo.evaluation_config.regression_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.regression.RegressionEvaluationConfig`
                 being used
@@ -3055,6 +3120,7 @@ class SampleCollection(object):
             eval_key=eval_key,
             missing=missing,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3066,6 +3132,7 @@ class SampleCollection(object):
         classes=None,
         missing=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the classification predictions in this collection with
@@ -3113,6 +3180,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.classification_backends.keys()`` and the
                 default is ``fo.evaluation_config.classification_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.classification.ClassificationEvaluationConfig`
                 being used
@@ -3128,6 +3198,7 @@ class SampleCollection(object):
             classes=classes,
             missing=missing,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3144,6 +3215,7 @@ class SampleCollection(object):
         use_boxes=False,
         classwise=True,
         dynamic=True,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the specified predicted detections in this collection with
@@ -3236,6 +3308,9 @@ class SampleCollection(object):
                 label (True) or allow matches between classes (False)
             dynamic (True): whether to declare the dynamic object-level
                 attributes that are populated on the dataset's schema
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.detection.DetectionEvaluationConfig`
                 being used
@@ -3256,6 +3331,7 @@ class SampleCollection(object):
             use_boxes=use_boxes,
             classwise=classwise,
             dynamic=dynamic,
+            progress=progress,
             **kwargs,
         )
 
@@ -3266,6 +3342,7 @@ class SampleCollection(object):
         eval_key=None,
         mask_targets=None,
         method=None,
+        progress=None,
         **kwargs,
     ):
         """Evaluates the specified semantic segmentation masks in this
@@ -3319,6 +3396,9 @@ class SampleCollection(object):
                 The supported values are
                 ``fo.evaluation_config.segmentation_backends.keys()`` and the
                 default is ``fo.evaluation_config.segmentation_default_backend``
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments for the constructor of the
                 :class:`fiftyone.utils.eval.segmentation.SegmentationEvaluationConfig`
                 being used
@@ -3333,6 +3413,7 @@ class SampleCollection(object):
             eval_key=eval_key,
             mask_targets=mask_targets,
             method=method,
+            progress=progress,
             **kwargs,
         )
 
@@ -3582,16 +3663,25 @@ class SampleCollection(object):
         """
         return fors.Run.list_runs(self, **kwargs)
 
-    def init_run(self):
+    def init_run(self, **kwargs):
         """Initializes a config instance for a new run.
+
+        Args:
+            **kwargs: JSON serializable config parameters
 
         Returns:
             a :class:`fiftyone.core.runs.RunConfig`
         """
-        return fors.RunConfig()
+        return fors.RunConfig(**kwargs)
 
     def register_run(
-        self, run_key, config, results=None, overwrite=False, cache=True
+        self,
+        run_key,
+        config,
+        results=None,
+        overwrite=False,
+        cleanup=True,
+        cache=True,
     ):
         """Registers a run under the given key on this collection.
 
@@ -3601,6 +3691,9 @@ class SampleCollection(object):
             results (None): an optional :class:`fiftyone.core.runs.RunResults`
             overwrite (False): whether to allow overwriting an existing run of
                 the same type
+            cleanup (True): whether to execute an existing run's
+                :meth:`fiftyone.core.runs.Run.cleanup` method when overwriting
+                it
             cache (True): whether to cache the results on the collection
         """
         if not isinstance(config, fors.RunConfig):
@@ -3612,7 +3705,7 @@ class SampleCollection(object):
         run = config.build()
         run.ensure_requirements()
 
-        run.register_run(self, run_key, overwrite=overwrite)
+        run.register_run(self, run_key, overwrite=overwrite, cleanup=cleanup)
 
         if results is not None:
             if not isinstance(results, fors.RunResults):
@@ -3661,17 +3754,18 @@ class SampleCollection(object):
 
         fors.Run.update_run_config(self, run_key, config)
 
-    def init_run_results(self, run_key):
+    def init_run_results(self, run_key, **kwargs):
         """Initializes a results instance for the run with the given key.
 
         Args:
             run_key: a run key
+            **kwargs: JSON serializable data
 
         Returns:
             a :class:`fiftyone.core.runs.RunResults`
         """
         info = fors.Run.get_run_info(self, run_key)
-        return fors.RunResults(self, info.config, run_key)
+        return fors.RunResults(self, info.config, run_key, **kwargs)
 
     def save_run_results(self, run_key, results, overwrite=True, cache=True):
         """Saves run results for the run with the given key.
@@ -8137,6 +8231,7 @@ class SampleCollection(object):
         label_fields=None,
         overwrite=False,
         config=None,
+        progress=None,
         **kwargs,
     ):
         """Renders annotated versions of the media in the collection with the
@@ -8166,6 +8261,9 @@ class SampleCollection(object):
             config (None): an optional
                 :class:`fiftyone.utils.annotations.DrawConfig` configuring how
                 to draw the labels
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments specifying parameters of the
                 default :class:`fiftyone.utils.annotations.DrawConfig` to
                 override
@@ -8193,6 +8291,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
@@ -8203,6 +8302,7 @@ class SampleCollection(object):
                 rel_dir=rel_dir,
                 label_fields=label_fields,
                 config=config,
+                progress=progress,
                 **kwargs,
             )
 
@@ -8225,6 +8325,7 @@ class SampleCollection(object):
         label_field=None,
         frame_labels_field=None,
         overwrite=False,
+        progress=None,
         **kwargs,
     ):
         """Exports the samples in the collection to disk.
@@ -8398,6 +8499,9 @@ class SampleCollection(object):
             overwrite (False): whether to delete existing directories before
                 performing the export (True) or to merge the export with
                 existing files and directories (False)
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: optional keyword arguments to pass to the dataset
                 exporter's constructor. If you are exporting image patches,
                 this can also contain keyword arguments for
@@ -8423,6 +8527,7 @@ class SampleCollection(object):
             label_field=label_field,
             frame_labels_field=frame_labels_field,
             overwrite=overwrite,
+            progress=progress,
             **kwargs,
         )
 
@@ -8690,6 +8795,7 @@ class SampleCollection(object):
         dest_field=None,
         unexpected="prompt",
         cleanup=False,
+        progress=None,
         **kwargs,
     ):
         """Downloads the labels from the given annotation run from the
@@ -8717,6 +8823,9 @@ class SampleCollection(object):
                     labels, or ``None`` if there aren't any
             cleanup (False): whether to delete any informtation regarding this
                 run from the annotation backend after loading the annotations
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
             **kwargs: keyword arguments for the run's
                 :meth:`fiftyone.core.annotation.AnnotationMethodConfig.load_credentials`
                 method
@@ -8731,6 +8840,7 @@ class SampleCollection(object):
             dest_field=dest_field,
             unexpected=unexpected,
             cleanup=cleanup,
+            progress=progress,
             **kwargs,
         )
 
@@ -9020,6 +9130,7 @@ class SampleCollection(object):
         include_frames=False,
         frame_labels_dir=None,
         pretty_print=False,
+        progress=None,
     ):
         """Returns a JSON dictionary representation of the collection.
 
@@ -9044,6 +9155,9 @@ class SampleCollection(object):
                 readable format with newlines and indentations. Only applicable
                 to datasets that contain videos when a ``frame_labels_dir`` is
                 provided
+            progress (None): whether to render a progress bar (True/False), use
+                the default value ``fiftyone.config.show_progress_bars``
+                (None), or a progress callback function to invoke instead
 
         Returns:
             a JSON dict
@@ -9099,7 +9213,7 @@ class SampleCollection(object):
 
         # Serialize samples
         samples = []
-        for sample in view.iter_samples(progress=True):
+        for sample in view.iter_samples(progress=progress):
             sd = sample.to_dict(
                 include_frames=include_frames,
                 include_private=include_private,
@@ -10914,6 +11028,7 @@ def _export(
     label_field=None,
     frame_labels_field=None,
     overwrite=False,
+    progress=None,
     **kwargs,
 ):
     if dataset_type is None and dataset_exporter is None:
@@ -10985,6 +11100,7 @@ def _export(
         dataset_exporter=dataset_exporter,
         label_field=label_field,
         frame_labels_field=frame_labels_field,
+        progress=progress,
         **kwargs,
     )
 

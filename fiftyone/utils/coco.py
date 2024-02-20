@@ -2,7 +2,7 @@
 Utilities for working with datasets in
 `COCO format <https://cocodataset.org/#format-data>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1983,29 +1983,6 @@ def _load_image_ids_csv(csv_path):
 
 def _load_image_ids_json(json_path):
     return [_id for _id in etas.load_json(json_path)]
-
-
-def _make_images_list(images_dir):
-    logger.info("Computing image metadata for '%s'", images_dir)
-
-    image_paths = foud.parse_images_dir(images_dir)
-
-    images = []
-    with fou.ProgressBar() as pb:
-        for idx, image_path in pb(enumerate(image_paths)):
-            metadata = fom.ImageMetadata.build_for(image_path)
-            images.append(
-                {
-                    "id": idx,
-                    "file_name": os.path.basename(image_path),
-                    "height": metadata.height,
-                    "width": metadata.width,
-                    "license": None,
-                    "coco_url": None,
-                }
-            )
-
-    return images
 
 
 def _to_labels_map_rev(classes):

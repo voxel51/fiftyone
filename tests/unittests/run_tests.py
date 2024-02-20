@@ -1,7 +1,7 @@
 """
 FiftyOne run-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -99,6 +99,35 @@ class RunTests(unittest.TestCase):
 
         self.assertFalse(dataset2.has_runs)
         self.assertListEqual(dataset2.list_runs(), [])
+
+    @drop_datasets
+    def test_custom_run_kwargs(self):
+        dataset = fo.Dataset()
+        kwargs = {"foo": "bar", "spam": "eggs"}
+
+        config1 = dataset.init_run(**kwargs)
+        dataset.register_run("custom1", config1)
+
+        results1 = dataset.init_run_results("custom1", **kwargs)
+        dataset.save_run_results("custom1", results1)
+
+        config2 = dataset.init_run(method="test", **kwargs)
+        dataset.register_run("custom2", config2)
+
+        results2 = dataset.init_run_results("custom2", **kwargs)
+        dataset.save_run_results("custom2", results2)
+
+        runs = dataset.list_runs()
+        self.assertListEqual(runs, ["custom1", "custom2"])
+
+        info1 = dataset.get_run_info("custom1")
+        self.assertEqual(info1.config.method, None)
+
+        info2 = dataset.get_run_info("custom2")
+        self.assertEqual(info2.config.method, "test")
+
+        runs = dataset.list_runs(method="test")
+        self.assertListEqual(runs, ["custom2"])
 
 
 if __name__ == "__main__":

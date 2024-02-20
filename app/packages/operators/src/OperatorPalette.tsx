@@ -1,18 +1,15 @@
-// import { Button } from "@fiftyone/components";
-
 import {
   PropsWithChildren,
   ReactElement,
   useCallback,
   useEffect,
   useRef,
-  useState,
 } from "react";
 import SplitButton from "./SplitButton";
 import { PALETTE_CONTROL_KEYS } from "./constants";
 import { BaseStylesProvider } from "./styled-components";
 
-import { scrollable, Button } from "@fiftyone/components";
+import { Button, scrollable } from "@fiftyone/components";
 import {
   Alert,
   AlertTitle,
@@ -88,11 +85,6 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
     };
   }, [paletteElem, keyDownHandler]);
 
-  const [selectedMenuOptionId, setSelectedMenuOptionId] = useState(null);
-  const handleMenuItemClick = (id) => {
-    selectedMenuOptionId(id);
-  };
-
   return (
     <Dialog
       open
@@ -106,6 +98,7 @@ export default function OperatorPalette(props: OperatorPaletteProps) {
         "& .MuiDialog-container": {
           alignItems: "flex-start",
         },
+        zIndex: (theme) => theme.zIndex.operatorPalette,
       }}
     >
       {title && (

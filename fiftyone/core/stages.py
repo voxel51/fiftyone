@@ -1,7 +1,7 @@
 """
 View stages.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -6669,7 +6669,7 @@ class Shuffle(ViewStage):
 
     def __init__(self, seed=None, _randint=None):
         self._seed = seed
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def seed(self):
@@ -7322,7 +7322,7 @@ class Take(ViewStage):
     def __init__(self, size, seed=None, _randint=None):
         self._seed = seed
         self._size = size
-        self._randint = _randint or _get_rng(seed).randint(1e7, 1e10)
+        self._randint = _randint or _get_rng(seed).randint(int(1e7), int(1e10))
 
     @property
     def size(self):

@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 import { mergeWith } from "immutable";
 import mime from "mime";
@@ -11,7 +11,6 @@ import {
   BufferRange,
   Buffers,
   Coordinates,
-  CustomizeColor,
   Dimensions,
   DispatchEvent,
 } from "./state";
@@ -23,9 +22,8 @@ import {
   NetworkError,
   ServerError,
 } from "@fiftyone/utilities";
-import LookerWorker from "./worker/index.ts?worker&inline";
-import { BufferManager } from "./lookers/imavid/buffer-manager";
 import { DEFAULT_FRAME_RATE } from "./lookers/imavid/constants";
+import LookerWorker from "./worker/index.ts?worker&inline";
 
 /**
  * Shallow data-object comparison for equality
@@ -407,9 +405,9 @@ export const clampScale = (
 };
 
 export const mergeUpdates = <State extends BaseState>(
-  state: Partial<State>,
+  state: State,
   updates: Partial<State>
-): Partial<State> => {
+): State => {
   const merger = (o, n) => {
     if (Array.isArray(n)) {
       return n;

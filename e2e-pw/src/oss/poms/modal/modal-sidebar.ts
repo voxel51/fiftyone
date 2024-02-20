@@ -13,12 +13,16 @@ export class ModalSidebarPom {
     this.locator = page.getByTestId("modal").getByTestId("sidebar");
   }
 
+  getSidebarEntry(key: string) {
+    return this.locator.getByTestId(`sidebar-entry-${key}`);
+  }
+
   async getSidebarEntryText(key: string) {
-    return this.locator.getByTestId(key).textContent();
+    return this.getSidebarEntry(key).textContent();
   }
 
   async getSampleTagCount() {
-    return Number(await this.getSidebarEntryText("sidebar-entry-tags"));
+    return Number(await this.getSidebarEntryText("tags"));
   }
 
   async getLabelTagCount() {
@@ -31,11 +35,11 @@ export class ModalSidebarPom {
   }
 
   async getSampleId() {
-    return this.getSidebarEntryText("sidebar-entry-id");
+    return this.getSidebarEntryText("id");
   }
 
   async getSampleFilepath(abs = true) {
-    const absPath = await this.getSidebarEntryText("sidebar-entry-filepath");
+    const absPath = await this.getSidebarEntryText("filepath");
 
     if (!abs) {
       return absPath.split("/").at(-1);
@@ -53,9 +57,7 @@ class SidebarAsserter {
   constructor(private readonly modalSidebarPom: ModalSidebarPom) {}
 
   async verifySidebarEntryText(key: string, value: string) {
-    const text = await this.modalSidebarPom.locator
-      .getByTestId(`sidebar-entry-${key}`)
-      .textContent();
+    const text = await this.modalSidebarPom.getSidebarEntryText(key);
     expect(text).toBe(value);
   }
 

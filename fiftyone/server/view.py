@@ -1,7 +1,7 @@
 """
 FiftyOne Server view.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -54,9 +54,7 @@ async def load_view(
                 stages=serialized_view,
                 filters=form.filters,
                 sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slices=[form.slice] if form.slice else None
-                    )
+                    group=GroupElementFilter(slice=form.slice)
                 ),
             )
 
@@ -65,6 +63,7 @@ async def load_view(
 
             if form.mixed and view.media_type == fom.GROUP:
                 view = view.select_group_slices(_force_mixed=True)
+                view = get_extended_view(view, form.filters)
 
             return view
 
@@ -93,8 +92,6 @@ def get_view(
         pagination_data (False): whether process samples as pagination data
             - excludes all :class:`fiftyone.core.fields.DictField` values
             - filters label fields
-        only_matches (True): whether to filter unmatches samples when filtering
-            labels
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
@@ -126,18 +123,15 @@ def get_view(
                 view = fov.make_optimized_select_view(
                     view, sample_filter.group.id, groups=True
                 )
+
             if sample_filter.group.slices:
                 view = view.select_group_slices(
                     sample_filter.group.slices,
-                    _force_mixed=len(sample_filter.group.slices) > 1,
+                    _force_mixed=True,
                 )
 
         elif sample_filter.id:
             view = fov.make_optimized_select_view(view, sample_filter.id)
-
-    if pagination_data:
-        # omit all dict field values for performance, not needed by grid
-        view = _project_pagination_paths(view)
 
     if filters or extended_stages or pagination_data:
         view = get_extended_view(
@@ -146,6 +140,7 @@ def get_view(
             pagination_data=pagination_data,
             extended_stages=extended_stages,
         )
+
     return view
 
 
@@ -169,7 +164,12 @@ def get_extended_view(
     label_tags = None
 
     if extended_stages:
+        # extend view with similarity search, etc. first
         view = extend_view(view, extended_stages)
+
+    if pagination_data:
+        # omit all dict field values for performance, not needed by grid
+        view = _project_pagination_paths(view)
 
     if filters:
         if "tags" in filters:

@@ -49,6 +49,7 @@ export default function DropdownView(props) {
     labels[choice.value] = choice.label;
     return labels;
   }, {});
+  const { MenuProps = {}, ...selectProps } = getComponentProps(props, "select");
 
   return (
     <FieldWrapper {...props}>
@@ -79,7 +80,14 @@ export default function DropdownView(props) {
           setUserChanged();
         }}
         multiple={multiple}
-        {...getComponentProps(props, "select")}
+        {...selectProps}
+        MenuProps={{
+          ...MenuProps,
+          sx: {
+            zIndex: (theme) => theme.zIndex.operatorPalette + 1,
+            ...(MenuProps?.sx || {}),
+          },
+        }}
       >
         {choices.map(({ value, ...choice }) => (
           <MenuItem

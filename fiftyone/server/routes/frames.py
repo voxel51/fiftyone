@@ -1,7 +1,7 @@
 """
 FiftyOne Server /frames route
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -15,6 +15,7 @@ import fiftyone.core.odm as foo
 import fiftyone.core.view as fov
 
 from fiftyone.server.decorators import route
+import fiftyone.core.media as fom
 import fiftyone.server.view as fosv
 
 
@@ -33,7 +34,7 @@ class Frames(HTTPEndpoint):
         view = fosv.get_view(dataset, stages=stages, extended_stages=extended)
         view = fov.make_optimized_select_view(view, sample_id)
 
-        if group_slice is not None:
+        if view.media_type == fom.GROUP and group_slice is not None:
             view.group_slice = group_slice
 
         end_frame = min(num_frames + start_frame, frame_count)
