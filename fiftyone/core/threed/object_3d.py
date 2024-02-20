@@ -212,7 +212,7 @@ class Object3D:
     def as_dict(self):
         """Converts the object to a dict."""
         data = {
-            "_cls": self.__class__.__name__,
+            "_type": self.__class__.__name__,
             "name": self.name,
             "visible": self.visible,
             "position": self.position.to_arr().tolist(),
@@ -236,7 +236,7 @@ class Object3D:
         if not isinstance(dict_data, dict):
             raise ValueError("json_data must be a dictionary")
 
-        cls_name = dict_data.get("_cls", "Object3D")
+        cls_name = dict_data.get("_type", "Object3D")
         clz = getattr(threed, cls_name, Object3D)
 
         clz_main_args = {
@@ -244,14 +244,13 @@ class Object3D:
             for k, v in dict_data.items()
             if k
             not in [
-                "_cls",
+                "_type",
                 "name",
                 "visible",
                 "children",
                 "position",
                 "quaternion",
                 "scale",
-                "local_transform_matrix",
             ]
         }
 

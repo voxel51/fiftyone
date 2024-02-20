@@ -20,12 +20,14 @@ class PerspectiveCamera:
             position is calculated based on the bounding box of the scene
         look_at (None): the point the camera is looking at. If `None`, the
             camera looks at the center of the scene
-        up ("Z"): the orthonormal axis that is considered up. Must be one of
-            "X", "Y", or "Z"
+        up (None): the orthonormal axis that is considered up. Must be one of
+            "X", "Y", or "Z". If `None`, it'll fallback to the global `up` as
+            defined in 3D plugin settings. If that too is not defined, it'll
+            fallback to "Z"
+        aspect (None): the aspect ratio of the camera. If `None`, the aspect
+            ratio is calculated based on the width and height of the canvas.
         fov (50): camera frustum vertical field of view in degrees. If
             `None`, the field of view is 50 degrees
-        aspect (1): the aspect ratio of the camera. If `None`, the aspect
-            ratio is 1, assuming a square viewport
         near (0.1): the near clipping plane of the camera
         far (2000): the far clipping plane of the camera
         background_image_path (None): path to a reference image displayed
@@ -34,10 +36,10 @@ class PerspectiveCamera:
 
     position: Optional[Vec3UnionType] = None
     look_at: Optional[Vec3UnionType] = None
-    up: Literal["Z", "Y", "X"] = "Z"
+    up: Optional[Literal["Z", "Y", "X"]] = None
+    aspect: Optional[float] = None
 
     fov: float = 50
-    aspect: float = 1
     near: float = 0.1
     far: float = 2000
     background_image_path: Optional[str] = None
@@ -50,26 +52,24 @@ class PerspectiveCamera:
             "position": self.position.to_arr().tolist()
             if self.position
             else None,
-            "look_at": self.look_at.to_arr().tolist()
-            if self.look_at
-            else None,
+            "lookAt": self.look_at.to_arr().tolist() if self.look_at else None,
+            "aspect": self.aspect,
             "up": self.up,
             "fov": self.fov,
-            "aspect": self.aspect,
             "near": self.near,
             "far": self.far,
-            "background_image_path": self.background_image_path,
+            "backgroundImagePath": self.background_image_path,
         }
 
     @staticmethod
     def _from_dict(d):
         return PerspectiveCamera(
             position=d.get("position"),
-            look_at=d.get("look_at"),
+            look_at=d.get("lookAt"),
             up=d.get("up"),
             fov=d.get("fov"),
             aspect=d.get("aspect"),
             near=d.get("near"),
             far=d.get("far"),
-            background_image_path=d.get("background_image_path"),
+            background_image_path=d.get("backgroundImagePath"),
         )

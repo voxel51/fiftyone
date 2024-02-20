@@ -9,6 +9,7 @@ from typing import Optional
 from .camera import PerspectiveCamera
 from .lights import Light
 from .object_3d import Object3D
+from .utils import convert_keys_to_snake_case
 
 
 class Scene(Object3D):
@@ -78,7 +79,7 @@ class Scene(Object3D):
             raise ValueError("Scene must be loaded from a .fo3d file")
 
         with open(path, "r") as f:
-            dict_data = json.load(f)
+            dict_data = convert_keys_to_snake_case(json.load(f))
 
         scene: Scene = Scene._from_dict(dict_data)
 

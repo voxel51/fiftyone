@@ -54,6 +54,6 @@ class Pointcloud(Object3D):
     def _to_dict_extra(self):
         """Extra properties to include in dictionary representation."""
         return {
-            "pcd_path": self.pcd_path,
-            "default_material": self.default_material.as_dict(),
+            "pcdPath": self.pcd_path,
+            "defaultMaterial": self.default_material.as_dict(),
         }
