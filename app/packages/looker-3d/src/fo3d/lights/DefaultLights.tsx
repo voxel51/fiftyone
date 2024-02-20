@@ -1,15 +1,13 @@
 import { folder, useControls } from "leva";
 import { useMemo } from "react";
-import { Box3, Vector3 } from "three";
-import { PANEL_ORDER_LIGHTS } from "../constants";
+import { Vector3 } from "three";
+import { PANEL_ORDER_LIGHTS } from "../../constants";
+import { FoLightProps } from "./Lights";
 
-export const Lights = ({
+export const DefaultLights = ({
   upVector,
   sceneBoundingBox,
-}: {
-  upVector: Vector3;
-  sceneBoundingBox: Box3;
-}) => {
+}: Omit<FoLightProps, "lights">) => {
   const directionalLightPositions = useMemo(() => {
     // return four positions for four lights based on the scene bounding box
     if (!sceneBoundingBox) {

@@ -1,5 +1,5 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
-import { FoSceneGraph, FoSceneNode } from "../hooks";
+import { FoScene, FoSceneNode } from "../hooks";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -27,7 +27,7 @@ export const getLabelForSceneNode = (node: FoSceneNode): string => {
 };
 
 export const getVisibilityMapFromFo3dParsed = (
-  foSceneGraph: FoSceneGraph
+  foSceneGraph: FoScene
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
 

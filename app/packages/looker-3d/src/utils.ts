@@ -8,19 +8,71 @@ import {
 } from "three";
 import { COLOR_POOL } from "./constants";
 
-export type FiftyoneSceneRawJson = {
-  _cls: string;
+export type FiftyoneSceneRawNode = {
+  _type: string;
   name: string;
   visible: boolean;
   position: Vector3Tuple;
   quaternion: Vector4Tuple;
   scale: Vector3Tuple;
   children: FiftyoneSceneRawJson[];
-
-  default_camera_position?: Vector3Tuple | null;
 };
 
-class InvalidSceneError extends Error {}
+export type FiftyoneSceneCameraProps = {
+  position: Vector3Tuple | null;
+  lookAt: Vector3Tuple | null;
+  up: "X" | "Y" | "Z";
+  fov: number;
+  aspect: number;
+  near: number;
+  far: number;
+  backgroundImagePath: number;
+};
+
+export type FiftyoneSceneLightProps = Omit<FiftyoneSceneRawNode, "_type"> & {
+  color: string;
+  intensity: string;
+};
+
+export type FiftyoneSceneAmbientLightProps = FiftyoneSceneLightProps & {
+  _type: "AmbientLight";
+};
+
+export type FiftyoneScenePointLightProps = FiftyoneSceneLightProps & {
+  _type: "PointLight";
+  distance: number;
+  decay: number;
+};
+
+export type FiftyoneSceneDirectionalLightProps = FiftyoneSceneLightProps & {
+  _type: "DirectionalLight";
+  target: Vector3Tuple;
+};
+
+export type FiftyoneSceneSpotLightProps = FiftyoneSceneLightProps & {
+  _type: "SpotLight";
+  target: Vector3Tuple;
+  distance: number;
+  decay: number;
+  angle: number;
+  penumbra: number;
+};
+
+export type FiftyoneSceneRawJson = {
+  camera: FiftyoneSceneCameraProps;
+  lights: Array<
+    | FiftyoneSceneAmbientLightProps
+    | FiftyoneSceneDirectionalLightProps
+    | FiftyoneScenePointLightProps
+    | FiftyoneSceneSpotLightProps
+  > | null;
+} & FiftyoneSceneRawNode;
+
+class InvalidSceneError extends Error {
+  constructor() {
+    super("Invalid scene");
+  }
+}
 
 /**
  * Reads a raw JSON scene from FiftyOne and returns counts
@@ -28,7 +80,7 @@ class InvalidSceneError extends Error {}
  */
 export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   if (
-    !Object.hasOwn(scene, "_cls") ||
+    !Object.hasOwn(scene, "_type") ||
     !Object.hasOwn(scene, "name") ||
     !Object.hasOwn(scene, "visible") ||
     !Object.hasOwn(scene, "position") ||
@@ -45,9 +97,9 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   let unknownCount = 0;
 
   for (const child of scene.children) {
-    if (child["_cls"].endsWith("Mesh")) {
+    if (child["_type"].endsWith("Mesh")) {
       meshCount += 1;
-    } else if (child["_cls"].endsWith("Pointcloud")) {
+    } else if (child["_type"].endsWith("Pointcloud")) {
       pointcloudCount += 1;
     } else {
       unknownCount += 1;

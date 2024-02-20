@@ -94,7 +94,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     const newPolylineOverlays = [];
 
     for (const overlay of rawOverlays) {
-      if (overlay._cls === "Detection") {
+      if (overlay._type === "Detection") {
         newCuboidOverlays.push(
           <Cuboid
             key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
@@ -109,7 +109,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
           />
         );
       } else if (
-        overlay._cls === "Polyline" &&
+        overlay._type === "Polyline" &&
         (overlay as unknown as PolyLineProps).points3d
       ) {
         newPolylineOverlays.push(
