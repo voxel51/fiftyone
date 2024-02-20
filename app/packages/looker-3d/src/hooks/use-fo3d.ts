@@ -46,13 +46,14 @@ export type FoSceneNode = {
   children?: Array<FoSceneNode> | null;
 };
 
-export type FoSceneGraph = Omit<FoSceneNode, "name" | "visible"> & {
-  defaultCameraPosition?: Vector3 | null;
+export type FoScene = Omit<FoSceneNode, "name" | "visible"> & {
+  cameraProps: FiftyoneSceneRawJson["camera"];
+  lights: FiftyoneSceneRawJson["lights"];
   children?: Array<FoSceneNode> | null;
 };
 
 type UseFo3dReturnType = {
-  sceneGraph: FoSceneGraph | null;
+  foScene: FoScene | null;
   isLoading: boolean;
 };
 
@@ -74,7 +75,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     })();
   }, [url]);
 
-  const sceneGraph = useMemo(() => {
+  const foScene = useMemo(() => {
     if (!rawData) {
       return null;
     }
@@ -82,19 +83,19 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     const buildSceneGraph = (node: FiftyoneSceneRawJson["children"][0]) => {
       let asset: MeshAsset;
 
-      if (node["_cls"].toLocaleLowerCase().endsWith("mesh")) {
-        if (node["_cls"].toLocaleLowerCase().startsWith("fbx")) {
-          if (node["fbx_path"]) {
-            asset = new FbxAsset(getSampleSrc(node["fbx_path"]));
+      if (node["_type"].toLocaleLowerCase().endsWith("mesh")) {
+        if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
+          if (node["fbxPath"]) {
+            asset = new FbxAsset(getSampleSrc(node["fbxPath"]));
           }
-        } else if (node["_cls"].toLocaleLowerCase().startsWith("gltf")) {
-          if (node["gltf_path"]) {
-            asset = new GltfAsset(getSampleSrc(node["gltf_path"]));
+        } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
+          if (node["gltfPath"]) {
+            asset = new GltfAsset(getSampleSrc(node["gltfPath"]));
           }
-        } else if (node["_cls"].toLocaleLowerCase().startsWith("obj")) {
-          if (node["obj_path"]) {
-            const objPath = node["obj_path"];
-            const mtlPath = node["mtl_path"];
+        } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
+          if (node["objPath"]) {
+            const objPath = node["objPath"];
+            const mtlPath = node["mtlPath"];
             if (mtlPath) {
               asset = new ObjAsset(
                 getSampleSrc(objPath),
@@ -104,18 +105,18 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
               asset = new ObjAsset(getSampleSrc(objPath));
             }
           }
-        } else if (node["_cls"].toLocaleLowerCase().startsWith("stl")) {
-          if (node["stl_path"]) {
-            asset = new StlAsset(getSampleSrc(node["stl_path"]));
+        } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
+          if (node["stlPath"]) {
+            asset = new StlAsset(getSampleSrc(node["stlPath"]));
           }
-        } else if (node["_cls"].toLocaleLowerCase().startsWith("ply")) {
-          if (node["ply_path"]) {
-            asset = new PlyAsset(getSampleSrc(node["ply_path"]));
+        } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
+          if (node["plyPath"]) {
+            asset = new PlyAsset(getSampleSrc(node["plyPath"]));
           }
         }
-      } else if (node["_cls"].endsWith("Pointcloud")) {
-        if (node["pcd_path"]) {
-          asset = new PcdAsset(getSampleSrc(node["pcd_path"]));
+      } else if (node["_type"].endsWith("Pointcloud")) {
+        if (node["pcdPath"]) {
+          asset = new PcdAsset(getSampleSrc(node["pcdPath"]));
         }
       }
 
@@ -140,18 +141,9 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       };
     };
 
-    let cameraPosition: Vector3 | null = null;
-
-    if (rawData.default_camera_position?.length === 3) {
-      cameraPosition = new Vector3(
-        rawData.default_camera_position[0],
-        rawData.default_camera_position[1],
-        rawData.default_camera_position[2]
-      );
-    }
-
-    const foSceneGraph: FoSceneGraph = {
-      defaultCameraPosition: cameraPosition,
+    const toReturn: FoScene = {
+      cameraProps: rawData.camera,
+      lights: rawData.lights,
       position: new Vector3(
         rawData.position[0],
         rawData.position[1],
@@ -167,18 +159,18 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       children: rawData.children.map(buildSceneGraph),
     };
 
-    return foSceneGraph;
+    return toReturn;
   }, [rawData]);
 
   if (isLoading) {
     return {
-      sceneGraph: null,
+      foScene: null,
       isLoading,
     };
   }
 
   return {
-    sceneGraph,
+    foScene,
     isLoading: false,
   } as UseFo3dReturnType;
 };

@@ -1,11 +1,8 @@
-import { Bounds, useBounds } from "@react-three/drei";
-import { ThreeEvent } from "@react-three/fiber";
-import { folder, useControls } from "leva";
-import { useCallback, useMemo } from "react";
-import { PANEL_ORDER_SETTINGS } from "../constants";
+import { useControls } from "leva";
+import { useMemo } from "react";
 import {
   FbxAsset,
-  FoSceneGraph,
+  FoScene,
   FoSceneNode,
   GltfAsset,
   ObjAsset,
@@ -22,10 +19,9 @@ import { Pcd } from "./Pcd";
 import { Ply } from "./Ply";
 import { Stl } from "./Stl";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
-import { SelectToZoom } from "./SelectToZoom";
 
 interface FoSceneProps {
-  scene: FoSceneGraph;
+  scene: FoScene;
 }
 
 const getAssetForNode = (node: FoSceneNode) => {
@@ -151,7 +147,7 @@ const getR3fNodeFromFo3dNode = (
 };
 
 const getR3fSceneFromFo3dScene = (
-  scene: FoSceneGraph,
+  scene: FoScene,
   visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>
 ) => {
   return (
@@ -167,7 +163,7 @@ const getR3fSceneFromFo3dScene = (
   );
 };
 
-export const FoScene = ({ scene }: FoSceneProps) => {
+export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   const defaultVisibilityMap = useMemo(
     () => getVisibilityMapFromFo3dParsed(scene),
     [scene]
@@ -176,21 +172,6 @@ export const FoScene = ({ scene }: FoSceneProps) => {
   const visibilityMap = useControls("Visibility", defaultVisibilityMap ?? {}, [
     defaultVisibilityMap,
   ]);
-
-  const [{ selectToZoom }] = useControls(() => ({
-    Settings: folder(
-      {
-        selectToZoom: {
-          value: false,
-          label: "Select to zoom",
-        },
-      },
-      {
-        order: PANEL_ORDER_SETTINGS,
-        collapsed: true,
-      }
-    ),
-  }));
 
   const sceneR3f = useMemo(() => {
     if (!scene) {
@@ -203,14 +184,6 @@ export const FoScene = ({ scene }: FoSceneProps) => {
 
   if (!sceneR3f) {
     return null;
-  }
-
-  if (selectToZoom) {
-    return (
-      <Bounds margin={1} fit clip observe>
-        <SelectToZoom>{sceneR3f}</SelectToZoom>
-      </Bounds>
-    );
   }
 
   return sceneR3f;

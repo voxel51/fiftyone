@@ -1,11 +1,10 @@
 import { GizmoHelper, GizmoViewport } from "@react-three/drei";
-import { useLayoutEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { Box3, Group, Vector3 } from "three";
+import { Box3, Vector3 } from "three";
 import { VOXEL51_THEME_COLOR } from "../constants";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
-import { Lights } from "./Lights";
 
 const OriginHelper = () => {
   return (
@@ -22,16 +21,12 @@ const OriginHelper = () => {
   );
 };
 
-export const Fo3dEnvironment = ({
-  assetsGroupRef,
+export const Gizmos = ({
   sceneBoundingBox,
-  setSceneBoundingBox,
   upVector,
 }: {
-  assetsGroupRef: React.RefObject<Group>;
   sceneBoundingBox: Box3;
   upVector: Vector3;
-  setSceneBoundingBox: (box: Box3) => void;
 }) => {
   const isGridOn = useRecoilValue(isGridOnAtom);
 
@@ -39,26 +34,6 @@ export const Fo3dEnvironment = ({
     () => getGridQuaternionFromUpVector(upVector),
     [upVector]
   );
-
-  useLayoutEffect(() => {
-    const getBoundingBox = () => {
-      if (!assetsGroupRef.current) {
-        return;
-      }
-
-      const box = new Box3().setFromObject(assetsGroupRef.current);
-      if (Math.abs(box.max[0]) === Infinity) {
-        setTimeout(getBoundingBox, 50);
-      } else {
-        setSceneBoundingBox(box);
-      }
-    };
-
-    // this is a hack, yet to find a robust way to know when the scene is done loading
-    // callbacks in loaders are not reliable
-    // check every 50ms for scene's bounding box
-    setTimeout(getBoundingBox, 50);
-  }, [assetsGroupRef]);
 
   const [gridSize, numGridLines] = useMemo(() => {
     if (
@@ -69,7 +44,6 @@ export const Fo3dEnvironment = ({
       return [100, 100];
     }
 
-    const center = sceneBoundingBox.getCenter(new Vector3());
     let maxInOrthoNormalPlane: number;
 
     // account for the possibility that the scene is not centered at the origin
@@ -130,7 +104,6 @@ export const Fo3dEnvironment = ({
         <GizmoViewport />
       </GizmoHelper>
       <OriginHelper />
-      <Lights upVector={upVector} sceneBoundingBox={sceneBoundingBox} />
     </>
   );
 };
