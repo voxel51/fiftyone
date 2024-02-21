@@ -8,7 +8,7 @@ interface Fo3dSceneProviderProps {
 
 const defaultContext: Fo3dContextT = {};
 
-const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);
+export const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);
 
 export const Fo3dSceneProvider = ({ children }: Fo3dSceneProviderProps) => {
   return (

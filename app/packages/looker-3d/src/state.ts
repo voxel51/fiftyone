@@ -1,7 +1,8 @@
 import { Range } from "@fiftyone/core/src/components/Common/RangeSlider";
 import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom, atomFamily } from "recoil";
-import { ACTION_GRID, SHADE_BY_HEIGHT } from "./constants";
+import { SHADE_BY_HEIGHT } from "./constants";
+import { FoSceneNode } from "./hooks";
 import { Actions, ShadeBy } from "./types";
 
 export const worldBoundsAtom = atom<THREE.Box3 | null>({
@@ -65,4 +66,19 @@ export const isGridOnAtom = atom<boolean>({
   effects: [
     getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
   ],
+});
+
+export const isStatusBarOnAtom = atom<boolean>({
+  key: "isStatusBarOn",
+  default: false,
+});
+
+export const panelPositionAtom = atom<{ x?: number; y?: number } | null>({
+  key: "panelPosition",
+  default: null,
+});
+
+export const activeNodeAtom = atom<FoSceneNode>({
+  key: "activeNode",
+  default: null,
 });
