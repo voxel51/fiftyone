@@ -30,12 +30,13 @@ classifiers = [
   "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
+  # third-party packages
   "aiofiles",
   "argcomplete",
   "beautifulsoup4",
   "boto3",
   "cachetools",
-  "dacite>=1.6.0, <1.8.0",
+  "dacite>=1.6.0,<1.8.0",
   "Deprecated",
   "ftfy",
   "humanize",
@@ -70,10 +71,9 @@ dependencies = [
   "xmltodict",
   "universal-analytics-python3>=1.0.1,<2",
   # internal packages
-  "fiftyone-brain>=0.14.2,<0.15",
+  "fiftyone-brain>=0.16.0,<0.17",
   "fiftyone-db>=0.4,<2.0",
-  "voxel51-eta>=0.12.1,<0.13",
-
+  "voxel51-eta>=0.12.4,<0.13",
 ]
 
 [project.optional-dependencies]
