@@ -3506,6 +3506,13 @@ class ViewStageTests(unittest.TestCase):
             set(view1.values("id") + view2.values("id")),
         )
 
+        # Test query syntax
+
+        view = dataset.match(
+            {"frames.test_clfs.classifications.label": "friend"}
+        )
+        self.assertEqual(len(view), 1)
+
     def test_match_tags(self):
         dataset = fo.Dataset()
         dataset.add_samples(
