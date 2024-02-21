@@ -30,7 +30,7 @@ const ObjMeshDefaultMaterial = ({
     });
 
     onLoad?.();
-  }, [mesh]);
+  }, [mesh, objUrl, onLoad]);
 
   return <primitive object={mesh} />;
 };
@@ -56,13 +56,12 @@ const ObjMeshWithCustomMaterial = ({
     if (mesh) {
       onLoad?.();
     }
-  }, [mesh]);
+  }, [mesh, onLoad]);
 
   return <primitive object={mesh} />;
 };
 
 export const Obj = ({
-  name,
   obj,
   position,
   quaternion,

@@ -7,6 +7,7 @@ import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { currentActionAtom } from "./state";
+import { Fo3dSceneProvider } from "./fo3d/context";
 
 /**
  * This component is responsible for rendering both "3d" as well as "point_cloud" media types.
@@ -71,7 +72,9 @@ export const Looker3d = () => {
           {shouldRenderPcdComponent ? (
             <MediaTypePcdComponent isHovering={isHovering} />
           ) : (
-            <MediaTypeFo3dComponent />
+            <Fo3dSceneProvider>
+              <MediaTypeFo3dComponent />
+            </Fo3dSceneProvider>
           )}
           {(hoveringRef.current || isHovering) && (
             <ActionBar

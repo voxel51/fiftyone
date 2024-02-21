@@ -81,9 +81,9 @@ export const Container = styled.div`
 
 export const LevaContainer = styled.div`
   position: absolute;
-  bottom: 6vh;
-  margin-bottom: 3vh;
-  right: 1vw;
+  bottom: 2em;
+  margin-bottom: 2vh;
+  right: 0.5vw;
   z-index: 1000;
   text-select: none;
 
@@ -94,7 +94,7 @@ export const LevaContainer = styled.div`
 
 export const StatusBarRootContainer = styled.div`
   position: absolute;
-  bottom: 6vh;
+  bottom: 3em;
   margin-bottom: 3vh;
   left: 1vw;
   z-index: 1000;
@@ -102,6 +102,16 @@ export const StatusBarRootContainer = styled.div`
   & .looker-3d-core-stats-panel {
     position: relative !important;
   }
+`;
+
+export const NodeInfoContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  position: absolute;
+  top: 3em;
+  margin-top: 2vh;
+  right: 1vw;
+  z-index: 1000;
 `;
 
 export const StatusBarContainer = styled.div`

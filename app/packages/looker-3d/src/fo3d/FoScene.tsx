@@ -107,7 +107,7 @@ const getAssetForNode = (node: FoSceneNode) => {
   }
 
   return (
-    <AssetWrapper key={jsx.key}>
+    <AssetWrapper key={jsx.key} node={node}>
       <AssetErrorBoundary>{jsx}</AssetErrorBoundary>
     </AssetWrapper>
   );

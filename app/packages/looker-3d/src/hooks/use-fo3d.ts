@@ -13,19 +13,32 @@ export class GltfAsset {
 }
 
 export class ObjAsset {
-  constructor(readonly objUrl?: string, readonly mtlUrl?: string) {}
+  constructor(
+    readonly objUrl?: string,
+    readonly mtlUrl?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class PcdAsset {
-  constructor(readonly pcdUrl?: string) {}
+  constructor(
+    readonly pcdUrl?: string,
+    readonly defaultMaterial?: FoPointcloudMaterial
+  ) {}
 }
 
 export class PlyAsset {
-  constructor(readonly plyUrl?: string) {}
+  constructor(
+    readonly plyUrl?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export class StlAsset {
-  constructor(readonly stlUrl?: string) {}
+  constructor(
+    readonly stlUrl?: string,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
 }
 
 export type MeshAsset =
@@ -35,6 +48,48 @@ export type MeshAsset =
   | PcdAsset
   | PlyAsset
   | StlAsset;
+
+export type FoMaterial3D = {
+  opacity: number;
+  transparent: boolean;
+  vertexColors: boolean;
+};
+
+export type FoMeshMaterialBase = FoMaterial3D & {
+  wireFrame: boolean;
+};
+
+export type MeshBasicMaterial = FoMeshMaterialBase & {
+  color: string;
+};
+
+export type MeshLambertMaterial = FoMeshMaterialBase & {
+  color: string;
+  emissiveColor: string;
+  emissiveIntensity: number;
+  reflectivity: number;
+  refractionRatio: number;
+};
+
+export type MeshPhongMaterial = MeshLambertMaterial & {
+  shininess: number;
+  specularColor: string;
+};
+
+export type MeshDepthMaterial = FoMeshMaterialBase & {};
+
+export type FoMeshMaterial =
+  | MeshBasicMaterial
+  | MeshLambertMaterial
+  | MeshPhongMaterial
+  | MeshDepthMaterial;
+
+export type FoPointcloudMaterial = FoMaterial3D & {
+  shadingMode: "height" | "intensity" | "rgb" | "custom";
+  customColor: string;
+  pointSize: number;
+  attenuateByDistance: boolean;
+};
 
 export type FoSceneNode = {
   name: string;
@@ -83,6 +138,8 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     const buildSceneGraph = (node: FiftyoneSceneRawJson["children"][0]) => {
       let asset: MeshAsset;
 
+      const material = node.defaultMaterial;
+
       if (node["_type"].toLocaleLowerCase().endsWith("mesh")) {
         if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
           if (node["fbxPath"]) {
@@ -99,24 +156,38 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
             if (mtlPath) {
               asset = new ObjAsset(
                 getSampleSrc(objPath),
-                getSampleSrc(mtlPath)
+                getSampleSrc(mtlPath),
+                material as FoMeshMaterial
               );
             } else {
-              asset = new ObjAsset(getSampleSrc(objPath));
+              asset = new ObjAsset(
+                getSampleSrc(objPath),
+                undefined,
+                material as FoMeshMaterial
+              );
             }
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {
-            asset = new StlAsset(getSampleSrc(node["stlPath"]));
+            asset = new StlAsset(
+              getSampleSrc(node["stlPath"]),
+              material as FoMeshMaterial
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
-            asset = new PlyAsset(getSampleSrc(node["plyPath"]));
+            asset = new PlyAsset(
+              getSampleSrc(node["plyPath"]),
+              material as FoMeshMaterial
+            );
           }
         }
       } else if (node["_type"].endsWith("Pointcloud")) {
         if (node["pcdPath"]) {
-          asset = new PcdAsset(getSampleSrc(node["pcdPath"]));
+          asset = new PcdAsset(
+            getSampleSrc(node["pcdPath"]),
+            material as FoPointcloudMaterial
+          );
         }
       }
 

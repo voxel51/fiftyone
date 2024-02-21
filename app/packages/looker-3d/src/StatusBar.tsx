@@ -4,10 +4,12 @@ import CameraIcon from "@mui/icons-material/Videocam";
 import Text from "@mui/material/Typography";
 import { animated, useSpring } from "@react-spring/web";
 import { Perf } from "r3f-perf";
-import { RefObject, useEffect, useRef, useState } from "react";
+import { RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { useRecoilState, useSetRecoilState } from "recoil";
 import { PerspectiveCamera, Vector3 } from "three";
 import tunnel from "tunnel-rat";
 import { StatusBarContainer } from "./containers";
+import { activeNodeAtom, isStatusBarOnAtom } from "./state";
 
 export const StatusTunnel = tunnel();
 
@@ -60,21 +62,22 @@ export const StatusBar = ({
   cameraRef: RefObject<PerspectiveCamera>;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [showStatus, setShowStatus] = useState(false);
+  const [showStatus, setShowStatus] = useRecoilState(isStatusBarOnAtom);
+  const setActiveNode = useSetRecoilState(activeNodeAtom);
 
   const springProps = useSpring({
     transform: showStatus ? "translateY(10%)" : "translateY(0%)",
   });
 
+  const onClickHandler = useCallback(() => {
+    setShowStatus((prev) => !prev);
+    setActiveNode(null);
+  }, []);
+
   return (
     <animated.div ref={containerRef} style={{ ...springProps }}>
       {!showStatus && (
-        <IconButton
-          style={{ opacity: 0.5 }}
-          onClick={() => {
-            setShowStatus(true);
-          }}
-        >
+        <IconButton style={{ opacity: 0.5 }} onClick={onClickHandler}>
           <InfoIcon />
         </IconButton>
       )}
@@ -89,11 +92,7 @@ export const StatusBar = ({
               backgroundColor: "rgb(255 109 5 / 6%)",
             }}
           >
-            <IconButton
-              onClick={() => {
-                setShowStatus(false);
-              }}
-            >
+            <IconButton onClick={onClickHandler}>
               <Close />
             </IconButton>
           </div>
