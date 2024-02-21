@@ -185,11 +185,7 @@ you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
 Can I access data stored in the cloud?
 --------------------------------------
 
-Yes! The recommended best practice is to mount the cloud bucket to a cloud
-compute instance in your cloud environment and then use the
-:ref:`remote server workflow <remote-data>` to work with the data.
-
-Check out :ref:`this page <cloud-storage>` for more details.
+Yes! Check out :ref:`FiftyOne Teams <fiftyone-teams>`.
 
 .. _faq-supported-os:
 
