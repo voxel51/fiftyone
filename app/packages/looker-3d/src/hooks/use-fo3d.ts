@@ -23,7 +23,7 @@ export class ObjAsset {
 export class PcdAsset {
   constructor(
     readonly pcdUrl?: string,
-    readonly defaultMaterial?: FoPointcloudMaterial
+    readonly defaultMaterial?: FoPointcloudMaterialProps
   ) {}
 }
 
@@ -59,11 +59,13 @@ export type FoMeshMaterialBase = FoMaterial3D & {
   wireFrame: boolean;
 };
 
-export type MeshBasicMaterial = FoMeshMaterialBase & {
+export type FoMeshBasicMaterialProps = FoMeshMaterialBase & {
+  _type: "MeshBasicMaterial";
   color: string;
 };
 
-export type MeshLambertMaterial = FoMeshMaterialBase & {
+export type FoMeshLambertMaterialProps = FoMeshMaterialBase & {
+  _type: "MeshLambertMaterial";
   color: string;
   emissiveColor: string;
   emissiveIntensity: number;
@@ -71,20 +73,27 @@ export type MeshLambertMaterial = FoMeshMaterialBase & {
   refractionRatio: number;
 };
 
-export type MeshPhongMaterial = MeshLambertMaterial & {
+export type FoMeshPhongMaterialProps = Omit<
+  FoMeshLambertMaterialProps,
+  "_type"
+> & {
+  _type: "MeshPhongMaterial";
   shininess: number;
   specularColor: string;
 };
 
-export type MeshDepthMaterial = FoMeshMaterialBase & {};
+export type FoMeshDepthMaterialProps = FoMeshMaterialBase & {
+  _type: "MeshDepthMaterial";
+};
 
 export type FoMeshMaterial =
-  | MeshBasicMaterial
-  | MeshLambertMaterial
-  | MeshPhongMaterial
-  | MeshDepthMaterial;
+  | FoMeshBasicMaterialProps
+  | FoMeshLambertMaterialProps
+  | FoMeshPhongMaterialProps
+  | FoMeshDepthMaterialProps;
 
-export type FoPointcloudMaterial = FoMaterial3D & {
+export type FoPointcloudMaterialProps = FoMaterial3D & {
+  _type: "PointcloudMaterial";
   shadingMode: "height" | "intensity" | "rgb" | "custom";
   customColor: string;
   pointSize: number;
@@ -186,7 +195,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
             getSampleSrc(node["pcdPath"]),
-            material as FoPointcloudMaterial
+            material as FoPointcloudMaterialProps
           );
         }
       }

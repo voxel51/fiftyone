@@ -1,10 +1,11 @@
 import { useLoader } from "@react-three/fiber";
 import { useEffect } from "react";
-import { Mesh, MeshPhongMaterial, Quaternion, Vector3 } from "three";
+import { Mesh, MeshLambertMaterial, Quaternion, Vector3 } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../hooks";
 import { getColorFromPoolBasedOnHash } from "../utils";
+import { getThreeMaterialFromFo3dMaterial } from "./utils";
 
 const ObjMeshDefaultMaterial = ({
   obj,
@@ -13,7 +14,7 @@ const ObjMeshDefaultMaterial = ({
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
-  const { objUrl } = obj;
+  const { objUrl, defaultMaterial } = obj;
   const mesh = useLoader(OBJLoader, objUrl);
 
   useEffect(() => {
@@ -23,9 +24,13 @@ const ObjMeshDefaultMaterial = ({
 
     mesh.traverse((child) => {
       if (child instanceof Mesh) {
-        child.material = new MeshPhongMaterial({
-          color: getColorFromPoolBasedOnHash(objUrl),
-        });
+        try {
+          child.material = getThreeMaterialFromFo3dMaterial(defaultMaterial);
+        } catch {
+          child.material = new MeshLambertMaterial({
+            color: getColorFromPoolBasedOnHash(objUrl),
+          });
+        }
       }
     });
 

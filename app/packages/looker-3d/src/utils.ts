@@ -7,7 +7,7 @@ import {
   Vector4Tuple,
 } from "three";
 import { COLOR_POOL } from "./constants";
-import { FoMeshMaterial, FoPointcloudMaterial } from "./hooks";
+import { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
 
 export type FiftyoneSceneRawNode = {
   _type: string;
@@ -16,7 +16,7 @@ export type FiftyoneSceneRawNode = {
   position: Vector3Tuple;
   quaternion: Vector4Tuple;
   scale: Vector3Tuple;
-  defaultMaterial: FoMeshMaterial | FoPointcloudMaterial;
+  defaultMaterial: FoMeshMaterial | FoPointcloudMaterialProps;
   children: FiftyoneSceneRawJson[];
 };
 
