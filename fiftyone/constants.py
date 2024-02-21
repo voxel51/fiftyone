@@ -5,6 +5,7 @@ Package-wide constants.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import datetime
 import os
 
@@ -51,7 +52,7 @@ _META = metadata("fiftyone")
 NAME = _META["name"]
 VERSION = _META["version"]
 DESCRIPTION = _META["summary"]
-AUTHOR = _META["author"]
+AUTHOR = "Voxel51, Inc."
 AUTHOR_EMAIL = _META["author-email"]
 URL = _META["home-page"]
 LICENSE = _META["license"]
