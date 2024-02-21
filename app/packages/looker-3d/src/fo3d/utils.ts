@@ -1,5 +1,21 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
-import { FoScene, FoSceneNode } from "../hooks";
+import {
+  FoMaterial3D,
+  FoMeshBasicMaterialProps,
+  FoMeshLambertMaterialProps,
+  FoMeshMaterial,
+  FoMeshPhongMaterialProps,
+  FoPointcloudMaterialProps,
+  FoScene,
+  FoSceneNode,
+} from "../hooks";
+import {
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  MeshPhongMaterial,
+  MeshDepthMaterial,
+  PointsMaterial,
+} from "three";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -66,4 +82,39 @@ export const getMediaUrlForFo3dSample = (
   }
 
   return getSampleSrc(mediaUrlUnresolved);
+};
+
+export const getThreeMaterialFromFo3dMaterial = (
+  foMtl: FoMeshMaterial | FoPointcloudMaterialProps
+) => {
+  const { _type, ...props } = foMtl;
+
+  switch (foMtl._type) {
+    case "MeshBasicMaterial":
+      return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);
+    case "MeshLambertMaterial":
+      const { emissiveColor: lambertEmissiveColor, ...lambertProps } =
+        props as FoMeshLambertMaterialProps;
+      return new MeshLambertMaterial({
+        ...lambertProps,
+        emissive: lambertEmissiveColor,
+      });
+    case "MeshPhongMaterial":
+      const {
+        emissiveColor: phongEmissiveColor,
+        specularColor: phoneSpecularColor,
+        ...phongProps
+      } = props as FoMeshPhongMaterialProps;
+      return new MeshPhongMaterial({
+        specular: phoneSpecularColor,
+        emissive: phongEmissiveColor,
+        ...phongProps,
+      });
+    case "MeshDepthMaterial":
+      return new MeshDepthMaterial(props);
+    case "PointcloudMaterial":
+      return new PointsMaterial(props);
+    default:
+      return null;
+  }
 };
