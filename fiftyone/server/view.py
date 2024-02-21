@@ -5,6 +5,7 @@ FiftyOne Server view.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from typing import List, Optional
 
 from bson import ObjectId
@@ -116,18 +117,43 @@ def get_view(
 
     if sample_filter is not None:
         if sample_filter.group:
-            if sample_filter.group.slice:
-                view.group_slice = sample_filter.group.slice
+            unselected = all(
+                not isinstance(stage, fosg.SelectGroupSlices)
+                for stage in view._stages
+            )
+            group_field = dataset.group_field
+            if unselected and sample_filter.group.slice:
+                stages = view._stages
+                view = dataset.select_group_slices(_force_mixed=True)
 
-            if sample_filter.group.id:
-                view = fov.make_optimized_select_view(
-                    view, sample_filter.group.id, groups=True
-                )
+                if sample_filter.group.id:
+                    view = view.match(
+                        {
+                            group_field
+                            + "._id": {
+                                "$in": [ObjectId(sample_filter.group.id)]
+                            }
+                        }
+                    )
+
+                for stage in stages:
+                    view = view._add_view_stage(stage, validate=False)
+
+            else:
+                if sample_filter.group.slice:
+                    view.group_slice = sample_filter.group.slice
+
+                if sample_filter.group.id:
+                    view = fov.make_optimized_select_view(
+                        view, sample_filter.group.id, groups=True
+                    )
 
             if sample_filter.group.slices:
-                view = view.select_group_slices(
-                    sample_filter.group.slices,
-                    _force_mixed=True,
+                view = view.match(
+                    {
+                        group_field
+                        + ".name": {"$in": sample_filter.group.slices}
+                    }
                 )
 
         elif sample_filter.id:
@@ -705,10 +731,12 @@ def _count_list_items(path, view):
 
 def _match_label_tags(view: foc.SampleCollection, label_tags):
     label_paths = [
-        f"{path}.{field.document_type._LABEL_LIST_FIELD}"
-        if isinstance(field, fof.EmbeddedDocumentField)
-        and issubclass(field.document_type, fol._HasLabelList)
-        else path
+        (
+            f"{path}.{field.document_type._LABEL_LIST_FIELD}"
+            if isinstance(field, fof.EmbeddedDocumentField)
+            and issubclass(field.document_type, fol._HasLabelList)
+            else path
+        )
         for path, field in foc._iter_label_fields(view)
     ]
     values = label_tags["values"]
