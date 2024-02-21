@@ -2171,6 +2171,21 @@ The `data/` folder may contain nested subfolders.
 
 .. note::
 
+    By default, all annotations are loaded as |Detections|, converting any
+    polylines to tight bounding boxes if necessary. However, you can choose to
+    load YOLO annotations as |Polylines| by passing the optional `label_type`
+    argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load annotations as polygons
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_type="polylines",
+            ...
+        )
+
     See :class:`YOLOv4DatasetImporter <fiftyone.utils.yolo.YOLOv4DatasetImporter>`
     for parameters that can be passed to methods like
     :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>` to
@@ -2426,6 +2441,21 @@ The image and labels directories for a given split may contain nested
 subfolders of parallelly organized images and labels.
 
 .. note::
+
+    By default, all annotations are loaded as |Detections|, converting any
+    polylines to tight bounding boxes if necessary. However, you can choose to
+    load YOLO annotations as |Polylines| by passing the optional `label_type`
+    argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load annotations as polygons
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_type="polylines",
+            ...
+        )
 
     See :class:`YOLOv5DatasetImporter <fiftyone.utils.yolo.YOLOv5DatasetImporter>`
     for parameters that can be passed to methods like

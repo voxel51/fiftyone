@@ -28,6 +28,7 @@ def add_yolo_labels(
     label_field,
     labels_path,
     classes,
+    label_type="detections",
     include_missing=False,
 ):
     """Adds the given YOLO-formatted labels to the collection.
@@ -63,13 +64,18 @@ def add_yolo_labels(
                 extension) correspond to image filenames in
                 ``sample_collection``, in any order
         classes: the list of class label strings
+        label_type ("detections"): the label format to load. The supported
+            values are ``("detections", "polylines")``
         include_missing (False): whether to insert empty labels for any samples
             in the input collection whose ``label_field`` is ``None`` after
             import
     """
     if isinstance(labels_path, (list, tuple)):
         # Explicit list of labels files
-        labels = [load_yolo_annotations(p, classes) for p in labels_path]
+        labels = [
+            load_yolo_annotations(p, classes, label_type=label_type)
+            for p in labels_path
+        ]
         sample_collection.set_values(label_field, labels)
         return
 
@@ -134,7 +140,10 @@ def add_yolo_labels(
         )
 
     view = sample_collection.select(matched_ids, ordered=True)
-    labels = [load_yolo_annotations(p, classes) for p in matched_paths]
+    labels = [
+        load_yolo_annotations(p, classes, label_type=label_type)
+        for p in matched_paths
+    ]
     view.set_values(label_field, labels)
 
     if include_missing:
@@ -198,6 +207,8 @@ class YOLOv4DatasetImporter(
             If None, the parameter will default to ``obj.names``
         classes (None): the list of possible class labels. This does not need
             to be provided if ``objects_path`` contains the class labels
+        label_type ("detections"): the label format to load. The supported
+            values are ``("detections", "polylines")``
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -216,6 +227,7 @@ class YOLOv4DatasetImporter(
         images_path=None,
         objects_path=None,
         classes=None,
+        label_type="detections",
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -259,6 +271,7 @@ class YOLOv4DatasetImporter(
         self.images_path = images_path
         self.objects_path = objects_path
         self.classes = classes
+        self.label_type = label_type
         self.include_all_data = include_all_data
 
         self._info = None
@@ -281,7 +294,9 @@ class YOLOv4DatasetImporter(
         labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            label = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(
+                labels_path, self._classes, label_type=self.label_type
+            )
         else:
             # Unlabeled image
             label = None
@@ -394,6 +409,8 @@ class YOLOv5DatasetImporter(
             If None, the parameter will default to ``dataset.yaml``
         split ("val"): the split to load. Typical values are
             ``("train", "val")``
+        label_type ("detections"): the label format to load. The supported
+            values are ``("detections", "polylines")``
         include_all_data (False): whether to generate samples for all images in
             the data directory (True) rather than only creating samples for
             images with labels (False)
@@ -409,6 +426,7 @@ class YOLOv5DatasetImporter(
         dataset_dir=None,
         yaml_path=None,
         split="val",
+        label_type="detections",
         include_all_data=False,
         shuffle=False,
         seed=None,
@@ -434,6 +452,7 @@ class YOLOv5DatasetImporter(
 
         self.yaml_path = yaml_path
         self.split = split
+        self.label_type = label_type
         self.include_all_data = include_all_data
 
         self._info = None
@@ -456,7 +475,9 @@ class YOLOv5DatasetImporter(
         labels_path = self._labels_paths_map.get(filepath, None)
         if labels_path:
             # Labeled image
-            label = load_yolo_annotations(labels_path, self._classes)
+            label = load_yolo_annotations(
+                labels_path, self._classes, label_type=self.label_type
+            )
         else:
             # Unlabeled image
             label = None
@@ -1021,7 +1042,7 @@ class YOLOAnnotationWriter(object):
         _write_file_lines(rows, txt_path)
 
 
-def load_yolo_annotations(txt_path, classes):
+def load_yolo_annotations(txt_path, classes, label_type="detections"):
     """Loads the YOLO-style annotations from the given TXT file.
 
     The txt file should be a space-delimited file where each row corresponds
@@ -1041,25 +1062,28 @@ def load_yolo_annotations(txt_path, classes):
     Args:
         txt_path: the path to the annotations TXT file
         classes: the list of class label strings
+        label_type ("detections"): the label format to load. The supported
+            values are ``("detections", "polylines")``
 
     Returns:
-        a :class:`fiftyone.core.labels.Detections`,
-        :class:`fiftyone.core.labels.Polylines`, or None
+        a :class:`fiftyone.core.labels.Detections` or
+        :class:`fiftyone.core.labels.Polylines`
     """
     labels = []
-    found_polylines = False
     for row in _read_file_lines(txt_path):
-        label = _parse_yolo_row(row, classes)
-        found_polylines |= isinstance(label, fol.Polyline)
+        label = _parse_yolo_row(row, classes, label_type)
         labels.append(label)
 
-    if found_polylines:
-        return fol.Polylines(polylines=labels)
-
-    if labels:
+    if label_type == "detections":
         return fol.Detections(detections=labels)
 
-    return None
+    if label_type == "polylines":
+        return fol.Polylines(polylines=labels)
+
+    raise ValueError(
+        "Unsupported label_type='%s'. The supported values are %s"
+        % (label_type, ("detections", "polylines"))
+    )
 
 
 def _parse_yolo_v5_path(filepath, yaml_path):
@@ -1106,7 +1130,7 @@ def _get_yolo_v5_labels_path(image_path):
     return root + ext
 
 
-def _parse_yolo_row(row, classes):
+def _parse_yolo_row(row, classes, label_type):
     row_vals = row.split()
 
     target = row_vals[0]
@@ -1115,25 +1139,43 @@ def _parse_yolo_row(row, classes):
     except:
         label = str(target)
 
+    points = None
+    bounding_box = None
+    confidence = None
+
     if len(row_vals) >= 7:
         points = list(map(float, row_vals[1:]))
         points = np.reshape(points, (-1, 2))
-        return fol.Polyline(
-            label=label, points=[points.tolist()], closed=True, filled=True
-        )
-
-    xc, yc, w, h = row_vals[1:5]
-    bounding_box = [
-        (float(xc) - 0.5 * float(w)),
-        (float(yc) - 0.5 * float(h)),
-        float(w),
-        float(h),
-    ]
-
-    if len(row_vals) > 5:
-        confidence = float(row_vals[5])
+        if label_type == "polylines":
+            points = points.tolist()
+        else:
+            xmin, ymin = points.min(axis=0)
+            xmax, ymax = points.max(axis=0)
+            w = xmax - xmin
+            h = ymax - ymin
+            bounding_box = [xmin, ymin, w, h]
     else:
-        confidence = None
+        xc, yc, w, h = map(float, row_vals[1:5])
+        xmin = xc - 0.5 * w
+        ymin = yc - 0.5 * h
+        xmax = xmin + w
+        ymax = ymin + h
+        if label_type == "polylines":
+            points = [[xmin, ymin], [xmax, ymin], [xmax, ymax], [xmin, ymax]]
+        else:
+            bounding_box = [xmin, ymin, w, h]
+
+        if len(row_vals) > 5:
+            confidence = float(row_vals[5])
+
+    if label_type == "polylines":
+        return fol.Polyline(
+            label=label,
+            points=[points],
+            confidence=confidence,
+            closed=True,
+            filled=True,
+        )
 
     return fol.Detection(
         label=label, bounding_box=bounding_box, confidence=confidence
