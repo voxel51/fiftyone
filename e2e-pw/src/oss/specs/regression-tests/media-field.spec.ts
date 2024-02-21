@@ -24,7 +24,7 @@ const test = base.extend<{
 });
 
 const writeImages = async () => {
-  const createPromises = [];
+  const createPromises: Promise<void>[] = [];
 
   Object.entries(IMAGES).forEach(([key, color]) => {
     createPromises.push(
