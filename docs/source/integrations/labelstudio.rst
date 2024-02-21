@@ -334,6 +334,26 @@ following ways:
         api_key=...,
     )
 
+.. _label-studio-local-storage:
+
+Configuring local file storage
+------------------------------
+
+If you are using FiftyOne on the same machine that is hosting Label Studio,
+then you can make use of the
+`local storage feature <https://labelstud.io/guide/storage#Local-storage>`_
+of Label Studio to avoid needing to copy your media.
+
+To enable this, you just need to configure the
+`LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT` and `LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED`
+environment variables as defined in
+`the documentation <https://labelstud.io/guide/storage#Prerequisites-2>`_.
+
+Then when you request annotations, if all of the samples in your |Dataset| or
+|DatasetView| reside in a subdirectory of the
+`LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT`, the media will not be copied over and
+only filepaths for you media will be used to create the Label Studio project.
+
 .. _label-studio-requesting-annotations:
 
 Requesting annotations
