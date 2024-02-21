@@ -1,6 +1,6 @@
 import { LoadingDots } from "@fiftyone/components";
 import * as fos from "@fiftyone/state";
-import React, { MutableRefObject } from "react";
+import React from "react";
 import {
   RecoilState,
   selectorFamily,
@@ -14,6 +14,7 @@ import { isBooleanField, isInKeypointsField } from "../state";
 import { CHECKBOX_LIMIT, nullSort } from "../utils";
 import Reset from "./Reset";
 import { Result } from "./Result";
+import { pathSearchCount } from "./state";
 import { showSearchSelector } from "./useSelected";
 
 interface CheckboxesProps {
@@ -23,7 +24,6 @@ interface CheckboxesProps {
   isMatchingAtom: RecoilState<boolean>;
   modal: boolean;
   path: string;
-  selectedMap: MutableRefObject<Map<string | null, number | null>>;
 }
 
 const isSkeleton = selectorFamily({
@@ -86,13 +86,11 @@ const useValues = ({
   path,
   results,
   selected,
-  selectedMap,
 }: {
   modal: boolean;
   path: string;
   results: Result[] | null;
   selected: (string | null)[];
-  selectedMap: Map<string | null, number | null>;
 }) => {
   const name = path.split(".").slice(-1)[0];
   const unlocked = fos.useLightingUnlocked();
@@ -106,7 +104,7 @@ const useValues = ({
 
   let allValues = selected.map((value) => ({
     value,
-    count: hasCount ? counts.get(value) || selectedMap.get(value) || 0 : null,
+    count: hasCount ? counts.get(value) ?? null : null,
     loading: unlocked && loading,
   }));
   const objectId = useRecoilValue(fos.isObjectIdField(path));
@@ -149,7 +147,6 @@ const Checkboxes = ({
   isMatchingAtom,
   modal,
   path,
-  selectedMap,
 }: CheckboxesProps) => {
   const [selected, setSelected] = useRecoilState(selectedAtom);
   const color = useRecoilValue(fos.pathColor(path));
@@ -160,7 +157,6 @@ const Checkboxes = ({
     path,
     results,
     selected,
-    selectedMap: selectedMap.current,
   });
 
   const show = useRecoilValue(showSearchSelector({ modal, path }));
@@ -191,8 +187,9 @@ const Checkboxes = ({
             loading={loading}
             count={
               typeof count !== "number" || !isFilterMode || keypoints
-                ? undefined
-                : selectedMap.current.get(value) ?? count
+                ? // only string and id fields use pathSearchCount
+                  pathSearchCount({ modal, path, value: value as string })
+                : count
             }
             setValue={(checked: boolean) => {
               if (checked) {

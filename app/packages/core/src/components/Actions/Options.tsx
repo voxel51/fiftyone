@@ -193,6 +193,10 @@ const DynamicGroupsViewMode = ({ modal }: { modal: boolean }) => {
     return options;
   }, [isOrderedDynamicGroup, hasGroupSlices]);
 
+  if (!modal && !isOrderedDynamicGroup) {
+    return null;
+  }
+
   return (
     <>
       <PopoutSectionTitle>Dynamic Groups Navigation</PopoutSectionTitle>

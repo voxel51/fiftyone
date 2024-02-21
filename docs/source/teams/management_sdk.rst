@@ -39,6 +39,15 @@ API keys
    :members:
    :undoc-members:
 
+.. _teams-sdk-cloud-credentials:
+
+Cloud Credentials
+-----------------
+
+.. automodule:: fiftyone.management.cloud_credentials
+   :members:
+   :undoc-members:
+
 .. _teams-sdk-dataset-permissions:
 
 Dataset permissions
