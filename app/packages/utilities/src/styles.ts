@@ -14,9 +14,7 @@ scrollbar-color: ${({ theme }) => theme.text.tertiary} ${({ theme }) =>
   border: solid 4px transparent ${theme.text.tertiary};
 }
 
-@-moz-document url-prefix() {
-  padding-right: 16px;
-}
+
 
 ::-webkit-scrollbar-thumb {
   box-shadow: inset 0 0 10px 10px transparent;

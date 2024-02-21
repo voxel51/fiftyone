@@ -1,0 +1,24 @@
+# If you are using the `Building and Deploying FiftyOne Teams (internal use)` doc
+# https://docs.google.com/document/d/1Tn-gf4XKKF3P2fUIVPF0xGDuidbI04WvKmnPlPKTVSQ
+# Then `TORCH_IMAGE_NAME` should already be set, just reuse it here...
+ARG TORCH_IMAGE_NAME
+ARG PYTHON_VERSION=3.10
+
+FROM python:${PYTHON_VERSION} as wheelhouse
+
+RUN pip wheel --wheel-dir=/tmp/wheels slack-sdk encord wandb opencv-python pandas
+
+
+FROM ${TORCH_IMAGE_NAME} as protexaiplugins
+
+RUN --mount=type=cache,from=wheelhouse,target=/wheelhouse,ro \
+    pip --no-cache-dir install -q --no-index \
+    --find-links=/wheelhouse/tmp/wheels slack-sdk encord wandb opencv-python pandas
+
+# run as the voxel51 user
+USER 1000:1000
+
+#
+# Serve the app
+#
+CMD hypercorn fiftyone.teams.app:app --bind "${FIFTYONE_DEFAULT_APP_ADDRESS:-0.0.0.0}":"${FIFTYONE_DEFAULT_APP_PORT:-5151}" --workers "${HYPERCORN_WORKERS:-4}"

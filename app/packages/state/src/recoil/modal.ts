@@ -46,8 +46,9 @@ export const sidebarSampleId = selector({
           return id;
         }
       }
-      // suspend
-      return new Promise(() => null);
+
+      // if we are playing or seeking, we don't want to change the sidebar sample and fire agg query
+      return null;
     }
 
     const override = get(pinned3DSampleSlice);
