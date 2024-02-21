@@ -5,6 +5,7 @@ FiftyOne Server aggregations
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from datetime import date, datetime
 import typing as t
 
@@ -120,15 +121,36 @@ async def aggregate_resolver(
         filters=form.filters,
         extended_stages=form.extended_stages,
         sample_filter=SampleFilter(
-            group=GroupElementFilter(
-                id=form.group_id, slice=form.slice, slices=form.slices
+            group=(
+                GroupElementFilter(
+                    id=form.group_id, slice=form.slice, slices=form.slices
+                )
+                if not form.sample_ids
+                else None
             )
-            if not form.sample_ids
-            else None
         ),
     )
 
-    slice_view = view if form.mixed and "" in form.paths else None
+    slice_view = (
+        fosv.get_view(
+            form.dataset,
+            view_name=form.view_name or None,
+            stages=form.view,
+            filters=form.filters,
+            extended_stages=form.extended_stages,
+            sample_filter=SampleFilter(
+                group=(
+                    GroupElementFilter(
+                        id=form.group_id, slice=form.slice, slices=[form.slice]
+                    )
+                    if not form.sample_ids
+                    else None
+                )
+            ),
+        )
+        if form.mixed and "" in form.paths
+        else None
+    )
 
     if form.sample_ids:
         view = fov.make_optimized_select_view(view, form.sample_ids)
