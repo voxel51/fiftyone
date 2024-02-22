@@ -5,6 +5,7 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import contextlib
 from datetime import datetime
@@ -6588,6 +6589,23 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         field_name, value.name, sample.media_type
                     )
 
+                sample_media_type = _get_media_type(
+                    sample, check_for_group=False
+                )
+                if (
+                    self.media_type == fom.GROUP
+                    and sample_media_type
+                    not in set(self.group_media_types.values())
+                ):
+                    expanded |= self._sample_doc_cls.merge_field_schema(
+                        {
+                            "metadata": fo.EmbeddedDocumentField(
+                                fome.get_metadata_cls(sample_media_type)
+                            )
+                        },
+                        validate=False,
+                    )
+
                 if not dynamic and field_name in schema:
                     continue
 
@@ -8547,10 +8565,11 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
     foo.bulk_write(ops, frame_coll)
 
 
-def _get_media_type(sample):
-    for field, value in sample.iter_fields():
-        if isinstance(value, fog.Group):
-            return fom.GROUP
+def _get_media_type(sample, check_for_group=True):
+    if check_for_group:
+        for _, value in sample.iter_fields():
+            if isinstance(value, fog.Group):
+                return fom.GROUP
 
     return sample.media_type
 

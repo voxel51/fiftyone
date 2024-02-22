@@ -5,6 +5,7 @@ Metadata stored in dataset samples.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import itertools
 import logging
 import multiprocessing.dummy
@@ -227,6 +228,23 @@ def compute_sample_metadata(sample, overwrite=False, skip_failures=False):
     )
     if sample._in_db:
         sample.save()
+
+
+def get_metadata_cls(media_type):
+    """Get the ``metadata`` class for a media_type
+
+    Args:
+        media_type (str): a media type value
+
+    Returns:
+        a :class:`Metadata` class
+    """
+    if media_type == fom.IMAGE:
+        return ImageMetadata
+    elif media_type == fom.VIDEO:
+        return VideoMetadata
+
+    return Metadata
 
 
 def compute_metadata(
