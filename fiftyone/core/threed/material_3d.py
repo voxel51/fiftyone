@@ -139,7 +139,7 @@ class MeshLambertMaterial(MeshMaterial):
 
 
 @dataclass
-class MeshPhongMaterial(MeshMaterial):
+class MeshPhongMaterial(MeshLambertMaterial):
     """Represents a Phong mesh material.
 
     This material takes into account specular reflection.
@@ -147,32 +147,17 @@ class MeshPhongMaterial(MeshMaterial):
     such as polished surfaces.
 
     Args:
-        color ("#ffffff"): the color of the material
-        emissive_color ("#000000"): the emissive color of the material.
-        This is the color emitted by the material itself independent of the light.
-        emissive_intensity (0.0): the intensity of the emissive color
         shininess (30): the shininess of the material
-        reflectivity (1.0): the reflectivity of the material
-        refraction_ratio (0.98): the refraction ratio of the material
+        specular_color ("#111111"): the specular color of the material
     """
 
-    color: str = COLOR_DEFAULT_GRAY
-    emissive_color: str = COLOR_DEFAULT_BLACK
-    emissive_intensity: float = 0.0
     shininess: float = 30.0
     specular_color: str = COLOR_DEFAULT_DARK_GRAY
-    reflectivity: float = 1.0
-    refraction_ratio: float = 0.98
 
     def as_dict(self):
         return super().as_dict() | {
-            "color": self.color,
-            "emissiveColor": self.emissive_color,
-            "emissiveIntensity": self.emissive_intensity,
             "shininess": self.shininess,
             "specularColor": self.specular_color,
-            "reflectivity": self.reflectivity,
-            "refractionRatio": self.refraction_ratio,
         }
 
 
