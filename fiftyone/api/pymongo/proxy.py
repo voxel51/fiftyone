@@ -95,7 +95,7 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         self.__next_batch = []
         self.__use_next_batching = True
         self.__dynamic_batcher = fo_utils.ContentSizeDynamicBatcher(
-            None, init_batch_size=100
+            None, init_batch_size=100, max_batch_beta=128.0
         )
 
     def __proxy_it__(
