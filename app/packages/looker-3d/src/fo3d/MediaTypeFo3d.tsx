@@ -38,7 +38,7 @@ import {
 } from "../constants";
 import {
   LevaContainer,
-  NodeInfoContainer,
+  NodeInfoRootContainer,
   StatusBarRootContainer,
 } from "../containers";
 import { useFo3d } from "../hooks";
@@ -47,9 +47,9 @@ import { ThreeDLabels } from "../labels";
 import { actionRenderListAtomFamily, activeNodeAtom } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
-import { NodeInfo } from "./NodeInfo";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
+import { NodeInfo } from "./node-info";
 import { getMediaUrlForFo3dSample } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -357,9 +357,9 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
           </Suspense>
         </Fo3dSceneContextBridge>
       </Canvas>
-      <NodeInfoContainer>
+      <NodeInfoRootContainer>
         <NodeInfo />
-      </NodeInfoContainer>
+      </NodeInfoRootContainer>
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
