@@ -1,7 +1,8 @@
+import { InfoIcon } from "@fiftyone/components";
 import { useLoader } from "@react-three/fiber";
 import { folder, useControls } from "leva";
 import { OnChangeHandler } from "leva/dist/declarations/src/types";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRecoilState } from "recoil";
 import { Quaternion, Vector3 } from "three";
 import { PCDLoader } from "three/examples/jsm/loaders/PCDLoader";
@@ -27,6 +28,7 @@ import {
   isPointSizeAttenuatedAtom,
   shadeByAtom,
 } from "../state";
+import { booleanButton } from "./leva-plugins/boolean-button";
 
 const usePcdControls = (name: string) => {
   const [shadeBy, setShadeBy] = useRecoilState(shadeByAtom);
@@ -49,10 +51,22 @@ const usePcdControls = (name: string) => {
     []
   );
 
+  const [testState, setTestState] = useState(false);
+
   useControls(
     () => ({
       ["Pointcloud Settings"]: folder(
         {
+          test: booleanButton({
+            checked: testState,
+            onCheckboxChange: (v) => {
+              setTestState(!v);
+            },
+            onClick: (v) => {
+              alert("hi" + JSON.stringify(v));
+            },
+            icon: <InfoIcon />,
+          }),
           pointSize: {
             value: pointSizeNum,
             min: 0.1,
@@ -102,7 +116,7 @@ const usePcdControls = (name: string) => {
         }
       ),
     }),
-    [pointSizeNum, shadeBy, onChangeTextBox]
+    [pointSizeNum, shadeBy, testState, onChangeTextBox]
   );
 
   return {
