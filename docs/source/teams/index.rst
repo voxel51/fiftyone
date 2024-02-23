@@ -75,10 +75,10 @@ pages on this site apply to Teams deployments as well.
     :button_link: cloud_media.html
 
 .. customcalloutitem::
-    :header: Roles and permissions
-    :description: Learn how to configure roles and access permissions for users of your deployment.
-    :button_text: Learn more about permissions
-    :button_link: roles_and_permissions.html
+    :header: Roles, groups and permissions
+    :description: Learn how to configure roles, groups and access permissions for users of your deployment.
+    :button_text: Learn more about user groups and permissions
+    :button_link: roles_groups_and_permissions.html
 
 .. customcalloutitem::
     :header: Dataset Versioning
@@ -139,7 +139,7 @@ pages on this site apply to Teams deployments as well.
     Installation <installation>
     API connection <api_connection>
     Cloud-backed media <cloud_media>
-    Roles and permissions <roles_and_permissions>
+    Roles, groups and permissions <roles_groups_and_permissions>
     Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
