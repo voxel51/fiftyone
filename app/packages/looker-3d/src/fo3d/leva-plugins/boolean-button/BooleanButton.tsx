@@ -2,6 +2,7 @@ import { IconButton } from "@fiftyone/components";
 import { Components, useInputContext } from "leva/plugin";
 import { useCallback } from "react";
 import styled from "styled-components";
+import style from "./boolean-button-style.module.css";
 import { BooleanButtonProps } from "./types";
 
 const BooleanButtonContainer = styled.div`
@@ -14,7 +15,7 @@ const BooleanButtonContainer = styled.div`
 export const BooleanButton = () => {
   const { label, settings } = useInputContext<BooleanButtonProps>();
 
-  const { icon, onClick, checked, onCheckboxChange } = settings;
+  const { icon, onClick, checked, onCheckboxChange, buttonStyles } = settings;
 
   const { Label, Row, Boolean } = Components;
 
@@ -31,15 +32,18 @@ export const BooleanButton = () => {
 
   return (
     <Row input>
-      <Label>{label}</Label>
+      <Label onClick={onClickHandler} className={style.levaLabelStyle}>
+        {label}
+      </Label>
       <BooleanButtonContainer>
-        {/* suspiciously doesn't work if the id field is removed :/  */}
         <Boolean
           id={`fo-leva-pl-${label}`}
           value={checked}
           onUpdate={onUpdateHandler}
         />
-        <IconButton onClick={onClickHandler}>{icon}</IconButton>
+        <IconButton style={buttonStyles ?? {}} onClick={onClickHandler}>
+          {icon}
+        </IconButton>
       </BooleanButtonContainer>
     </Row>
   );

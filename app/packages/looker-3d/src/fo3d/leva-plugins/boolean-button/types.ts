@@ -12,6 +12,7 @@ type BooleanButtonSettings = {
   onClick: (props: { checked: boolean; label: string }) => void;
   icon: React.ReactNode;
   onCheckboxChange: (v: boolean, label: string) => void;
+  buttonStyles?: React.CSSProperties;
 };
 
 export type BooleanButtonValue = { checked?: boolean };
