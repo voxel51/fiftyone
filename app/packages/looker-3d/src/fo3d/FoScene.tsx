@@ -27,6 +27,7 @@ import {
 } from "./utils";
 
 import { useRecoilState } from "recoil";
+import { VOXEL51_THEME_COLOR } from "../constants";
 import { activeNodeAtom, currentVisibilityMapAtom } from "../state";
 import { booleanButton } from "./leva-plugins/boolean-button";
 
@@ -223,6 +224,10 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
             );
           }
         },
+        buttonStyles:
+          nodeName === activeNodeName
+            ? { color: VOXEL51_THEME_COLOR, opacity: 1 }
+            : { opacity: 0.7 },
         icon:
           nodeName === activeNodeName ? (
             <SettingsIcon />
