@@ -213,6 +213,7 @@ class Object3D:
         """Converts the object to a dict."""
         data = {
             "_type": self.__class__.__name__,
+            "uuid": self.uuid,
             "name": self.name,
             "visible": self.visible,
             "position": self.position.to_arr().tolist(),
@@ -245,6 +246,7 @@ class Object3D:
             if k
             not in [
                 "_type",
+                "uuid",  # `uuid` is not a constructor argument
                 "name",
                 "visible",
                 "children",
@@ -267,6 +269,8 @@ class Object3D:
         obj.position = Vector3(*dict_data.get("position", [0, 0, 0]))
         obj.quaternion = Quaternion(*dict_data.get("quaternion", [0, 0, 0, 1]))
         obj.scale = Vector3(*dict_data.get("scale", [1, 1, 1]))
+
+        obj._uuid = dict_data.get("uuid", str(uuid.uuid4()))
 
         # recursively handle children
         for child_json in dict_data.get("children", []):
