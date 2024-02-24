@@ -1,7 +1,16 @@
+"""
+Utilities for working with the
+`Places dataset <http://places2.csail.mit.edu/index.html>`.
+
+| Copyright 2024, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import os
 import logging
 import shutil
 import json
+import random
 
 import eta.core.serial as etas
 import eta.core.utils as etau
@@ -17,13 +26,42 @@ def download_places_dataset_split(
     split,
     raw_dir=None,
 ):
+    """Utility that downloads splits of the
+    `Places dataset <http://places2.csail.mit.edu/index.html>`.
+
+    Any existing files are not re-downloaded.
+
+    Args:
+        dataset_dir: the directory to download the dataset
+        split: the split to download. Supported values are
+            ``("train", "validation", "test")``
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` ints or strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        num_workers (None): a suggested number of threads to use when
+            downloading individual images
+        raw_dir (None): a directory in which full annotations files may be
+            stored to avoid re-downloads in the future
+
+    Returns:
+        a tuple of:
+        -   num_samples: the total number of downloaded images
+        -   classes: the list of all classes
+        -   did_download: whether any content was downloaded (True) or if all
+            necessary files were already downloaded (False)
+    """
+
     if split not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
             % (split, tuple(_IMAGE_DOWNLOAD_LINKS.keys()))
         )
 
-    # anno_path = os.path.join(dataset_dir, "categories.txt")
     did_download = False
 
     if raw_dir is None:
@@ -176,6 +214,42 @@ def download_places_dataset_split(
 
 
 class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
+    """Base class for importing datasets in Places format.
+
+    See :class:`fiftyone.types.PlacesDataset` for format details.
+
+    Args:
+        dataset_dir: the dataset directory
+        classes (None): a string or list of strings specifying required classes
+            to load. If provided, only samples containing at least one instance
+            of a specified class will be loaded
+        image_ids (None): an optional list of specific image IDs to load. Can
+            be provided in any of the following formats:
+
+            -   a list of ``<image-id>`` strings
+            -   a list of ``<split>/<image-id>`` strings
+            -   the path to a text (newline-separated), JSON, or CSV file
+                containing the list of image IDs to load in either of the first
+                two formats
+        include_id (True): whether to load the Open Images ID for each sample
+            along with the labels
+        only_matching (False): whether to only load labels that match the
+            ``classes`` or ``attrs`` requirements that you provide (True), or
+            to load all labels for samples that match the requirements (False)
+        shuffle (False): whether to randomly shuffle the order in which the
+            samples are imported
+        seed (None): a random seed to use when shuffling
+        max_samples (None): a maximum number of samples to load. If
+            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
+            first priority will be given to samples that contain all of the
+            specified label types, classes, and/or attributes, followed by
+            samples that contain at least one of the specified labels types or
+            classes. The actual number of samples loaded may be less than this
+            maximum value if the dataset does not contain sufficient samples
+            matching your requirements. By default, all matching samples are
+            loaded
+    """
+
     def __init__(
         self,
         dataset_dir=None,
@@ -225,6 +299,9 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
     def setup(self):
         dataset_dir = self.dataset_dir
 
+        if self.seed is not None:
+            random.seed(self.seed)
+
         data_dir = os.path.join(dataset_dir, "data")
         labels_dir = os.path.join(dataset_dir, "labels")
 
@@ -233,6 +310,14 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
             for filename in etau.list_files(data_dir)
         }
         available_ids = list(images_map.keys())
+
+        if self.shuffle:
+            random.shuffle(available_ids)
+
+        if self.max_samples is not None:
+            if not self.shuffle:
+                random.shuffle(available_ids)
+            available_ids = available_ids[: self.max_samples]
 
         self._uuids = available_ids
         self._images_map = images_map
