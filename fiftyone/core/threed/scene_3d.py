@@ -10,6 +10,7 @@ from .camera import PerspectiveCamera
 from .lights import Light
 from .object_3d import Object3D
 from .utils import convert_keys_to_snake_case
+from uuid import uuid4
 
 
 class Scene(Object3D):
@@ -66,6 +67,7 @@ class Scene(Object3D):
 
     def _to_dict_extra(self):
         return {
+            "uuid": self.uuid,
             "camera": self.camera.as_dict(),
             "lights": [light.as_dict() for light in self.lights]
             if self.lights
@@ -82,6 +84,8 @@ class Scene(Object3D):
             dict_data = convert_keys_to_snake_case(json.load(f))
 
         scene: Scene = Scene._from_dict(dict_data)
+
+        scene.uuid = dict_data.get("uuid")
 
         # parse camera
         camera_dict = dict_data.get("camera")
