@@ -17,7 +17,7 @@
         "@mui/icons-material": "^5.15.7",
         "@mui/material": "^5.15.7",
         "@react-spring/web": "^9.7.3",
-        "@react-three/drei": "^9.99.0",
+        "@react-three/drei": "^9.99.1",
         "@react-three/fiber": "^8.15.16",
         "leva": "^0.9.35",
         "lodash": "^4.17.21",

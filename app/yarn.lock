@@ -2932,7 +2932,7 @@ __metadata:
     "@mui/icons-material": ^5.15.7
     "@mui/material": ^5.15.7
     "@react-spring/web": ^9.7.3
-    "@react-three/drei": ^9.99.0
+    "@react-three/drei": ^9.99.1
     "@react-three/fiber": ^8.15.16
     "@types/node": ^20.11.10
     "@types/react": ^18.2.48
@@ -5399,9 +5399,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^9.99.0":
-  version: 9.99.0
-  resolution: "@react-three/drei@npm:9.99.0"
+"@react-three/drei@npm:^9.99.1":
+  version: 9.99.1
+  resolution: "@react-three/drei@npm:9.99.1"
   dependencies:
     "@babel/runtime": ^7.11.2
     "@mediapipe/tasks-vision": 0.10.8
@@ -5433,7 +5433,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: 1bc586274852b09f4b8a93cf200a15a800b1fc743a897ae8cbabe4c5bc56579515bb8c779c8136240ee5470381675ea8ff93c728313ab3bed5aafeee664a9de8
+  checksum: fc257a705daf8c41a91122e45ac1c79e32f8a203fbe4a655d59f00dd903cf6d48922dce35860db1af3a9a97dbfa3ff6c83cbdb98fe7fbffa7070e26db6bb6a05
   languageName: node
   linkType: hard
 
@@ -7383,11 +7383,11 @@ __metadata:
   linkType: hard
 
 "@types/node@npm:^20.11.10":
-  version: 20.11.19
-  resolution: "@types/node@npm:20.11.19"
+  version: 20.11.20
+  resolution: "@types/node@npm:20.11.20"
   dependencies:
     undici-types: ~5.26.4
-  checksum: 259d16643ba611ade617a8212e594a3ac014727457507389bbf7213971346ab052d870f1e6e2df0afd0876ecd7874f578bccb130be01e069263cfc7136ddc0c1
+  checksum: 79d339622fed1c0e64297c8b9f558815a91edb9fea3acb69c1201b919d450e12915cf98b1a96b2d2c121bf86f30b62b6de3708f8894c5319f8dfb3a991e3ccdd
   languageName: node
   linkType: hard
 
