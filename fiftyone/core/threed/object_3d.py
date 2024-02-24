@@ -253,6 +253,7 @@ class Object3D:
                 "position",
                 "quaternion",
                 "scale",
+                "default_material",
             ]
         }
 

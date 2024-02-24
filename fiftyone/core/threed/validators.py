@@ -7,7 +7,7 @@ Fiftyone 3D Scene.
 """
 from typing import Optional
 
-from pydantic import validator
+from pydantic import field_validator
 
 from .transformation import Vec3UnionType, Vector3
 
@@ -28,6 +28,6 @@ def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Vector3 | None:
 
 
 def vec3_normalizing_validator(field: str) -> classmethod:
-    decorator = validator(field, allow_reuse=True)
+    decorator = field_validator(field)
     validator_class_method = decorator(normalize_to_vec3)
     return validator_class_method

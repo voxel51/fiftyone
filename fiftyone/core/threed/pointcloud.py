@@ -39,9 +39,11 @@ class Pointcloud(Object3D):
             raise ValueError("Point cloud must be a .pcd file")
 
         self.pcd_path = pcd_path
-        self.default_material = (
-            material if material is not None else PointcloudMaterial()
-        )
+
+        if isinstance(material, dict):
+            material = PointcloudMaterial._from_dict(material)
+
+        self.default_material = material or PointcloudMaterial()
 
     def set_default_material(self, material: PointcloudMaterial):
         """Sets the material of the point cloud.
