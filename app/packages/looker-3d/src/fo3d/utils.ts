@@ -42,6 +42,30 @@ export const getLabelForSceneNode = (node: FoSceneNode): string => {
   return assetUrl.split("/").pop().split(".")[0];
 };
 
+export const getNodeFromSceneByName = (scene: FoScene, name: string) => {
+  const visitNodeDfs = (node: FoSceneNode): FoSceneNode => {
+    if (node.name === name) {
+      return node;
+    }
+
+    if (node.children) {
+      for (const child of node.children) {
+        const result = visitNodeDfs(child);
+        if (result) return result;
+      }
+    }
+
+    return null;
+  };
+
+  for (const child of scene.children) {
+    const result = visitNodeDfs(child);
+    if (result) return result;
+  }
+
+  return null;
+};
+
 export const getVisibilityMapFromFo3dParsed = (
   foSceneGraph: FoScene
 ): Record<string, boolean> => {

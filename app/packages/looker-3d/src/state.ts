@@ -3,21 +3,21 @@ import { getBrowserStorageEffectForKey } from "@fiftyone/state";
 import { atom, atomFamily } from "recoil";
 import { SHADE_BY_HEIGHT } from "./constants";
 import { FoSceneNode } from "./hooks";
-import { Actions, ShadeBy } from "./types";
+import { Actions, ShadeBy, VisibilityMap } from "./types";
 
 export const worldBoundsAtom = atom<THREE.Box3 | null>({
-  key: "worldBounds",
+  key: "fo3d-worldBounds",
   default: null,
 });
 
 export const shadeByAtom = atom<ShadeBy>({
-  key: "shadeBy",
+  key: "fo3d-shadeBy",
   default: SHADE_BY_HEIGHT,
   effects: [getBrowserStorageEffectForKey("shadeBy")],
 });
 
 export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
-  key: "customColorMap",
+  key: "fo3d-customColorMap",
   default: null,
   effects: [
     getBrowserStorageEffectForKey("customColorMap", {
@@ -30,28 +30,28 @@ export const actionRenderListAtomFamily = atomFamily<
   [string, any[] | null][],
   "pcd" | "fo3d"
 >({
-  key: "actionRenderListAtomFamily",
+  key: "fo3d-actionRenderListAtomFamily",
   default: [],
 });
 
 export const currentActionAtom = atom<Actions>({
-  key: "openAction",
+  key: "fo3d-openAction",
   default: null,
 });
 
 export const currentPointSizeAtom = atom<string>({
-  key: "pointSize",
+  key: "fo3d-pointSize",
   default: "2",
   effects: [getBrowserStorageEffectForKey("pointSize")],
 });
 
 export const pointSizeRangeAtom = atom<Range>({
-  key: "pointSizeRange",
+  key: "fo3d-pointSizeRange",
   default: [0.1, 2],
 });
 
 export const isPointSizeAttenuatedAtom = atom<boolean>({
-  key: "isPointSizeAttenuated",
+  key: "fo3d-isPointSizeAttenuated",
   default: false,
   effects: [
     getBrowserStorageEffectForKey("isPointSizeAttenuated", {
@@ -61,7 +61,7 @@ export const isPointSizeAttenuatedAtom = atom<boolean>({
 });
 
 export const isGridOnAtom = atom<boolean>({
-  key: "isGridOn",
+  key: "fo3d-isGridOn",
   default: true,
   effects: [
     getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
@@ -69,16 +69,21 @@ export const isGridOnAtom = atom<boolean>({
 });
 
 export const isStatusBarOnAtom = atom<boolean>({
-  key: "isStatusBarOn",
+  key: "fo3d-isStatusBarOn",
   default: false,
 });
 
 export const panelPositionAtom = atom<{ x?: number; y?: number } | null>({
-  key: "panelPosition",
+  key: "fo3d-panelPosition",
   default: null,
 });
 
 export const activeNodeAtom = atom<FoSceneNode>({
-  key: "activeNode",
+  key: "fo3d-activeNode",
   default: null,
+});
+
+export const currentVisibilityMapAtom = atom<VisibilityMap>({
+  key: "fo3d-currentVisibilityMap",
+  default: {},
 });

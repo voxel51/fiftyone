@@ -23,7 +23,7 @@ export const AssetWrapper = ({
     );
   }
 
-  return <ClickableWrapper node={node}>{children}</ClickableWrapper>;
+  return <>{children}</>;
 };
 
 const CursorWrapper = ({

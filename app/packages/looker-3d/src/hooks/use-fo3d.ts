@@ -101,6 +101,7 @@ export type FoPointcloudMaterialProps = FoMaterial3D & {
 };
 
 export type FoSceneNode = {
+  uuid: string;
   name: string;
   asset?: MeshAsset;
   position: Vector3;

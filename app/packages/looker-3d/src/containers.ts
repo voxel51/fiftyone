@@ -104,7 +104,7 @@ export const StatusBarRootContainer = styled.div`
   }
 `;
 
-export const NodeInfoContainer = styled.div`
+export const NodeInfoRootContainer = styled.div`
   display: flex;
   flex-direction: column;
   position: absolute;

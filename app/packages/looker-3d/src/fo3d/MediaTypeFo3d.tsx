@@ -307,7 +307,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
   return (
     <>
-      <LevaContainer id="leva-container-sas">
+      <LevaContainer>
         <Leva
           theme={{
             colors: {

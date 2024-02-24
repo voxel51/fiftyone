@@ -24,3 +24,9 @@ export type ShadeBy =
   | typeof SHADE_BY_RGB
   | typeof SHADE_BY_CUSTOM
   | typeof SHADE_BY_NONE;
+
+export type NodeName = string;
+
+export type VisibilityMap = Record<NodeName, boolean>;
+
+export type NodeUuid = string;
