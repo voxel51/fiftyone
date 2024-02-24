@@ -85,8 +85,6 @@ class Scene(Object3D):
 
         scene: Scene = Scene._from_dict(dict_data)
 
-        scene.uuid = dict_data.get("uuid")
-
         # parse camera
         camera_dict = dict_data.get("camera")
         if camera_dict is not None:

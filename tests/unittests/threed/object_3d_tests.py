@@ -44,7 +44,7 @@ class Test3DBasicGeometry(unittest.TestCase):
 
 class TestObject3DMatrixUpdates(unittest.TestCase):
     def setUp(self):
-        self.obj = Object3D()
+        self.obj = Object3D("TestObject")
 
     def test_position_updates_matrix(self):
         self.obj.position = Vector3(10, 20, 30)
@@ -182,7 +182,7 @@ class TestObject3DMatrixUpdates(unittest.TestCase):
 
 
 class TestObject3DSerialization(unittest.TestCase):
-    def test_to_dict(self):
+    def testas_dict(self):
         obj = Object3D(name="TestObject", visible=True)
         obj.position = Vector3(1.0, 2.0, 3.0)
         obj.rotation = Euler(90.0, 0.0, 90.0, degrees=True)
@@ -194,7 +194,7 @@ class TestObject3DSerialization(unittest.TestCase):
         child_obj.children = [grandchild_obj_1, grandchild_obj_2]
         obj.children = [child_obj]
 
-        dict_data = obj._to_dict()
+        dict_data = obj.as_dict()
 
         self.assertEqual(dict_data["name"], "TestObject")
         self.assertTrue(dict_data["visible"])
