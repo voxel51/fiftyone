@@ -891,8 +891,7 @@ class LegacyFiftyOneDataset(Dataset):
 
 class PlacesDataset(ImageClassificationDataset):
     """A labeled dataset consisting of images and their associated lables
-    saved in
-    `Open Images format <https://storage.googleapis.com/openimages/web/download.html>`_.
+    from the `Places dataset <http://places2.csail.mit.edu/index.html>`.
     """
 
     def get_dataset_importer_cls(self):
