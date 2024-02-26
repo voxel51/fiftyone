@@ -139,7 +139,7 @@ pages on this site apply to Teams deployments as well.
     Installation <installation>
     API connection <api_connection>
     Cloud-backed media <cloud_media>
-    Roles, groups and permissions <roles_groups_and_permissions>
+    Roles, groups and permissions <roles_and_permissions>
     Dataset Versioning <dataset_versioning>
     FiftyOne Teams App <teams_app>
     Management SDK <management_sdk>
