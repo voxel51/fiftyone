@@ -5,13 +5,24 @@ Roles, groups and permissions
 
 .. default-role:: code
 
-FiftyOne Teams is engineered to foster collaboration, streamlining the process for teams of engineers, data scientists, and stakeholders to join forces in crafting high-quality datasets and computer vision models.
+FiftyOne Teams is engineered to foster collaboration, streamlining the process 
+for teams of engineers, data scientists, and stakeholders to join forces in 
+crafting high-quality datasets and computer vision models.
 
-To this end, FiftyOne Teams offers robust tools to configure user roles, groups, and fine-grained permissions, enhancing your team's ability to collaborate securely and efficiently, both internally and with external partners, throughout your projects.
+To this end, FiftyOne Teams offers robust tools to configure user roles, groups, 
+and fine-grained permissions, enhancing your team's ability to collaborate 
+securely and efficiently, both internally and with external partners, 
+throughout your projects.
 
-A key aspect of FiftyOne Teams is its ability to manage user permissions at scale through the use of groups. This feature empowers organizations to efficiently administer access rights across large teams, ensuring that the right people have the appropriate level of access to datasets and tools, corresponding to their roles and responsibilities within the organization.
+A key aspect of FiftyOne Teams is its ability to manage user permissions at 
+scale through the use of groups. This feature empowers organizations to 
+efficiently administer access rights across large teams, ensuring that the 
+right people have the appropriate level of access to datasets and tools, 
+corresponding to their roles and responsibilities within the organization.
 
-This page provides a primer on the fundamental user roles, group-based management, and permissions architecture in FiftyOne Teams, designed to facilitate a scalable and secure collaborative environment.
+This page provides a primer on the fundamental user roles, group-based 
+management, and permissions architecture in FiftyOne Teams, designed to 
+facilitate a scalable and secure collaborative environment.
 
 .. _teams-roles:
 
@@ -98,15 +109,21 @@ view other users of the deployment.
 Groups
 ___________
 
-User groups in FiftyOne Teams allow organization admins to manage a collection of users as a single entity. This simplifies the process of assigning permissions to multiple users, making it more efficient to control access to datasets.
+User groups in FiftyOne Teams allow organization admins to manage a collection 
+of users as a single entity. This simplifies the process of assigning 
+permissions to multiple users, making it more efficient to control access to 
+datasets.
 
-Admins can manage groups through the "Settings > Team > Groups" page. Each group can be given specific dataset access permissions, which apply to all users within the group (except for guests).
+Admins can manage groups through the "Settings > Team > Groups" page. 
+Each group can be given specific dataset access permissions, which apply to 
+all users within the group (except for guests).
 
 .. image:: /images/teams/admin_team_groups_page.png
    :alt: admin-team-groups-page
    :align: center
 
-Admins can create a new group by clicking on "Create group" and then adding users to the group by clicking on "Add users".
+Admins can create a new group by clicking on "Create group" and then adding 
+users to the group by clicking on "Add users".
 
 .. image:: /images/teams/admin_add_users_to_team.png
    :alt: admin-team-add-users-to-team
@@ -125,7 +142,10 @@ Admins and users with the **Can manage** permission on a dataset can configure
 a dataset's permissions under the dataset's
 :ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
-In FiftyOne Teams, dataset permissions for a user are determined by the highest level of access they receive from either their group's permissions or individual permissions assigned to them. This tiered permissions system is designed to facilitate management at scale:
+In FiftyOne Teams, dataset permissions for a user are determined by the 
+highest level of access they receive from either their group's permissions 
+or individual permissions assigned to them. This tiered permissions system is 
+designed to facilitate management at scale:
 
 -  Admins implicitly have full access to all datasets
 -  Members have the dataset's
@@ -160,10 +180,12 @@ A dataset's default access level can be set to **No access**, **Can view**,
 People and groups with access
 ------------------
 
-Authorized users can grant specific access to a dataset using the "People and groups with
-access" section shown below. 
+Authorized users can grant specific access to a dataset using the "People and 
+groups with access" section shown below. 
 
-To give access to an existing user or group, simply click "Share" button on the top right. A list of users with access to the dataset is shown. Click "Add User" or "Add Group" to grant access to a new user or group.
+To give access to an existing user or group, simply click "Share" button on 
+the top right. A list of users with access to the dataset is shown. Click 
+"Add User" or "Add Group" to grant access to a new user or group.
 
 .. image:: /images/teams/share_dataset.png
    :alt: specific-access
@@ -190,7 +212,8 @@ The following permissions are available to each user role:
    When the invitation is accepted, the user will become a Guest or
    Collaborator (depending on whether **Can view** or **Can edit** access was
    granted, respectively), and an Admin can upgrade this user to another role
-   if desired via the Team Settings page. Guests cannot be granted permissions through user groups.
+   if desired via the Team Settings page. Guests cannot be granted 
+   permissions through user groups.
 
 .. _teams-no-access:
 
