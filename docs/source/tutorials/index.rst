@@ -146,7 +146,7 @@ your datasets and turn your good models into *great models*.
     :tags: Brain,Visualization
 
 .. customcarditem::
-    :header: Augmenting Datasets with FiftyOne and Albumentations
+    :header: Augmenting Datasets with Albumentations
     :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
     :link: data_augmentation.html
     :image: ../_static/images/tutorials/data_augmentation.png
