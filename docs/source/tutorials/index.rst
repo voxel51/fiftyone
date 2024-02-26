@@ -139,7 +139,7 @@ your datasets and turn your good models into *great models*.
     :tags: Model-Evaluation,Visualization
 
 .. customcarditem::
-    :header: Visualizaing Data with Dimensionality Reduction
+    :header: Visualizing Data with Dimensionality Reduction
     :description: Compare and contrast dimensionality reduction techniques for visualizing your data in FiftyOne.
     :link: dimension_reduction.html
     :image: ../_static/images/tutorials/dimension_reduction.png
