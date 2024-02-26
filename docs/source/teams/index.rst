@@ -78,7 +78,7 @@ pages on this site apply to Teams deployments as well.
     :header: Roles, groups and permissions
     :description: Learn how to configure roles, groups and access permissions for users of your deployment.
     :button_text: Learn more about user groups and permissions
-    :button_link: roles_groups_and_permissions.html
+    :button_link: roles_and_permissions.html
 
 .. customcalloutitem::
     :header: Dataset Versioning
