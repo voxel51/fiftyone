@@ -80,6 +80,39 @@ class BatcherTests(unittest.TestCase):
             batches = [batch for batch in batcher]
             self.assertListEqual(batches, [iterable])
 
+    def test_static_batcher_perfect_boundary(self):
+        iterable = list(range(200))
+        batcher = fou.StaticBatcher(iterable, batch_size=100, progress=False)
+        with batcher:
+            batches = [batch for batch in batcher]
+            self.assertListEqual(batches, [iterable[:100], iterable[100:]])
+
+    def test_inexhaustible_static_batcher(self):
+        batcher = fou.StaticBatcher(None, batch_size=100, progress=False)
+        nt = 10
+        batches = [next(batcher) for _ in range(10)]
+        self.assertListEqual(batches, [100] * nt)
+
+    def test_inexhaustible_content_size_batcher(self):
+        batcher = fou.ContentSizeDynamicBatcher(
+            None, init_batch_size=100, target_size=10
+        )
+        measurements = [1, 20, 10, 0.1, 11, 0]
+        expected_batches = [
+            100,
+            1_000,
+            500,
+            500,
+            50_000,
+            int(round(10 / 11 * 50_000)),
+        ]
+        batches = []
+        for m in measurements:
+            batches.append(next(batcher))
+            batcher.apply_backpressure(m)
+
+        self.assertListEqual(batches, expected_batches)
+
     @drop_datasets
     def test_batching_static_default(self):
         with patch.object(fo.config, "default_batcher", "static"):
