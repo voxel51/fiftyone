@@ -145,6 +145,13 @@ your datasets and turn your good models into *great models*.
     :image: ../_static/images/tutorials/dimension_reduction.png
     :tags: Brain,Visualization
 
+.. customcarditem::
+    :header: Augmenting Datasets with FiftyOne and Albumentations
+    :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
+    :link: data_augmentation.html
+    :image: ../_static/images/tutorials/data_augmentation.png
+    :tags: App,Dataset-Curation,Visualization
+
 .. End of tutorial cards
 
 .. raw:: html
@@ -185,3 +192,4 @@ your datasets and turn your good models into *great models*.
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
    Dimensionality reduction <dimension_reduction.ipynb>
+   Data augmentation <data_augmentation.ipynb>
