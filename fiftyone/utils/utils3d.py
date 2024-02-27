@@ -690,6 +690,101 @@ def compute_orthographic_projection_image(
     return image, metadata
 
 
+def compute_orthographic_projection_map(
+    filepath,
+    size,
+    subsampling_rate=None,
+    projection_normal=None,
+    bounds=None,
+):
+    """Generates an orthographic projection map for the given PCD file onto the
+    specified plane (default xy plane).
+
+    The returned map is a three-channel array encoding the intensity, height,
+    and density of the point cloud.
+
+    Args:
+        filepath: the path to the ``.pcd`` file
+        size: the desired ``(width, height)`` for the generated map. Either
+            dimension can be None or negative, in which case the appropriate
+            aspect-preserving value is used
+        subsampling_rate (None): an unsigned ``int`` that, if defined,
+            defines a uniform subsampling rate. The selected point indices are
+            [0, k, 2k, ...], where ``k = subsampling_rate``
+        projection_normal (None): the normal vector of the plane onto which to
+            perform the projection. By default, ``(0, 0, 1)`` is used
+        bounds (None): an optional ``((xmin, ymin, zmin), (xmax, ymax, zmax))``
+            tuple defining the field of view for which to generate each map in
+            the projected plane. Either element of the tuple or any/all of its
+            values can be None, in which case a tight crop of the point cloud
+            along the missing dimension(s) are used
+
+    Returns:
+        a tuple of
+
+        -   the feature map
+        -   an :class:`OrthographicProjectionMetadata` instance
+    """
+    points, colors, metadata = _parse_point_cloud(
+        filepath,
+        size=size,
+        bounds=bounds,
+        projection_normal=projection_normal,
+        subsampling_rate=subsampling_rate,
+    )
+
+    min_bound = metadata.min_bound
+    max_bound = metadata.max_bound
+    width = metadata.width
+    height = metadata.height
+
+    points = np.vstack((points.T, colors[:, 0])).T
+
+    # scale and normalize XY points based on width / height and bounds
+    points[:, 0] *= (width - 1) / (max_bound[0] - min_bound[0])
+    points[:, 1] *= (height - 1) / (max_bound[1] - min_bound[1])
+
+    indices = np.lexsort((-points[:, 2], points[:, 1], points[:, 0]))
+    points = points[indices]
+
+    _, indices, counts = np.unique(
+        points[:, 0:2], axis=0, return_index=True, return_counts=True
+    )
+
+    points_frac = points[indices]
+    z_range = float(np.abs(max_bound[2] - min_bound[2]))
+
+    height_map = np.zeros((width, height))
+    height_map[np.int_(points_frac[:, 0]), np.int_(points_frac[:, 1])] = (
+        points_frac[:, 2] / z_range
+    )
+
+    points_top = points[indices]
+    normalized_counts = np.minimum(1.0, np.log(counts + 1) / np.log(64))
+
+    intensity_map = np.zeros((width, height))
+    intensity_map[
+        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
+    ] = points_top[:, 3]
+
+    density_map = np.zeros((width, height))
+    density_map[
+        np.int_(points_top[:, 0]), np.int_(points_top[:, 1])
+    ] = normalized_counts
+
+    feature_map = np.stack(
+        (
+            intensity_map[:height, :width],
+            height_map[:height, :width],
+            density_map[:height, :width],
+        )
+    )
+
+    feature_map = np.einsum("ijk -> jki", feature_map)
+
+    return feature_map, metadata
+
+
 def _parse_point_cloud(
     filepath,
     size=None,
