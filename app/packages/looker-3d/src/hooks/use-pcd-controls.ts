@@ -11,7 +11,7 @@ import {
 } from "../constants";
 import { FoPointcloudMaterialProps } from "./use-fo3d";
 
-export const usePcdControls = (
+export const usePcdMaterialControls = (
   name: string,
   defaultMaterial: FoPointcloudMaterialProps
 ) => {
@@ -21,6 +21,7 @@ export const usePcdControls = (
   const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useState(
     defaultMaterial.attenuateByDistance
   );
+  const [opacity, setOpacity] = useState(defaultMaterial.opacity);
 
   const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
     setPointSize(newValue);
@@ -69,6 +70,17 @@ export const usePcdControls = (
             label: "Attenuated",
             order: 1000,
           },
+          // todo: disabling opacity for now because it's not working as intended
+          // todo: shader logic is not trivial
+          // opacity: {
+          //   value: opacity,
+          //   min: 0,
+          //   max: 1,
+          //   step: 0.01,
+          //   onChange: setOpacity,
+          //   label: "Opacity",
+          //   order: 1001,
+          // },
         },
         {
           order: PANEL_ORDER_PCD_CONTROLS,
@@ -76,13 +88,14 @@ export const usePcdControls = (
         }
       ),
     }),
-    [defaultMaterial, pointSize, shadeBy, customColor, onChangeTextBox]
+    [defaultMaterial, opacity, pointSize, shadeBy, customColor, onChangeTextBox]
   );
 
   return {
     shadeBy,
     customColor,
-    pointSize: pointSize,
     isPointSizeAttenuated,
+    opacity,
+    pointSize,
   };
 };

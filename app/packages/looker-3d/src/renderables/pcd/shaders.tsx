@@ -9,6 +9,7 @@ export type ShaderProps = {
   max: number;
   pointSize: number;
   isPointSizeAttenuated: boolean;
+  opacity: number;
   upVector?: THREE.Vector3;
 };
 
@@ -73,9 +74,12 @@ const ShadeByRgbShaders = {
   `,
   fragmentShader: /* glsl */ `
   varying vec3 vColor;
+  
+  // this uniform is used to pass the opacity
+  uniform float opacity;
 
   void main() {
-    gl_FragColor = vec4(vColor, 1.0);
+    gl_FragColor = vec4(vColor, opacity);
   } 
   `,
 };
@@ -110,10 +114,12 @@ const ShadeByHeightShaders = {
   uniform sampler2D gradientMap;
   varying float hValue;
 
+  uniform float opacity;
+
   void main() {
     float v = clamp(hValue, 0., 1.);
     vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
-    gl_FragColor = vec4(col, 1.);
+    gl_FragColor = vec4(col, opacity);
   }`,
 };
 
@@ -147,10 +153,12 @@ const ShadeByIntensityShaders = {
   uniform sampler2D gradientMap;
   varying float hValue;
 
+  uniform float opacity;
+
   void main() {
     float v = clamp(hValue, 0., 1.);
     vec3 col = texture2D(gradientMap, vec2(0, v)).rgb;
-    gl_FragColor = vec4(col, 1.);
+    gl_FragColor = vec4(col, opacity);
   }
 `,
 };
@@ -175,8 +183,10 @@ const ShadeByCustomColorShaders = {
   fragmentShader: /* glsl */ `
   varying vec3 vColor;
 
+  uniform float opacity;
+
   void main() {
-    gl_FragColor = vec4(vColor, 1.0);
+    gl_FragColor = vec4(vColor, opacity);
   }
 `,
 };
@@ -187,6 +197,7 @@ export const ShadeByHeight = ({
   max,
   upVector,
   pointSize,
+  opacity,
   isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
@@ -195,6 +206,7 @@ export const ShadeByHeight = ({
     <shaderMaterial
       {...{
         uniforms: {
+          opacity: { value: opacity },
           min: { value: min },
           max: { value: max },
           upVector: { value: upVector },
@@ -213,6 +225,7 @@ export const ShadeByIntensity = ({
   gradients,
   min,
   max,
+  opacity,
   pointSize,
   isPointSizeAttenuated,
 }: ShaderProps) => {
@@ -222,8 +235,9 @@ export const ShadeByIntensity = ({
     <shaderMaterial
       {...{
         uniforms: {
-          min: { value: min }, // geo.boundingBox.min.z
+          min: { value: min },
           max: { value: max },
+          opacity: { value: opacity },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
@@ -238,7 +252,8 @@ export const ShadeByIntensity = ({
 export const RgbShader = ({
   pointSize,
   isPointSizeAttenuated,
-}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated">) => {
+  opacity,
+}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated" | "opacity">) => {
   return (
     <shaderMaterial
       {...{
@@ -246,6 +261,7 @@ export const RgbShader = ({
         uniforms: {
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
+          opacity: { value: opacity },
         },
         vertexShader: ShadeByRgbShaders.vertexShader,
         fragmentShader: ShadeByRgbShaders.fragmentShader,
@@ -258,7 +274,8 @@ export const CustomColorShader = ({
   pointSize,
   isPointSizeAttenuated,
   color,
-}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated"> & {
+  opacity,
+}: Pick<ShaderProps, "pointSize" | "isPointSizeAttenuated" | "opacity"> & {
   color: string;
 }) => {
   const hexColorToVec3 = useMemo(() => {
@@ -274,6 +291,7 @@ export const CustomColorShader = ({
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
           color: { value: hexColorToVec3 },
+          opacity: { value: opacity },
         },
         vertexShader: ShadeByCustomColorShaders.vertexShader,
         fragmentShader: ShadeByCustomColorShaders.fragmentShader,
