@@ -1891,6 +1891,7 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
         def _parse_sample(sd):
             if not os.path.isabs(sd["filepath"]):
                 sd["filepath"] = os.path.join(rel_dir, sd["filepath"])
+                sd["filepath"] = fou.make_path_os_safe(sd["filepath"])
 
             if tags is not None:
                 sd["tags"].extend(tags)
@@ -1899,6 +1900,10 @@ class FiftyOneDatasetImporter(BatchDatasetImporter):
                 _parse_media_fields(sd, media_fields, rel_dir)
 
             sd["_dataset_id"] = dataset_id
+
+            # Find all mask_path keys recursively and expand relative paths
+            fou.expand_mask_paths(sd, rel_dir)
+
             return sd
 
         sample_ids = foo.insert_documents(
