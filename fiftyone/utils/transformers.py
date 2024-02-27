@@ -776,11 +776,6 @@ class FiftyOneZeroShotTransformerForObjectDetection(
         inputs = self._process_inputs(arg)
         return self._predict(inputs, target_sizes)
 
-    def predict_all(self, args):
-        target_sizes = [i.shape[:-1][::-1] for i in args]
-        inputs = self._process_inputs(args)
-        return self._predict(inputs, target_sizes)
-
 
 class FiftyOneTransformerForObjectDetectionConfig(FiftyOneTransformerConfig):
     """Configuration for a :class:`FiftyOneTransformerForObjectDetection`.
