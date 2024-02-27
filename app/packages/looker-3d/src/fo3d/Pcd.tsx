@@ -11,7 +11,7 @@ import {
 } from "../constants";
 import { PcdAsset } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
-import { usePcdControls } from "../hooks/use-pcd-controls";
+import { usePcdMaterialControls } from "../hooks/use-pcd-controls";
 import {
   CustomColorShader,
   RgbShader,
@@ -37,8 +37,8 @@ export const Pcd = ({
   const points = useLoader(PCDLoader, pcd.pcdUrl);
   const pcdContainerRef = useRef();
 
-  const { customColor, pointSize, isPointSizeAttenuated, shadeBy } =
-    usePcdControls(name, pcd.defaultMaterial);
+  const { customColor, pointSize, isPointSizeAttenuated, shadeBy, opacity } =
+    usePcdMaterialControls(name, pcd.defaultMaterial);
 
   const { upVector, pluginSettings } = useFo3dContext();
 
@@ -83,7 +83,7 @@ export const Pcd = ({
 
   const pointsMaterial = useMemo(() => {
     // to trigger rerender
-    const key = `${name}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}`;
+    const key = `${name}-${opacity}-${pointSize}-${isPointSizeAttenuated}-${shadeBy}-${customColor}-${minMaxCoordinates}-${minIntensity}-${maxIntensity}-${upVector}`;
 
     switch (shadeBy) {
       case SHADE_BY_HEIGHT:
@@ -101,6 +101,7 @@ export const Pcd = ({
             upVector={upVector}
             key={key}
             pointSize={pointSize}
+            opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />
         );
@@ -113,6 +114,7 @@ export const Pcd = ({
             max={maxIntensity}
             gradients={PCD_SHADING_GRADIENTS}
             pointSize={pointSize}
+            opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />
         );
@@ -121,6 +123,7 @@ export const Pcd = ({
         return (
           <RgbShader
             pointSize={pointSize}
+            opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />
         );
@@ -130,6 +133,7 @@ export const Pcd = ({
           <CustomColorShader
             key={key}
             pointSize={pointSize}
+            opacity={opacity}
             isPointSizeAttenuated={isPointSizeAttenuated}
             color={customColor || "#ffffff"}
           />
@@ -141,6 +145,7 @@ export const Pcd = ({
             // color={defaultShadingColor}
             // 1000 and 2 are arbitrary values that seem to work well
             size={isPointSizeAttenuated ? pointSize / 1000 : pointSize / 2}
+            opacity={opacity}
             sizeAttenuation={isPointSizeAttenuated}
           />
         );
@@ -154,6 +159,8 @@ export const Pcd = ({
     minIntensity,
     maxIntensity,
     upVector,
+    opacity,
+    name,
   ]);
 
   if (!points) {

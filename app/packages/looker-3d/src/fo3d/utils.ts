@@ -1,6 +1,12 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
 import {
-  FoMaterial3D,
+  MeshBasicMaterial,
+  MeshDepthMaterial,
+  MeshLambertMaterial,
+  MeshPhongMaterial,
+  PointsMaterial,
+} from "three";
+import {
   FoMeshBasicMaterialProps,
   FoMeshLambertMaterialProps,
   FoMeshMaterial,
@@ -9,13 +15,6 @@ import {
   FoScene,
   FoSceneNode,
 } from "../hooks";
-import {
-  MeshBasicMaterial,
-  MeshLambertMaterial,
-  MeshPhongMaterial,
-  MeshDepthMaterial,
-  PointsMaterial,
-} from "three";
 
 export const getAssetUrlForSceneNode = (node: FoSceneNode): string => {
   if (!node.asset) return null;
@@ -112,6 +111,7 @@ export const getThreeMaterialFromFo3dMaterial = (
   foMtl: FoMeshMaterial | FoPointcloudMaterialProps
 ) => {
   const { _type, ...props } = foMtl;
+  props["transparent"] = props.opacity < 1;
 
   switch (foMtl._type) {
     case "MeshBasicMaterial":

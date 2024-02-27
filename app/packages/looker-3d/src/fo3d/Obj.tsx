@@ -4,18 +4,22 @@ import { Mesh, MeshLambertMaterial, Quaternion, Vector3 } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { ObjAsset } from "../hooks";
+import { useMeshMaterialControls } from "../hooks/use-obj-controls";
 import { getColorFromPoolBasedOnHash } from "../utils";
-import { getThreeMaterialFromFo3dMaterial } from "./utils";
 
 const ObjMeshDefaultMaterial = ({
+  name,
   obj,
   onLoad,
 }: {
+  name: string;
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
   const { objUrl, defaultMaterial } = obj;
   const mesh = useLoader(OBJLoader, objUrl);
+
+  const { material } = useMeshMaterialControls(name, obj);
 
   useEffect(() => {
     if (!mesh) {
@@ -25,7 +29,7 @@ const ObjMeshDefaultMaterial = ({
     mesh.traverse((child) => {
       if (child instanceof Mesh) {
         try {
-          child.material = getThreeMaterialFromFo3dMaterial(defaultMaterial);
+          child.material = material;
         } catch {
           child.material = new MeshLambertMaterial({
             color: getColorFromPoolBasedOnHash(objUrl),
@@ -35,15 +39,17 @@ const ObjMeshDefaultMaterial = ({
     });
 
     onLoad?.();
-  }, [mesh, objUrl, onLoad]);
+  }, [mesh, objUrl, material, onLoad]);
 
   return <primitive object={mesh} />;
 };
 
 const ObjMeshWithCustomMaterial = ({
+  name,
   obj,
   onLoad,
 }: {
+  name: string;
   obj: ObjAsset;
   onLoad?: () => void;
 }) => {
@@ -67,6 +73,7 @@ const ObjMeshWithCustomMaterial = ({
 };
 
 export const Obj = ({
+  name,
   obj,
   position,
   quaternion,
@@ -81,9 +88,9 @@ export const Obj = ({
   return (
     <group position={position} quaternion={quaternion} scale={scale}>
       {obj.mtlUrl ? (
-        <ObjMeshWithCustomMaterial obj={obj} />
+        <ObjMeshWithCustomMaterial name={name} obj={obj} />
       ) : (
-        <ObjMeshDefaultMaterial obj={obj} />
+        <ObjMeshDefaultMaterial name={name} obj={obj} />
       )}
     </group>
   );

@@ -51,12 +51,11 @@ export type MeshAsset =
 
 export type FoMaterial3D = {
   opacity: number;
-  transparent: boolean;
   vertexColors: boolean;
 };
 
 export type FoMeshMaterialBase = FoMaterial3D & {
-  wireFrame: boolean;
+  wireframe: boolean;
 };
 
 export type FoMeshBasicMaterialProps = FoMeshMaterialBase & {

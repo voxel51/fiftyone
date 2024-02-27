@@ -1,13 +1,13 @@
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useState } from "react";
-import { Mesh, MeshPhongMaterial, Quaternion, Vector3 } from "three";
+import { Mesh, Quaternion, Vector3 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { PlyAsset } from "../hooks";
-import { getColorFromPoolBasedOnHash } from "../utils";
+import { useMeshMaterialControls } from "../hooks/use-obj-controls";
 
 export const Ply = ({
   name,
-  ply: { plyUrl },
+  ply,
   position,
   quaternion,
   scale,
@@ -18,10 +18,16 @@ export const Ply = ({
   quaternion: Quaternion;
   scale: Vector3;
 }) => {
-  const geometry = useLoader(PLYLoader, plyUrl);
+  const geometry = useLoader(PLYLoader, ply.plyUrl);
   const [mesh, setMesh] = useState(null);
 
+  const { material } = useMeshMaterialControls(name, ply);
+
   useEffect(() => {
+    if (!material) {
+      return;
+    }
+
     if (geometry) {
       // todo: check if geometry is meshes or points
       // todo: no need to compute vertex normals for points
@@ -29,13 +35,10 @@ export const Ply = ({
       geometry.center();
 
       // todo: use points material for points
-      const material = new MeshPhongMaterial({
-        color: getColorFromPoolBasedOnHash(plyUrl),
-      });
       const newMesh = new Mesh(geometry, material);
       setMesh(newMesh);
     }
-  }, [geometry]);
+  }, [geometry, material]);
 
   if (mesh) {
     return (

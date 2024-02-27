@@ -1,9 +1,9 @@
 import { useLoader } from "@react-three/fiber";
 import { useEffect, useState } from "react";
-import { Mesh, MeshPhongMaterial, Quaternion, Vector3 } from "three";
+import { Mesh, Quaternion, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import { StlAsset } from "../hooks";
-import { getColorFromPoolBasedOnHash } from "../utils";
+import { useMeshMaterialControls } from "../hooks/use-obj-controls";
 
 /**
  *  Renders a single STL mesh.
@@ -13,7 +13,7 @@ import { getColorFromPoolBasedOnHash } from "../utils";
  */
 export const Stl = ({
   name,
-  stl: { stlUrl },
+  stl,
   position,
   quaternion,
   scale,
@@ -24,20 +24,23 @@ export const Stl = ({
   quaternion: Quaternion;
   scale: Vector3;
 }) => {
-  const points = useLoader(STLLoader, stlUrl);
+  const points = useLoader(STLLoader, stl.stlUrl);
   const [mesh, setMesh] = useState(null);
 
+  const { material } = useMeshMaterialControls(name, stl);
+
   useEffect(() => {
+    if (!material) {
+      return;
+    }
+
     if (points) {
       points.computeVertexNormals();
 
-      const material = new MeshPhongMaterial({
-        color: getColorFromPoolBasedOnHash(stlUrl),
-      });
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);
     }
-  }, [points]);
+  }, [points, stl]);
 
   if (mesh) {
     return (
