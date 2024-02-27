@@ -19,7 +19,7 @@ export interface Schema {
 }
 
 /**
- * Needs optimizing, perhaps cache against Schema Symbol
+ * Get the field of an embedded document field path
  *
  * @param path
  * @param schema
@@ -42,7 +42,7 @@ export const getFieldInfo = (
 };
 
 /**
- * Needs optimizing, perhaps cache against Schema Symbol
+ * Get the document type cls of an embedded document field path
  *
  * @param path
  * @param schema
