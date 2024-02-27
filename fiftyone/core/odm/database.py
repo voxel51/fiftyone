@@ -1460,11 +1460,26 @@ def _delete_run(dataset_name, run_key, runs_field, run_str, dry_run=False):
 
     if not dry_run:
         _logger.info("Deleting %s doc '%s'", run_str, run_id)
-        conn.runs.delete_one({"_id": run_id})
-        conn.datasets.update_one(
-            {"name": dataset_name},
-            {"$set": {runs_field: runs}},
+        # first remove the run from the dataset
+        update_result = conn.datasets.update_one(
+            {"_id": dataset_dict["_id"]}, {"$set": {runs_field: runs}}
         )
+        if update_result.upserted_id is not None:
+            # if the dataset was upserted, then something went wrong
+            raise ValueError(
+                "Dataset '%s' was upserted while deleting %s run '%s'"
+                % (dataset_name, run_str, run_key)
+            )
+        if update_result.acknowledged and (update_result.modified_count == 1):
+            # only delete the run data if the dataset update was successful
+            delete_result = conn.runs.delete_one(
+                {"_id": run_id, "_dataset_id": dataset_dict["_id"]}
+            )
+            if not delete_result.deleted_count != 1:
+                raise ValueError(
+                    "Failed to delete %s run with key '%s'"
+                    % (run_str, run_key)
+                )
 
 
 def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
@@ -1503,10 +1518,14 @@ def _delete_runs(dataset_name, runs_field, run_str, dry_run=False):
             _delete_run_results(conn, result_ids)
 
     if not dry_run:
-        conn.datasets.update_one(
-            {"name": dataset_name},
-            {"$set": {runs_field: {}}},
+        result = conn.datasets.update_one(
+            {"_id": dataset_dict["_id"]}, {"$set": {runs_field: {}}}
         )
+        if result.modified_count != 1:
+            raise ValueError(
+                "Failed to delete %s runs from dataset '%s'"
+                % (run_str, dataset_name)
+            )
 
 
 def _get_saved_view_ids(dataset_dict):
@@ -1550,28 +1569,59 @@ def _get_result_ids(conn, dataset_dict):
                 # lazily migrated
                 result_id = run_doc_or_id.get("results", None)
                 if result_id is not None:
-                    result_ids.append(result_id)
+                    # ensure that the result id is a valid ObjectId
+                    if ObjectId.is_valid(result_id):
+                        result_ids.append(ObjectId(result_id))
+                    else:
+                        logger.error(
+                            "Invalid result id '%s' in run doc '%s'",
+                            result_id,
+                            run_doc_or_id,
+                        )
 
     if run_ids:
         for run_doc in conn.runs.find({"_id": {"$in": run_ids}}):
             result_id = run_doc.get("results", None)
             if result_id is not None:
-                result_ids.append(result_id)
+                # ensure that the result id is a valid ObjectId
+                if ObjectId.is_valid(result_id):
+                    result_ids.append(ObjectId(result_id))
 
     return result_ids
 
 
 def _delete_saved_views(conn, view_ids):
-    conn.views.delete_many({"_id": {"$in": view_ids}})
+    result = conn.views.delete_many({"_id": {"$in": view_ids}})
+    if result.deleted_count != len(view_ids):
+        logger.error(
+            f"Failed to delete {len(view_ids)-result.deleted_count} saved view docs"
+        )
 
 
 def _delete_run_docs(conn, run_ids):
-    conn.runs.delete_many({"_id": {"$in": run_ids}})
+    result = conn.runs.delete_many({"_id": {"$in": run_ids}})
+    if result.deleted_count != len(run_ids):
+        logger.error(
+            f"Failed to delete {len(run_ids)-result.deleted_count} run docs"
+        )
 
 
 def _delete_run_results(conn, result_ids):
-    conn.fs.files.delete_many({"_id": {"$in": result_ids}})
-    conn.fs.chunks.delete_many({"files_id": {"$in": result_ids}})
+    # ensure result_ids are ObjectIds
+    oids = [ObjectId(rid) for rid in result_ids if ObjectId.is_valid(rid)]
+    num_to_delete = len(oids)
+
+    fs_result = conn.fs.files.delete_many({"_id": {"$in": oids}})
+    if fs_result.deleted_count != num_to_delete:
+        logger.error(
+            f"Failed to delete {num_to_delete-fs_result.deleted_count} result files"
+        )
+    chunks_result = conn.fs.chunks.delete_many({"files_id": {"$in": oids}})
+    # since the relationship between files and chunks is not 1:1,
+    # we can't verify the success based on deletion count,
+    # so just report if nothing was deleted
+    if chunks_result.deleted_count == 0:
+        logger.error("No fs chunks were deleted for result_ids=%s", oids)
 
 
 _RUNS_FIELDS = ["annotation_runs", "brain_methods", "evaluations", "runs"]
