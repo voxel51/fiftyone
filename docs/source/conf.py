@@ -101,6 +101,9 @@ rst_prolog = """
 # requires it
 nbsphinx_requirejs_path = ""
 
+# Don't execute notbooks during the build process
+nbsphinx_execute = "never"
+
 # Adds helpful external links to the built HTML
 ref = "v%s" % foc.VERSION
 nbsphinx_prolog = """
