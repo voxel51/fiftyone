@@ -1,5 +1,9 @@
-import { DYNAMIC_EMBEDDED_DOCUMENT_FIELD, Schema } from "@fiftyone/utilities";
-import { get } from "lodash";
+import {
+  DYNAMIC_EMBEDDED_DOCUMENT_FIELD,
+  Schema,
+  getCls,
+  getFieldInfo,
+} from "@fiftyone/utilities";
 import { MIN_PIXELS } from "./constants";
 import { POINTS_FROM_FO } from "./overlays";
 import { Overlay } from "./overlays/base";
@@ -110,17 +114,18 @@ export const zoomAspectRatio = (
 
   const recurse = (data: object, follow: boolean, prefix = "") => {
     Object.entries(data).forEach(([field, label]) => {
-      const docType = get(schema, prefix + field)?.embeddedDocType;
+      const docType = getCls(prefix + field, schema);
       if (label && docType in POINTS_FROM_FO) {
         points = [...points, ...POINTS_FROM_FO[docType](label)];
       }
 
       if (
         follow &&
-        get(schema, prefix + field, schema).ftype ===
+        getFieldInfo(prefix + field, schema)?.ftype ===
           DYNAMIC_EMBEDDED_DOCUMENT_FIELD
-      )
+      ) {
         recurse(label, false, `${field}.`);
+      }
     });
   };
 
