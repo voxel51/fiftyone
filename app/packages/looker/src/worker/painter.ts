@@ -209,6 +209,7 @@ export const PainterFactory = (requestColor) => ({
             fieldSetting?.fieldColor ??
             (await requestColor(coloring.pool, coloring.seed, field));
 
+          console.log(color);
           r = get32BitColor(color, Math.min(max, Math.abs(value)) / max);
         } else {
           const index = Math.round(

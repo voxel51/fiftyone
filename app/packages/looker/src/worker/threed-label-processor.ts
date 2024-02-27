@@ -176,7 +176,7 @@ const VALID_THREE_D_LABELS = new Set(["Detections", "Detection"]);
 export const process3DLabels = async (schema: Schema, sample: Sample) => {
   const orthographicProjectionField = Object.entries(schema)
     .find(([_, d]) =>
-      d.embeddedDocType.endsWith(".OrthographicProjectionMetadata")
+      d.embeddedDocType?.endsWith(".OrthographicProjectionMetadata")
     )
     ?.at(0)[0];
 
