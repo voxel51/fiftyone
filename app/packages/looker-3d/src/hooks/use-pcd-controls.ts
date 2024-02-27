@@ -1,7 +1,6 @@
 import { folder, useControls } from "leva";
 import { OnChangeHandler } from "leva/plugin";
-import { useCallback, useMemo } from "react";
-import { useRecoilState } from "recoil";
+import { useCallback, useState } from "react";
 import {
   PANEL_ORDER_PCD_CONTROLS,
   SHADE_BY_CUSTOM,
@@ -10,47 +9,29 @@ import {
   SHADE_BY_NONE,
   SHADE_BY_RGB,
 } from "../constants";
-import {
-  currentPointSizeAtom,
-  customColorMapAtom,
-  isPointSizeAttenuatedAtom,
-  shadeByAtom,
-} from "../state";
 import { FoPointcloudMaterialProps } from "./use-fo3d";
 
 export const usePcdControls = (
   name: string,
-  defaultMaterial: FoPointcloudMaterialProps,
-  isNodeActive: boolean
+  defaultMaterial: FoPointcloudMaterialProps
 ) => {
-  const [shadeBy, setShadeBy] = useRecoilState(shadeByAtom);
-  // todo: might not be a good idea to keep this in local storage without a well-defined eviction strategy
-  const [customColorMap, setCustomColorMap] =
-    useRecoilState(customColorMapAtom);
-  const [pointSize, setPointSize] = useRecoilState(currentPointSizeAtom);
-  const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useRecoilState(
-    isPointSizeAttenuatedAtom
+  const [shadeBy, setShadeBy] = useState(defaultMaterial.shadingMode);
+  const [customColor, setCustomColor] = useState(defaultMaterial.customColor);
+  const [pointSize, setPointSize] = useState(defaultMaterial.pointSize);
+  const [isPointSizeAttenuated, setIsPointSizeAttenuated] = useState(
+    defaultMaterial.attenuateByDistance
   );
 
-  const pointSizeNum = useMemo(() => Number(pointSize), [pointSize]);
-
-  const onChangeTextBox: OnChangeHandler = useCallback(
-    (newValue: number, _props, options) => {
-      if (options.initial) return;
-
-      setPointSize(String(newValue));
-    },
-    []
-  );
-
-  const panelTitle = useMemo(() => `${name} Controls`, [name]);
+  const onChangeTextBox: OnChangeHandler = useCallback((newValue: number) => {
+    setPointSize(newValue);
+  }, []);
 
   useControls(
     () => ({
-      [panelTitle]: folder(
+      [name]: folder(
         {
           pointSize: {
-            value: pointSizeNum,
+            value: pointSize,
             min: 0.1,
             max: 20,
             step: 0.1,
@@ -72,13 +53,10 @@ export const usePcdControls = (
             order: -1,
           },
           [`${name} color`]: {
-            value: customColorMap[name] || "#ffffff",
+            value: customColor || "#ffffff",
             label: `${name} color`,
             onChange: (newColor: string) => {
-              setCustomColorMap((prev) => {
-                if (!prev) return { [name]: newColor };
-                return { ...prev, [name]: newColor };
-              });
+              setCustomColor(newColor);
             },
             render: () => {
               if (shadeBy === SHADE_BY_CUSTOM) return true;
@@ -98,13 +76,13 @@ export const usePcdControls = (
         }
       ),
     }),
-    [pointSizeNum, shadeBy, onChangeTextBox, isNodeActive]
+    [defaultMaterial, pointSize, shadeBy, customColor, onChangeTextBox]
   );
 
   return {
     shadeBy,
-    customColorMap,
-    pointSize: pointSizeNum,
+    customColor,
+    pointSize: pointSize,
     isPointSizeAttenuated,
   };
 };

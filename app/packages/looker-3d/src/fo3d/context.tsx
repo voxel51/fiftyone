@@ -1,25 +1,25 @@
 import React, { createContext, useContext } from "react";
+import { Box3, Vector3 } from "three";
+import { Looker3dPluginSettings } from "../Looker3dPlugin";
 
-interface Fo3dContextT {}
+interface Fo3dContextT {
+  upVector: Vector3 | null;
+  sceneBoundingBox: Box3 | null;
+  pluginSettings: Looker3dPluginSettings | null;
+}
 
 interface Fo3dSceneProviderProps {
   children: React.ReactNode;
 }
 
-const defaultContext: Fo3dContextT = {};
+const defaultContext: Fo3dContextT = {
+  upVector: null,
+  sceneBoundingBox: null,
+  pluginSettings: null,
+};
 
 export const Fo3dSceneContext = createContext<Fo3dContextT>(defaultContext);
 
-export const Fo3dSceneProvider = ({ children }: Fo3dSceneProviderProps) => {
-  return (
-    <Fo3dSceneContext.Provider value={defaultContext}>
-      {children}
-    </Fo3dSceneContext.Provider>
-  );
-};
-
-export const useFo3d = () => {
-  const {} = useContext(Fo3dSceneContext);
-
-  return {};
+export const useFo3dContext = () => {
+  return useContext(Fo3dSceneContext);
 };

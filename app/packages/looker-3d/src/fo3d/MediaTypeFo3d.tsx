@@ -1,11 +1,6 @@
 import { usePluginSettings } from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import {
-  AdaptiveDpr,
-  AdaptiveEvents,
-  OrbitControls,
-  useContextBridge,
-} from "@react-three/drei";
+import { AdaptiveDpr, AdaptiveEvents, OrbitControls } from "@react-three/drei";
 import { Canvas, RootState } from "@react-three/fiber";
 import { Leva } from "leva";
 import {
@@ -36,20 +31,15 @@ import {
   VOXEL51_THEME_COLOR,
   VOXEL51_THEME_COLOR_MUTED,
 } from "../constants";
-import {
-  LevaContainer,
-  NodeInfoRootContainer,
-  StatusBarRootContainer,
-} from "../containers";
+import { LevaContainer, StatusBarRootContainer } from "../containers";
 import { useFo3d } from "../hooks";
-import { useFoSceneBounds } from "../hooks/use-bounds";
+import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
 import { actionRenderListAtomFamily, activeNodeAtom } from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { Fo3dSceneContext } from "./context";
 import { Lights } from "./lights/Lights";
-import { NodeInfo } from "./node-info";
 import { getMediaUrlForFo3dSample } from "./utils";
 
 const CANVAS_WRAPPER_ID = "sample3d-canvas-wrapper";
@@ -72,8 +62,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     () => getMediaUrlForFo3dSample(sample, mediaField),
     [mediaField, sample]
   );
-
-  const Fo3dSceneContextBridge = useContextBridge(Fo3dSceneContext);
 
   const { foScene, isLoading: isParsingFo3d } = useFo3d(mediaUrl);
 
@@ -105,7 +93,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   const orbitControlsRef = useRef<OrbitControlsImpl>();
 
   const assetsGroupRef = useRef<THREE.Group>();
-  const sceneBoundingBox = useFoSceneBounds(assetsGroupRef);
+  const sceneBoundingBox = useFo3dBounds(assetsGroupRef);
 
   const topCameraPosition = useMemo(() => {
     if (!sceneBoundingBox || Math.abs(sceneBoundingBox.max.x) === Infinity) {
@@ -201,7 +189,6 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   const onCanvasCreated = useCallback(
     (state: RootState) => {
       cameraRef.current = state.camera as PerspectiveCamera;
-      state.scene.up = upVector;
     },
     [upVector]
   );
@@ -328,7 +315,9 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         onCreated={onCanvasCreated}
         onPointerMissed={resetActiveNode}
       >
-        <Fo3dSceneContextBridge>
+        <Fo3dSceneContext.Provider
+          value={{ upVector, sceneBoundingBox, pluginSettings: settings }}
+        >
           <Suspense fallback={<SpinningCube />}>
             <AdaptiveDpr pixelated />
             <AdaptiveEvents />
@@ -338,12 +327,8 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
               minPolarAngle={0}
               maxPolarAngle={Math.PI}
             />
-            <Lights
-              upVector={upVector}
-              sceneBoundingBox={sceneBoundingBox}
-              lights={foScene?.lights}
-            />
-            <Gizmos upVector={upVector} sceneBoundingBox={sceneBoundingBox} />
+            <Lights lights={foScene?.lights} />
+            <Gizmos />
 
             {!isSceneInitialized && <SpinningCube />}
 
@@ -355,11 +340,11 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
 
             <ThreeDLabels sampleMap={{ fo3d: sample }} />
           </Suspense>
-        </Fo3dSceneContextBridge>
+        </Fo3dSceneContext.Provider>
       </Canvas>
-      <NodeInfoRootContainer>
+      {/* <NodeInfoRootContainer>
         <NodeInfo />
-      </NodeInfoRootContainer>
+      </NodeInfoRootContainer> */}
       <StatusBarRootContainer>
         <StatusBar cameraRef={cameraRef} />
       </StatusBarRootContainer>
