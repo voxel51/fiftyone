@@ -34,7 +34,7 @@ export function getFieldInfo(
   return field;
 }
 
-export function getCls(fieldPath: string, schema: Schema): string {
+export function getCls(fieldPath: string, schema: Schema): string | undefined {
   const field = getFieldInfo(fieldPath, schema);
 
   if (!field?.embeddedDocType) {

@@ -48,7 +48,9 @@ describe("schema", () => {
     });
 
     it("should return undefined for missing field paths", () => {
+      expect(schema.getCls("missing", {})).toBe(undefined);
       expect(schema.getCls("missing", SCHEMA)).toBe(undefined);
+      expect(schema.getCls("missing.path", {})).toBe(undefined);
       expect(schema.getCls("missing.path", SCHEMA)).toBe(undefined);
     });
   });
@@ -65,7 +67,9 @@ describe("schema", () => {
     });
 
     it("should return undefined for missing field paths", () => {
+      expect(schema.getCls("missing", {})).toBe(undefined);
       expect(schema.getFieldInfo("missing", SCHEMA)).toBe(undefined);
+      expect(schema.getCls("missing.path", {})).toBe(undefined);
       expect(schema.getFieldInfo("missing.path", SCHEMA)).toBe(undefined);
     });
   });
