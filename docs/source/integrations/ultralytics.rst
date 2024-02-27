@@ -134,6 +134,11 @@ that you can set the classes that the model should detect:
     session = fo.launch_app(dataset.to_patches(label_field))
 
 
+.. image:: /images/integrations/ultralytics_open_world_boxes.png
+   :alt: ultralytics-open-world-boxes
+   :align: center
+
+
 .. _ultralytics-instance-segmentation:
 
 Instance segmentation
