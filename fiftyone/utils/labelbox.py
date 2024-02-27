@@ -2240,7 +2240,9 @@ def _make_mask(instance_uri, color):
 # https://docs.labelbox.com/reference/export-video-annotations
 def _parse_video_labels(video_label_d, frame_size):
     url_or_filepath = video_label_d["frames"]
-    label_d_list = _download_or_load_ndjson(url_or_filepath)
+    headers = {"Authorization": "Bearer %s" % API_KEY}
+    response = requests.get(url_or_filepath, headers=headers)
+    label_d_list = ndjson.loads(response.text)  # _download_or_load_ndjson(url_or_filepath)
 
     frames = {}
     for label_d in label_d_list:
