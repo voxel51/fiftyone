@@ -93,7 +93,7 @@ manually convert Ultralytics predictions to
 
 .. _ultralytics-open-vocabulary-object-detection:
 
-Open Vocabulary Detection
+Open vocabulary detection
 -------------------------
 
 FiftyOne's Ultralytics integration also supports real-time open vocabulary
