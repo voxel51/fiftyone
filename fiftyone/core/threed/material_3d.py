@@ -23,19 +23,16 @@ class Material3D:
 
     Args:
         opacity (1.0): the opacity of the material, in the range [0, 1]
-        transparent (False): whether the material is transparent
         vertex_colors (False): whether the material uses vertex colors
     """
 
     opacity: float = 1.0
-    transparent: bool = False
     vertex_colors: bool = False
 
     def as_dict(self):
         return {
             "_type": self.__class__.__name__,
             "opacity": self.opacity,
-            "transparent": self.transparent,
             "vertexColors": self.vertex_colors,
         }
 
@@ -65,7 +62,7 @@ class PointcloudMaterial(Material3D):
 
     shading_mode: Literal["height", "intensity", "rgb", "custom"] = "height"
     custom_color: str = COLOR_DEFAULT_WHITE
-    point_size: float = 0.5
+    point_size: float = 1.0
     attenuate_by_distance: bool = False
 
     def as_dict(self):
