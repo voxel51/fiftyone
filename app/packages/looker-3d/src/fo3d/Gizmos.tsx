@@ -1,17 +1,12 @@
 import { GizmoHelper, GizmoViewport } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { Box3, Vector3 } from "three";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
+import { useFo3dContext } from "./context";
 
-export const Gizmos = ({
-  sceneBoundingBox,
-  upVector,
-}: {
-  sceneBoundingBox: Box3;
-  upVector: Vector3;
-}) => {
+export const Gizmos = () => {
+  const { upVector, sceneBoundingBox } = useFo3dContext();
   const isGridOn = useRecoilValue(isGridOnAtom);
 
   const gridHelperQuarternion = useMemo(

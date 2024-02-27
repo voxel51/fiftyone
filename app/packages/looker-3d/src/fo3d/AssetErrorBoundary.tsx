@@ -7,6 +7,7 @@ export class AssetErrorBoundary extends React.Component<any> {
   }
 
   static getDerivedStateFromError(error) {
+    console.error(error);
     return { hasError: true };
   }
 

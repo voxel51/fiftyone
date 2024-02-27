@@ -9,6 +9,7 @@ export type ShaderProps = {
   max: number;
   pointSize: number;
   isPointSizeAttenuated: boolean;
+  upVector?: THREE.Vector3;
 };
 
 const useGradientMap = (gradients: Gradients) => {
@@ -81,22 +82,24 @@ const ShadeByRgbShaders = {
 
 const ShadeByHeightShaders = {
   vertexShader: /* glsl */ `
-  uniform float maxZ;
-  uniform float minZ;
+  uniform float max;
+  uniform float min;
+  uniform vec3 upVector;
   uniform float pointSize;
   uniform bool isPointSizeAttenuated;
 
   varying vec2 vUv;
   varying float hValue;
 
-  float remap ( float minval, float maxval, float curval ) {
-    return ( curval - minval ) / ( maxval - minval );
+  float remap(float minval, float maxval, float curval) {
+    return (curval - minval) / (maxval - minval);
   }
 
   void main() {
     vUv = uv;
     vec3 pos = position;
-    hValue = remap(minZ, maxZ, pos.z);
+    float projectedHeight = dot(pos, upVector);
+    hValue = remap(min, max, projectedHeight);
 
     vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
 
@@ -182,6 +185,7 @@ export const ShadeByHeight = ({
   gradients,
   min,
   max,
+  upVector,
   pointSize,
   isPointSizeAttenuated,
 }: ShaderProps) => {
@@ -191,8 +195,9 @@ export const ShadeByHeight = ({
     <shaderMaterial
       {...{
         uniforms: {
-          minZ: { value: min },
-          maxZ: { value: max },
+          min: { value: min },
+          max: { value: max },
+          upVector: { value: upVector },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },

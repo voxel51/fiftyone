@@ -5,6 +5,9 @@ export type Looker3dPluginSettings = {
   useLegacyCoordinates: boolean;
   defaultUp: THREE.Vector3Tuple;
   defaultCameraPosition: THREE.Vector3;
+  pointCloud?: {
+    minZ?: number;
+  };
 };
 
 export const defaultPluginSettings: Partial<Looker3dPluginSettings> = {

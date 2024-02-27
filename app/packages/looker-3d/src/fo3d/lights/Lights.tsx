@@ -1,14 +1,11 @@
 import { folder, useControls } from "leva";
 import { partition } from "lodash";
 import { useMemo } from "react";
-import { Box3, Vector3 } from "three";
 import { PANEL_ORDER_LIGHTS } from "../../constants";
 import { FoScene } from "../../hooks";
 import { DefaultLights } from "./DefaultLights";
 
 export interface FoLightProps {
-  upVector: Vector3;
-  sceneBoundingBox: Box3;
   lights: FoScene["lights"];
 }
 
@@ -61,15 +58,9 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
   });
 };
 
-export const Lights = ({
-  upVector,
-  sceneBoundingBox,
-  lights: customLights,
-}: FoLightProps) => {
+export const Lights = ({ lights: customLights }: FoLightProps) => {
   if (!customLights) {
-    return (
-      <DefaultLights upVector={upVector} sceneBoundingBox={sceneBoundingBox} />
-    );
+    return <DefaultLights />;
   }
 
   return <CustomLights lights={customLights} />;
