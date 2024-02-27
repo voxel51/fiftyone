@@ -38,9 +38,9 @@ export const VOXEL51_THEME_COLOR = "#ff6f00";
 export const VOXEL51_THEME_COLOR_MUTED = "#A28A77";
 export const VOXEL51_COMPLEMENTARY_COLOR = "#63E6F7";
 
-export const PANEL_ORDER_VISIBILITY = -1;
+export const PANEL_ORDER_VISIBILITY = 9;
 export const PANEL_ORDER_PCD_CONTROLS = 1;
-export const PANEL_ORDER_LIGHTS = 2;
+export const PANEL_ORDER_LIGHTS = 10;
 export const PANEL_ORDER_ANIMATIONS = 3;
 export const PANEL_ORDER_SETTINGS = 1000;
 
