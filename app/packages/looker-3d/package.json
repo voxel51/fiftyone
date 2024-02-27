@@ -21,7 +21,7 @@
         "lodash": "^4.17.21",
         "react-color": "^2.19.3",
         "styled-components": "^5.3.5",
-        "three": "^0.141.0"
+        "three": "^0.143.0"
     },
     "devDependencies": {
         "@types/node": "^18.0.3",
