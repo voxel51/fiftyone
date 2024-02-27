@@ -2,24 +2,8 @@ import { GizmoHelper, GizmoViewport } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { Box3, Vector3 } from "three";
-import { VOXEL51_THEME_COLOR } from "../constants";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
-
-const OriginHelper = () => {
-  return (
-    <group>
-      <mesh>
-        <sphereGeometry args={[0.02, 16, 16]} />
-        <meshBasicMaterial
-          color={VOXEL51_THEME_COLOR}
-          opacity={0.2}
-          transparent
-        />
-      </mesh>
-    </group>
-  );
-};
 
 export const Gizmos = ({
   sceneBoundingBox,
@@ -103,7 +87,6 @@ export const Gizmos = ({
       <GizmoHelper alignment="top-left" margin={[80, 100]}>
         <GizmoViewport />
       </GizmoHelper>
-      <OriginHelper />
     </>
   );
 };
