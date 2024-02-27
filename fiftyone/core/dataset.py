@@ -36,7 +36,6 @@ import fiftyone.core.groups as fog
 import fiftyone.core.labels as fol
 import fiftyone.core.media as fom
 import fiftyone.core.metadata as fome
-from fiftyone.core.odm.dataset import SampleFieldDocument
 from fiftyone.core.odm.dataset import DatasetAppConfig
 import fiftyone.migrations as fomi
 import fiftyone.core.odm as foo
@@ -206,17 +205,74 @@ def delete_datasets(glob_patt, verbose=False):
         delete_dataset(name, verbose=verbose)
 
 
-def delete_non_persistent_datasets(verbose=False):
+def delete_non_persistent_datasets(verbose=False, keep_if_referenced=True):
     """Deletes all non-persistent datasets.
 
     Args:
         verbose (False): whether to log the names of deleted datasets
+        keep_if_referenced (True): whether to keep datasets that are referenced by a saved view
     """
-    _delete_non_persistent_datasets(verbose=verbose)
+    _delete_non_persistent_datasets(
+        verbose=verbose, keep_if_referenced=keep_if_referenced
+    )
 
 
-def _delete_non_persistent_datasets(verbose=False):
+def find_referenced_non_persistent_datasets():
     conn = foo.get_db_conn()
+    # Find all views that reference a dataset in their view_stages
+    # Note: To run the aggregation in the mongo shell, replace regex_match
+    # with `/dataset.*name\": \"(.+)\"/`
+    regex_match = r'dataset.+name": "(.+)"'
+    cursor = conn.views.aggregate(
+        [
+            {"$match": {"view_stages": {"$regex": regex_match}}},
+            {"$unwind": "$view_stages"},
+            {
+                "$project": {
+                    "_id": 0,
+                    "linked_datasets": {
+                        "$regexFind": {
+                            "input": "$view_stages",
+                            "regex": regex_match,
+                        }
+                    },
+                }
+            },
+            {"$match": {"linked_datasets.captures": {"$exists": 1}}},
+            {
+                "$group": {
+                    "_id": {"$arrayElemAt": ["$linked_datasets.captures", 0]}
+                }
+            },
+        ]
+    )
+    return [x["_id"] for x in cursor]
+
+
+def _is_safe_to_delete_temp_dataset(
+    dataset, min_age=None, referenced_datasets=[]
+):
+    if not dataset.persistent:
+        return False
+    if not dataset.deleted:
+        return False
+    if dataset.name in referenced_datasets:
+        return False
+    if min_age and datetime.utcnow() - dataset.created_at <= min_age:
+        return False
+
+    return True
+
+
+def _delete_non_persistent_datasets(
+    min_age=None, verbose=False, keep_if_referenced=True
+):
+    conn = foo.get_db_conn()
+
+    # Check for datasets still being referenced by saved views:
+    referenced_datasets = (
+        find_referenced_non_persistent_datasets() if keep_if_referenced else []
+    )
 
     for name in conn.datasets.find({"persistent": False}).distinct("name"):
         try:
@@ -226,7 +282,9 @@ def _delete_non_persistent_datasets(verbose=False):
             # which means it is persistent, so we don't worry about it here
             continue
 
-        if not dataset.persistent and not dataset.deleted:
+        if _is_safe_to_delete_temp_dataset(
+            dataset, min_age=min_age, referenced_datasets=referenced_datasets
+        ):
             dataset._delete()
             if verbose:
                 logger.info("Dataset '%s' deleted", name)
