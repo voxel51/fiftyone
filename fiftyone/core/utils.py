@@ -1196,8 +1196,6 @@ class Batcher(abc.ABC):
             if not batch:
                 raise StopIteration
 
-            self._last_batch_size = len(batch)
-
         return batch
 
     def apply_backpressure(self, *args, **kwargs):
@@ -1320,7 +1318,8 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
 
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
-            ``next()`` will be a batch size instead of a batch
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         target_latency (0.2): the target latency between ``next()``
             calls, in seconds
         init_batch_size (1): the initial batch size to use
@@ -1429,7 +1428,8 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
 
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
-            ``next()`` will be a batch size instead of a batch
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         target_size (1048576): the target batch bson content size, in bytes
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
@@ -1516,7 +1516,8 @@ class StaticBatcher(Batcher):
 
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
-            ``next()`` will be a batch size instead of a batch
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         batch_size: size of batches to generate
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
@@ -1557,7 +1558,8 @@ def get_default_batcher(iterable, progress=False, total=None):
 
     Args:
         iterable: an iterable to batch over. If ``None``, the result of
-            ``next()`` will be a batch size instead of a batch
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         progress (False): whether to render a progress bar tracking the
             consumption of the batches (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress

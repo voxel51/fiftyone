@@ -147,6 +147,13 @@ on the cards below to see how!
     :tags: Model-Training,Model-Evaluation,Models
 
 .. customcarditem::
+    :header: OpenCLIP
+    :description: Use our OpenCLIP integration to run inference with CLIP models on your FiftyOne datasets with just a few lines of code.
+    :link: openclip.html
+    :image: ../_static/images/integrations/openai.png
+    :tags: Brain,Embeddings,Model-Evaluation,Models
+
+.. customcarditem::
     :header: PyTorch Hub
     :description: Did you know? You can load any model from the PyTorch Hub and run inference on your FiftyOne datasets with just a few lines of code.
     :link: pytorch_hub.html
@@ -194,5 +201,6 @@ on the cards below to see how!
     Hugging Face <huggingface.rst>
     Ultralytics <ultralytics.rst>
     SuperGradients <super_gradients.rst>
+    OpenCLIP <openclip.rst>
     PyTorch Hub <pytorch_hub.rst>
     Lightning Flash <lightning_flash.rst>

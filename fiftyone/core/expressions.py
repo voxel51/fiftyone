@@ -5,6 +5,7 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import re
@@ -64,6 +65,7 @@ def is_frames_expr(expr):
             expr == "$frames"
             or expr.startswith("$frames.")
             or expr.startswith("$frames[].")
+            or expr.startswith("frames.")
         )
 
     if isinstance(expr, dict):

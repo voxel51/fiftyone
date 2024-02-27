@@ -12,6 +12,7 @@ from collections import defaultdict
 import itertools
 import json
 import logging
+import os
 from packaging import version
 import random
 import string
@@ -294,36 +295,72 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
         Returns:
             a dict mapping ``task_id`` to ``sample_id``
         """
-        files = [
-            (
-                one["source_id"],
-                (open(one[one["media_type"]], "rb")),
+        ls_root = os.getenv("LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT", None)
+        ls_local_enabled = os.getenv(
+            "LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED", None
+        )
+        local_storage_enabled = (
+            ls_root is not None
+            and ls_local_enabled is not None
+            and ls_local_enabled.lower() == "true"
+        )
+
+        # If files are not inside local storage root, we can't use local storage
+        common_prefix = os.path.commonprefix(
+            [one[one["media_type"]] for one in tasks]
+        ).rstrip("/")
+        common_prefix = os.path.dirname(common_prefix)
+
+        if local_storage_enabled and ls_root in common_prefix:
+            logger.debug("Using local LabelStudio storage")
+            project.connect_local_import_storage(common_prefix)
+
+            def _get_file_path(file_path):
+                return "/data/local-files?d=" + os.path.relpath(
+                    file_path, ls_root
+                )
+
+            files_data = [
+                {one["media_type"]: _get_file_path(one[one["media_type"]])}
+                for one in tasks
+            ]
+
+            # Make the request to import tasks using URLs
+            upload_resp = self._client.make_request(
+                "POST",
+                f"/api/projects/{project.id}/import",
+                json=files_data,
             )
-            for one in tasks
-        ]
+        else:
+            logger.debug("Uploading as files")
 
-        # upload files first and get their upload ids
-        upload_resp = self._client.make_request(
-            "POST",
-            f"/api/projects/{project.id}/import",
-            params={"commit_to_project": True},
-            files=files,
-        )
+            files = [
+                (one["source_id"], open(one[one["media_type"]], "rb"))
+                for one in tasks
+            ]
 
-        # create tasks out of the uploaded files
-        payload = json.dumps(
-            {
-                "file_upload_ids": upload_resp.json()["file_upload_ids"],
-                "files_as_tasks_list": False,
-            }
-        )
-        self._client.headers.update({"Content-Type": "application/json"})
-        self._client.make_request(
-            "POST", f"/api/projects/{project.id}/reimport", data=payload
-        )
+            # upload files first and get their upload ids
+            upload_resp = self._client.make_request(
+                "POST",
+                f"/api/projects/{project.id}/import",
+                params={"commit_to_project": True},
+                files=files,
+            )
+
+            # create tasks out of the uploaded files
+            payload = json.dumps(
+                {
+                    "file_upload_ids": upload_resp.json()["file_upload_ids"],
+                    "files_as_tasks_list": False,
+                }
+            )
+            self._client.headers.update({"Content-Type": "application/json"})
+            self._client.make_request(
+                "POST", f"/api/projects/{project.id}/reimport", data=payload
+            )
 
         # get uploaded task ids
-        uploaded_ids = project.get_tasks(only_ids=True)[-len(files) :]
+        uploaded_ids = project.get_tasks(only_ids=True)[-len(tasks) :]
         uploaded_tasks = {
             i: t["source_id"] for i, t in zip(uploaded_ids, tasks)
         }
