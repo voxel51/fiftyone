@@ -7,6 +7,7 @@ import abc
 from typing import Any, Iterable, Mapping, Optional, Tuple, Union
 
 from fiftyone.api import client, socket, utils
+from fiftyone.core import utils as fo_utils
 
 ProxyAPIClient = client.Client
 ProxyAPIContext = Iterable[
@@ -93,6 +94,9 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
 
         self.__next_batch = []
         self.__use_next_batching = True
+        self.__dynamic_batcher = fo_utils.ContentSizeDynamicBatcher(
+            None, init_batch_size=100, max_batch_beta=128.0
+        )
 
     def __proxy_it__(
         self,
@@ -152,10 +156,15 @@ class PymongoWebsocketProxy(PymongoRestProxy, abc.ABC):
         # result is falsey iterating is done.
         if not self.__next_batch:
             try:
-                self.__next_batch = self.__proxy_it__("__next_batch")
+                batch_size = next(self.__dynamic_batcher)
+                self.__next_batch = self.__proxy_it__(
+                    "__next_batch", kwargs={"batch_size": batch_size}
+                )
 
                 if not self.__next_batch:
                     raise StopIteration
+
+                self.__dynamic_batcher.apply_backpressure(self.__next_batch)
 
             except AttributeError as err:
                 # Older versions do not have the API `__next_batch` method.
