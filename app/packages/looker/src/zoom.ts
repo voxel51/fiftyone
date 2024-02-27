@@ -117,6 +117,7 @@ export const zoomAspectRatio = (
       const docType = getCls(prefix + field, schema);
       if (label && docType in POINTS_FROM_FO) {
         points = [...points, ...POINTS_FROM_FO[docType](label)];
+        return;
       }
 
       if (

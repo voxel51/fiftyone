@@ -18,43 +18,42 @@ export interface Schema {
   [key: string]: Field;
 }
 
-export const getFieldInfo = (() => {
-  const cache = {};
+/**
+ * Needs optimizing, perhaps cache against Schema Symbol
+ *
+ * @param path
+ * @param schema
+ * @returns a field or undefined
+ */
+export const getFieldInfo = (
+  path: string,
+  schema: Schema
+): Field | undefined => {
+  const keys = path.split(".");
+  let field: Field;
+  for (let index = 0; index < keys.length; index++) {
+    if (!schema) return null;
 
-  return (path: string, schema: Schema): Field | undefined => {
-    if (!cache[path]) {
-      const keys = path.split(".");
-      let field: Field;
-      for (let index = 0; index < keys.length; index++) {
-        if (!schema) return null;
+    field = schema[keys[index]];
+    schema = field?.fields;
+  }
 
-        field = schema[keys[index]];
-        schema = field?.fields;
-      }
+  return field;
+};
 
-      cache[path] = field;
-    }
+/**
+ * Needs optimizing, perhaps cache against Schema Symbol
+ *
+ * @param path
+ * @param schema
+ * @returns a cls string or undefined
+ */
+export const getCls = (path: string, schema: Schema): string => {
+  const field = getFieldInfo(path, schema);
 
-    return cache[path];
-  };
-})();
+  if (!field?.embeddedDocType) {
+    return undefined;
+  }
 
-export const getCls = (() => {
-  const cache = {};
-
-  return (path: string, schema: Schema): string => {
-    const field = getFieldInfo(path, schema);
-
-    if (!field?.embeddedDocType) {
-      return null;
-    }
-
-    if (!cache[field.embeddedDocType]) {
-      cache[field.embeddedDocType] = field.embeddedDocType
-        .split(".")
-        .slice(-1)[0];
-    }
-
-    return cache[field?.embeddedDocType];
-  };
-})();
+  return field.embeddedDocType.split(".").slice(-1)[0];
+};
