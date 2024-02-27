@@ -18,42 +18,28 @@ export interface Schema {
   [key: string]: Field;
 }
 
-/**
- * Get the field of an embedded document field path
- *
- * @param path
- * @param schema
- * @returns a field or undefined
- */
-export const getFieldInfo = (
-  path: string,
+export function getFieldInfo(
+  fieldPath: string,
   schema: Schema
-): Field | undefined => {
-  const keys = path.split(".");
+): Field | undefined {
+  const keys = fieldPath.split(".");
   let field: Field;
   for (let index = 0; index < keys.length; index++) {
-    if (!schema) return null;
+    if (!schema) return undefined;
 
     field = schema[keys[index]];
     schema = field?.fields;
   }
 
   return field;
-};
+}
 
-/**
- * Get the document type cls of an embedded document field path
- *
- * @param path
- * @param schema
- * @returns a cls string or undefined
- */
-export const getCls = (path: string, schema: Schema): string => {
-  const field = getFieldInfo(path, schema);
+export function getCls(fieldPath: string, schema: Schema): string {
+  const field = getFieldInfo(fieldPath, schema);
 
   if (!field?.embeddedDocType) {
     return undefined;
   }
 
   return field.embeddedDocType.split(".").slice(-1)[0];
-};
+}
