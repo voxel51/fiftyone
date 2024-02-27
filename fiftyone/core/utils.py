@@ -1193,6 +1193,8 @@ class Batcher(abc.ABC):
                 idx += 1
 
         except StopIteration:
+            self._last_batch_size = len(batch)
+
             if not batch:
                 raise StopIteration
 
