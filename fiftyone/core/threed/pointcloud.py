@@ -20,6 +20,11 @@ class Pointcloud(Object3D):
             Material of the point cloud. If not specified, defaults to a
             new instance of :class:`fiftyone.core.threed.PointcloudMaterial`
             with its default parameters.
+        flag_for_projection (bool): Whether to flag the point cloud for
+            usage in orthographic projection. Each FO Scene can have at most
+            one asset flagged for orthographic projection. Defaults to
+            ``False``. If multiple assets are flagged, the first one will be
+            chosen.
         **kwargs: Arbitrary keyword arguments for base class.
 
     Raises:
@@ -31,6 +36,7 @@ class Pointcloud(Object3D):
         name: str,
         pcd_path: str,
         material: Optional[PointcloudMaterial] = None,
+        flag_for_projection: bool = False,
         **kwargs
     ):
         super().__init__(name=name, **kwargs)
@@ -44,6 +50,7 @@ class Pointcloud(Object3D):
             material = PointcloudMaterial._from_dict(material)
 
         self.default_material = material or PointcloudMaterial()
+        self.flag_for_projection = flag_for_projection
 
     def set_default_material(self, material: PointcloudMaterial):
         """Sets the material of the point cloud.
@@ -58,4 +65,5 @@ class Pointcloud(Object3D):
         return {
             "pcdPath": self.pcd_path,
             "defaultMaterial": self.default_material.as_dict(),
+            "flagForProjection": self.flag_for_projection,
         }
