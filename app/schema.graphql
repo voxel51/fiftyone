@@ -600,6 +600,7 @@ type Query {
   context: String!
   dev: Boolean!
   doNotTrack: Boolean!
+  estimatedDatasetCount: Int!
   samples(
     dataset: String!
     view: BSONArray!
