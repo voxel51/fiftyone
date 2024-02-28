@@ -1,7 +1,7 @@
 .. _teams-roles-and-permissions:
 
 Roles, groups and permissions
-=====================
+=============================
 
 .. default-role:: code
 
@@ -9,12 +9,13 @@ FiftyOne Teams is built for collaboration, with the goal of making it as easy
 as possible for engineers, data scientists, and stakeholders to work together 
 to build high quality datasets and computer vision models.
 
-Accordingly, FiftyOne Teams gives you the flexibility to configure user roles 
-and fine-grained permissions so that you can safely and securly collaborate both
- inside and outside your organization at all stages of your workflows.
+Accordingly, FiftyOne Teams gives you the flexibility to configure user roles, 
+user groups and fine-grained permissions so that you can safely and securly 
+collaborate both inside and outside your organization at all stages of your 
+workflows.
 
 This page introduces the basic roles, groups, and permissions available in 
-FiftyOne Team.
+FiftyOne Teams.
 
 .. _teams-roles:
 
@@ -138,23 +139,28 @@ Admins and users with the **Can manage** permission on a dataset can configure
 a dataset's permissions under the dataset's
 :ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
-In FiftyOne Teams, dataset permissions for a user are determined by the 
-highest level of access they receive from either their group's permissions 
-or individual permissions assigned to them. This tiered permissions system is 
-designed to facilitate management at scale:
+In FiftyOne Teams, dataset permissions for a user are determined by both the 
+access they receive from their group's permissions and individual permissions 
+assigned to them. This tiered permissions system is 
+designed to facilitate management at scale. 
+
+A user’s permissions on a dataset is the maximum of their permissions from the 
+following sources:
 
 -  Admins implicitly have full access to all datasets
 -  Members have the dataset's
    :ref:`default access level <teams-default-access>`
 -  Users may be granted :ref:`specific access <teams-specific-access>` to the
    dataset
+-  Users may be members of one or more groups, each of which may have
+   :ref:`specific access <teams-specific-access>` to the dataset
 
 .. note::
 
    User role determines the highest level of access that a user can be granted 
-   to a dataset. For example, a user with a guest role can be added to a group 
-   with **Can manage** permission to a dataset, but this user will have
-    **Can view** permission instead of **Can manage** permission of the dataset.
+   to a dataset. For example, a user with guest role can be added to a group 
+   with **Can edit** permission to a dataset, but the guest will have
+   **Can view** permission instead of **Can edit** permission of the dataset.
 
 .. _teams-default-access:
 
@@ -179,7 +185,7 @@ A dataset's default access level can be set to **No access**, **Can view**,
 .. _teams-specific-access:
 
 People and groups with access
-------------------
+-----------------------------
 
 Authorized users can grant specific access to a dataset using the "People and 
 groups with access" section shown below. 
