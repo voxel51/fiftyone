@@ -1,13 +1,11 @@
 import { Loading, useTheme } from "@fiftyone/components";
 import {
-  getHashLabel,
   getLabelColor,
-  isValidColor,
   shouldShowLabelTag,
 } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
-import { COLOR_BY, getColor } from "@fiftyone/utilities";
+import { fieldSchema } from "@fiftyone/state";
 import { Typography } from "@mui/material";
 import { OrbitControlsProps as OrbitControls } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
@@ -108,7 +106,7 @@ export const Looker3d = () => {
       onSelectLabel({
         detail: {
           id: label._id,
-          field: label.path[label.path.length - 1],
+          field: label.path,
           sampleId: label.sampleId,
         },
       });
@@ -397,25 +395,26 @@ export const Looker3d = () => {
       isPointcloudDataset,
     ]
   );
+  const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
 
   const overlays = useMemo(
     () =>
-      load3dOverlays(sampleMap, selectedLabels)
+      load3dOverlays(sampleMap, selectedLabels, [], schema)
         .map((l) => {
-          const path = l.path.join(".");
           const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
           const color = getLabelColor({
             coloring,
-            path,
+            path: l.path,
             label: l,
             isTagged,
             labelTagColors,
             customizeColorSetting,
+            embeddedDocType: l._cls,
           });
 
           return { ...l, color, id: l._id };
         })
-        .filter((l) => pathFilter(l.path.join("."), l)),
+        .filter((l) => pathFilter(l.path, l)),
     [
       coloring,
       getFieldColor,
@@ -424,6 +423,7 @@ export const Looker3d = () => {
       selectedLabels,
       colorSchemeFields,
       colorScheme,
+      schema,
     ]
   );
 
