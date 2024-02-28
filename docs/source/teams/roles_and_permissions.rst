@@ -5,24 +5,16 @@ Roles, groups and permissions
 
 .. default-role:: code
 
-FiftyOne Teams is engineered to foster collaboration, streamlining the process 
-for teams of engineers, data scientists, and stakeholders to join forces in 
-crafting high-quality datasets and computer vision models.
+FiftyOne Teams is built for collaboration, with the goal of making it as easy 
+as possible for engineers, data scientists, and stakeholders to work together 
+to build high quality datasets and computer vision models.
 
-To this end, FiftyOne Teams offers robust tools to configure user roles, groups, 
-and fine-grained permissions, enhancing your team's ability to collaborate 
-securely and efficiently, both internally and with external partners, 
-throughout your projects.
+Accordingly, FiftyOne Teams gives you the flexibility to configure user roles 
+and fine-grained permissions so that you can safely and securly collaborate both
+ inside and outside your organization at all stages of your workflows.
 
-A key aspect of FiftyOne Teams is its ability to manage user permissions at 
-scale through the use of groups. This feature empowers organizations to 
-efficiently administer access rights across large teams, ensuring that the 
-right people have the appropriate level of access to datasets and tools, 
-corresponding to their roles and responsibilities within the organization.
-
-This page provides a primer on the fundamental user roles, group-based 
-management, and permissions architecture in FiftyOne Teams, designed to 
-facilitate a scalable and secure collaborative environment.
+This page introduces the basic roles, groups, and permissions available in 
+FiftyOne Team.
 
 .. _teams-roles:
 
@@ -123,15 +115,19 @@ all users within the group (except for guests).
    :align: center
 
 Admins can create a new group by clicking on "Create group" and then adding 
-users to the group by clicking on "Add users".
+existing users to the group by clicking on "Add users". 
+
+.. image:: /images/teams/admin_create_group.png
+   :alt: admin-create-group
+   :align: center
 
 .. image:: /images/teams/admin_add_users_to_team.png
    :alt: admin-team-add-users-to-team
    :align: center
 
 .. note::
-
-   Guests cannot be granted permissions through groups.
+   Non-existing users cannot be directly added to a group. Users must be 
+   invited and accept the invitation before they can be added to a group.
 
 .. _teams-permissions:
 
@@ -153,6 +149,13 @@ designed to facilitate management at scale:
 -  Users may be granted :ref:`specific access <teams-specific-access>` to the
    dataset
 
+.. note::
+
+   User role determines the highest level of access that a user can be granted 
+   to a dataset. For example, a user with a guest role can be added to a group 
+   with **Can manage** permission to a dataset, but this user will have
+    **Can view** permission instead of **Can manage** permission of the dataset.
+
 .. _teams-default-access:
 
 Default access
@@ -172,8 +175,6 @@ A dataset's default access level can be set to **No access**, **Can view**,
 
    Default access level only applies to Members. Guests and Collaborators must
    be granted :ref:`specific access <teams-specific-access>` to datasets.
-
-   Guests cannot be granted permissions through groups.
 
 .. _teams-specific-access:
 
@@ -197,7 +198,8 @@ the top right. A list of users with access to the dataset is shown. Click
 
 The following permissions are available to each user role:
 
--  Groups may be granted **Can view**, **Can edit**, or **Can manage** permissions
+-  Groups may be granted **Can view**, **Can edit**, or **Can manage** 
+   permissions
 -  Members may be granted **Can view**, **Can edit**, or **Can manage**
    permissions
 -  Collaborators may be granted **Can view** or **Can edit** permissions
@@ -212,8 +214,7 @@ The following permissions are available to each user role:
    When the invitation is accepted, the user will become a Guest or
    Collaborator (depending on whether **Can view** or **Can edit** access was
    granted, respectively), and an Admin can upgrade this user to another role
-   if desired via the Team Settings page. Guests cannot be granted 
-   permissions through user groups.
+   if desired via the Team Settings page. 
 
 .. _teams-no-access:
 
