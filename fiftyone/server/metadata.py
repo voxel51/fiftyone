@@ -394,6 +394,7 @@ def _create_media_urls(
 
     use_opm = (
         collection.media_type == fom.POINT_CLOUD
+        or collection.media_type == fom.THREE_D
         or collection.media_type == fom.GROUP
     )
     opm_filepath = (
