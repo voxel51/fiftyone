@@ -411,6 +411,10 @@ class Query(fosa.AggregateQuery):
     def do_not_track(self) -> bool:
         return fo.config.do_not_track
 
+    @gql.field
+    async def estimated_dataset_count(self, info: Info = None) -> int:
+        return await info.context.db.datasets.estimated_document_count()
+
     dataset: Dataset = gql.field(resolver=Dataset.resolver)
     datasets: Connection[Dataset, str] = gql.field(
         resolver=get_paginator_resolver(
