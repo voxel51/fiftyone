@@ -2,13 +2,15 @@ import { Sample } from "@fiftyone/looker/src/state";
 import _ from "lodash";
 import mime from "mime";
 import { isElectron } from "./electron";
+import { Field } from "./schema";
 
-export * from "./Resource";
 export * from "./color";
 export * from "./electron";
 export * from "./errors";
 export * from "./fetch";
 export * from "./paths";
+export * from "./Resource";
+export * from "./schema";
 export * from "./styles";
 export * from "./type-check";
 
@@ -87,26 +89,6 @@ export const removeKeys = <T>(
     )
   );
 };
-
-export interface Field {
-  ftype: string;
-  dbField: string | null;
-  description: string | null;
-  info: object | null;
-  name: string;
-  embeddedDocType: string | null;
-  subfield: string | null;
-  path: string;
-  fields?: Schema;
-}
-
-export interface StrictField extends Omit<Field, "fields"> {
-  fields?: StrictField[];
-}
-
-export interface Schema {
-  [key: string]: Field;
-}
 
 export interface Stage {
   _cls: string;
