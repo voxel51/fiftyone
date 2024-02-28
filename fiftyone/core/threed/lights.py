@@ -44,7 +44,21 @@ class AmbientLight(Light):
     """Represents an ambient light.
 
     This light globally illuminates all objects in the scene equally.
+
+    Args:
+        intensity (0.1): the intensity of the light in the range [0, 1]
+        color ("#ffffff"): the color of the light
+        kwargs: arbitrary keyword arguments for
+            :class:`fiftyone.core.threed.Object3D` base class
     """
+
+    def __init__(
+        self,
+        intensity: float = 0.1,
+        color: str = COLOR_DEFAULT_WHITE,
+        **kwargs,
+    ):
+        super().__init__(intensity=intensity, color=color, **kwargs)
 
     def __repr__(self):
         kwargs_list = []

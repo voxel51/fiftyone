@@ -10,6 +10,7 @@ import {
 } from "three";
 import { PANEL_ORDER_LIGHTS, VOXEL51_THEME_COLOR } from "../../constants";
 import { FoScene } from "../../hooks";
+import { useFo3dContext } from "../context";
 import { DefaultLights } from "./DefaultLights";
 
 export interface FoLightProps {
@@ -24,6 +25,7 @@ type LightHelperConfig = {
 const getIntensityKey = (lightName: string) => `${lightName}Intensity`;
 const getColorKey = (lightName: string) => `${lightName}Color`;
 const getPositionKey = (lightName: string) => `${lightName}Position`;
+const getDecayKey = (lightName: string) => `${lightName}Decay`;
 
 const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
   const [lightHelperConfig, setLightHelperConfig] =
@@ -61,6 +63,7 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
       const intensityKey = getIntensityKey(light.name);
       const colorKey = getColorKey(light.name);
       const positionKey = getPositionKey(light.name);
+      const decayKey = getDecayKey(light.name);
 
       config[intensityKey] = {
         value: light.intensity,
@@ -79,10 +82,25 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
         config[positionKey] = {
           value: light.position,
           label: `${light.name} position`,
+          step: 1,
           onEditStart: () => {
             onLightDragStart(light._type, i);
           },
           onEditEnd: onLightDragEnd,
+        };
+      }
+
+      if (light._type === "PointLight" || light._type === "SpotLight") {
+        config[decayKey] = {
+          value: light.decay,
+          min: 0,
+          max: 4,
+          step: 0.1,
+          onEditStart: () => {
+            onLightDragStart(light._type, i);
+          },
+          onEditEnd: onLightDragEnd,
+          label: `${light.name} decay`,
         };
       }
     }
@@ -125,10 +143,12 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
       const intensityKey = getIntensityKey(light.name);
       const colorKey = getColorKey(light.name);
       const positionKey = getPositionKey(light.name);
+      const decayKey = getDecayKey(light.name);
 
       const intensity = lightConfig[intensityKey];
       const color = lightConfig[colorKey];
       const position = lightConfig[positionKey];
+      const decay = lightConfig[decayKey];
 
       const refProps =
         lightHelperConfig?.lightIndex === index ? { ref: lightRef } : {};
@@ -165,7 +185,7 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
               quaternion={light.quaternion}
               angle={light.angle}
               penumbra={light.penumbra}
-              decay={light.decay}
+              decay={decay}
               distance={light.distance}
               target={target}
               {...refProps}
@@ -178,8 +198,8 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
               color={color}
               intensity={intensity}
               position={position}
+              decay={decay}
               distance={light.distance}
-              decay={light.decay}
               {...refProps}
             />
           );
@@ -189,7 +209,18 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
     });
   }, [filteredLights, lightConfig, target, lightHelperConfig]);
 
-  const helperClass = useMemo(() => {
+  const { sceneBoundingBox } = useFo3dContext();
+  const lightHelperSize = useMemo(() => {
+    if (!sceneBoundingBox) {
+      return 0;
+    }
+
+    const { min, max } = sceneBoundingBox;
+    const diagonal = min.distanceTo(max);
+    return diagonal / 10;
+  }, [sceneBoundingBox]);
+
+  const helperConfig = useMemo(() => {
     if (!lightHelperConfig) {
       return null;
     }
@@ -198,21 +229,20 @@ const CustomLights = ({ lights }: Pick<FoLightProps, "lights">) => {
 
     switch (type) {
       case "DirectionalLight":
-        return DirectionalLightHelper;
+        return [DirectionalLightHelper, lightHelperSize, VOXEL51_THEME_COLOR];
       case "SpotLight":
-        return SpotLightHelper;
+        return [SpotLightHelper, VOXEL51_THEME_COLOR];
       case "PointLight":
-        return PointLightHelper;
+        return [PointLightHelper, lightHelperSize, VOXEL51_THEME_COLOR];
       default:
         return null;
     }
-  }, [lightHelperConfig]);
+  }, [lightHelperConfig, lightHelperSize]);
 
   useHelper(
-    lightHelperConfig ? lightRef : false,
-    helperClass,
-    0.1,
-    VOXEL51_THEME_COLOR
+    helperConfig ? lightRef : false,
+    helperConfig?.at(0) ?? DirectionalLightHelper,
+    ...(helperConfig ?? []).slice(1)
   );
 
   return <group>{lightElements}</group>;
