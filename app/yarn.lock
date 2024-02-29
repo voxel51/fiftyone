@@ -2932,12 +2932,12 @@ __metadata:
     "@mui/icons-material": ^5.15.7
     "@mui/material": ^5.15.7
     "@react-spring/web": ^9.7.3
-    "@react-three/drei": ^9.99.3
+    "@react-three/drei": ^9.99.5
     "@react-three/fiber": ^8.15.16
     "@types/node": ^20.11.10
     "@types/react": ^18.2.48
     "@types/react-dom": ^18.2.18
-    "@types/three": ^0.161.2
+    "@types/three": ^0.162.0
     "@vitejs/plugin-react": ^4.2.1
     leva: ^0.9.35
     lodash: ^4.17.21
@@ -2947,7 +2947,7 @@ __metadata:
     recoil: ^0.7.7
     rollup-plugin-external-globals: ^0.9.1
     styled-components: ^6.1.8
-    three: ^0.161.0
+    three: ^0.162.0
     tunnel-rat: ^0.1.2
     typescript: ^5.3.3
     vite: ^5.0.11
@@ -5399,9 +5399,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^9.99.3":
-  version: 9.99.3
-  resolution: "@react-three/drei@npm:9.99.3"
+"@react-three/drei@npm:^9.99.5":
+  version: 9.99.5
+  resolution: "@react-three/drei@npm:9.99.5"
   dependencies:
     "@babel/runtime": ^7.11.2
     "@mediapipe/tasks-vision": 0.10.8
@@ -5432,7 +5432,7 @@ __metadata:
   peerDependenciesMeta:
     react-dom:
       optional: true
-  checksum: efe73e0f7ea67d347f0894985991b5d967c9e853ab1691b10a1efdea4129380d639277f8f112dc0e91848512533755df82596ccc37f271679662d4cb4a1ea3eb
+  checksum: a6c51c65473272881cda8784e5be15403ea81a13c10ad0be49b172738c11d26bc3fef3f275bf8107de0bf191c87186e3c6b689f61ff1b82f02794540a8cb62d6
   languageName: node
   linkType: hard
 
@@ -6905,6 +6905,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tweenjs/tween.js@npm:~23.1.1":
+  version: 23.1.1
+  resolution: "@tweenjs/tween.js@npm:23.1.1"
+  checksum: a93b331f0c2dc2dd2fce2c08ab9e505cd71ce1b31a3e2218f31da4f2d2af84ac4c4eaab05f9929a7b7884c5e00c5d32e8fd1872e0a3e10e9cca20febc8d263b5
+  languageName: node
+  linkType: hard
+
 "@types/aria-query@npm:^5.0.1":
   version: 5.0.3
   resolution: "@types/aria-query@npm:5.0.3"
@@ -7740,15 +7747,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/three@npm:^0.161.2":
-  version: 0.161.2
-  resolution: "@types/three@npm:0.161.2"
+"@types/three@npm:^0.162.0":
+  version: 0.162.0
+  resolution: "@types/three@npm:0.162.0"
   dependencies:
+    "@tweenjs/tween.js": ~23.1.1
     "@types/stats.js": "*"
     "@types/webxr": "*"
     fflate: ~0.6.10
     meshoptimizer: ~0.18.1
-  checksum: a4c384106de314ce22319048cb3a786ce1cc8093259ae52efd995868cbeba0b4af231d9bd04fa76b9df3f4630e728736af48b6f9577256cf5ba1d59a015b679f
+  checksum: 4a5727506d53228fd24c21ae5e38f0952da09e660870bc58c0d69759433284297f4195aecc7df94a85d8585cc07a3d960f519b0a0c99bece7de2037516880013
   languageName: node
   linkType: hard
 
@@ -21250,10 +21258,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.161.0":
-  version: 0.161.0
-  resolution: "three@npm:0.161.0"
-  checksum: eb4df25a794dcd92b62ca4705b62c9391735863b4016fabe6d136e220449e5d840c0cfd183eb07caef3d6aeb241e78f58845087b4d27a30a420ed8f35a2ab12d
+"three@npm:^0.162.0":
+  version: 0.162.0
+  resolution: "three@npm:0.162.0"
+  checksum: f3ba4d518f7cb209b6e4f8818177c1230014fc1b3dcd66ab113a9babf8e2b522645a1eb144dfc0900bf194e8890bc5d04f358dd4a7f06ee8aa44db56224f88fc
   languageName: node
   linkType: hard
 
