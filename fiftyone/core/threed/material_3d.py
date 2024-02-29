@@ -6,8 +6,9 @@
 
 from typing import Literal
 
-import fiftyone.core.utils as fou
 from pydantic.dataclasses import dataclass
+
+import fiftyone.core.utils as fou
 
 threed = fou.lazy_import("fiftyone.core.threed")
 
@@ -99,6 +100,38 @@ class MeshBasicMaterial(MeshMaterial):
 
     def as_dict(self):
         return super().as_dict() | {"color": self.color}
+
+
+@dataclass
+class MeshStandardMaterial(MeshMaterial):
+    """Represents a standard mesh material.
+
+    This material is a standard physically-based rendering (PBR) material.
+    This material is ideal for most use cases.
+
+    Args:
+        color ("#ffffff"): the color of the material
+        emissive_color ("#000000"): the emissive color of the material.
+            This is the color emitted by the material itself independent of the light.
+        emissive_intensity (0.0): the intensity of the emissive color
+        metalness (0.0): the metalness of the material
+        roughness (1.0): the roughness of the material
+    """
+
+    color: str = COLOR_DEFAULT_GRAY
+    emissive_color: str = COLOR_DEFAULT_BLACK
+    emissive_intensity: float = 0.0
+    metalness: float = 0.0
+    roughness: float = 1.0
+
+    def as_dict(self):
+        return super().as_dict() | {
+            "color": self.color,
+            "emissiveColor": self.emissive_color,
+            "emissiveIntensity": self.emissive_intensity,
+            "metalness": self.metalness,
+            "roughness": self.roughness,
+        }
 
 
 @dataclass

@@ -6,7 +6,7 @@
 
 from typing import Optional
 
-from .material_3d import MeshLambertMaterial, MeshMaterial
+from .material_3d import MeshMaterial, MeshStandardMaterial
 from .object_3d import Object3D
 
 
@@ -28,7 +28,7 @@ class Mesh(Object3D):
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)
 
-        self.default_material = material or MeshLambertMaterial()
+        self.default_material = material or MeshStandardMaterial()
 
     def set_default_material(self, material: MeshMaterial):
         """Sets the material of the mesh.
