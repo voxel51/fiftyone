@@ -11,7 +11,7 @@ import {
 } from "../constants";
 import { PcdAsset } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
-import { usePcdMaterialControls } from "../hooks/use-pcd-controls";
+import { usePcdMaterialControls } from "../hooks/use-pcd-material-controls";
 import {
   CustomColorShader,
   RgbShader,

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Mesh, Quaternion, Vector3 } from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 import { StlAsset } from "../hooks";
-import { useMeshMaterialControls } from "../hooks/use-obj-controls";
+import { useMeshMaterialControls } from "../hooks/use-mesh-material-controls";
 
 /**
  *  Renders a single STL mesh.
@@ -40,7 +40,7 @@ export const Stl = ({
       const newMesh = new Mesh(points, material);
       setMesh(newMesh);
     }
-  }, [points, stl]);
+  }, [points, stl, material]);
 
   if (mesh) {
     return (

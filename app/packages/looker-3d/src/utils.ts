@@ -9,7 +9,7 @@ import {
 import { COLOR_POOL } from "./constants";
 import { FoMeshMaterial, FoPointcloudMaterialProps } from "./hooks";
 
-export type FiftyoneSceneRawNode = {
+export type FoSceneRawNode = {
   _type: string;
   name: string;
   visible: boolean;
@@ -20,7 +20,7 @@ export type FiftyoneSceneRawNode = {
   children: FiftyoneSceneRawJson[];
 };
 
-export type FiftyoneSceneCameraProps = {
+export type FoCameraProps = {
   position: Vector3Tuple | null;
   lookAt: Vector3Tuple | null;
   up: "X" | "Y" | "Z";
@@ -31,27 +31,27 @@ export type FiftyoneSceneCameraProps = {
   backgroundImagePath: number;
 };
 
-export type FiftyoneSceneLightProps = Omit<FiftyoneSceneRawNode, "_type"> & {
+export type FoLightProps = Omit<Partial<FoSceneRawNode>, "_type"> & {
   color: string;
-  intensity: string;
+  intensity: number;
 };
 
-export type FiftyoneSceneAmbientLightProps = FiftyoneSceneLightProps & {
+export type FoAmbientLightProps = FoLightProps & {
   _type: "AmbientLight";
 };
 
-export type FiftyoneScenePointLightProps = FiftyoneSceneLightProps & {
+export type FoPointLightProps = FoLightProps & {
   _type: "PointLight";
   distance: number;
   decay: number;
 };
 
-export type FiftyoneSceneDirectionalLightProps = FiftyoneSceneLightProps & {
+export type FoDirectionalLightProps = FoLightProps & {
   _type: "DirectionalLight";
   target: Vector3Tuple;
 };
 
-export type FiftyoneSceneSpotLightProps = FiftyoneSceneLightProps & {
+export type FoSpotLightProps = FoLightProps & {
   _type: "SpotLight";
   target: Vector3Tuple;
   distance: number;
@@ -61,14 +61,14 @@ export type FiftyoneSceneSpotLightProps = FiftyoneSceneLightProps & {
 };
 
 export type FiftyoneSceneRawJson = {
-  camera: FiftyoneSceneCameraProps;
+  camera: FoCameraProps;
   lights: Array<
-    | FiftyoneSceneAmbientLightProps
-    | FiftyoneSceneDirectionalLightProps
-    | FiftyoneScenePointLightProps
-    | FiftyoneSceneSpotLightProps
+    | FoAmbientLightProps
+    | FoDirectionalLightProps
+    | FoPointLightProps
+    | FoSpotLightProps
   > | null;
-} & FiftyoneSceneRawNode;
+} & FoSceneRawNode;
 
 class InvalidSceneError extends Error {
   constructor() {

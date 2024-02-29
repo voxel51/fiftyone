@@ -4,14 +4,13 @@ import {
   MeshDepthMaterial,
   MeshLambertMaterial,
   MeshPhongMaterial,
+  MeshStandardMaterial,
   PointsMaterial,
 } from "three";
 import {
   FoMeshBasicMaterialProps,
   FoMeshLambertMaterialProps,
-  FoMeshMaterial,
   FoMeshPhongMaterialProps,
-  FoPointcloudMaterialProps,
   FoScene,
   FoSceneNode,
 } from "../hooks";
@@ -108,37 +107,43 @@ export const getMediaUrlForFo3dSample = (
 };
 
 export const getThreeMaterialFromFo3dMaterial = (
-  foMtl: FoMeshMaterial | FoPointcloudMaterialProps
+  foMtl: Record<string, number | string | boolean>
 ) => {
   const { _type, ...props } = foMtl;
-  props["transparent"] = props.opacity < 1;
+  props["transparent"] = (props.opacity as number) < 1;
 
-  switch (foMtl._type) {
-    case "MeshBasicMaterial":
-      return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);
-    case "MeshLambertMaterial":
-      const { emissiveColor: lambertEmissiveColor, ...lambertProps } =
-        props as FoMeshLambertMaterialProps;
-      return new MeshLambertMaterial({
-        ...lambertProps,
-        emissive: lambertEmissiveColor,
-      });
-    case "MeshPhongMaterial":
-      const {
-        emissiveColor: phongEmissiveColor,
-        specularColor: phoneSpecularColor,
-        ...phongProps
-      } = props as FoMeshPhongMaterialProps;
-      return new MeshPhongMaterial({
-        specular: phoneSpecularColor,
-        emissive: phongEmissiveColor,
-        ...phongProps,
-      });
-    case "MeshDepthMaterial":
-      return new MeshDepthMaterial(props);
-    case "PointcloudMaterial":
-      return new PointsMaterial(props);
-    default:
-      return null;
+  if (foMtl._type === "MeshBasicMaterial") {
+    return new MeshBasicMaterial(props as FoMeshBasicMaterialProps);
+  } else if (foMtl._type === "MeshStandardMaterial") {
+    const { emissiveColor: standardEmissiveColor, ...standardProps } =
+      props as FoMeshLambertMaterialProps;
+    return new MeshStandardMaterial({
+      ...standardProps,
+      emissive: standardEmissiveColor,
+    });
+  } else if (foMtl._type === "MeshLambertMaterial") {
+    const { emissiveColor: lambertEmissiveColor, ...lambertProps } =
+      props as FoMeshLambertMaterialProps;
+    return new MeshLambertMaterial({
+      ...lambertProps,
+      emissive: lambertEmissiveColor,
+    });
+  } else if (foMtl._type === "MeshPhongMaterial") {
+    const {
+      emissiveColor: phongEmissiveColor,
+      specularColor: phoneSpecularColor,
+      ...phongProps
+    } = props as FoMeshPhongMaterialProps;
+    return new MeshPhongMaterial({
+      specular: phoneSpecularColor,
+      emissive: phongEmissiveColor,
+      ...phongProps,
+    });
+  } else if (foMtl._type === "MeshDepthMaterial") {
+    return new MeshDepthMaterial(props);
+  } else if (foMtl._type === "PointcloudMaterial") {
+    return new PointsMaterial(props);
+  } else {
+    throw new Error("Unknown material " + JSON.stringify(foMtl, null, 2));
   }
 };
