@@ -2932,7 +2932,7 @@ __metadata:
     "@mui/icons-material": ^5.15.7
     "@mui/material": ^5.15.7
     "@react-spring/web": ^9.7.3
-    "@react-three/drei": ^9.99.5
+    "@react-three/drei": ^9.99.3
     "@react-three/fiber": ^8.15.16
     "@types/node": ^20.11.10
     "@types/react": ^18.2.48
@@ -2947,7 +2947,7 @@ __metadata:
     recoil: ^0.7.7
     rollup-plugin-external-globals: ^0.9.1
     styled-components: ^6.1.8
-    three: ^0.162.0
+    three: ^0.161.0
     tunnel-rat: ^0.1.2
     typescript: ^5.3.3
     vite: ^5.0.11
@@ -5399,7 +5399,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-three/drei@npm:^9.99.5":
+"@react-three/drei@npm:^9.99.3":
   version: 9.99.5
   resolution: "@react-three/drei@npm:9.99.5"
   dependencies:
@@ -21258,10 +21258,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"three@npm:^0.162.0":
-  version: 0.162.0
-  resolution: "three@npm:0.162.0"
-  checksum: f3ba4d518f7cb209b6e4f8818177c1230014fc1b3dcd66ab113a9babf8e2b522645a1eb144dfc0900bf194e8890bc5d04f358dd4a7f06ee8aa44db56224f88fc
+"three@npm:^0.161.0":
+  version: 0.161.0
+  resolution: "three@npm:0.161.0"
+  checksum: eb4df25a794dcd92b62ca4705b62c9391735863b4016fabe6d136e220449e5d840c0cfd183eb07caef3d6aeb241e78f58845087b4d27a30a420ed8f35a2ab12d
   languageName: node
   linkType: hard
 

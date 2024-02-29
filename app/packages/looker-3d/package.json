@@ -17,7 +17,7 @@
         "@mui/icons-material": "^5.15.7",
         "@mui/material": "^5.15.7",
         "@react-spring/web": "^9.7.3",
-        "@react-three/drei": "^9.99.5",
+        "@react-three/drei": "^9.99.3",
         "@react-three/fiber": "^8.15.16",
         "leva": "^0.9.35",
         "lodash": "^4.17.21",
@@ -25,7 +25,7 @@
         "react-color": "^2.19.3",
         "recoil": "^0.7.7",
         "styled-components": "^6.1.8",
-        "three": "^0.162.0",
+        "three": "^0.161.0",
         "tunnel-rat": "^0.1.2"
     },
     "devDependencies": {
