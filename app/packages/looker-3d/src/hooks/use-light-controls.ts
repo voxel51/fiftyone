@@ -30,14 +30,17 @@ export const useLightControls = (
   const [lightHelperConfig, setLightHelperConfig] =
     useState<LightHelperConfig | null>(null);
 
-  const onLightDragStart = useCallback((type: string, lightIndex: number) => {
-    setLightHelperConfig({
-      type,
-      lightIndex,
-    });
-  }, []);
+  const onLightPositionEditStart = useCallback(
+    (type: string, lightIndex: number) => {
+      setLightHelperConfig({
+        type,
+        lightIndex,
+      });
+    },
+    []
+  );
 
-  const onLightDragEnd = useCallback(() => {
+  const onLightPositionEditEnd = useCallback(() => {
     setLightHelperConfig(null);
   }, []);
 
@@ -71,9 +74,9 @@ export const useLightControls = (
           label: `${light.name} position`,
           step: 1,
           onEditStart: () => {
-            onLightDragStart(light._type, i);
+            onLightPositionEditStart(light._type, i);
           },
-          onEditEnd: onLightDragEnd,
+          onEditEnd: onLightPositionEditEnd,
         };
       }
 
@@ -84,16 +87,16 @@ export const useLightControls = (
           max: 4,
           step: 0.1,
           onEditStart: () => {
-            onLightDragStart(light._type, i);
+            onLightPositionEditStart(light._type, i);
           },
-          onEditEnd: onLightDragEnd,
+          onEditEnd: onLightPositionEditEnd,
           label: `${light.name} decay`,
         };
       }
     }
 
     return config;
-  }, [lights, onLightDragEnd, onLightDragStart]);
+  }, [lights, onLightPositionEditEnd, onLightPositionEditStart]);
 
   const [lightConfig] = useControls(
     () => ({
