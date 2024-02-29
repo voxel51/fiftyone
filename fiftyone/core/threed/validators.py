@@ -5,14 +5,14 @@ Fiftyone 3D Scene.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import field_validator
 
 from .transformation import Vec3UnionType, Vector3
 
 
-def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Vector3 | None:
+def normalize_to_vec3(v: Optional[Vec3UnionType]) -> Union[Vector3, None]:
     if v is None:
         return None
 
