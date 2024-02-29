@@ -6,7 +6,7 @@ Fiftyone 3D Scene.
 |
 """
 import uuid
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -92,7 +92,7 @@ class Object3D:
         return self._rotation
 
     @rotation.setter
-    def rotation(self, value: Euler | List[float] | Tuple[float, ...]):
+    def rotation(self, value: Union[Euler, List[float], Tuple[float, ...]]):
         if isinstance(value, (list, tuple)) and len(value) == 3:
             value = Euler(*value)
         elif not isinstance(value, Euler):
@@ -109,7 +109,9 @@ class Object3D:
         return self._quaternion
 
     @quaternion.setter
-    def quaternion(self, value: Quaternion | List[float] | Tuple[float, ...]):
+    def quaternion(
+        self, value: Union[Quaternion, List[float], Tuple[float, ...]]
+    ):
         if isinstance(value, (list, tuple)) and len(value) == 4:
             value = Quaternion(*value)
         elif not isinstance(value, Quaternion):
