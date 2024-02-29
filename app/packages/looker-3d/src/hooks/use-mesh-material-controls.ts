@@ -8,13 +8,12 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
   const { defaultMaterial } = node;
 
   const [opacity, setOpacity] = useState(defaultMaterial.opacity);
-  const [shouldUseVertexColors, setShouldUseVertexColors] = useState(
-    defaultMaterial.vertexColors
-  );
   const [renderAsWireframe, setRenderAsWireframe] = useState(
     defaultMaterial.wireframe
   );
   const [color, setColor] = useState(defaultMaterial["color"] ?? "#ffffff");
+  const [metalness, setMetalness] = useState(defaultMaterial["metalness"] ?? 0);
+  const [roughness, setRoughness] = useState(defaultMaterial["roughness"] ?? 1);
 
   // note: we're not making attributes like emissive color, reflectivity, IOR, etc. configurable
 
@@ -43,18 +42,32 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             onChange: setRenderAsWireframe,
             order: 1002,
           },
-          vertexColors: {
-            value: shouldUseVertexColors,
-            label: "Vertex Colors",
-            onChange: setShouldUseVertexColors,
-            order: 1003,
-          },
           color: {
             value: color,
             label: "Color",
             onChange: setColor,
             render: () => defaultMaterial._type !== "MeshDepthMaterial",
             order: 1004,
+          },
+          metalness: {
+            value: metalness,
+            min: 0,
+            max: 1,
+            step: 0.1,
+            label: "Metalness",
+            onChange: setMetalness,
+            render: () => defaultMaterial._type === "MeshStandardMaterial",
+            order: 1005,
+          },
+          roughness: {
+            value: roughness,
+            min: 0,
+            max: 1,
+            step: 0.1,
+            label: "Roughness",
+            onChange: setRoughness,
+            render: () => defaultMaterial._type === "MeshStandardMaterial",
+            order: 1006,
           },
         },
         {
@@ -63,14 +76,7 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
         }
       ),
     }),
-    [
-      defaultMaterial,
-      opacity,
-      renderAsWireframe,
-      color,
-      shouldUseVertexColors,
-      name,
-    ]
+    [defaultMaterial, opacity, renderAsWireframe, color, name]
   );
 
   const material = useMemo(() => {
@@ -78,15 +84,17 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       ...defaultMaterial,
       opacity,
       wireframe: renderAsWireframe,
-      vertexColors: shouldUseVertexColors,
       color,
+      metalness,
+      roughness,
     });
   }, [
     defaultMaterial,
     opacity,
     renderAsWireframe,
     color,
-    shouldUseVertexColors,
+    metalness,
+    roughness,
   ]);
 
   return {

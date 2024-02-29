@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Mesh, Quaternion, Vector3 } from "three";
 import { PLYLoader } from "three/examples/jsm/loaders/PLYLoader";
 import { PlyAsset } from "../hooks";
-import { useMeshMaterialControls } from "../hooks/use-obj-controls";
+import { useMeshMaterialControls } from "../hooks/use-mesh-material-controls";
 
 export const Ply = ({
   name,
