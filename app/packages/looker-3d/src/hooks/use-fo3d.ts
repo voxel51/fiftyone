@@ -63,6 +63,15 @@ export type FoMeshBasicMaterialProps = FoMeshMaterialBase & {
   color: string;
 };
 
+export type FoMeshStandardMaterialProps = FoMeshMaterialBase & {
+  _type: "MeshStandardMaterial";
+  color: string;
+  emissiveColor: string;
+  emissiveIntensity: number;
+  metalness: number;
+  roughness: number;
+};
+
 export type FoMeshLambertMaterialProps = FoMeshMaterialBase & {
   _type: "MeshLambertMaterial";
   color: string;
@@ -87,6 +96,7 @@ export type FoMeshDepthMaterialProps = FoMeshMaterialBase & {
 
 export type FoMeshMaterial =
   | FoMeshBasicMaterialProps
+  | FoMeshStandardMaterialProps
   | FoMeshLambertMaterialProps
   | FoMeshPhongMaterialProps
   | FoMeshDepthMaterialProps;
