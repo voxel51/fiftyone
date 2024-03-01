@@ -167,7 +167,7 @@ Remote sessions
 _______________
 
 If your data is stored on a remote machine, you can forward a session from
-the remote machine to your local machine and seemlessly browse your remote
+the remote machine to your local machine and seamlessly browse your remote
 dataset from you web browser.
 
 Check out the :ref:`environments page <environments>` for more information on
@@ -710,7 +710,7 @@ ________________
 
 You can configure which fields of your dataset appear in the App's sidebar by
 clicking the settings icon in the upper right of the sidebar to open the Field
-visiblity modal.
+visibility modal.
 
 Consider the following example:
 
@@ -780,7 +780,7 @@ determine which fields to include in the sidebar.
 
 .. note::
 
-    Fitler rules are dynamic. If you :ref:`save a view <app-saving-views>` that
+    Filter rules are dynamic. If you :ref:`save a view <app-saving-views>` that
     contains a filter rule, the matching fields may increase or decrease over
     time as you modify the dataset's schema.
 
@@ -1090,7 +1090,7 @@ currently visible (or selected) labels by clicking on the `Crop` icon in the
 controls HUD or using the `z` keyboard shortcut. Press `ESC` to reset your
 view.
 
-When multiple labels are overlayed on top of each other, the up and down
+When multiple labels are overlaid on top of each other, the up and down
 arrows offer a convenient way to rotate the z-order of the labels that your
 cursor is hovering over, so every label and it's tooltip can be viewed.
 
@@ -1099,7 +1099,7 @@ customizing the rendering of your labels, including whether to show object
 labels, confidences, or the tooltip. The default settings for these parameters
 can be configured via the :ref:`App config <app-config>`.
 
-Keyboard shortcuts are availble for almost every action. Click the `?` icon
+Keyboard shortcuts are available for almost every action. Click the `?` icon
 in the controls HUD or use the `?` keyboard shortcut to display the list of
 available actions and their associated hotkeys.
 
@@ -1287,7 +1287,7 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    # Configure the 3D visualizer for a dataset's PCD/Label data
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
     }

@@ -1,6 +1,6 @@
 """
 Utilities for working with
-`Hugging Face Transformers <hhttps://huggingface.co/docs/transformers>`_.
+`Hugging Face Transformers <https://huggingface.co/docs/transformers>`_.
 
 | Copyright 2017-2023, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

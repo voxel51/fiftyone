@@ -241,7 +241,7 @@ The App can play any video codec that is supported by
 including MP4 (H.264), WebM, and Ogg. If you try to view a video with an
 unsupported codec in the App, you will be prompted to use the
 :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>` utility method
-to reencode the source video so it is viewable in the App.
+to re-encode the source video so it is viewable in the App.
 
 .. note::
 

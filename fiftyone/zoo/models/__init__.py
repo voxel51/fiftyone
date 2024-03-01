@@ -171,12 +171,12 @@ def ensure_zoo_model_requirements(name, error_level=None, log_success=True):
             requirements, defined as:
 
             -   0: raise error if a requirement is not satisfied
-            -   1: log warning if a requirement is not satisifed
-            -   2: ignore unsatisifed requirements
+            -   1: log warning if a requirement is not satisfied
+            -   2: ignore unsatisfied requirements
 
             By default, ``fo.config.requirement_error_level`` is used
         log_success (True): whether to generate a log message when a
-            requirement is satisifed
+            requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -214,8 +214,8 @@ def load_zoo_model(
             requirements, defined as:
 
             -   0: raise error if a requirement is not satisfied
-            -   1: log warning if a requirement is not satisifed
-            -   2: ignore unsatisifed requirements
+            -   1: log warning if a requirement is not satisfied
+            -   2: ignore unsatisfied requirements
 
             By default, ``fo.config.requirement_error_level`` is used
         cache (True): whether to store a weak reference to the model so that

@@ -1955,7 +1955,7 @@ config settings:
     }
 
 When `fiftyone.brain` is imported, any options from your JSON config are merged
-into the default config, as per the order of precendence described above.
+into the default config, as per the order of precedence described above.
 
 .. note::
 
