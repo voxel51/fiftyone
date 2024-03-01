@@ -235,6 +235,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     const toReturn: FoScene = {
       cameraProps: rawData.camera,
       lights: rawData.lights,
+      background: rawData.background,
       position: new Vector3(
         rawData.position[0],
         rawData.position[1],
