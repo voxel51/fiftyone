@@ -12,6 +12,7 @@ import {
   useState,
 } from "react";
 import { useRecoilCallback, useRecoilValue, useSetRecoilState } from "recoil";
+import * as THREE from "three";
 import { PerspectiveCamera, Vector3 } from "three";
 import { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
