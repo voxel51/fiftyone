@@ -638,7 +638,7 @@ subsequent sections.
             """You can optionally implement this method to configure a button
             or icon in the App that triggers this operator.
 
-            By default the operator only appears in the operator brower
+            By default the operator only appears in the operator browser
             (unless it is unlisted).
 
             Returns:
@@ -967,7 +967,7 @@ programmatically.
 
 However, many interesting operations like model inference, embeddings
 computation, evaluation, and exports are computationally intensive and/or not
-suitable for immediate exeuction.
+suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
 rescue by allowing operators to schedule tasks that are executed on a connected

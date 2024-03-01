@@ -4240,7 +4240,7 @@ class TransformVideosCommand(Command):
             size=args.size,
             min_size=args.min_size,
             max_size=args.max_size,
-            reencode=args.reencode,
+            re-encode=args.re-encode,
             force_reencode=args.force_reencode,
             media_field=args.media_field,
             output_field=args.output_field,

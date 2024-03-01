@@ -200,7 +200,7 @@ class LabelboxAnnotationAPI(foua.AnnotationAPI):
     """A class to facilitate connection to and management of projects in
     Labelbox.
 
-    On initializiation, this class constructs a client based on the provided
+    On initialization, this class constructs a client based on the provided
     server url and credentials.
 
     This API provides methods to easily upload, download, create, and delete
