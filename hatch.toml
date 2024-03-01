@@ -1,0 +1,13 @@
+[version]
+path = "version.py"
+
+[build.hooks.custom]
+path = "dependencies.py"
+
+[build]
+artifacts = ["fiftyone/server/static/*"]
+packages = ["fiftyone"]
+
+[build.force-include]
+"docs/source/recipes" = "fiftyone/recipes"
+"docs/source/tutorials" = "fiftyone/tutorials"

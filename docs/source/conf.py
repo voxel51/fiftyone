@@ -25,12 +25,12 @@ from redirects import generate_redirects
 import fiftyone.constants as foc
 
 
-with open("../../setup.py") as f:
+with open("../../version.py") as f:
     setup_version = re.search(r'VERSION = "(.+?)"', f.read()).group(1)
 
 if setup_version != foc.VERSION:
     raise RuntimeError(
-        "FiftyOne version in setup.py (%r) does not match installed version "
+        "FiftyOne version in version.py (%r) does not match installed version "
         "(%r). If this is a dev install, reinstall with `pip install -e .` "
         "and try again." % (setup_version, foc.VERSION)
     )
