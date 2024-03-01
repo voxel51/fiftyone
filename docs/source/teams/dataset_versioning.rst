@@ -652,7 +652,7 @@ method in the Management SDK:
 Unarchive snapshot
 ------------------
 
-To make an archived snapshot browseable again, users with Can Manage
+To make an archived snapshot browsable again, users with Can Manage
 permissions to the dataset can unarchive it via the UI or Management SDK.
 
 Teams UI
@@ -792,7 +792,7 @@ Best practices
 --------------
 
 As this feature matures, we will have better recommendations for best practices.
-For now given the limited starting options in the intial iteration, we have the
+For now given the limited starting options in the initial iteration, we have the
 following advice:
 
 -   Use snapshots on smaller datasets if possible.
