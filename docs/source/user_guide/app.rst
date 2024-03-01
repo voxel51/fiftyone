@@ -710,7 +710,7 @@ ________________
 
 You can configure which fields of your dataset appear in the App's sidebar by
 clicking the settings icon in the upper right of the sidebar to open the Field
-visiblity modal.
+visibility modal.
 
 Consider the following example:
 
@@ -1287,7 +1287,7 @@ the above values on a :ref:`dataset's App config <dataset-app-config>`:
 .. code-block:: python
     :linenos:
 
-    # Configure the 3D visualuzer for a dataset's PCD/Label data
+    # Configure the 3D visualizer for a dataset's PCD/Label data
     dataset.app_config.plugins["3d"] = {
         "defaultCameraPosition": {"x": 0, "y": 0, "z": 100},
     }

@@ -147,7 +147,7 @@ and use it to generate object detections:
         raw_inputs=True,
     )
 
-    # Generate preditions for a single image
+    # Generate predictions for a single image
     img = np.asarray(Image.open(dataset.first().filepath))
     predictions = model.predict(img)
     print(predictions)  # <Detections: {...}>
