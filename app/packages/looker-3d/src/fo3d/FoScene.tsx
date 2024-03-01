@@ -21,6 +21,7 @@ import { Stl } from "./Stl";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 import { PANEL_ORDER_VISIBILITY } from "../constants";
+import { Fo3dBackground } from "./Background";
 
 interface FoSceneProps {
   scene: FoScene;
@@ -191,5 +192,12 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     return null;
   }
 
-  return sceneR3f;
+  return (
+    <>
+      {scene.cameraProps.backgroundImagePath && (
+        <Fo3dBackground cameraProps={scene.cameraProps} />
+      )}
+      {sceneR3f}
+    </>
+  );
 };
