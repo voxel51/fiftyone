@@ -721,7 +721,7 @@ calculated:
 
 -   For object detections, IoUs are computed between each pair of bounding boxes
 -   For instance segmentations and polygons, IoUs are computed between the
-    polgyonal shapes rather than their rectangular bounding boxes
+    polygonal shapes rather than their rectangular bounding boxes
 -   For keypoint tasks,
     `object keypoint similarity <https://cocodataset.org/#keypoints-eval>`_
     is computed for each pair of objects, using the extent of the ground truth
@@ -2401,7 +2401,7 @@ evaluation backend without changing any other default config settings:
     }
 
 When `fiftyone` is imported, any options from your JSON config are merged into
-the default config, as per the order of precendence described above.
+the default config, as per the order of precedence described above.
 
 .. note::
 

@@ -152,7 +152,7 @@ Custom fields can contain any Python primitive data type:
 -   |ListField|: contains Python `list` instances
 -   |DictField|: contains Python `dict` instances
 
-The elements of list and dict fields may be homogenous or heterogeneous, and
+The elements of list and dict fields may be homogeneous or heterogeneous, and
 may even contain nested lists and dicts. Fields can also contain more complex
 data types like :ref:`labels <using-labels>`.
 
@@ -377,7 +377,7 @@ Dataset views are a powerful tool for exploring your datasets. You can use
 datasets to perform the analysis that you need.
 
 .. custombutton::
-    :button_text: Get a full walkthough of dataset views
+    :button_text: Get a full walkthrough of dataset views
     :button_link: using_views.html
 
 .. code-block:: python

@@ -123,7 +123,7 @@ FiftyOne supports the configuration options described below:
 |                               |                                     |                               | packages. See :ref:`loading zoo models <model-zoo-load>` for an example usage.         |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `show_progress_bars`          | `FIFTYONE_SHOW_PROGRESS_BARS`       | `True`                        | Controls whether progress bars are printed to the terminal when performing             |
-|                               |                                     |                               | operations such reading/writing large datasets or activiating FiftyOne                 |
+|                               |                                     |                               | operations such reading/writing large datasets or activating FiftyOne                 |
 |                               |                                     |                               | Brain methods on datasets.                                                             |
 +-------------------------------+-------------------------------------+-------------------------------+----------------------------------------------------------------------------------------+
 | `timezone`                    | `FIFTYONE_TIMEZONE`                 | `None`                        | An optional timzone string. If provided, all datetimes read from FiftyOne datasets     |
@@ -479,7 +479,7 @@ Restricting migrations
 
 You can use the `database_admin` config setting to control whether a client is
 allowed to upgrade/downgrade your FiftyOne database. The default is `True`,
-which means that upgrades are automatically peformed when you connect to your
+which means that upgrades are automatically performed when you connect to your
 database with newer Python client versions.
 
 If you set `database_admin` to `False`, your client will **never** cause the
