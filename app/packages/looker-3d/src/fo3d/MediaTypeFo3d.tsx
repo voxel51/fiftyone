@@ -253,13 +253,24 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   );
 
   useEffect(() => {
-    setActionBarItems([
-      [ACTION_GRID, []],
-      [ACTION_SET_TOP_VIEW, [onChangeView]],
-      [ACTION_SET_EGO_VIEW, [onChangeView]],
-      [ACTION_VIEW_JSON, [jsonPanel, sample]],
-      [ACTION_VIEW_HELP, [helpPanel]],
-    ]);
+    // todo: find a better way of setting action bar items
+    const addUniqueItems = (currentItems, newItems) => {
+      const existingKeys = currentItems.map((item) => item[0]);
+      return newItems
+        .filter((item) => !existingKeys.includes(item[0]))
+        .concat(currentItems);
+    };
+
+    setActionBarItems((items) => {
+      const newItems = [
+        [ACTION_GRID, []],
+        [ACTION_SET_TOP_VIEW, [onChangeView]],
+        [ACTION_SET_EGO_VIEW, [onChangeView]],
+        [ACTION_VIEW_JSON, [jsonPanel, sample]],
+        [ACTION_VIEW_HELP, [helpPanel]],
+      ];
+      return addUniqueItems(items, newItems);
+    });
   }, [onChangeView, jsonPanel, sample, helpPanel, setActionBarItems]);
 
   useEffect(() => {

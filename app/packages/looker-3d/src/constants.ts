@@ -8,6 +8,7 @@ export const ACTION_SET_POINT_SIZE = "setPointSize";
 export const ACTION_SET_PCDS = "setPcds";
 export const ACTION_SET_TOP_VIEW = "setTopView";
 export const ACTION_SET_EGO_VIEW = "setEgoView";
+export const ACTION_TOGGLE_BACKGROUND = "toggleFo3dBackground";
 export const ACTION_VIEW_JSON = "json";
 export const ACTION_VIEW_HELP = "help";
 

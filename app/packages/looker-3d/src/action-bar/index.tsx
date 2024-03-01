@@ -8,6 +8,7 @@ import {
   ACTION_SET_POINT_SIZE,
   ACTION_SET_TOP_VIEW,
   ACTION_SHADE_BY,
+  ACTION_TOGGLE_BACKGROUND,
   ACTION_VIEW_HELP,
   ACTION_VIEW_JSON,
 } from "../constants";
@@ -17,6 +18,7 @@ import { ChooseColorSpace } from "./ColorSpace";
 import { SetPointSizeButton } from "./PointSize";
 import { SetViewButton } from "./SetViewButton";
 import { SliceSelector } from "./SliceSelector";
+import { ToggleFo3dBackground } from "./ToggleBackground";
 import { ToggleGridHelper } from "./ToggleGridHelper";
 import { ViewHelp } from "./ViewHelp";
 import { ViewJSON } from "./ViewJson";
@@ -53,6 +55,10 @@ export const ActionBar = ({
 
     if (actionNames.includes(ACTION_GRID)) {
       components.push(<ToggleGridHelper key="grid-helper" />);
+    }
+
+    if (actionNames.includes(ACTION_TOGGLE_BACKGROUND)) {
+      components.push(<ToggleFo3dBackground key="toggle-background" />);
     }
 
     if (actionNames.includes(ACTION_SET_POINT_SIZE)) {
