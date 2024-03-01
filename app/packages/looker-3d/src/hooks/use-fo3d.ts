@@ -121,6 +121,7 @@ export type FoSceneNode = {
 };
 
 export type FoScene = Omit<FoSceneNode, "name" | "visible" | "uuid"> & {
+  background: FiftyoneSceneRawJson["background"];
   cameraProps: FiftyoneSceneRawJson["camera"];
   lights: FiftyoneSceneRawJson["lights"];
   children?: Array<FoSceneNode> | null;
