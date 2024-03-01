@@ -1,5 +1,5 @@
 import { useControls } from "leva";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   FbxAsset,
   FoScene,
@@ -20,7 +20,9 @@ import { Ply } from "./Ply";
 import { Stl } from "./Stl";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
-import { PANEL_ORDER_VISIBILITY } from "../constants";
+import { useRecoilValue, useSetRecoilState } from "recoil";
+import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
+import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { Fo3dBackground } from "./Background";
 
 interface FoSceneProps {
@@ -188,13 +190,27 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     return r3fScene;
   }, [scene, visibilityMap]);
 
+  const setActionBarItems = useSetRecoilState(
+    actionRenderListAtomFamily("fo3d")
+  );
+
+  const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
+
+  useEffect(() => {
+    if (scene?.cameraProps?.backgroundImagePath) {
+      setActionBarItems((items) => {
+        return [[ACTION_TOGGLE_BACKGROUND], ...items];
+      });
+    }
+  }, [scene]);
+
   if (!sceneR3f) {
     return null;
   }
 
   return (
     <>
-      {scene.cameraProps.backgroundImagePath && (
+      {isFo3dBackgroundOn && scene.cameraProps.backgroundImagePath && (
         <Fo3dBackground cameraProps={scene.cameraProps} />
       )}
       {sceneR3f}

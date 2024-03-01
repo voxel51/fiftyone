@@ -64,7 +64,19 @@ export const isGridOnAtom = atom<boolean>({
   key: "fo3d-isGridOn",
   default: true,
   effects: [
-    getBrowserStorageEffectForKey("isGridOn", { valueClass: "boolean" }),
+    getBrowserStorageEffectForKey("fo3d-isGridOn", {
+      valueClass: "boolean",
+    }),
+  ],
+});
+
+export const isFo3dBackgroundOnAtom = atom<boolean>({
+  key: "fo3d-isBackgroundON",
+  default: true,
+  effects: [
+    getBrowserStorageEffectForKey("fo3d-isBackgroundON", {
+      valueClass: "boolean",
+    }),
   ],
 });
 
