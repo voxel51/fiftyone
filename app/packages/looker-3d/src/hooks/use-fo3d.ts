@@ -2,7 +2,7 @@ import { getSampleSrc } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
-import { FiftyoneSceneRawJson } from "../utils";
+import { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
 
 export class FbxAsset {
   constructor(readonly fbxUrl?: string) {}
@@ -120,7 +120,7 @@ export type FoSceneNode = {
   children?: Array<FoSceneNode> | null;
 };
 
-export type FoScene = Omit<FoSceneNode, "name" | "visible"> & {
+export type FoScene = Omit<FoSceneNode, "name" | "visible" | "uuid"> & {
   cameraProps: FiftyoneSceneRawJson["camera"];
   lights: FiftyoneSceneRawJson["lights"];
   children?: Array<FoSceneNode> | null;
@@ -154,7 +154,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       return null;
     }
 
-    const buildSceneGraph = (node: FiftyoneSceneRawJson["children"][0]) => {
+    const buildSceneGraph = (node: FoSceneRawNode) => {
       let asset: MeshAsset;
 
       const material = node.defaultMaterial;
