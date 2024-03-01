@@ -14,8 +14,14 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
   const [color, setColor] = useState(defaultMaterial["color"] ?? "#ffffff");
   const [metalness, setMetalness] = useState(defaultMaterial["metalness"] ?? 0);
   const [roughness, setRoughness] = useState(defaultMaterial["roughness"] ?? 1);
+  const [emissiveColor, setEmissiveColor] = useState(
+    defaultMaterial["emissive"] ?? "#000000"
+  );
+  const [emissiveIntensity, setEmissiveIntensity] = useState(
+    defaultMaterial["emissiveIntensity"] ?? 0.1
+  );
 
-  // note: we're not making attributes like emissive color, reflectivity, IOR, etc. configurable
+  // note: we're not making attributes like reflectivity, IOR, etc. configurable
 
   useControls(
     () => ({
@@ -69,14 +75,44 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
             render: () => defaultMaterial._type === "MeshStandardMaterial",
             order: 1006,
           },
+          emissiveIntensity: {
+            value: emissiveIntensity,
+            min: 0,
+            max: 1,
+            step: 0.1,
+            label: "Emissive Intensity",
+            onChange: setEmissiveIntensity,
+            render: () =>
+              defaultMaterial._type !== "MeshDepthMaterial" &&
+              defaultMaterial._type !== "MeshBasicMaterial",
+            order: 1007,
+          },
+          emissiveColor: {
+            value: emissiveColor,
+            label: "Emissive Color",
+            onChange: setEmissiveColor,
+            render: (get) => get(`${name}.emissiveIntensity`) > 0,
+            order: 1008,
+          },
         },
+
         {
           order: PANEL_ORDER_PCD_CONTROLS,
           collapsed: true,
         }
       ),
     }),
-    [defaultMaterial, opacity, renderAsWireframe, color, name]
+    [
+      defaultMaterial,
+      opacity,
+      metalness,
+      roughness,
+      emissiveColor,
+      emissiveIntensity,
+      renderAsWireframe,
+      color,
+      name,
+    ]
   );
 
   const material = useMemo(() => {
@@ -87,6 +123,8 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
       color,
       metalness,
       roughness,
+      emissiveColor,
+      emissiveIntensity,
     });
   }, [
     defaultMaterial,
@@ -95,6 +133,8 @@ export const useMeshMaterialControls = (name: string, node: ObjAsset) => {
     color,
     metalness,
     roughness,
+    emissiveColor,
+    emissiveIntensity,
   ]);
 
   return {
