@@ -408,16 +408,16 @@ def ensure_package(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -492,12 +492,12 @@ def ensure_requirements(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         log_success (False): whether to generate a log message if a requirement
-            is satisifed
+            is satisfied
     """
     for req_str in load_requirements(requirements_path):
         ensure_package(
@@ -527,16 +527,16 @@ def ensure_import(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -560,14 +560,14 @@ def ensure_tf(eager=False, error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -613,14 +613,14 @@ def ensure_tfds(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -643,14 +643,14 @@ def ensure_torch(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -1390,7 +1390,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
 
     This batcher requires that backpressure feedback be provided, either by
     providing a BSON-able batch from which the content size can be computed,
-    or by manaully providing the content size.
+    or by manually providing the content size.
 
     This class is often used in conjunction with a :class:`ProgressBar` to keep
     the user appraised on the status of a long-running task.
@@ -2000,7 +2000,7 @@ class MonkeyPatchFunction(object):
     Args:
         module_or_fcn: a module or function
         monkey_fcn: the function to monkey patch in
-        fcn_name (None): the name of the funciton to monkey patch. Required iff
+        fcn_name (None): the name of the function to monkey patch. Required iff
             ``module_or_fcn`` is a module
         namespace (None): an optional package namespace
     """

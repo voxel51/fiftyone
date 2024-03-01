@@ -185,7 +185,7 @@ class _Box(object):
         return _Box(new_rotation, new_translation, self.scale)
 
     def _scaled_axis_aligned_vertices(self, scale):
-        """Returns axis-aligned verticies for a box of the given scale."""
+        """Returns axis-aligned vertices for a box of the given scale."""
         x = scale[0] / 2.0
         y = scale[1] / 2.0
         z = scale[2] / 2.0

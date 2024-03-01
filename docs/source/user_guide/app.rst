@@ -780,7 +780,7 @@ determine which fields to include in the sidebar.
 
 .. note::
 
-    Fitler rules are dynamic. If you :ref:`save a view <app-saving-views>` that
+    Filter rules are dynamic. If you :ref:`save a view <app-saving-views>` that
     contains a filter rule, the matching fields may increase or decrease over
     time as you modify the dataset's schema.
 
@@ -1090,7 +1090,7 @@ currently visible (or selected) labels by clicking on the `Crop` icon in the
 controls HUD or using the `z` keyboard shortcut. Press `ESC` to reset your
 view.
 
-When multiple labels are overlayed on top of each other, the up and down
+When multiple labels are overlaid on top of each other, the up and down
 arrows offer a convenient way to rotate the z-order of the labels that your
 cursor is hovering over, so every label and it's tooltip can be viewed.
 

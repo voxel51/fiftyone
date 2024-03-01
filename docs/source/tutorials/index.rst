@@ -35,7 +35,7 @@ your datasets and turn your good models into *great models*.
 
 .. customcarditem::
     :header: pandas-style queries in FiftyOne
-    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common opertaions in pandas and FiftyOne.
+    :description: Translate your pandas knowledge to FiftyOne. This tutorial gives a side-by-side comparison of performing common operations in pandas and FiftyOne.
     :link: pandas_comparison.html
     :image: ../_static/images/tutorials/pandas_tutorial.png
     :tags: Filtering,Dataset-Evaluation

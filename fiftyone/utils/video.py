@@ -36,7 +36,7 @@ def extract_clip(
 ):
     """Extracts the specified clip from the video.
 
-    Provide either ``suppport`` or ``timestamps`` to this method.
+    Provide either ``support`` or ``timestamps`` to this method.
 
     When fast=False, the following ffmpeg command is used::
 

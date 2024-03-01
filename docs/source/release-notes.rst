@@ -387,7 +387,7 @@ Bugs
   sometimes stay open after making a selection
 - Fixed an issue when downloading plugins via the API that contain bytes data
   or ``.pyc`` files
-- Fixed an isssue where certain disabled operators were not correctly appearing
+- Fixed an issue where certain disabled operators were not correctly appearing
   as disabled in the operator browser
 - Improved reliability of similarity sort actions
 
@@ -2218,7 +2218,7 @@ FiftyOne 0.17.2
 
 App
 
-- Fixed a backward compatability bug when connecting to older database versions
+- Fixed a backward compatibility bug when connecting to older database versions
   `#2103 <https://github.com/voxel51/fiftyone/pull/2103>`_
 
 .. _release-notes-v0.17.1:
@@ -2354,7 +2354,7 @@ Core
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Added support for dynamic attributes when performing coerced exports
   `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
-- Introduced the notion of client compatability versions
+- Introduced the notion of client compatibility versions
   `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
 - Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
   sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
@@ -3329,7 +3329,7 @@ Core
   working with :ref:`BDD format <BDDDataset-import>`
 - Fixed some Windows-style path bugs
 
-Annnotation
+Annotation
 
 - Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
   easy to add or edit labels on your FiftyOne datasets or specific views into
@@ -3883,7 +3883,7 @@ Core
       |Session| to explore the samples/labels in a dataset based on their
       locations in a low-dimensional embedding space
     - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
-      an interacive scatterplot of a dataset via its |GeoLocation| coordinates
+      an interactive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
     - Added the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
@@ -4387,7 +4387,7 @@ FiftyOne 0.6.5
 
 App
 
-- Added concurrency to the server wich greatly improves loading speeds and
+- Added concurrency to the server which greatly improves loading speeds and
   time-to-interaction in the Grid, View Bar, and Filters Sidebar for larger
   datasets and views
 - Renamed the Display Options Sidebar to the Filters Sidebar
@@ -4469,7 +4469,7 @@ Core
 
 - Added the
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
-  view stage, which supercedes the old dedicated per-label-type filtering
+  view stage, which supersedes the old dedicated per-label-type filtering
   stages
 - Added
   :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`

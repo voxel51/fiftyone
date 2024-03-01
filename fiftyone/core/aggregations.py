@@ -2911,7 +2911,7 @@ def _handle_reduce_unwinds(path, unwind_list_fields, other_list_fields):
     for idx in range(1, num_list_fields):
         list_field, unwind = list_fields[idx]
 
-        # If we're unwinding a list field that is preceeded by another list
+        # If we're unwinding a list field that is preceded by another list
         # field that is *not* unwound, we must use `reduce()` to achieve it
         if unwind and not list_fields[idx - 1][1]:
             prev_list = list_fields[idx - 1][0]
