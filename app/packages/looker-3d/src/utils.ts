@@ -28,7 +28,6 @@ export type FoCameraProps = {
   aspect: number;
   near: number;
   far: number;
-  backgroundImagePath: string | null;
 };
 
 export type FoLightProps = Omit<Partial<FoSceneRawNode>, "_type"> & {
@@ -60,7 +59,15 @@ export type FoSpotLightProps = FoLightProps & {
   penumbra: number;
 };
 
+export type FoSceneBackground = {
+  color: string | null;
+  image: string | null;
+  cube: [string, string, string, string, string, string] | null;
+  intensity: number;
+};
+
 export type FiftyoneSceneRawJson = {
+  background: FoSceneBackground | null;
   camera: FoCameraProps;
   lights: Array<
     | FoAmbientLightProps

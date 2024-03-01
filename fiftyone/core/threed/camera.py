@@ -30,8 +30,6 @@ class PerspectiveCamera:
             `None`, the field of view is 50 degrees
         near (0.1): the near clipping plane of the camera
         far (2000): the far clipping plane of the camera
-        background_image_path (None): path to a reference image displayed
-            behind objects in the scene
     """
 
     position: Optional[Vec3UnionType] = None
@@ -42,7 +40,6 @@ class PerspectiveCamera:
     fov: float = 50
     near: float = 0.1
     far: float = 2000
-    background_image_path: Optional[str] = None
 
     _ensure_position_is_normalized = vec3_normalizing_validator("position")
     _ensure_look_at_is_normalized = vec3_normalizing_validator("look_at")
@@ -58,7 +55,6 @@ class PerspectiveCamera:
             "fov": self.fov,
             "near": self.near,
             "far": self.far,
-            "backgroundImagePath": self.background_image_path,
         }
 
     @staticmethod
@@ -71,5 +67,4 @@ class PerspectiveCamera:
             aspect=d.get("aspect"),
             near=d.get("near"),
             far=d.get("far"),
-            background_image_path=d.get("backgroundImagePath"),
         )

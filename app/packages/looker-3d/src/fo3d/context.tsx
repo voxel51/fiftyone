@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import { createContext, useContext } from "react";
 import { Box3, Vector3 } from "three";
 import { Looker3dPluginSettings } from "../Looker3dPlugin";
 
@@ -6,10 +6,6 @@ interface Fo3dContextT {
   upVector: Vector3 | null;
   sceneBoundingBox: Box3 | null;
   pluginSettings: Looker3dPluginSettings | null;
-}
-
-interface Fo3dSceneProviderProps {
-  children: React.ReactNode;
 }
 
 const defaultContext: Fo3dContextT = {

@@ -6,11 +6,51 @@
 import json
 from typing import Optional
 
+from pydantic.dataclasses import dataclass
+
 from .camera import PerspectiveCamera
 from .lights import Light
 from .object_3d import Object3D
 from .utils import convert_keys_to_snake_case
-from uuid import uuid4
+
+
+@dataclass
+class SceneBackground:
+    """Represents the background of the scene.
+
+    Args:
+        color (str, optional): the background color of the scene
+        image (str, optional): the path to the background image. Defaults to
+            None. This takes precedence over color if provided
+        cube (list, optional): the paths to the six faces of the background.
+            The order of the faces is: +X, -X, +Y, -Y, +Z, -Z.
+            Defaults to None. This takes precedence over the image and color if
+            provided. This can be used to build a skybox.
+        intensity (float, optional): the intensity of the background. Defaults
+            to 1.0. This only applies for `image` and `cube` backgrounds
+    """
+
+    color: Optional[str] = None
+    image: Optional[str] = None
+    cube: Optional[list[str]] = None
+    intensity: Optional[float] = 1.0
+
+    def as_dict(self):
+        return {
+            "color": self.color,
+            "image": self.image,
+            "cube": self.cube,
+            "intensity": self.intensity,
+        }
+
+    @staticmethod
+    def _from_dict(d):
+        return SceneBackground(
+            color=d.get("color"),
+            image=d.get("image"),
+            cube=d.get("cube"),
+            intensity=d.get("intensity"),
+        )
 
 
 class Scene(Object3D):
@@ -23,6 +63,8 @@ class Scene(Object3D):
         lights (None): a list of lights in the scene. If `None`, a default set
             of lights is used, which includes an ambient light and a
             directional light
+        background (None): background for the scene. May be a color, image, or
+            a skybox.
 
     Usage::
 
@@ -48,6 +90,7 @@ class Scene(Object3D):
         self,
         camera: Optional[PerspectiveCamera] = None,
         lights: Optional[list[Light]] = None,
+        background: Optional[SceneBackground] = None,
     ):
         super().__init__(name="Scene", visible=True)
 
@@ -56,6 +99,7 @@ class Scene(Object3D):
 
         self.camera = camera
         self.lights = lights
+        self.background = background
 
     def export(self, path: str):
         """Export the scene to a .fo3d file."""
@@ -71,6 +115,9 @@ class Scene(Object3D):
             "camera": self.camera.as_dict(),
             "lights": [light.as_dict() for light in self.lights]
             if self.lights
+            else None,
+            "background": self.background.as_dict()
+            if self.background
             else None,
         }
 
@@ -96,5 +143,10 @@ class Scene(Object3D):
             scene.lights = [
                 Light._from_dict(light_dict) for light_dict in lights_list
             ]
+
+        # parse background
+        background_dict = dict_data.get("background")
+        if background_dict is not None:
+            scene.background = SceneBackground._from_dict(background_dict)
 
         return scene

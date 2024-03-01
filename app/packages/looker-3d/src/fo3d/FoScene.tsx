@@ -197,7 +197,7 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
 
   useEffect(() => {
-    if (scene?.cameraProps?.backgroundImagePath) {
+    if (scene?.background !== null) {
       setActionBarItems((items) => {
         return [[ACTION_TOGGLE_BACKGROUND], ...items];
       });
@@ -210,8 +210,8 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
 
   return (
     <>
-      {isFo3dBackgroundOn && scene.cameraProps.backgroundImagePath && (
-        <Fo3dBackground cameraProps={scene.cameraProps} />
+      {isFo3dBackgroundOn && scene.background && (
+        <Fo3dBackground background={scene.background} />
       )}
       {sceneR3f}
     </>
