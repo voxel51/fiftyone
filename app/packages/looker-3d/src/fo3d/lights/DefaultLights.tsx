@@ -33,7 +33,7 @@ export const DefaultLights = () => {
     const center = sceneBoundingBox.getCenter(new Vector3());
     const size = sceneBoundingBox.getSize(new Vector3());
 
-    const offset = Math.max(Math.max(size.x, size.y, size.z)) + 10;
+    const offset = Math.max(Math.max(size.x, size.y, size.z)) + 1;
 
     if (upVector.y === 1) {
       return [
