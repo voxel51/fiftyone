@@ -942,7 +942,7 @@ Remember that properties automatically handle validation for you. So if you
 configure a property as `required=True` but the user has not provided a value,
 the property will automatically be marked as `invalid=True`. The operator's
 `Execute` button will be enabled if and only if all input properties are valid
-(recurisvely searching nested objects).
+(recursively searching nested objects).
 
 .. note::
 

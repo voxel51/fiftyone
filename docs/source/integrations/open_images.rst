@@ -568,7 +568,7 @@ to compute true positives, false positives, and false negatives:
 -   Construct an array of true positives and false positives, sorted by
     confidence
 
--   Compute the cumlative sum of this TP FP array
+-   Compute the cumulative sum of this TP FP array
 
 -   Compute precision array by elementwise dividing the TP-FP-sum array by
     the total number of predictions up to that point
