@@ -1985,6 +1985,29 @@
             "date_added": "2024-01-17 14:25:51"
         },
         {
+            "base_name": "depth-estimation-transformer-torch",
+            "base_filename": null,
+            "version": null,
+            "description": "Hugging Face Transformers model for monocular depth estimation",
+            "source": "https://huggingface.co/docs/transformers/tasks/monocular_depth_estimation",
+            "size_bytes": null,
+            "default_deployment_config_dict": {
+                "type": "fiftyone.utils.transformers.FiftyOneTransformerForDepthEstimation",
+                "config": {}
+            },
+            "requirements": {
+                "packages": ["torch", "torchvision", "transformers"],
+                "cpu": {
+                    "support": true
+                },
+                "gpu": {
+                    "support": true
+                }
+            },
+            "tags": ["depth", "torch", "transformers"],
+            "date_added": "2024-02-06 14:25:51"
+        },
+        {
             "base_name": "zero-shot-classification-transformer-torch",
             "base_filename": null,
             "version": null,

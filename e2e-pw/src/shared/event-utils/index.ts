@@ -17,6 +17,7 @@ export class EventUtils {
       ({ eventName_, exposedFunctionName_ }) =>
         new Promise<void>((resolve) => {
           const cb = (e: CustomEvent) => {
+            // @ts-expect-error - TS doesn't know that the function is exposed
             if (window[exposedFunctionName_](e)) {
               resolve();
               document.removeEventListener(eventName_, cb);

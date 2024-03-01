@@ -1,5 +1,5 @@
 /**
- * Copyright 2017-2023, Voxel51, Inc.
+ * Copyright 2017-2024, Voxel51, Inc.
  */
 
 import { REGRESSION, TEMPORAL_DETECTION } from "@fiftyone/utilities";

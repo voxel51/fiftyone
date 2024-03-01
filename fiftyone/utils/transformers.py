@@ -2,7 +2,7 @@
 Utilities for working with
 `Hugging Face Transformers <hhttps://huggingface.co/docs/transformers>`_.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_CLASSIFICATION_PATH = "google/vit-base-patch16-224"
 DEFAULT_DETECTION_PATH = "hustvl/yolos-tiny"
 DEFAULT_SEGMENTATION_PATH = "nvidia/segformer-b0-finetuned-ade-512-512"
+DEFAULT_DEPTH_ESTIMATION_PATH = "Intel/dpt-hybrid-midas"
 DEFAULT_ZERO_SHOT_CLASSIFICATION_PATH = "openai/clip-vit-large-patch14"
 DEFAULT_ZERO_SHOT_DETECTION_PATH = "google/owlvit-base-patch32"
 
@@ -38,9 +39,9 @@ def convert_transformers_model(model, task=None):
     Args:
         model: a ``transformers`` model
         task (None): the task of the model. Supported values are
-            ``"image-classification"``, ``"object-detection"``, and
-            ``"semantic-segmentation"``. If not specified, the task is
-            automatically inferred from the model
+            ``"image-classification"``, ``"object-detection"``,
+            ``"semantic-segmentation"``, and ``"depth-estimation"``.
+            If not specified, the task is automatically inferred from the model
 
     Returns:
          a :class:`fiftyone.core.models.Model`
@@ -60,6 +61,8 @@ def convert_transformers_model(model, task=None):
         return _convert_transformer_for_object_detection(model)
     elif model_type == "semantic-segmentation":
         return _convert_transformer_for_semantic_segmentation(model)
+    elif model_type == "depth-estimation":
+        return _convert_transformer_for_depth_estimation(model)
     elif model_type == "base-model":
         return _convert_transformer_base_model(model)
     else:
@@ -87,6 +90,11 @@ def _convert_transformer_for_object_detection(model):
 def _convert_transformer_for_semantic_segmentation(model):
     config = FiftyOneTransformerConfig({"model": model})
     return FiftyOneTransformerForSemanticSegmentation(config)
+
+
+def _convert_transformer_for_depth_estimation(model):
+    config = FiftyOneTransformerConfig({"model": model})
+    return FiftyOneTransformerForDepthEstimation(config)
 
 
 def _convert_zero_shot_transformer_for_image_classification(model):
@@ -122,6 +130,7 @@ def get_model_type(model, task=None):
         "image-classification",
         "object-detection",
         "semantic-segmentation",
+        "depth-estimation",
     )
     if task is not None and task not in supported_tasks:
         raise ValueError(
@@ -142,6 +151,8 @@ def get_model_type(model, task=None):
             task = "object-detection"
         elif _is_transformer_for_semantic_segmentation(model):
             task = "semantic-segmentation"
+        elif _is_transformer_for_depth_estimation(model):
+            task = "depth-estimation"
         elif _is_transformer_base_model(model):
             task = "base-model"
         else:
@@ -207,6 +218,31 @@ def to_segmentation(results):
 
 def _create_segmentation(mask):
     return fol.Segmentation(mask=mask)
+
+
+def to_heatmap(results):
+    """Converts the Transformers depth estimation results to FiftyOne format.
+
+    Args:
+        results: Transformers depth estimation results
+
+    Returns:
+        a single or list of :class:`fiftyone.core.labels.Heatmap`
+    """
+
+    if len(results.shape) == 2:
+        return _create_heatmap(results)
+
+    if len(results) == 1:
+        return _create_heatmap(results[0])
+
+    return [_create_heatmap(results[i]) for i in range(len(results))]
+
+
+def _create_heatmap(heatmap):
+    ## normalize the heatmap
+    heatmap /= np.max(heatmap)
+    return fol.Heatmap(map=heatmap)
 
 
 def to_detections(results, id2label, image_sizes):
@@ -853,6 +889,61 @@ class FiftyOneTransformerForSemanticSegmentation(FiftyOneTransformer):
         return self._predict(inputs, target_sizes)
 
 
+class FiftyOneTransformerForDepthEstimationConfig(FiftyOneTransformerConfig):
+    """Configuration for a :class:`FiftyOneTransformerForDepthEstimation`.
+
+    Args:
+        model (None): a ``transformers`` model
+        name_or_path (None): the name or path to a checkpoint file to load
+    """
+
+    def __init__(self, d):
+        super().__init__(d)
+        if self.model is None and self.name_or_path is None:
+            self.name_or_path = DEFAULT_DEPTH_ESTIMATION_PATH
+
+
+class FiftyOneTransformerForDepthEstimation(FiftyOneTransformer):
+    """FiftyOne wrapper around a ``transformers`` model for depth estimation.
+
+    Args:
+        config: a `FiftyOneTransformerConfig`
+    """
+
+    def _load_model(self, config):
+        if config.model is not None:
+            return config.model
+
+        return transformers.AutoModelForDepthEstimation.from_pretrained(
+            config.name_or_path
+        )
+
+    def _predict(self, inputs, target_sizes):
+        with torch.no_grad():
+            outputs = self.model(**inputs)
+
+        predicted_depth = outputs.predicted_depth
+        prediction = torch.nn.functional.interpolate(
+            predicted_depth.unsqueeze(1),
+            size=target_sizes[0],
+            mode="bicubic",
+            align_corners=False,
+        )
+        prediction = prediction.squeeze(1).cpu().numpy()
+
+        return to_heatmap(prediction)
+
+    def predict(self, arg):
+        target_sizes = [arg.shape[:-1][::-1]]
+        inputs = self.image_processor(arg, return_tensors="pt")
+        return self._predict(inputs, target_sizes)
+
+    def predict_all(self, args):
+        target_sizes = [i.shape[:-1][::-1] for i in args]
+        inputs = self.image_processor(args, return_tensors="pt")
+        return self._predict(inputs, target_sizes)
+
+
 def _has_text_and_image_features(model):
     return hasattr(model.base_model, "get_image_features") and hasattr(
         model.base_model, "get_text_features"
@@ -904,6 +995,10 @@ def _is_transformer_for_object_detection(model):
 def _is_transformer_for_semantic_segmentation(model):
     ms = _get_model_type_string(model)
     return "For" in ms and "Segmentation" in ms
+
+
+def _is_transformer_for_depth_estimation(model):
+    return "ForDepthEstimation" in _get_model_type_string(model)
 
 
 def _is_transformer_base_model(model):

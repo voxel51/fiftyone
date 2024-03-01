@@ -9,7 +9,6 @@ import {
   setSidebarGroups,
   setSidebarGroupsMutation,
   sidebarGroupsFragment,
-  sidebarGroupsFragment$data,
   sidebarGroupsFragment$key,
 } from "@fiftyone/relay";
 import {
@@ -164,14 +163,14 @@ export const RESERVED_GROUPS = new Set([
 
 const LABELS = withPath(LABELS_PATH, VALID_LABEL_TYPES);
 
-const DEFAULT_IMAGE_GROUPS = [
+const DEFAULT_IMAGE_GROUPS: State.SidebarGroup[] = [
   { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
   { name: "primitives", paths: [] },
 ];
 
-const DEFAULT_VIDEO_GROUPS = [
+const DEFAULT_VIDEO_GROUPS: State.SidebarGroup[] = [
   { name: "tags", paths: [] },
   { name: "metadata", paths: [] },
   { name: "labels", paths: [] },
@@ -184,17 +183,18 @@ const NONE = [null, undefined];
 export const resolveGroups = (
   sampleFields: StrictField[],
   frameFields: StrictField[],
-  sidebarGroups?: State.SidebarGroup[],
-  config: NonNullable<
-    sidebarGroupsFragment$data["appConfig"]
-  >["sidebarGroups"] = []
+  currentGroups: State.SidebarGroup[],
+  configGroups: State.SidebarGroup[]
 ): State.SidebarGroup[] => {
-  let groups = sidebarGroups?.length
-    ? sidebarGroups
+  let groups = currentGroups.length
+    ? currentGroups
+    : configGroups.length
+    ? configGroups
     : frameFields.length
     ? DEFAULT_VIDEO_GROUPS
     : DEFAULT_IMAGE_GROUPS;
-  const expanded = config.reduce((map, { name, expanded }) => {
+
+  const expanded = configGroups.reduce((map, { name, expanded }) => {
     map[name] = expanded;
     return map;
   }, {});
@@ -205,6 +205,23 @@ export const resolveGroups = (
       : { ...group };
   });
 
+  const metadata = groups.find(({ name }) => name === "metadata");
+  if (!metadata) {
+    groups.unshift({
+      name: "metadata",
+      expanded: true,
+      paths: [],
+    });
+  }
+
+  const tags = groups.find(({ name }) => name === "tags");
+  groups = groups.filter(({ name }) => name !== "tags");
+  groups.unshift({
+    name: "tags",
+    expanded: tags?.expanded,
+    paths: [],
+  });
+
   const present = new Set<string>(groups.map(({ paths }) => paths).flat());
   const updater = groupUpdater(
     groups,
@@ -212,17 +229,23 @@ export const resolveGroups = (
     present
   );
 
-  updater("labels", fieldsMatcher(sampleFields, labelsMatcher(), present));
+  updater(
+    "labels",
+    fieldsMatcher(sampleFields, labelsMatcher(), present),
+    true
+  );
 
   frameFields.length &&
     updater(
       "frame labels",
-      fieldsMatcher(frameFields, labelsMatcher(), present, "frames.")
+      fieldsMatcher(frameFields, labelsMatcher(), present, "frames."),
+      true
     );
 
   updater(
     "primitives",
-    fieldsMatcher(sampleFields, primitivesMatcher, present)
+    fieldsMatcher(sampleFields, primitivesMatcher, present),
+    true
   );
 
   sampleFields.filter(groupFilter).forEach(({ fields, name }) => {
@@ -237,7 +260,8 @@ export const resolveGroups = (
       present.add(`frames.${name}`);
       updater(
         `frames.${name}`,
-        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`)
+        fieldsMatcher(fields || [], () => true, present, `frames.${name}.`),
+        true
       );
     });
 
@@ -262,13 +286,13 @@ const groupUpdater = (
     groups[i].paths = filterPaths(groups[i].paths, schema);
   }
 
-  return (name: string, paths: string[]) => {
+  return (name: string, paths: string[], expanded = false) => {
     if (paths.length === 0) return;
     paths.forEach((path) => present.add(path));
 
     const index = groupNames.indexOf(name);
     if (index < 0) {
-      groups.push({ name, paths, expanded: false });
+      groups.push({ name, paths, expanded });
       groupNames.push(name);
       return;
     }
@@ -279,13 +303,11 @@ const groupUpdater = (
 };
 
 export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
-  let config: NonNullable<
-    sidebarGroupsFragment$data["appConfig"]
-  >["sidebarGroups"] = [];
+  let configGroups: State.SidebarGroup[] = [];
   let current: State.SidebarGroup[] = [];
   return [
     (sampleFields: StrictField[], frameFields: StrictField[]) => {
-      return resolveGroups(sampleFields, frameFields, current, config);
+      return resolveGroups(sampleFields, frameFields, current, configGroups);
     },
     graphQLSyncFragmentAtomFamily<
       sidebarGroupsFragment$key,
@@ -297,7 +319,10 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
         keys: ["dataset"],
         sync: (modal) => !modal,
         read: (data, prev) => {
-          config = data.appConfig?.sidebarGroups || [];
+          configGroups = (data.appConfig?.sidebarGroups || []).map((group) => ({
+            ...group,
+            paths: [...group.paths],
+          }));
           current = resolveGroups(
             collapseFields(
               readFragment(
@@ -310,7 +335,7 @@ export const [resolveSidebarGroups, sidebarGroupsDefinition] = (() => {
                 .frameFields
             ),
             data.name === prev?.name ? current : [],
-            config
+            configGroups
           );
 
           return current;

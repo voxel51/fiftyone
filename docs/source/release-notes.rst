@@ -3,6 +3,53 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.6
+--------------------
+*Released February 14, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.5 <release-notes-v0.23.5>`, plus:
+
+- Improved dataset search user experience
+- Post login redirects will now send the user to the correct page
+
+.. _release-notes-v0.23.5:
+
+FiftyOne 0.23.5
+---------------
+*Released February 14, 2024*
+
+
+What's New
+
+- Added subcounts to search results in the sidebar 
+  `#3973 <https://github.com/voxel51/fiftyone/pull/3973>`_
+- Added :class:`fiftyone.operators.types.ViewTargetProperty` to make it simpler to add view selection to a :class:`fiftyone.operators.Operator`
+  `#4076 <https://github.com/voxel51/fiftyone/pull/4076>`_
+- Added support for apply monocular depth estimation transformers from the 
+  Hugging Face `transformers` library directly to FiftyOne datasets
+  `#4082 <https://github.com/voxel51/fiftyone/pull/4035>`_
+  
+
+Bugs
+
+- Fixed an issue where increments were padded improperly 
+  `#4035 <https://github.com/voxel51/fiftyone/pull/4035>`_
+- Fixed an issue when setting `session.color_scheme`
+  `#4060 <https://github.com/voxel51/fiftyone/pull/4060>`_
+- Fixed sidebar groups resolution when the dataset app config setting is configured
+  `#4064 <https://github.com/voxel51/fiftyone/pull/4064>`_
+- Fixed issue when `SelectGroupSlices` view stage is applied with only one slice within video grouped datasets
+  `#4066 <https://github.com/voxel51/fiftyone/pull/4066>`_
+- Fixed non-default pcd slice rendering in the App
+  `#4044 <https://github.com/voxel51/fiftyone/pull/4044>`_
+- Dynamic groups configuration options are now only shown when relevant
+  `#4068 <https://github.com/voxel51/fiftyone/pull/4068>`_
+- Fixed issue with dynamic groups mode pagination
+  `#4068 <https://github.com/voxel51/fiftyone/pull/4068>`_
+- Enabled tagging in sidebar lightning mode
+  `#4048 <https://github.com/voxel51/fiftyone/pull/4048>`_
+
+
 FiftyOne Teams 1.5.5
 --------------------
 *Released January 25, 2024*
@@ -318,7 +365,7 @@ Features
 - Added support for manually marking delegated operations
   :ref:`as failed <teams-runs-mark-as-failed>`
 - Added support for
-  :ref:`monioring the progress <teams-runs-monitoring-progress>`
+  :ref:`monitoring the progress <teams-runs-monitoring-progress>`
   of delegated operations
 - Improved handling of plugin secrets
 - Added the ability to attach authorization tokens to media/asset requests
