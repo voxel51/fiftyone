@@ -73,7 +73,7 @@ export const Looker3d = () => {
           ) : (
             <MediaTypeFo3dComponent />
           )}
-          {(hoveringRef.current || isHovering) && (
+          {
             <ActionBar
               onMouseEnter={() => {
                 hoveringRef.current = true;
@@ -82,7 +82,7 @@ export const Looker3d = () => {
                 hoveringRef.current = false;
               }}
             />
-          )}
+          }
         </Container>
       </ErrorBoundary>
     );
