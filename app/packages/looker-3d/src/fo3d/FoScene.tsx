@@ -24,6 +24,7 @@ import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
 import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { Fo3dBackground } from "./Background";
+import { useFo3dContext } from "./context";
 
 interface FoSceneProps {
   scene: FoScene;
@@ -174,6 +175,8 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [scene]
   );
 
+  const { isSceneInitialized } = useFo3dContext();
+
   const visibilityMap = useControls(
     "Visibility",
     defaultVisibilityMap ?? {},
@@ -197,12 +200,12 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
   const isFo3dBackgroundOn = useRecoilValue(isFo3dBackgroundOnAtom);
 
   useEffect(() => {
-    if (scene?.background !== null) {
+    if (isSceneInitialized && scene?.background !== null) {
       setActionBarItems((items) => {
         return [[ACTION_TOGGLE_BACKGROUND], ...items];
       });
     }
-  }, [scene]);
+  }, [scene, isSceneInitialized]);
 
   if (!sceneR3f) {
     return null;

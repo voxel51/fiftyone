@@ -198,6 +198,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
     ({ set }) =>
       () => {
         set(activeNodeAtom, null);
+        set(actionRenderListAtomFamily("fo3d"), []);
       },
     []
   );
@@ -253,6 +254,10 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   );
 
   useEffect(() => {
+    if (!isSceneInitialized) {
+      return;
+    }
+
     // todo: find a better way of setting action bar items
     const addUniqueItems = (currentItems, newItems) => {
       const existingKeys = currentItems.map((item) => item[0]);
@@ -271,7 +276,14 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       ];
       return addUniqueItems(items, newItems);
     });
-  }, [onChangeView, jsonPanel, sample, helpPanel, setActionBarItems]);
+  }, [
+    isSceneInitialized,
+    onChangeView,
+    jsonPanel,
+    sample,
+    helpPanel,
+    setActionBarItems,
+  ]);
 
   useEffect(() => {
     if (!orbitControlsRef.current) {
@@ -328,7 +340,12 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         onPointerMissed={resetActiveNode}
       >
         <Fo3dSceneContext.Provider
-          value={{ upVector, sceneBoundingBox, pluginSettings: settings }}
+          value={{
+            isSceneInitialized,
+            upVector,
+            sceneBoundingBox,
+            pluginSettings: settings,
+          }}
         >
           <Suspense fallback={<SpinningCube />}>
             <AdaptiveDpr pixelated />
