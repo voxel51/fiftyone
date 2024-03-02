@@ -1,9 +1,65 @@
-import { GizmoHelper, GizmoViewport } from "@react-three/drei";
+import { GizmoHelper, GizmoViewport, Line } from "@react-three/drei";
 import { useMemo } from "react";
 import { useRecoilValue } from "recoil";
+import { Vector3 } from "three";
 import { isGridOnAtom } from "../state";
 import { getGridQuaternionFromUpVector } from "../utils";
 import { useFo3dContext } from "./context";
+
+const AXIS_RED_COLOR = "#FF2160";
+const AXIS_GREEN_COLOR = "#21DF80";
+const AXIS_BLUE_COLOR = "#2280FF";
+
+const FoAxesHelper = ({ size }) => {
+  const { upVector } = useFo3dContext();
+
+  const axes = useMemo(
+    () => [
+      {
+        start: new Vector3(-size / 2, 0, 0),
+        end: new Vector3(size / 2, 0, 0),
+        color: AXIS_RED_COLOR,
+      },
+      {
+        start: new Vector3(0, -size / 2, 0),
+        end: new Vector3(0, size / 2, 0),
+        color: AXIS_GREEN_COLOR,
+      },
+      {
+        start: new Vector3(0, 0, -size / 2),
+        end: new Vector3(0, 0, size / 2),
+        color: AXIS_BLUE_COLOR,
+      },
+    ],
+    [size]
+  );
+
+  const axisComponents = useMemo(() => {
+    return axes
+      .filter(
+        (axis) =>
+          !(
+            (axis.color === AXIS_RED_COLOR && upVector.x === 1) ||
+            (axis.color === AXIS_GREEN_COLOR && upVector.y === 1) ||
+            (axis.color === AXIS_BLUE_COLOR && upVector.z === 1)
+          )
+      )
+      .map((axis) => {
+        return (
+          <Line
+            key={axis.color}
+            points={[axis.start, axis.end]}
+            color={axis.color}
+            lineWidth={2}
+            opacity={0.4}
+            transparent
+          />
+        );
+      });
+  }, [upVector, axes]);
+
+  return <>{axisComponents}</>;
+};
 
 export const Gizmos = () => {
   const { upVector, sceneBoundingBox } = useFo3dContext();
@@ -65,7 +121,7 @@ export const Gizmos = () => {
 
     // add 20% padding
     // 2.5 is an arbitrary multiplier for offset
-    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.2) + offset * 2.5;
+    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.2) + offset * 3;
     const numLines = Math.ceil(gridSize);
 
     return [gridSize, numLines];
@@ -74,10 +130,13 @@ export const Gizmos = () => {
   return (
     <>
       {isGridOn && (
-        <gridHelper
-          args={[gridSize, numGridLines]}
-          quaternion={gridHelperQuarternion}
-        />
+        <>
+          <gridHelper
+            args={[gridSize, numGridLines]}
+            quaternion={gridHelperQuarternion}
+          />
+          <FoAxesHelper size={gridSize} />
+        </>
       )}
       <GizmoHelper alignment="top-left" margin={[80, 100]}>
         <GizmoViewport />
