@@ -4,7 +4,7 @@
 |
 """
 import json
-from typing import Optional
+from typing import Optional, List
 
 from pydantic.dataclasses import dataclass
 
@@ -32,7 +32,7 @@ class SceneBackground:
 
     color: Optional[str] = None
     image: Optional[str] = None
-    cube: Optional[list[str]] = None
+    cube: Optional[List[str]] = None
     intensity: Optional[float] = 1.0
 
     def as_dict(self):
@@ -89,7 +89,7 @@ class Scene(Object3D):
     def __init__(
         self,
         camera: Optional[PerspectiveCamera] = None,
-        lights: Optional[list[Light]] = None,
+        lights: Optional[List[Light]] = None,
         background: Optional[SceneBackground] = None,
     ):
         super().__init__(name="Scene", visible=True)

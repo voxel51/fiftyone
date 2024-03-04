@@ -1,9 +1,8 @@
-from typing import Literal
+from typing import List, Literal, Tuple, Union
 
 import numpy as np
 from pydantic.dataclasses import dataclass
 from scipy.spatial.transform import Rotation
-from typing import Union
 
 
 @dataclass(frozen=True)
@@ -61,4 +60,4 @@ class Quaternion:
         return np.array([self.x, self.y, self.z, self.w])
 
 
-Vec3UnionType = Union[Vector3, list[float], tuple[float]]
+Vec3UnionType = Union[Vector3, List[float], Tuple[float]]
