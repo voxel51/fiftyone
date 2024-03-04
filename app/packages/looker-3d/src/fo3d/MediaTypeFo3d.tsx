@@ -178,7 +178,7 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
         // assume z-up
         return new Vector3(
           center.x,
-          center.y + Math.max(size.x, size.y, size.z) * 2,
+          center.y - Math.max(size.x, size.y, size.z) * 2,
           center.z + Math.max(1.5, size.z / 2)
         );
       }
