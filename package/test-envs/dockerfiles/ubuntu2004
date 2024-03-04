@@ -17,6 +17,6 @@ RUN apt-get update && \
 
 ENV PATH="/root/.local/bin:${PATH}"
 
-RUN pip3 install --user --upgrade pip setuptools wheel
+RUN pip3 install --user --upgrade pip setuptools wheel build
 
 WORKDIR /test
