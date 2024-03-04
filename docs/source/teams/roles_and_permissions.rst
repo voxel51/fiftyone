@@ -1,7 +1,7 @@
 .. _teams-roles-and-permissions:
 
-Roles, groups and permissions
-=============================
+Roles and permissions
+=====================
 
 .. default-role:: code
 
@@ -14,7 +14,7 @@ user groups and fine-grained permissions so that you can safely and securly
 collaborate both inside and outside your organization at all stages of your 
 workflows.
 
-This page introduces the basic roles, groups, and permissions available in 
+This page introduces the basic roles and permissions available in 
 FiftyOne Teams.
 
 .. _teams-roles:
@@ -100,7 +100,7 @@ view other users of the deployment.
 .. _teams-groups:
 
 Groups
-___________
+------
 
 User groups in FiftyOne Teams allow organization admins to manage a collection 
 of users as a single entity. This simplifies the process of assigning 
@@ -127,6 +127,7 @@ existing users to the group by clicking on "Add users".
    :align: center
 
 .. note::
+
    Non-existing users cannot be directly added to a group. Users must be 
    invited and accept the invitation before they can be added to a group.
 
@@ -140,9 +141,8 @@ a dataset's permissions under the dataset's
 :ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
 In FiftyOne Teams, dataset permissions for a user are determined by both the 
-access they receive from their group's permissions and individual permissions 
-assigned to them. This tiered permissions system is 
-designed to facilitate management at scale. 
+access they receive from their groups' permissions and individual permissions 
+assigned to them.  
 
 A user’s permissions on a dataset is the maximum of their permissions from the 
 following sources:
@@ -158,9 +158,10 @@ following sources:
 .. note::
 
    User role determines the highest level of access that a user can be granted 
-   to a dataset. For example, a user with guest role can be added to a group 
-   with **Can edit** permission to a dataset, but the guest will have
-   **Can view** permission instead of **Can edit** permission of the dataset.
+   to a dataset. For example, a user with GUEST role can be added to a group 
+   with **Can edit** permission to a dataset, but this user will have
+   **Can view** permission instead of **Can edit** permission of the dataset,
+   because GUEST role only allows **Can view** permission to datasets.
 
 .. _teams-default-access:
 
