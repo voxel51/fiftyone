@@ -34,9 +34,12 @@ class Light(Object3D):
         self.intensity = intensity
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {
-            "color": self.color,
-            "intensity": self.intensity,
+        return {
+            **super()._to_dict_extra(),
+            **{
+                "color": self.color,
+                "intensity": self.intensity,
+            },
         }
 
 
@@ -110,8 +113,9 @@ class DirectionalLight(Light):
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {
-            "target": self.target.to_arr().tolist()
+        return {
+            **super()._to_dict_extra(),
+            **{"target": self.target.to_arr().tolist()},
         }
 
 
@@ -152,9 +156,12 @@ class PointLight(Light):
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {
-            "distance": self.distance,
-            "decay": self.decay,
+        return {
+            **super()._to_dict_extra(),
+            **{
+                "distance": self.distance,
+                "decay": self.decay,
+            },
         }
 
 
@@ -207,10 +214,13 @@ class SpotLight(Light):
         return f"{self.__class__.__name__}({', '.join(kwargs_list)})"
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {
-            "target": self.target.to_arr().tolist(),
-            "distance": self.distance,
-            "decay": self.decay,
-            "angle": self.angle,
-            "penumbra": self.penumbra,
+        return {
+            **super()._to_dict_extra(),
+            **{
+                "target": self.target.to_arr().tolist(),
+                "distance": self.distance,
+                "decay": self.decay,
+                "angle": self.angle,
+                "penumbra": self.penumbra,
+            },
         }

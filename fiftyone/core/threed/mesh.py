@@ -82,9 +82,12 @@ class ObjMesh(Mesh):
         self.mtl_path = mtl_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {
-            "objPath": self.obj_path,
-            "mtlPath": self.mtl_path,
+        return {
+            **super()._to_dict_extra(),
+            **{
+                "objPath": self.obj_path,
+                "mtlPath": self.mtl_path,
+            },
         }
 
 
@@ -120,7 +123,7 @@ class FBXMesh(Mesh):
         self.gltf_path = fbx_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"fbxPath": self.gltf_path}
+        return {**super()._to_dict_extra(), **{"fbxPath": self.gltf_path}}
 
 
 class GLTFMesh(Mesh):
@@ -159,7 +162,7 @@ class GLTFMesh(Mesh):
         self.gltf_path = gltf_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"gltfPath": self.gltf_path}
+        return {**super()._to_dict_extra(), **{"gltfPath": self.gltf_path}}
 
 
 class PlyMesh(Mesh):
@@ -199,7 +202,7 @@ class PlyMesh(Mesh):
         self.is_point_cloud = is_point_cloud
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"plyPath": self.ply_path}
+        return {**super()._to_dict_extra(), **{"plyPath": self.ply_path}}
 
 
 class StlMesh(Mesh):
@@ -234,4 +237,4 @@ class StlMesh(Mesh):
         self.stl_path = stl_path
 
     def _to_dict_extra(self):
-        return super()._to_dict_extra() | {"stlPath": self.stl_path}
+        return {**super()._to_dict_extra(), **{"stlPath": self.stl_path}}

@@ -67,11 +67,14 @@ class PointcloudMaterial(Material3D):
     attenuate_by_distance: bool = False
 
     def as_dict(self):
-        return super().as_dict() | {
-            "shadingMode": self.shading_mode,
-            "customColor": self.custom_color,
-            "pointSize": self.point_size,
-            "attenuateByDistance": self.attenuate_by_distance,
+        return {
+            **super().as_dict(),
+            **{
+                "shadingMode": self.shading_mode,
+                "customColor": self.custom_color,
+                "pointSize": self.point_size,
+                "attenuateByDistance": self.attenuate_by_distance,
+            },
         }
 
 
@@ -82,7 +85,7 @@ class MeshMaterial(Material3D):
     wireframe: bool = False
 
     def as_dict(self):
-        return super().as_dict() | {"wireframe": self.wireframe}
+        return {**super().as_dict(), **{"wireframe": self.wireframe}}
 
 
 @dataclass
@@ -99,7 +102,7 @@ class MeshBasicMaterial(MeshMaterial):
     color: str = COLOR_DEFAULT_GRAY
 
     def as_dict(self):
-        return super().as_dict() | {"color": self.color}
+        return {**super().as_dict(), **{"color": self.color}}
 
 
 @dataclass
@@ -125,12 +128,15 @@ class MeshStandardMaterial(MeshMaterial):
     roughness: float = 1.0
 
     def as_dict(self):
-        return super().as_dict() | {
-            "color": self.color,
-            "emissiveColor": self.emissive_color,
-            "emissiveIntensity": self.emissive_intensity,
-            "metalness": self.metalness,
-            "roughness": self.roughness,
+        return {
+            **super().as_dict(),
+            **{
+                "color": self.color,
+                "emissiveColor": self.emissive_color,
+                "emissiveIntensity": self.emissive_intensity,
+                "metalness": self.metalness,
+                "roughness": self.roughness,
+            },
         }
 
 
@@ -159,12 +165,15 @@ class MeshLambertMaterial(MeshMaterial):
     refraction_ratio: float = 0.98
 
     def as_dict(self):
-        return super().as_dict() | {
-            "color": self.color,
-            "emissiveColor": self.emissive_color,
-            "emissiveIntensity": self.emissive_intensity,
-            "reflectivity": self.reflectivity,
-            "refractionRatio": self.refraction_ratio,
+        return {
+            **super().as_dict(),
+            **{
+                "color": self.color,
+                "emissiveColor": self.emissive_color,
+                "emissiveIntensity": self.emissive_intensity,
+                "reflectivity": self.reflectivity,
+                "refractionRatio": self.refraction_ratio,
+            },
         }
 
 
@@ -185,9 +194,12 @@ class MeshPhongMaterial(MeshLambertMaterial):
     specular_color: str = COLOR_DEFAULT_DARK_GRAY
 
     def as_dict(self):
-        return super().as_dict() | {
-            "shininess": self.shininess,
-            "specularColor": self.specular_color,
+        return {
+            **super().as_dict(),
+            **{
+                "shininess": self.shininess,
+                "specularColor": self.specular_color,
+            },
         }
 
 
