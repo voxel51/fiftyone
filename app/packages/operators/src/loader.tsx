@@ -4,21 +4,15 @@ import { useEffect, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
-import { executeStartupOperators, loadOperatorsFromServer } from "./operators";
+import { loadOperatorsFromServer } from "./operators";
 import {
   availableOperatorsRefreshCount,
   operatorsInitializedAtom,
 } from "./state";
 
-let startupOperatorsExecuted = false;
-
 async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
   await loadOperatorsFromServer(datasetName);
-  if (!startupOperatorsExecuted) {
-    executeStartupOperators();
-    startupOperatorsExecuted = true;
-  }
 }
 
 /**
