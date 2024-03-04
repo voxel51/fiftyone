@@ -5,6 +5,7 @@ FiftyOne Teams authorization.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import re
 import typing as t
 from inspect import isclass
@@ -167,6 +168,10 @@ def authorize_gql_class(query: t.Type[t.Any]) -> t.Type[t.Any]:
 
 def _authorize_route(func):
     async def authorize_request(endpoint: HTTPEndpoint, request: Request):
+        needs_edit_resolver = None
+        for item in NEEDS_EDIT:
+            if isinstance(endpoint, item):
+                needs_edit_resolver = NEEDS_EDIT[item]
         variables = await load_variables(request)
         token = get_token_from_request(request)
         try:
@@ -179,8 +184,7 @@ def _authorize_route(func):
             await _has_dataset_permission(
                 token,
                 dataset_name,
-                edit=endpoint in NEEDS_EDIT
-                and NEEDS_EDIT[endpoint](variables),
+                edit=needs_edit_resolver and needs_edit_resolver(variables),
             )
         ):
             return JSONResponse({"error": "Forbidden"}, status_code=403)
