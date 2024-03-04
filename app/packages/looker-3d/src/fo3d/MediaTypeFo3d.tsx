@@ -86,8 +86,8 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       return new Vector3(...settings.defaultUp).normalize();
     }
 
-    // default to z-up (three.js default is y-up)
-    return new Vector3(0, 0, 1);
+    // default to y-up
+    return new Vector3(0, 1, 0);
   }, [settings, foScene]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
