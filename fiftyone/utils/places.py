@@ -17,6 +17,7 @@ import eta.core.utils as etau
 import eta.core.web as etaw
 
 import fiftyone.utils.data as foud
+import fiftyone.core.labels as fol
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,6 @@ def download_places_dataset_split(
         dataset_dir: the directory to download the dataset
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
-        image_ids (None): an optional list of specific image IDs to load. Can
-            be provided in any of the following formats:
-
-            -   a list of ``<image-id>`` ints or strings
-            -   a list of ``<split>/<image-id>`` strings
-            -   the path to a text (newline-separated), JSON, or CSV file
-                containing the list of image IDs to load in either of the first
-                two formats
         num_workers (None): a suggested number of threads to use when
             downloading individual images
         raw_dir (None): a directory in which full annotations files may be
@@ -62,25 +55,23 @@ def download_places_dataset_split(
             % (split, tuple(_IMAGE_DOWNLOAD_LINKS.keys()))
         )
 
-    did_download = False
-
     if raw_dir is None:
         raw_dir = os.path.join(dataset_dir, "raw")
-    etau.ensure_dir(raw_dir)
 
-    annotation_tar_name = os.path.basename(_ANNOTATION_DOWNLOAD_LINK)
-    anno_dir = os.path.join(raw_dir, annotation_tar_name.replace(".tar", ""))
+    if not os.path.isdir(raw_dir):
+        etau.ensure_dir(raw_dir)
+        logger.info("Downloading annotations to %s if necessary!", raw_dir)
 
-    if not os.path.isdir(anno_dir):
-        logger.info("Downloading annotations to %s if necessary!", anno_dir)
-        archive_path = os.path.join(raw_dir, annotation_tar_name)
-        if not os.path.isfile(archive_path):
-            etaw.download_file(_ANNOTATION_DOWNLOAD_LINK, path=archive_path)
-
-        etau.extract_tar(archive_path, delete_tar=True)
+        annot_tar = os.path.join(
+            raw_dir, os.path.basename(_ANNOTATION_DOWNLOAD_LINK)
+        )
+        if not os.path.isfile(annot_tar):
+            etaw.download_file(_ANNOTATION_DOWNLOAD_LINK, path=annot_tar)
+        etau.extract_tar(annot_tar, delete_tar=True)
     else:
-        logger.info("Found %s at '%s'", annotation_tar_name, anno_dir)
+        logger.info("Found annotations at '%s'", raw_dir)
 
+    did_download = False
     images_dir = os.path.join(dataset_dir, "data")
 
     if not os.path.isdir(images_dir):
@@ -151,7 +142,9 @@ def download_places_dataset_split(
         logger.info("Found %s split at '%s'", split, images_dir)
 
     categories_map = {}
-    with open(os.path.join(raw_dir, "categories_places365.txt"), "r") as file:
+    with open(
+        os.path.join(raw_dir, _ANNOTATION_FILES_PATH["categories"]), "r"
+    ) as file:
         for line in file:
             components = line.strip().split()
 
@@ -160,7 +153,7 @@ def download_places_dataset_split(
 
             categories_map[key] = category
 
-    if did_download:
+    if split != "test" and did_download:
         labels_dir = os.path.join(dataset_dir, "labels")
         etau.ensure_dir(labels_dir)
         txt_file = os.path.join(raw_dir, _ANNOTATION_FILES_PATH[split])
@@ -196,17 +189,6 @@ def download_places_dataset_split(
             with open(json_file, "w") as outfile:
                 json.dump(data, outfile, indent=4)
 
-        if split == "test":
-            data = {}
-
-            with open(txt_file, "r") as file:
-                for line in file:
-                    line = line.strip()
-                    data[line] = "Unlabelled"
-
-            with open(json_file, "w") as outfile:
-                json.dump(data, outfile, indent=4)
-
     num_samples = len(etau.list_files(os.path.join(images_dir)))
     classes = list(categories_map.values())
 
@@ -220,22 +202,6 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
 
     Args:
         dataset_dir: the dataset directory
-        classes (None): a string or list of strings specifying required classes
-            to load. If provided, only samples containing at least one instance
-            of a specified class will be loaded
-        image_ids (None): an optional list of specific image IDs to load. Can
-            be provided in any of the following formats:
-
-            -   a list of ``<image-id>`` strings
-            -   a list of ``<split>/<image-id>`` strings
-            -   the path to a text (newline-separated), JSON, or CSV file
-                containing the list of image IDs to load in either of the first
-                two formats
-        include_id (True): whether to load the Open Images ID for each sample
-            along with the labels
-        only_matching (False): whether to only load labels that match the
-            ``classes`` or ``attrs`` requirements that you provide (True), or
-            to load all labels for samples that match the requirements (False)
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
@@ -253,10 +219,6 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
     def __init__(
         self,
         dataset_dir=None,
-        # data_path=None,
-        # labels_path=None,
-        # classes=None,
-        # compute_metadata=False,
         shuffle=False,
         seed=None,
         max_samples=None,
@@ -264,9 +226,6 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         super().__init__(
             dataset_dir=dataset_dir,
-            # data_path=data_path,
-            # labels_path=labels_path,
-            # compute_metadata=compute_metadata,
             shuffle=shuffle,
             seed=seed,
             max_samples=max_samples,
@@ -285,6 +244,10 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
     def has_dataset_info(self):
         return False
 
+    @property
+    def label_cls(self):
+        return fol.Classification
+
     def __iter__(self):
         self._iter_uuids = iter(self._uuids)
         return self
@@ -292,7 +255,13 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
     def __next__(self):
         image_id = next(self._iter_uuids)
         image_path = self._images_map[image_id]
-        label = self._labels_map[os.path.basename(image_path)]
+
+        if self._labels_map:
+            label = fol.Classification(
+                label=self._labels_map[os.path.basename(image_path)]
+            )
+        else:
+            label = None
 
         return image_path, None, label
 
@@ -321,9 +290,10 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
 
         self._uuids = available_ids
         self._images_map = images_map
-        self._labels_map = etas.load_json(
-            os.path.join(labels_dir, "labels.json")
-        )
+        if os.path.exists(labels_dir):
+            self._labels_map = etas.load_json(
+                os.path.join(labels_dir, "labels.json")
+            )
 
     @staticmethod
     def _get_num_samples(dataset_dir):
@@ -345,6 +315,7 @@ _TAR_NAMES = {
 _ANNOTATION_DOWNLOAD_LINK = "http://data.csail.mit.edu/places/places365/filelist_places365-standard.tar"
 
 _ANNOTATION_FILES_PATH = {
+    "categories": "categories_places365.txt",
     "train": "places365_train_standard.txt",
     "validation": "places365_val.txt",
     "test": "places365_test.txt",
