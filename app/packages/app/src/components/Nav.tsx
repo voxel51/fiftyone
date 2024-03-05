@@ -1,5 +1,4 @@
 import {
-  Button,
   DocsLink,
   GitHubLink,
   Header,
@@ -13,9 +12,7 @@ import { useRefresh } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
-import { AnimatePresence, motion } from "framer-motion";
 import React, { Suspense, useEffect, useMemo } from "react";
-import ReactDOM from "react-dom";
 import ReactGA from "react-ga4";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -113,82 +110,49 @@ const Nav: React.FC<{
       fragment NavFragment on Query {
         ...NavDatasets
         ...NavGA
-
-        teamsSubmission
       }
     `,
     fragment
   );
   useGA(data);
   const useSearch = getUseSearch(data);
-
-  const [teams, setTeams] = useRecoilState(fos.appTeamsIsOpen);
   const refresh = useRefresh();
   const { mode, setMode } = useColorScheme();
   const [_, setTheme] = useRecoilState(fos.theme);
 
   return (
-    <>
-      <Header
-        title={"FiftyOne"}
-        onRefresh={refresh}
-        navChildren={<DatasetSelector useSearch={useSearch} />}
-      >
-        {hasDataset && (
-          <Suspense fallback={<div style={{ flex: 1 }}></div>}>
-            <ViewBar />
-          </Suspense>
-        )}
-        {!hasDataset && <div style={{ flex: 1 }}></div>}
-        <div className={iconContainer}>
-          {!data.teamsSubmission && (
-            <Button
-              onClick={() => {
-                setTeams(true);
-              }}
-            >
-              Have a Team?
-            </Button>
-          )}
-          <IconButton
-            title={mode === "dark" ? "Light mode" : "Dark mode"}
-            onClick={() => {
-              const nextMode = mode === "dark" ? "light" : "dark";
-              setMode(nextMode);
-              setTheme(nextMode);
-            }}
-            sx={{
-              color: (theme) => theme.palette.text.secondary,
-              pr: 0,
-            }}
-          >
-            {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
-          </IconButton>
-          <SlackLink />
-          <GitHubLink />
-          <DocsLink />
-        </div>
-      </Header>
-      {ReactDOM.createPortal(
-        <AnimatePresence>
-          {teams && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{
-                opacity: 1,
-                height: "auto",
-              }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              key={"teams"}
-            >
-              <Teams />
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.getElementById("teams") as HTMLDivElement
+    <Header
+      title={"FiftyOne"}
+      onRefresh={refresh}
+      navChildren={<DatasetSelector useSearch={useSearch} />}
+    >
+      {hasDataset && (
+        <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+          <ViewBar />
+        </Suspense>
       )}
-    </>
+      {!hasDataset && <div style={{ flex: 1 }}></div>}
+      <div className={iconContainer}>
+        <Teams />
+        <IconButton
+          title={mode === "dark" ? "Light mode" : "Dark mode"}
+          onClick={() => {
+            const nextMode = mode === "dark" ? "light" : "dark";
+            setMode(nextMode);
+            setTheme(nextMode);
+          }}
+          sx={{
+            color: (theme) => theme.palette.text.secondary,
+            pr: 0,
+          }}
+        >
+          {mode === "dark" ? <LightMode color="inherit" /> : <DarkMode />}
+        </IconButton>
+        <SlackLink />
+        <GitHubLink />
+        <DocsLink />
+      </div>
+    </Header>
   );
 };
 
