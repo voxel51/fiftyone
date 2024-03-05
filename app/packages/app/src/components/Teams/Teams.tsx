@@ -14,7 +14,7 @@ const Teams = () => {
     firstname: "",
     lastname: "",
     company: "",
-    role: "",
+    phone: "",
   });
   const [submitText, setSubmitText] = useState("Submit");
   const [teams, setTeams] = useRecoilState(fos.teams);
@@ -27,6 +27,8 @@ const Teams = () => {
       storeTeamsSubmission
     }
   `);
+
+  const setSnackbar = useSetRecoilState(fos.snackbarErrors);
 
   const setFormValue = (name) => (e) =>
     setFormState({
@@ -61,9 +63,10 @@ const Teams = () => {
             name: "company",
             value: formState.company,
           },
+          { name: "phone", value: formState.phone },
           {
-            name: "role",
-            value: formState.role,
+            name: "fiftyone_user_status",
+            value: "Yes",
           },
         ],
         context: { pageName: "FiftyOne App" },
@@ -71,7 +74,7 @@ const Teams = () => {
     })
       .then((response) => {
         if (response.status !== 200) {
-          throw new Error("Failed submission");
+          throw response;
         }
         return response.json();
       })
@@ -81,8 +84,14 @@ const Teams = () => {
         commit({ variables: {} });
         setTimeout(() => setOpen(false), 2000);
       })
-      .catch((_) => {
+      .catch((response: Response) => {
+        response.json().then(({ errors }) => {
+          if (errors.length) {
+            setSnackbar((v) => [...v, errors.map((e) => e.message)]);
+          }
+        });
         setSubmitText("Something went wrong");
+        setTimeout(() => setSubmitText("Submit"), 3000);
       });
   };
   return (
@@ -124,24 +133,24 @@ const Teams = () => {
       />
       <input
         key="email"
-        placeholder={"Email*"}
+        placeholder={"Company Email*"}
         type="email"
         value={formState.email ?? ""}
         onChange={setFormValue("email")}
       />
       <input
         key="company"
-        placeholder={"Company"}
+        placeholder={"Company*"}
         value={formState.company ?? ""}
         maxLength={100}
         onChange={setFormValue("company")}
       />
       <input
         key="role"
-        placeholder={"Role"}
-        value={formState.role ?? ""}
-        maxLength={100}
-        onChange={setFormValue("role")}
+        type="phone"
+        placeholder={"Phone"}
+        value={formState.phone ?? ""}
+        onChange={setFormValue("phone")}
       />
       <Button
         key="submit"
@@ -150,7 +159,9 @@ const Teams = () => {
           !(
             formState.email?.length &&
             formState.firstname?.length &&
-            formState.lastname?.length
+            formState.lastname?.length &&
+            formState.email?.length &&
+            formState.company?.length
           ) || teams.submitted
         }
         style={{
