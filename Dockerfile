@@ -88,7 +88,7 @@ RUN apt -y update \
 #   pydicom: DICOM images
 #
 
-RUN pip --no-cache-dir install --upgrade pip setuptools wheel build ipython
+RUN pip --no-cache-dir install --upgrade pip setuptools wheel ipython
 
 #
 # Install FiftyOne from source
