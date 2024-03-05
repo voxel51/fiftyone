@@ -3267,7 +3267,6 @@ class PlacesDataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
     def _get_raw_dir(self, dataset_dir):
-        # To store full annotation files so that they never have to be redownloaded
         root_dir = os.path.dirname(os.path.normpath(dataset_dir))
         return os.path.join(root_dir, "raw")
 
