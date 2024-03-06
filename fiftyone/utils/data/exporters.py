@@ -1298,7 +1298,7 @@ class VideoExporter(MediaExporter):
 
 
 class DatasetExporter(object):
-    """Base interface for exporting datsets.
+    """Base interface for exporting datasets.
 
     See :ref:`this page <writing-a-custom-dataset-exporter>` for information
     about implementing/using dataset exporters.

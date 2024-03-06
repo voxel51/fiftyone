@@ -3447,7 +3447,7 @@ class SampleCollection(object):
             method (None): a specific
                 :attr:`fiftyone.core.evaluations.EvaluationMethodConfig.method`
                 string to match
-            **kwargs: optional config paramters to match
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of evaluation keys
@@ -3555,7 +3555,7 @@ class SampleCollection(object):
             method (None): a specific
                 :attr:`fiftyone.core.brain.BrainMethodConfig.method` string to
                 match
-            **kwargs: optional config paramters to match
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of brain keys
@@ -3656,7 +3656,7 @@ class SampleCollection(object):
         """Returns a list of run keys on this collection.
 
         Args:
-            **kwargs: optional config paramters to match
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of run keys
@@ -6523,11 +6523,11 @@ class SampleCollection(object):
     def sort_by_similarity(
         self, query, k=None, reverse=False, dist_field=None, brain_key=None
     ):
-        """Sorts the collection by similiarity to a specified query.
+        """Sorts the collection by similarity to a specified query.
 
         In order to use this stage, you must first use
         :meth:`fiftyone.brain.compute_similarity` to index your dataset by
-        similiarity.
+        similarity.
 
         Examples::
 
@@ -8715,7 +8715,7 @@ class SampleCollection(object):
             method (None): a specific
                 :attr:`fiftyone.core.annotations.AnnotationMethodConfig.method`
                 string to match
-            **kwargs: optional config paramters to match
+            **kwargs: optional config parameters to match
 
         Returns:
             a list of annotation keys
@@ -8809,7 +8809,7 @@ class SampleCollection(object):
             anno_key: an annotation key
             dest_field (None): an optional name of a new destination field
                 into which to load the annotations, or a dict mapping field names
-                in the run's label schema to new desination field names
+                in the run's label schema to new destination field names
             unexpected ("prompt"): how to deal with any unexpected labels that
                 don't match the run's label schema when importing. The
                 supported values are:
