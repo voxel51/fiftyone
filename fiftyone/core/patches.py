@@ -498,7 +498,7 @@ class EvaluationPatchesView(_PatchesView):
     """A :class:`fiftyone.core.view.DatasetView` containing evaluation patches
     from a :class:`fiftyone.core.dataset.Dataset`.
 
-    Evalation patches views contain an ordered collection of evaluation
+    Evaluation patches views contain an ordered collection of evaluation
     examples, each of which contains the ground truth and/or predicted labels
     for a true positive, false positive, or false negative example from an
     evaluation run on the underlying dataset.

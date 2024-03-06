@@ -8,9 +8,11 @@ import {
   DETECTIONS,
   DYNAMIC_EMBEDDED_DOCUMENT,
   EMBEDDED_DOCUMENT,
+  getCls,
   getFetchFunction,
   HEATMAP,
   LABEL_LIST,
+  Schema,
   setFetchFunction,
   Stage,
   VALID_LABEL_TYPES,
@@ -106,11 +108,12 @@ const imputeOverlayFromPath = async (
   customizeColorSetting: CustomizeColor[],
   colorscale: Colorscale,
   buffers: ArrayBuffer[],
-  sources: { [path: string]: string }
+  sources: { [path: string]: string },
+  cls: string
 ) => {
   // handle all list types here
-  if (label._cls === DETECTIONS) {
-    label.detections.forEach((detection) =>
+  if (cls === DETECTIONS) {
+    label?.detections?.forEach((detection) =>
       imputeOverlayFromPath(
         field,
         detection,
@@ -118,14 +121,15 @@ const imputeOverlayFromPath = async (
         customizeColorSetting,
         colorscale,
         buffers,
-        {}
+        {},
+        cls
       )
     );
     return;
   }
 
   // overlay path is in `map_path` property for heatmap, or else, it's in `mask_path` property (for segmentation or detection)
-  const overlayPathField = label._cls === HEATMAP ? "map_path" : "mask_path";
+  const overlayPathField = cls === HEATMAP ? "map_path" : "mask_path";
   const overlayField = overlayPathField === "map_path" ? "map" : "mask";
 
   if (
@@ -197,7 +201,8 @@ const processLabels = async (
   customizeColorSetting: ProcessSample["customizeColorSetting"],
   colorscale: ProcessSample["colorscale"],
   labelTagColors: ProcessSample["labelTagColors"],
-  selectedLabelTags: ProcessSample["selectedLabelTags"]
+  selectedLabelTags: ProcessSample["selectedLabelTags"],
+  schema: Schema
 ): Promise<ArrayBuffer[]> => {
   const buffers: ArrayBuffer[] = [];
   const promises = [];
@@ -207,12 +212,14 @@ const processLabels = async (
     if (!Array.isArray(labels)) {
       labels = [labels];
     }
+    const cls = getCls(`${prefix ? prefix : ""}${field}`, schema);
+
     for (const label of labels) {
       if (!label) {
         continue;
       }
 
-      if (DENSE_LABELS.has(label._cls)) {
+      if (DENSE_LABELS.has(cls)) {
         await imputeOverlayFromPath(
           `${prefix || ""}${field}`,
           label,
@@ -220,15 +227,16 @@ const processLabels = async (
           customizeColorSetting,
           colorscale,
           buffers,
-          sources
+          sources,
+          cls
         );
       }
 
-      if (label._cls in DeserializerFactory) {
-        DeserializerFactory[label._cls](label, buffers);
+      if (cls in DeserializerFactory) {
+        DeserializerFactory[cls](label, buffers);
       }
 
-      if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(label._cls)) {
+      if ([EMBEDDED_DOCUMENT, DYNAMIC_EMBEDDED_DOCUMENT].includes(cls)) {
         const moreBuffers = await processLabels(
           label,
           coloring,
@@ -237,24 +245,25 @@ const processLabels = async (
           customizeColorSetting,
           colorscale,
           labelTagColors,
-          selectedLabelTags
+          selectedLabelTags,
+          schema
         );
         buffers.push(...moreBuffers);
       }
 
-      if (ALL_VALID_LABELS.has(label._cls)) {
-        if (label._cls in LABEL_LIST) {
-          if (Array.isArray(label[LABEL_LIST[label._cls]])) {
-            label[LABEL_LIST[label._cls]].forEach(mapId);
+      if (ALL_VALID_LABELS.has(cls)) {
+        if (cls in LABEL_LIST) {
+          if (Array.isArray(label[LABEL_LIST[cls]])) {
+            label[LABEL_LIST[cls]].forEach(mapId);
           }
         } else {
           mapId(label);
         }
       }
 
-      if (painterFactory[label._cls]) {
+      if (painterFactory[cls]) {
         promises.push(
-          painterFactory[label._cls](
+          painterFactory[cls](
             prefix ? prefix + field : field,
             label,
             coloring,
@@ -293,6 +302,7 @@ export interface ProcessSample {
   colorscale: Colorscale;
   selectedLabelTags: string[];
   sources: { [path: string]: string };
+  schema: Schema;
 }
 
 type ProcessSampleMethod = ReaderMethod & ProcessSample;
@@ -306,13 +316,14 @@ const processSample = ({
   colorscale,
   selectedLabelTags,
   labelTagColors,
+  schema,
 }: ProcessSample) => {
   mapId(sample);
 
   let bufferPromises = [];
 
   if (sample?._media_type === "point-cloud") {
-    process3DLabels(sample);
+    process3DLabels(schema, sample);
   } else {
     bufferPromises = [
       processLabels(
@@ -323,7 +334,8 @@ const processSample = ({
         customizeColorSetting,
         colorscale,
         labelTagColors,
-        selectedLabelTags
+        selectedLabelTags,
+        schema
       ),
     ];
   }
@@ -341,7 +353,8 @@ const processSample = ({
             customizeColorSetting,
             colorscale,
             labelTagColors,
-            selectedLabelTags
+            selectedLabelTags,
+            schema
           )
         )
         .flat(),
@@ -380,6 +393,7 @@ interface FrameChunkResponse extends FrameChunk {
   colorscale: Colorscale;
   labelTagColors: LabelTagColor;
   selectedLabelTags: string[];
+  schema: Schema;
 }
 
 const createReader = ({
@@ -395,6 +409,7 @@ const createReader = ({
   dataset,
   view,
   group,
+  schema,
 }: {
   chunkSize: number;
   coloring: Coloring;
@@ -408,6 +423,7 @@ const createReader = ({
   dataset: string;
   view: Stage[];
   group: BaseConfig["group"];
+  schema: Schema;
 }): FrameStream => {
   let cancelled = false;
 
@@ -447,6 +463,7 @@ const createReader = ({
               colorscale,
               labelTagColors,
               selectedLabelTags,
+              schema,
             });
             frameNumber = range[1] + 1;
           } catch (error) {
@@ -489,7 +506,8 @@ const getSendChunk =
             value.customizeColorSetting,
             value.colorscale,
             value.labelTagColors,
-            value.selectedLabelTags
+            value.selectedLabelTags,
+            value.schema
           )
         )
       ).then((buffers) => {
@@ -532,6 +550,7 @@ interface SetStream {
   dataset: string;
   view: Stage[];
   group: BaseConfig["group"];
+  schema: Schema;
 }
 
 type SetStreamMethod = ReaderMethod & SetStream;
@@ -549,6 +568,7 @@ const setStream = ({
   dataset,
   view,
   group,
+  schema,
 }: SetStream) => {
   stream && stream.cancel();
   streamId = uuid;
@@ -566,6 +586,7 @@ const setStream = ({
     dataset,
     view,
     group,
+    schema,
   });
 
   stream.reader.read().then(getSendChunk(uuid));

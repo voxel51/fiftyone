@@ -185,11 +185,7 @@ you can :ref:`load a dataset remotely <remote-data>` and then explore it via an
 Can I access data stored in the cloud?
 --------------------------------------
 
-Yes! The recommended best practice is to mount the cloud bucket to a cloud
-compute instance in your cloud environment and then use the
-:ref:`remote server workflow <remote-data>` to work with the data.
-
-Check out :ref:`this page <cloud-storage>` for more details.
+Yes! Check out :ref:`FiftyOne Teams <fiftyone-teams>`.
 
 .. _faq-supported-os:
 
@@ -245,7 +241,7 @@ The App can play any video codec that is supported by
 including MP4 (H.264), WebM, and Ogg. If you try to view a video with an
 unsupported codec in the App, you will be prompted to use the
 :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>` utility method
-to reencode the source video so it is viewable in the App.
+to re-encode the source video so it is viewable in the App.
 
 .. note::
 

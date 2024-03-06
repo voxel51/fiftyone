@@ -402,7 +402,7 @@ async def get_image_dimensions(input):
             height = abs(int(h))
         else:
             raise MetadataException(
-                "Unkown DIB header size: %s" % str(headersize)
+                "Unknown DIB header size: %s" % str(headersize)
             )
     elif (size >= 8) and data[:4] in (b"II\052\000", b"MM\000\052"):
         # Standard TIFF, big- or little-endian
