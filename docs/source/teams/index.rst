@@ -107,7 +107,7 @@ pages on this site apply to Teams deployments as well.
 .. customcalloutitem::
     :header: Secrets
     :description: Safely store and access secrets in your Teams deployment.
-    :button_text: Learn more about storing secrets in Teams
+    :button_text: Learn more about secrets
     :button_link: secrets.html
 
 .. customcalloutitem::

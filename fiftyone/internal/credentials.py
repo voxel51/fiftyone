@@ -354,4 +354,9 @@ def _write_default_gcp_json_file(raw_creds_dict, creds_path):
 
 
 def _serialize_prefixes(prefixes):
-    return "-".join([prefix[prefix.find("//") + 1 :] for prefix in prefixes])
+    return "-".join(
+        [
+            prefix[prefix.find("//") + 1 :].replace("/", "-")
+            for prefix in prefixes
+        ]
+    )
