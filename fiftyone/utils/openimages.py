@@ -67,7 +67,7 @@ class OpenImagesDatasetImporter(foud.LabeledImageDatasetImporter):
         only_matching (False): whether to only load labels that match the
             ``classes`` or ``attrs`` requirements that you provide (True), or
             to load all labels for samples that match the requirements (False)
-        load_hierarchy (True): whether to load the classes hiearchy and add it
+        load_hierarchy (True): whether to load the classes hierarchy and add it
             to the dataset's ``info`` dictionary
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -407,7 +407,7 @@ class OpenImagesV6DatasetImporter(OpenImagesDatasetImporter):
         only_matching (False): whether to only load labels that match the
             ``classes`` or ``attrs`` requirements that you provide (True), or
             to load all labels for samples that match the requirements (False)
-        load_hierarchy (True): whether to load the classes hiearchy and add it
+        load_hierarchy (True): whether to load the classes hierarchy and add it
             to the dataset's ``info`` dictionary
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
@@ -486,7 +486,7 @@ class OpenImagesV7DatasetImporter(OpenImagesDatasetImporter):
         only_matching (False): whether to only load labels that match the
             ``classes`` or ``attrs`` requirements that you provide (True), or
             to load all labels for samples that match the requirements (False)
-        load_hierarchy (True): whether to load the classes hiearchy and add it
+        load_hierarchy (True): whether to load the classes hierarchy and add it
             to the dataset's ``info`` dictionary
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported

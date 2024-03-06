@@ -410,16 +410,16 @@ def ensure_package(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -494,12 +494,12 @@ def ensure_requirements(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         log_success (False): whether to generate a log message if a requirement
-            is satisifed
+            is satisfied
     """
     for req_str in load_requirements(requirements_path):
         ensure_package(
@@ -529,16 +529,16 @@ def ensure_import(
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to use
         log_success (False): whether to generate a log message if the
-            requirement is satisifed
+            requirement is satisfied
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -562,14 +562,14 @@ def ensure_tf(eager=False, error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -615,14 +615,14 @@ def ensure_tfds(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -645,14 +645,14 @@ def ensure_torch(error_level=None, error_msg=None):
         error_level (None): the error level to use, defined as:
 
             -   0: raise error if requirement is not satisfied
-            -   1: log warning if requirement is not satisifed
+            -   1: log warning if requirement is not satisfied
             -   2: ignore unsatisifed requirements
 
             By default, ``fiftyone.config.requirement_error_level`` is used
         error_msg (None): an optional custom error message to print
 
     Returns:
-        True/False whether the requirement is satisifed
+        True/False whether the requirement is satisfied
     """
     if error_level is None:
         error_level = fo.config.requirement_error_level
@@ -1131,11 +1131,12 @@ class Batcher(abc.ABC):
             self._pb.__exit__(*args)
 
     def __iter__(self):
-        if self.return_views:
-            self._last_offset = 0
-            self._num_samples = len(self.iterable)
-        else:
-            self._iter = iter(self.iterable)
+        if self.iterable is not None:
+            if self.return_views:
+                self._last_offset = 0
+                self._num_samples = len(self.iterable)
+            else:
+                self._iter = iter(self.iterable)
 
         if self._render_progress:
             if self._in_context:
@@ -1169,6 +1170,10 @@ class Batcher(abc.ABC):
             self._pb.update(count=self._last_batch_size)
 
         batch_size = self._compute_batch_size()
+        self._last_batch_size = batch_size
+
+        if self.iterable is None:
+            return batch_size
 
         if self.return_views:
             if self._last_offset >= self._num_samples:
@@ -1192,8 +1197,6 @@ class Batcher(abc.ABC):
 
             if not batch:
                 raise StopIteration
-
-        self._last_batch_size = len(batch)
 
         return batch
 
@@ -1316,7 +1319,9 @@ class LatencyDynamicBatcher(BaseDynamicBatcher):
                 print("batch size: %d" % len(batch))
 
     Args:
-        iterable: an iterable
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         target_latency (0.2): the target latency between ``next()``
             calls, in seconds
         init_batch_size (1): the initial batch size to use
@@ -1387,7 +1392,7 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
 
     This batcher requires that backpressure feedback be provided, either by
     providing a BSON-able batch from which the content size can be computed,
-    or by manaully providing the content size.
+    or by manually providing the content size.
 
     This class is often used in conjunction with a :class:`ProgressBar` to keep
     the user appraised on the status of a long-running task.
@@ -1424,7 +1429,9 @@ class ContentSizeDynamicBatcher(BaseDynamicBatcher):
                 batcher.apply_backpressure(batch)
 
     Args:
-        iterable: an iterable
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         target_size (1048576): the target batch bson content size, in bytes
         init_batch_size (1): the initial batch size to use
         min_batch_size (1): the minimum allowed batch size
@@ -1510,7 +1517,9 @@ class StaticBatcher(Batcher):
                 print("batch size: %d" % len(batch))
 
     Args:
-        iterable: an iterable
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         batch_size: size of batches to generate
         return_views (False): whether to return each batch as a
             :class:`fiftyone.core.view.DatasetView`. Only applicable when the
@@ -1550,7 +1559,9 @@ def get_default_batcher(iterable, progress=False, total=None):
     to use, and related configuration values as needed for each.
 
     Args:
-        iterable: an iterable to batch over
+        iterable: an iterable to batch over. If ``None``, the result of
+            ``next()`` will be a batch size instead of a batch, and is an
+            infinite iterator.
         progress (False): whether to render a progress bar tracking the
             consumption of the batches (True/False), use the default value
             ``fiftyone.config.show_progress_bars`` (None), or a progress
@@ -2001,7 +2012,7 @@ class MonkeyPatchFunction(object):
     Args:
         module_or_fcn: a module or function
         monkey_fcn: the function to monkey patch in
-        fcn_name (None): the name of the funciton to monkey patch. Required iff
+        fcn_name (None): the name of the function to monkey patch. Required iff
             ``module_or_fcn`` is a module
         namespace (None): an optional package namespace
     """

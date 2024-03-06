@@ -638,7 +638,7 @@ subsequent sections.
             """You can optionally implement this method to configure a button
             or icon in the App that triggers this operator.
 
-            By default the operator only appears in the operator brower
+            By default the operator only appears in the operator browser
             (unless it is unlisted).
 
             Returns:
@@ -942,7 +942,7 @@ Remember that properties automatically handle validation for you. So if you
 configure a property as `required=True` but the user has not provided a value,
 the property will automatically be marked as `invalid=True`. The operator's
 `Execute` button will be enabled if and only if all input properties are valid
-(recurisvely searching nested objects).
+(recursively searching nested objects).
 
 .. note::
 
@@ -967,7 +967,7 @@ programmatically.
 
 However, many interesting operations like model inference, embeddings
 computation, evaluation, and exports are computationally intensive and/or not
-suitable for immediate exeuction.
+suitable for immediate execution.
 
 In such cases, :ref:`delegated operations <delegated-operations>` come to the
 rescue by allowing operators to schedule tasks that are executed on a connected

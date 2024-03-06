@@ -1945,7 +1945,7 @@ the `labels_path` parameter instead of `export_dir`:
         LABELS_PATH=/path/for/voc-labels
         LABEL_FIELD=ground_truth  # for example
 
-        # Export labaels
+        # Export labels
         fiftyone datasets export $NAME \
             --label-field $LABEL_FIELD \
             --type fiftyone.types.VOCDetectionDataset \
@@ -2113,7 +2113,7 @@ YOLOv4Dataset
 .. admonition:: Supported label types
     :class: note
 
-    |Detections|
+    |Detections| |Polylines|
 
 The :class:`fiftyone.types.YOLOv4Dataset` type represents a labeled dataset
 consisting of images and their associated object detections saved in
@@ -2155,14 +2155,18 @@ formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`obj.names`, the bounding box coordinates are expressed as relative coordinates
-in `[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which
-will be included only if you pass the optional `include_confidence=True` flag
-to the export.
+`obj.names`, all coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional confidence in `[0, 1]`,
+which will be included only if you pass the optional `include_confidence=True`
+flag to the export.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
@@ -2267,7 +2271,7 @@ YOLOv5Dataset
 .. admonition:: Supported label types
     :class: note
 
-    |Detections|
+    |Detections| |Polylines|
 
 The :class:`fiftyone.types.YOLOv5Dataset` type represents a labeled dataset
 consisting of images and their associated object detections saved in
@@ -2324,14 +2328,18 @@ to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`names`, the bounding box coordinates are expressed as relative coordinates in
-`[0, 1] x [0, 1]`, and `<confidence>` is the detection confidence, which will
-be included only if you pass the optional `include_confidence=True` flag to
-the export.
+`names`, all coordinates are expressed as relative values in `[0, 1] x [0, 1]`,
+and `<confidence>` is an optional confidence in `[0, 1]`, which will be
+included only if you pass the optional `include_confidence=True` flag to the
+export.
 
 Unlabeled images have no corresponding TXT file in `labels/`. The label file
 path for each image is obtained by replacing `images/` with `labels/` in the
@@ -2567,8 +2575,8 @@ Datasets of this type are exported in the following format:
 where `labels/` contains the semantic segmentations stored as images.
 
 By default, the masks will be stored as PNG images, but you can customize this
-by pasing the optional `mask_format` parameter. The masks will be stored as 8
-bit images if they contain at most 256 classes, otherise 16 bits will be used.
+by passing the optional `mask_format` parameter. The masks will be stored as 8
+bit images if they contain at most 256 classes, otherwise 16 bits will be used.
 
 Unlabeled images have no corresponding file in `labels/`.
 

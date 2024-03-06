@@ -416,11 +416,11 @@ def list_files(dirpath):
     if fos._is_root(dirpath) and fs is not fos.FileSystem.LOCAL:
         dirs = [
             {
-                "name": name,
+                "name": path.rsplit("/", 1)[-1],
                 "type": "directory",
-                "absolute_path": fos.join(dirpath, name),
+                "absolute_path": path,
             }
-            for name in fos.list_buckets(fs)
+            for path in fos.list_buckets(fs, abs_paths=True)
         ]
         return dirs
 

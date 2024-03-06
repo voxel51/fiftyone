@@ -190,12 +190,13 @@ class FileSystem(object):
     LOCAL = "local"
 
 
-_FILE_SYSTEMS_WITH_BUCKETS = [
+_FILE_SYSTEMS_WITH_BUCKETS = {
     FileSystem.S3,
     FileSystem.GCS,
     FileSystem.AZURE,
     FileSystem.MINIO,
-]
+}
+_FILE_SYSTEMS_WITH_ALIASES = {FileSystem.AZURE, FileSystem.MINIO}
 _FILE_SYSTEMS_WITH_REGIONAL_CLIENTS = {FileSystem.S3, FileSystem.MINIO}
 _UNKNOWN_REGION = "unknown"
 
@@ -352,7 +353,10 @@ def split_prefix(path):
         a ``(prefix, path)`` tuple
     """
     fs = get_file_system(path)
+    return _split_prefix(fs, path)
 
+
+def _split_prefix(fs, path):
     prefix = None
     if fs == FileSystem.S3:
         prefix = S3_PREFIX
@@ -417,11 +421,57 @@ def get_bucket_name(path):
     """
     fs = get_file_system(path)
 
+    bucket = _get_bucket(fs, path)
+    return _get_bucket_name(bucket)
+
+
+def _get_bucket(fs, path):
     if fs not in _FILE_SYSTEMS_WITH_BUCKETS:
         return ""
 
-    path = split_prefix(path)[1]
-    return path.split("/")[0]
+    prefix, path = _split_prefix(fs, path)
+    bucket_name = path.split("/")[0]
+
+    return prefix + bucket_name
+
+
+def _get_bucket_name(bucket):
+    return bucket.rsplit("/", 1)[-1]
+
+
+def _swap_prefix(fs, bucket):
+    bucket_name = _get_bucket_name(bucket)
+    prefix = bucket[: -len(bucket_name)]
+
+    if fs == FileSystem.AZURE:
+        for azure_alias_prefix, azure_endpoint_prefix in azure_prefixes:
+            if (
+                prefix == azure_alias_prefix
+                and azure_endpoint_prefix is not None
+            ):
+                return azure_endpoint_prefix + bucket_name
+
+            if (
+                prefix == azure_endpoint_prefix
+                and azure_alias_prefix is not None
+            ):
+                return azure_alias_prefix + bucket_name
+
+    if fs == FileSystem.MINIO:
+        for minio_alias_prefix, minio_endpoint_prefix in minio_prefixes:
+            if (
+                prefix == minio_alias_prefix
+                and minio_endpoint_prefix is not None
+            ):
+                return minio_endpoint_prefix + bucket_name
+
+            if (
+                prefix == minio_endpoint_prefix
+                and minio_alias_prefix is not None
+            ):
+                return minio_alias_prefix + bucket_name
+
+    return bucket
 
 
 def is_local(path):
@@ -1838,7 +1888,10 @@ def list_buckets(fs, abs_paths=False):
     # Always include buckets with specific credentials
     managed_buckets = _get_buckets_with_managed_credentials(fs)
     if managed_buckets:
-        buckets.update(managed_buckets)
+        if abs_paths:
+            buckets.update(managed_buckets)
+        else:
+            buckets.update(_get_bucket_name(b) for b in managed_buckets)
 
     # Also include any buckets accessible by default credentials
     try:
@@ -1877,7 +1930,7 @@ def list_buckets(fs, abs_paths=False):
 
     buckets = sorted(buckets)
     if abs_paths and prefix:
-        buckets = [prefix + b for b in buckets]
+        buckets = [prefix + b if "/" not in b else b for b in buckets]
 
     return buckets
 
@@ -2190,7 +2243,7 @@ def run(fcn, tasks, num_workers=None, progress=None):
 
     Args:
         fcn: a function that accepts a single argument
-        tasks: an iterable of function aguments
+        tasks: an iterable of function arguments
         num_workers (None): a suggested number of threads to use
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
@@ -2228,7 +2281,7 @@ def _get_client(fs=None, path=None):
         raise ValueError("You must provide either a file system or a path")
 
     if path is not None:
-        bucket = get_bucket_name(path)
+        bucket = _get_bucket(fs, path)
     else:
         bucket = None
 
@@ -2261,6 +2314,10 @@ def _get_bucket_client(fs, bucket):
             client = e
 
         bucket_clients[fs][bucket] = client
+
+        if fs in _FILE_SYSTEMS_WITH_ALIASES:
+            _bucket = _swap_prefix(fs, bucket)
+            bucket_clients[fs][_bucket] = client
 
     if isinstance(client, Exception):
         raise client
@@ -2330,10 +2387,12 @@ def _do_get_region(fs, bucket):
     else:
         client = _get_default_client(fs)
 
+    bucket_name = _get_bucket_name(bucket)
+
     try:
         # HeadBucket is the AWS recommended way to determine a bucket's region
         # It requires `s3:ListBucket` permsision
-        resp = client._client.head_bucket(Bucket=bucket)
+        resp = client._client.head_bucket(Bucket=bucket_name)
         headers = resp["ResponseMetadata"]["HTTPHeaders"]
         return headers.get("x-amz-bucket-region", "us-east-1")
     except Exception as e1:
@@ -2341,14 +2400,14 @@ def _do_get_region(fs, bucket):
             # Fallback to GetBucketLocation, which requires
             # `s3:GetBucketLocation` permission but does not support
             # multi-account credentials
-            resp = client._client.get_bucket_location(Bucket=bucket)
+            resp = client._client.get_bucket_location(Bucket=bucket_name)
             return resp["LocationConstraint"] or "us-east-1"
         except Exception as e2:
             logger.warning(
                 "Failed to determine file system '%s' bucket '%s' location. "
                 "HeadBucket: %s. GetBucketLocation: %s",
                 fs,
-                bucket,
+                bucket_name,
                 e1,
                 e2,
             )
@@ -2429,14 +2488,41 @@ def _has_managed_credentials(fs, bucket):
     if creds_manager is None:
         return False
 
-    return creds_manager.has_bucket_credentials(fs, bucket)
+    # Check prefix + bucket
+    has_creds = creds_manager.has_bucket_credentials(fs, bucket)
+    if has_creds:
+        return True
+
+    if fs in _FILE_SYSTEMS_WITH_ALIASES:
+        _bucket = _swap_prefix(fs, bucket)
+        has_creds = creds_manager.has_bucket_credentials(fs, _bucket)
+        if has_creds:
+            return True
+
+    # Check bucket name-only
+    bucket_name = _get_bucket_name(bucket)
+    return creds_manager.has_bucket_credentials(fs, bucket_name)
 
 
 def _get_managed_credentials(fs, bucket=None):
     if creds_manager is None:
         return None
 
-    return creds_manager.get_credentials(fs, bucket=bucket)
+    if bucket is None:
+        return creds_manager.get_credentials(fs)
+
+    # Check prefix + bucket
+    if creds_manager.has_bucket_credentials(fs, bucket):
+        return creds_manager.get_credentials(fs, bucket=bucket)
+
+    if fs in _FILE_SYSTEMS_WITH_ALIASES:
+        _bucket = _swap_prefix(fs, bucket)
+        if creds_manager.has_bucket_credentials(fs, _bucket):
+            return creds_manager.get_credentials(fs, bucket=_bucket)
+
+    # Check bucket name-only
+    bucket_name = _get_bucket_name(bucket)
+    return creds_manager.get_credentials(fs, bucket=bucket_name)
 
 
 def _load_s3_credentials(bucket=None):

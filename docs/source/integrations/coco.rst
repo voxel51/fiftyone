@@ -617,7 +617,7 @@ to compute true positives, false positives, and false negatives:
     (`via mergesort <https://github.com/cocodataset/cocoapi/blob/8c9bcc3cf640524c4c20a9c40e89cb6a2f2fa0e9/PythonAPI/pycocotools/cocoeval.py#L366>`_)
     by confidence
 
--   Compute the cumlative sum of the true positive and false positive array
+-   Compute the cumulative sum of the true positive and false positive array
 
 -   Compute precision by elementwise dividing the TP-FP-sum array by the total
     number of predictions up to that point

@@ -1,24 +1,27 @@
 import * as fos from "@fiftyone/looker/src/state";
 import { SampleData } from "@fiftyone/state";
+import { getCls, LABEL_LIST, Schema } from "@fiftyone/utilities";
 
 const RENDERABLE = ["Detection", "Polyline"];
 const RENDERABLE_LIST = ["Detections", "Polylines"];
 
 export type OverlayLabel = {
   _id: string;
-  _cls: string;
-  path: string[];
+  path: string;
   selected: boolean;
   color?: string;
   label?: string;
   sampleId?: string;
+  _cls: string;
 };
 
 export const load3dOverlayForSample = (
   sampleId: string,
   samples: SampleData | fos.Sample[],
   selectedLabels: Record<string, unknown>,
-  currentPath = []
+  currentPath: string[] = [],
+  schema: Schema,
+  rest: string[] = []
 ) => {
   let overlays: OverlayLabel[] = [];
 
@@ -27,26 +30,34 @@ export const load3dOverlayForSample = (
 
   for (let i = 0; i < labelValues.length; i++) {
     const label = labelValues[i];
+
     const labelKey = labelKeys ? labelKeys[i] : "";
+
     if (!label) {
       continue;
     }
 
-    if (RENDERABLE.includes(label._cls)) {
+    const path = [...currentPath, labelKey].filter((k) => !!k).join(".");
+    const cls = getCls([path, ...rest].join("."), schema);
+
+    if (RENDERABLE.includes(cls)) {
       overlays.push({
         ...label,
         sampleId,
-        path: [...currentPath, labelKey].filter((k) => !!k),
+        path,
         selected: label._id in selectedLabels,
+        _cls: cls,
       });
-    } else if (RENDERABLE_LIST.includes(label._cls)) {
+    } else if (RENDERABLE_LIST.includes(cls) && label[LABEL_LIST[cls]]) {
       overlays = [
         ...overlays,
         ...load3dOverlayForSample(
           sampleId,
-          label[label._cls.toLowerCase()],
+          label[LABEL_LIST[cls]],
           selectedLabels,
-          labelKey ? [...currentPath, labelKey] : [...currentPath]
+          [...currentPath, labelKey],
+          schema,
+          [LABEL_LIST[cls]]
         ),
       ];
     }
@@ -58,7 +69,8 @@ export const load3dOverlayForSample = (
 export const load3dOverlays = (
   samples: { [sliceOrFilename: string]: SampleData } | fos.Sample[],
   selectedLabels: Record<string, unknown>,
-  currentPath = []
+  currentPath: string[] = [],
+  schema: Schema
 ) => {
   const overlays = [];
   for (const [_sliceOrFilename, sampleWrapper] of Object.entries(samples)) {
@@ -71,7 +83,8 @@ export const load3dOverlays = (
         sampleWrapper.sample._id,
         sampleWrapper.sample,
         selectedLabels,
-        currentPath
+        currentPath,
+        schema
       )
     );
   }

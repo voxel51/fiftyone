@@ -91,6 +91,54 @@ manually convert Ultralytics predictions to
    :alt: ultralytics-boxes
    :align: center
 
+.. _ultralytics-open-vocabulary-object-detection:
+
+Open vocabulary detection
+-------------------------
+
+FiftyOne's Ultralytics integration also supports real-time open vocabulary
+object detection via `YOLO World <https://docs.ultralytics.com/models/yolo-world/>`_.
+
+The usage syntax is the same as for regular object detection, with the caveat
+that you can set the classes that the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    import os; os.environ["YOLO_VERBOSE"] = "False"
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    ## Load dataset
+    dataset = foz.load_zoo_dataset(
+        "voc-2007", split="validation", max_samples=100
+        )
+    dataset.select_fields().keep_fields()
+    
+    ## Load model
+    from ultralytics import YOLO
+    model = YOLO('yolov8l-world.pt') # or YOLO('yolov8s-world.pt')
+
+    ## Set open vocabulary classes
+    model.set_classes(
+        ["plant", "window", "keyboard", "human baby", "computer monitor"]
+        )
+
+    label_field = "yolo_world_detections"
+
+    ## Apply model
+    dataset.apply_model(model, label_field=label_field)
+    
+    ## Visualize the detection patches
+    session = fo.launch_app(dataset.to_patches(label_field))
+
+
+.. image:: /images/integrations/ultralytics_open_world_boxes.png
+   :alt: ultralytics-open-world-boxes
+   :align: center
+
+
 .. _ultralytics-instance-segmentation:
 
 Instance segmentation
