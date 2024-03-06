@@ -9,7 +9,13 @@ FiftyOne Teams 1.5.7
 
 Includes all updates from :ref:`FiftyOne 0.23.6 <release-notes-v0.23.6>`, plus:
 
-- Improve SDK/API performance with scalar values batching when using ``values()``
+- Improved performance of
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>` when
+  using :ref:`API connections <teams-api-connection>`
+- Improved stability of long-running operations when using
+  :ref:`API connections <teams-api-connection>`
+- Added support for including prefixes when providing
+  :ref:`bucket-specific credentials <teams-cloud-storage-page>`
 
 .. _release-notes-v0.23.6:
 
@@ -19,25 +25,41 @@ FiftyOne 0.23.6
 
 What's New
 
-- Added support for :ref:`YOLO <fiftyone.types.dataset_types.YOLOv5Dataset>` contour labels
+- Added a
+  :doc:`dimensionality reduction tutorial </tutorials/dimension_reduction>`
+  `#4033 <https://github.com/voxel51/fiftyone/pull/4033>`_
+- Added a :doc:`data augmentation tutorial </tutorials/data_augmentation>`
+  `#4109 <https://github.com/voxel51/fiftyone/pull/4109>`_
+- Added a formal :ref:`Open CLIP integration page <openclip-integration>`
+  `#4049 <https://github.com/voxel51/fiftyone/pull/4049>`_
+- Documented support for open-world object detection with
+  :ref:`YOLO World <ultralytics-open-vocabulary-object-detection>`
+  `#4112 <https://github.com/voxel51/fiftyone/pull/4112>`_
+- Added support for importing/exporting contours in
+  :ref:`YOLO format <YOLOv5Dataset-import>`
   `#4094 <https://github.com/voxel51/fiftyone/pull/4094>`_
-- Added cosine metric to :ref:`Milvus <milvus-integration>`
+- Added cosine metric as an option for
+  :ref:`Milvus similarity indexes <milvus-integration>`
   `#4081 <https://github.com/voxel51/fiftyone/pull/4081>`_
-- Added match query syntax to frames expr
-  `#4095 <https://github.com/voxel51/fiftyone/pull/4095>`_
-- Added support for local files in :ref:`label studio integration <label-studio-local-storage>`
+- Added support for local files when using the
+  :ref:`Label Studio integration <label-studio-local-storage>`
   `#3969 <https://github.com/voxel51/fiftyone/pull/3969>`_
+- Removed App dependency on ``_cls`` for embedded documents
+  `#4090 <https://github.com/voxel51/fiftyone/pull/4090>`_
 
 Bugs
 
-- Fixed issue with ColorScheme initialization
+- Fixed issue with filter counts on video datasets in the App
+  `#4095 <https://github.com/voxel51/fiftyone/pull/4095>`_
+- Fixed issue with color scheme initialization in the App
   `#4092 <https://github.com/voxel51/fiftyone/pull/4092>`_
-- Fixed issue when changing group slice with filters
+- Fixed issue when changing group slice with filters in the App
   `#4098 <https://github.com/voxel51/fiftyone/pull/4098>`_
 - Fixed issue with zero-shot detection batching
   `#4108 <https://github.com/voxel51/fiftyone/pull/4108>`_
-- Removed App dependency on ``_cls`` for embedded documents
-  `#4090 <https://github.com/voxel51/fiftyone/pull/4090>`_
+- Fixed issue with the operator target view utility when no view or sample
+  selection is present
+  `#4113 <https://github.com/voxel51/fiftyone/pull/4113>`_
 
 FiftyOne Teams 1.5.6
 --------------------
