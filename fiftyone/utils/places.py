@@ -36,8 +36,6 @@ def download_places_dataset_split(
         dataset_dir: the directory to download the dataset
         split: the split to download. Supported values are
             ``("train", "validation", "test")``
-        num_workers (None): a suggested number of threads to use when
-            downloading individual images
         raw_dir (None): a directory in which full annotations files may be
             stored to avoid re-downloads in the future
 
@@ -143,7 +141,7 @@ def download_places_dataset_split(
 
     categories_map = {}
     with open(
-        os.path.join(raw_dir, _ANNOTATION_FILES_PATH["categories"]), "r"
+        os.path.join(raw_dir, _ANNOTATION_FILE["categories"]), "r"
     ) as file:
         for line in file:
             components = line.strip().split()
@@ -156,7 +154,7 @@ def download_places_dataset_split(
     if split != "test" and did_download:
         labels_dir = os.path.join(dataset_dir, "labels")
         etau.ensure_dir(labels_dir)
-        txt_file = os.path.join(raw_dir, _ANNOTATION_FILES_PATH[split])
+        txt_file = os.path.join(raw_dir, _ANNOTATION_FILE[split])
         json_file = os.path.join(labels_dir, "labels.json")
 
         if split == "validation":
@@ -205,15 +203,8 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to load. If
-            ``label_types``, ``classes``, and/or ``attrs`` are also specified,
-            first priority will be given to samples that contain all of the
-            specified label types, classes, and/or attributes, followed by
-            samples that contain at least one of the specified labels types or
-            classes. The actual number of samples loaded may be less than this
-            maximum value if the dataset does not contain sufficient samples
-            matching your requirements. By default, all matching samples are
-            loaded
+        max_samples (None): a maximum number of samples to load.
+            By default, all matching samples are loaded.
     """
 
     def __init__(
@@ -314,7 +305,7 @@ _TAR_NAMES = {
 
 _ANNOTATION_DOWNLOAD_LINK = "http://data.csail.mit.edu/places/places365/filelist_places365-standard.tar"
 
-_ANNOTATION_FILES_PATH = {
+_ANNOTATION_FILE = {
     "categories": "categories_places365.txt",
     "train": "places365_train_standard.txt",
     "validation": "places365_val.txt",
