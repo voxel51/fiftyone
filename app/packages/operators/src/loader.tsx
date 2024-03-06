@@ -16,8 +16,7 @@ async function loadOperators(datasetName: string) {
 }
 
 /**
- * Load built-in and installed JavaScript and Python operators and queue all
- *  start-up operators for execution.
+ * Load built-in and installed JavaScript and Python operators and initialize
  */
 export function useOperators(datasetLess?: boolean) {
   const [ready, setReady] = useState(false);
