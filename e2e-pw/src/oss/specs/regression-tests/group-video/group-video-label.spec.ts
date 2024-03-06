@@ -90,6 +90,7 @@ test.describe("groups video labels", () => {
     eventUtils,
   }) => {
     await grid.openFirstSample();
+    await modal.waitForSampleLoadDomAttribute();
     await grid.sliceSelector.selectSlice("v1");
     await modal.waitForSampleLoadDomAttribute();
 
