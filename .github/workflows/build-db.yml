@@ -64,11 +64,18 @@ jobs:
         run: |
           cd package/db
           python -Im build --sdist
-      - name: Upload
+      - name: Upload sdist
+        if: ${{ matrix.platform == 'sdist' }}
         uses: actions/upload-artifact@v3
         with:
           name: dist-${{ matrix.platform }}
           path: package/db/dist/*
+      - name: Upload wheel
+        if: ${{ matrix.platform != 'sdist' }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-${{ matrix.platform }}
+          path: package/db/dist/*.whl
 
   test:
     runs-on: ubuntu-20.04
