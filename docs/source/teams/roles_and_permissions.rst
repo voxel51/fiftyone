@@ -158,10 +158,10 @@ following sources:
 .. note::
 
    User role determines the highest level of access that a user can be granted 
-   to a dataset. For example, a user with GUEST role can be added to a group 
+   to a dataset. For example, a user with Guest role can be added to a group
    with **Can edit** permission to a dataset, but this user will have
    **Can view** permission instead of **Can edit** permission of the dataset,
-   because GUEST role only allows **Can view** permission to datasets.
+   because Guest role only allows **Can view** permission to datasets.
 
 .. _teams-default-access:
 
