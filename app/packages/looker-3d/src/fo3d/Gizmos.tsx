@@ -51,7 +51,7 @@ const FoAxesHelper = ({ size }) => {
             points={[axis.start, axis.end]}
             color={axis.color}
             lineWidth={2}
-            opacity={0.4}
+            opacity={0.3}
             transparent
           />
         );
@@ -119,9 +119,8 @@ export const Gizmos = () => {
       );
     }
 
-    // add 20% padding
-    // 2.5 is an arbitrary multiplier for offset
-    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.2) + offset * 3;
+    // add 30% padding (arbitrary)
+    const gridSize = Math.ceil(maxInOrthoNormalPlane * 1.3);
     const numLines = Math.ceil(gridSize);
 
     return [gridSize, numLines];
