@@ -1,4 +1,6 @@
 """
+3D scene definitions.
+
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -54,7 +56,7 @@ class SceneBackground:
 
 
 class Scene(Object3D):
-    """Represents the scene graph and contains a hierarchy of Object3Ds.
+    """Represents a scene graph which contains a hierarchy of 3D objects.
 
     Args:
         camera (None): the default camera of the scene. If `None`, a default
