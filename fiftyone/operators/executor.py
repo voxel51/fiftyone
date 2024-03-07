@@ -138,7 +138,8 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             as keyword arguments rather than including them in ``ctx``
 
     Returns:
-        an :class:`ExecutionResult`
+        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+        method in a notebook context
 
     Raises:
         ExecutionError: if an error occurred while immediately executing an
@@ -157,11 +158,10 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
         loop = None
 
     if loop is not None:
-        # @todo how can we await result here?
+        # @todo is it possible to await result here?
         # Sadly, run_until_complete() is not allowed in Jupyter notebooks
         # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
-        loop.create_task(coroutine)
-        result = None
+        result = loop.create_task(coroutine)
     else:
         result = asyncio.run(coroutine)
         result.raise_exceptions()
