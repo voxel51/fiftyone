@@ -111,6 +111,7 @@ export type OperatorConfigOptions = {
   dynamic?: boolean;
   unlisted?: boolean;
   onStartup?: boolean;
+  onDatasetOpen?: boolean;
   canExecute?: boolean;
   disableSchemaValidation?: boolean;
   icon?: string;
@@ -126,6 +127,7 @@ export class OperatorConfig {
   public dynamic: boolean;
   public unlisted: boolean;
   public onStartup: boolean;
+  public onDatasetOpen: boolean;
   public canExecute = true;
   public disableSchemaValidation = false;
   public icon = null;
@@ -140,6 +142,7 @@ export class OperatorConfig {
     this.dynamic = options.dynamic || false;
     this.unlisted = options.unlisted || false;
     this.onStartup = options.onStartup || false;
+    this.onDatasetOpen = options.onDatasetOpen || false;
     this.canExecute = options.canExecute === false ? false : true;
     this.disableSchemaValidation =
       options.disableSchemaValidation === true ? true : false;
@@ -157,7 +160,8 @@ export class OperatorConfig {
       executeAsGenerator: json.execute_as_generator,
       dynamic: json.dynamic,
       unlisted: json.unlisted,
-      onStartup: json.on_startup,
+      onStartup: Boolean(json.on_startup),
+      onDatasetOpen: Boolean(json.on_dataset_open),
       canExecute: json.can_execute,
       disableSchemaValidation: json.disable_schema_validation,
       icon: json.icon,
@@ -349,13 +353,14 @@ export function listLocalAndRemoteOperators() {
   };
 }
 
-export async function executeStartupOperators() {
+export async function executeOperatorsForEvent(
+  event: "onStartup" | "onDatasetOpen"
+) {
   const { allOperators } = listLocalAndRemoteOperators();
-  const startupOperators = allOperators.filter(
-    (o) => o.config.onStartup === true
-  );
-  for (const operator of startupOperators) {
-    if (operator.config.canExecute) executeOperator(operator.uri);
+  for (const operator of allOperators) {
+    if (operator.config.canExecute && operator.config[event] === true) {
+      executeOperator(operator.uri);
+    }
   }
 }
 
