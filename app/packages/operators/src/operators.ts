@@ -735,16 +735,22 @@ export class InvocationRequestQueue {
     this._queue = [];
   }
   private _queue: QueueItem[];
-  private _subscribers: ((queue: InvocationRequestQueue) => void)[] = [];
+  private _subscribers: InvocationRequestQueueSubscriberType[] = [];
   private _notifySubscribers() {
     for (const subscriber of this._subscribers) {
-      subscriber(this);
+      this._notifySubscriber(subscriber);
     }
   }
-  subscribe(subscriber: (queue: InvocationRequestQueue) => void) {
-    this._subscribers.push(subscriber);
+  private _notifySubscriber(subscriber: InvocationRequestQueueSubscriberType) {
+    subscriber(this);
   }
-  unsubscribe(subscriber: (queue: InvocationRequestQueue) => void) {
+  subscribe(subscriber: InvocationRequestQueueSubscriberType) {
+    this._subscribers.push(subscriber);
+    if (this.hasPendingRequests()) {
+      this._notifySubscriber(subscriber);
+    }
+  }
+  unsubscribe(subscriber: InvocationRequestQueueSubscriberType) {
     const index = this._subscribers.indexOf(subscriber);
     if (index !== -1) {
       this._subscribers.splice(index, 1);
@@ -878,3 +884,7 @@ export function abortOperationsByURI(uri) {
 export function abortOperationsByExpression(expression) {
   getAbortableOperationQueue().abortByExpression(expression);
 }
+
+type InvocationRequestQueueSubscriberType = (
+  queue: InvocationRequestQueue
+) => void;
