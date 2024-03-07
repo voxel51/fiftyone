@@ -7337,7 +7337,7 @@ def _save_view(view, fields=None):
         pipeline = view._pipeline(frames_only=True)
 
         # Clips datasets may contain overlapping clips, so we must select only
-        # the first occurrance of each frame
+        # the first occurrence of each frame
         if dataset._is_clips:
             pipeline.extend(
                 [
@@ -8089,7 +8089,7 @@ def _merge_samples_pipeline(
     # here, but here's the current workflow:
     #
     # - Store the `key_field` value on each frame document in both the source
-    #   and destination collections corresopnding to its parent sample in a
+    #   and destination collections corresponding to its parent sample in a
     #   temporary `frame_key_field` field
     # - Merge the sample documents without frames attached
     # - Merge the frame documents on `[frame_key_field, frame_number]` with

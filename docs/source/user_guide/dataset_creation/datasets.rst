@@ -2154,19 +2154,37 @@ to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`obj.names`, the bounding box coordinates are expressed as relative coordinates
-in `[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
-`[0, 1]`.
+`obj.names`, all coordinates are expressed as relative values in
+`[0, 1] x [0, 1]`, and `<confidence>` is an optional confidence in `[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `data/`.
 
 The `data/` folder may contain nested subfolders.
 
 .. note::
+
+    By default, all annotations are loaded as |Detections|, converting any
+    polylines to tight bounding boxes if necessary. However, you can choose to
+    load YOLO annotations as |Polylines| by passing the optional `label_type`
+    argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load annotations as polygons
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv4Dataset,
+            label_type="polylines",
+            ...
+        )
 
     See :class:`YOLOv4DatasetImporter <fiftyone.utils.yolo.YOLOv4DatasetImporter>`
     for parameters that can be passed to methods like
@@ -2404,13 +2422,16 @@ to an object in the image of the same name, in one of the following formats:
 
 .. code-block:: text
 
+    # Detections
     <target> <x-center> <y-center> <width> <height>
     <target> <x-center> <y-center> <width> <height> <confidence>
 
+    # Polygons
+    <target> <x1> <y1> <x2> <y2> <x3> <y3> ...
+
 where `<target>` is the zero-based integer index of the object class label from
-`names`, the bounding box coordinates are expressed as relative coordinates in
-`[0, 1] x [0, 1]`, and `<confidence>` is an optional detection confidence in
-`[0, 1]`.
+`names`, all coordinates are expressed as relative values in `[0, 1] x [0, 1]`,
+and `<confidence>` is an optional confidence in `[0, 1]`.
 
 Unlabeled images have no corresponding TXT file in `labels/`. The label file
 path for each image is obtained by replacing `images/` with `labels/` in the
@@ -2420,6 +2441,21 @@ The image and labels directories for a given split may contain nested
 subfolders of parallelly organized images and labels.
 
 .. note::
+
+    By default, all annotations are loaded as |Detections|, converting any
+    polylines to tight bounding boxes if necessary. However, you can choose to
+    load YOLO annotations as |Polylines| by passing the optional `label_type`
+    argument to methods like
+    :meth:`Dataset.from_dir() <fiftyone.core.dataset.Dataset.from_dir>`:
+
+    .. code-block:: python
+
+        # Load annotations as polygons
+        dataset = fo.Dataset.from_dir(
+            dataset_type=fo.types.YOLOv5Dataset,
+            label_type="polylines",
+            ...
+        )
 
     See :class:`YOLOv5DatasetImporter <fiftyone.utils.yolo.YOLOv5DatasetImporter>`
     for parameters that can be passed to methods like
@@ -2650,7 +2686,7 @@ directory of TFRecords in the above format as follows:
 
     When the above command is executed, the images in the TFRecords will be
     written to the provided `IMAGES_DIR`, which is required because FiftyOne
-    datasets must make their images available as invididual files on disk.
+    datasets must make their images available as individual files on disk.
 
     To view an object detection dataset stored as a directory of TFRecords in
     the FiftyOne App without creating a persistent FiftyOne dataset, you can

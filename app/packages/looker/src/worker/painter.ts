@@ -136,11 +136,12 @@ export const PainterFactory = (requestColor) => ({
     selectedLabelTags: string[]
   ) => {
     const promises = labels.detections.map((label) =>
-      PainterFactory(requestColor)[label._cls](
+      PainterFactory(requestColor).Detection(
         field,
         label,
         coloring,
         customizeColorSetting,
+        colorscale,
         labelTagColors,
         selectedLabelTags
       )

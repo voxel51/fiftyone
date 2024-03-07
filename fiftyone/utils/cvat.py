@@ -3522,7 +3522,7 @@ class CVATAnnotationResults(foua.AnnotationResults):
 class CVATAnnotationAPI(foua.AnnotationAPI):
     """A class to facilitate connection to and management of tasks in CVAT.
 
-    On initializiation, this class constructs a session based on the provided
+    On initialization, this class constructs a session based on the provided
     server url and credentials.
 
     This API provides methods to easily get, put, post, patch, and delete tasks
@@ -4032,7 +4032,7 @@ class CVATAnnotationAPI(foua.AnnotationAPI):
                     tasks.append(task)
                 else:
                     # For v1 servers, project tasks are dictionaries we need to
-                    # exctract "id" from
+                    # extract "id" from
                     tasks.append(task["id"])
 
         return tasks
@@ -6926,9 +6926,9 @@ class CVATShape(CVATLabel):
         index (None): the tracking index of the shape
         immutable_attrs (None): immutable attributes inherited by this shape
             from its track
-        occluded_attrs (None): a dictonary mapping class names to the
+        occluded_attrs (None): a dictionary mapping class names to the
             corresponding attribute linked to the CVAT occlusion widget, if any
-        group_id_attrs (None): a dictonary mapping class names to the
+        group_id_attrs (None): a dictionary mapping class names to the
             corresponding attribute linked to the CVAT group id, if any
         group_id (None): an optional group id value for this shape when it
             cannot be parsed from the label dict

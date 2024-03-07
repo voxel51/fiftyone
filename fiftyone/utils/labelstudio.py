@@ -12,6 +12,7 @@ from collections import defaultdict
 import itertools
 import json
 import logging
+import os
 from packaging import version
 import random
 import string
@@ -298,11 +299,13 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
             and ls_local_enabled is not None
             and ls_local_enabled.lower() == "true"
         )
-        # if files are not inside local storage root, we can't use local storage
+
+        # If files are not inside local storage root, we can't use local storage
         common_prefix = os.path.commonprefix(
             [one[one["media_type"]] for one in tasks]
         ).rstrip("/")
         common_prefix = os.path.dirname(common_prefix)
+
         if local_storage_enabled and ls_root in common_prefix:
             logger.debug("Using local LabelStudio storage")
             project.connect_local_import_storage(common_prefix)
@@ -323,13 +326,14 @@ class LabelStudioAnnotationAPI(foua.AnnotationAPI):
                 f"/api/projects/{project.id}/import",
                 json=files_data,
             )
-
         else:
             logger.debug("Uploading as files")
+
             files = [
                 (one["source_id"], open(one[one["media_type"]], "rb"))
                 for one in tasks
             ]
+
             # upload files first and get their upload ids
             upload_resp = self._client.make_request(
                 "POST",

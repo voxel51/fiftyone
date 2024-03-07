@@ -3,6 +3,64 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+FiftyOne Teams 1.5.7
+--------------------
+*Released March 6, 2024*
+
+Includes all updates from :ref:`FiftyOne 0.23.6 <release-notes-v0.23.6>`, plus:
+
+- Improved performance of
+  :meth:`values() <fiftyone.core.collections.SampleCollection.values>` when
+  using :ref:`API connections <teams-api-connection>`
+- Improved stability of long-running operations when using
+  :ref:`API connections <teams-api-connection>`
+- Added support for including prefixes when providing
+  :ref:`bucket-specific credentials <teams-cloud-storage-page>`
+
+.. _release-notes-v0.23.6:
+
+FiftyOne 0.23.6
+---------------
+*Released March 6, 2024*
+
+What's New
+
+- Added a
+  :doc:`dimensionality reduction tutorial </tutorials/dimension_reduction>`
+  `#4033 <https://github.com/voxel51/fiftyone/pull/4033>`_
+- Added a :doc:`data augmentation tutorial </tutorials/data_augmentation>`
+  `#4109 <https://github.com/voxel51/fiftyone/pull/4109>`_
+- Added a formal :ref:`Open CLIP integration page <openclip-integration>`
+  `#4049 <https://github.com/voxel51/fiftyone/pull/4049>`_
+- Documented support for open-world object detection with
+  :ref:`YOLO World <ultralytics-open-vocabulary-object-detection>`
+  `#4112 <https://github.com/voxel51/fiftyone/pull/4112>`_
+- Added support for importing/exporting contours in
+  :ref:`YOLO format <YOLOv5Dataset-import>`
+  `#4094 <https://github.com/voxel51/fiftyone/pull/4094>`_
+- Added cosine metric as an option for
+  :ref:`Milvus similarity indexes <milvus-integration>`
+  `#4081 <https://github.com/voxel51/fiftyone/pull/4081>`_
+- Added support for local files when using the
+  :ref:`Label Studio integration <label-studio-local-storage>`
+  `#3969 <https://github.com/voxel51/fiftyone/pull/3969>`_
+- Removed App dependency on ``_cls`` for embedded documents
+  `#4090 <https://github.com/voxel51/fiftyone/pull/4090>`_
+
+Bugs
+
+- Fixed issue with filter counts on video datasets in the App
+  `#4095 <https://github.com/voxel51/fiftyone/pull/4095>`_
+- Fixed issue with color scheme initialization in the App
+  `#4092 <https://github.com/voxel51/fiftyone/pull/4092>`_
+- Fixed issue when changing group slice with filters in the App
+  `#4098 <https://github.com/voxel51/fiftyone/pull/4098>`_
+- Fixed issue with zero-shot detection batching
+  `#4108 <https://github.com/voxel51/fiftyone/pull/4108>`_
+- Fixed issue with the operator target view utility when no view or sample
+  selection is present
+  `#4113 <https://github.com/voxel51/fiftyone/pull/4113>`_
+
 FiftyOne Teams 1.5.6
 --------------------
 *Released February 14, 2024*
@@ -387,7 +445,7 @@ Bugs
   sometimes stay open after making a selection
 - Fixed an issue when downloading plugins via the API that contain bytes data
   or ``.pyc`` files
-- Fixed an isssue where certain disabled operators were not correctly appearing
+- Fixed an issue where certain disabled operators were not correctly appearing
   as disabled in the operator browser
 - Improved reliability of similarity sort actions
 
@@ -2218,7 +2276,7 @@ FiftyOne 0.17.2
 
 App
 
-- Fixed a backward compatability bug when connecting to older database versions
+- Fixed a backward compatibility bug when connecting to older database versions
   `#2103 <https://github.com/voxel51/fiftyone/pull/2103>`_
 
 .. _release-notes-v0.17.1:
@@ -2354,7 +2412,7 @@ Core
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Added support for dynamic attributes when performing coerced exports
   `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
-- Introduced the notion of client compatability versions
+- Introduced the notion of client compatibility versions
   `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
 - Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
   sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
@@ -3329,7 +3387,7 @@ Core
   working with :ref:`BDD format <BDDDataset-import>`
 - Fixed some Windows-style path bugs
 
-Annnotation
+Annotation
 
 - Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
   easy to add or edit labels on your FiftyOne datasets or specific views into
@@ -3883,7 +3941,7 @@ Core
       |Session| to explore the samples/labels in a dataset based on their
       locations in a low-dimensional embedding space
     - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
-      an interacive scatterplot of a dataset via its |GeoLocation| coordinates
+      an interactive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
     - Added the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
@@ -4387,7 +4445,7 @@ FiftyOne 0.6.5
 
 App
 
-- Added concurrency to the server wich greatly improves loading speeds and
+- Added concurrency to the server which greatly improves loading speeds and
   time-to-interaction in the Grid, View Bar, and Filters Sidebar for larger
   datasets and views
 - Renamed the Display Options Sidebar to the Filters Sidebar
@@ -4469,7 +4527,7 @@ Core
 
 - Added the
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
-  view stage, which supercedes the old dedicated per-label-type filtering
+  view stage, which supersedes the old dedicated per-label-type filtering
   stages
 - Added
   :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`

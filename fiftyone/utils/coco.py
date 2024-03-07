@@ -1705,7 +1705,7 @@ def download_coco_dataset_split(
     num_samples = len(downloaded_filenames)  # total downloaded
 
     #
-    # Write usable annotations file to `anno_path`, if necesary
+    # Write usable annotations file to `anno_path`, if necessary
     #
 
     if not os.path.isfile(anno_path):

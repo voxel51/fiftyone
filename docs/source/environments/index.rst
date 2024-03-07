@@ -528,7 +528,7 @@ For prototyping, it is *possible* to work with data in cloud storage buckets in
 FiftyOne by mounting the buckets as local drives.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
-:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>`
+:ref:`Google Cloud <google-cloud>`, and :ref:`Microsoft Azure <azure>`
 environments.
 
 .. warning::

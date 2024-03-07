@@ -5,16 +5,16 @@ Roles and permissions
 
 .. default-role:: code
 
-FiftyOne Teams is built for collaboration, with the goal of making it as easy 
-as possible for engineers, data scientists, and stakeholders to work together 
+FiftyOne Teams is built for collaboration, with the goal of making it as easy
+as possible for engineers, data scientists, and stakeholders to work together
 to build high quality datasets and computer vision models.
 
-Accordingly, FiftyOne Teams gives you the flexibility to configure user roles, 
-user groups and fine-grained permissions so that you can safely and securly 
-collaborate both inside and outside your organization at all stages of your 
+Accordingly, FiftyOne Teams gives you the flexibility to configure user roles,
+user groups and fine-grained permissions so that you can safely and securly
+collaborate both inside and outside your organization at all stages of your
 workflows.
 
-This page introduces the basic roles and permissions available in 
+This page introduces the basic roles and permissions available in
 FiftyOne Teams.
 
 .. _teams-roles:
@@ -102,21 +102,21 @@ view other users of the deployment.
 Groups
 ------
 
-User groups in FiftyOne Teams allow organization admins to manage a collection 
-of users as a single entity. This simplifies the process of assigning 
-permissions to multiple users, making it more efficient to control access to 
+User groups in FiftyOne Teams allow organization admins to manage a collection
+of users as a single entity. This simplifies the process of assigning
+permissions to multiple users, making it more efficient to control access to
 datasets.
 
-Admins can manage groups through the "Settings > Team > Groups" page. 
-Each group can be given specific dataset access permissions, which apply to 
+Admins can manage groups through the "Settings > Team > Groups" page.
+Each group can be given specific dataset access permissions, which apply to
 all users within the group (except for guests).
 
 .. image:: /images/teams/admin_team_groups_page.png
    :alt: admin-team-groups-page
    :align: center
 
-Admins can create a new group by clicking on "Create group" and then adding 
-existing users to the group by clicking on "Add users". 
+Admins can create a new group by clicking on "Create group" and then adding
+existing users to the group by clicking on "Add users".
 
 .. image:: /images/teams/admin_create_group.png
    :alt: admin-create-group
@@ -128,7 +128,7 @@ existing users to the group by clicking on "Add users".
 
 .. note::
 
-   Non-existing users cannot be directly added to a group. Users must be 
+   Non-existing users cannot be directly added to a group. Users must be
    invited and accept the invitation before they can be added to a group.
 
 .. _teams-permissions:
@@ -140,11 +140,11 @@ Admins and users with the **Can manage** permission on a dataset can configure
 a dataset's permissions under the dataset's
 :ref:`Manage tab <teams-managing-datasets>` in the FiftyOne Teams App.
 
-In FiftyOne Teams, dataset permissions for a user are determined by both the 
-access they receive from their groups' permissions and individual permissions 
-assigned to them.  
+In FiftyOne Teams, dataset permissions for a user are determined by both the
+access they receive from their groups' permissions and individual permissions
+assigned to them.
 
-A user’s permissions on a dataset is the maximum of their permissions from the 
+A user’s permissions on a dataset is the maximum of their permissions from the
 following sources:
 
 -  Admins implicitly have full access to all datasets
@@ -157,7 +157,7 @@ following sources:
 
 .. note::
 
-   User role determines the highest level of access that a user can be granted 
+   User role determines the highest level of access that a user can be granted
    to a dataset. For example, a user with Guest role can be added to a group
    with **Can edit** permission to a dataset, but this user will have
    **Can view** permission instead of **Can edit** permission of the dataset,
@@ -188,11 +188,11 @@ A dataset's default access level can be set to **No access**, **Can view**,
 People and groups with access
 -----------------------------
 
-Authorized users can grant specific access to a dataset using the "People and 
-groups with access" section shown below. 
+Authorized users can grant specific access to a dataset using the "People and
+groups with access" section shown below.
 
-To give access to an existing user or group, simply click "Share" button on 
-the top right. A list of users with access to the dataset is shown. Click 
+To give access to an existing user or group, simply click "Share" button on
+the top right. A list of users with access to the dataset is shown. Click
 "Add User" or "Add Group" to grant access to a new user or group.
 
 .. image:: /images/teams/share_dataset.png
@@ -205,7 +205,7 @@ the top right. A list of users with access to the dataset is shown. Click
 
 The following permissions are available to each user role:
 
--  Groups may be granted **Can view**, **Can edit**, or **Can manage** 
+-  Groups may be granted **Can view**, **Can edit**, or **Can manage**
    permissions
 -  Members may be granted **Can view**, **Can edit**, or **Can manage**
    permissions
@@ -221,7 +221,7 @@ The following permissions are available to each user role:
    When the invitation is accepted, the user will become a Guest or
    Collaborator (depending on whether **Can view** or **Can edit** access was
    granted, respectively), and an Admin can upgrade this user to another role
-   if desired via the Team Settings page. 
+   if desired via the Team Settings page.
 
 .. _teams-no-access:
 

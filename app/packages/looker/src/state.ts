@@ -62,7 +62,6 @@ export interface CustomizeColor extends LabelTagColor {
 
 export type OrthogrpahicProjectionMetadata = {
   _id: string;
-  _cls: "OrthographicProjectionMetadata";
   filepath: string;
   height: number;
   width: number;
@@ -72,7 +71,6 @@ export type OrthogrpahicProjectionMetadata = {
 
 export type GenericLabel = {
   [labelKey: string]: {
-    _cls: string;
     [field: string]: unknown;
   };
   // todo: add other label types

@@ -1540,7 +1540,7 @@ class DatasetView(foc.SampleCollection):
 
         #######################################################################
 
-        # Insert group lookup pipline if needed
+        # Insert group lookup pipeline if needed
         if _attach_groups_idx is not None:
             _pipeline = self._dataset._attach_groups_pipeline(
                 group_slices=_group_slices

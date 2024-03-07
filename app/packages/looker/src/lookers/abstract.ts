@@ -181,7 +181,7 @@ export abstract class AbstractLooker<
   }
 
   loadOverlays(sample: Sample): void {
-    this.sampleOverlays = loadOverlays(sample);
+    this.sampleOverlays = loadOverlays(sample, this.state.config.fieldSchema);
   }
 
   pluckOverlays(state: Readonly<State>): Overlay<State>[] {
@@ -700,6 +700,7 @@ export abstract class AbstractLooker<
       labelTagColors: this.state.options.labelTagColors,
       selectedLabelTags: this.state.options.selectedLabelTags,
       sources: this.state.config.sources,
+      schema: this.state.config.fieldSchema,
       uuid: messageUUID,
     } as ProcessSample);
   }

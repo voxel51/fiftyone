@@ -661,7 +661,7 @@ _document_registry = DocumentRegistry()
 
 def load_dataset(id=None, name=None):
     """Loads the dataset from the database by its unique id or name. Throws
-    an error if neigher id nor name is provided.
+    an error if neither id nor name is provided.
 
     Args:
         id (None): the unique id of the dataset

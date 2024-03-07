@@ -99,7 +99,7 @@ def get_db_config():
     if config.version is None:
         #
         # The database version was added to this config in v0.15.0, so if no
-        # version is available, assume the database is at the preceeding
+        # version is available, assume the database is at the preceding
         # release. It's okay if the database's version is actually older,
         # because there are no significant admin migrations prior to v0.14.4.
         #
