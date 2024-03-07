@@ -831,7 +831,7 @@ def run(fcn, tasks, num_workers=None, progress=None):
 
     Args:
         fcn: a function that accepts a single argument
-        tasks: an iterable of function aguments
+        tasks: an iterable of function arguments
         num_workers (None): a suggested number of threads to use
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a

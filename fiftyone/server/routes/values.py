@@ -53,7 +53,7 @@ class Values(HTTPEndpoint):
 
         sort_by = "count" if count else "_id"
 
-        # escape special characters, add support for wilcard pattern matching
+        # escape special characters, add support for wildcard pattern matching
         regex_safe_search = (
             re.escape(search).replace(r"\*", ".*").replace(r"\?", ".")
             if search

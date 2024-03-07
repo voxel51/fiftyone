@@ -345,8 +345,8 @@ then you can make use of the
 of Label Studio to avoid needing to copy your media.
 
 To enable this, you just need to configure the
-`LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT` and `LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED`
-environment variables as defined in
+`LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT` and
+`LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED` environment variables as defined in
 `the documentation <https://labelstud.io/guide/storage#Prerequisites-2>`_.
 
 Then when you request annotations, if all of the samples in your |Dataset| or

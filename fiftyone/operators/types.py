@@ -1722,27 +1722,33 @@ class ViewTargetProperty(Property):
     """
 
     def __init__(self, ctx, view_type=RadioGroup, **kwargs):
-        has_custom_view = ctx.has_custom_view
-        has_selected = bool(ctx.selected)
-        default_target = "DATASET"
         choice_view = view_type()
         options = ViewTargetOptions(choice_view)
+
         self._options = options
 
-        if has_custom_view or has_selected:
-            options.entire_dataset.include = True
+        # Entire dataset is always an option
+        default_target = options.entire_dataset.value
+        options.entire_dataset.include = True
 
-            if has_custom_view:
-                options.current_view.include = True
-                default_target = "CURRENT_VIEW"
+        has_custom_view = ctx.has_custom_view
+        if has_custom_view:
+            options.current_view.include = True
+            default_target = options.current_view.value
 
-            if has_selected:
-                options.selected_samples.include = True
-                default_target = "SELECTED_SAMPLES"
+        has_selected = bool(ctx.selected)
+        if has_selected:
+            options.selected_samples.include = True
+            default_target = options.selected_samples.value
 
-        type = Enum(options.values())
+        _type = Enum(options.values())
+
+        # Only 1 option so no need for a radio group, just hide it.
+        if len(options.values()) == 1:
+            choice_view = HiddenView(read_only=True)
+
         super().__init__(
-            type, default=default_target, view=choice_view, **kwargs
+            _type, default=default_target, view=choice_view, **kwargs
         )
 
     @property

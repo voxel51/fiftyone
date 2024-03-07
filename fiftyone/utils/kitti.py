@@ -458,9 +458,9 @@ def download_kitti_multiview_dataset(
         dataset_dir: the directory in which to construct the dataset
         splits (None): the split or list of splits to download. Supported
             values are ``("train", "test")``
-        scratch_dir (None): a scratch directory to use to downoad any necessary
+        scratch_dir (None): a scratch directory to use to download any necessary
             temporary files
-        overwrite (False): whether to redownload/regnerate files if they
+        overwrite (False): whether to redownload/regenerate files if they
             already exist
         cleanup (False): whether to delete the downloaded zips and scratch
             directory
@@ -571,7 +571,7 @@ def download_kitti_detection_dataset(
         dataset_dir: the directory in which to construct the dataset
         splits (None): the split or list of splits to download. Supported
             values are ``("train", "test")``
-        scratch_dir (None): a scratch directory to use to downoad any necessary
+        scratch_dir (None): a scratch directory to use to download any necessary
             temporary files
         overwrite (False): whether to redownload the zips if they already exist
         cleanup (False): whether to delete the downloaded zips and scratch
