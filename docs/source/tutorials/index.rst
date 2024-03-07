@@ -146,6 +146,13 @@ your datasets and turn your good models into *great models*.
     :tags: Brain,Visualization
 
 .. customcarditem::
+    :header: Zero-Shot Image Classification
+    :description: Run and evaluate zero-shot image classification models with OpenCLIP, Hugging Face Transformers, and FiftyOne.
+    :link: zero_shot_classification.html
+    :image: ../_static/images/tutorials/zero_shot_classification.png
+    :tags: Filtering,Model-Evaluation,Model-Zoo
+
+.. customcarditem::
     :header: Augmenting Datasets with Albumentations
     :description: Learn how to apply and test out different augmentations on your datasets using FiftyOne and Albumentations.
     :link: data_augmentation.html
@@ -192,4 +199,5 @@ your datasets and turn your good models into *great models*.
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
    Dimensionality reduction <dimension_reduction.ipynb>
+   Zero-shot image classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
