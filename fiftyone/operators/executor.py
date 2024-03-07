@@ -13,6 +13,7 @@ import os
 import traceback
 
 import fiftyone as fo
+import fiftyone.core.context as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
@@ -146,12 +147,18 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
 
-    result = asyncio.run(
-        execute_or_delegate_operator(
-            operator_uri, request_params, exhaust=True
-        )
+    coroutine = execute_or_delegate_operator(
+        operator_uri, request_params, exhaust=True
     )
-    result.raise_exceptions()
+
+    if foc.is_notebook_context():
+        # Notebooks already have event loops running, so we must execute there
+        loop = asyncio.get_event_loop()
+        loop.create_task(coroutine)
+        result = None  # @todo can we await result here?
+    else:
+        result = asyncio.run(coroutine)
+        result.raise_exceptions()
 
     return result
 
