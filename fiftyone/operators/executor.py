@@ -13,7 +13,6 @@ import os
 import traceback
 
 import fiftyone as fo
-import fiftyone.core.context as foc
 import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
@@ -146,16 +145,23 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
-
     coroutine = execute_or_delegate_operator(
         operator_uri, request_params, exhaust=True
     )
 
-    if foc.is_notebook_context():
-        # Notebooks already have event loops running, so we must execute there
-        loop = asyncio.get_event_loop()
+    try:
+        # Some contexts like notebooks already have event loops running, so we
+        # must use the existing loop
+        loop = asyncio.get_running_loop()
+    except:
+        loop = None
+
+    if loop is not None:
+        # @todo how can we await result here?
+        # Sadly, run_until_complete() is not allowed in Jupyter notebooks
+        # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
         loop.create_task(coroutine)
-        result = None  # @todo can we await result here?
+        result = None
     else:
         result = asyncio.run(coroutine)
         result.raise_exceptions()
