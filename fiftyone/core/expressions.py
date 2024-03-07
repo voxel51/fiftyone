@@ -5,6 +5,7 @@ Expressions for :class:`fiftyone.core.stages.ViewStage` definitions.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 from datetime import date, datetime, timedelta
 import re
@@ -64,6 +65,7 @@ def is_frames_expr(expr):
             expr == "$frames"
             or expr.startswith("$frames.")
             or expr.startswith("$frames[].")
+            or expr.startswith("frames.")
         )
 
     if isinstance(expr, dict):
@@ -2030,7 +2032,7 @@ class ViewExpression(object):
             dataset = foz.load_zoo_dataset("quickstart")
 
             #
-            # Replaces the `label` attritubes of the objects in the
+            # Replaces the `label` attributes of the objects in the
             # `predictions` field according to the following rule:
             #
             #   If the `label` starts with `b`, replace it with `b`. Otherwise,
@@ -3372,7 +3374,7 @@ class ViewExpression(object):
         return ViewExpression({"$rtrim": rtrim})
 
     def replace(self, old, new):
-        """Replaces all occurances of ``old`` with ``new`` in this expression,
+        """Replaces all occurrences of ``old`` with ``new`` in this expression,
         which must resolve to a string.
 
         Examples::
@@ -3659,7 +3661,7 @@ class ViewExpression(object):
         delimiter.
 
         If the number of chunks exceeds ``maxsplit``, splits are only performed
-        on the last ``maxsplit`` occurances of the delimiter.
+        on the last ``maxsplit`` occurrences of the delimiter.
 
         The result is a string array that contains the chunks with the
         delimiter removed. If the delimiter is not found, this full string is
@@ -4165,7 +4167,7 @@ class ViewExpression(object):
         """Returns an expression representing the given value without parsing.
 
         See `this page <https://docs.mongodb.com/manual/reference/operator/aggregation/literal>`_
-        for more information on when this method is reqiured.
+        for more information on when this method is required.
 
         Examples::
 
@@ -4606,7 +4608,7 @@ class ViewField(ViewExpression):
     .. automethod:: __getitem__
 
     Args:
-        name (None): the name of the field, with an optional "$" preprended if
+        name (None): the name of the field, with an optional "$" prepended if
             you wish to freeze this field to the root document
     """
 

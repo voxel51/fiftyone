@@ -606,7 +606,7 @@ stage to any dataset or view. The query can be any of the following:
 
 .. note::
 
-    Currently, when performing a similiarity search on a view with the MongoDB backend,
+    Currently, when performing a similarity search on a view with the MongoDB backend,
     the full index is queried and the resulting samples are restricted to the desired view. 
     This may result in fewer samples than requested being returned by the search.
 

@@ -811,7 +811,7 @@ Managing delegated operations
 _____________________________
 
 The :ref:`fiftyone delegated <cli-fiftyone-delegated>` CLI command contains a
-number of useful utilties for viewing the status of your delegated operations.
+number of useful utilities for viewing the status of your delegated operations.
 
 Listing delegated operations
 ----------------------------

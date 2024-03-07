@@ -40,7 +40,7 @@ export const pathSearchCount = selectorFamily({
             path,
             filter: { path, value },
           })
-        )?.values?.[0].count || 0
+        )?.values?.[0]?.count || 0
       );
     },
 });
