@@ -682,7 +682,7 @@ def _iter_batches(video_reader, batch_size):
 
 def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
     # This function supports DataLoaders that emit numpy arrays that can
-    # therefore be used for non-Torch models; but we do not currenly use this
+    # therefore be used for non-Torch models; but we do not currently use this
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
@@ -1738,7 +1738,7 @@ def _make_patch_data_loader(
     skip_failures,
 ):
     # This function supports DataLoaders that emit numpy arrays that can
-    # therefore be used for non-Torch models; but we do not currenly use this
+    # therefore be used for non-Torch models; but we do not currently use this
     # functionality
     use_numpy = not isinstance(model, TorchModelMixin)
 
@@ -1972,7 +1972,7 @@ class Model(etal.Model):
         raise NotImplementedError("subclasses must implement preprocess")
 
     def predict(self, arg):
-        """Peforms prediction on the given data.
+        """Performs prediction on the given data.
 
         Image models should support, at minimum, processing ``arg`` values that
         are uint8 numpy arrays (HWC).
@@ -2172,7 +2172,7 @@ class SamplesMixin(object):
         self._fields = fields
 
     def predict(self, arg, sample=None):
-        """Peforms prediction on the given data.
+        """Performs prediction on the given data.
 
         Image models should support, at minimum, processing ``arg`` values that
         are uint8 numpy arrays (HWC).

@@ -756,8 +756,8 @@ types like lists, dictionaries, and arrays will be omitted.
 Restricting additions, deletions, and edits
 -------------------------------------------
 
-When you create annotation runs that invovle editing existing label fields, you
-can optionally specify that certain changes are not alllowed by passing the
+When you create annotation runs that involve editing existing label fields, you
+can optionally specify that certain changes are not allowed by passing the
 following flags to
 :meth:`annotate() <fiftyone.core.collections.SampleCollection.annotate>`:
 
@@ -1624,7 +1624,7 @@ CVAT project and avoid the need to re-specify the label schema in FiftyOne.
     the limited purpose of specifying the name of existing label field(s) to
     upload or the name and type of new field(s) in which you want to store the
     annotations that will be created. If no label fields are provided, then you
-    will receieve command line prompt(s) at import time to provide label
+    will receive command line prompt(s) at import time to provide label
     field(s) in which to store the annotations.
 
 .. warning::
@@ -1775,7 +1775,7 @@ uploading annotation runs for large sample collections.
 You can use the `task_size` parameter to break image annotation runs into
 multiple CVAT tasks, each with a specified maximum number of images. Note that
 we recommend providing a `project_name` whenever you use the `task_size`
-pararmeter so that the created tasks will be grouped together.
+parameter so that the created tasks will be grouped together.
 
 The `task_size` parameter can also be used in conjunction with the
 `segment_size` parameter to configure both the number of images per task as
@@ -2326,7 +2326,7 @@ You can also edit existing frame-level labels of video datasets in CVAT.
     marked as a keyframe in CVAT.
 
 The example below edits the existing detections of a video dataset. Note that,
-since the dataset's labels do not have keyframe markings, we artifically tag
+since the dataset's labels do not have keyframe markings, we artificially tag
 every 10th frame as a keyframe to provide a better editing experience in CVAT:
 
 .. code:: python

@@ -55,7 +55,7 @@ class OpenImagesEvaluationConfig(DetectionEvaluationConfig):
 
             If ``error_level > 0``, any calculation that raises a geometric
             error will default to an IoU of 0
-        hierarchy (None): an optional dict containing a hierachy of classes for
+        hierarchy (None): an optional dict containing a hierarchy of classes for
             evaluation following the structure
             ``{"LabelName": label, "Subcategory": [{...}, ...]}``
         pos_label_field (None): the name of a field containing image-level
@@ -873,7 +873,7 @@ def _build_plain_hierarchy(hierarchy, skip_root=False):
             keyed_parent, keyed_child, children = _build_plain_hierarchy(node)
 
             # Update is not done through dict.update() since some children have
-            # multiple parents in the hiearchy
+            # multiple parents in the hierarchy
             _update_dict(all_keyed_parent, keyed_parent)
             _update_dict(all_keyed_child, keyed_child)
             all_children.update(children)

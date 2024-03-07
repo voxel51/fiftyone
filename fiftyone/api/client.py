@@ -11,28 +11,36 @@ try:
 except ImportError:
     # for Python 3.7
     import importlib_metadata as metadata
-from typing import Any, BinaryIO, Dict, Iterator, Mapping, Optional
-from typing_extensions import Literal
+
+from typing import Any, BinaryIO, Callable, Dict, Iterator, Mapping, Optional
 
 import backoff
 import requests
+from typing_extensions import Literal
 
 from fiftyone.api import constants, errors, socket
+
+
+def fatal_http_code(e):
+    return 400 <= e.response.status_code < 500
 
 
 class Client:
     """Class for communicating with Teams API"""
 
     @staticmethod
-    def _chunk_generator(
+    def _chunk_generator_factory(
         s: str, chunk_size=constants.CHUNK_SIZE
-    ) -> Iterator[bytes]:
-        bytes_ = s.encode()
-        for byte_chunk in [
-            bytes_[i : i + chunk_size]
-            for i in range(0, len(bytes_), chunk_size)
-        ]:
-            yield byte_chunk
+    ) -> Callable[[], Iterator[bytes]]:
+        def _gen() -> Iterator[bytes]:
+            bytes_ = s.encode()
+            for byte_chunk in [
+                bytes_[i : i + chunk_size]
+                for i in range(0, len(bytes_), chunk_size)
+            ]:
+                yield byte_chunk
+
+        return _gen
 
     def __init__(
         self,
@@ -88,25 +96,30 @@ class Client:
         data = payload
         headers = {}
 
+        data_generator_factory = None
         if stream:
-            data = self._chunk_generator(payload)
+            data = None
+            data_generator_factory = self._chunk_generator_factory(payload)
             headers["Transfer-Encoding"] = "chunked"
 
         response = self.__request(
             "POST",
             url_path,
             timeout,
+            data_generator_factory=data_generator_factory,
             data=data,
             headers=headers,
             stream=stream,
         )
+        # Use response as context manager to ensure it's closed.
+        # https://requests.readthedocs.io/en/latest/user/advanced/#body-content-workflow
+        with response:
+            if stream:
+                return functools.reduce(
+                    lambda res, line: res + line, response.iter_lines(), b""
+                )
 
-        if stream:
-            return functools.reduce(
-                lambda res, line: res + line, response.iter_lines(), b""
-            )
-
-        return response.content
+            return response.content
 
     def post_file(
         self,
@@ -225,15 +238,29 @@ class Client:
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ReadTimeout, max_time=60
     )
+    # 500 errors are possibly recoverable but 400 are not
+    @backoff.on_exception(
+        backoff.expo,
+        requests.exceptions.HTTPError,
+        max_time=60,
+        giveup=fatal_http_code,
+    )
     def __request(
         self,
         method: Literal["POST", "GET"],
         url_path: str,
         timeout: Optional[int] = None,
+        data_generator_factory: Optional[Callable[[], Iterator[bytes]]] = None,
         **request_kwargs,
     ):
         timeout = timeout or self._timeout
         url = os.path.join(self.__base_url, url_path)
+
+        # Use data generator factory to get a data generator.
+        #   Need this so that we get a fresh generator if we retry via backoff.
+        if data_generator_factory is not None:
+            data_generator = data_generator_factory()
+            request_kwargs["data"] = data_generator
 
         response = self._session.request(
             method, url=url, timeout=timeout, **request_kwargs

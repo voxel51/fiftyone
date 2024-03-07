@@ -230,7 +230,7 @@ App
 
 - Added support for frames-as-videos in nested groups
   `#3935 <https://github.com/voxel51/fiftyone/pull/3935>`_
-- Fixed an issue where embeddigns legend did not display full names
+- Fixed an issue where embeddings legend did not display full names
   `#3927 <https://github.com/voxel51/fiftyone/pull/3927>`_
 - Added a toggle to show/hide fields in the sample modal that have undefined
   values
@@ -387,7 +387,7 @@ Bugs
   sometimes stay open after making a selection
 - Fixed an issue when downloading plugins via the API that contain bytes data
   or ``.pyc`` files
-- Fixed an isssue where certain disabled operators were not correctly appearing
+- Fixed an issue where certain disabled operators were not correctly appearing
   as disabled in the operator browser
 - Improved reliability of similarity sort actions
 
@@ -1744,7 +1744,7 @@ Core
   `#2770 <https://github.com/voxel51/fiftyone/pull/2770>`_
 - Frame collections are now lazily created only when necessary
   `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
-- Upgraded the document save implementaton to only use upsert operations when
+- Upgraded the document save implementation to only use upsert operations when
   explicitly required
   `#2727 <https://github.com/voxel51/fiftyone/pull/2727>`_
 - Added ``_dataset_id`` to all sample/frame documents in datasets
@@ -2006,7 +2006,7 @@ Core
 - Migrated runs to a separate database collection, for efficiency
   `#2189 <https://github.com/voxel51/fiftyone/pull/2189>`_
 - Added an :func:`exact_frame_count() <fiftyone.utils.video.exact_frame_count>`
-  utility for computing extact video frame counts
+  utility for computing exact video frame counts
   `#2373 <https://github.com/voxel51/fiftyone/pull/2373>`_
 - Updated the :ref:`3D visualizer <3d-detections>` to use true centroid (not
   bottom-center) coordinates for 3D detections
@@ -2218,7 +2218,7 @@ FiftyOne 0.17.2
 
 App
 
-- Fixed a backward compatability bug when connecting to older database verions
+- Fixed a backward compatibility bug when connecting to older database versions
   `#2103 <https://github.com/voxel51/fiftyone/pull/2103>`_
 
 .. _release-notes-v0.17.1:
@@ -2299,9 +2299,9 @@ Docs
 
 Annotation
 
-- Fixed a bug that occured when checking if tasks exist on CVAT v2 servers
+- Fixed a bug that occurred when checking if tasks exist on CVAT v2 servers
   `#2070 <https://github.com/voxel51/fiftyone/pull/2070>`_
-- Fixed an error that occured when deseriailizing Label Studio annotation
+- Fixed an error that occurred when deserializing Label Studio annotation
   results `#2074 <https://github.com/voxel51/fiftyone/pull/2074>`_
 
 Zoo
@@ -2354,7 +2354,7 @@ Core
   `#1922 <https://github.com/voxel51/fiftyone/pull/1922>`_
 - Added support for dynamic attributes when performing coerced exports
   `#1993 <https://github.com/voxel51/fiftyone/pull/1993>`_
-- Introduced the notion of client compatability versions
+- Introduced the notion of client compatibility versions
   `#2017 <https://github.com/voxel51/fiftyone/pull/2017>`_
 - Extended :meth:`stats() <fiftyone.core.collections.SampleCollection>` to all
   sample collections `#1940 <https://github.com/voxel51/fiftyone/pull/1940>`_
@@ -2920,7 +2920,7 @@ Annotation
   :ref:`a variety of options <cvat-unexpected-annotations>` for handling
   unexpected annotations returned by the CVAT API
 - Added support for passing request headers to the CVAT API
-- Fixed a bug that occured when importing single frame track segments from CVAT
+- Fixed a bug that occurred when importing single frame track segments from CVAT
 
 Zoo
 
@@ -3045,7 +3045,7 @@ Core
   :func:`reencode_videos() <fiftyone.utils.video.reencode_videos>`
 - Converted COCO and Open Images dataset downloads to use multithreading
   rather than multiprocessing
-- Updated evalution confusion matrices to always include rows and columns for
+- Updated evaluation confusion matrices to always include rows and columns for
   missing/other
 
 Annotation
@@ -3329,7 +3329,7 @@ Core
   working with :ref:`BDD format <BDDDataset-import>`
 - Fixed some Windows-style path bugs
 
-Annnotation
+Annotation
 
 - Added a powerful :ref:`annotation API <fiftyone-annotation>` that makes it
   easy to add or edit labels on your FiftyOne datasets or specific views into
@@ -3879,11 +3879,11 @@ Core
       an interactive confusion matrix that can be attached to a |Session|
       object to visually explore model predictions
     - :meth:`scatterplot() <fiftyone.core.plots.base.scatterplot>`: an
-      interacive scatterplot of 2D or 3D points that can be attached to a
+      interactive scatterplot of 2D or 3D points that can be attached to a
       |Session| to explore the samples/labels in a dataset based on their
       locations in a low-dimensional embedding space
     - :meth:`location_scatterplot() <fiftyone.core.plots.base.location_scatterplot>`:
-      an interacive scatterplot of a dataset via its |GeoLocation| coordinates
+      an interactive scatterplot of a dataset via its |GeoLocation| coordinates
     - Added |GeoLocation| and |GeoLocations| label types that can be used to store
       arbitrary GeoJSON location data on samples
     - Added the :class:`GeoJSONDataset <fiftyone.types.GeoJSONDataset>` dataset
@@ -3948,7 +3948,7 @@ Core
   ~100x for image datasets and ~10x for video datasets
 - Added an :meth:`Dataset.add_collection() <fiftyone.core.dataset.Dataset.add_collection>`
   method for adding the contents of a |SampleCollection| to another |Dataset|
-- Added the trigonometric view expresssions
+- Added the trigonometric view expressions
   :meth:`cos <fiftyone.core.expressions.ViewExpression.cos>`,
   :meth:`sin <fiftyone.core.expressions.ViewExpression.sin>`,
   :meth:`tan <fiftyone.core.expressions.ViewExpression.tan>`,
@@ -4165,7 +4165,7 @@ Core
   :meth:`map_values() <fiftyone.core.expressions.ViewExpression.map_values>`,
   :meth:`reduce() <fiftyone.core.expressions.ViewExpression.reduce>`, and
   :meth:`sort() <fiftyone.core.expressions.ViewExpression.sort>`
-- Exposed all :class:`Aggregtaions <fiftyone.core.aggregations.Aggregation>` as
+- Exposed all :class:`Aggregations <fiftyone.core.aggregations.Aggregation>` as
   single execution methods on the |SampleCollection| interface, e.g.,
   :meth:`distinct() <fiftyone.core.collections.SampleCollection.distinct>`
 - Added support for all |Label| types in
@@ -4306,7 +4306,7 @@ FiftyOne 0.7.0
 
 App
 
-- Added web browser support, which is now the default settting
+- Added web browser support, which is now the default setting
 - Added :ref:`IPython notebook support <notebooks>`, e.g. Jupyter and Google
   Colab
 - The desktop App can now be installed as an
@@ -4387,7 +4387,7 @@ FiftyOne 0.6.5
 
 App
 
-- Added concurrency to the server wich greatly improves loading speeds and
+- Added concurrency to the server which greatly improves loading speeds and
   time-to-interaction in the Grid, View Bar, and Filters Sidebar for larger
   datasets and views
 - Renamed the Display Options Sidebar to the Filters Sidebar
@@ -4469,7 +4469,7 @@ Core
 
 - Added the
   :meth:`filter_labels() <fiftyone.core.collections.SampleCollection.filter_labels>`
-  view stage, which supercedes the old dedicated per-label-type filtering
+  view stage, which supersedes the old dedicated per-label-type filtering
   stages
 - Added
   :meth:`select_labels() <fiftyone.core.collections.SampleCollection.select_labels>`

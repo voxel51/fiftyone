@@ -157,6 +157,42 @@ You should then see snippets in the ``pyproject.toml`` file like the following
 Cloud credentials
 -----------------
 
+In order to utilize cloud-backed media functionality of FiftyOne Teams, at
+least one cloud source must be configured with proper credentials. Below are
+instructions for configuring each supported cloud provider for local SDK use
+or directly to the Teams containers. An admin can also :ref:`configure
+credentials for use by all app users <teams-cloud-storage-page>`.
+
+.. note::
+
+    Configuring credentials following below instructions is almost always
+    sufficient for FiftyOne Teams to properly utilize them. In rare cases
+    where the cloud provider client needs non-default configuration,
+    you can add extra client kwargs via the
+    :ref:`media cache config <teams-media-cache-config>`:
+
+    .. code-block:: json
+
+        {
+            "extra_client_kwargs": {
+                "azure": {"extra_kwarg": "value"},
+                "gcs": {"extra_kwarg": "value"},
+                "minio": {"extra_kwarg": "value"},
+                "s3": {"extra_kwarg": "value"}
+            }
+        }
+
+    Provider names and the class that extra kwargs are passed to:
+
+    .. raw:: html
+
+        <ul class="simple">
+            <li> <strong>azure</strong>: <code class="docutils literal notranslate> <span class="pre">azure.identity.DefaultAzureCredential</span></code> </li>
+            <li> <strong>gcs</strong>: <code class="docutils literal notranslate> <span class="pre">google.cloud.storage.Client</span></code> </li>
+            <li> <strong>minio</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
+            <li> <strong>s3</strong>: <code class="docutils literal notranslate> <span class="pre">botocore.config.Config</span></code> </li>
+        </ul>
+
 .. _teams-cors:
 
 Cross-Origin Resource Sharing (CORS)

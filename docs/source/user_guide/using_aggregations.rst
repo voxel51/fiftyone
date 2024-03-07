@@ -559,7 +559,7 @@ The example below demonstrates this capability:
     **Frame fields:** When you write an aggregation that refers to a
     frame-level field of a video dataset; i.e.,
     ``frames.classification.label`` is automatically coerced to
-    ``frames[].classifcation.label`` if necessary.
+    ``frames[].classification.label`` if necessary.
 
     **Embedded list fields:** When you write an aggregation that refers to a
     list attribute that is declared on a |Sample|, |Frame|, or |Label| class,
