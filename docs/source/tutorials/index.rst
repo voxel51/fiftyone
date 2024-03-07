@@ -199,5 +199,5 @@ your datasets and turn your good models into *great models*.
    3D point clouds with Point-E <pointe.ipynb>
    Monocular depth estimation <monocular_depth_estimation.ipynb>
    Dimensionality reduction <dimension_reduction.ipynb>
-   Zero-shot image classification <zero_shot_classification.ipynb>
+   Zero-shot classification <zero_shot_classification.ipynb>
    Data augmentation <data_augmentation.ipynb>
