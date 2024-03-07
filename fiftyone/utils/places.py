@@ -1,8 +1,8 @@
 """
 Utilities for working with the
-`Places dataset <http://places2.csail.mit.edu/index.html>`.
+`Places dataset <http://places2.csail.mit.edu/index.html>`_.
 
-| Copyright 2024, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -22,11 +22,7 @@ import fiftyone.core.labels as fol
 logger = logging.getLogger(__name__)
 
 
-def download_places_dataset_split(
-    dataset_dir,
-    split,
-    raw_dir=None,
-):
+def download_places_dataset_split(dataset_dir, split, raw_dir=None):
     """Utility that downloads splits of the
     `Places dataset <http://places2.csail.mit.edu/index.html>`.
 
@@ -46,7 +42,6 @@ def download_places_dataset_split(
         -   did_download: whether any content was downloaded (True) or if all
             necessary files were already downloaded (False)
     """
-
     if split not in _IMAGE_DOWNLOAD_LINKS:
         raise ValueError(
             "Unsupported split '%s'; supported values are %s"
@@ -194,27 +189,25 @@ def download_places_dataset_split(
 
 
 class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
-    """Base class for importing datasets in Places format.
-
-    See :class:`fiftyone.types.PlacesDataset` for format details.
+    """Class for importing datasets written by
+    :meth:download_places_dataset_split`.
 
     Args:
         dataset_dir: the dataset directory
         shuffle (False): whether to randomly shuffle the order in which the
             samples are imported
         seed (None): a random seed to use when shuffling
-        max_samples (None): a maximum number of samples to load.
-            By default, all matching samples are loaded.
+        max_samples (None): a maximum number of samples to load. By default,
+            all samples are imported
     """
 
     def __init__(
         self,
-        dataset_dir=None,
+        dataset_dir,
         shuffle=False,
         seed=None,
         max_samples=None,
     ):
-
         super().__init__(
             dataset_dir=dataset_dir,
             shuffle=shuffle,
@@ -222,8 +215,8 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
             max_samples=max_samples,
         )
 
-        self._labels_map = None
         self._images_map = None
+        self._labels_map = None
         self._uuids = None
         self._iter_uuids = None
 
@@ -243,16 +236,17 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
         self._iter_uuids = iter(self._uuids)
         return self
 
+    def __len__(self):
+        return len(self._uuids)
+
     def __next__(self):
         image_id = next(self._iter_uuids)
         image_path = self._images_map[image_id]
+        uuid = os.path.basename(image_path)
 
-        if self._labels_map:
-            label = fol.Classification(
-                label=self._labels_map[os.path.basename(image_path)]
-            )
-        else:
-            label = None
+        label = self._labels_map.get(uuid, None)
+        if label is not None:
+            label = fol.Classification(label=label)
 
         return image_path, None, label
 
@@ -269,22 +263,24 @@ class PlacesDatasetImporter(foud.LabeledImageDatasetImporter):
             os.path.splitext(filename)[0]: os.path.join(data_dir, filename)
             for filename in etau.list_files(data_dir)
         }
-        available_ids = list(images_map.keys())
+
+        labels_path = os.path.join(labels_dir, "labels.json")
+        if os.path.isfile(labels_path):
+            labels_map = etas.load_json(labels_path)
+        else:
+            labels_map = {}
+
+        uuids = list(images_map.keys())
 
         if self.shuffle:
-            random.shuffle(available_ids)
+            random.shuffle(uuids)
 
         if self.max_samples is not None:
-            if not self.shuffle:
-                random.shuffle(available_ids)
-            available_ids = available_ids[: self.max_samples]
+            uuids = uuids[: self.max_samples]
 
-        self._uuids = available_ids
         self._images_map = images_map
-        if os.path.exists(labels_dir):
-            self._labels_map = etas.load_json(
-                os.path.join(labels_dir, "labels.json")
-            )
+        self._labels_map = labels_map
+        self._uuids = uuids
 
     @staticmethod
     def _get_num_samples(dataset_dir):
