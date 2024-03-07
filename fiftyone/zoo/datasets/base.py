@@ -2894,6 +2894,69 @@ class OpenImagesV7Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
+class PlacesDataset(FiftyOneDataset):
+    """Places is a scene recognition dataset of 10 million images comprising
+    ~400 unique scene categories.
+
+    The images are labeled with scene semantic categories, comprising a large
+    and diverse list of the types of environments encountered in the world.
+
+    Full split stats:
+
+    -   Train split: 1,803,460 images, with between 3,068 and 5,000 per category
+    -   Test split: 328,500 images, with 900 images per category
+    -   Validation split: 36,500 images, with 100 images per category
+
+    Example usage::
+
+        import fiftyone as fo
+        import fiftyone.zoo as foz
+
+        dataset = foz.load_zoo_dataset("places", split="validation")
+
+        session = fo.launch_app(dataset)
+
+    Dataset size
+        29 GB
+
+    Source
+        http://places2.csail.mit.edu/download-private.html
+    """
+
+    @property
+    def name(self):
+        return "places"
+
+    @property
+    def tags(self):
+        return ("image", "classification")
+
+    @property
+    def supported_splits(self):
+        return ("train", "test", "validation")
+
+    @property
+    def supports_partial_downloads(self):
+        return False
+
+    def _download_and_prepare(self, dataset_dir, _, split):
+        num_samples, classes, _ = foup.download_places_dataset_split(
+            dataset_dir,
+            split,
+            raw_dir=self._get_raw_dir(dataset_dir),
+        )
+
+        dataset_type = fot.PlacesDataset()
+
+        return dataset_type, num_samples, classes
+
+    def _get_raw_dir(self, dataset_dir):
+        # A split-independent location to store full annotation files so that
+        # they never need to be redownloaded
+        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
+        return os.path.join(root_dir, "raw")
+
+
 class QuickstartDataset(FiftyOneDataset):
     """A small dataset with ground truth bounding boxes and predictions.
 
@@ -3218,59 +3281,6 @@ class UCF101Dataset(FiftyOneDataset):
         return dataset_type, num_samples, classes
 
 
-class PlacesDataset(FiftyOneDataset):
-    def __init__(
-        self,
-        classes=None,
-        num_workers=None,
-        shuffle=None,
-        seed=None,
-        max_samples=None,
-    ):
-        self.classes = classes
-        self.num_workers = num_workers
-        self.shuffle = shuffle
-        self.seed = seed
-        self.max_samples = max_samples
-
-    @property
-    def name(self):
-        return "places"
-
-    @property
-    def tags(self):
-        return (
-            "image",
-            "classification",
-        )
-
-    @property
-    def supported_splits(self):
-        return ("train", "test", "validation")
-
-    @property
-    def supports_partial_downloads(self):
-        return False
-
-    def _download_and_prepare(self, dataset_dir, _, split):
-        num_samples, classes, downloaded = foup.download_places_dataset_split(
-            dataset_dir,
-            split,
-            raw_dir=self._get_raw_dir(dataset_dir),
-        )
-
-        dataset_type = fot.PlacesDataset()
-
-        if not downloaded:
-            num_samples = None
-
-        return dataset_type, num_samples, classes
-
-    def _get_raw_dir(self, dataset_dir):
-        root_dir = os.path.dirname(os.path.normpath(dataset_dir))
-        return os.path.join(root_dir, "raw")
-
-
 AVAILABLE_DATASETS = {
     "activitynet-100": ActivityNet100Dataset,
     "activitynet-200": ActivityNet200Dataset,
@@ -3292,13 +3302,13 @@ AVAILABLE_DATASETS = {
     "lfw": LabeledFacesInTheWildDataset,
     "open-images-v6": OpenImagesV6Dataset,
     "open-images-v7": OpenImagesV7Dataset,
+    "places": PlacesDataset,
     "quickstart": QuickstartDataset,
     "quickstart-geo": QuickstartGeoDataset,
     "quickstart-video": QuickstartVideoDataset,
     "quickstart-groups": QuickstartGroupsDataset,
     "sama-coco": SamaCOCODataset,
     "ucf101": UCF101Dataset,
-    "places": PlacesDataset,
 }
 
 
