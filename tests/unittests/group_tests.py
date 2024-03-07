@@ -5,6 +5,7 @@ FiftyOne group-related unit tests.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from itertools import groupby
 import json
 import os
@@ -21,6 +22,7 @@ import fiftyone.core.odm as foo
 import fiftyone.utils.data as foud
 import fiftyone.utils.groups as foug
 import fiftyone.core.media as fom
+import fiftyone.core.metadata as fome
 from fiftyone import ViewExpression as E, ViewField as F
 
 from decorators import drop_datasets
@@ -2102,6 +2104,36 @@ class DynamicGroupTests(unittest.TestCase):
         self.assertEqual(also_view.name, "group_by_clips")
         self.assertTrue(also_view.is_saved)
         self.assertEqual(len(also_view), 2)
+
+    @drop_datasets
+    def test_expand_group_metadata(self):
+        dataset: fo.Dataset = fo.Dataset()
+
+        group = fo.Group()
+        samples = [
+            fo.Sample(filepath="video.mp4", group=group.element("video")),
+            fo.Sample(filepath="image.png", group=group.element("image")),
+        ]
+        dataset.add_samples(samples)
+
+        # assert that slices have their media type metadata fields populated
+        for (
+            name,
+            field,
+        ) in fome.ImageMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
+
+        for (
+            name,
+            field,
+        ) in fome.VideoMetadata._fields.items():  # pylint: disable=no-member
+            self.assertIsInstance(
+                dataset.get_field(f"metadata.{name}", include_private=True),
+                field.__class__,
+            )
 
 
 def _make_group_by_dataset():
