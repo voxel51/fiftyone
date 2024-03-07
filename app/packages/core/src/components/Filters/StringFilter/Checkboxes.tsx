@@ -161,6 +161,7 @@ const Checkboxes = ({
 
   const show = useRecoilValue(showSearchSelector({ modal, path }));
   const keypoints = useRecoilValue(isInKeypointsField(path));
+  const lightning = useRecoilValue(fos.isLightningPath(path));
 
   if (loading) {
     return <LoadingDots text={"Loading"} />;
@@ -186,7 +187,8 @@ const Checkboxes = ({
             name={value === null ? "None" : value}
             loading={loading}
             count={
-              typeof count !== "number" || !isFilterMode || keypoints
+              (typeof count !== "number" || !isFilterMode || keypoints) &&
+              !lightning
                 ? // only string and id fields use pathSearchCount
                   pathSearchCount({ modal, path, value: value as string })
                 : count
