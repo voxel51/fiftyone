@@ -325,9 +325,8 @@ like value counts are presented.
     :align: center
 
 The above GIF shows lightning mode in action on the train split of the
-:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with a
-`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_
-and a specific index on the `metadata.size_bytes` field:
+:ref:`BDD100K dataset <dataset-zoo-bdd100k>` with an index on the
+`metadata.size_bytes` field:
 
 .. code-block:: python
     :linenos:
@@ -344,7 +343,6 @@ and a specific index on the `metadata.size_bytes` field:
         source_dir=source_dir,
     )
 
-    dataset.create_index("$**")
     dataset.create_index("metadata.size_bytes")
 
     session = fo.launch_app(dataset)
@@ -367,48 +365,8 @@ datasets:
     `@voxel51/indexes <https://github.com/voxel51/fiftyone-plugins/tree/main/plugins/indexes>`_
     plugin!
 
-For datasets with a relatively small number of fields, the easiest option for
-taking advantage of lightning mode is to create a global wildcard index:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart")
-    dataset.create_index("$**")
-
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-.. note::
-
-    Numeric field filters are not supported by wildcard indexes.
-
-For video datasets with frame-level fields, a separate wildcard index for frame
-fields is also necessary:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.zoo as foz
-
-    dataset = foz.load_zoo_dataset("quickstart-video")
-
-    dataset.create_index("$**")
-    dataset.create_index("frames.$**")
-    
-    # For illustration, so that any filter brings dataset out of lightning mode
-    fo.app_config.lightning_threshold = len(dataset)
-
-    session = fo.launch_app(dataset)
-
-For datasets with a large number fields, adding individual and/or selective
-wildcard indexes is recommended:
+In general, we recommend indexing *only* the specific fields that you wish to
+perform initial filters on:
 
 .. code-block:: python
     :linenos:
@@ -423,8 +381,9 @@ wildcard indexes is recommended:
     dataset.create_index("annotated_at")
     dataset.create_index("annotated_by")
 
-    # Wildcard index for all attributes of ground truth detections
-    dataset.create_index("ground_truth.detections.$**")
+    # Index specific embedded document fields
+    dataset.create_index("ground_truth.detections.label")
+    dataset.create_index("ground_truth.detections.confidence")
 
     # Note: it is faster to declare indexes before adding samples
     dataset.add_samples(...)
@@ -449,6 +408,62 @@ index that includes the group slice name:
     # Index a specific field
     dataset.create_index("ground_truth.detections.label")
     dataset.create_index([("group.name", 1), ("ground_truth.detections.label", 1)])
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+For datasets with a small number of fields, you can index all fields by adding
+a single
+`global wildcard index <https://www.mongodb.com/docs/manual/core/indexes/index-types/index-wildcard/create-wildcard-index-all-fields/#std-label-create-wildcard-index-all-fields>`_:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart")
+    dataset.create_index("$**")
+
+    # For illustration, so that any filter brings dataset out of lightning mode
+    fo.app_config.lightning_threshold = len(dataset)
+
+    session = fo.launch_app(dataset)
+
+.. warning::
+
+    For large datasets with many fields, global wildcard indexes may require a
+    substantial amount of RAM and query performance may be degraded compared to
+    selectively indexing a smaller number of fields.
+
+You can also wildcard index all attributes of a specific embedded document
+field:
+
+.. code-block:: python
+    :linenos:
+
+    # Wildcard index for all attributes of ground truth detections
+    dataset.create_index("ground_truth.detections.$**")
+
+.. note::
+
+    Numeric field filters are not supported by wildcard indexes.
+
+For video datasets with frame-level fields, a separate wildcard index for frame
+fields is also necessary:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    dataset = foz.load_zoo_dataset("quickstart-video")
+
+    dataset.create_index("$**")
+    dataset.create_index("frames.$**")
 
     # For illustration, so that any filter brings dataset out of lightning mode
     fo.app_config.lightning_threshold = len(dataset)
