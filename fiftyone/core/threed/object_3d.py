@@ -1,5 +1,5 @@
 """
-Fiftyone 3D Scene.
+Fiftyone 3D Object3D base class.
 
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_

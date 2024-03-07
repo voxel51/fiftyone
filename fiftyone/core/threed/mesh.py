@@ -1,4 +1,6 @@
 """
+Mesh definitions for 3D visualization.
+
 | Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
@@ -100,7 +102,7 @@ class FBXMesh(Mesh):
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the mesh if fbx file does not contain
             material information. Defaults to
-            :class:`fiftyone.core.threed.MeshLambertMaterial`.
+            :class:`fiftyone.core.threed.MeshStandardMaterial`.
         **kwargs: Arbitrary keyword arguments for
             :class:`fiftyone.core.threed.Object3D` base class.
 
