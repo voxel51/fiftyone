@@ -634,17 +634,14 @@ data, you can access it via the ``result`` property of the returned
 .. note::
 
     When working in notebook contexts, executing operators returns an
-    ``asyncio.Task`` that you can ``await`` if necessary and then retrieve the
+    ``asyncio.Task`` that you can ``await`` to retrieve the
     :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
 
     .. code-block:: python
 
         op = foo.get_operator("@an-operator/with-results")
 
-        task = op(...)
-
-        await task
-        result = task.result()
+        result = await op(...)
         print(result.result) # {...}
 
 .. _delegating-function-calls:
@@ -771,15 +768,12 @@ data, you can access it via the ``result`` property of the returned
 .. note::
 
     When working in notebook contexts, executing operators returns an
-    ``asyncio.Task`` that you can ``await`` if necessary and then retrieve the
+    ``asyncio.Task`` that you can ``await`` to retrieve the
     :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
 
     .. code-block:: python
 
-        task = foo.execute_operator("@an-operator/with-results", ctx)
-
-        await task
-        result = task.result()
+        result = await foo.execute_operator("@an-operator/with-results", ctx)
         print(result.result)  # {...}
 
 .. _requesting-operator-delegation:
