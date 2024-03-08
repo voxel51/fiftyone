@@ -618,6 +618,32 @@ for the operator's `ctx.params` and then passes them to
 :func:`execute_operator() <fiftyone.operators.execute_operator>`, which
 performs the execution.
 
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    op = foo.get_operator("@an-operator/with-results")
+
+    result = op(...)
+    print(result.result) # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        op = foo.get_operator("@an-operator/with-results")
+
+        result = await op(...)
+        print(result.result) # {...}
+
 .. _delegating-function-calls:
 
 Delegating function calls
@@ -705,7 +731,7 @@ You can also programmatically execute any operator by directly calling
         )
     }
 
-    result = foo.execute_operator("@voxel51/io/export_samples", ctx)
+    foo.execute_operator("@voxel51/io/export_samples", ctx)
 
 In the above example, the `delegate=True/False` parameter controls whether
 execution happens immediately or is
@@ -727,6 +753,28 @@ as follows:
     inspect the operator's
     :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
     implementation to understand what parameters are required.
+
+For operators whose
+:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method returns
+data, you can access it via the ``result`` property of the returned
+:class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>` object:
+
+.. code-block:: python
+    :linenos:
+
+    result = foo.execute_operator("@an-operator/with-results", ctx)
+    print(result.result)  # {...}
+
+.. note::
+
+    When working in notebook contexts, executing operators returns an
+    ``asyncio.Task`` that you can ``await`` to retrieve the
+    :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
+
+    .. code-block:: python
+
+        result = await foo.execute_operator("@an-operator/with-results", ctx)
+        print(result.result)  # {...}
 
 .. _requesting-operator-delegation:
 
