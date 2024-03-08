@@ -16,7 +16,7 @@ import re
 from setuptools import setup, find_packages
 
 
-VERSION = "0.23.6"
+VERSION = "0.23.7"
 
 
 def get_version():
@@ -114,7 +114,7 @@ def get_install_requirements(install_requires, choose_install_requires):
     return install_requires
 
 
-EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.33.3"]}
+EXTRAS_REQUIREMENTS = {"desktop": ["fiftyone-desktop~=0.33.5"]}
 
 
 with open("README.md", "r") as fh:
