@@ -110,7 +110,7 @@ in the FiftyOne App.
 
 For example, FiftyOne comes with a wide variety of
 :mod:`builtin types <fiftyone.operators.types>` that you can leverage to build
-complex input and and output forms for your operators.
+complex input and output forms for your operators.
 
 .. image:: /images/plugins/file-explorer.gif
     :align: center
