@@ -26,7 +26,8 @@ class OperatorConfig(object):
         unlisted (False): whether the operator should be hidden from the
             Operator Browser
         on_startup (False): whether the operator should be executed on startup
-        on_dataset_open (False): whether the operator should be executed on opening a dataset
+        on_dataset_open (False): whether the operator should be executed on
+            opening a dataset
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
         icon (None): icon to show for the operator in the Operator Browser
