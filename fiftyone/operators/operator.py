@@ -235,6 +235,9 @@ class Operator(object):
 
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            JSON serializable data, or None
         """
         raise NotImplementedError("subclass must implement execute()")
 
