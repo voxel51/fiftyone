@@ -619,8 +619,12 @@ subsequent sections.
                 unlisted=True/False,  # default False
 
                 # Whether the operator should be executed every time a new App
-                # session starts (eg dataset is changed)
+                # session starts
                 on_startup=True/False,  # default False
+
+                # Whether the operator should be executed every time a new
+                # dataset is opened in the App
+                on_dataset_open=True/False,  # default False
 
                 # Custom icons to use
                 icon="/assets/icon.svg",
@@ -802,8 +806,12 @@ execution:
             unlisted=True/False,  # default False
 
             # Whether the operator should be executed every time a new App
-            # session starts (eg dataset is changed)
+            # session starts
             on_startup=True/False,  # default False
+
+            # Whether the operator should be executed every time a new dataset
+            # is opened in the App
+            on_dataset_open=True/False,  # default False
 
             # Custom icons to use
             icon="/assets/icon.svg",
