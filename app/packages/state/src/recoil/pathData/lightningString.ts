@@ -13,7 +13,7 @@ export const lightningStringResults = selectorFamily<
 
       if (data.__typename !== "StringLightningResult") {
         throw new Error(
-          `unexpected result ${data.__typename} for path ${params.path}`
+          `unexpected ${data.__typename} for path '${params.path}' in lightningStringResults`
         );
       }
 
