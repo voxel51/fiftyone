@@ -626,7 +626,7 @@ data, you can access it via the ``result`` property of the returned
 .. code-block:: python
     :linenos:
 
-    op = foo.get_operator("@operator/with-results")
+    op = foo.get_operator("@an-operator/with-results")
 
     result = op(...)
     print(result.result) # {...}
@@ -638,6 +638,8 @@ data, you can access it via the ``result`` property of the returned
     :class:`ExecutionResult <fiftyone.operators.executor.ExecutionResult>`:
 
     .. code-block:: python
+
+        op = foo.get_operator("@an-operator/with-results")
 
         task = op(...)
 
@@ -763,7 +765,7 @@ data, you can access it via the ``result`` property of the returned
 .. code-block:: python
     :linenos:
 
-    result = foo.execute_operator("@operator/with-results", ctx)
+    result = foo.execute_operator("@an-operator/with-results", ctx)
     print(result.result)  # {...}
 
 .. note::
@@ -774,7 +776,7 @@ data, you can access it via the ``result`` property of the returned
 
     .. code-block:: python
 
-        task = foo.execute_operator("@operator/with-results", ctx)
+        task = foo.execute_operator("@an-operator/with-results", ctx)
 
         await task
         result = task.result()
