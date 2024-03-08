@@ -887,3 +887,14 @@ class LegacyFiftyOneDataset(Dataset):
         import fiftyone.utils.data as foud
 
         return foud.LegacyFiftyOneDatasetExporter
+
+
+class PlacesDataset(ImageClassificationDataset):
+    """A labeled dataset consisting of images and their associated lables
+    from the `Places dataset <http://places2.csail.mit.edu/index.html>`.
+    """
+
+    def get_dataset_importer_cls(self):
+        import fiftyone.utils.places as foup
+
+        return foup.PlacesDatasetImporter
