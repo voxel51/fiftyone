@@ -84,7 +84,7 @@ You can download plugins using any of the methods described below:
 Your plugins directory
 ______________________
 
-All plugins must be stored (and are automatically
+All plugins must be stored and are automatically
 :ref:`downloaded to <plugins-download>` your plugins directory in order for
 FiftyOne to find them.
 
