@@ -3,6 +3,18 @@ FiftyOne Release Notes
 
 .. default-role:: code
 
+.. _release-notes-v0.23.7:
+
+FiftyOne 0.23.7
+---------------
+*Released March 8, 2024*
+
+App
+
+* Updated `Have a Team?` link with
+  `Book a demo <https://voxel51.com/book-a-demo/?utm_source=FiftyOneApp>`_
+  page
+
 FiftyOne Teams 1.5.7
 --------------------
 *Released March 6, 2024*
