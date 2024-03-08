@@ -4226,8 +4226,8 @@ class ViewStageTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertNotIn("field", dataset2.list_indexes())
-        self.assertNotIn("foo_1_field_1", dataset2.list_indexes())
+        self.assertIn("field", dataset2.list_indexes())
+        self.assertIn("foo_1_field_1", dataset2.list_indexes())
 
         view3 = dataset2.sort_by(F("field"))
 
