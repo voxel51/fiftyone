@@ -1235,6 +1235,13 @@ class MediaExporter(object):
         if export_mode == "move":
             etau.delete_file(fo3d_path)
 
+    def __enter__(self):
+        self.setup()
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
     def _write_media(self, media, outpath):
         raise NotImplementedError("subclass must implement _write_media()")
 
