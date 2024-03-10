@@ -1046,7 +1046,7 @@ def _make_scene(
             pcd_path = rel_path
 
     scene = Scene()
-    scene.add(Pointcloud("pcd", pcd_path))
+    scene.add(Pointcloud("point cloud", pcd_path))
     scene.write(scene_path)
 
     return scene_path
