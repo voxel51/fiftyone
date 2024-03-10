@@ -864,17 +864,24 @@ def _fill_none(values, ref_values):
 
 def pcd_to_3d(
     dataset,
+    slices=None,
     output_dir=None,
     assets_dir=None,
     rel_dir=None,
     abs_paths=False,
     progress=None,
 ):
-    """Converts the point cloud samples in the given collection to equivalent
-    3D samples.
+    """Converts the point cloud samples in the given dataset to 3D samples.
 
     Args:
-        dataset: a point cloud :class:`fiftyone.core.dataset.Dataset`
+        dataset: a :class:`fiftyone.core.dataset.Dataset` containing point
+            clouds
+        slices (None): point cloud slice(s) to convert. Only applicable when
+            the dataset is grouped, in which case you can provide:
+
+            -   a slice or iterable of point cloud slices to convert in-place
+            -   a dict mapping point cloud slices to desired 3D slice names
+            -   None (default): all point cloud slices are converted in-place
         output_dir (None): an optional output directory for the ``.fo3d`` files
         assets_dir (None): an optional directory to copy the ``.pcd`` files
             into. Can be either an absolute directory, a subdirectory of
@@ -892,7 +899,19 @@ def pcd_to_3d(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
-    fov.validate_collection(dataset, media_type=fom.POINT_CLOUD)
+    fov.validate_collection(dataset, media_type=(fom.POINT_CLOUD, fom.GROUP))
+
+    if dataset.media_type == fom.GROUP:
+        _pcd_slices_to_3d_slices(
+            dataset,
+            slices=slices,
+            output_dir=output_dir,
+            assets_dir=assets_dir,
+            rel_dir=rel_dir,
+            abs_paths=abs_paths,
+            progress=progress,
+        )
+        return
 
     _pcd_to_3d(
         dataset,
@@ -907,7 +926,7 @@ def pcd_to_3d(
     dataset.save()
 
 
-def pcd_slices_to_3d_slices(
+def _pcd_slices_to_3d_slices(
     dataset,
     slices=None,
     output_dir=None,
@@ -916,38 +935,6 @@ def pcd_slices_to_3d_slices(
     abs_paths=False,
     progress=None,
 ):
-    """Converts the point cloud slice(s) of the given dataset to equivalent 3D
-    slices.
-
-    Args:
-        dataset: a :class:`fiftyone.core.dataset.Dataset` that contains groups
-        slices (None): optional point cloud slice(s) to convert, which can be:
-
-            -   None (default): all point cloud slices are converted in-place
-            -   a slice or iterable of slices to convert in-place
-            -   a dict mapping point cloud slices
-        output_dir (None): an optional output directory for the ``.fo3d`` files
-        assets_dir (None): an optional directory to copy the ``.pcd`` files
-            into. Can be either an absolute directory, a subdirectory of
-            ``output_dir``, or None if you do not wish to copy point clouds
-        rel_dir (None): an optional relative directory to strip from each point
-            cloud path to generate a unique identifier for each scene, which is
-            joined with ``output_dir`` to generate an output path for each
-            ``.fo3d`` file. This argument allows for populating nested
-            subdirectories that match the shape of the input paths. The path is
-            converted to an absolute path (if necessary) via
-            :func:`fiftyone.core.storage.normalize_path`
-        abs_paths (False): whether to store absolute paths to the point cloud
-            files in the exported scenes
-        progress (None): whether to render a progress bar (True/False), use the
-            default value ``fiftyone.config.show_progress_bars`` (None), or a
-            progress callback function to invoke instead
-
-    Returns:
-        the :class:`fiftyone.core.dataset.Dataset` containing the 3D samples
-    """
-    fov.validate_collection(dataset, media_type=fom.GROUP)
-
     if isinstance(slices, dict):
         pass
     elif etau.is_container(slices):
