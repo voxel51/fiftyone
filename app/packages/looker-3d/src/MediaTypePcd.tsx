@@ -341,6 +341,7 @@ export const MediaTypePcdComponent = ({
             <PointCloudMesh
               key={slice}
               minZ={minZ}
+              upVector={upVectorNormalized}
               shadeBy={shadeBy}
               customColor={customColor}
               pointSize={pointSize}
