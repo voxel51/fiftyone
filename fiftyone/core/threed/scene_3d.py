@@ -80,7 +80,7 @@ class Scene(Object3D):
             scene.add(gltf_mesh)
             scene.add(pcd)
 
-            scene.export("/path/to/scene.fo3d")
+            scene.write("/path/to/scene.fo3d")
 
             dataset = fo.Dataset()
             dataset.add_sample(fo.Sample("/path/to/scene.fo3d"))
@@ -103,7 +103,7 @@ class Scene(Object3D):
         self.lights = lights
         self.background = background
 
-    def export(self, path: str):
+    def write(self, path: str):
         """Export the scene to a .fo3d file."""
         if not path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
