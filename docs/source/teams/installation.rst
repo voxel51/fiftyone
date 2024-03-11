@@ -221,7 +221,10 @@ You can do this in any of the following ways:
 
 1. Configure/provide AWS credentials in accordance with the
 `boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_
-python library.
+python library, such as via environment variable, AWS config file, or IAM role.
+
+For example, by setting the environment variables: ``AWS_ACCESS_KEY_ID`` and
+``AWS_SECRET_ACCESS_KEY``.
 
 2. Permanently register AWS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <teams-media-cache-config>`:
@@ -232,6 +235,15 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
         "aws_config_file": "/path/to/aws-config.ini",
         "aws_profile": "default"  # optional
     }
+
+3. Provide AWS credentials on a per-session basis by setting the following
+environment variables to point to your AWS credentials on disk:
+
+    .. code-block:: shell
+
+        export AWS_CONFIG_FILE="/path/to/aws-config.ini"
+        export AWS_PROFILE=default  # optional
+
 
 In the above, the `.ini` file should use the syntax of the
 `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
@@ -257,7 +269,7 @@ here is an example configuration:
             "responseHeader": ["*"],
             "maxAgeSeconds": 86400
         }
-    ] 
+    ]
 
 .. _teams-google-cloud:
 
@@ -269,14 +281,23 @@ you simply need to provide
 `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
 to your Teams client with read access to the relevant objects and buckets.
 
-You can register GCP credentials on a particular machine by adding the
-following key to your :ref:`media cache config <teams-media-cache-config>`:
+You can do this in any of the following ways:
+
+1. Permanently register GCS credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
 .. code-block:: json
 
     {
         "google_application_credentials": "/path/to/gcp-service-account.json"
     }
+
+2. Provide GCS credentials on a per-session basis by setting the following
+environment variables to point to your GCS credentials on disk:
+
+    .. code-block:: shell
+
+        export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-service-account.json"
 
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
