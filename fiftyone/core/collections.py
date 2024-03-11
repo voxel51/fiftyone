@@ -88,6 +88,8 @@ class DownloadContext(object):
         media_fields (None): a field or iterable of fields containing media to
             download. By default, all media fields in the collection's
             :meth:`app_config` are used
+        group_slices (None): an optional subset of group slices to download
+            media for. Only applicable when the collection contains groups
         update (False): whether to re-download media whose checksums no longer
             match
         skip_failures (True): whether to gracefully continue without raising an
@@ -106,6 +108,7 @@ class DownloadContext(object):
         batch_size=None,
         target_size_bytes=None,
         media_fields=None,
+        group_slices=None,
         update=False,
         skip_failures=True,
         clear=False,
@@ -116,12 +119,13 @@ class DownloadContext(object):
         self.batch_size = batch_size
         self.target_size_bytes = target_size_bytes
         self.media_fields = media_fields
+        self.group_slices = group_slices
         self.update = update
         self.skip_failures = skip_failures
         self.clear = clear
         self.progress = progress
 
-        self._filepaths_dict = None
+        self._filepaths = None
         self._offset = None
         self._batch_sizes = None
         self._iter_batch_sizes = None
@@ -134,8 +138,10 @@ class DownloadContext(object):
         media_fields = _resolve_media_fields(
             self.sample_collection, self.media_fields
         )
-        self._filepaths_dict = self.sample_collection._get_media_paths(
-            media_fields=media_fields, as_dict=True
+        self._filepaths = self.sample_collection._get_media_paths(
+            media_fields=media_fields,
+            group_slices=self.group_slices,
+            flat=False,
         )
 
         if self.batch_size is None and self.target_size_bytes is None:
@@ -143,7 +149,9 @@ class DownloadContext(object):
             return self
 
         if self.target_size_bytes is not None:
-            sizes = _get_sizes(self.sample_collection, self._filepaths_dict)
+            sizes = _get_sizes(
+                self.sample_collection, media_fields, self._filepaths
+            )
             batch_sizes = _partition_by_size(sizes, self.target_size_bytes)
         else:
             batch_sizes = itertools.repeat(self.batch_size)
@@ -181,9 +189,7 @@ class DownloadContext(object):
     def _download_batch(self, batch_size):
         i = self._offset or 0
         j = i + batch_size if batch_size is not None else None
-        filepaths = itertools.chain.from_iterable(
-            f[i:j] for f in self._filepaths_dict.values()
-        )
+        filepaths = itertools.chain.from_iterable(self._filepaths[i:j])
 
         if self.update:
             foc.media_cache.update(
@@ -200,9 +206,7 @@ class DownloadContext(object):
             )
 
     def _clear_media(self):
-        filepaths = itertools.chain.from_iterable(
-            self._filepaths_dict.values()
-        )
+        filepaths = itertools.chain.from_iterable(self._filepaths)
         foc.media_cache.clear(filepaths=filepaths)
 
 
@@ -217,43 +221,49 @@ def _resolve_media_fields(sample_collection, media_fields):
     return media_fields
 
 
-def _get_sizes(sample_collection, filepaths_dict):
-    media_fields = sorted(filepaths_dict.keys())
-
-    # If all sizes are already available, use them
-    if media_fields == ["filepath"] and not sample_collection.exists(
+def _get_sizes(sample_collection, media_fields, filepaths):
+    if sample_collection.media_type == fom.GROUP:
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+    elif media_fields == ["filepath"] and not sample_collection.exists(
         "metadata.size_bytes", bool=False
     ):
+        # All sizes are already available, so just return them now
         return sample_collection.values("metadata.size_bytes")
 
-    filepaths = itertools.chain.from_iterable(filepaths_dict.values())
-    metadata_dict = fomt.get_metadata(filepaths)
+    file_sizes = {}
 
-    sizes_dict = {}
-    for media_field in media_fields:
-        filepaths = filepaths_dict[media_field]
-        metadatas = [metadata_dict.get(f, None) for f in filepaths]
-        sizes = [m.size_bytes if m is not None else None for m in metadatas]
-        sizes_dict[media_field] = _fill_missing(sizes, default=0)
+    if "filepath" in media_fields:
+        # Record all file sizes available from metadata field
+        view = sample_collection.exists("metadata.size_bytes")
+        file_sizes.update(
+            zip(*view.values(["filepath", "metadata.size_bytes"]))
+        )
 
-    return [sum(sizes) for sizes in zip(*sizes_dict.values())]
+        metadata_paths = []
+        for sample_paths in filepaths:
+            for path in sample_paths:
+                if path not in file_sizes:
+                    metadata_paths.append(path)
+    else:
+        metadata_paths = list(itertools.chain.from_iterable(filepaths))
 
+    # Compute any missing metadata
+    if metadata_paths:
+        file_sizes.update(
+            {
+                f: m.size_bytes if m is not None else None
+                for f, m in fomt.get_metadata(metadata_paths).items()
+            }
+        )
 
-def _fill_missing(sizes, default=None):
-    missing_inds = [i for i, s in enumerate(sizes) if s is None]
-    if not missing_inds:
-        return sizes
+    avg_file_size = sum(file_sizes.values()) / max(len(file_sizes), 1)
 
-    valid_sizes = [s for s in sizes if s is not None]
-    if not valid_sizes:
-        if default is None:
-            return None
-
-        return [default] * len(sizes)
-
-    avg_size = sum(valid_sizes) / len(valid_sizes)
-    for i in missing_inds:
-        sizes[i] = avg_size
+    sizes = []
+    for sample_paths in filepaths:
+        size = sum(file_sizes.get(p, avg_file_size) for p in sample_paths)
+        sizes.append(size)
 
     return sizes
 
@@ -1130,6 +1140,7 @@ class SampleCollection(object):
         batch_size=None,
         target_size_bytes=None,
         media_fields=None,
+        group_slices=None,
         update=False,
         skip_failures=True,
         clear=False,
@@ -1164,6 +1175,8 @@ class SampleCollection(object):
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices to download
+                media for. Only applicable when the collection contains groups
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -1183,6 +1196,7 @@ class SampleCollection(object):
             batch_size=batch_size,
             target_size_bytes=target_size_bytes,
             media_fields=media_fields,
+            group_slices=group_slices,
             update=update,
             skip_failures=skip_failures,
             clear=clear,
@@ -3117,6 +3131,7 @@ class SampleCollection(object):
     def download_media(
         self,
         media_fields=None,
+        group_slices=None,
         update=False,
         skip_failures=True,
         progress=None,
@@ -3132,6 +3147,9 @@ class SampleCollection(object):
             media_fields (None): a field or iterable of fields containing media
                 to download. By default, all media fields in the collection's
                 :meth:`app_config` are used
+            group_slices (None): an optional subset of group slices for which
+                to download media. Only applicable when the collection contains
+                groups
             update (False): whether to re-download media whose checksums no
                 longer match
             skip_failures (True): whether to gracefully continue without
@@ -3141,7 +3159,9 @@ class SampleCollection(object):
                 ``fiftyone.config.show_progress_bars`` (None), or a progress
                 callback function to invoke instead
         """
-        filepaths = self._get_media_paths(media_fields=media_fields)
+        filepaths = self._get_media_paths(
+            media_fields=media_fields, group_slices=group_slices
+        )
 
         if update:
             foc.media_cache.update(
@@ -3189,7 +3209,7 @@ class SampleCollection(object):
             progress=progress,
         )
 
-    def clear_media(self, media_fields=None):
+    def clear_media(self, media_fields=None, group_slices=None):
         """Deletes any local copies of media files in this collection from the
         media cache.
 
@@ -3199,11 +3219,16 @@ class SampleCollection(object):
             media_fields (None): a field or iterable of fields containing media
                 paths to clear from the cache. By default, all media fields
                 in the collection's :meth:`app_config` are cleared
+            group_slices (None): an optional subset of group slices for which
+                to clear media. Only applicable when the collection contains
+                groups
         """
-        filepaths = self._get_media_paths(media_fields=media_fields)
+        filepaths = self._get_media_paths(
+            media_fields=media_fields, group_slices=group_slices
+        )
         foc.media_cache.clear(filepaths=filepaths)
 
-    def cache_stats(self, media_fields=None):
+    def cache_stats(self, media_fields=None, group_slices=None):
         """Returns a dictionary of stats about the cached media files in this
         collection.
 
@@ -3213,14 +3238,20 @@ class SampleCollection(object):
             media_fields (None): a field or iterable of fields containing media
                 paths. By default, all media fields in the collection's
                 :meth:`app_config` are included
+            group_slices (None): an optional subset of group slices to include.
+                Only applicable when the collection contains groups
 
         Returns:
             a stats dict
         """
-        filepaths = self._get_media_paths(media_fields=media_fields)
+        filepaths = self._get_media_paths(
+            media_fields=media_fields, group_slices=group_slices
+        )
         return foc.media_cache.stats(filepaths=filepaths)
 
-    def _get_media_paths(self, media_fields=None, as_dict=False):
+    def _get_media_paths(
+        self, media_fields=None, group_slices=None, flat=True
+    ):
         if media_fields is None:
             media_fields = list(self._get_media_fields().keys())
         elif etau.is_container(media_fields):
@@ -3237,13 +3268,36 @@ class SampleCollection(object):
 
             _media_fields.append(media_field)
 
-        filepaths = self.values(_media_fields, unwind=True)
+        # When flat=False, return lists of lists of media paths, one per sample
+        if not flat:
+            if self.media_type == fom.GROUP:
+                id_field = self.group_field + ".id"
+                view = self.select_group_slices(
+                    slices=group_slices, _allow_mixed=True
+                )
+                group_ids, *paths = view.values([id_field] + _media_fields)
+                paths_map = defaultdict(list)
+                for _id, _paths in zip(group_ids, zip(*paths)):
+                    paths_map[_id].extend(_merge_paths(_paths))
 
-        if as_dict:
-            return dict(zip(_media_fields, filepaths))
+                # Intentionally only returns paths for groups in active slice
+                return [paths_map[_id] for _id in self.values(id_field)]
+            else:
+                paths = self.values(_media_fields)
+                return [_merge_paths(p) for p in zip(*paths)]
+
+        # When flat=True, return flat list of all media paths
+        if self.media_type == fom.GROUP:
+            view = self.select_group_slices(
+                slices=group_slices, _allow_mixed=True
+            )
+        else:
+            view = self
+
+        filepaths = view.values(_media_fields, unwind=True)
 
         if len(_media_fields) > 1:
-            filepaths = itertools.chain.from_iterable(filepaths)
+            filepaths = list(itertools.chain.from_iterable(filepaths))
         else:
             filepaths = filepaths[0]
 
@@ -11750,3 +11804,14 @@ def _add_db_fields_to_schema(schema):
             additions[field.db_field] = field
 
     schema.update(additions)
+
+
+def _merge_paths(values):
+    flat = []
+    for v in values:
+        if isinstance(v, str):
+            flat.append(v)
+        elif v is not None:
+            flat.extend(v)
+
+    return flat
