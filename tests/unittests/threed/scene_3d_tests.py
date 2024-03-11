@@ -14,7 +14,7 @@ class TestScene(unittest.TestCase):
 
     def test_export_invalid_extension(self):
         with self.assertRaises(ValueError):
-            self.scene.export("/path/to/scene.invalid")
+            self.scene.write("/path/to/scene.invalid")
 
     def test_from_fo3d(self):
         mock_file = mock_open(read_data=json.dumps(self.scene.as_dict()))
