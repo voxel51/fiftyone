@@ -59,7 +59,7 @@ def validate_collection(sample_collection, media_type=None):
             that the collection must have
 
     Raises:
-        ValueError: if ``samples`` is not a
+        ValueError: if the provided samples are not a
         :class:`fiftyone.core.collections.SampleCollection`
     """
     if not isinstance(sample_collection, foc.SampleCollection):
@@ -97,7 +97,7 @@ def validate_image_collection(sample_collection):
         sample_collection: a sample collection
 
     Raises:
-        ValueError: if ``samples`` is not an image
+        ValueError: if the provided samples are not an image
         :class:`fiftyone.core.collections.SampleCollection`
     """
     validate_collection(sample_collection)
@@ -130,7 +130,7 @@ def validate_video_collection(sample_collection):
         sample_collection: a sample collection
 
     Raises:
-        ValueError: if ``samples`` is not a video
+        ValueError: if the provided samples are not a video
         :class:`fiftyone.core.collections.SampleCollection`
     """
     validate_collection(sample_collection)
@@ -143,6 +143,23 @@ def validate_video_collection(sample_collection):
             "Expected collection to have media type %s; found %s"
             % (fom.VIDEO, sample_collection.media_type)
         )
+
+
+def validate_non_grouped_collection(sample_collection):
+    """Validates that the provided samples are a
+    :class:`fiftyone.core.collections.SampleCollection` that is *not* grouped.
+
+    Args:
+        sample_collection: a sample collection
+
+    Raises:
+        ValueError: if the provided samples are a grouped
+        :class:`fiftyone.core.collections.SampleCollection`
+    """
+    validate_collection(sample_collection)
+
+    if sample_collection.media_type == fom.GROUP:
+        raise fom.SelectGroupSlicesError()
 
 
 def validate_collection_label_fields(

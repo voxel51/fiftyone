@@ -127,6 +127,16 @@ def import_annotations(
         **kwargs: CVAT authentication credentials to pass to
             :class:`CVATBackendConfig`
     """
+    if sample_collection.media_type == fom.GROUP:
+        if insert_new:
+            raise ValueError(
+                "insert_new=True is not support for grouped collections"
+            )
+
+        sample_collection = sample_collection.select_group_slices(
+            _allow_mixed=True
+        )
+
     if bool(project_name) + bool(project_id) + bool(task_ids) != 1:
         raise ValueError(
             "Exactly one of 'project_name', 'project_id', or 'task_ids' must "
