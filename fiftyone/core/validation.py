@@ -159,6 +159,11 @@ def validate_non_grouped_collection(sample_collection):
     validate_collection(sample_collection)
 
     if sample_collection.media_type == fom.GROUP:
+        if sample_collection._is_dynamic_groups:
+            raise ValueError(
+                "This method does not support dynamic group views"
+            )
+
         raise fom.SelectGroupSlicesError()
 
 
