@@ -20,6 +20,7 @@ import {
 } from "./shaders";
 
 type PointCloudMeshArgs = {
+  upVector: THREE.Vector3;
   defaultShadingColor: string;
   shadeBy: ShadeBy;
   customColor: string;
@@ -39,6 +40,7 @@ type ColorMinMax = {
 export const PointCloudMesh = ({
   defaultShadingColor,
   isPointSizeAttenuated,
+  upVector,
   minZ,
   shadeBy,
   customColor,
@@ -75,9 +77,25 @@ export const PointCloudMesh = ({
     }
   }, [boundingBox, pointsGeometry, points, onLoad]);
 
-  if (minZ === null || minZ === undefined) {
-    minZ = boundingBox.min.z;
-  }
+  const maxAlongUpVector = useMemo(() => {
+    if (!upVector) {
+      return null;
+    }
+
+    return boundingBox.max.dot(upVector);
+  }, [boundingBox, upVector]);
+
+  const minAlongUpVector = useMemo(() => {
+    if (!upVector) {
+      return null;
+    }
+
+    if (minZ) {
+      return minZ;
+    }
+
+    return boundingBox.min.dot(upVector);
+  }, [boundingBox, upVector, minZ]);
 
   const pointsMaterial = useMemo(() => {
     const pointSizeNum = Number(pointSize);
@@ -86,9 +104,10 @@ export const PointCloudMesh = ({
       case SHADE_BY_HEIGHT:
         return (
           <ShadeByHeight
+            upVector={upVector}
             gradients={PCD_SHADING_GRADIENTS}
-            min={minZ}
-            max={boundingBox.max.z}
+            min={minAlongUpVector}
+            max={maxAlongUpVector}
             pointSize={pointSizeNum}
             isPointSizeAttenuated={isPointSizeAttenuated}
           />

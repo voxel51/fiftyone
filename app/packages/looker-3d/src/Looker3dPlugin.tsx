@@ -12,7 +12,7 @@ export type Looker3dPluginSettings = {
 
 export const defaultPluginSettings: Partial<Looker3dPluginSettings> = {
   useLegacyCoordinates: false,
-  defaultUp: [0, 1, 0],
+  defaultUp: [0, 0, 1],
 };
 
 typeof window !== "undefined" &&

@@ -9,7 +9,7 @@ export type ShaderProps = {
   max: number;
   pointSize: number;
   isPointSizeAttenuated: boolean;
-  opacity: number;
+  opacity?: number;
   upVector?: THREE.Vector3;
 };
 
@@ -201,15 +201,18 @@ export const ShadeByHeight = ({
   isPointSizeAttenuated,
 }: ShaderProps) => {
   const gradientMap = useGradientMap(gradients);
+  const upVectorVec3 = useMemo(() => {
+    return [upVector.x, upVector.y, upVector.z];
+  }, [upVector]);
 
   return (
     <shaderMaterial
       {...{
         uniforms: {
-          opacity: { value: opacity },
+          opacity: { value: opacity ?? 1 },
           min: { value: min },
           max: { value: max },
-          upVector: { value: upVector },
+          upVector: { value: upVectorVec3 },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
@@ -237,7 +240,7 @@ export const ShadeByIntensity = ({
         uniforms: {
           min: { value: min },
           max: { value: max },
-          opacity: { value: opacity },
+          opacity: { value: opacity ?? 1 },
           gradientMap: { value: gradientMap },
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
@@ -261,7 +264,7 @@ export const RgbShader = ({
         uniforms: {
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
-          opacity: { value: opacity },
+          opacity: { value: opacity ?? 1 },
         },
         vertexShader: ShadeByRgbShaders.vertexShader,
         fragmentShader: ShadeByRgbShaders.fragmentShader,
@@ -291,7 +294,7 @@ export const CustomColorShader = ({
           pointSize: { value: pointSize },
           isPointSizeAttenuated: { value: isPointSizeAttenuated },
           color: { value: hexColorToVec3 },
-          opacity: { value: opacity },
+          opacity: { value: opacity ?? 1 },
         },
         vertexShader: ShadeByCustomColorShaders.vertexShader,
         fragmentShader: ShadeByCustomColorShaders.fragmentShader,
