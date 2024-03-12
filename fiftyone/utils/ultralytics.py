@@ -301,7 +301,7 @@ class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
-        self.model_name = d.get("model_name", "yolov5s-coco-torch")
+        self.model_name = d.get("model_name", None)
         self.classes = d.get("classes", None)
 
 
@@ -314,7 +314,8 @@ class FiftyOneYOLOModel(Model):
 
     def __init__(self, config):
         self.config = config
-        config.download_model_if_necessary()
+        if not hasattr(config, "model") or config.model is None:
+            config.download_model_if_necessary()
         self.model = self._load_model(config)
 
     def _get_checkpoint_path(self, config):
@@ -406,7 +407,7 @@ class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
-        self.model_name = d.get("model_name", "yolov5s-coco-torch")
+        self.model_name = d.get("model_name", None)
         self.classes = d.get("classes", None)
 
 
