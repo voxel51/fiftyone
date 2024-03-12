@@ -7,6 +7,7 @@
 """
 import itertools
 import logging
+import os
 import warnings
 
 import eta.core.numutils as etan
@@ -433,7 +434,7 @@ class OrthographicProjectionMetadata(DynamicEmbeddedDocument, fol._HasMedia):
     height = fof.IntField()
 
 
-def _get_pcd_filepath_from_fo3d_scene(scene: Scene):
+def _get_pcd_filepath_from_fo3d_scene(scene: Scene, scene_path: str):
     pcd_path = None
 
     def _visit_node_dfs(node):
@@ -445,7 +446,11 @@ def _get_pcd_filepath_from_fo3d_scene(scene: Scene):
                 _visit_node_dfs(child)
 
     _visit_node_dfs(scene)
-    return pcd_path
+
+    if pcd_path is None or os.path.isabs(pcd_path):
+        return pcd_path
+
+    return os.path.join(os.path.dirname(scene_path), pcd_path)
 
 
 def compute_orthographic_projection_images(
@@ -554,8 +559,10 @@ def compute_orthographic_projection_images(
     if three_d_view.media_type == fom.THREE_D:
         # read through all the fo3d files, and collect point cloud filepaths
         scenes = [Scene.from_fo3d(filepath) for filepath in filepaths]
+        scenes_filepaths = list(zip(scenes, filepaths))
         filepaths = [
-            _get_pcd_filepath_from_fo3d_scene(scene) for scene in scenes
+            _get_pcd_filepath_from_fo3d_scene(scene, scene_path)
+            for scene, scene_path in scenes_filepaths
         ]
 
     filename_maker = fou.UniqueFilenameMaker(

@@ -126,9 +126,9 @@ class Scene(Object3D):
         Args:
             fo3d_path: the path to write the scene to
             resolve_relative_paths: whether to resolve relative paths in the
-                scene to absolute paths. If `True`, all asset paths in the scene
-                are resolved to absolute paths. If `False`, asset paths are
-                left as-is. Defaults to `False`
+                scene to absolute paths. If ``True``, all asset paths in the
+                scene are resolved to absolute paths. If ``False``, asset
+                paths are left as-is. Defaults to ``False``.
         """
         if not fo3d_path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
@@ -182,11 +182,8 @@ class Scene(Object3D):
     def traverse(self, include_self=False):
         """Traverse the scene graph.
 
-        Usage:
-        ```
-        for node in scene.traverse():
-            print(obj.name)
-        ```
+        Args:
+            include_self: whether to include the current node in the traversal
         """
         if include_self:
             yield self

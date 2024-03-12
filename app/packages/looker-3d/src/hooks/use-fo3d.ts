@@ -2,6 +2,7 @@ import { getSampleSrc } from "@fiftyone/state";
 import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
+import { getFo3dRoot, getResolvedUrlForFo3dAsset } from "../fo3d/utils";
 import { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
 
 export class FbxAsset {
@@ -150,6 +151,8 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     })();
   }, [url]);
 
+  const mediaRoot = useMemo(() => getFo3dRoot(url), [url]);
+
   const foScene = useMemo(() => {
     if (!rawData) {
       return null;
@@ -157,17 +160,22 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
 
     const buildSceneGraph = (node: FoSceneRawNode) => {
       let asset: MeshAsset;
-
       const material = node.defaultMaterial;
 
       if (node["_type"].toLocaleLowerCase().endsWith("mesh")) {
         if (node["_type"].toLocaleLowerCase().startsWith("fbx")) {
           if (node["fbxPath"]) {
-            asset = new FbxAsset(getSampleSrc(node["fbxPath"]));
+            asset = new FbxAsset(
+              getSampleSrc(
+                getResolvedUrlForFo3dAsset(node["fbxPath"], mediaRoot)
+              )
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("gltf")) {
           if (node["gltfPath"]) {
-            asset = new GltfAsset(getSampleSrc(node["gltfPath"]));
+            asset = new GltfAsset(
+              getResolvedUrlForFo3dAsset(node["gltfPath"], mediaRoot)
+            );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("obj")) {
           if (node["objPath"]) {
@@ -175,13 +183,13 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
             const mtlPath = node["mtlPath"];
             if (mtlPath) {
               asset = new ObjAsset(
-                getSampleSrc(objPath),
-                getSampleSrc(mtlPath),
+                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
+                getSampleSrc(getResolvedUrlForFo3dAsset(mtlPath, mediaRoot)),
                 material as FoMeshMaterial
               );
             } else {
               asset = new ObjAsset(
-                getSampleSrc(objPath),
+                getSampleSrc(getResolvedUrlForFo3dAsset(objPath, mediaRoot)),
                 undefined,
                 material as FoMeshMaterial
               );
@@ -190,14 +198,18 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
         } else if (node["_type"].toLocaleLowerCase().startsWith("stl")) {
           if (node["stlPath"]) {
             asset = new StlAsset(
-              getSampleSrc(node["stlPath"]),
+              getSampleSrc(
+                getResolvedUrlForFo3dAsset(node["stlPath"], mediaRoot)
+              ),
               material as FoMeshMaterial
             );
           }
         } else if (node["_type"].toLocaleLowerCase().startsWith("ply")) {
           if (node["plyPath"]) {
             asset = new PlyAsset(
-              getSampleSrc(node["plyPath"]),
+              getSampleSrc(
+                getResolvedUrlForFo3dAsset(node["plyPath"], mediaRoot)
+              ),
               material as FoMeshMaterial
             );
           }
@@ -205,7 +217,9 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
       } else if (node["_type"].endsWith("Pointcloud")) {
         if (node["pcdPath"]) {
           asset = new PcdAsset(
-            getSampleSrc(node["pcdPath"]),
+            getSampleSrc(
+              getResolvedUrlForFo3dAsset(node["pcdPath"], mediaRoot)
+            ),
             material as FoPointcloudMaterialProps
           );
         }
@@ -252,7 +266,7 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
     };
 
     return toReturn;
-  }, [rawData]);
+  }, [rawData, mediaRoot]);
 
   if (isLoading) {
     return {
