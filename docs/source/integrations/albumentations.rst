@@ -107,8 +107,8 @@ augmentations to. For this guide, we'll use the the
     import fiftyone as fo
     import fiftyone.zoo as foz
 
-    ## only take 10 samples for quick demonstration
-    dataset = foz.load_zoo_dataset("quickstart", max_samples=10)
+    ## only take 5 samples for quick demonstration
+    dataset = foz.load_zoo_dataset("quickstart", max_samples=5)
 
     # only keep the ground truth labels
     dataset.select_fields("ground_truth").keep_fields()
@@ -157,3 +157,56 @@ augmentations to. For this guide, we'll use the the
             name_or_path="LiheYoung/depth-anything-small-hf",
         )
         dataset.apply_model(model, label_field="depth_map")
+
+
+.. _albumentations-applying-transformations:
+
+Apply Transformations
+______________________
+
+To apply Albumentations transformations to your dataset, you can use the
+`augment_with_albumentations <https://github.com/jacobmarks/fiftyone-albumentations-plugin?tab=readme-ov-file#applying-augmentations>`_
+operator. Press the backtick key ('`') to open the operator modal, and select
+the `augment_with_albumentations` operator from the dropdown menu.
+
+You can then configure the transformations to apply:
+
+- **Number of augmentations per sample**: The number of augmented samples to
+  generate for each input sample. The default is 1, which is sufficient for 
+  deterministic transformations, but for probabilistic transformations, you
+  may want to generate multiple samples to see the range of possible outputs.
+
+- **Number of transforms**: The number of transformations to compose into the 
+  pipeline to be applied to each sample. The default is 1, but you can set this
+  as high as you'd like — the more transformations, the more complex the
+  augmentations will be. You will be able to configure each transform separately.
+
+- **Target view**: The view to which the transformations will be applied. The
+  default is `dataset`, but you can also apply the transformations to the
+  current view or to currently selected samples within the app.
+
+- **Execution mode**: If you set `delegated=True`, the operation will be :ref:`queued
+  as a job <delegated-operations>`, which you can then launch in the background from your terminal with
+
+    .. code-block:: bash
+    
+        $ fiftyone delegated launch
+
+    If you set `delegated=False`, the operation will be executed immediately.
+
+
+For each transformation, you can select either a "primitive" transformation
+from the Albumentations library, or a "saved" transformation pipeline that you
+have previously saved to the dataset. These saved pipelines can consist of one
+or more transformations.
+
+When you apply a primitive transformation, you can configure the parameters of
+the transformation directly within the app. The available parameters, their 
+default values, types, and docstrings are all integrated directly from the
+Albumentations library.
+
+**INSERT GIF HERE**
+
+When you apply a saved pipeline, there will not be any parameters to configure.
+
+**INSERT GIF HERE**
