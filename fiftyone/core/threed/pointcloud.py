@@ -17,7 +17,8 @@ class Pointcloud(Object3D):
 
     Args:
         name (str): Name of the point cloud.
-        pcd_path (str): Path to the .pcd file.
+        pcd_path (str): Path to the .pcd file. Path may be either absolute or
+            relative to the directory containing the .fo3d file.
         material (:class:`fiftyone.core.threed.PointcloudMaterial`, optional):
             Material of the point cloud. If not specified, defaults to a
             new instance of :class:`fiftyone.core.threed.PointcloudMaterial`
