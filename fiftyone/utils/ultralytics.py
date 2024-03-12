@@ -287,7 +287,7 @@ def _to_keypoints(result, confidence_thresh=None):
     return fol.Keypoints(keypoints=keypoints)
 
 
-class FiftyOneYOLOConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
+class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
     """Configuration for a :class:`FiftyOneYOLOModel`.
 
     Args:
@@ -297,63 +297,54 @@ class FiftyOneYOLOConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
 
     def __init__(self, d):
         d = self.init(d)
-        super().__init__(d)
-        self.model = self.parse_raw(d, "model", default=None)
+        self.model = d.get("model", None)
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
-
-
-class FiftyOneYOLOModelConfig(fout.TorchImageModelConfig, fozm.HasZooModel):
-    """Configuration for a :class:`FiftyOneYOLOModel`.
-
-    Args:
-        model (None): an ``ultralytics.YOLO`` model to use
-        checkpoint_path (None): the path to a checkpoint file to load
-    """
-
-    def __init__(self, d):
-        d = self.init(d)
-        super().__init__(d)
-
-        self.model = self.parse_raw(d, "model", default=None)
-        self.checkpoint_path = self.parse_string(
-            d, "checkpoint_path", default=None
-        )
-        self.model_name = self.parse_string(d, "model_name", default=None)
+        self.model_name = d.get("model_name", "yolov5s-coco-torch")
+        self.classes = d.get("classes", None)
 
 
 class FiftyOneYOLOModel(Model):
     """FiftyOne wrapper around an ``ultralytics.YOLO`` model.
 
     Args:
-        config: a `FiftyOneYOLOConfig`
+        config: a `FiftyOneYOLOModelConfig`
     """
 
     def __init__(self, config):
         self.config = config
-        self._download_model(config)
+        config.download_model_if_necessary()
         self.model = self._load_model(config)
 
-    def _download_model(self, config):
-        config.download_model_if_necessary()
+    def _get_checkpoint_path(self, config):
+        if config.checkpoint_path is not None:
+            return config.checkpoint_path
+        elif config.model_path is not None:
+            return config.model_path
+        elif config.model_name is not None:
+            return foz.find_zoo_model(config.model_name)
+        else:
+            return None
+
+    def _has_model_name(self, config):
+        return hasattr(config, "model_name") and config.model_name is not None
+
+    def _is_yolo_world_model(self, config):
+        path = self._get_checkpoint_path(config) or ""
+        model_name = config.model_name if self._has_model_name(config) else ""
+        return "world" in model_name or "world" in path
 
     def _load_model(self, config):
         if config.model is not None:
             return config.model
-        elif config.checkpoint_path is not None:
-            return ultralytics.YOLO(config.checkpoint_path)
-        else:
-            entrypoint = etau.get_function(config.entrypoint_fcn)
-            model_name = config.entrypoint_args.get("model_name", None)
-            if hasattr(config, "classes"):
-                classes = config.classes
-            else:
-                classes = None
-            if model_name is not None and config.model_name is None:
-                config.model_name = model_name
-            model = entrypoint(model_name=model_name, classes=classes)
-            return model
+
+        checkpoint_path = self._get_checkpoint_path(config)
+        model = ultralytics.YOLO(checkpoint_path)
+        classes = config.classes if hasattr(config, "classes") else None
+        if classes is not None and self._is_yolo_world_model(config):
+            model.set_classes(classes)
+        return model
 
     @property
     def media_type(self):
@@ -386,8 +377,11 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO detection model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLOModelConfig`
     """
+
+    def __init__(self, config):
+        super().__init__(config)
 
     def _format_predictions(self, predictions):
         return to_detections(predictions)
@@ -398,9 +392,7 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         return self._format_predictions(predictions)
 
 
-class FiftyOneYOLODetectionModelConfig(
-    fout.TorchImageModelConfig, fozm.HasZooModel
-):
+class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
     """Configuration for a :class:`FiftyOneYOLODetectionModel`.
 
     Args:
@@ -410,21 +402,19 @@ class FiftyOneYOLODetectionModelConfig(
 
     def __init__(self, d):
         d = self.init(d)
-        super().__init__(d)
-        self.model = self.parse_raw(d, "model", default=None)
+        self.model = d.get("model", None)
         self.checkpoint_path = self.parse_string(
             d, "checkpoint_path", default=None
         )
-        self.model_name = self.parse_string(
-            d, "model_name", default="yolov5s-coco-torch"
-        )
+        self.model_name = d.get("model_name", "yolov5s-coco-torch")
+        self.classes = d.get("classes", None)
 
 
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLOModelConfig`
     """
 
     @property
@@ -440,7 +430,7 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO pose model.
 
     Args:
-        config: a :class:`FiftyOneYOLOConfig`
+        config: a :class:`FiftyOneYOLOModelConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -496,22 +486,3 @@ class UltralyticsOutputProcessor(fout.OutputProcessor):
                 for row in df.itertuples()
             ]
         )
-
-
-def load_yolo_model(**kwargs):
-    """Loads a YOLO model from the Ultralytics Hub.
-
-    Args:
-        model_name: the name of the model to load
-
-    Returns:
-        a :class:`fiftyone.core.models.Model`
-    """
-
-    model_name = kwargs.get("model_name", "yolov8s-coco-torch")
-    path = foz.find_zoo_model(model_name)
-    model = ultralytics.YOLO(path)
-    classes = kwargs.get("classes", None)
-    if classes is not None and "world" in model_name:
-        model.set_classes(classes)
-    return model

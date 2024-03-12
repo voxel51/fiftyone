@@ -2366,11 +2366,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8n-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov8n-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2406,11 +2402,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8s-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov8s-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2446,11 +2438,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8m-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov8m-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2486,11 +2474,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8l-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov8l-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2526,11 +2510,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8x-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov8x-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2566,11 +2546,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov9c-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov9c-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2606,11 +2582,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov9e-coco-torch"
-                    },
-                    "labels_path": "{{eta-resources}}/ms-coco-labels.txt",
+                    "model_name": "yolov9e-coco-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2646,10 +2618,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8s-world-torch"
-                    },
+                    "model_name": "yolov8s-world-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2685,10 +2654,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8m-world-torch"
-                    },
+                    "model_name": "yolov8m-world-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2724,10 +2690,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8l-world-torch"
-                    },
+                    "model_name": "yolov8l-world-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
@@ -2763,10 +2726,7 @@
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
                 "config": {
-                    "entrypoint_fcn": "fiftyone.utils.ultralytics.load_yolo_model",
-                    "entrypoint_args": {
-                        "model_name": "yolov8x-world-torch"
-                    },
+                    "model_name": "yolov8x-world-torch",
                     "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
                     "raw_inputs": true
                 }
