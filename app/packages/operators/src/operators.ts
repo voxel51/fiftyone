@@ -169,16 +169,12 @@ export class OperatorConfig {
 }
 
 export class Operator {
-  public definition: types.Object;
   constructor(
     public pluginName: string,
     public _builtIn: boolean = false,
     public _config: OperatorConfig = null
   ) {
     this._config = _config;
-    this.definition = new types.Object();
-    this.definition.defineProperty("inputs", new types.Object());
-    this.definition.defineProperty("outputs", new types.Object());
   }
 
   get config(): OperatorConfig {
@@ -224,18 +220,14 @@ export class Operator {
     return {};
   }
   async resolveInput(ctx: ExecutionContext) {
-    if (this.config.dynamic && this.isRemote) {
+    if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "inputs");
-    } else if (this.isRemote) {
-      return this.definition.getProperty("inputs");
     }
     return null;
   }
   async resolveOutput(ctx: ExecutionContext, result: OperatorResult) {
-    if (this.config.dynamic && this.isRemote) {
+    if (this.isRemote) {
       return resolveRemoteType(this.uri, ctx, "outputs", result);
-    } else if (this.isRemote) {
-      return this.definition.getProperty("outputs");
     }
     return null;
   }
@@ -252,21 +244,8 @@ export class Operator {
     return operator;
   }
   static fromJSON(json: any) {
-    const { inputs, outputs } = json.definition.properties;
     const config = OperatorConfig.fromJSON(json.config);
     const operator = new Operator(json.plugin_name, json._builtin, config);
-    if (inputs) {
-      operator.definition.addProperty(
-        "inputs",
-        types.Property.fromJSON(inputs)
-      );
-    }
-    if (outputs) {
-      operator.definition.addProperty(
-        "outputs",
-        types.Property.fromJSON(outputs)
-      );
-    }
     return operator;
   }
 }
