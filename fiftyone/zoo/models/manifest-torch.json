@@ -2258,7 +2258,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2023-08-22 19:22:51"
         },
         {
@@ -2288,7 +2288,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2023-08-22 19:22:51"
         },
         {
@@ -2318,7 +2318,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2023-08-22 19:22:51"
         },
         {
@@ -2348,7 +2348,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2023-08-22 19:22:51"
         },
         {
@@ -2388,7 +2388,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2428,7 +2428,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2468,7 +2468,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2508,7 +2508,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2548,7 +2548,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2588,7 +2588,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2628,7 +2628,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2667,7 +2667,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2706,7 +2706,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2745,7 +2745,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
@@ -2784,7 +2784,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "torch", "zero-shot"],
+            "tags": ["detection", "torch", "yolo", "zero-shot"],
             "date_added": "2024-03-11 19:22:51"
         },
         {
