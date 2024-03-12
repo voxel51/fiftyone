@@ -120,17 +120,25 @@ class Scene(Object3D):
         """Returns a deep copy of the scene."""
         return Scene._from_fo3d_dict(self.as_dict())
 
-    def write(self, path: str):
-        """Export the scene to a .fo3d file."""
-        if not path.endswith(".fo3d"):
+    def write(self, fo3d_path: str, resolve_relative_paths=False):
+        """Export the scene to a .fo3d file.
+
+        Args:
+            fo3d_path: the path to write the scene to
+            resolve_relative_paths: whether to resolve relative paths in the
+                scene to absolute paths. If `True`, all asset paths in the scene
+                are resolved to absolute paths. If `False`, asset paths are
+                left as-is. Defaults to `False`
+        """
+        if not fo3d_path.endswith(".fo3d"):
             raise ValueError("Scene must be exported to a .fo3d file")
 
-        scene_with_resolved_paths = self.copy()
+        validated_scene = self.copy()
 
-        fo3d_path_dir = os.path.dirname(path)
+        fo3d_path_dir = os.path.dirname(fo3d_path)
 
         visited_nodes = set()
-        for node in scene_with_resolved_paths.traverse():
+        for node in validated_scene.traverse():
             if node.name in visited_nodes:
                 raise ValueError(
                     f"Scene contains multiple nodes with the same name: {node.name}"
@@ -138,58 +146,38 @@ class Scene(Object3D):
 
             visited_nodes.add(node.name)
 
-            if hasattr(node, "pcd_path"):
-                node.pcd_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.pcd_path
-                )
-            if hasattr(node, "obj_path"):
-                node.obj_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.obj_path
-                )
-            if hasattr(node, "mtl_path"):
-                node.mtl_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.mtl_path
-                )
-            if hasattr(node, "gltf_path"):
-                node.gltf_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.gltf_path
-                )
-            if hasattr(node, "fbx_path"):
-                node.fbx_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.fbx_path
-                )
-            if hasattr(node, "stl_path"):
-                node.stl_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.stl_path
-                )
-            if hasattr(node, "ply_path"):
-                node.ply_path = self._resolve_asset_path(
-                    fo3d_path_dir, node.ply_path
-                )
+            if resolve_relative_paths:
+                if hasattr(node, "pcd_path"):
+                    node.pcd_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.pcd_path
+                    )
+                if hasattr(node, "obj_path"):
+                    node.obj_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.obj_path
+                    )
+                if hasattr(node, "mtl_path"):
+                    node.mtl_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.mtl_path
+                    )
+                if hasattr(node, "gltf_path"):
+                    node.gltf_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.gltf_path
+                    )
+                if hasattr(node, "fbx_path"):
+                    node.fbx_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.fbx_path
+                    )
+                if hasattr(node, "stl_path"):
+                    node.stl_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.stl_path
+                    )
+                if hasattr(node, "ply_path"):
+                    node.ply_path = self._resolve_asset_path(
+                        fo3d_path_dir, node.ply_path
+                    )
 
-        with open(path, "w") as f:
-            json.dump(scene_with_resolved_paths.as_dict(), f, indent=4)
-
-    def _resolve_asset_path(self, root: str, path: str):
-        if path is None:
-            return None
-
-        if not os.path.isabs(path):
-            path = os.path.join(root, path)
-
-        return path
-
-    def _to_dict_extra(self):
-        return {
-            "uuid": self.uuid,
-            "camera": self.camera.as_dict(),
-            "lights": [light.as_dict() for light in self.lights]
-            if self.lights
-            else None,
-            "background": self.background.as_dict()
-            if self.background
-            else None,
-        }
+        with open(fo3d_path, "w") as f:
+            json.dump(validated_scene.as_dict(), f, indent=4)
 
     def traverse(self, include_self=False):
         """Traverse the scene graph.
@@ -261,6 +249,27 @@ class Scene(Object3D):
                     asset_paths.append(node.mtl_path)
 
         return asset_paths
+
+    def _resolve_asset_path(self, root: str, path: str):
+        if path is None:
+            return None
+
+        if not os.path.isabs(path):
+            path = os.path.join(root, path)
+
+        return path
+
+    def _to_dict_extra(self):
+        return {
+            "uuid": self.uuid,
+            "camera": self.camera.as_dict(),
+            "lights": [light.as_dict() for light in self.lights]
+            if self.lights
+            else None,
+            "background": self.background.as_dict()
+            if self.background
+            else None,
+        }
 
     @staticmethod
     def _from_fo3d_dict(dict_data: dict):
