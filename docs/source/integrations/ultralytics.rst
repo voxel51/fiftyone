@@ -21,7 +21,7 @@ following packages:
 
 .. code-block:: shell
 
-    pip install ultralytics "torch>=1.8"
+    pip install "ultralytics>=8.1.0" "torch>=1.8"
 
 .. _ultralytics-inference:
 
@@ -70,6 +70,10 @@ You can directly pass Ultralytics YOLO detection models to
     # model = YOLO("yolov5l.pt")
     # model = YOLO("yolov5x.pt")
 
+    # YOLOv9
+    # model = YOLO('yolov9c.pt')
+    # model = YOLO('yolov9e.pt')
+
     dataset.apply_model(model, label_field="boxes")
 
     session = fo.launch_app(dataset)
@@ -90,6 +94,34 @@ manually convert Ultralytics predictions to
 .. image:: /images/integrations/ultralytics_boxes.jpg
    :alt: ultralytics-boxes
    :align: center
+
+
+You can also load any of these detection models from the model zoo. To get a 
+list of available models, you can use the :meth:`fiftyone.zoo.list_zoo_models`
+method, and pass in `tags="yolo"` to filter the list to only show YOLO models. 
+This will limit the list to only show models that are compatible with 
+Ultralytics or Super-Gradients. In general, the model names will contain 
+"yolov", followed by the version number, then the model size (as in "n", "s", "m", 
+"l", or "x"), and an indicator of the label classes ("coco" for MS COCO or
+"world" for open-world), followed by "torch". 
+
+.. code-block:: python
+    :linenos:
+
+    model_name = 'yolov5l-coco-torch'
+    # model_name = 'yolov8m-coco-torch'
+    # model_name = 'yolov9e-coco-torch'
+
+    model = foz.load_zoo_model(
+        "yolov5s", 
+        label_field="boxes", 
+        confidence_thresh=0.5, 
+        iou_thresh=0.5
+        )
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
 
 .. _ultralytics-open-vocabulary-object-detection:
 
@@ -118,7 +150,10 @@ that you can set the classes that the model should detect:
     
     ## Load model
     from ultralytics import YOLO
-    model = YOLO('yolov8l-world.pt') # or YOLO('yolov8s-world.pt')
+    model = YOLO('yolov8l-world.pt') 
+    # or YOLO('yolov8s-world.pt')
+    # or YOLO('yolov8m-world.pt')
+    # or YOLO('yolov8x-world.pt')
 
     ## Set open vocabulary classes
     model.set_classes(
@@ -138,6 +173,26 @@ that you can set the classes that the model should detect:
    :alt: ultralytics-open-world-boxes
    :align: center
 
+
+You can also load these open-vocabulary models from the model zoo, optionally
+specifying the classes that the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = 'yolov8l-world-torch'
+    # model_name = 'yolov8m-world-torch'
+    # model_name = 'yolov8x-world-torch'
+
+    model = foz.load_zoo_model(
+        model_name, 
+        label_field="yolo_world_detections", 
+        classes=["plant", "window", "keyboard", "human baby", "computer monitor"]
+        )
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
 
 .. _ultralytics-instance-segmentation:
 
