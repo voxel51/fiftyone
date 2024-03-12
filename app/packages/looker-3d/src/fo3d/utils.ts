@@ -106,6 +106,46 @@ export const getMediaUrlForFo3dSample = (
   return getSampleSrc(mediaUrlUnresolved);
 };
 
+export const getFo3dRoot = (fo3dUrl: string) => {
+  const decodedUrl = decodeURIComponent(fo3dUrl);
+
+  // extract the filepath from the URL
+  const filepathMatch = decodedUrl.match(/filepath=([^&]+)/);
+  if (!filepathMatch) {
+    throw new Error("Filepath not found in URL");
+  }
+  let filepath = filepathMatch[1];
+
+  // remove the query string if present
+  const queryStringIndex = filepath.indexOf("?");
+  if (queryStringIndex !== -1) {
+    filepath = filepath.substring(0, queryStringIndex);
+  }
+
+  // remove filename and the last slash to get the root
+  const root = filepath.replace(/\/[^\/]*\.fo3d$/, "/");
+
+  return root;
+};
+
+export const getResolvedUrlForFo3dAsset = (
+  assetUrl: string,
+  fo3dRoot: string
+) => {
+  if (
+    assetUrl.startsWith("s3://") ||
+    assetUrl.startsWith("gcp://") ||
+    assetUrl.startsWith("http://") ||
+    assetUrl.startsWith("https://") ||
+    assetUrl.startsWith("/") ||
+    assetUrl.startsWith("data:")
+  ) {
+    return assetUrl;
+  }
+
+  return fo3dRoot + assetUrl;
+};
+
 export const getThreeMaterialFromFo3dMaterial = (
   foMtl: Record<string, number | string | boolean>
 ) => {
