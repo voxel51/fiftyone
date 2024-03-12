@@ -49,8 +49,11 @@ class ObjMesh(Mesh):
 
     Args:
         name (str): Name of the mesh.
-        obj_path (str): Path to the .obj file.
+        obj_path (str): Path to the .obj file. Path may be either absolute or
+            relative to the directory containing the .fo3d file.
         mtl_path (str, optional): Path to the .mtl file. Defaults to None.
+            Path may be either absolute or relative to the directory
+            containing the .fo3d file.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the mesh if `mtl_path` is not provided
             or if material in `mtl_path` is not found. Defaults to
@@ -98,7 +101,8 @@ class FBXMesh(Mesh):
 
     Args:
         name (str): Name of the mesh.
-        fbx_path (str): Path to the .fbx file.
+        fbx_path (str): Path to the .fbx file. Path may be either absolute
+            or relative to the directory containing the .fo3d file.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the mesh if fbx file does not contain
             material information. Defaults to
@@ -134,7 +138,8 @@ class GLTFMesh(Mesh):
 
     Args:
         name (str): Name of the mesh.
-        gltf_path (str): Path to the .gltf or .glb file.
+        gltf_path (str): Path to the .gltf or .glb file. Path may be either
+            absolute or relative to the directory containing the .fo3d file.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the mesh if gLTF file does not contain
             material information. Defaults to
@@ -173,7 +178,8 @@ class PlyMesh(Mesh):
 
     Args:
         name (str): Name of the mesh.
-        ply_path (str): Path to the .ply file.
+        ply_path (str): Path to the .ply file. Path may be either absolute or
+            relative to the directory containing the .fo3d file.
         is_point_cloud (bool): Whether the PLY file is a point cloud. Defaults
             to `False`.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
@@ -213,7 +219,8 @@ class StlMesh(Mesh):
 
     Args:
         name (str): Name of the mesh.
-        stl_path (str): Path to the .stl file.
+        stl_path (str): Path to the .stl file. Path may be either absolute or
+            relative to the directory containing the .fo3d file.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshLambertMaterial`.

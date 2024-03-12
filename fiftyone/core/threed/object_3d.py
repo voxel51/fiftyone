@@ -211,6 +211,14 @@ class Object3D:
         """Remove all children from this object."""
         self.children = []
 
+    def traverse(self, include_self=True):
+        """Traverse the scene graph."""
+        if include_self:
+            yield self
+
+        for child in self.children:
+            yield from child.traverse(include_self=True)
+
     def as_dict(self):
         """Converts the object to a dict."""
         data = {
