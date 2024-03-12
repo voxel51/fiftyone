@@ -2811,7 +2811,7 @@
                     "support": true
                 }
             },
-            "tags": ["classification", "torch"],
+            "tags": ["classification", "torch", "yolo"],
             "date_added": "2024-01-06 08:51:14"
         },
         {
@@ -2841,7 +2841,7 @@
                     "support": true
                 }
             },
-            "tags": ["detection", "coco", "torch"],
+            "tags": ["detection", "coco", "torch", "yolo"],
             "date_added": "2023-08-22 19:22:51"
         }
     ]
