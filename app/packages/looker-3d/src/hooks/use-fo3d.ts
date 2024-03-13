@@ -3,7 +3,11 @@ import { getFetchFunction } from "@fiftyone/utilities";
 import { useEffect, useMemo, useState } from "react";
 import { Quaternion, Vector3 } from "three";
 import { getFo3dRoot, getResolvedUrlForFo3dAsset } from "../fo3d/utils";
-import { FiftyoneSceneRawJson, FoSceneRawNode } from "../utils";
+import {
+  FiftyoneSceneRawJson,
+  FoSceneBackground,
+  FoSceneRawNode,
+} from "../utils";
 
 export class FbxAsset {
   constructor(readonly fbxUrl?: string) {}
@@ -245,6 +249,20 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
           node.children?.length > 0 ? node.children.map(buildSceneGraph) : null,
       };
     };
+
+    // if scene background has relative paths, resolve them
+    if (rawData.background?.image) {
+      rawData.background.image = getResolvedUrlForFo3dAsset(
+        rawData.background.image,
+        mediaRoot
+      );
+    }
+
+    if (rawData.background?.cube) {
+      rawData.background.cube = rawData.background.cube.map((cubePath) =>
+        getResolvedUrlForFo3dAsset(cubePath, mediaRoot)
+      ) as FoSceneBackground["cube"];
+    }
 
     const toReturn: FoScene = {
       cameraProps: rawData.camera,

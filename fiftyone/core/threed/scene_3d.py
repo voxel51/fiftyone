@@ -112,7 +112,9 @@ class Scene(Object3D):
         repr_str = "Fo3d scene with "
         for key, value in nodes_summary.items():
             if value > 0:
-                key_pretty = key.replace("s", "") if value == 1 else key
+                key_pretty = (
+                    key[:-1] if key.endswith("s") and value == 1 else key
+                )
                 repr_str += f"{value} {key_pretty}, "
         return repr_str[:-2]
 
@@ -245,6 +247,12 @@ class Scene(Object3D):
                 if node.mtl_path is not None:
                     asset_paths.append(node.mtl_path)
 
+        # append paths in scene background, if any
+        if self.background is not None:
+            if self.background.image is not None:
+                asset_paths.append(self.background.image)
+            if self.background.cube is not None:
+                asset_paths.extend(self.background.cube)
         return asset_paths
 
     def _resolve_asset_path(self, root: str, path: str):
