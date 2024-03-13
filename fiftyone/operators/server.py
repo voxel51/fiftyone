@@ -241,7 +241,12 @@ class ResolveType(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_type(registry, operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        result = await resolve_type(
+            registry, operator_uri, data, request_token=request_token
+        )
         return result.to_json() if result else {}
 
 
@@ -267,7 +272,12 @@ class ResolveExecutionOptions(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = await resolve_execution_options(registry, operator_uri, data)
+        # request token is teams-only
+        request_token = get_token_from_request(request)
+
+        result = await resolve_execution_options(
+            registry, operator_uri, data, request_token=request_token
+        )
         return result.to_dict() if result else {}
 
 
