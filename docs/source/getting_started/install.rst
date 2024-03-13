@@ -20,9 +20,11 @@ Prerequisites
 -------------
 
 You will need a working Python installation. FiftyOne currently requires
-**Python 3.7 - 3.10**.
+**Python 3.7 - 3.12** (3D features may not be available in 3.12 until
+`open3d <https://pypi.org/project/open3d/>`_ supports it)
 
-On Linux, we recommended installing Python through your system package manager
+
+On Linux, we recommend installing Python through your system package manager
 (APT, YUM, etc.) if it is available. On other platforms, Python can be
 downloaded `from python.org <https://www.python.org/downloads>`_. To verify that
 a suitable Python version is installed and accessible, run `python --version`.

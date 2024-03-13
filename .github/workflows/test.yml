@@ -39,13 +39,16 @@ jobs:
           - ubuntu-latest-m
           - windows-latest
         python:
-          - 3.8
+          - "3.8"
           - "3.10"
+          - "3.11"
         exclude:
           - os: windows-latest
-            python: 3.8
+            python: "3.8"
           - os: windows-latest
             python: "3.10"
+          - os: windows-latest
+            python: "3.11"
     defaults:
       run:
         shell: bash
@@ -90,7 +93,7 @@ jobs:
             --ignore tests/intensive/ \
             --ignore tests/no_wrapper
       - name: Upload
-        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.9' }}
+        if: ${{ !startsWith(matrix.os, 'windows') && matrix.python == '3.10' }}
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
