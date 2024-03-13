@@ -130,7 +130,7 @@ def import_annotations(
     if sample_collection.media_type == fom.GROUP:
         if insert_new:
             raise ValueError(
-                "insert_new=True is not support for grouped collections"
+                "insert_new=True is not supported for grouped collections"
             )
 
         sample_collection = sample_collection.select_group_slices(
