@@ -16,7 +16,7 @@ from .lights import Light
 from .mesh import FBXMesh, GLTFMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import Pointcloud
-from .utils import convert_keys_to_snake_case
+from .utils import convert_keys_to_snake_case, FO3D_VERSION_KEY
 
 
 @dataclass
@@ -266,6 +266,7 @@ class Scene(Object3D):
 
     def _to_dict_extra(self):
         return {
+            FO3D_VERSION_KEY: "1.0",
             "uuid": self.uuid,
             "camera": self.camera.as_dict(),
             "lights": [light.as_dict() for light in self.lights]
