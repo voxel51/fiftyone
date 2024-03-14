@@ -292,17 +292,16 @@ class FiftyOneYOLOModelConfig(Config, fozm.HasZooModel):
 
     Args:
         model (None): an ``ultralytics.YOLO`` model to use
-        checkpoint_path (None): the path to a checkpoint file to load
+        model_name (None): the name of an ``ultralytics.YOLO`` model to load
+        model_path (None): the path to an ``ultralytics.YOLO`` model checkpoint
+        classes (None): an optional list of classes
     """
 
     def __init__(self, d):
-        d = self.init(d)
-        self.model = d.get("model", None)
-        self.checkpoint_path = self.parse_string(
-            d, "checkpoint_path", default=None
-        )
-        self.model_name = d.get("model_name", None)
-        self.classes = d.get("classes", None)
+        self.model = self.parse_raw(d, "model", default=None)
+        self.model_name = self.parse_raw(d, "model_name", default=None)
+        self.model_path = self.parse_raw(d, "model_path", default=None)
+        self.classes = self.parse_array(d, "classes", default=None)
 
 
 class FiftyOneYOLOModel(Model):
@@ -314,37 +313,22 @@ class FiftyOneYOLOModel(Model):
 
     def __init__(self, config):
         self.config = config
-        if not hasattr(config, "model") or config.model is None:
-            config.download_model_if_necessary()
         self.model = self._load_model(config)
-
-    def _get_checkpoint_path(self, config):
-        if config.checkpoint_path is not None:
-            return config.checkpoint_path
-        elif config.model_path is not None:
-            return config.model_path
-        elif config.model_name is not None:
-            return foz.find_zoo_model(config.model_name)
-        else:
-            return None
-
-    def _has_model_name(self, config):
-        return hasattr(config, "model_name") and config.model_name is not None
-
-    def _is_yolo_world_model(self, config):
-        path = self._get_checkpoint_path(config) or ""
-        model_name = config.model_name if self._has_model_name(config) else ""
-        return "world" in model_name or "world" in path
 
     def _load_model(self, config):
         if config.model is not None:
             return config.model
 
-        checkpoint_path = self._get_checkpoint_path(config)
-        model = ultralytics.YOLO(checkpoint_path)
-        classes = config.classes if hasattr(config, "classes") else None
-        if classes is not None and self._is_yolo_world_model(config):
-            model.set_classes(classes)
+        if config.model_path is not None:
+            model = ultralytics.YOLO(config.model_path)
+        elif config.model_name is not None:
+            model = ultralytics.YOLO(config.model_name)
+        else:
+            model = ultralytics.YOLO()
+
+        if config.classes is not None:
+            model.set_classes(config.classes)
+
         return model
 
     @property
@@ -374,11 +358,15 @@ class FiftyOneYOLOModel(Model):
         return self._format_predictions(predictions[0])
 
 
+class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
 class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO detection model.
 
     Args:
-        config: a :class:`FiftyOneYOLOModelConfig`
+        config: a :class:`FiftyOneYOLODetectionModelConfig`
     """
 
     def __init__(self, config):
@@ -393,29 +381,15 @@ class FiftyOneYOLODetectionModel(FiftyOneYOLOModel):
         return self._format_predictions(predictions)
 
 
-class FiftyOneYOLODetectionModelConfig(FiftyOneYOLOModelConfig):
-    """Configuration for a :class:`FiftyOneYOLODetectionModel`.
-
-    Args:
-        model (None): an ``ultralytics.YOLO`` model to use
-        checkpoint_path (None): the path to a checkpoint file to load
-    """
-
-    def __init__(self, d):
-        d = self.init(d)
-        self.model = d.get("model", None)
-        self.checkpoint_path = self.parse_string(
-            d, "checkpoint_path", default=None
-        )
-        self.model_name = d.get("model_name", None)
-        self.classes = d.get("classes", None)
+class FiftyOneYOLOSegmentationModelConfig(FiftyOneYOLOModelConfig):
+    pass
 
 
 class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO segmentation model.
 
     Args:
-        config: a :class:`FiftyOneYOLOModelConfig`
+        config: a :class:`FiftyOneYOLOSegmentationModelConfig`
     """
 
     @property
@@ -427,11 +401,15 @@ class FiftyOneYOLOSegmentationModel(FiftyOneYOLOModel):
         return to_instances(predictions)
 
 
+class FiftyOneYOLOPoseModelConfig(FiftyOneYOLOModelConfig):
+    pass
+
+
 class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
     """FiftyOne wrapper around an Ultralytics YOLO pose model.
 
     Args:
-        config: a :class:`FiftyOneYOLOModelConfig`
+        config: a :class:`FiftyOneYOLOPoseModelConfig`
     """
 
     def _format_predictions(self, predictions):
@@ -444,17 +422,17 @@ class FiftyOneYOLOPoseModel(FiftyOneYOLOModel):
 
 
 def _convert_yolo_detection_model(model):
-    config = FiftyOneYOLOModelConfig({"model": model})
+    config = FiftyOneYOLODetectionModelConfig({"model": model})
     return FiftyOneYOLODetectionModel(config)
 
 
 def _convert_yolo_segmentation_model(model):
-    config = FiftyOneYOLOModelConfig({"model": model})
+    config = FiftyOneYOLOSegmentationModelConfig({"model": model})
     return FiftyOneYOLOSegmentationModel(config)
 
 
 def _convert_yolo_pose_model(model):
-    config = FiftyOneYOLOModelConfig({"model": model})
+    config = FiftyOneYOLOPoseModelConfig({"model": model})
     return FiftyOneYOLOPoseModel(config)
 
 

@@ -2365,11 +2365,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8n-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2401,11 +2397,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8s-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2437,11 +2429,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8m-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2473,11 +2461,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8l-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2509,11 +2493,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8x-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2545,11 +2525,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov9c-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2581,11 +2557,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov9e-coco-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2617,11 +2589,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8s-world-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2653,11 +2621,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8m-world-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2689,11 +2653,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8l-world-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
@@ -2725,11 +2685,7 @@
             },
             "default_deployment_config_dict": {
                 "type": "fiftyone.utils.ultralytics.FiftyOneYOLODetectionModel",
-                "config": {
-                    "model_name": "yolov8x-world-torch",
-                    "output_processor_cls": "fiftyone.utils.ultralytics.UltralyticsOutputProcessor",
-                    "raw_inputs": true
-                }
+                "config": {}
             },
             "requirements": {
                 "packages": [
