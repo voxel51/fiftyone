@@ -1210,7 +1210,9 @@ class MediaExporter(object):
             if path_attribute is not None:
                 asset_path = getattr(node, path_attribute)
 
-                if asset_path is not None and os.path.isabs(asset_path):
+                is_nested_path = os.path.split(asset_path)[0] != ""
+
+                if asset_path is not None and is_nested_path:
                     setattr(node, path_attribute, os.path.basename(asset_path))
                     is_scene_modified = True
 
@@ -1333,10 +1335,8 @@ class MediaExporter(object):
                 elif self.export_mode == "manifest":
                     self._manifest[uuid] = media_path
 
-                if media_path.endswith(".fo3d"):
-                    self._handle_fo3d_file(
-                        media_path, outpath, self.export_mode
-                    )
+                if is_fo3d_file:
+                    self._handle_fo3d_file(media_path, outpath, self.export_mode)
         else:
             media = media_or_path
 
