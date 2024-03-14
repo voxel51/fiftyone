@@ -39,13 +39,16 @@ jobs:
           - ubuntu-latest-m
           - windows-latest
         python:
-          - 3.8
+          - "3.8"
           - "3.10"
+          - "3.11"
         exclude:
           - os: windows-latest
-            python: 3.8
+            python: "3.8"
           - os: windows-latest
             python: "3.10"
+          - os: windows-latest
+            python: "3.11"
     defaults:
       run:
         shell: bash
