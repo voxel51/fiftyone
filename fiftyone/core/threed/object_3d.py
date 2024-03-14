@@ -14,6 +14,7 @@ from scipy.spatial.transform import Rotation
 import fiftyone.core.utils as fou
 
 from .transformation import Euler, Quaternion, Vec3UnionType, Vector3
+from .utils import FO3D_VERSION_KEY
 from .validators import normalize_to_vec3
 
 threed = fou.lazy_import("fiftyone.core.threed")
@@ -256,7 +257,8 @@ class Object3D:
             if k
             not in [
                 "_type",
-                "uuid",  # `uuid` is not a constructor argument
+                FO3D_VERSION_KEY,
+                "uuid",
                 "name",
                 "visible",
                 "children",
