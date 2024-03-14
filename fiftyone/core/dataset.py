@@ -115,8 +115,8 @@ def _validate_dataset_name(name, skip=None):
             raise ValueError(f"Dataset name '{name}' is not available")
         else:
             raise ValueError(
-                f"Dataset name '{name}' with slug '{slug}' clashes "
-                f"with existing dataset '{clashing_name}'"
+                f"Dataset name '{name}' is not available: slug '{slug}' "
+                f"in use by dataset '{clashing_name}'"
             )
 
     return slug
