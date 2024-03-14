@@ -5,6 +5,7 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
@@ -682,3 +683,116 @@ def classifications_to_detections(
                 detections.append(detection)
 
             image[out_field] = fol.Detections(detections=detections)
+
+
+def perform_nms(
+    sample_collection,
+    in_field,
+    out_field,
+    conf_threshold=0.6,
+    iou_threshold=0.5,
+    progress=None,
+):
+    """Performs Non-Maximum Suppression (NMS) on the
+    :class:`fiftyone.core.labels.Detections` field containing detections.
+
+    NMS is a post-processing technique used in object detection to eliminate
+    duplicate detections and select the most relevant detected objects. This
+    helps reduce false positives.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Detections` field
+        out_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field to populate. Creates a new field if one doesn't already exist
+            with this name.
+        conf_threshold (0.6): a floating-point value between 0 and 1 representing
+            the minimum confidence score required for a detection to be considered
+            valid. Detections with confidence scores lower than this threshold
+            will be discarded during the Non-Maximum Suppression (NMS) process.
+        iou_threshold (0.5): a floating-point value between 0 and 1 representing
+            the Intersection over Union (IoU) threshold used in the NMS algorithm.
+            It determines the minimum overlap required between bounding boxes for
+            them to be considered duplicates. Bounding boxes with IoU values
+            greater than or equal to this threshold will be suppressed.
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Detections
+    )
+
+    samples = sample_collection.select_fields(in_field)
+
+    with fou.ProgressBar(progress=progress) as pb:
+        for sample in pb(samples):
+            detections_data_json_str = sample[in_field].to_json()
+            nms_detections_data_json_str = _perform_nms(
+                detections_data_json_str, conf_threshold, iou_threshold
+            )
+            nms_processed_detections = fol.Detections.from_json(
+                nms_detections_data_json_str
+            )
+            sample[out_field] = nms_processed_detections
+            sample.save()
+
+
+def _perform_nms(
+    detections_data_json_str, conf_threshold=0.6, iou_threshold=0.5
+):
+    detections_data_json = etas.load_json(detections_data_json_str)
+    detections = detections_data_json["detections"]
+
+    # Sort detections by confidence in descending order
+    detections.sort(key=lambda x: x["confidence"], reverse=True)
+
+    # Remove detections with confidence less than the conf_threshold
+    detections = [d for d in detections if d["confidence"] >= conf_threshold]
+
+    nms_detections = []
+
+    while len(detections) > 0:
+        # Pick the detection with highest confidence
+        selected_detection = detections[0]
+        nms_detections.append(selected_detection)
+        del detections[0]
+
+        # Compare with other detections for NMS
+        for d in detections:
+            if d["label"] == selected_detection["label"]:
+                iou = _calculate_iou(
+                    selected_detection["bounding_box"], d["bounding_box"]
+                )
+                if iou >= iou_threshold:
+                    # Remove the detection if IoU is greater than iou_threshold
+                    detections.remove(d)
+
+    # Update detections_data_json with NMS results
+    detections_data_json["detections"] = nms_detections
+    return etas.json_to_str(detections_data_json, pretty_print=False)
+
+
+def _calculate_iou(box1, box2):
+    x1_tl, y1_tl, w1, h1 = box1
+    x2_tl, y2_tl, w2, h2 = box2
+
+    x1_br, y1_br = x1_tl + w1, y1_tl + h1
+    x2_br, y2_br = x2_tl + w2, y2_tl + h2
+
+    # Calculate the coordinates of the intersection rectangle
+    x_overlap = max(0, min(x1_br, x2_br) - max(x1_tl, x2_tl))
+    y_overlap = max(0, min(y1_br, y2_br) - max(y1_tl, y2_tl))
+    intersection_area = x_overlap * y_overlap
+
+    # Calculate the area of each bounding box
+    box1_area = w1 * h1
+    box2_area = w2 * h2
+
+    # Calculate the Union area by using Formula: Union(A,B) = A + B - Inter(A,B)
+    union_area = box1_area + box2_area - intersection_area
+
+    # Compute IoU
+    iou = intersection_area / union_area
+    return iou
