@@ -66,6 +66,7 @@ def objects_to_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -179,6 +180,7 @@ def export_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -240,6 +242,7 @@ def import_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -319,6 +322,7 @@ def transform_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Segmentation
     )
@@ -422,6 +426,7 @@ def segmentations_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -477,6 +482,7 @@ def instances_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -549,6 +555,7 @@ def segmentations_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -595,6 +602,7 @@ def classification_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
     )
@@ -641,6 +649,7 @@ def classifications_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications
     )
