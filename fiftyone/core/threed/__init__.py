@@ -18,6 +18,7 @@ from .mesh import FBXMesh, GLTFMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import *
 from .scene_3d import *
+from .shape_3d import Box3D, Cylinder3D, Sphere3D, Plane3D
 from .transformation import Euler, Quaternion, Vector3
 
 # This enables Sphinx refs to directly use paths imported here

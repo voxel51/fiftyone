@@ -158,6 +158,10 @@ from .core.runs import (
 )
 from .core.sample import Sample
 from .core.threed import (
+    Box3D,
+    Cylinder3D,
+    Plane3D,
+    Sphere3D,
     FBXMesh,
     GLTFMesh,
     ObjMesh,
