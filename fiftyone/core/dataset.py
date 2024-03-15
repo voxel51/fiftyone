@@ -6948,6 +6948,93 @@ def _create_group_indexes(sample_collection_name, group_field):
     sample_collection.create_index(group_field + ".name")
 
 
+def _clone_indexes(src_collection, dst_doc):
+    if isinstance(src_collection, fov.DatasetView):
+        src_dataset = src_collection._dataset
+        src_view = src_collection
+    else:
+        src_dataset = src_collection
+        src_view = None
+
+    # Omit indexes on filtered fields
+    if src_view is not None:
+        skip = _get_indexes_to_skip(src_view)
+    else:
+        skip = None
+
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_doc.sample_collection_name,
+        skip=skip,
+    )
+
+    if dst_doc.frame_collection_name is not None:
+        # Omit indexes on filtered fields
+        if src_view is not None:
+            skip = _get_indexes_to_skip(src_view, frames=True)
+        else:
+            skip = None
+
+        _clone_collection_indexes(
+            src_dataset._frame_collection_name,
+            dst_doc.frame_collection_name,
+            skip=skip,
+        )
+
+
+def _get_indexes_to_skip(view, frames=False):
+    selected_fields, excluded_fields = view._get_selected_excluded_fields(
+        frames=frames
+    )
+
+    if selected_fields is None and excluded_fields is None:
+        return None
+
+    if selected_fields is not None:
+        selected_roots = {f.split(".", 1)[0] for f in selected_fields}
+    else:
+        selected_roots = None
+
+    if frames:
+        src_coll = view._dataset._frame_collection
+        fields_map = view._get_db_fields_map(frames=True, reverse=True)
+    else:
+        src_coll = view._dataset._sample_collection
+        fields_map = view._get_db_fields_map(reverse=True)
+
+    skip = set()
+
+    for name, index_info in src_coll.index_information().items():
+        for field, _ in index_info["key"]:
+            field = fields_map.get(field, field)
+            root = field.split(".", 1)[0]
+
+            if selected_roots is not None and root not in selected_roots:
+                skip.add(name)
+
+            if excluded_fields is not None and field in excluded_fields:
+                skip.add(name)
+
+    return skip
+
+
+def _clone_collection_indexes(
+    src_collection_name, dst_collection_name, skip=None
+):
+    conn = foo.get_db_conn()
+    src_coll = conn[src_collection_name]
+    dst_coll = conn[dst_collection_name]
+
+    for name, index_info in src_coll.index_information().items():
+        key = index_info.pop("key")
+        index_info.pop("ns", None)
+        index_info.pop("v", None)
+        if skip is not None and name in skip:
+            continue
+
+        dst_coll.create_index(key, name=name, **index_info)
+
+
 def _make_sample_collection_name(
     dataset_id, patches=False, frames=False, clips=False
 ):
@@ -7202,10 +7289,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.save(upsert=True)
 
-    # Create indexes
-    _create_indexes(sample_collection_name, frame_collection_name)
-    if contains_groups and dataset.group_field is not None:
-        _create_group_indexes(sample_collection_name, dataset.group_field)
+    # Clone indexes
+    _clone_indexes(dataset_or_view, dataset_doc)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
