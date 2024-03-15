@@ -5,7 +5,6 @@ Label utilities.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
-import eta.core.serial as etas
 import eta.core.utils as etau
 
 import fiftyone.core.labels as fol
