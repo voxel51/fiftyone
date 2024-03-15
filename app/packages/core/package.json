@@ -16,9 +16,7 @@
         "@fiftyone/state": "*",
         "@fiftyone/utilities": "*",
         "@monaco-editor/react": "^4.5.0",
-        "@mui/icons-material": "^5.10.2",
         "@mui/material": "^5.9.0",
-        "@react-spring/web": "^9.4.3",
         "@use-gesture/react": "10.1.1",
         "@xstate/react": "1.3.3",
         "classnames": "^2.2.6",
@@ -46,11 +44,8 @@
         "react-use-measure": "^2.0.1",
         "react-uuid": "^1.0.2",
         "recharts": "2.0.9",
-        "recoil": "0.7.6",
-        "recoil-relay": "^0.1.0",
         "remark-gfm": "^3.0.1",
         "resize-observer-polyfill": "^1.5.1",
-        "styled-components": "^5.3.3",
         "uuid": "^8.3.2",
         "xstate": "^4.14.0"
     },
@@ -74,7 +69,13 @@
         "vite-plugin-relay": "^1.0.7"
     },
     "peerDependencies": {
-        "react": "18.2.0",
-        "react-dom": "18.2.0"
+        "@mui/icons-material": "*",
+        "@react-spring/web": "*",
+        "react": "*",
+        "react-dom": "*",
+        "recoil": "*",
+        "recoil-relay": "*",
+        "searchable-react-json-view": "*",
+        "styled-components": "*"
     }
 }
