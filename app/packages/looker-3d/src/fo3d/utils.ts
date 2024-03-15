@@ -70,24 +70,20 @@ export const getVisibilityMapFromFo3dParsed = (
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
 
-  const getVisibilityMapForChild = (
-    child: FoSceneNode,
-    isNested: boolean,
-    parentName: string
-  ) => {
+  const getVisibilityMapForChild = (child: FoSceneNode, isNested: boolean) => {
     if (child.children?.length > 0) {
       const folderName =
         child.name.charAt(0).toUpperCase() + child.name.slice(1);
 
       const childrenVisibilityMap = child.children.map((child) =>
-        getVisibilityMapForChild(child, true, `${folderName}.${parentName}`)
+        getVisibilityMapForChild(child, true)
       );
 
       return {
         [folderName]: folder({
           [child.name]: {
             value: child.visible,
-            label: isNested ? `-- ${child.name}` : child.name,
+            label: child.name,
           },
           ...childrenVisibilityMap.reduce(
             (acc, curr) => ({ ...acc, ...curr }),
@@ -98,21 +94,12 @@ export const getVisibilityMapFromFo3dParsed = (
     }
 
     return {
-      [child.name]: {
-        value: child.visible,
-        label: isNested ? `-- ${child.name}` : child.name,
-        render: (get) => {
-          const a = get("Visibility." + parentName);
-          const b = get("box");
-          const c = get(child.name);
-          return isNested ? get("Visibility." + parentName) : true;
-        },
-      },
+      [child.name]: child.visible,
     };
   };
 
   return foSceneGraph.children
-    .map((child) => getVisibilityMapForChild(child, false, child.name))
+    .map((child) => getVisibilityMapForChild(child, false))
     .reduce((acc, curr) => ({ ...acc, ...curr }), {});
 };
 
