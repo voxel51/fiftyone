@@ -27,12 +27,14 @@ export const Pcd = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   pcd: PcdAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   const points = useLoader(PCDLoader, pcd.pcdUrl);
   const pcdContainerRef = useRef();
@@ -176,6 +178,7 @@ export const Pcd = ({
       scale={scale}
     >
       {pointsMaterial}
+      {children ?? null}
     </primitive>
   );
 };

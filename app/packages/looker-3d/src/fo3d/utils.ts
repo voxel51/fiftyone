@@ -1,4 +1,5 @@
 import { ModalSample, getSampleSrc } from "@fiftyone/state";
+import { folder } from "leva";
 import {
   MeshBasicMaterial,
   MeshDepthMaterial,
@@ -69,25 +70,50 @@ export const getVisibilityMapFromFo3dParsed = (
 ): Record<string, boolean> => {
   if (!foSceneGraph) return null;
 
-  const visibilityMap: Record<string, boolean> = {};
+  const getVisibilityMapForChild = (
+    child: FoSceneNode,
+    isNested: boolean,
+    parentName: string
+  ) => {
+    if (child.children?.length > 0) {
+      const folderName =
+        child.name.charAt(0).toUpperCase() + child.name.slice(1);
 
-  // do a DFS of the scene graph and set visibility
-  // todo: if node names are assumed to be not unique,
-  // we should concatenate parents' names to the label to make it unique
-  const visitNodeDfs = (node: FoSceneNode) => {
-    const label = getLabelForSceneNode(node);
-    visibilityMap[label] = node.visible;
+      const childrenVisibilityMap = child.children.map((child) =>
+        getVisibilityMapForChild(child, true, `${folderName}.${parentName}`)
+      );
 
-    if (node.children) {
-      for (const child of node.children) {
-        visitNodeDfs(child);
-      }
+      return {
+        [folderName]: folder({
+          [child.name]: {
+            value: child.visible,
+            label: isNested ? `-- ${child.name}` : child.name,
+          },
+          ...childrenVisibilityMap.reduce(
+            (acc, curr) => ({ ...acc, ...curr }),
+            {}
+          ),
+        }),
+      };
     }
+
+    return {
+      [child.name]: {
+        value: child.visible,
+        label: isNested ? `-- ${child.name}` : child.name,
+        render: (get) => {
+          const a = get("Visibility." + parentName);
+          const b = get("box");
+          const c = get(child.name);
+          return isNested ? get("Visibility." + parentName) : true;
+        },
+      },
+    };
   };
 
-  foSceneGraph.children.forEach(visitNodeDfs);
-
-  return visibilityMap;
+  return foSceneGraph.children
+    .map((child) => getVisibilityMapForChild(child, false, child.name))
+    .reduce((acc, curr) => ({ ...acc, ...curr }), {});
 };
 
 export const getMediaUrlForFo3dSample = (
