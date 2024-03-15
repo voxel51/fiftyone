@@ -765,6 +765,6 @@ def _perform_nms(detections_data, conf_threshold=0.6, iou_threshold=0.5):
                     # Remove the detection if IoU is greater than iou_threshold
                     detections.remove(d)
 
-    # Update detections_data_json with NMS results
+    # Update detections_data with NMS results
     detections_data.detections = nms_detections
     return detections_data
