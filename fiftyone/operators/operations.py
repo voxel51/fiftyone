@@ -10,8 +10,7 @@ class Operations(object):
     Call the "set_view" operator. This operator sets the view of the FiftyOne App.
 
     Args:
-        ctx: the current context
-        view: the view to set
+        view: the :class:`fiftyone.View` to set
     Returns:
         The :class:`fiftyone.operators.message.GeneratedMessage` object
     """
