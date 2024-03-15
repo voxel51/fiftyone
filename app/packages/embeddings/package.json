@@ -32,7 +32,7 @@
     },
     "packageManager": "yarn@3.2.1",
     "peerDependencies": {
-        "@material-ui/icons": "*",
+        "@mui/icons-material": "*",
         "react-error-boundary": "*",
         "recoil": "*"
     }
