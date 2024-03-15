@@ -27,13 +27,14 @@ class Shape3D(Mesh):
     pass
 
 
-class Box3D(Shape3D):
+class BoxGeometry(Shape3D):
     """Represents a 3D box.
 
     Args:
         name (str): Name of the box.
-        dimensions (list): The dimensions of the box in the form
-            ``(width, height, depth)``.
+        width (float): The width of the box. Defaults to 1.
+        height (float): The height of the box. Defaults to 1.
+        depth (float): The depth of the box. Defaults to 1.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the box. Defaults to
             :class:`fiftyone.core.threed.MeshLambertMaterial`.
@@ -44,18 +45,29 @@ class Box3D(Shape3D):
     def __init__(
         self,
         name: str,
-        dimensions: list,
+        width: float = 1,
+        height: float = 1,
+        depth: float = 1,
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
         super().__init__(name=name, material=default_material, **kwargs)
-        self.dimensions = dimensions
+        self.width = width
+        self.height = height
+        self.depth = depth
 
     def _to_dict_extra(self):
-        return {**super()._to_dict_extra(), **{"dimensions": self.dimensions}}
+        return {
+            **super()._to_dict_extra(),
+            **{
+                "width": self.width,
+                "height": self.height,
+                "depth": self.depth,
+            },
+        }
 
 
-class Cylinder3D(Shape3D):
+class CylinderGeometry(Shape3D):
     """Represents a 3D cylinder.
 
     Args:
@@ -122,7 +134,7 @@ class Cylinder3D(Shape3D):
         }
 
 
-class Sphere3D(Shape3D):
+class SphereGeometry(Shape3D):
     """Represents a 3D sphere.
 
     Args:
@@ -184,17 +196,13 @@ class Sphere3D(Shape3D):
         }
 
 
-class Plane3D(Shape3D):
+class PlaneGeometry(Shape3D):
     """Represents a 3D plane.
 
     Args:
         name (str): Name of the plane.
         width (float): The width of the plane. Defaults to 1.
         height (float): The height of the plane. Defaults to 1.
-        width_segments (int): Number of segmented faces around the width of the
-            plane. Defaults to 1.
-        height_segments (int): Number of segmented faces around the height of
-            the plane. Defaults to 1.
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
             Default material for the plane. Defaults to
             :class:`fiftyone.core.threed.MeshLambertMaterial`.
@@ -207,16 +215,12 @@ class Plane3D(Shape3D):
         name: str,
         width: float = 1,
         height: float = 1,
-        width_segments: int = 1,
-        height_segments: int = 1,
         default_material: Optional[MeshMaterial] = None,
         **kwargs
     ):
         super().__init__(name=name, material=default_material, **kwargs)
         self.width = width
         self.height = height
-        self.width_segments = width_segments
-        self.height_segments = height_segments
 
     def _to_dict_extra(self):
         return {
@@ -224,7 +228,5 @@ class Plane3D(Shape3D):
             **{
                 "width": self.width,
                 "height": self.height,
-                "widthSegments": self.width_segments,
-                "heightSegments": self.height_segments,
             },
         }

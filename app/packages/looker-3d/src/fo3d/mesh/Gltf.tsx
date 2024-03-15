@@ -1,8 +1,8 @@
 import { useGLTF } from "@react-three/drei";
 import { useMemo, useRef } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
-import { GltfAsset } from "../hooks";
-import { useAnimationSelect } from "../hooks/use-animation-select";
+import { GltfAsset } from "../../hooks";
+import { useAnimationSelect } from "../../hooks/use-animation-select";
 
 export const Gltf = ({
   name,

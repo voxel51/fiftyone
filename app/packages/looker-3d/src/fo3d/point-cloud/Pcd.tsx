@@ -8,18 +8,18 @@ import {
   SHADE_BY_HEIGHT,
   SHADE_BY_INTENSITY,
   SHADE_BY_RGB,
-} from "../constants";
-import { PcdAsset } from "../hooks";
-import { useFo3dBounds } from "../hooks/use-bounds";
-import { usePcdMaterialControls } from "../hooks/use-pcd-material-controls";
+} from "../../constants";
+import { PcdAsset } from "../../hooks";
+import { useFo3dBounds } from "../../hooks/use-bounds";
+import { usePcdMaterialControls } from "../../hooks/use-pcd-material-controls";
 import {
   CustomColorShader,
   RgbShader,
   ShadeByHeight,
   ShadeByIntensity,
-} from "../renderables/pcd/shaders";
-import { computeMinMaxForColorBufferAttribute } from "../utils";
-import { useFo3dContext } from "./context";
+} from "../../renderables/pcd/shaders";
+import { computeMinMaxForColorBufferAttribute } from "../../utils";
+import { useFo3dContext } from "../context";
 
 export const Pcd = ({
   name,

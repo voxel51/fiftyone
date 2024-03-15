@@ -276,6 +276,7 @@ class Object3D:
             obj = clz(
                 name=dict_data.get("name", ""),
                 visible=dict_data.get("visible", True),
+                default_material=dict_data.get("default_material", None),
                 **clz_main_args,
             )
 

@@ -82,13 +82,9 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       }
     }
 
-    if (settings?.defaultUp?.length === 3) {
-      return new Vector3(...settings.defaultUp).normalize();
-    }
-
     // default to y-up
     return new Vector3(0, 1, 0);
-  }, [settings, foScene]);
+  }, [foScene]);
 
   const cameraRef = useRef<THREE.PerspectiveCamera>();
   const orbitControlsRef = useRef<OrbitControlsImpl>();
