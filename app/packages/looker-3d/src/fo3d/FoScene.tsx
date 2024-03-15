@@ -57,7 +57,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Obj>
     );
   } else if (node.asset instanceof PcdAsset) {
     jsx = (
@@ -68,7 +70,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Pcd>
     );
   } else if (node.asset instanceof PlyAsset) {
     jsx = (
@@ -79,7 +83,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Ply>
     );
   } else if (node.asset instanceof StlAsset) {
     jsx = (
@@ -90,7 +96,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Stl>
     );
   } else if (node.asset instanceof GltfAsset) {
     jsx = (
@@ -101,7 +109,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Gltf>
     );
   } else if (node.asset instanceof FbxAsset) {
     jsx = (
@@ -112,7 +122,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Fbx>
     );
   } else if (node.asset instanceof BoxGeometryAsset) {
     jsx = (
@@ -136,7 +148,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Cylinder>
     );
   } else if (node.asset instanceof SphereGeometryAsset) {
     jsx = (
@@ -147,7 +161,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Sphere>
     );
   } else if (node.asset instanceof PlaneGeometryAsset) {
     jsx = (
@@ -158,7 +174,9 @@ const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Plane>
     );
   }
 

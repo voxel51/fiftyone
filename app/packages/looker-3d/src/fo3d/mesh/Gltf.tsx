@@ -10,12 +10,14 @@ export const Gltf = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   gltf: GltfAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children: React.ReactNode;
 }) => {
   const { scene, animations } = useGLTF(gltfUrl, true);
   const groupRef = useRef();
@@ -33,7 +35,9 @@ export const Gltf = ({
         quaternion={quaternion}
         scale={scale}
         dispose={null}
-      />
+      >
+        {children ?? null}
+      </primitive>
     );
   }
 

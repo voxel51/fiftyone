@@ -9,12 +9,14 @@ export const Sphere = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   sphere: SphereGeometryAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   const sphereGeometry = useMemo(
     () =>
@@ -45,6 +47,8 @@ export const Sphere = ({
       quaternion={quaternion}
       scale={scale}
       object={mesh}
-    />
+    >
+      {children ?? null}
+    </primitive>
   );
 };

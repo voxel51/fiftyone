@@ -17,12 +17,14 @@ export const Stl = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   stl: StlAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   const points = useLoader(STLLoader, stl.stlUrl);
   const [mesh, setMesh] = useState(null);
@@ -49,7 +51,9 @@ export const Stl = ({
         position={position}
         quaternion={quaternion}
         scale={scale}
-      />
+      >
+        {children ?? null}
+      </primitive>
     );
   }
 

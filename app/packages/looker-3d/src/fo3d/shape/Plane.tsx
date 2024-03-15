@@ -11,12 +11,14 @@ export const Plane = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   plane: PlaneGeometryAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children: React.ReactNode;
 }) => {
   const planeGeometry = useMemo(
     () =>
@@ -47,6 +49,8 @@ export const Plane = ({
       quaternion={quaternion}
       scale={scale}
       object={mesh}
-    />
+    >
+      {children ?? null}
+    </primitive>
   );
 };
