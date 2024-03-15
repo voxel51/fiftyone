@@ -38,7 +38,7 @@ interface FoSceneProps {
   scene: FoScene;
 }
 
-const getAssetForNode = (node: FoSceneNode) => {
+const getAssetForNode = (node: FoSceneNode, children: React.ReactNode) => {
   if (!node.asset) {
     return null;
   }
@@ -123,7 +123,9 @@ const getAssetForNode = (node: FoSceneNode) => {
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}
-      />
+      >
+        {children}
+      </Box>
     );
   } else if (node.asset instanceof CylinderGeometryAsset) {
     jsx = (
@@ -171,52 +173,56 @@ const getAssetForNode = (node: FoSceneNode) => {
   );
 };
 
-const getR3fNodeFromFo3dNode = (
-  node: FoSceneNode,
-  visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>
-) => {
-  const label = getLabelForSceneNode(node);
+const R3fNode = ({
+  node,
+  visibilityMap,
+}: {
+  node: FoSceneNode;
+  visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+}) => {
+  const children = useMemo(() => {
+    if (!node.children || node.children.length === 0) {
+      return null;
+    }
 
-  // todo: should we still "shadow render" asset when visibility is off?
-  // check for perforamance trade-offs to see if this is the right way to handle visibility
-  if (Boolean(visibilityMap[label]) === false) {
-    return null;
-  }
+    return node.children.map((child) => {
+      return (
+        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
+      );
+    });
+  }, [node, visibilityMap]);
 
-  const jsx = getAssetForNode(node);
+  const label = useMemo(() => getLabelForSceneNode(node), [node]);
 
-  if (!node.children || node.children.length === 0) {
-    return jsx;
-  }
-
-  return (
-    <group
-      key={`${label}-${node.position.x}-${node.position.y}-${node.position.z}`}
-      position={node.position}
-      quaternion={node.quaternion}
-      scale={node.scale}
-    >
-      {jsx && jsx}
-      {node.children.map((child) =>
-        getR3fNodeFromFo3dNode(child, visibilityMap)
-      )}
-    </group>
+  const isNodeVisible = useMemo(
+    () => Boolean(visibilityMap[label]),
+    [visibilityMap, node]
   );
+
+  const memoizedAsset = useMemo(
+    () => (isNodeVisible ? getAssetForNode(node, children) : null),
+    [node, children, isNodeVisible]
+  );
+
+  return memoizedAsset;
 };
 
-const getR3fSceneFromFo3dScene = (
-  scene: FoScene,
-  visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>
-) => {
+const SceneR3f = ({
+  scene,
+  visibilityMap,
+}: {
+  scene: FoScene;
+  visibilityMap: ReturnType<typeof getVisibilityMapFromFo3dParsed>;
+}) => {
   return (
     <group
       position={scene.position}
       quaternion={scene.quaternion}
       scale={scene.scale}
     >
-      {scene.children.map((child) => {
-        return getR3fNodeFromFo3dNode(child, visibilityMap);
-      })}
+      {scene.children.map((child) => (
+        <R3fNode key={child.name} node={child} visibilityMap={visibilityMap} />
+      ))}
     </group>
   );
 };
@@ -236,15 +242,6 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
     [defaultVisibilityMap]
   );
 
-  const sceneR3f = useMemo(() => {
-    if (!scene) {
-      return null;
-    }
-
-    const r3fScene = getR3fSceneFromFo3dScene(scene, visibilityMap);
-    return r3fScene;
-  }, [scene, visibilityMap]);
-
   const setActionBarItems = useSetRecoilState(
     actionRenderListAtomFamily("fo3d")
   );
@@ -253,22 +250,19 @@ export const FoSceneComponent = ({ scene }: FoSceneProps) => {
 
   useEffect(() => {
     if (isSceneInitialized && scene?.background !== null) {
-      setActionBarItems((items) => {
-        return [[ACTION_TOGGLE_BACKGROUND], ...items];
-      });
+      setActionBarItems((items) => [
+        [ACTION_TOGGLE_BACKGROUND, null],
+        ...items,
+      ]);
     }
   }, [scene, isSceneInitialized]);
-
-  if (!sceneR3f) {
-    return null;
-  }
 
   return (
     <>
       {isFo3dBackgroundOn && scene.background && (
         <Fo3dBackground background={scene.background} />
       )}
-      {sceneR3f}
+      <SceneR3f scene={scene} visibilityMap={visibilityMap} />
     </>
   );
 };
