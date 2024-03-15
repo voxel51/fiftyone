@@ -1,5 +1,5 @@
 import { useFBX } from "@react-three/drei";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
 import { FbxAsset } from "../../hooks";
 import { useAnimationSelect } from "../../hooks/use-animation-select";
@@ -10,12 +10,14 @@ export const Fbx = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   fbx: FbxAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children: React.ReactNode;
 }) => {
   const fbx = useFBX(fbxUrl);
 
@@ -34,7 +36,9 @@ export const Fbx = ({
         position={position}
         quaternion={quaternion}
         scale={scale}
-      />
+      >
+        {children ?? null}
+      </primitive>
     );
   }
 

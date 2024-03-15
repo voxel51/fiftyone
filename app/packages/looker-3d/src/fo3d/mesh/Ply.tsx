@@ -11,12 +11,14 @@ export const Ply = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   ply: PlyAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   const geometry = useLoader(PLYLoader, ply.plyUrl);
   const [mesh, setMesh] = useState(null);
@@ -47,7 +49,9 @@ export const Ply = ({
         position={position}
         quaternion={quaternion}
         scale={scale}
-      />
+      >
+        {children ?? null}
+      </primitive>
     );
   }
 

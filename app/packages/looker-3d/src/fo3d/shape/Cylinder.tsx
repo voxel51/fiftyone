@@ -9,12 +9,14 @@ export const Cylinder = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   cylinder: CylinderGeometryAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   const cylinderGeometry = useMemo(
     () =>
@@ -46,6 +48,8 @@ export const Cylinder = ({
       quaternion={quaternion}
       scale={scale}
       object={mesh}
-    />
+    >
+      {children ?? null}
+    </primitive>
   );
 };

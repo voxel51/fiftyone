@@ -78,12 +78,14 @@ export const Obj = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   obj: ObjAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children?: React.ReactNode;
 }) => {
   return (
     <group position={position} quaternion={quaternion} scale={scale}>
@@ -92,6 +94,7 @@ export const Obj = ({
       ) : (
         <ObjMeshDefaultMaterial name={name} obj={obj} />
       )}
+      {children ?? null}
     </group>
   );
 };
