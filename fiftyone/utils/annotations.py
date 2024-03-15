@@ -217,9 +217,10 @@ def annotate(
     anno_backend.ensure_requirements()
 
     supported_media_types = anno_backend.supported_media_types
-    if samples.media_type == fomm.GROUP:
-        raise fomm.SelectGroupSlicesError(supported_media_types)
-    elif samples.media_type not in supported_media_types:
+    if samples.media_type not in supported_media_types:
+        if samples.media_type == fomm.GROUP:
+            raise fomm.SelectGroupSlicesError(supported_media_types)
+
         raise fomm.MediaTypeError(
             "The '%s' backend does not supported annotating '%s' collections"
             % (anno_backend.config.name, samples.media_type)

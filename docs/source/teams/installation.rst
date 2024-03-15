@@ -79,6 +79,7 @@ Teams App or their Python workflows.
 
 Installation with Poetry
 ________________________
+
 If you  are using `poetry <https://python-poetry.org/>`_ to install your
 dependencies rather than ``pip``, you will need to follow instructions in
 `the docs for installing from a private repository. <https://python-poetry.org/docs/repositories/#installing-from-private-package-sources>`_
@@ -105,6 +106,7 @@ Prior to v1.5, you should use the deprecated
 
 Configure credentials
 ~~~~~~~~~~~~~~~~~~~~~
+
 .. code-block:: shell
 
     poetry config http-basic.fiftyone-teams ${TOKEN} ""
@@ -121,6 +123,7 @@ If you have trouble configuring the credentials, see
 
 Add fiftyone dependency
 ~~~~~~~~~~~~~~~~~~~~~~~
+
 Replace ``X.Y.Z`` with the proper version
 
 .. code-block::
@@ -531,6 +534,11 @@ to a specific list of bucket(s):
     Bucket-specific credentials are useful in situations where you cannot or
     do not wish to provide a single set of credentials to cover all buckets
     that your team plans to use within a given cloud storage provider.
+
+    When providing bucket-specific credentials, you may either provide bucket
+    names like ``my-bucket``, or you can provide fully-qualified buckets like
+    ``s3://my-bucket`` and
+    ``https://voxel51.blob.core.windows.net/my-container``.
 
 Alternatively, credentials can be updated programmatically with the
 :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`

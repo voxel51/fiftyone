@@ -83,15 +83,6 @@ export const showOverlays = atom<boolean>({
   default: true,
 });
 
-export const teams = atom({
-  key: "teams",
-  default: {
-    open: false,
-    submitted: false,
-    minimized: false,
-  },
-});
-
 export const activePlot = atom<string>({
   key: "activePlot",
   default: "Labels",
@@ -211,11 +202,6 @@ export const DEFAULT_ALPHA = 0.7;
 export const colorSeed = atom<number>({
   key: "colorSeed",
   default: 0,
-});
-
-export const appTeamsIsOpen = atom({
-  key: "appTeamsIsOpen",
-  default: false,
 });
 
 export const savedLookerOptions = atom({

@@ -1212,6 +1212,7 @@ def location_scatterplot(
     sizes_title=None,
     edges_title=None,
     show_colorbar_title=None,
+    map_type="roadmap",
     **kwargs,
 ):
     """Generates an interactive scatterplot of the given location coordinates
@@ -1305,6 +1306,8 @@ def location_scatterplot(
             default, a title will be shown only if a value was passed to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
+        map_type ("satellite"): the map type to render. Supported values are
+            ``("roadmap", "satellite")``
         **kwargs: optional keyword arguments for
             :meth:`plotly:plotly.graph_objects.Figure.update_layout`
 
@@ -1414,6 +1417,8 @@ def location_scatterplot(
             edges_title,
             colorbar_title,
         )
+
+    _set_map_type_to_figure(figure, map_type)
 
     figure.update_layout(**_DEFAULT_LAYOUT)
     figure.update_layout(title=title, **kwargs)
@@ -2562,6 +2567,30 @@ def _plot_scatter_numeric(
 
     return figure
 
+def _set_map_type_to_figure(
+    figure, 
+    map_type,
+):
+    if map_type == "satellite":
+        figure.update_layout(mapbox_style="white-bg",
+            mapbox_layers=[
+                {
+                    "below": 'traces',
+                    "sourcetype": "raster",
+                    "sourceattribution": "United States Geological Survey",
+                    "source": [
+                        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
+                    ]
+                }
+            ],
+            margin={"r":0,"t":0,"l":0,"b":0},
+        )
+    elif map_type == "roadmap":
+        figure.update_layout(mapbox_style="carto-positron")
+    else:
+        figure.update_layout(mapbox_style="carto-positron")
+        msg = "Unsupported map type '%s'; defaulted to 'roadmap'" % map_type
+        warnings.warn(msg)
 
 def _plot_scatter_mapbox_categorical(
     coords,
@@ -2647,7 +2676,6 @@ def _plot_scatter_mapbox_categorical(
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
-        mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
         legend_title_text=colorbar_title,
         legend_itemsizing="constant",
@@ -2745,7 +2773,6 @@ def _plot_scatter_mapbox_categorical_single_trace(
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
-        mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
     )
 
@@ -2840,7 +2867,6 @@ def _plot_scatter_mapbox_numeric(
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
-        mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
     )
 
@@ -2917,7 +2943,6 @@ def _plot_scatter_mapbox_density(
 
     zoom, (center_lon, center_lat) = _compute_zoom_center(coords)
     figure.update_layout(
-        mapbox_style="carto-positron",
         mapbox=dict(center=dict(lat=center_lat, lon=center_lon), zoom=zoom),
     )
 
