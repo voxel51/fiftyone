@@ -158,10 +158,10 @@ from .core.runs import (
 )
 from .core.sample import Sample
 from .core.threed import (
-    Box3D,
-    Cylinder3D,
-    Plane3D,
-    Sphere3D,
+    BoxGeometry,
+    CylinderGeometry,
+    PlaneGeometry,
+    SphereGeometry,
     FBXMesh,
     GLTFMesh,
     ObjMesh,
@@ -180,6 +180,9 @@ from .core.threed import (
     PointcloudMaterial,
     Scene,
     SceneBackground,
+    Euler,
+    Quaternion,
+    Vector3,
 )
 from .core.spaces import (
     Space,

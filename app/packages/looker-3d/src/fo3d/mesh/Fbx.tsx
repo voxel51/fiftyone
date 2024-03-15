@@ -1,8 +1,8 @@
 import { useFBX } from "@react-three/drei";
 import { useEffect, useMemo } from "react";
 import { AnimationMixer, Quaternion, Vector3 } from "three";
-import { FbxAsset } from "../hooks";
-import { useAnimationSelect } from "../hooks/use-animation-select";
+import { FbxAsset } from "../../hooks";
+import { useAnimationSelect } from "../../hooks/use-animation-select";
 
 export const Fbx = ({
   name,

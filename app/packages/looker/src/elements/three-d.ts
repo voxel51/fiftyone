@@ -152,6 +152,14 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
               return `${value} pointcloud`;
             }
             return `${value} pointclouds`;
+          case "shapeCount":
+            if (value === 0) {
+              return "";
+            }
+            if (value === 1) {
+              return `${value} shape`;
+            }
+            return `${value} shapes`;
           case "unknownCount":
             if (value === 0) {
               return "";

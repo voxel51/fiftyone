@@ -1,23 +1,27 @@
 import { useControls } from "leva";
 import { useEffect, useMemo } from "react";
 import {
+  BoxGeometryAsset,
+  CylinderGeometryAsset,
   FbxAsset,
   FoScene,
   FoSceneNode,
   GltfAsset,
   ObjAsset,
   PcdAsset,
+  PlaneGeometryAsset,
   PlyAsset,
+  SphereGeometryAsset,
   StlAsset,
 } from "../hooks";
 import { AssetErrorBoundary } from "./AssetErrorBoundary";
 import { AssetWrapper } from "./AssetWrapper";
-import { Fbx } from "./Fbx";
-import { Gltf } from "./Gltf";
-import { Obj } from "./Obj";
-import { Pcd } from "./Pcd";
-import { Ply } from "./Ply";
 import { Stl } from "./Stl";
+import { Fbx } from "./mesh/Fbx";
+import { Gltf } from "./mesh/Gltf";
+import { Obj } from "./mesh/Obj";
+import { Ply } from "./mesh/Ply";
+import { Pcd } from "./point-cloud/Pcd";
 import { getLabelForSceneNode, getVisibilityMapFromFo3dParsed } from "./utils";
 
 import { useRecoilValue, useSetRecoilState } from "recoil";
@@ -25,6 +29,10 @@ import { ACTION_TOGGLE_BACKGROUND, PANEL_ORDER_VISIBILITY } from "../constants";
 import { actionRenderListAtomFamily, isFo3dBackgroundOnAtom } from "../state";
 import { Fo3dBackground } from "./Background";
 import { useFo3dContext } from "./context";
+import { Box } from "./shape/Box";
+import { Cylinder } from "./shape/Cylinder";
+import { Plane } from "./shape/Plane";
+import { Sphere } from "./shape/Sphere";
 
 interface FoSceneProps {
   scene: FoScene;
@@ -101,6 +109,50 @@ const getAssetForNode = (node: FoSceneNode) => {
         key={key}
         name={node.name}
         fbx={node.asset as FbxAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof BoxGeometryAsset) {
+    jsx = (
+      <Box
+        key={key}
+        name={node.name}
+        box={node.asset as BoxGeometryAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof CylinderGeometryAsset) {
+    jsx = (
+      <Cylinder
+        key={key}
+        name={node.name}
+        cylinder={node.asset as CylinderGeometryAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof SphereGeometryAsset) {
+    jsx = (
+      <Sphere
+        key={key}
+        name={node.name}
+        sphere={node.asset as SphereGeometryAsset}
+        position={node.position}
+        quaternion={node.quaternion}
+        scale={node.scale}
+      />
+    );
+  } else if (node.asset instanceof PlaneGeometryAsset) {
+    jsx = (
+      <Plane
+        key={key}
+        name={node.name}
+        plane={node.asset as PlaneGeometryAsset}
         position={node.position}
         quaternion={node.quaternion}
         scale={node.scale}

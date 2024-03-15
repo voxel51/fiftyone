@@ -9,6 +9,50 @@ import {
   FoSceneRawNode,
 } from "../utils";
 
+export class BoxGeometryAsset {
+  constructor(
+    readonly width: number,
+    readonly height: number,
+    readonly depth: number,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
+}
+
+export class CylinderGeometryAsset {
+  constructor(
+    readonly radiusTop: number,
+    readonly radiusBottom: number,
+    readonly height: number,
+    readonly radialSegments: number,
+    readonly heightSegments: number,
+    readonly openEnded: boolean,
+    readonly thetaStart: number,
+    readonly thetaLength: number,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
+}
+
+export class PlaneGeometryAsset {
+  constructor(
+    readonly width: number,
+    readonly height: number,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
+}
+
+export class SphereGeometryAsset {
+  constructor(
+    readonly radius: number,
+    readonly widthSegments: number,
+    readonly heightSegments: number,
+    readonly phiStart: number,
+    readonly phiLength: number,
+    readonly thetaStart: number,
+    readonly thetaLength: number,
+    readonly defaultMaterial?: FoMeshMaterial
+  ) {}
+}
+
 export class FbxAsset {
   constructor(readonly fbxUrl?: string) {}
 }
@@ -52,7 +96,11 @@ export type MeshAsset =
   | ObjAsset
   | PcdAsset
   | PlyAsset
-  | StlAsset;
+  | StlAsset
+  | BoxGeometryAsset
+  | CylinderGeometryAsset
+  | PlaneGeometryAsset
+  | SphereGeometryAsset;
 
 export type FoMaterial3D = {
   opacity: number;
@@ -225,6 +273,44 @@ export const useFo3d = (url: string): UseFo3dReturnType => {
               getResolvedUrlForFo3dAsset(node["pcdPath"], mediaRoot)
             ),
             material as FoPointcloudMaterialProps
+          );
+        }
+      } else if (node["_type"].endsWith("Geometry")) {
+        if (node["_type"].startsWith("Box")) {
+          asset = new BoxGeometryAsset(
+            node["width"],
+            node["height"],
+            node["depth"],
+            material as FoMeshMaterial
+          );
+        } else if (node["_type"].startsWith("Cylinder")) {
+          asset = new CylinderGeometryAsset(
+            node["radiusTop"],
+            node["radiusBottom"],
+            node["height"],
+            node["radialSegments"],
+            node["heightSegments"],
+            node["openEnded"],
+            node["thetaStart"],
+            node["thetaLength"],
+            material as FoMeshMaterial
+          );
+        } else if (node["_type"].endsWith("PlaneGeometry")) {
+          asset = new PlaneGeometryAsset(
+            node["width"],
+            node["height"],
+            material as FoMeshMaterial
+          );
+        } else if (node["_type"].endsWith("SphereGeometry")) {
+          asset = new SphereGeometryAsset(
+            node["radius"],
+            node["widthSegments"],
+            node["heightSegments"],
+            node["phiStart"],
+            node["phiLength"],
+            node["thetaStart"],
+            node["thetaLength"],
+            material as FoMeshMaterial
           );
         }
       }
