@@ -276,9 +276,13 @@ class Object3D:
             obj = clz(
                 name=dict_data.get("name", ""),
                 visible=dict_data.get("visible", True),
-                default_material=dict_data.get("default_material", None),
                 **clz_main_args,
             )
+
+            material = dict_data.get("default_material", None)
+
+            if material is not None:
+                obj.set_default_material(material)
 
         obj.position = Vector3(*dict_data.get("position", [0, 0, 0]))
         obj.quaternion = Quaternion(*dict_data.get("quaternion", [0, 0, 0, 1]))

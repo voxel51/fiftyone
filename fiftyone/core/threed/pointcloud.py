@@ -61,6 +61,9 @@ class Pointcloud(Object3D):
         Args:
             material (PointcloudMaterial): The material to set as the default.
         """
+        if isinstance(material, dict):
+            material = PointcloudMaterial._from_dict(material)
+
         self.default_material = material
 
     def _to_dict_extra(self):
