@@ -162,10 +162,6 @@ def apply_model(
             "Ignoring `num_workers` parameter; only supported for Torch models"
         )
 
-    samples.download_media(
-        media_fields="filepath", skip_failures=skip_failures
-    )
-
     with contextlib.ExitStack() as context:
         if output_dir is not None:
             local_dir = context.enter_context(fos.LocalDir(output_dir, "w"))
@@ -204,6 +200,14 @@ def apply_model(
             context.enter_context(
                 fou.SetAttributes(model, needs_fields=kwargs)
             )
+
+        # pylint: disable=no-member
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
 
         # pylint: disable=no-member
         context.enter_context(model)
@@ -695,6 +699,7 @@ def _make_data_loader(samples, model, batch_size, num_workers, skip_failures):
         use_numpy=use_numpy,
         force_rgb=True,
         skip_failures=skip_failures,
+        download=False,
     )
 
     def handle_errors(batch):
@@ -891,14 +896,18 @@ def compute_embeddings(
             if not dataset.has_sample_field(embeddings_field):
                 dataset.add_sample_field(embeddings_field, fof.VectorField)
 
-    samples.download_media(
-        media_fields="filepath", skip_failures=skip_failures
-    )
-
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, preprocess=False))
+
+        # pylint: disable=no-member
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
 
         # pylint: disable=no-member
         context.enter_context(model)
@@ -1418,14 +1427,18 @@ def compute_patch_embeddings(
             if not dataset.has_sample_field(embeddings_path):
                 dataset.add_sample_field(embeddings_path, fof.VectorField)
 
-    samples.download_media(
-        media_fields="filepath", skip_failures=skip_failures
-    )
-
     with contextlib.ExitStack() as context:
         if use_data_loader:
             # pylint: disable=no-member
             context.enter_context(fou.SetAttributes(model, preprocess=False))
+
+        # pylint: disable=no-member
+        context.enter_context(
+            samples.download_context(
+                media_fields="filepath",
+                skip_failures=skip_failures,
+            )
+        )
 
         # pylint: disable=no-member
         context.enter_context(model)
@@ -1756,6 +1769,7 @@ def _make_patch_data_loader(
         force_square=force_square,
         alpha=alpha,
         skip_failures=skip_failures,
+        download=False,
     )
 
     return tud.DataLoader(

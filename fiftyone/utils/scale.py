@@ -7,6 +7,7 @@ Utilities for working with annotations in
 |
 """
 from collections import defaultdict
+import contextlib
 from copy import deepcopy
 import logging
 import os
@@ -430,64 +431,72 @@ def export_to_scale(
                 "when exporting labels for video datasets"
             )
 
-    # Compute metadata if necessary
     sample_collection.compute_metadata()
 
     if label_fields:
         media_fields = sample_collection._get_media_fields(
             whitelist=label_fields
         )
-        if media_fields:
-            sample_collection.download_media(
-                media_fields=list(media_fields.keys())
-            )
+        media_fields = list(media_fields.keys())
+    else:
+        media_fields = None
 
     # Export the labels
     labels = {}
     anno_dict = {}
-    for sample in sample_collection.iter_samples(progress=progress):
-        metadata = sample.metadata
-
-        # Get frame size
-        if is_video:
-            frame_size = (metadata.frame_width, metadata.frame_height)
-        else:
-            frame_size = (metadata.width, metadata.height)
-
-        # Export sample-level labels
-        if label_fields:
-            labels_dict = _get_labels(sample, label_fields)
-            anno_dict = _to_scale_image_labels(labels_dict, frame_size)
-
-        # Export frame-level labels
-        if is_video and frame_label_fields:
-            frames = _get_frame_labels(sample, frame_label_fields)
-            make_events = video_events_dir is not None
-            if video_playback:
-                annotations, events = _to_scale_video_playback_labels(
-                    frames, frame_size, make_events=make_events
+    with contextlib.ExitStack() as context:
+        if media_fields:
+            context.enter_context(
+                sample_collection.download_context(
+                    media_fields=media_fields, progress=progress
                 )
+            )
+
+        for sample in sample_collection.iter_samples(progress=progress):
+            metadata = sample.metadata
+
+            # Get frame size
+            if is_video:
+                frame_size = (metadata.frame_width, metadata.frame_height)
             else:
-                annotations, events = _to_scale_video_annotation_labels(
-                    frames, frame_size, make_events=make_events
-                )
+                frame_size = (metadata.width, metadata.height)
 
-            # Write annotations
-            if video_labels_dir:
-                anno_path = fos.join(video_labels_dir, sample.id + ".json")
-                fos.write_json(annotations, anno_path)
-                anno_dict["annotations"] = {"url": anno_path}
+            # Export sample-level labels
+            if label_fields:
+                labels_dict = _get_labels(sample, label_fields)
+                anno_dict = _to_scale_image_labels(labels_dict, frame_size)
 
-            # Write events
-            if video_events_dir:
-                events_path = fos.join(video_events_dir, sample.id + ".json")
-                fos.write_json(events, events_path)
-                anno_dict["events"] = {"url": events_path}
+            # Export frame-level labels
+            if is_video and frame_label_fields:
+                frames = _get_frame_labels(sample, frame_label_fields)
+                make_events = video_events_dir is not None
+                if video_playback:
+                    annotations, events = _to_scale_video_playback_labels(
+                        frames, frame_size, make_events=make_events
+                    )
+                else:
+                    annotations, events = _to_scale_video_annotation_labels(
+                        frames, frame_size, make_events=make_events
+                    )
 
-        labels[sample.id] = {
-            "filepath": sample.filepath,
-            "hypothesis": anno_dict,
-        }
+                # Write annotations
+                if video_labels_dir:
+                    anno_path = fos.join(video_labels_dir, sample.id + ".json")
+                    fos.write_json(annotations, anno_path)
+                    anno_dict["annotations"] = {"url": anno_path}
+
+                # Write events
+                if video_events_dir:
+                    events_path = fos.join(
+                        video_events_dir, sample.id + ".json"
+                    )
+                    fos.write_json(events, events_path)
+                    anno_dict["events"] = {"url": events_path}
+
+            labels[sample.id] = {
+                "filepath": sample.filepath,
+                "hypothesis": anno_dict,
+            }
 
     fos.write_json(labels, json_path)
 

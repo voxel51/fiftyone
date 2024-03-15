@@ -893,10 +893,11 @@ def _write_image_dataset(
 ):
     if (
         dataset_exporter.requires_image_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
 
@@ -956,10 +957,11 @@ def _write_video_dataset(
 ):
     if (
         dataset_exporter.requires_video_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
 
@@ -1014,10 +1016,11 @@ def _write_unlabeled_dataset(
 ):
     if (
         dataset_exporter.requires_metadata
-        and len(samples.exists("metadata", bool=False)) > 0
+        and sample_collection is not None
+        and len(sample_collection.exists("metadata", bool=False)) > 0
     ):
         logger.warning(
-            "This exporter requires metadata but not all samples have it; "
+            "This export requires metadata but not all samples have it; "
             "consider using compute_metadata() to efficiently precompute it"
         )
 
@@ -3544,6 +3547,13 @@ class ImageSegmentationDirectoryExporter(
                 frame_size = self.mask_size
             else:
                 if metadata is None:
+                    msg = (
+                        "This export requires metadata but not all samples "
+                        "have it; consider using compute_metadata() to "
+                        "efficiently precompute it"
+                    )
+                    warnings.warn(msg)
+
                     metadata = fom.ImageMetadata.build_for(image_or_path)
 
                 frame_size = (metadata.width, metadata.height)

@@ -6,6 +6,7 @@ Utilities for working with annotations in
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+import contextlib
 from copy import copy, deepcopy
 import logging
 import os
@@ -1853,14 +1854,22 @@ def export_to_labelbox(
         media_fields = sample_collection._get_media_fields(
             whitelist=label_fields
         )
-        if media_fields:
-            sample_collection.download_media(
-                media_fields=list(media_fields.keys())
-            )
+        media_fields = list(media_fields.keys())
+    else:
+        media_fields = None
 
     # Export the labels
     annos = []
-    with fou.ProgressBar(progress=progress) as pb:
+    with contextlib.ExitStack() as context:
+        if media_fields:
+            context.enter_context(
+                sample_collection.download_context(
+                    media_fields=media_fields, progress=progress
+                )
+            )
+
+        pb = context.enter_context(fou.ProgressBar(progress=progress))
+
         for sample in pb(sample_collection):
             labelbox_id = sample[labelbox_id_field]
             if labelbox_id is None:
