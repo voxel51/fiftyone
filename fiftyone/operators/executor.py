@@ -5,12 +5,14 @@ FiftyOne operator execution.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import asyncio
 import collections
 import inspect
 import logging
 import os
 import traceback
+import json
 
 import fiftyone as fo
 import fiftyone.core.dataset as fod
@@ -23,6 +25,7 @@ from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
 from .decorators import coroutine_timeout
 from .message import GeneratedMessage, MessageType
 from .registry import OperatorRegistry
+from bson import json_util
 
 logger = logging.getLogger(__name__)
 
@@ -441,6 +444,7 @@ class ExecutionContext(object):
                 operator_uri=self._operator_uri,
                 required_secrets=self._required_secret_keys,
             )
+        self.util = ExecutionContextUtil(self)
 
     @property
     def dataset(self):
@@ -705,6 +709,38 @@ class ExecutionContext(object):
             self.log(f"Progress: {progress.progress} - {progress.label}")
 
 
+class ExecutionContextUtil(object):
+    """Collection of utilities for ExecutionContext. By default, this is accessible at ctx.util
+
+    Args:
+        ctx: the :class:`ExecutionContext` of an operator
+    """
+
+    def __init__(
+        self,
+        ctx: ExecutionContext,
+    ):
+        self.ctx = ctx
+
+    def set_view(self, view):
+        """Set a :class:`fiftyone.core.view.DatasetView` in the app
+
+        This method is only available when the operator is invoked via the
+        FiftyOne App. You can check this via ``ctx.executor``.
+
+        Example::
+
+            def execute(self, ctx):
+                view = ctx.dataset.limit(3)
+                ctx.util.set_view(view)
+
+        Args:
+            view: the :class:`fiftyone.core.view.DatasetView` to set in the app
+        """
+        serialized_view = json.loads(json_util.dumps(view._serialize()))
+        self.ctx.trigger("set_view", params={"view": serialized_view})
+
+
 class ExecutionResult(object):
     """Represents the result of an operator execution.
 
@@ -774,9 +810,9 @@ class ExecutionResult(object):
             "executor": self.executor.to_json() if self.executor else None,
             "error": self.error,
             "delegated": self.delegated,
-            "validation_ctx": self.validation_ctx.to_json()
-            if self.validation_ctx
-            else None,
+            "validation_ctx": (
+                self.validation_ctx.to_json() if self.validation_ctx else None
+            ),
         }
 
 
