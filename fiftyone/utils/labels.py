@@ -11,6 +11,7 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.iou as foi
 
 
 def objects_to_segmentations(
@@ -688,7 +689,7 @@ def classifications_to_detections(
 def perform_nms(
     sample_collection,
     in_field,
-    out_field,
+    out_field=None,
     conf_threshold=0.6,
     iou_threshold=0.5,
     progress=None,
@@ -704,9 +705,9 @@ def perform_nms(
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
         in_field: the name of the :class:`fiftyone.core.labels.Detections` field
-        out_field: the name of the :class:`fiftyone.core.labels.Detections`
-            field to populate. Creates a new field if one doesn't already exist
-            with this name.
+        out_field (None): the name of the :class:`fiftyone.core.labels.Detections`
+            field to populate. If not specified (None), the input field is updated
+            in-place.
         conf_threshold (0.6): a floating-point value between 0 and 1 representing
             the minimum confidence score required for a detection to be considered
             valid. Detections with confidence scores lower than this threshold
@@ -728,28 +729,25 @@ def perform_nms(
 
     with fou.ProgressBar(progress=progress) as pb:
         for sample in pb(samples):
-            detections_data_json_str = sample[in_field].to_json()
-            nms_detections_data_json_str = _perform_nms(
-                detections_data_json_str, conf_threshold, iou_threshold
+            detections_data = sample[in_field].copy()
+            nms_processed_detections = _perform_nms(
+                detections_data, conf_threshold, iou_threshold
             )
-            nms_processed_detections = fol.Detections.from_json(
-                nms_detections_data_json_str
-            )
-            sample[out_field] = nms_processed_detections
+            if out_field is None:
+                sample[in_field] = nms_processed_detections
+            else:
+                sample[out_field] = nms_processed_detections
             sample.save()
 
 
-def _perform_nms(
-    detections_data_json_str, conf_threshold=0.6, iou_threshold=0.5
-):
-    detections_data_json = etas.load_json(detections_data_json_str)
-    detections = detections_data_json["detections"]
+def _perform_nms(detections_data, conf_threshold=0.6, iou_threshold=0.5):
+    detections = detections_data.detections
 
     # Sort detections by confidence in descending order
-    detections.sort(key=lambda x: x["confidence"], reverse=True)
+    detections.sort(key=lambda x: x.confidence, reverse=True)
 
     # Remove detections with confidence less than the conf_threshold
-    detections = [d for d in detections if d["confidence"] >= conf_threshold]
+    detections = [d for d in detections if d.confidence >= conf_threshold]
 
     nms_detections = []
 
@@ -761,38 +759,12 @@ def _perform_nms(
 
         # Compare with other detections for NMS
         for d in detections:
-            if d["label"] == selected_detection["label"]:
-                iou = _calculate_iou(
-                    selected_detection["bounding_box"], d["bounding_box"]
-                )
+            if d.label == selected_detection.label:
+                iou = foi.compute_ious([selected_detection], [d])[0][0]
                 if iou >= iou_threshold:
                     # Remove the detection if IoU is greater than iou_threshold
                     detections.remove(d)
 
     # Update detections_data_json with NMS results
-    detections_data_json["detections"] = nms_detections
-    return etas.json_to_str(detections_data_json, pretty_print=False)
-
-
-def _calculate_iou(box1, box2):
-    x1_tl, y1_tl, w1, h1 = box1
-    x2_tl, y2_tl, w2, h2 = box2
-
-    x1_br, y1_br = x1_tl + w1, y1_tl + h1
-    x2_br, y2_br = x2_tl + w2, y2_tl + h2
-
-    # Calculate the coordinates of the intersection rectangle
-    x_overlap = max(0, min(x1_br, x2_br) - max(x1_tl, x2_tl))
-    y_overlap = max(0, min(y1_br, y2_br) - max(y1_tl, y2_tl))
-    intersection_area = x_overlap * y_overlap
-
-    # Calculate the area of each bounding box
-    box1_area = w1 * h1
-    box2_area = w2 * h2
-
-    # Calculate the Union area by using Formula: Union(A,B) = A + B - Inter(A,B)
-    union_area = box1_area + box2_area - intersection_area
-
-    # Compute IoU
-    iou = intersection_area / union_area
-    return iou
+    detections_data.detections = nms_detections
+    return detections_data
