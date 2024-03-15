@@ -27,7 +27,7 @@ export const customColorMapAtom = atom<{ [slice: string]: string } | null>({
 });
 
 export const actionRenderListAtomFamily = atomFamily<
-  [string, any[] | null][],
+  [string, any][],
   "pcd" | "fo3d"
 >({
   key: "fo3d-actionRenderListAtomFamily",
