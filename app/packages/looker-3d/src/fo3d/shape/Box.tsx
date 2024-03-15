@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { BoxGeometry, Mesh, Quaternion, Vector3 } from "three";
 import { BoxGeometryAsset } from "../../hooks";
 import { useMeshMaterialControls } from "../../hooks/use-mesh-material-controls";
@@ -11,12 +11,14 @@ export const Box = ({
   position,
   quaternion,
   scale,
+  children,
 }: {
   name: string;
   box: BoxGeometryAsset;
   position: Vector3;
   quaternion: Quaternion;
   scale: Vector3;
+  children: React.ReactNode;
 }) => {
   const boxGeometry = useMemo(
     () =>
@@ -46,6 +48,8 @@ export const Box = ({
       quaternion={quaternion}
       scale={scale}
       object={mesh}
-    />
+    >
+      {children ?? null}
+    </primitive>
   );
 };

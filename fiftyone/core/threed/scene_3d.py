@@ -16,7 +16,8 @@ from .lights import Light
 from .mesh import FBXMesh, GLTFMesh, ObjMesh, PlyMesh, StlMesh
 from .object_3d import Object3D
 from .pointcloud import Pointcloud
-from .utils import convert_keys_to_snake_case, FO3D_VERSION_KEY
+from .shape_3d import Shape3D
+from .utils import FO3D_VERSION_KEY, convert_keys_to_snake_case
 
 
 @dataclass
@@ -110,13 +111,21 @@ class Scene(Object3D):
         """Return a string representation of the scene."""
         nodes_summary = self.get_scene_summary()
         repr_str = "Fo3d scene with "
-        for key, value in nodes_summary.items():
-            if value > 0:
+        asset_detected = False
+        for asset_name, asset_count in nodes_summary.items():
+            if asset_count > 0:
+                asset_detected = True
                 key_pretty = (
-                    key[:-1] if key.endswith("s") and value == 1 else key
+                    asset_name[:-1]
+                    if asset_name.endswith("s") and asset_count == 1
+                    else asset_name
                 )
-                repr_str += f"{value} {key_pretty}, "
-        return repr_str[:-2]
+                repr_str += f"{asset_count} {key_pretty}, "
+
+        if asset_detected:
+            return repr_str[:-2]
+        else:
+            return "Empty scene"
 
     def copy(self):
         """Returns a deep copy of the scene."""
@@ -201,6 +210,7 @@ class Scene(Object3D):
         total_fbxs = 0
         total_stls = 0
         total_plys = 0
+        total_shapes = 0
 
         for node in self.traverse():
             if isinstance(node, Pointcloud):
@@ -215,6 +225,8 @@ class Scene(Object3D):
                 total_plys += 1
             elif isinstance(node, ObjMesh):
                 total_objs += 1
+            elif isinstance(node, Shape3D):
+                total_shapes += 1
 
         return {
             "objs": total_objs,
@@ -223,6 +235,7 @@ class Scene(Object3D):
             "fbxs": total_fbxs,
             "stls": total_stls,
             "plys": total_plys,
+            "shapes": total_shapes,
         }
 
     def get_asset_paths(self):
