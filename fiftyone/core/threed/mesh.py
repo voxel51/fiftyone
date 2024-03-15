@@ -38,6 +38,9 @@ class Mesh(Object3D):
         Args:
             material (MeshMaterial): The material to set as the default.
         """
+        if isinstance(material, dict):
+            material = MeshMaterial._from_dict(material)
+
         self.default_material = material
 
     def _to_dict_extra(self):
