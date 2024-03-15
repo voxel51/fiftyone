@@ -103,6 +103,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
 
   let meshCount = 0;
   let pointcloudCount = 0;
+  let shapeCount = 0;
   let unknownCount = 0;
 
   for (const child of scene.children) {
@@ -110,6 +111,8 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
       meshCount += 1;
     } else if (child["_type"].endsWith("Pointcloud")) {
       pointcloudCount += 1;
+    } else if (child["_type"].endsWith("Geometry")) {
+      shapeCount += 1;
     } else {
       unknownCount += 1;
     }
@@ -118,6 +121,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
       const childSummary = getFiftyoneSceneSummary(child);
       meshCount += childSummary.meshCount;
       pointcloudCount += childSummary.pointcloudCount;
+      shapeCount += childSummary.shapeCount;
       unknownCount += childSummary.unknownCount;
     }
   }
@@ -125,6 +129,7 @@ export const getFiftyoneSceneSummary = (scene: FiftyoneSceneRawJson) => {
   return {
     meshCount,
     pointcloudCount,
+    shapeCount,
     unknownCount,
   };
 };
