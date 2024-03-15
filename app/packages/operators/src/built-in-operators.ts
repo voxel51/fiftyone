@@ -19,6 +19,7 @@ import {
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
+import { useSetRecoilState } from "recoil";
 
 //
 // BUILT-IN OPERATORS
@@ -459,18 +460,23 @@ class SetView extends Operator {
   useHooks(ctx: ExecutionContext): {} {
     return {
       setView: fos.useSetView(),
+      setViewName: useSetRecoilState(fos.viewName),
     };
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.obj("view", {
-      label: "View",
-      required: true,
-    });
+    inputs.obj("view", { view: new types.HiddenView({}) });
+    inputs.str("name", { label: "Name of a saved view" });
     return new types.Property(inputs);
   }
-  async execute({ state, hooks, params }: ExecutionContext) {
-    hooks.setView(params.view);
+  async execute({ hooks, params }: ExecutionContext) {
+    if (params.view) {
+      hooks.setView(params.view);
+    } else if (params.name) {
+      hooks.setViewName(params.name);
+    } else {
+      throw new Error('Param "view" or "name" is required to set a view');
+    }
   }
 }
 
