@@ -680,12 +680,13 @@ def perform_nms(
     sample_collection,
     in_field,
     out_field=None,
-    conf_threshold=0.6,
-    iou_threshold=0.5,
+    iou_thresh=0.5,
+    confidence_thresh=None,
+    classwise=True,
     progress=None,
 ):
-    """Performs Non-Maximum Suppression (NMS) on the
-    :class:`fiftyone.core.labels.Detections` field containing detections.
+    """Performs non-maximum suppression (NMS) on the specified
+    :class:`fiftyone.core.labels.Detections` field.
 
     NMS is a post-processing technique used in object detection to eliminate
     duplicate detections and select the most relevant detected objects. This
@@ -694,19 +695,20 @@ def perform_nms(
     Args:
         sample_collection: a
             :class:`fiftyone.core.collections.SampleCollection`
-        in_field: the name of the :class:`fiftyone.core.labels.Detections` field
-        out_field (None): the name of the :class:`fiftyone.core.labels.Detections`
-            field to populate. If not specified (None), the input field is updated
-            in-place.
-        conf_threshold (0.6): a floating-point value between 0 and 1 representing
-            the minimum confidence score required for a detection to be considered
-            valid. Detections with confidence scores lower than this threshold
-            will be discarded during the Non-Maximum Suppression (NMS) process.
-        iou_threshold (0.5): a floating-point value between 0 and 1 representing
-            the Intersection over Union (IoU) threshold used in the NMS algorithm.
-            It determines the minimum overlap required between bounding boxes for
-            them to be considered duplicates. Bounding boxes with IoU values
-            greater than or equal to this threshold will be suppressed.
+        in_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field
+        out_field (None): the name of the
+            :class:`fiftyone.core.labels.Detections` field to populate. If not
+            specified, the input field is updated in-place
+        iou_thresh (0.5): an intersection over union (IoU) threshold to use.
+            This determines the minimum overlap required between bounding boxes
+            to be considered duplicates. Bounding boxes with IoU values greater
+            than or equal to this threshold will be suppressed
+        confidence_thresh (None): a minimum confidence score required for a
+            detection to be considered valid. Detections with confidence scores
+            lower than this threshold will be discarded
+        classwise (True): whether to treat each class ``label`` separately
+            (True) or suppress all detections jointly (False)
         progress (None): whether to render a progress bar (True/False), use the
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
@@ -715,46 +717,56 @@ def perform_nms(
         sample_collection, in_field, fol.Detections
     )
 
+    if out_field is None:
+        out_field = in_field
+
     samples = sample_collection.select_fields(in_field)
 
-    with fou.ProgressBar(progress=progress) as pb:
-        for sample in pb(samples):
-            detections_data = sample[in_field].copy()
-            nms_processed_detections = _perform_nms(
-                detections_data, conf_threshold, iou_threshold
+    for sample in samples.iter_samples(autosave=True, progress=progress):
+        detections = sample[in_field]
+        if detections is not None:
+            _detections = detections.detections.copy()
+            nms_detections = _perform_nms(
+                _detections,
+                iou_thresh=iou_thresh,
+                confidence_thresh=confidence_thresh,
+                classwise=classwise,
             )
-            if out_field is None:
-                sample[in_field] = nms_processed_detections
-            else:
-                sample[out_field] = nms_processed_detections
-            sample.save()
+            sample[out_field] = fol.Detections(detections=nms_detections)
 
 
-def _perform_nms(detections_data, conf_threshold=0.6, iou_threshold=0.5):
-    detections = detections_data.detections
+def _perform_nms(
+    detections, iou_thresh=0.5, confidence_thresh=None, classwise=True
+):
+    detections.sort(
+        key=lambda d: (d.confidence is not None, d.confidence),
+        reverse=True,
+    )
 
-    # Sort detections by confidence in descending order
-    detections.sort(key=lambda x: x.confidence, reverse=True)
-
-    # Remove detections with confidence less than the conf_threshold
-    detections = [d for d in detections if d.confidence >= conf_threshold]
+    if confidence_thresh is not None:
+        detections = [
+            d
+            for d in detections
+            if d.confidence is not None and d.confidence >= confidence_thresh
+        ]
 
     nms_detections = []
-
-    while len(detections) > 0:
+    while detections:
         # Pick the detection with highest confidence
-        selected_detection = detections[0]
-        nms_detections.append(selected_detection)
-        del detections[0]
+        d0 = detections.pop(0)
+        nms_detections.append(d0)
 
         # Compare with other detections for NMS
-        for d in detections:
-            if d.label == selected_detection.label:
-                iou = foi.compute_ious([selected_detection], [d])[0][0]
-                if iou >= iou_threshold:
-                    # Remove the detection if IoU is greater than iou_threshold
-                    detections.remove(d)
+        rm_inds = []
+        for i, d in enumerate(detections):
+            if classwise and d.label != d0.label:
+                continue
 
-    # Update detections_data with NMS results
-    detections_data.detections = nms_detections
-    return detections_data
+            iou = foi.compute_bbox_iou(d0, d)
+            if iou >= iou_thresh:
+                rm_inds.append(i)
+
+        for i in reversed(rm_inds):
+            del detections[i]
+
+    return nms_detections
