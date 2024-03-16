@@ -10,7 +10,7 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-import fiftyone.utils.iou as foi
+import fiftyone.utils.iou as foui
 
 
 def objects_to_segmentations(
@@ -780,7 +780,7 @@ def _perform_nms(
             if classwise and d.label != d0.label:
                 continue
 
-            iou = foi.compute_bbox_iou(d0, d)
+            iou = foui.compute_bbox_iou(d0, d)
             if iou >= iou_thresh:
                 rm_inds.append(i)
 
