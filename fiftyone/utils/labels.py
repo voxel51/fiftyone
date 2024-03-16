@@ -722,6 +722,7 @@ def perform_nms(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Detections
     )
@@ -730,18 +731,26 @@ def perform_nms(
         out_field = in_field
 
     samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
-        detections = sample[in_field]
-        if detections is not None:
-            _detections = detections.detections.copy()
-            nms_detections = _perform_nms(
-                _detections,
-                iou_thresh=iou_thresh,
-                confidence_thresh=confidence_thresh,
-                classwise=classwise,
-            )
-            sample[out_field] = fol.Detections(detections=nms_detections)
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            detections = image[in_field]
+            if detections is not None:
+                _detections = detections.detections.copy()
+                nms_detections = _perform_nms(
+                    _detections,
+                    iou_thresh=iou_thresh,
+                    confidence_thresh=confidence_thresh,
+                    classwise=classwise,
+                )
+                image[out_field] = fol.Detections(detections=nms_detections)
 
 
 def _perform_nms(
