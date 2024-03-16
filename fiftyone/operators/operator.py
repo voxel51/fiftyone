@@ -5,6 +5,7 @@ FiftyOne operators.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from .types import Object, PromptView
 
 
@@ -123,9 +124,6 @@ class Operator(object):
         self._builtin = _builtin
         self._plugin_secrets = None
         self.plugin_name = plugin_name
-        self.definition = Object()
-        self.definition.define_property("inputs", Object())
-        self.definition.define_property("outputs", Object())
 
     @property
     def name(self):
@@ -147,41 +145,6 @@ class Operator(object):
     def config(self):
         """The :class:`OperatorConfig` for the operator."""
         raise NotImplementedError("subclass must implement config")
-
-    def resolve_definition(self, resolve_dynamic, ctx):
-        """Returns a resolved definition of the operator.
-
-        The resolved definition is a clone of the default definition using
-        :meth:`resolve_input` and :meth:`resolve_output` to resolve the inputs
-        and output properties of the operator.
-
-        Passing ``resolve_dynamic=False`` allows resolution of dynamic
-        operators to be deferred to execution time. If the operator
-        ``is_dyanmic`` and ``resolve_dynamic`` is False, a clone of default
-        definition is returned.
-
-        Args:
-            resolve_dynamic: whether to resolve dynamic inputs and outputs
-            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
-
-        Returns:
-            a definition :class:`fiftyone.operators.types.Object`
-        """
-        definition = self.definition.clone()
-        if self.config.dynamic and not resolve_dynamic:
-            return definition
-
-        # pylint: disable=assignment-from-none
-        input_property = self.resolve_type(ctx, "inputs")
-        output_property = self.resolve_type(ctx, "outputs")
-
-        if input_property is not None:
-            definition.add_property("inputs", input_property)
-
-        if output_property is not None:
-            definition.add_property("outputs", output_property)
-
-        return definition
 
     def resolve_delegation(self, ctx):
         """Returns the resolved *forced* delegation flag.
@@ -319,7 +282,7 @@ class Operator(object):
         """
         return None
 
-    def to_json(self, ctx, resolve_dynamic=False):
+    def to_json(self):
         """Returns a JSON representation of the operator.
 
         Args:
@@ -330,10 +293,8 @@ class Operator(object):
         Returns:
             a JSON dict
         """
-        definition = self.resolve_definition(resolve_dynamic, ctx)
         return {
             "config": self.config.to_json(),
-            "definition": definition.to_json(),
             "plugin_name": self.plugin_name,
             "_builtin": self._builtin,
             "uri": self.uri,
