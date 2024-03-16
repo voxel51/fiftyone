@@ -1227,6 +1227,26 @@ class FileWriter(object):
         for filepath, local_path in zip(filepaths, local_paths):
             self.register_local_path(filepath, local_path)
 
+    def register_path(self, inpath, outpath):
+        """Registers an arbitrary input/output pair.
+
+        Args:
+            inpath: an input path
+            outpath: an output path
+        """
+        self._inpaths.append(inpath)
+        self._outpaths.append(outpath)
+
+    def register_paths(self, inpaths, outpaths):
+        """Registers an arbitrary set of input/output pairs.
+
+        Args:
+            inpath: an input path
+            outpath: an output path
+        """
+        for inpath, outpath in zip(inpaths, outpaths):
+            self.register_path(inpath, outpath)
+
 
 @contextmanager
 def open_file(path, mode="r"):
