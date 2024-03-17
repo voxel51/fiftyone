@@ -603,7 +603,9 @@ class ExecutionContext(object):
 
     @property
     def ops(self):
-        """A :class:`fiftyone.operators.Operations` instance."""
+        """A :class:`fiftyone.operators.operations.Operations` instance that
+        you can use to trigger builtin operations on the current context.
+        """
         return self._ops
 
     def secret(self, key):

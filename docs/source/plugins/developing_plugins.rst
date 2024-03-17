@@ -85,9 +85,9 @@ used to add functionality to custom panels.
 
 FiftyOne comes with a number of builtin
 :mod:`Python <fiftyone.operators.builtin>` and
-`TypeScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-operators for common tasks that are intended for either user-facing or
-internal plugin use.
+`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+operators for common tasks that are intended for either user-facing or internal
+plugin use.
 
 .. image:: /images/plugins/operator-browser.gif
     :align: center
@@ -726,16 +726,20 @@ subsequent sections.
             view = ctx.view
             n = len(view)
 
-            # Use ctx.trigger() to call other operators as necessary
-            ctx.trigger("operator_name", params={"key": value})
+            # Use ctx.ops to trigger builtin operations
+            ctx.ops.clear_selected_samples()
+            ctx.ops.set_view(view=view)
+
+            # Use ctx.trigger to call other operators as necessary
+            ctx.trigger("operator_uri", params={"key": value})
 
             # If `execute_as_generator=True`, this method may yield multiple
             # messages
             for i, sample in enumerate(current_view, 1):
                 # do some computation
-                yield ctx.trigger("set_progress", {"progress": i / n})
+                yield ctx.ops.set_progress(progress=i/n)
 
-            yield ctx.trigger("reload_dataset")
+            yield ctx.ops.reload_dataset()
 
             return {"value": value, ...}
 
@@ -845,6 +849,11 @@ contains the following properties:
     requested for the operation
 -   `ctx.delegation_target` - the orchestrator to which the operation should be
     delegated, if applicable
+-   `ctx.ops` - an
+    :class:`Operations <fiftyone.operators.operations.Operations>` instance
+    that you can use to trigger builtin operations on the current context
+-   `ctx.trigger` - a method that you can use to trigger arbitrary operations
+    on the current context
 -   `ctx.secrets` - a dict of :ref:`secrets <operator-secrets>` for the plugin,
     if any
 -   `ctx.results` - a dict containing the outputs of the `execute()` method, if
@@ -1288,18 +1297,49 @@ Operator composition
 ~~~~~~~~~~~~~~~~~~~~
 
 Many operators are designed to be composed with other operators to build up
-more complex behaviors. This can be achieved by simply calling
-:meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`
-from within the operator's
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` method to
-invoke another operator with the appropriate parameters, if any.
+more complex behaviors. You can trigger other operations from within an
+operator's :meth:`execute() <fiftyone.operators.operator.Operator.execute>`
+method via :meth:`ctx.ops <fiftyone.operators.operations.Operations>` and
+:meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`.
 
-For example, many operations involve updating the current state of the App.
-FiftyOne contains a number of
-`builtin operators <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-that you can trigger from within
-:meth:`execute() <fiftyone.operators.operator.Operator.execute>` to achieve
-this with ease!
+The :meth:`ctx.ops <fiftyone.operators.operations.Operations>` property of an
+execution context exposes all builtin
+:mod:`Python <fiftyone.operators.builtin>` and
+`JavaScript <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
+in a conveniently documented functional interface. For example, many operations
+involve updating the current state of the App:
+
+.. code-block:: python
+    :linenos:
+
+    def execute(self, ctx):
+        # Dataset
+        ctx.ops.open_dataset("...")
+        ctx.ops.reload_dataset()
+
+        # View/sidebar
+        ctx.ops.set_view(name="...")  # saved view by name
+        ctx.ops.set_view(view=view)  # arbitrary view
+        ctx.ops.clear_view()
+        ctx.ops.clear_sidebar_filters()
+
+        # Selected samples
+        ctx.ops.set_selected_samples([...]))
+        ctx.ops.clear_selected_samples()
+
+        # Selected labels
+        ctx.ops.set_selected_labels([...])
+        ctx.ops.clear_selected_labels()
+
+        # Panels
+        ctx.ops.open_panel("Embeddings")
+        ctx.ops.close_panel("Embeddings")
+
+The :meth:`ctx.trigger <fiftyone.operators.executor.ExecutionContext.trigger>`
+property is a lower-level funtion that allows you to invoke arbitrary
+operations by providing their URI and parameters, including all builtin
+operations as well as any operations installed via custom plugins. For example,
+here's how to trigger the same App-related operations from above:
 
 .. code-block:: python
     :linenos:
@@ -1310,17 +1350,18 @@ this with ease!
         ctx.trigger("reload_dataset")  # refreshes the App
 
         # View/sidebar
+        ctx.trigger("set_view", params=dict(name="..."))  # saved view by name
+        ctx.trigger("set_view", params=dict(view=view._serialize()))  # arbitrary view
         ctx.trigger("clear_view")
         ctx.trigger("clear_sidebar_filters")
-        ctx.trigger("set_view", params=dict(view=view._serialize()))
 
         # Selected samples
-        ctx.trigger("clear_selected_samples")
         ctx.trigger("set_selected_samples", params=dict(samples=[...]))
+        ctx.trigger("clear_selected_samples")
 
         # Selected labels
-        ctx.trigger("clear_selected_labels")
         ctx.trigger("set_selected_labels", params=dict(labels=[...]))
+        ctx.trigger("clear_selected_labels")
 
         # Panels
         ctx.trigger("open_panel", params=dict(name="Embeddings"))
@@ -1333,15 +1374,14 @@ If your :ref:`operator's config <operator-config>` declares that it is a
 generator via `execute_as_generator=True`, then its
 :meth:`execute() <fiftyone.operators.operator.Operator.execute>` method should
 `yield` calls to
+:meth:`ctx.ops <fiftyone.operators.operations.Operations>` methods or
 :meth:`ctx.trigger() <fiftyone.operators.executor.ExecutionContext.trigger>`,
-which triggers another operator and returns a
+both of which trigger another operation and return a
 :class:`GeneratedMessage <fiftyone.operators.message.GeneratedMessage>`
-containing the result of the invocation.
+instance containing the result of the invocation.
 
-For example, a common generator pattern is to use the
-`builtin <https://github.com/voxel51/fiftyone/blob/develop/app/packages/operators/src/built-in-operators.ts>`_
-`set_progress` operator to render a progress bar tracking the progress of an
-operation:
+For example, a common generator pattern is to use the builtin `set_progress`
+operator to render a progress bar tracking the progress of an operation:
 
 .. code-block:: python
     :linenos:
@@ -1350,9 +1390,14 @@ operation:
         # render a progress bar tracking the execution
         for i in range(n):
             # [process a chunk here]
+
+            # Option 1: ctx.ops
+            yield ctx.ops.set_progress(progress=i/n, label=f"Processed {i}/{n}")
+
+            # Option 2: ctx.trigger
             yield ctx.trigger(
                 "set_progress",
-                dict(progress=i / n, label=f"Processed {i}/{n}"),
+                dict(progress=i/n, label=f"Processed {i}/{n}"),
             )
 
 .. note::
@@ -1520,10 +1565,7 @@ method as demonstrated below:
                 )
 
             def execute(self, ctx):
-                return ctx.trigger(
-                    "open_panel",
-                    params=dict(name="Histograms", isActive=True, layout="horizontal"),
-                )
+                return ctx.ops.open_panel("Histograms", layout="horizontal", is_active=True)
 
         def register(p):
             p.register(OpenHistogramsPanel)

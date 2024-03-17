@@ -94,10 +94,7 @@ class Operations(object):
         Args:
             message: the message to print
         """
-        return self._ctx.trigger(
-            "print_stdout",
-            params={"msg": message},
-        )
+        return self._ctx.trigger("print_stdout", params={"msg": message})
 
     def list_files(self, path=None, list_filesystems=False):
         """List files in a directory or list filesystems.
@@ -143,7 +140,8 @@ class Operations(object):
         Args:
             name: the name of the panel to open
             is_active (True): whether to activate the panel immediately
-            layout (None): the layout orientation, if applicable
+            layout (None): the layout orientation
+                ``("horizontal", "vertical")``, if applicable
         """
         params = {"name": name, "isActive": is_active}
         if layout is not None:
@@ -172,7 +170,7 @@ class Operations(object):
 
         Args:
             name: the name of the panel to split
-            layout: the layout type ``("horizontal", "vertical")``
+            layout: the layout orientation ``("horizontal", "vertical")``
         """
         return self._ctx.trigger(
             "split_panel", params={"name": name, "layout": layout}
