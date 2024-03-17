@@ -11,7 +11,7 @@ from bson import json_util
 
 
 class Operations(object):
-    """Interface to all builtin operations for an execution context._ctx
+    """Interface to trigger builtin operations on an execution context.
 
     Args:
         ctx: an :class:`fiftyone.operators.ExecutionContext`
@@ -25,11 +25,7 @@ class Operations(object):
     ###########################################################################
 
     def clone_selected_samples(self):
-        """Clone the selected samples in the App.
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
-        """
+        """Clone the selected samples in the App."""
         return self._ctx.trigger("clone_selected_samples")
 
     def clone_sample_field(self, field_name, new_field_name):
@@ -38,9 +34,6 @@ class Operations(object):
         Args:
             field_name: the name of the field to clone
             new_field_name: the name for the new field
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "clone_sample_field",
@@ -56,9 +49,6 @@ class Operations(object):
         Args:
             field_name: the name of the field to rename
             new_field_name: the new name for the field
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "rename_sample_field",
@@ -73,9 +63,6 @@ class Operations(object):
 
         Args:
             field_name: the name of the field to clear
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "clear_sample_field",
@@ -83,19 +70,11 @@ class Operations(object):
         )
 
     def delete_selected_samples(self):
-        """Delete the selected samples in the App.
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
-        """
+        """Delete the selected samples in the App."""
         return self._ctx.trigger("delete_selected_samples")
 
     def delete_selected_labels(self):
-        """Delete the selected labels in the App.
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
-        """
+        """Delete the selected labels in the App."""
         return self._ctx.trigger("delete_selected_labels")
 
     def delete_sample_field(self, field_name):
@@ -103,9 +82,6 @@ class Operations(object):
 
         Args:
             field_name: the name of the field to delete
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "delete_sample_field",
@@ -117,9 +93,6 @@ class Operations(object):
 
         Args:
             message: the message to print
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "print_stdout",
@@ -134,9 +107,6 @@ class Operations(object):
                 filesystems
             list_filesystems (False): whether to list filesystems instead of
                 files
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "list_files",
@@ -260,9 +230,6 @@ class Operations(object):
         Args:
             view (None): a :class:`fiftyone.core.view.DatasetView` to set
             name (None): the name of a saved view to load
-
-        Returns:
-            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         params = {}
         if view is not None:
