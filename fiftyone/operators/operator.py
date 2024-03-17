@@ -285,11 +285,6 @@ class Operator(object):
     def to_json(self):
         """Returns a JSON representation of the operator.
 
-        Args:
-            ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
-            resolve_dynamic (False): whether to resolve dynamic inputs and
-                outputs
-
         Returns:
             a JSON dict
         """
