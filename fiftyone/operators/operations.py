@@ -1,40 +1,46 @@
+"""
+FiftyOne operator execution.
+
+| Copyright 2017-2023, Voxel51, Inc.
+| `voxel51.com <https://voxel51.com/>`_
+|
+"""
 import json
+
 from bson import json_util
 
 
 class Operations(object):
-    def __init__(self, ctx):
-        """
-        Initialize the Operations class with a :class:`fiftyone.operators.ExecutionContext`.
+    """Interface to all builtin operations for an execution context._ctx
 
-        Args:
-            ctx: The :class:`fiftyone.operators.ExecutionContext` to use.
-        """
+    Args:
+        ctx: an :class:`fiftyone.operators.ExecutionContext`
+    """
+
+    def __init__(self, ctx):
         self._ctx = ctx
 
-    #
-    # Python Operators
-    #
+    ###########################################################################
+    # Builtin Python operators
+    ###########################################################################
 
     def clone_selected_samples(self):
-        """
-        Clone the selected samples in the FiftyOne App.
+        """Clone the selected samples in the App.
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger("clone_selected_samples")
 
     def clone_sample_field(self, field_name, new_field_name):
-        """
-        Clone a sample field to a new field name.
+        """Clone a sample field to a new field name.
 
         Args:
-            field_name: The name of the field to clone.
-            new_field_name: The name for the new field.
+            field_name: the name of the field to clone
+            new_field_name: the name for the new field
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "clone_sample_field",
@@ -45,15 +51,14 @@ class Operations(object):
         )
 
     def rename_sample_field(self, field_name, new_field_name):
-        """
-        Rename a sample field to a new field name.
+        """Rename a sample field to a new field name.
 
         Args:
-            field_name: The current name of the field.
-            new_field_name: The new name for the field.
+            field_name: the name of the field to rename
+            new_field_name: the new name for the field
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "rename_sample_field",
@@ -64,14 +69,13 @@ class Operations(object):
         )
 
     def clear_sample_field(self, field_name):
-        """
-        Clear the contents of a sample field.
+        """Clear the contents of a sample field.
 
         Args:
-            field_name: The name of the field to clear.
+            field_name: the name of the field to clear
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "clear_sample_field",
@@ -79,32 +83,29 @@ class Operations(object):
         )
 
     def delete_selected_samples(self):
-        """
-        Delete the selected samples in the FiftyOne App.
+        """Delete the selected samples in the App.
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger("delete_selected_samples")
 
     def delete_selected_labels(self):
-        """
-        Delete the selected labels in the FiftyOne App.
+        """Delete the selected labels in the App.
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger("delete_selected_labels")
 
     def delete_sample_field(self, field_name):
-        """
-        Delete a sample field.
+        """Delete a sample field.
 
         Args:
-            field_name: The name of the field to delete.
+            field_name: the name of the field to delete
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "delete_sample_field",
@@ -112,14 +113,13 @@ class Operations(object):
         )
 
     def print_stdout(self, message):
-        """
-        Print a message to the standard output.
+        """Print a message to the standard output.
 
         Args:
-            message: The message to print.
+            message: the message to print
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "print_stdout",
@@ -127,184 +127,160 @@ class Operations(object):
         )
 
     def list_files(self, path=None, list_filesystems=False):
-        """
-        List files in a directory or list filesystems.
+        """List files in a directory or list filesystems.
 
         Args:
-            path: The path to list files from, or None to list filesystems.
-            list_filesystems: Boolean indicating whether to list filesystems instead of files.
+            path (None): the path to list files from, or None to list
+                filesystems
+            list_filesystems (False): whether to list filesystems instead of
+                files
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
         return self._ctx.trigger(
             "list_files",
             params={"path": path, "list_filesystems": list_filesystems},
         )
 
-    #
-    # JS Operators
-    #
+    ###########################################################################
+    # Builtin JS operators
+    ###########################################################################
 
     def reload_samples(self):
-        """
-        Reload samples from the dataset.
-        """
+        """Reload the sample grid in the App."""
         return self._ctx.trigger("reload_samples")
 
     def reload_dataset(self):
-        """
-        Reload the entire dataset.
-        """
+        """Reload the dataset in the App."""
         return self._ctx.trigger("reload_dataset")
 
     def clear_selected_samples(self):
-        """
-        Clear selected samples.
-        """
+        """Clear selected samples in the App."""
         return self._ctx.trigger("clear_selected_samples")
 
     def copy_view_as_json(self):
-        """
-        Copy the current view as JSON.
-        """
+        """Copy the current view in the App as JSON."""
         return self._ctx.trigger("copy_view_as_json")
 
     def view_from_json(self):
-        """
-        Set the view from JSON present in clipboard.
-        """
+        """Set the view in the App from JSON present in clipboard."""
         return self._ctx.trigger("view_from_clipboard")
 
     def open_panel(self, name, is_active=True, layout=None):
-        """
-        Open a panel with the given name and layout options.
+        """Open a panel with the given name and layout options in the App.
 
         Args:
-            name: Name of the panel to open.
-            is_active: Whether to activate the panel immediately.
-            layout: The layout orientation, if applicable.
+            name: the name of the panel to open
+            is_active (True): whether to activate the panel immediately
+            layout (None): the layout orientation, if applicable
         """
         params = {"name": name, "isActive": is_active}
-        if layout:
+        if layout is not None:
             params["layout"] = layout
+
         return self._ctx.trigger("open_panel", params=params)
 
     def open_all_panels(self):
-        """
-        Open all available panels.
-        """
+        """Open all available panels in the App."""
         return self._ctx.trigger("open_all_panel")
 
     def close_panel(self, name):
-        """
-        Close the panel with the given name.
+        """Close the panel with the given name in the App.
 
         Args:
-            name: Name of the panel to close.
+            name: the name of the panel to close
         """
         return self._ctx.trigger("close_panel", params={"name": name})
 
     def close_all_panels(self):
-        """
-        Close all opened panels.
-        """
+        """Close all open panels in the App."""
         return self._ctx.trigger("close_all_panel")
 
     def split_panel(self, name, layout):
-        """
-        Split the panel with the given layout.
+        """Split the panel with the given layout in the App.
 
         Args:
-            name: Name of the panel to split.
-            layout: Layout type ('horizontal' or 'vertical').
+            name: the name of the panel to split
+            layout: the layout type ``("horizontal", "vertical")``
         """
         return self._ctx.trigger(
             "split_panel", params={"name": name, "layout": layout}
         )
 
     def open_dataset(self, dataset_name):
-        """
-        Open the specified dataset.
+        """Open the specified dataset in the App.
 
         Args:
-            dataset_name: Name of the dataset to open.
+            dataset_name: the name of the dataset to open
         """
         return self._ctx.trigger(
             "open_dataset", params={"dataset": dataset_name}
         )
 
     def clear_view(self):
-        """
-        Clear the view bar.
-        """
+        """Clear the view bar in the App."""
         return self._ctx.trigger("clear_view")
 
     def clear_sidebar_filters(self):
-        """
-        Clear all filters in the sidebar.
-        """
+        """Clear all filters in the App's sidebar."""
         return self._ctx.trigger("clear_sidebar_filters")
 
     def clear_all_stages(self):
-        """
-        Clear all selections, filters, and view stages.
-        """
+        """Clear all selections, filters, and view stages from the App."""
         return self._ctx.trigger("clear_all_stages")
 
     def refresh_colors(self):
-        """
-        Refresh the colors used in the app's UI.
-        """
+        """Refresh the colors used in the App's UI."""
         return self._ctx.trigger("refresh_colors")
 
     def show_selected_samples(self):
-        """
-        Show the samples that are currently selected.
-        """
+        """Show the samples that are currently selected in the App."""
         return self._ctx.trigger("show_selected_samples")
 
     def convert_extended_selection_to_selected_samples(self):
-        """
-        Convert the extended selection to the selected samples list.
-        """
+        """Convert the extended selection to selected samples in the App."""
         return self._ctx.trigger(
             "convert_extended_selection_to_selected_samples"
         )
 
     def set_selected_samples(self, samples):
-        """
-        Set the specified samples as selected.
+        """Select the specified samples in the App.
 
         Args:
-            samples: A list of sample IDs to select.
+            samples: a list of sample IDs to select
         """
         return self._ctx.trigger(
             "set_selected_samples", params={"samples": samples}
         )
 
-    def set_view(self, view):
-        """
-        Set the view of the FiftyOne App.
+    def set_view(self, view=None, name=None):
+        """Set the current view in the App.
 
         Args:
-            view: The `fiftyone.View` to set.
+            view (None): a :class:`fiftyone.core.view.DatasetView` to set
+            name (None): the name of a saved view to load
 
         Returns:
-            The :class:`fiftyone.operators.message.GeneratedMessage` object
+            a :class:`fiftyone.operators.message.GeneratedMessage`
         """
-        return self._ctx.trigger(
-            "set_view",
-            params=dict(view=_serialize_view(view)),
-        )
+        params = {}
+        if view is not None:
+            params["view"] = _serialize_view(view)
+
+        if name is not None:
+            params["name"] = name
+
+        return self._ctx.trigger("set_view", params=params)
 
     def show_samples(self, samples, use_extended_selection=False):
-        """
-        Show specific samples, optionally using extended selection.
+        """Show specific samples, optionally using extended selection in the
+        App.
 
         Args:
-            samples: A list of sample IDs to show.
-            use_extended_selection: Whether to use the extended selection feature.
+            samples: a list of sample IDs to show
+            use_extended_selection (False): whether to use the extended
+                selection feature
         """
         params = {
             "samples": samples,
@@ -313,47 +289,48 @@ class Operations(object):
         return self._ctx.trigger("show_samples", params=params)
 
     def console_log(self, message):
-        """
-        Log a message to the console.
+        """Log a message to the console.
 
         Args:
-            message: The message to log.
+            message: the message to log
         """
         return self._ctx.trigger("console_log", params={"message": message})
 
     def show_output(self, outputs, results):
-        """
-        Show output in the app's UI.
+        """Show output in the App's UI.
 
         Args:
-            outputs: Outputs to show.
-            results: Results to display.
+            outputs: outputs to show
+            results: results to display
         """
         return self._ctx.trigger(
             "show_output", params={"outputs": outputs, "results": results}
         )
 
-    def set_progress(self, label, variant, progress):
-        """
-        Set the progress indicator in the app's UI.
+    def set_progress(self, label=None, progress=None, variant=None):
+        """Set the progress indicator in the App's UI.
 
         Args:
-            label: Label for the progress indicator.
-            variant: Type of progress indicator ('linear' or 'circular').
-            progress: Progress value to set.
+            label (None): a label for the progress indicator
+            progress (None): a progress value to set
+            variant (None): the type of indicator ``("linear", "circular")``
         """
-        return self._ctx.trigger(
-            "set_progress",
-            params={"label": label, "variant": variant, "progress": progress},
-        )
+        params = {}
+        if label is not None:
+            params["label"] = label
+        if progress is not None:
+            params["progress"] = progress
+        if variant is not None:
+            params["variant"] = variant
+
+        return self._ctx.trigger("set_progress", params=params)
 
     def test_operator(self, operator, raw_params):
-        """
-        Test an operator with given parameters.
+        """Test the operator with given parameters.
 
         Args:
-            operator: The operator to test.
-            raw_params: Raw parameters for the operator.
+            operator: the operator to test
+            raw_params: raw parameters for the operator
         """
         return self._ctx.trigger(
             "test_operator",
@@ -361,31 +338,19 @@ class Operations(object):
         )
 
     def set_selected_labels(self, labels):
-        """
-        Set the selected labels in the UI.
+        """Set the selected labels in the App.
 
         Args:
-            labels: Labels to select.
+            labels: the labels to select
         """
         return self._ctx.trigger(
             "set_selected_labels", params={"labels": labels}
         )
 
     def clear_selected_labels(self):
-        """
-        Clear the selected labels.
-        """
+        """Clear the selected labels in the App."""
         return self._ctx.trigger("clear_selected_labels")
 
 
 def _serialize_view(view):
-    """
-    Serialize a FiftyOne View for transmission.
-
-    Args:
-        view: The FiftyOne View to serialize.
-
-    Returns:
-        A JSON representation of the view.
-    """
     return json.loads(json_util.dumps(view._serialize()))
