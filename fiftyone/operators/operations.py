@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -14,7 +14,7 @@ class Operations(object):
     """Interface to trigger builtin operations on an execution context.
 
     Args:
-        ctx: an :class:`fiftyone.operators.ExecutionContext`
+        ctx: an :class:`fiftyone.operators.executor.ExecutionContext`
     """
 
     def __init__(self, ctx):
@@ -228,7 +228,7 @@ class Operations(object):
         """Set the current view in the App.
 
         Args:
-            view (None): a :class:`fiftyone.core.view.DatasetView` to set
+            view (None): a :class:`fiftyone.core.view.DatasetView` to load
             name (None): the name of a saved view to load
         """
         params = {}
