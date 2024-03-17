@@ -4,6 +4,7 @@ import {
 } from "@fiftyone/looker/src/overlays/util";
 import * as fop from "@fiftyone/plugins";
 import * as fos from "@fiftyone/state";
+import { fieldSchema } from "@fiftyone/state";
 import { get as _get } from "lodash";
 import { useCallback, useMemo } from "react";
 import { useRecoilValue } from "recoil";
@@ -22,6 +23,7 @@ export interface ThreeDLabelsProps {
 }
 
 export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
+  const schema = useRecoilValue(fieldSchema({ space: fos.State.SPACE.SAMPLE }));
   const { coloring, selectedLabelTags, customizeColorSetting, labelTagColors } =
     useRecoilValue(fos.lookerOptions({ withFilter: true, modal: true }));
 
@@ -43,7 +45,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
       onSelectLabel({
         detail: {
           id: label._id,
-          field: label.path[label.path.length - 1],
+          field: label.path,
           sampleId: label.sampleId,
         },
       });
@@ -63,30 +65,32 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
 
   const rawOverlays = useMemo(
     () =>
-      load3dOverlays(sampleMap, selectedLabels)
+      load3dOverlays(sampleMap, selectedLabels, [], schema)
         .map((l) => {
-          const path = l.path.join(".");
+          const path = l.path;
           const isTagged = shouldShowLabelTag(selectedLabelTags, l.tags);
           const color = getLabelColor({
             coloring,
             path,
-            label: l,
             isTagged,
             labelTagColors,
             customizeColorSetting,
+            label: l,
+            embeddedDocType: l._cls,
           });
 
           return { ...l, color, id: l._id };
         })
-        .filter((l) => pathFilter(l.path.join("."), l)),
+        .filter((l) => pathFilter(l.path, l)),
     [
       coloring,
-      getFieldColor,
       pathFilter,
       sampleMap,
       selectedLabels,
-      colorSchemeFields,
-      colorScheme,
+      schema,
+      selectedLabelTags,
+      labelTagColors,
+      customizeColorSetting,
     ]
   );
   const [cuboidOverlays, polylineOverlays] = useMemo(() => {
@@ -94,7 +98,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
     const newPolylineOverlays = [];
 
     for (const overlay of rawOverlays) {
-      if (overlay._type === "Detection") {
+      if (overlay._cls === "Detection") {
         newCuboidOverlays.push(
           <Cuboid
             key={`cuboid-${overlay.id ?? overlay._id}-${overlay.sampleId}`}
@@ -109,7 +113,7 @@ export const ThreeDLabels = ({ sampleMap }: ThreeDLabelsProps) => {
           />
         );
       } else if (
-        overlay._type === "Polyline" &&
+        overlay._cls === "Polyline" &&
         (overlay as unknown as PolyLineProps).points3d
       ) {
         newPolylineOverlays.push(
