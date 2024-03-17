@@ -34,22 +34,22 @@ export const Looker3d = () => {
     [mediaType, hasFo3dSlice]
   );
 
-  const clear = useCallback(() => {
-    if (hoveringRef.current) return;
-    timeout.current && clearTimeout(timeout.current);
-    setIsHovering(false);
-    setCurrentAction(null);
-  }, [setCurrentAction]);
+  // const clear = useCallback(() => {
+  //   if (hoveringRef.current) return;
+  //   timeout.current && clearTimeout(timeout.current);
+  //   setIsHovering(false);
+  //   setCurrentAction(null);
+  // }, [setCurrentAction, shouldRenderPcdComponent]);
 
-  const update = useCallback(() => {
-    !isHovering && setIsHovering(true);
-    timeout.current && clearTimeout(timeout.current);
-    timeout.current = setTimeout(clear, 3000);
+  // const update = useCallback(() => {
+  //   !isHovering && setIsHovering(true);
+  //   timeout.current && clearTimeout(timeout.current);
+  //   timeout.current = setTimeout(clear, 3000);
 
-    return () => {
-      timeout.current && clearTimeout(timeout.current);
-    };
-  }, [clear, isHovering]);
+  //   return () => {
+  //     timeout.current && clearTimeout(timeout.current);
+  //   };
+  // }, [clear, isHovering]);
 
   if (mediaType === "group" && hasFo3dSlice && hasPcdSlices) {
     return (
@@ -64,8 +64,8 @@ export const Looker3d = () => {
     return (
       <ErrorBoundary>
         <Container
-          onMouseOver={update}
-          onMouseMove={update}
+          // onMouseOver={update}
+          // onMouseMove={update}
           data-cy={"looker3d"}
         >
           {shouldRenderPcdComponent ? (
@@ -73,16 +73,14 @@ export const Looker3d = () => {
           ) : (
             <MediaTypeFo3dComponent />
           )}
-          {
-            <ActionBar
-              onMouseEnter={() => {
-                hoveringRef.current = true;
-              }}
-              onMouseLeave={() => {
-                hoveringRef.current = false;
-              }}
-            />
-          }
+          <ActionBar
+            onMouseEnter={() => {
+              // hoveringRef.current = true;
+            }}
+            onMouseLeave={() => {
+              // hoveringRef.current = false;
+            }}
+          />
         </Container>
       </ErrorBoundary>
     );
