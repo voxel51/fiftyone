@@ -238,6 +238,10 @@ export interface ThreeDConfig extends BaseConfig {
    * whether or not orthographic projection metada is available for this 3D sample
    */
   isOpmAvailable: boolean;
+  /**
+   * whether or not the 3D sample is a fo3d sample
+   */
+  isFo3d: boolean;
 }
 
 export interface FrameOptions extends BaseOptions {
