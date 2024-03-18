@@ -1,7 +1,7 @@
 {% extends "!layout.html" %} {% block extrahead %}
 <meta
   property="og:image"
-  content="https://voxel51.com/wp-content/uploads/2024/02/1.24_Webpages_MeetupLandingSC_AV.png"
+  content="{{og_image}}"
 />
 
 <link
@@ -14,18 +14,6 @@
 />
 {% endblock %} {% block custom_header %}
 <div class="container-fluid header-holder tutorials-header" id="header-holder">
-  <!--
-  <a class="banner" href="{{banner_link}}">
-    <div>
-      <span>
-        With support from the COCO team,
-        <span><b class="text-secondary-on-dark">Fifty</b><b class="text-brand">One</b></span>
-        is now a recommended tool for the
-        <b class="gray">COCO dataset and evaluation</b>!</span
-      >
-    </div>
-  </a>
-  -->
 
   <nav id="nav__main" class="nav__main">
     <div class="nav__main__logo">
