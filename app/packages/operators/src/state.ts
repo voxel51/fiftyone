@@ -836,6 +836,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [needsOutput, setNeedsOutput] = useState(false);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
+  const notify = fos.useNotification();
 
   const clear = useCallback(() => {
     setIsExecuting(false);
@@ -879,6 +880,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           handlers.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
+          notify({ msg: e.message, variant: "error" });
         }
       }
       setHasExecuted(true);
