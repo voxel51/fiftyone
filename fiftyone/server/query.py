@@ -467,6 +467,7 @@ class Query(fosa.AggregateQuery):
 
     stage_definitions = gql.field(stage_definitions)
 
+    @gql.field
     def uid(self) -> str:
         return fou.get_user_id()
 

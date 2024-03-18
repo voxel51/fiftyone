@@ -132,7 +132,14 @@ const Nav: React.FC<{
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {datasetHead && datasetSnapshot && (
-          <div className={style.lock}>
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              height: "100%",
+              marginRight: "1rem",
+            }}
+          >
             <Tooltip
               text={
                 `You are viewing the snapshot "${datasetSnapshot}" of the` +

@@ -12,12 +12,15 @@ jobs:
   build:
     uses: ./.github/workflows/build.yml
 
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+
   test:
     uses: ./.github/workflows/test.yml
 
   all-tests:
     runs-on: ubuntu-latest
-    needs: [build, test]
+    needs: [build, e2e, test]
     if: always()
     steps:
       - run: sh -c ${{ needs.build.result == 'success' && needs.test.result == 'success' }}
