@@ -336,7 +336,7 @@ async def do_execute_operator(operator, ctx, exhaust=False):
         return result
 
 
-def resolve_type(registry, operator_uri, request_params):
+async def resolve_type(registry, operator_uri, request_params):
     """Resolves the inputs property type of the operator with the given name.
 
     Args:
@@ -357,6 +357,7 @@ def resolve_type(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_type(
             ctx, request_params.get("target", "inputs")
@@ -365,7 +366,7 @@ def resolve_type(registry, operator_uri, request_params):
         return ExecutionResult(error=traceback.format_exc())
 
 
-def resolve_execution_options(registry, operator_uri, request_params):
+async def resolve_execution_options(registry, operator_uri, request_params):
     """Resolves the execution options of the operator with the given name.
 
     Args:
@@ -385,6 +386,7 @@ def resolve_execution_options(registry, operator_uri, request_params):
         operator_uri=operator_uri,
         required_secrets=operator._plugin_secrets,
     )
+    await ctx.resolve_secret_values(operator._plugin_secrets)
     try:
         return operator.resolve_execution_options(ctx)
     except Exception as e:
