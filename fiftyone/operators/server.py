@@ -188,7 +188,7 @@ class ResolveType(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = resolve_type(registry, operator_uri, data)
+        result = await resolve_type(registry, operator_uri, data)
         return result.to_json() if result else {}
 
 
@@ -214,7 +214,7 @@ class ResolveExecutionOptions(HTTPEndpoint):
             }
             raise HTTPException(status_code=404, detail=error_detail)
 
-        result = resolve_execution_options(registry, operator_uri, data)
+        result = await resolve_execution_options(registry, operator_uri, data)
         return result.to_dict() if result else {}
 
 
