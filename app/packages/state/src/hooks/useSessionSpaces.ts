@@ -49,6 +49,7 @@ function toAPIFormat(state, panelsState = {}) {
     apiState.children = toAPIFormat(state.children, panelsState);
     if (state.layout) apiState.orientation = state.layout;
     if (state.activeChild) apiState.active_child = state.activeChild;
+    if (state.sizes) apiState.sizes = state.sizes;
   }
   return apiState;
 }
@@ -65,6 +66,7 @@ function toAppFormat(state) {
       type: state.type,
       state: state.state || {}, // not used in SpaceNode atm
       pinned: state.pinned,
+      sizes: state.sizes,
     };
   return state;
 }

@@ -62,6 +62,7 @@ export default class SpaceTree {
     let ancestorNode = parentNode;
     if (parentNode?.parent && parentNode?.children.length === 1) {
       ancestorNode = parentNode?.parent;
+      ancestorNode.sizes = undefined;
       parentNode?.remove();
       this.joinNode(ancestorNode);
     } else if (ancestorNode) {
@@ -79,6 +80,11 @@ export default class SpaceTree {
       node.parent.activeChild = node.id;
       this.updateTree(node);
     }
+  }
+
+  setNodeSizes(node: SpaceNode, sizes: string[]) {
+    node.sizes = sizes;
+    this.updateTree(node);
   }
 
   // a method for moving a node in the tree
