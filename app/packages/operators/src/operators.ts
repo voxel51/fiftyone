@@ -2,6 +2,7 @@ import { getFetchFunction, isNullish, ServerError } from "@fiftyone/utilities";
 import { CallbackInterface } from "recoil";
 import * as types from "./types";
 import { stringifyError } from "./utils";
+import { ValidationContext, ValidationError } from "./validation";
 
 class InvocationRequest {
   constructor(public operatorURI: string, public params: any = {}) {}
@@ -484,6 +485,16 @@ export async function executeOperator(operatorURI, params: any = {}) {
   queue.add(request);
 }
 
+export async function validateOperatorInputs(
+  operator: Operator,
+  ctx: ExecutionContext,
+  resolvedInputs: types.Property
+): Promise<[ValidationContext, ValidationError[]]> {
+  const validationCtx = new ValidationContext(ctx, resolvedInputs, operator);
+  const validationErrors = validationCtx.toProps().errors;
+  return [validationCtx, validationErrors];
+}
+
 export async function executeOperatorWithContext(
   operatorURI,
   ctx: ExecutionContext
@@ -539,6 +550,19 @@ export async function executeOperatorWithContext(
       delegated = serverResult.delegated;
     }
   } else {
+    const resolvedInputs = await operator.resolveInput(ctx);
+    const [vctx, errors] = await validateOperatorInputs(
+      operator,
+      ctx,
+      resolvedInputs
+    );
+    if (vctx.invalid) {
+      console.error(`Invalid inputs for operator ${operatorURI}:`);
+      console.error(errors);
+      throw new Error(
+        `Failed to execute operator ${operatorURI}. See console for details.`
+      );
+    }
     try {
       result = await operator.execute(ctx);
       executor = ctx.executor;
