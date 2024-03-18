@@ -183,8 +183,8 @@ downloaded or created locally:
 
 .. code-block:: text
 
-    uri                                          enabled   builtin   unlisted   on_startup
-    -------------------------------------------  --------  --------  ---------  -----------
+    uri                                          enabled   builtin   unlisted
+    -------------------------------------------  --------  --------  ---------
     @voxel51/annotation/request_annotations      ✓
     @voxel51/annotation/load_annotations         ✓
     @voxel51/annotation/get_annotation_info      ✓
@@ -274,7 +274,7 @@ available metadata about a plugin:
     url                     https://github.com/voxel51/fiftyone-plugins/.../annotation/README.md
     license                 Apache 2.0
     description             Utilities for integrating FiftyOne with annotation tools
-    fiftyone_compatibility  *
+    fiftyone_compatibility  >=0.22
     operators               request_annotations
                             load_annotations
                             get_annotation_info
@@ -309,20 +309,25 @@ view the available metadata about an individual operator within a plugin:
 
 .. code-block:: text
 
-    key                        value
-    -------------------------  ----------------------
-    name                       import_samples
-    label                      Import samples
+    key                                  value
+    -----------------------------------  ----------------------
+    name                                 import_samples
+    label                                Import samples
     description
-    execute_as_generator       True
-    unlisted                   False
-    dynamic                    True
-    on_startup                 False
-    disable_schema_validation  False
+    execute_as_generator                 True
+    unlisted                             False
+    dynamic                              True
+    on_startup                           False
+    on_dataset_open                      False
+    disable_schema_validation            False
     delegation_target
     icon
-    dark_icon                  /assets/icon-dark.svg
-    light_icon                 /assets/icon-light.svg
+    dark_icon                            /assets/icon-dark.svg
+    light_icon                           /assets/icon-light.svg
+    allow_immediate_execution            True
+    allow_delegated_execution            False
+    default_choice_to_delegated          False
+    resolve_execution_options_on_change  True
 
 Installing plugin requirements
 ------------------------------

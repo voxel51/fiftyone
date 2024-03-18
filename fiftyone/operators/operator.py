@@ -26,6 +26,8 @@ class OperatorConfig(object):
         unlisted (False): whether the operator should be hidden from the
             Operator Browser
         on_startup (False): whether the operator should be executed on startup
+        on_dataset_open (False): whether the operator should be executed on
+            opening a dataset
         disable_schema_validation (False): whether the operator built-in schema
             validation should be disabled
         icon (None): icon to show for the operator in the Operator Browser
@@ -53,6 +55,7 @@ class OperatorConfig(object):
         execute_as_generator=False,
         unlisted=False,
         on_startup=False,
+        on_dataset_open=False,
         disable_schema_validation=False,
         delegation_target=None,
         icon=None,
@@ -71,6 +74,7 @@ class OperatorConfig(object):
         self.execute_as_generator = execute_as_generator
         self.unlisted = unlisted
         self.on_startup = on_startup
+        self.on_dataset_open = on_dataset_open
         self.disable_schema_validation = disable_schema_validation
         self.delegation_target = delegation_target
         self.icon = icon
@@ -96,6 +100,7 @@ class OperatorConfig(object):
             "unlisted": self.unlisted,
             "dynamic": self.dynamic,
             "on_startup": self.on_startup,
+            "on_dataset_open": self.on_dataset_open,
             "disable_schema_validation": self.disable_schema_validation,
             "delegation_target": self.delegation_target,
             "icon": self.icon,
