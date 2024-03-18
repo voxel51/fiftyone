@@ -140,6 +140,8 @@ export default <T extends AbstractLooker>(
         let sampleMediaFilePath = urls[mediaField];
 
         if (constructor === ThreeDLooker) {
+          config.isFo3d = (sample["filepath"] as string).endsWith(".fo3d");
+
           const orthographicProjectionField = Object.entries(sample)
             .find(
               (el) =>
