@@ -1179,7 +1179,24 @@ hovering, a slider appears to adjust the setting manually.
 Using the 3D visualizer
 _______________________
 
-The 3D visualizer allows you to interactively visualize
+.. deprecated::
+    The `point_cloud` media type has been deprecated in favor of the
+    `3d` media type. While we'll keep supporting the `point_cloud` media type
+    for backward compatibility, we recommend using the `3d` media type for new
+    datasets.
+
+The 3D visualizer allows you to interactively visualize 3D samples along with
+any associated 3D detections and 3D polylines. A fo3d sample is a conatiner 
+format that contains a 3D scene with any number of 3D objects, such as 
+point clouds, meshes, or composite primitive shapes.
+
+
+.. _app-3d-visualizer-point-cloud:
+
+Using the point cloud visualizer (legacy)
+-----------------------------------------
+
+The point cloud visualizer allows you to interactively visualize
 :ref:`point cloud samples <point-cloud-datasets>` along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
 
