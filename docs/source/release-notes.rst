@@ -31,7 +31,7 @@ Docs
   `#4130 <https://github.com/voxel51/fiftyone/pull/4130>`_
 - Added a Zero-Shot Image Classification Tutorial
   `#4133 <https://github.com/voxel51/fiftyone/pull/4133>`_
-- Added documentation for Google and AWS Cloud Storage :ref:`env vars <cloud-credentials>`
+- Improved documentation for Google and AWS Cloud Storage :ref:`env vars <cloud-credentials>`
   `#4151 <https://github.com/voxel51/fiftyone/pull/4151>`_
 - Added :ref:`YOLOv8, YOLOv9, and YOLO-World <ultralytics-integration>` to FiftyOne Model Zoo
   `#4153 <https://github.com/voxel51/fiftyone/pull/4153>`_
