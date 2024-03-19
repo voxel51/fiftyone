@@ -34,7 +34,7 @@ export const lightningNumericResults = selectorFamily({
       }
 
       throw new Error(
-        `unexpected type '${data.__typename}' for path '${path}'`
+        `unexpected ${data.__typename} for path '${path}' in lightningNumericResults`
       );
     },
 });

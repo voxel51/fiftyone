@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { registerBuiltInOperators } from "./built-in-operators";
 import { useOperatorPlacementsResolver } from "./hooks";
-import { executeStartupOperators, loadOperatorsFromServer } from "./operators";
+import { executeOperatorsForEvent, loadOperatorsFromServer } from "./operators";
 import {
   availableOperatorsRefreshCount,
   operatorsInitializedAtom,
@@ -15,8 +15,9 @@ let startupOperatorsExecuted = false;
 async function loadOperators(datasetName: string) {
   registerBuiltInOperators();
   await loadOperatorsFromServer(datasetName);
+  executeOperatorsForEvent("onDatasetOpen");
   if (!startupOperatorsExecuted) {
-    executeStartupOperators();
+    executeOperatorsForEvent("onStartup");
     startupOperatorsExecuted = true;
   }
 }

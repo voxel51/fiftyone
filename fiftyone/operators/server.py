@@ -5,6 +5,7 @@ FiftyOne operator server.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import types
 from starlette.endpoints import HTTPEndpoint
 from starlette.exceptions import HTTPException
@@ -68,11 +69,7 @@ class ListOperators(HTTPEndpoint):
         operators_as_json = []
         for operator in role_scoped_registry.list_operators():
             if role_scoped_registry.can_execute(operator.uri):
-                ctx = ExecutionContext(
-                    operator_uri=operator.uri,
-                    required_secrets=operator._plugin_secrets,
-                )
-                serialized_op = operator.to_json(ctx)
+                serialized_op = operator.to_json()
                 config = serialized_op["config"]
                 config["can_execute"] = registry.can_execute(
                     serialized_op["uri"]
