@@ -75,6 +75,10 @@ Plugins and Operators
 - Fixed issue where JS operator input was not validated when calling
   `ctx.trigger()` or `executeOperator()` directly
   `#4170 <https://github.com/voxel51/fiftyone/pull/4170>`_
+- Show execution error of an operator in a notification when calling
+  `ctx.trigger()` or `executeOperator()` directly 
+  `#4170 <https://github.com/voxel51/fiftyone/pull/4170>`_ and 
+  `#4178 <https://github.com/voxel51/fiftyone/pull/4178>`_
 
 Core
 
