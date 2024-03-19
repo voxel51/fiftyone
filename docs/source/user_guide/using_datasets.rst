@@ -4333,10 +4333,105 @@ To get started exploring video datasets, try loading the
         frame_number: fiftyone.core.fields.FrameNumberField
         detections:   fiftyone.core.fields.EmbeddedDocumentField(fiftyone.core.labels.Detections)
 
+.. _three-d-datasets:
+
+3D datasets
+____________________
+
+Any |Sample| whose `filepath` is a fo3d file with extension `.fo3d` is
+recognized as a 3D model sample, and datasets composed of 3D model
+samples have media type `3d`.
+
+A fo3d file encapsulates a Fiftyone 3D scene constructed using the 
+:class:`fiftyone.core.threed.Scene` class, which provides methods
+to add, remove, and manipulate 3D objects in the scene. A scene is 
+internally represented as a n-ary tree of 3D objects, where each 
+object is a node in the tree. A 3D object is either a
+:ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
+or a :ref:`3D shape geometry <3d-shapes>`.
+
+There are additional attributes to a scene, such as camera, lights, and
+background, and their associated parameters. By default,
+a scene is created with a perspective camera whose `up` is set to `Y` axis
+in a right handed coordinate system. An ambient light and some directional
+lights are also added to the scene if `Scene` is not explicitly initialized
+with `lights`.
+
+After a scene is constructed, it should be written to the disk using the
+:meth:`fiftyone.core.threed.Scene.write` method, which serializes the scene
+into a fo3d file.
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    scene = fo.Scene()
+    sphere1 = fo.SphereGeometry("sphere1", radius=2.0)
+    sphere1.position = [-1, 0, 0]
+    sphere1.default_material.color = "red"
+
+    sphere2 = fo.SphereGeometry("sphere2", radius=2.0)
+    sphere2.position = [-1, 0, 0]
+    sphere2.default_material.color = "blue"
+
+    mesh = fo.GLTFMesh("mesh", filepath="mesh.glb")
+    mesh.rotation = fo.Euler(90, 0, 0, degrees=True)
+
+    scene.add(sphere1, sphere2, mesh)
+
+    scene.write("/path/to/scene.fo3d")
+
+    dataset = fo.Dataset()
+    dataset.add_sample(fo.Sample(filepath="/path/to/scene.fo3d"))
+
+    print(dataset.media_type)  # 3d
+
+.. _3d-meshes:
+
+3D meshes
+--------------------
+
+A 3D mesh is a collection of vertices, edges, and faces that define the shape
+of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
+others also store the material properties and textures of the mesh. If a
+mesh file contains material properties and textures, Fiftyone will
+automatically load and display them in the App's
+:ref:`3D visualizer <app-3d-visualizer>`. You may also assign default material
+for your meshes by setting
+
+
+
+Fiftyone supports the following 3D mesh formats:
+
+- `GLTF <https://www.khronos.org/gltf/>`_,
+available as :class:`fiftyone.core.threed.GLTFMesh`
+- `OBJ <https://en.wikipedia.org/wiki/Wavefront_.obj_file>`_,
+available as :class:`fiftyone.core.threed.OBJMesh`
+- `PLY <https://en.wikipedia.org/wiki/PLY_(file_format)>`_,
+available as :class:`fiftyone.core.threed.PLYMesh`
+- `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_,
+available as :class:`fiftyone.core.threed.STLMesh`
+- `FBX 7.x+ <https://code.blender.org/2013/08/fbx-binary-file-format-specification/>`_,
+available as :class:`fiftyone.core.threed.FBXMesh`
+
+
+
+Fiftyone recommends using the `GLTF` format for 3D meshes where possible, as it
+is the most compact, efficient, and web-friendly format for storing and
+transmitting 3D models.
+
 .. _point-cloud-datasets:
 
 Point cloud datasets
 ____________________
+
+.. deprecated:: 0.24.0
+
+The `point-cloud` media type has been deprecated in favor of the
+`3d` media type. While we'll keep supporting the `point-cloud` media type
+for backward compatibility, we recommend using the `3d` media type for new
+datasets.
 
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
