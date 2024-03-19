@@ -8,6 +8,7 @@ https://www.sphinx-doc.org/en/master/usage/configuration.html
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import os
 import re
 import sys
@@ -211,7 +212,7 @@ html_context = {
     "link_voxel51_slack": "https://slack.voxel51.com",
     "link_voxel51_twitter": "https://twitter.com/voxel51",
     "link_voxel51_blog": "https://voxel51.com/blog/",
-    "banner_link": "https://docs.voxel51.com/integrations/coco.html",
+    "og_image": "https://voxel51.com/wp-content/uploads/2024/03/3.24_webpages_Home_AV.png",
 }
 
 # -- Custom app setup --------------------------------------------------------
