@@ -27,7 +27,7 @@ Docs
 
 - Added an `Albumentations <https://albumentations.ai/docs/>`_ image augmentation :ref:`integration overview <albumentations-integration>`
   `#4155 <https://github.com/voxel51/fiftyone/pull/4155>`_
-- Added `Places2 dataset <http://places2.csail.mit.edu/index.html>`_ to the zoo
+- Added :ref:`Places2 dataset <dataset-zoo-places>` to the zoo
   `#4130 <https://github.com/voxel51/fiftyone/pull/4130>`_
 - Added a Zero-Shot Image Classification Tutorial
   `#4133 <https://github.com/voxel51/fiftyone/pull/4133>`_
