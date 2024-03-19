@@ -71,6 +71,8 @@ Core
   `#4161 <https://github.com/voxel51/fiftyone/pull/4161>`_
 - Removed use of deprecated non-integer arguments to ``randrange()`` in :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
   `#4052 <https://github.com/voxel51/fiftyone/pull/4052>`_
+- Added ability to change ``map_type`` from the default ``roadmap`` (`carto-positron <https://plotly.com/python/mapbox-layers/>`_) to ``satellite`` (`public USGS map imagery <https://basemap.nationalmap.gov/>`_) in :meth:`location_scatterplot() <fiftyone.core.plots.plotly.location_scatterplot>`
+  `#4075 <https://github.com/voxel51/fiftyone/pull/4075>`_
 
 FiftyOne Teams 1.5.7
 --------------------
