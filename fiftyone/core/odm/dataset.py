@@ -604,7 +604,6 @@ class DatasetDocument(Document):
     meta = {
         "collection": "datasets",
         "strict": False,
-        "auto_create_index": False,
     }
 
     name = StringField(unique=True, required=True)
