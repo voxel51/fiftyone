@@ -97,8 +97,8 @@ def get_view(
         extended_stages (None): extended view stages
         sample_filter (None): an optional
             :class:`fiftyone.server.filters.SampleFilter`
-        reload (None): whether to reload the dataset
-        awaitable (False): whether to return an awaitble coroutine
+        reload (True): whether to reload the dataset
+        awaitable (False): whether to return an awaitable coroutine
 
     Returns:
         a :class:`fiftyone.core.view.DatasetView`
