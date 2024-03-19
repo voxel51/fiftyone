@@ -73,6 +73,8 @@ Core
   `#4052 <https://github.com/voxel51/fiftyone/pull/4052>`_
 - Added ability to change ``map_type`` from the default ``roadmap`` (`carto-positron <https://plotly.com/python/mapbox-layers/>`_) to ``satellite`` (`public USGS map imagery <https://basemap.nationalmap.gov/>`_) in :meth:`location_scatterplot() <fiftyone.core.plots.plotly.location_scatterplot>`
   `#4075 <https://github.com/voxel51/fiftyone/pull/4075>`_
+- Cloning a dataset or view includes custom MongoDB indexes now
+  `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
 FiftyOne Teams 1.5.7
 --------------------
