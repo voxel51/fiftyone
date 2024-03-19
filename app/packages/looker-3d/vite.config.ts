@@ -1,37 +1,38 @@
-import reactRefresh from "@vitejs/plugin-react-refresh";
-import nodePolyfills from "rollup-plugin-polyfill-node";
 import { defineConfig } from "vite";
-import relay from "vite-plugin-relay";
+import react from "@vitejs/plugin-react";
+import * as path from "path";
+import { viteExternalsPlugin } from "vite-plugin-externals";
 
-export default defineConfig(({ mode }) => {
-  return {
-    base: mode === "desktop" ? "" : "/",
-    plugins: [
-      reactRefresh({
-        parserPlugins: ["classProperties", "classPrivateProperties"],
-      }),
-      relay,
-      nodePolyfills(),
-    ],
-    server: {
-      proxy: {
-        "/plugins": {
-          target: `http://localhost:${
-            process.env.FIFTYONE_DEFAULT_APP_PORT ?? "5151"
-          }`,
-          changeOrigin: false,
-          secure: false,
-          ws: false,
-        },
-        "/aggregate": {
-          target: `http://localhost:${
-            process.env.FIFTYONE_DEFAULT_APP_PORT ?? "5151"
-          }`,
-          changeOrigin: false,
-          secure: false,
-          ws: false,
-        },
-      },
+const isPluginBuild = process.env.STANDALONE !== "true";
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  mode: "development",
+  plugins: [
+    react(),
+    isPluginBuild
+      ? viteExternalsPlugin({
+          react: "React",
+          "react-dom": "ReactDOM",
+          recoil: "recoil",
+          "@fiftyone/state": "__fos__",
+        })
+      : undefined,
+  ],
+  build: {
+    lib: {
+      entry: path.resolve(__dirname, "src/PointCloudPlugin.tsx"),
+      name: "PointCloudPlugin",
+      fileName: (format) => `index.${format}.js`,
+      formats: ["umd"],
     },
-  };
+    minify: false,
+  },
+  define: {
+    "process.env.NODE_ENV": '"development"',
+  },
+  optimizeDeps: {
+    exclude: ["react", "react-dom"],
+  },
+  publicDir: isPluginBuild ? null : "example_data",
 });
