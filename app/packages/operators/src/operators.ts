@@ -570,6 +570,7 @@ export async function executeOperatorWithContext(
       error = e;
       console.error(`Error executing operator ${operatorURI}:`);
       console.error(error);
+      throw error;
     }
   }
 
