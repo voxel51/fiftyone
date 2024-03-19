@@ -37,6 +37,8 @@ Docs
   `#4153 <https://github.com/voxel51/fiftyone/pull/4153>`_
 - Added `og:image` meta tag to doc pages for better page sharing on socials
   `#4173 <https://github.com/voxel51/fiftyone/pull/4173>`_
+- Added docs for why wildcard indexes should not be used by default
+  `#4138 <https://github.com/voxel51/fiftyone/pull/4138>`_
 
 Plugins and Operators
 
@@ -57,8 +59,6 @@ Plugins and Operators
 
 Core
 
-- Add docs for why wildcard indexes should not be used by default
-  `#4138 <https://github.com/voxel51/fiftyone/pull/4138>`_
 - Improved `super-gradients <https://github.com/Deci-AI/super-gradients>`_ prediction performance with ``model.predict()``
   `#4149 <https://github.com/voxel51/fiftyone/pull/4149>`_
 - Passing a :ref:`grouped collection <groups>` to a method that was not specifically designed to handle them now raises better validation errors
