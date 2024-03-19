@@ -128,7 +128,7 @@ class Mutation(SetColorScheme):
         sidebar_groups: t.List[SidebarGroupInput],
     ) -> bool:
         state = get_state()
-        view = get_view(dataset, stages=stages)
+        view = await get_view(dataset, stages=stages, awaitable=True)
 
         current = (
             {
@@ -214,7 +214,7 @@ class Mutation(SetColorScheme):
 
         # Otherwise, build the view using the params
         if result_view is None:
-            result_view = get_view(
+            result_view = await get_view(
                 dataset_name,
                 stages=view if view else None,
                 filters=form.filters if form else None,
@@ -228,6 +228,7 @@ class Mutation(SetColorScheme):
                     if form.slice
                     else None
                 ),
+                awaitable=True,
             )
 
             # special case for group datasets where conversion stage is added
@@ -287,7 +288,7 @@ class Mutation(SetColorScheme):
                 "{}".format(view_name)
             )
 
-        dataset_view = get_view(
+        dataset_view = await get_view(
             dataset_name,
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
@@ -301,6 +302,7 @@ class Mutation(SetColorScheme):
                 if form.slice
                 else None
             ),
+            awaitable=True,
         )
 
         result_view = _build_result_view(dataset_view, form)
