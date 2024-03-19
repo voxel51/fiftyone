@@ -5,6 +5,7 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 from bson import DBRef, ObjectId
@@ -600,7 +601,11 @@ class DatasetDocument(Document):
     """Backing document for datasets."""
 
     # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "datasets", "strict": False}
+    meta = {
+        "collection": "datasets",
+        "strict": False,
+        "auto_create_index": False,
+    }
 
     name = StringField(unique=True, required=True)
     slug = StringField()
