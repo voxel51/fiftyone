@@ -35,6 +35,8 @@ Docs
   `#4151 <https://github.com/voxel51/fiftyone/pull/4151>`_
 - Added :ref:`YOLOv8, YOLOv9, and YOLO-World <ultralytics-integration>` to FiftyOne Model Zoo
   `#4153 <https://github.com/voxel51/fiftyone/pull/4153>`_
+- Added `og:image` meta tag to doc pages for better page sharing on socials
+  `#4173 <https://github.com/voxel51/fiftyone/pull/4173>`_
 
 Plugins and Operators
 
