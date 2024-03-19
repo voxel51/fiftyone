@@ -67,8 +67,8 @@ class Scene(Object3D):
             :class:`fiftyone.core.threed.PerspectiveCamera` is created with
             reasonable defaults
         lights (None): a list of lights in the scene. If `None`, a default set
-            of lights is used, which includes an ambient light and a
-            directional light
+            of lights is used, which includes an ambient light and six
+            directional lights placed at different angles around the scene
         background (None): background for the scene. May be a color, image, or
             a skybox.
 
