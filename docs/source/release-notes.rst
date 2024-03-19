@@ -69,6 +69,8 @@ Core
   `#4160 <https://github.com/voxel51/fiftyone/pull/4160>`_
 - Improved error message when the given dataset name is unavailable
   `#4161 <https://github.com/voxel51/fiftyone/pull/4161>`_
+- Removed use of deprecated non-integer arguments to ``randrange()`` in :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
+  `#4052 <https://github.com/voxel51/fiftyone/pull/4052>`_
 
 FiftyOne Teams 1.5.7
 --------------------
