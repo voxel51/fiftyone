@@ -9,73 +9,100 @@ FiftyOne Teams 1.5.8
 
 Includes all updates from :ref:`FiftyOne 0.23.7 <release-notes-v0.23.7>`.
 
+.. _release-notes-v0.23.7:
+
 FiftyOne 0.23.7
 ---------------
 *Released March 21, 2024*
 
 App
 
-- Updated `Have a Team?` link with
-  `Book a demo <https://voxel51.com/book-a-demo/?utm_source=FiftyOneApp>`_
-  page
-- Fixed indexed BooleanFields in Lightning Mode
+- Updated `Have a Team?` link in the App to point to the
+  `Book a demo <https://voxel51.com/book-a-demo/?utm_source=FiftyOneApp>`_ page
+  `#4127 <https://github.com/voxel51/fiftyone/pull/4127>`_
+- Fixed indexed boolean fields in :ref:`lightning mode <app-lightning-mode>`
   `#4139 <https://github.com/voxel51/fiftyone/pull/4139>`_
 - Fixed app crash when many None-valued fields exist in the sample modal
   `#4154 <https://github.com/voxel51/fiftyone/pull/4154>`_
 
 Docs
 
-- Added an `Albumentations <https://albumentations.ai/docs/>`_ image augmentation :ref:`integration overview <albumentations-integration>`
+- Added an :ref:`Albumentations integration <albumentations-integration>` for
+  performing data augmentation on FiftyOne datasets
   `#4155 <https://github.com/voxel51/fiftyone/pull/4155>`_
 - Added :ref:`Places2 dataset <dataset-zoo-places>` to the zoo
   `#4130 <https://github.com/voxel51/fiftyone/pull/4130>`_
-- Added a Zero-Shot Image Classification Tutorial
+- Added a
+  :doc:`zero-shot image classification tutorial </tutorials/zero_shot_classification>`
   `#4133 <https://github.com/voxel51/fiftyone/pull/4133>`_
-- Improved documentation for Google and AWS Cloud Storage :ref:`env vars <cloud-credentials>`
+- :ref:`Improved documentation <teams-cloud-credentials>` for configuring AWS
+  and GCP cloud credentials
   `#4151 <https://github.com/voxel51/fiftyone/pull/4151>`_
-- Added :ref:`YOLOv8, YOLOv9, and YOLO-World <ultralytics-integration>` to FiftyOne Model Zoo
+- Added :ref:`YOLOv8, YOLOv9, and YOLO-World <ultralytics-integration>` to the
+  FiftyOne Model Zoo
   `#4153 <https://github.com/voxel51/fiftyone/pull/4153>`_
-- Added `og:image` meta tag to doc pages for better page sharing on socials
+- Added `og:image` meta tag to all documentation pages for better page sharing
+  on socials
   `#4173 <https://github.com/voxel51/fiftyone/pull/4173>`_
-- Added docs for why wildcard indexes should not be used by default
+- Updated the :ref:`lightning mode docs <app-lightning-mode>` to clarify that
+  wildcard indexes should not generally be used by default
   `#4138 <https://github.com/voxel51/fiftyone/pull/4138>`_
 
 Plugins and Operators
 
-- Added support for executing operators programmatically in notebooks
+- Added support for
+  :ref:`executing operators programmatically <executing-operators-sdk>` in
+  notebook contexts
   `#4134 <https://github.com/voxel51/fiftyone/pull/4134>`_
 - Improved execution of operators during loading of the App
   `#4136 <https://github.com/voxel51/fiftyone/pull/4136>`_
-- Added ability to auto-execute operator on opening a dataset
+- Added a new :ref:`on_dataset_open <operator-config>` hook to auto-execute
+  operators when datasets are opened in the App
   `#4137 <https://github.com/voxel51/fiftyone/pull/4137>`_
-- Improved performance of operator type resolution by only calling :meth:`resolve_input() <fiftyone.core.operator.Operator.resolve_input>` on demand
+- Improved performance of operator type resolution by only calling
+  :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
+  on demand
   `#4152 <https://github.com/voxel51/fiftyone/pull/4152>`_
-- Added support for setting saved view in set-view operator
+- Added support for loading saved views by name when using the
+  :meth:`set_view() <fiftyone.operators.operations.Operations.set_view>`
+  operator
   `#4159 <https://github.com/voxel51/fiftyone/pull/4159>`_
-- Added ability to trigger all built-in operators via :class:`ctx.ops <fiftyone.operators.operations.Operations>`
+- Added ability to :ref:`trigger builtin operators <operator-execution>` during
+  operator execution via
+  :meth:`ctx.ops <fiftyone.operators.executor.ExecutionContext.ops>`
   `#4164 <https://github.com/voxel51/fiftyone/pull/4164>`_
-- Fixed issue where JS operator input was not validated when calling `ctx.trigger()` or `executeOperator()` directly
+- Fixed issue where JS operator input was not validated when calling
+  `ctx.trigger()` or `executeOperator()` directly
   `#4170 <https://github.com/voxel51/fiftyone/pull/4170>`_
 
 Core
 
-- Improved `super-gradients <https://github.com/Deci-AI/super-gradients>`_ prediction performance with ``model.predict()``
+- Improved :ref:`SuperGradients <super-gradients-integration>` inference
+  performance
   `#4149 <https://github.com/voxel51/fiftyone/pull/4149>`_
-- Passing a :ref:`grouped collection <groups>` to a method that was not specifically designed to handle them now raises better validation errors
+- Passing a :ref:`grouped collection <groups>` to a method that was not
+  specifically designed to handle them now raises better validation errors
   `#4150 <https://github.com/voxel51/fiftyone/pull/4150>`_
-- :class:`fiftyone.utils.data.MediaExporter` no longer re-exports media unnecessarily
+- :class:`MediaExporter <fiftyone.utils.data.MediaExporter>` no longer
+  re-exports media unnecessarily
   `#4143 <https://github.com/voxel51/fiftyone/pull/4143>`_
-- Added explicit support for python 3.11 and 3.12
+- Added explicit support for Python 3.11 and 3.12
   `#4157 <https://github.com/voxel51/fiftyone/pull/4157>`_
-- Added Non-Maximum Suppression utility :meth:`perform_nms() <fiftyone.utils.labels.perform_nms>` to the SDK
+- Added a :func:`perform_nms() <fiftyone.utils.labels.perform_nms>` utility for
+  non-maximum suppression on object detections
   `#4160 <https://github.com/voxel51/fiftyone/pull/4160>`_
 - Improved error message when the given dataset name is unavailable
   `#4161 <https://github.com/voxel51/fiftyone/pull/4161>`_
-- Removed use of deprecated non-integer arguments to ``randrange()`` in :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
+- Removed use of deprecated non-integer arguments in
+  :meth:`take() <fiftyone.core.collections.SampleCollection.take>` and
+  :meth:`shuffle() <fiftyone.core.collections.SampleCollection.shuffle>`
   `#4052 <https://github.com/voxel51/fiftyone/pull/4052>`_
-- Added ability to change ``map_type`` from the default ``roadmap`` (`carto-positron <https://plotly.com/python/mapbox-layers/>`_) to ``satellite`` (`public USGS map imagery <https://basemap.nationalmap.gov/>`_) in :meth:`location_scatterplot() <fiftyone.core.plots.plotly.location_scatterplot>`
+- Added ability to change ``map_type`` from the default ``roadmap``
+  (`carto-positron <https://plotly.com/python/mapbox-layers/>`_) to
+  ``satellite`` (`public USGS map imagery <https://basemap.nationalmap.gov/>`_)
+  in :func:`location_scatterplot() <fiftyone.core.plots.plotly.location_scatterplot>`
   `#4075 <https://github.com/voxel51/fiftyone/pull/4075>`_
-- Cloning a dataset or view includes custom MongoDB indexes now
+- Cloning a dataset or view now includes any custom MongoDB indexes
   `#4115 <https://github.com/voxel51/fiftyone/pull/4115>`_
 
 FiftyOne Teams 1.5.7
