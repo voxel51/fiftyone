@@ -63,10 +63,11 @@ Plugins and Operators
   :meth:`resolve_input() <fiftyone.operators.operator.Operator.resolve_input>`
   on demand
   `#4152 <https://github.com/voxel51/fiftyone/pull/4152>`_
-- Added support for loading saved views by name when using the
+- Added support for loading saved views by name or slug when using the
   :meth:`set_view() <fiftyone.operators.operations.Operations.set_view>`
   operator
-  `#4159 <https://github.com/voxel51/fiftyone/pull/4159>`_
+  `#4159 <https://github.com/voxel51/fiftyone/pull/4159>`_ and 
+  `#4178 <https://github.com/voxel51/fiftyone/pull/4178>`_
 - Added ability to :ref:`trigger builtin operators <operator-execution>` during
   operator execution via
   :meth:`ctx.ops <fiftyone.operators.executor.ExecutionContext.ops>`
