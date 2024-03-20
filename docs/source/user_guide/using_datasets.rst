@@ -4509,6 +4509,7 @@ properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
     Refer to the
     :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
     documentation for available parameters to customize the projections.
+
 .. _point-cloud-datasets:
 
 Point cloud datasets
