@@ -61,6 +61,7 @@ class PointcloudMaterial(Material3D):
         point_size (1.0): the size of the points in the point cloud
         attenuate_by_distance (False): whether to attenuate the point size
             based on distance from the camera
+        kwargs: additional keyword arguments for :class:`Material3D`
     """
 
     shading_mode: Literal["height", "intensity", "rgb", "custom"] = "height"
@@ -82,7 +83,12 @@ class PointcloudMaterial(Material3D):
 
 @dataclass
 class MeshMaterial(Material3D):
-    """Represents a mesh material."""
+    """Represents a mesh material.
+
+    Args:
+        wireframe (False): whether to render the mesh as a wireframe
+        kwargs: additional keyword arguments for :class:`Material3D`
+    """
 
     wireframe: bool = False
 
@@ -99,6 +105,7 @@ class MeshBasicMaterial(MeshMaterial):
 
     Args:
         color ("#ffffff"): the color of the material
+        kwargs: additional keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -121,6 +128,7 @@ class MeshStandardMaterial(MeshMaterial):
         emissive_intensity (0.0): the intensity of the emissive color
         metalness (0.0): the metalness of the material
         roughness (1.0): the roughness of the material
+        kwargs: additional keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -158,6 +166,7 @@ class MeshLambertMaterial(MeshMaterial):
         emissive_intensity (0.0): the intensity of the emissive color
         reflectivity (1.0): the reflectivity of the material
         refraction_ratio (0.98): the refraction ratio (IOR) of the material
+        kwargs: additional keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -190,6 +199,7 @@ class MeshPhongMaterial(MeshLambertMaterial):
     Args:
         shininess (30): the shininess of the material
         specular_color ("#111111"): the specular color of the material
+        kwargs: additional keyword arguments for :class:`MeshLambertMaterial`
     """
 
     shininess: float = 30.0
@@ -212,6 +222,9 @@ class MeshDepthMaterial(MeshMaterial):
     This material is used for drawing geometry by depth,
     where depth is based off of the camera near and far plane.
     White is nearest, black is farthest.
+
+    Args:
+        kwargs: additional keyword arguments for :class:`MeshMaterial`
     """
 
     pass
