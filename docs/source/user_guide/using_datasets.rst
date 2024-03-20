@@ -4338,8 +4338,8 @@ To get started exploring video datasets, try loading the
 3D datasets
 ____________________
 
-Any |Sample| whose `filepath` is a fo3d file with extension `.fo3d` is
-recognized as a 3D model sample, and datasets composed of 3D model
+Any |Sample| whose `filepath` is a file with extension `.fo3d` is
+recognized as a 3D sample, and datasets composed of 3D
 samples have media type `3d`.
 
 A fo3d file encapsulates a Fiftyone 3D scene constructed using the 
@@ -4350,16 +4350,16 @@ object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
 or a :ref:`3D shape geometry <3d-shapes>`.
 
-There are additional attributes to a scene, such as
-:class:`fiftyone.core.threed.camera`,
-:class:`fiftyone.core.threed.lights`, and
-:class:`fiftyone.core.threed.SceneBackground`. By default, a scene is created
-with neutral lighting, and a perspective camera whose `up` is set to `Y`
-axis in a right-handed coordinate system.
+A scene may be explicitly initialized with additional attributes, such as
+:class:`camera <fiftyone.core.threed.camera>`,
+:class:`lights <fiftyone.core.threed.lights>`, and
+:class:`background <fiftyone.core.threed.SceneBackground>`. By default, a
+scene is created with neutral lighting, and a perspective camera whose
+`up` is set to `Y` axis in a right-handed coordinate system.
 
 After a scene is constructed, it should be written to the disk using the
-:meth:`fiftyone.core.threed.Scene.write` method, which serializes the scene
-into a fo3d file.
+:meth:`scene.write() fiftyone.core.threed.Scene.write` method, which
+serializes the scene into a fo3d file.
 
 .. code-block:: python
     :linenos:
@@ -4397,21 +4397,20 @@ of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
 others also store the material properties and textures of the mesh. If a
 mesh file contains material properties and textures, Fiftyone will
 automatically load and display them. You may also
-assign default material for your meshes by setting the `default_material`
+assign default material for your meshes by setting the
+:attr:`fiftyone.core.threed.Mesh.default_material`
 attribute of the mesh. In the absence of any material information,
 meshes are assigned a :class:`fiftyone.core.threed.MeshStandardMaterial`
 with reasonable defaults that can also be dynamically configured from the app.
 Please refer to :class:`fiftyone.core.threed.material_3d` for more details.
 
-Fiftyone supports the following 3D mesh formats:
+Fiftyone supports :class:`GLTF <fiftyone.core.threed.GLTFMesh>`,
+:class:`OBJ <fiftyone.core.threed.OBJMesh>`,
+:class:`PLY <fiftyone.core.threed.PLYMesh>`,
+:class:`STL <fiftyone.core.threed.STLMesh>`, and
+:class:`FBX 7.x+ <fiftyone.core.threed.FBXMesh>` mesh formats.
 
-- `GLTF <https://www.khronos.org/gltf/>`_: :class:`fiftyone.core.threed.GLTFMesh`
-- `OBJ <https://en.wikipedia.org/wiki/Wavefront_.obj_file>`_: :class:`fiftyone.core.threed.OBJMesh`
-- `PLY <https://en.wikipedia.org/wiki/PLY_(file_format)>`_: :class:`fiftyone.core.threed.PLYMesh`
-- `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_: :class:`fiftyone.core.threed.STLMesh`
-- `FBX 7.x+ <https://code.blender.org/2013/08/fbx-binary-file-format-specification/>`_: :class:`fiftyone.core.threed.FBXMesh`
-
-Fiftyone recommends using the `GLTF` format for 3D meshes where possible, as it
+We recommend you use the `GLTF` format for 3D meshes where possible, as it
 is the most compact, efficient, and web-friendly format for storing and
 transmitting 3D models.
 

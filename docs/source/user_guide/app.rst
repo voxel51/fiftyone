@@ -1179,15 +1179,22 @@ hovering, a slider appears to adjust the setting manually.
 Using the 3D visualizer
 _______________________
 
-The 3D visualizer allows you to interactively visualize 3D samples along with
-any associated 3D detections and 3D polylines.
-
-The point cloud visualizer allows you to interactively visualize
-:ref:`point cloud samples <point-cloud-datasets>` or
-:ref:`fo3d samples <three-d-datasets>` along with any associated
+The 3D visualizer allows you to interactively visualize
+:ref:`fo3d samples <three-d-datasets>` or
+:ref:`point cloud samples <point-cloud-datasets>`
+along with any associated
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`:
 
-.. image:: /images/app/app-3d-visualizer.gif
+.. note::
+
+    Deprecation notice:
+
+    The `point-cloud` media type has been deprecated in favor of the
+    `3d` media type. While we'll keep supporting the `point-cloud` media type
+    for backward compatibility, we recommend using the `3d` media type for new
+    datasets.
+
+.. image:: /images/app/app-new-3d-visualizer.gif
    :alt: 3d-visualizer
    :align: center
 
@@ -1206,6 +1213,10 @@ supports:
     +--------------+----------------+-------------------------------+
     | Shift + drag | Translate      | Translate the camera          |
     +--------------+----------------+-------------------------------+
+    | B            | Background     | Toggle background on/off      |
+    +--------------+----------------+-------------------------------+
+    | G            | Grid           | Toggle the grid on/off        |
+    +--------------+----------------+-------------------------------+
     | T            | Top-down       | Reset camera to top-down view |
     +--------------+----------------+-------------------------------+
     | E            | Ego-view       | Reset the camera to ego view  |
@@ -1213,17 +1224,19 @@ supports:
     | ESC          | Escape context | Escape the current context    |
     +--------------+----------------+-------------------------------+
 
+A variety of context-specific options are available in a draggable
+panel in the 3D visualizer that let you configure lights, as well as
+material and visibility of the 3D objects in the scene.
+
 In addition, the HUD at the bottom of the 3D visualizer provides the following
 controls:
 
--   Use the points icon to change the size of the points in the cloud
--   Use the palette icon to choose whether the point cloud is colored by
-    height, intensity, RGB, or no coloring
+-   Click the grid icon to toggle the grid on/off
 -   Click the `T` to reset the camera to top-down view
 -   Click the `E` to reset the camera to ego-view
 
-When coloring by intensity, the color of each point is computed by mapping the
-`r` channel of the `rgb` field of the
+For point clouds, when coloring by intensity, the color of each point is
+computed by mapping the `r` channel of the `rgb` field of the
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
 onto a fixed colormap, which is scaled so that the full colormap is matched to
 the observed dynamic range of `r` values for each sample.
@@ -1236,9 +1249,9 @@ the full colormap using the same strategy.
 Viewing 3D samples in the grid
 ------------------------------
 
-When you load point cloud collections in the App, any
+When you load 3D collections in the App, any
 :ref:`3D detections <3d-detections>` and :ref:`3D polylines <3d-polylines>`
-fields will be visualized in the App using an orthographic projection
+fields will be visualized in the grid using an orthographic projection
 (onto the xy plane by default).
 
 In addition, if you have populated
