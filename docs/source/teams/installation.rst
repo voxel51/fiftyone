@@ -79,6 +79,7 @@ Teams App or their Python workflows.
 
 Installation with Poetry
 ________________________
+
 If you  are using `poetry <https://python-poetry.org/>`_ to install your
 dependencies rather than ``pip``, you will need to follow instructions in
 `the docs for installing from a private repository. <https://python-poetry.org/docs/repositories/#installing-from-private-package-sources>`_
@@ -105,6 +106,7 @@ Prior to v1.5, you should use the deprecated
 
 Configure credentials
 ~~~~~~~~~~~~~~~~~~~~~
+
 .. code-block:: shell
 
     poetry config http-basic.fiftyone-teams ${TOKEN} ""
@@ -121,6 +123,7 @@ If you have trouble configuring the credentials, see
 
 Add fiftyone dependency
 ~~~~~~~~~~~~~~~~~~~~~~~
+
 Replace ``X.Y.Z`` with the proper version
 
 .. code-block::
@@ -220,6 +223,32 @@ You can do this in any of the following ways:
 `boto3 <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html#configuring-credentials>`_
 python library.
 
+For convenience, below are the environment variables that can be set to
+use some of the AWS-supported credentialing methods. This list is subject to
+change; please see the `boto3` link above for the up-to-date reference.
+
+.. code-block:: bash
+
+    # Access Key
+    export AWS_ACCESS_KEY_ID=...
+    export AWS_SECRET_ACCESS_KEY=...
+    export AWS_SESSION_TOKEN=... # if applicable
+    export AWS_DEFAULT_REGION=...
+
+    # Web Identity Provider
+    export AWS_ROLE_ARN=...
+    export AWS_WEB_IDENTITY_TOKEN_FILE=...
+    export AWS_ROLE_SESSION_NAME... #if applicable
+    export AWS_DEFAULT_REGION=...
+
+    # Shared Credentials File
+    export AWS_SHARED_CREDENTIALS_FILE="/path/to/aws-credentials.ini"
+    export AWS_PROFILE=default  # optional
+
+    # AWS Config File
+    export AWS_CONFIG_FILE="/path/to/aws-config.ini"
+    export AWS_PROFILE=default  # optional
+
 2. Permanently register AWS credentials on a particular machine by adding the
 following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
@@ -229,6 +258,15 @@ following keys to your :ref:`media cache config <teams-media-cache-config>`:
         "aws_config_file": "/path/to/aws-config.ini",
         "aws_profile": "default"  # optional
     }
+
+3. Provide AWS credentials on a per-session basis by setting the following
+environment variables to point to your AWS credentials on disk:
+
+    .. code-block:: shell
+
+        export AWS_CONFIG_FILE="/path/to/aws-config.ini"
+        export AWS_PROFILE=default  # optional
+
 
 In the above, the `.ini` file should use the syntax of the
 `boto3 configuration file <https://boto3.amazonaws.com/v1/documentation/api/latest/guide/configuration.html#using-a-configuration-file>`_.
@@ -254,7 +292,7 @@ here is an example configuration:
             "responseHeader": ["*"],
             "maxAgeSeconds": 86400
         }
-    ] 
+    ]
 
 .. _teams-google-cloud:
 
@@ -266,14 +304,34 @@ you simply need to provide
 `service account credentials <https://cloud.google.com/iam/docs/service-accounts>`_
 to your Teams client with read access to the relevant objects and buckets.
 
-You can register GCP credentials on a particular machine by adding the
-following key to your :ref:`media cache config <teams-media-cache-config>`:
+You can do this in any of the following ways:
+
+1. Permanently register GCS credentials on a particular machine by adding the
+following keys to your :ref:`media cache config <teams-media-cache-config>`:
 
 .. code-block:: json
 
     {
         "google_application_credentials": "/path/to/gcp-service-account.json"
     }
+
+2. Provide GCS credentials on a per-session basis by setting the following
+environment variables to point to your GCS credentials on disk:
+
+.. code-block:: shell
+
+    export GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp-service-account.json"
+
+3. Configure/provide
+`application default credentials <https://cloud.google.com/docs/authentication/application-default-credentials>`_
+in another manner supported by Google Cloud, such as:
+
+- `Using the gcloud CLI <https://cloud.google.com/docs/authentication/application-default-credentials#personal>`_
+- `Attaching a service account to your Google Cloud resource <https://cloud.google.com/docs/authentication/application-default-credentials#attached-sa>`_
+
+In the above, the credentials `.json` file can be a service account key, a
+configuration file for workforce identity federation, or a configuration file
+for workload identity federation.
 
 If you need to `configure CORS on your GCP buckets <https://cloud.google.com/storage/docs/using-cors>`_,
 here is an example configuration:
@@ -531,6 +589,11 @@ to a specific list of bucket(s):
     Bucket-specific credentials are useful in situations where you cannot or
     do not wish to provide a single set of credentials to cover all buckets
     that your team plans to use within a given cloud storage provider.
+
+    When providing bucket-specific credentials, you may either provide bucket
+    names like ``my-bucket``, or you can provide fully-qualified buckets like
+    ``s3://my-bucket`` and
+    ``https://voxel51.blob.core.windows.net/my-container``.
 
 Alternatively, credentials can be updated programmatically with the
 :meth:`add_cloud_credentials() <fiftyone.management.cloud_credentials.add_cloud_credentials>`

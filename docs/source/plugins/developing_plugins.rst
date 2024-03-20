@@ -110,7 +110,7 @@ in the FiftyOne App.
 
 For example, FiftyOne comes with a wide variety of
 :mod:`builtin types <fiftyone.operators.types>` that you can leverage to build
-complex input and and output forms for your operators.
+complex input and output forms for your operators.
 
 .. image:: /images/plugins/file-explorer.gif
     :align: center
@@ -2235,7 +2235,7 @@ to create a new custom run on a dataset:
 .. code:: python
     :linenos:
 
-    config = dataset.init_run(run_key)
+    config = dataset.init_run()
     config.foo = "bar"  # add as many key-value pairs as you need
 
     dataset.register_run(run_key, config)

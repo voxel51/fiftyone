@@ -105,7 +105,7 @@ entirely. To upgrade, run the following command:
 
 .. code-block:: shell
 
-   pip install --upgrade pip setuptools wheel
+   pip install --upgrade pip setuptools wheel build
 
 To leave an activated virtual environment and return to using your system-wide
 Python installation, run `deactivate`. For more documentation on `venv`,

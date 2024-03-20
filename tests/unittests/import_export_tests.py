@@ -18,7 +18,7 @@ You can run specific test(s) as follows::
         ClassName.method_name \
         --basedir $BASEDIR
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """

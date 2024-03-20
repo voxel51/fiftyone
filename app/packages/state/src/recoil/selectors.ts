@@ -87,14 +87,6 @@ export const parentMediaTypeSelector = selector({
   },
 });
 
-export const savedViewsSelector = selector<State.SavedView[]>({
-  key: "datasetViews",
-  get: ({ get }) => get(datasetAtom)?.savedViews || [],
-  cachePolicy_UNSTABLE: {
-    eviction: "most-recent",
-  },
-});
-
 export const isVideoDataset = selector({
   key: "isVideoDataset",
   get: ({ get }) => get(atoms.mediaType) === "video",

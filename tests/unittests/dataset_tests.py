@@ -1,7 +1,7 @@
 """
 FiftyOne dataset-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -3292,6 +3292,171 @@ class DatasetIdTests(unittest.TestCase):
         dataset_id5 = str(dataset5._doc.id)
         self.assertListEqual(
             dataset5.distinct("frames.dataset_id"), [dataset_id5]
+        )
+
+    @drop_datasets
+    def test_clone_image(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "image"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="image.jpg", foo="bar")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_video(self):
+        dataset = fo.Dataset()
+        dataset.media_type = "video"
+        default_indexes = dataset.list_indexes()
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(filepath="video.mp4", foo="bar")
+        sample.frames[1] = fo.Frame(spam="eggs")
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+        dataset.create_index("frames.spam")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertIn("frames.spam", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertIn("frames.spam", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertNotIn("frames.spam", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
+        )
+
+    @drop_datasets
+    def test_clone_group(self):
+        dataset = fo.Dataset()
+        dataset.add_group_field("group")
+
+        self.assertEqual(dataset.media_type, "group")
+
+        default_indexes = dataset.list_indexes()
+
+        self.assertIn("group.id", default_indexes)
+        self.assertIn("group.name", default_indexes)
+
+        # Empty dataset
+
+        dataset2 = dataset.clone()
+
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset2.list_indexes()),
+        )
+
+        sample = fo.Sample(
+            filepath="image.jpg",
+            group=fo.Group().element("slice"),
+            foo="bar",
+        )
+
+        dataset.add_sample(sample)
+        dataset.create_index("foo")
+
+        # Custom indexes
+
+        dataset3 = dataset.clone()
+
+        self.assertIn("foo", dataset3.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset3.list_indexes()),
+        )
+
+        # Simple view
+
+        dataset4 = dataset.limit(1).clone()
+
+        self.assertIn("foo", dataset4.list_indexes())
+        self.assertSetEqual(
+            set(dataset.list_indexes()),
+            set(dataset4.list_indexes()),
+        )
+
+        # Exclusion view
+
+        dataset5 = dataset.select_fields().clone()
+
+        self.assertNotIn("foo", dataset5.list_indexes())
+        self.assertSetEqual(
+            set(default_indexes),
+            set(dataset5.list_indexes()),
         )
 
 
