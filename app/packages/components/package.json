@@ -40,7 +40,6 @@
         "vite": "^3.2.8"
     },
     "peerDependencies": {
-        "@react-spring/web": "*",
         "react": "*",
         "react-relay": "*",
         "recoil": "*",
@@ -52,6 +51,7 @@
         "@fiftyone/state": "*",
         "@mui/icons-material": "^5.10.2",
         "@mui/material": "^5.9.0",
+        "@react-spring/web": "^9.7.3",
         "@storybook/addon-docs": "^7.5.0",
         "classnames": "^2.3.1",
         "framer-motion": "^6.2.7",
