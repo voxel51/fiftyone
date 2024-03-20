@@ -90,7 +90,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
   }
 
   drawExtension() {
-    this.ctx.globalAlpha = 0.5;
+    this.ctx.globalAlpha = 0.8;
     this.ctx.font = "34px serif";
     this.ctx.fillStyle = DEFAULT_FILL_STYLE;
     this.ctx.textAlign = "center";
