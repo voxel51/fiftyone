@@ -6,6 +6,7 @@ import { MediaTypePcdComponent } from "./MediaTypePcd";
 import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
+import { useHotkey } from "./hooks";
 import { currentActionAtom } from "./state";
 
 /**
@@ -34,22 +35,68 @@ export const Looker3d = () => {
     [mediaType, hasFo3dSlice]
   );
 
-  // const clear = useCallback(() => {
-  //   if (hoveringRef.current) return;
-  //   timeout.current && clearTimeout(timeout.current);
-  //   setIsHovering(false);
-  //   setCurrentAction(null);
-  // }, [setCurrentAction, shouldRenderPcdComponent]);
+  const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
 
-  // const update = useCallback(() => {
-  //   !isHovering && setIsHovering(true);
-  //   timeout.current && clearTimeout(timeout.current);
-  //   timeout.current = setTimeout(clear, 3000);
+  useHotkey(
+    "Escape",
+    async ({ snapshot, set }) => {
+      const panels = await snapshot.getPromise(fos.lookerPanels);
+      const currentAction = await snapshot.getPromise(currentActionAtom);
 
-  //   return () => {
-  //     timeout.current && clearTimeout(timeout.current);
-  //   };
-  // }, [clear, isHovering]);
+      if (currentAction) {
+        set(currentActionAtom, null);
+        return;
+      }
+
+      for (const panel of ["help", "json"]) {
+        if (panels[panel].isOpen) {
+          set(fos.lookerPanels, {
+            ...panels,
+            [panel]: { ...panels[panel], isOpen: false },
+          });
+          return;
+        }
+      }
+
+      // don't proceed if sample being hovered on is from looker2d
+      const hovered = await snapshot.getPromise(fos.hoveredSample);
+      const isHoveredSampleNotInLooker3d =
+        hovered &&
+        !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
+
+      if (isHoveredSampleNotInLooker3d) {
+        return;
+      }
+
+      const selectedLabels = await snapshot.getPromise(fos.selectedLabels);
+      if (selectedLabels && selectedLabels.length > 0) {
+        set(fos.selectedLabelMap, {});
+        return;
+      }
+
+      set(fos.hiddenLabels, {});
+      set(fos.currentModalSample, null);
+    },
+    [sampleMap, isHovering],
+    false
+  );
+
+  const clear = useCallback(() => {
+    if (hoveringRef.current) return;
+    timeout.current && clearTimeout(timeout.current);
+    setIsHovering(false);
+    setCurrentAction(null);
+  }, [setCurrentAction]);
+
+  const update = useCallback(() => {
+    !isHovering && setIsHovering(true);
+    timeout.current && clearTimeout(timeout.current);
+    timeout.current = setTimeout(clear, 3000);
+
+    return () => {
+      timeout.current && clearTimeout(timeout.current);
+    };
+  }, [clear, isHovering]);
 
   if (mediaType === "group" && hasFo3dSlice && hasPcdSlices) {
     return (
@@ -64,8 +111,8 @@ export const Looker3d = () => {
     return (
       <ErrorBoundary>
         <Container
-          // onMouseOver={update}
-          // onMouseMove={update}
+          onMouseOver={update}
+          onMouseMove={update}
           data-cy={"looker3d"}
         >
           {shouldRenderPcdComponent ? (
@@ -75,10 +122,10 @@ export const Looker3d = () => {
           )}
           <ActionBar
             onMouseEnter={() => {
-              // hoveringRef.current = true;
+              hoveringRef.current = true;
             }}
             onMouseLeave={() => {
-              // hoveringRef.current = false;
+              hoveringRef.current = false;
             }}
           />
         </Container>

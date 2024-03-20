@@ -58,7 +58,6 @@ export const MediaTypePcdComponent = ({
     "3d",
     defaultPluginSettings
   );
-  const selectedLabels = useRecoilValue(fos.selectedLabelMap);
   const dataset = useRecoilValue(fos.dataset);
 
   const setActionBarItems = useSetRecoilState(
@@ -186,60 +185,17 @@ export const MediaTypePcdComponent = ({
     () => toEulerFromDegreesArray(pcRotationSetting),
     [pcRotationSetting]
   );
-  const [overlayRotation, itemRotation] = useMemo(
-    () => [
-      toEulerFromDegreesArray(_.get(settings, "overlay.rotation", [0, 0, 0])),
-      toEulerFromDegreesArray(
-        _.get(settings, "overlay.itemRotation", [0, 0, 0])
-      ),
-    ],
-    [settings]
-  );
 
   const setCurrentAction = useSetRecoilState(currentActionAtom);
 
   useHotkey("KeyT", () => onChangeView("top"));
   useHotkey("KeyE", () => onChangeView("pov"));
-  useHotkey(
-    "Escape",
-    ({ get, set }) => {
-      const panels = get(fos.lookerPanels);
 
-      if (get(currentActionAtom)) {
-        set(currentActionAtom, null);
-        return;
-      }
-
-      for (const panel of ["help", "json"]) {
-        if (panels[panel].isOpen) {
-          set(fos.lookerPanels, {
-            ...panels,
-            [panel]: { ...panels[panel], isOpen: false },
-          });
-          return;
-        }
-      }
-
-      // don't proceed if sample being hovered on is from looker2d
-      const hovered = get(fos.hoveredSample);
-      const isHoveredSampleNotInLooker3d =
-        hovered &&
-        !Object.values(sampleMap).find((s) => s.sample._id === hovered._id);
-
-      if (isHoveredSampleNotInLooker3d) {
-        return;
-      }
-
-      const selectedLabels = get(fos.selectedLabels);
-      if (selectedLabels && selectedLabels.length > 0) {
-        set(fos.selectedLabelMap, {});
-        return;
-      }
-
-      set(fos.hiddenLabels, {});
-      set(fos.currentModalSample, null);
-    },
-    [sampleMap, jsonPanel, helpPanel, selectedLabels, isHovering]
+  const hasMultiplePcdSlices = useMemo(
+    () =>
+      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
+        .length > 1,
+    [dataset]
   );
 
   useEffect(() => {
@@ -258,7 +214,7 @@ export const MediaTypePcdComponent = ({
     }
 
     setActionBarItems(actionItems);
-  }, []);
+  }, [hasMultiplePcdSlices, jsonPanel, helpPanel, sampleMap]);
 
   useEffect(() => {
     const currentCameraPosition = cameraRef.current?.position;
@@ -295,13 +251,6 @@ export const MediaTypePcdComponent = ({
       setCustomColorMap((prev) => ({ ...newCustomColorMap, ...(prev ?? {}) }));
     }
   }, [isPointcloudDataset, allPcdSlices, setCustomColorMap]);
-
-  const hasMultiplePcdSlices = useMemo(
-    () =>
-      dataset.groupMediaTypes.filter((g) => g.mediaType === "point_cloud")
-        .length > 1,
-    [dataset]
-  );
 
   const theme = useTheme();
 

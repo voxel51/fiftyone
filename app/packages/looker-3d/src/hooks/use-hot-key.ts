@@ -11,13 +11,14 @@ export const useHotkey = (
   cb: (props: {
     get: recoil.GetRecoilValue;
     set: recoil.SetRecoilState;
+    snapshot: recoil.Snapshot;
   }) => void,
-  deps: readonly unknown[] = []
+  deps: readonly unknown[] = [],
+  useTransaction = true
 ) => {
-  const cbAsRecoilTransaction = useRecoilTransaction_UNSTABLE(
-    (ctx) => () => cb(ctx),
-    deps
-  );
+  const cbAsRecoilTransaction = useTransaction
+    ? useRecoilTransaction_UNSTABLE((ctx) => () => cb(ctx), deps)
+    : recoil.useRecoilCallback((ctx) => cb(ctx), deps);
 
   const handle = useCallback(
     (e: KeyboardEventUnionType) => {
