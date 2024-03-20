@@ -4350,12 +4350,12 @@ object is a node in the tree. A 3D object is either a
 :ref:`3D mesh <3d-meshes>`, :ref:`point cloud <3d-point-clouds>`,
 or a :ref:`3D shape geometry <3d-shapes>`.
 
-There are additional attributes to a scene, such as camera, lights, and
-background, and their associated parameters. By default,
-a scene is created with a perspective camera whose `up` is set to `Y` axis
-in a right handed coordinate system. An ambient light and some directional
-lights are also added to the scene if `Scene` is not explicitly initialized
-with `lights`.
+There are additional attributes to a scene, such as
+:class:`fiftyone.core.threed.camera`,
+:class:`fiftyone.core.threed.lights`, and
+:class:`fiftyone.core.threed.SceneBackground`. By default, a scene is created
+with neutral lighting, and a perspective camera whose `up` is set to `Y`
+axis in a right-handed coordinate system.
 
 After a scene is constructed, it should be written to the disk using the
 :meth:`fiftyone.core.threed.Scene.write` method, which serializes the scene
@@ -4396,42 +4396,132 @@ A 3D mesh is a collection of vertices, edges, and faces that define the shape
 of a 3D object. Whereas some mesh formats store only the geometry of the mesh,
 others also store the material properties and textures of the mesh. If a
 mesh file contains material properties and textures, Fiftyone will
-automatically load and display them in the App's
-:ref:`3D visualizer <app-3d-visualizer>`. You may also assign default material
-for your meshes by setting
-
-
+automatically load and display them. You may also
+assign default material for your meshes by setting the `default_material`
+attribute of the mesh. In the absence of any material information,
+meshes are assigned a :class:`fiftyone.core.threed.MeshStandardMaterial`
+with reasonable defaults that can also be dynamically configured from the app.
+Please refer to :class:`fiftyone.core.threed.material_3d` for more details.
 
 Fiftyone supports the following 3D mesh formats:
 
-- `GLTF <https://www.khronos.org/gltf/>`_,
-available as :class:`fiftyone.core.threed.GLTFMesh`
-- `OBJ <https://en.wikipedia.org/wiki/Wavefront_.obj_file>`_,
-available as :class:`fiftyone.core.threed.OBJMesh`
-- `PLY <https://en.wikipedia.org/wiki/PLY_(file_format)>`_,
-available as :class:`fiftyone.core.threed.PLYMesh`
-- `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_,
-available as :class:`fiftyone.core.threed.STLMesh`
-- `FBX 7.x+ <https://code.blender.org/2013/08/fbx-binary-file-format-specification/>`_,
-available as :class:`fiftyone.core.threed.FBXMesh`
-
-
+- `GLTF <https://www.khronos.org/gltf/>`_: :class:`fiftyone.core.threed.GLTFMesh`
+- `OBJ <https://en.wikipedia.org/wiki/Wavefront_.obj_file>`_: :class:`fiftyone.core.threed.OBJMesh`
+- `PLY <https://en.wikipedia.org/wiki/PLY_(file_format)>`_: :class:`fiftyone.core.threed.PLYMesh`
+- `STL <https://en.wikipedia.org/wiki/STL_(file_format)>`_: :class:`fiftyone.core.threed.STLMesh`
+- `FBX 7.x+ <https://code.blender.org/2013/08/fbx-binary-file-format-specification/>`_: :class:`fiftyone.core.threed.FBXMesh`
 
 Fiftyone recommends using the `GLTF` format for 3D meshes where possible, as it
 is the most compact, efficient, and web-friendly format for storing and
 transmitting 3D models.
 
+.. _3d-point-clouds:
+
+3D point clouds
+--------------------
+
+Fiftyone currently only has support for the
+`PCD <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
+point cloud format. A code snippet to create a PCD object that can be added
+to a Fiftyone 3D scene is shown below:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+
+    fo_pcd = fo.Pointcloud("my-pcd",
+                            "/path/to/point-cloud.pcd",
+                            flag_for_projection=True)
+
+    fo_pcd.default_material.shading_mode = "custom"
+    fo_pcd.default_material.custom_color = "red"
+    fo_pcd.default_material.point_size = 2
+
+    scene = fo.Scene()
+    scene.add(fo_pcd)
+
+    scene.write("/path/to/scene.fo3d")
+
+You can customize the appearance of a point cloud by setting the
+`default_material` attribute of the point cloud object, or dynamically from
+the app. Please refer to the :class:`fiftyone.core.threed.PointcloudMaterial`
+class for more details.
+
+Initializing the point cloud with `flag_for_projection=True` allows 
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate
+:ref:`orthographic projection images <orthographic-projection-images>` of the
+point cloud.
+
+.. _3d-shapes:
+
+3D shapes
+--------------------
+
+Fiftyone provides a set of primitive 3D shape geometries that can be added to
+a 3D scene. The following 3D shape geometries are supported:
+
+- Box: :class:`fiftyone.core.threed.BoxGeometry`
+- Sphere: :class:`fiftyone.core.threed.SphereGeometry`
+- Cylinder: :class:`fiftyone.core.threed.CylinderGeometry`
+- Plane: :class:`fiftyone.core.threed.PlaneGeometry`
+
+Similar to meshes and point clouds, shapes can be manipulated by setting their
+position, rotation, and scale. Their appearance can be customized either by
+setting the `default_material` attribute of the shape object, or dynamically
+from the app.
+
+.. _orthographic-projection-images:
+
+Orthographic projection images
+------------------------------
+
+In order to visualize point cloud datasets in the App's grid view, you can use
+:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+to generate orthographic projection images of each point cloud:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.utils.utils3d as fou3d
+    import fiftyone.zoo as foz
+
+    # Load an example point cloud dataset
+    dataset = (
+        foz.load_zoo_dataset("quickstart-groups")
+        .select_group_slices("pcd")
+        .clone()
+    )
+
+    # Populate orthographic projections
+    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
+
+    session = fo.launch_app(dataset)
+
+The above method populates an |OrthographicProjectionMetadata| field on each
+sample that contains the path to its projection image and the necessary to
+properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
+
+.. note::
+
+    Refer to the
+    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
+    documentation for available parameters to customize the projections.
 .. _point-cloud-datasets:
 
 Point cloud datasets
-____________________
+--------------------
 
-.. deprecated:: 0.24.0
+.. note::
 
-The `point-cloud` media type has been deprecated in favor of the
-`3d` media type. While we'll keep supporting the `point-cloud` media type
-for backward compatibility, we recommend using the `3d` media type for new
-datasets.
+    Deprecation notice:
+
+    The `point-cloud` media type has been deprecated in favor of the
+    `3d` media type. While we'll keep supporting the `point-cloud` media type
+    for backward compatibility, we recommend using the `3d` media type for new
+    datasets.
 
 Any |Sample| whose `filepath` is a
 `PCD file <https://pointclouds.org/documentation/tutorials/pcd_file_format.html>`_
@@ -4494,43 +4584,6 @@ Here's how a typical PCD file is structured:
     intensity values are automatically scaled to use the full dynamic range of
     the colorscale.
 
-.. _orthographic-projection-images:
-
-Orthographic projection images
-------------------------------
-
-In order to visualize point cloud datasets in the App's grid view, you can use
-:func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-to generate orthographic projection images of each point cloud:
-
-.. code-block:: python
-    :linenos:
-
-    import fiftyone as fo
-    import fiftyone.utils.utils3d as fou3d
-    import fiftyone.zoo as foz
-
-    # Load an example point cloud dataset
-    dataset = (
-        foz.load_zoo_dataset("quickstart-groups")
-        .select_group_slices("pcd")
-        .clone()
-    )
-
-    # Populate orthographic projections
-    fou3d.compute_orthographic_projection_images(dataset, (-1, 512), "/tmp/proj")
-
-    session = fo.launch_app(dataset)
-
-The above method populates an |OrthographicProjectionMetadata| field on each
-sample that contains the path to its projection image and the necessary to
-properly :ref:`visualize it in the App <app-3d-orthographic-projections>`.
-
-.. note::
-
-    Refer to the
-    :func:`compute_orthographic_projection_images() <fiftyone.utils.utils3d.compute_orthographic_projection_images>`
-    documentation for available parameters to customize the projections.
 
 Example point cloud dataset
 ---------------------------
