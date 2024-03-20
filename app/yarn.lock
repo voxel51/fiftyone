@@ -2494,7 +2494,6 @@ __metadata:
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@material-ui/core": 4.12.4
-    "@react-spring/web": ^9.7.3
     "@recoiljs/refine": ^0.1.1
     "@types/lodash": ^4.14.182
     "@types/mime": ^2.0.3
@@ -2545,6 +2544,7 @@ __metadata:
     xstate: ^4.14.0
   peerDependencies:
     "@mui/icons-material": "*"
+    "@react-spring/web": "*"
   languageName: unknown
   linkType: soft
 
@@ -2560,6 +2560,7 @@ __metadata:
     "@mdx-js/react": ^1.6.22
     "@mui/icons-material": ^5.10.2
     "@mui/material": ^5.9.0
+    "@react-spring/web": ^9.7.3
     "@storybook/addon-actions": ^6.5.13
     "@storybook/addon-docs": ^7.5.0
     "@storybook/addon-essentials": ^7.5.0
@@ -2583,7 +2584,6 @@ __metadata:
     typescript-plugin-css-modules: ^5.0.2
     vite: ^3.2.8
   peerDependencies:
-    "@react-spring/web": "*"
     react: "*"
     react-relay: "*"
     recoil: "*"
@@ -2603,7 +2603,6 @@ __metadata:
     "@fiftyone/state": "*"
     "@fiftyone/utilities": "*"
     "@monaco-editor/react": ^4.5.0
-    "@react-spring/web": ^9.4.3
     "@types/lodash": ^4.14.182
     "@types/mime": ^2.0.3
     "@types/react": ^18.0.9
@@ -2658,6 +2657,7 @@ __metadata:
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
+    "@react-spring/web": "*"
     react: 18.2.0
     react-dom: 18.2.0
   languageName: unknown
@@ -2736,7 +2736,6 @@ __metadata:
   dependencies:
     "@emotion/react": ^11.11.3
     "@emotion/styled": ^11.11.0
-    "@react-spring/web": ^9.7.3
     "@react-three/drei": ^9.99.3
     "@react-three/fiber": ^8.15.16
     "@types/node": ^20.11.10
@@ -2760,6 +2759,7 @@ __metadata:
   peerDependencies:
     "@mui/icons-material": "*"
     "@mui/material": "*"
+    "@react-spring/web": "*"
     recoil: "*"
   languageName: unknown
   linkType: soft
@@ -4985,7 +4985,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-spring/web@npm:^9.4.3, @react-spring/web@npm:^9.7.3":
+"@react-spring/web@npm:^9.7.3":
   version: 9.7.3
   resolution: "@react-spring/web@npm:9.7.3"
   dependencies:
