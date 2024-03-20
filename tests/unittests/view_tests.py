@@ -1,7 +1,7 @@
 """
 FiftyOne view-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -4226,8 +4226,8 @@ class ViewStageTests(unittest.TestCase):
 
         dataset2 = dataset.clone()
 
-        self.assertNotIn("field", dataset2.list_indexes())
-        self.assertNotIn("foo_1_field_1", dataset2.list_indexes())
+        self.assertIn("field", dataset2.list_indexes())
+        self.assertIn("foo_1_field_1", dataset2.list_indexes())
 
         view3 = dataset2.sort_by(F("field"))
 

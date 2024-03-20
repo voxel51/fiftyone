@@ -1,7 +1,7 @@
 """
 FiftyOne Label-related unit tests.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -11,11 +11,10 @@ from bson import Binary, ObjectId
 import numpy as np
 
 import fiftyone as fo
+import fiftyone.utils.labels as foul
+from fiftyone import ViewField as F
 
 from decorators import drop_datasets
-
-
-F = fo.ViewField
 
 
 class LabelTests(unittest.TestCase):
@@ -462,6 +461,66 @@ class LabelTests(unittest.TestCase):
         self.assertEqual(len(dets2.detections), 1)
         self.assertEqual(len(poly3.polylines), 2)
         self.assertEqual(len(poly4.polylines), 1)
+
+
+class LabelUtilsTests(unittest.TestCase):
+    @drop_datasets
+    def test_perform_nms(self):
+        detections = [
+            fo.Detection(
+                label="cat", bounding_box=[0, 0, 0.30, 0.30], confidence=0.9
+            ),
+            fo.Detection(
+                label="cat", bounding_box=[0, 0, 0.29, 0.29], confidence=1
+            ),
+            fo.Detection(
+                label="dog", bounding_box=[0, 0, 0.30, 0.30], confidence=0.4
+            ),
+            fo.Detection(
+                label="dog", bounding_box=[0, 0, 0.29, 0.29], confidence=None
+            ),
+        ]
+
+        id1 = detections[0].id
+        id2 = detections[1].id
+        id3 = detections[2].id
+        id4 = detections[3].id
+
+        sample1 = fo.Sample(
+            filepath="image1.jpg",
+            predictions=fo.Detections(detections=detections),
+        )
+        sample2 = fo.Sample(filepath="image2.jpg", predictions=fo.Detections())
+        sample3 = fo.Sample(filepath="image3.jpg")
+
+        dataset = fo.Dataset()
+        dataset.add_samples([sample1, sample2, sample3])
+
+        foul.perform_nms(
+            dataset, "predictions", out_field="nms1", iou_thresh=0.5
+        )
+        ids1 = dataset.values("nms1.detections.id", unwind=True)
+        self.assertListEqual(ids1, [id2, id3])
+
+        foul.perform_nms(
+            dataset,
+            "predictions",
+            out_field="nms2",
+            classwise=False,
+            iou_thresh=0.5,
+        )
+        ids2 = dataset.values("nms2.detections.id", unwind=True)
+        self.assertListEqual(ids2, [id2])
+
+        foul.perform_nms(
+            dataset,
+            "predictions",
+            out_field="nms3",
+            iou_thresh=0.5,
+            confidence_thresh=0.5,
+        )
+        ids3 = dataset.values("nms3.detections.id", unwind=True)
+        self.assertListEqual(ids3, [id2])
 
 
 if __name__ == "__main__":

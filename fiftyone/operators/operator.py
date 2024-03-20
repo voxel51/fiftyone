@@ -1,7 +1,7 @@
 """
 FiftyOne operators.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -235,6 +235,9 @@ class Operator(object):
 
         Args:
             ctx: the :class:`fiftyone.operators.executor.ExecutionContext`
+
+        Returns:
+            JSON serializable data, or None
         """
         raise NotImplementedError("subclass must implement execute()")
 

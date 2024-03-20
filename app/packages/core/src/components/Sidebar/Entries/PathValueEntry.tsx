@@ -11,7 +11,7 @@ import {
 } from "@fiftyone/utilities";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { useSpring } from "@react-spring/core";
-import React, { Suspense, useEffect, useMemo, useState } from "react";
+import React, { Suspense, useMemo, useState } from "react";
 import {
   selectorFamily,
   useRecoilState,
@@ -362,19 +362,6 @@ const Loadable = ({ path }: { path: string }) => {
   const color = useRecoilValue(fos.pathColor(path));
   const timeZone = useRecoilValue(fos.timeZone);
   const formatted = format({ ftype, value, timeZone });
-  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
-  const sampleId = useRecoilValue(fos.currentSampleId);
-  const noneValued = noneValuedPaths?.[sampleId];
-
-  useEffect(() => {
-    if (none && path && !noneValued?.has(path) && sampleId) {
-      setNoneValued({
-        [sampleId]: noneValued
-          ? new Set([...noneValued]).add(path)
-          : new Set([]),
-      });
-    }
-  }, [noneValued, none, path, setNoneValued, sampleId]);
 
   return (
     <div
@@ -404,6 +391,8 @@ const isOfDocumentFieldList = selectorFamily({
 const useData = <T,>(path: string): T => {
   const keys = path.split(".");
   const loadable = useRecoilValueLoadable(fos.activeModalSidebarSample);
+  const [noneValuedPaths, setNoneValued] = useRecoilState(fos.noneValuedPaths);
+  const sampleId = useRecoilValue(fos.currentSampleId);
 
   if (loadable.state === "loading") {
     throw loadable.contents;
@@ -433,6 +422,21 @@ const useData = <T,>(path: string): T => {
       if (keys[index + 1]) {
         field = field?.fields?.[keys[index + 1]] || null;
       }
+    }
+  }
+
+  const noneValued = noneValuedPaths?.[sampleId];
+  if (
+    (data === undefined || data === null) &&
+    path &&
+    !noneValued?.has(path) &&
+    sampleId
+  ) {
+    const newNoneValued = noneValued
+      ? new Set([...noneValued]).add(path)
+      : new Set([path]);
+    if (newNoneValued) {
+      setNoneValued({ [sampleId]: new Set([...newNoneValued, path]) });
     }
   }
 

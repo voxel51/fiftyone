@@ -1,7 +1,7 @@
 """
 Labels stored in dataset samples.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -1622,7 +1622,7 @@ def _parse_segmentation_target(mask, frame_size, target):
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
         if target is not None and not is_rgb and target > 255:
-            dtype = np.int
+            dtype = int
         else:
             dtype = np.uint8
 
@@ -1649,7 +1649,7 @@ def _parse_segmentation_mask_targets(mask, frame_size, mask_targets):
             raise ValueError("Either `mask` or `frame_size` must be provided")
 
         if mask_targets is not None and not is_rgb and max(mask_targets) > 255:
-            dtype = np.int
+            dtype = int
         else:
             dtype = np.uint8
 

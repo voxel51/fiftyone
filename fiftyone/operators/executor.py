@@ -1,7 +1,7 @@
 """
 FiftyOne operator execution.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -139,20 +139,33 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             as keyword arguments rather than including them in ``ctx``
 
     Returns:
-        an :class:`ExecutionResult`
+        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+        method in a notebook context
 
     Raises:
         ExecutionError: if an error occurred while immediately executing an
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
-
-    result = asyncio.run(
-        execute_or_delegate_operator(
-            operator_uri, request_params, exhaust=True
-        )
+    coroutine = execute_or_delegate_operator(
+        operator_uri, request_params, exhaust=True
     )
-    result.raise_exceptions()
+
+    try:
+        # Some contexts like notebooks already have event loops running, so we
+        # must use the existing loop
+        loop = asyncio.get_running_loop()
+    except:
+        loop = None
+
+    if loop is not None:
+        # @todo is it possible to await result here?
+        # Sadly, run_until_complete() is not allowed in Jupyter notebooks
+        # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
+        result = loop.create_task(coroutine)
+    else:
+        result = asyncio.run(coroutine)
+        result.raise_exceptions()
 
     return result
 

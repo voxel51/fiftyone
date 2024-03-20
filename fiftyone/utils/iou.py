@@ -1,7 +1,7 @@
 """
 Intersection over union (IoU) utilities.
 
-| Copyright 2017-2023, Voxel51, Inc.
+| Copyright 2017-2024, Voxel51, Inc.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
@@ -19,7 +19,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
 
-from .utils3d import compute_cuboid_iou as _compute_cuboid_iou
+from .utils3d import compute_cuboid_iou
 
 sg = fou.lazy_import("shapely.geometry")
 so = fou.lazy_import("shapely.ops")
@@ -447,7 +447,18 @@ def _get_bbox_dim(detection):
     return 2
 
 
-def _compute_bbox_iou(gt, pred, gt_crowd=False):
+def compute_bbox_iou(gt, pred, gt_crowd=False):
+    """Computes the IoU between the given ground truth and predicted
+    detections.
+
+    Args:
+        gt: a :class:`fiftyone.core.labels.Detection`
+        pred: a :class:`fiftyone.core.labels.Detection`
+        gt_crowd (False): whether the ground truth object is a crowd
+
+    Returns:
+        the IoU, in ``[0, 1]``
+    """
     gx, gy, gw, gh = gt.bounding_box
     gt_area = gh * gw
 
@@ -491,9 +502,9 @@ def _compute_bbox_ious(preds, gts, iscrowd=None, classwise=False):
             gts = _polylines_to_detections(gts)
 
     if _get_bbox_dim(gts[0]) == 3:
-        bbox_iou_fcn = _compute_cuboid_iou
+        bbox_iou_fcn = compute_cuboid_iou
     else:
-        bbox_iou_fcn = _compute_bbox_iou
+        bbox_iou_fcn = compute_bbox_iou
 
     ious = np.zeros((len(preds), len(gts)))
 
