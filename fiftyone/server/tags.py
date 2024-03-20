@@ -37,7 +37,7 @@ async def get_tag_view(
         awaitable=True,
     )
 
-    def run():
+    def run(view):
         if sample_ids:
             view = fov.make_optimized_select_view(
                 view, sample_ids, flatten=True
@@ -53,4 +53,4 @@ async def get_tag_view(
 
         return view
 
-    return await run_sync_task(run)
+    return await run_sync_task(run, view)
