@@ -55,6 +55,7 @@ export default function Space({ node, id }: SpaceProps) {
     return (
       <SpaceContainer data-type="space-container">
         <Allotment
+          key={node.layout}
           vertical={node.layout === Layout.Vertical}
           onReset={() => {
             // todo: support more than two panel per space
