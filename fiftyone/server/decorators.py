@@ -18,15 +18,21 @@ from starlette.responses import JSONResponse, Response
 from starlette.requests import Request
 
 
+async def load_variables(request: Request):
+    body = await request.body()
+    payload = body.decode("utf-8")
+    return json_util.loads(payload) if payload else {}
+
+
 def route(func):
     async def wrapper(
-        endpoint: HTTPEndpoint, request: Request, *args
+        endpoint: HTTPEndpoint, request: Request, variables=None
     ) -> t.Union[dict, Response]:
         try:
-            body = await request.body()
-            payload = body.decode("utf-8")
-            data = json_util.loads(payload) if payload else {}
-            response = await func(endpoint, request, data, *args)
+            if variables is None:
+                variables = await load_variables(request)
+
+            response = await func(endpoint, request, variables)
             if isinstance(response, Response):
                 return response
 
