@@ -170,7 +170,7 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
     this.statusPainted = true;
   }
 
-  renderSelf({ loaded, config: { src } }: Readonly<ThreeDState>) {
+  renderSelf({ loaded, config: { src, isFo3d } }: Readonly<ThreeDState>) {
     if (
       !loaded ||
       this.isOpmAvailable ||
@@ -180,16 +180,18 @@ export class ThreeDElement extends BaseElement<ThreeDState, HTMLImageElement> {
       return;
     }
 
-    this.getFo3dSummary(src)
-      .then((summary) => {
-        this.printSummary(summary);
-      })
-      .catch((e) => {
-        console.error(e);
-      })
-      .finally(() => {
-        this.isFetchingSummary = false;
-      });
+    if (isFo3d) {
+      this.getFo3dSummary(src)
+        .then((summary) => {
+          this.printSummary(summary);
+        })
+        .catch((e) => {
+          console.error(e);
+        })
+        .finally(() => {
+          this.isFetchingSummary = false;
+        });
+    }
 
     return null;
   }

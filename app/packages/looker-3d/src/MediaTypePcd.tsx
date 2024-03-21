@@ -78,7 +78,7 @@ export const MediaTypePcdComponent = ({
     const canvas = document.getElementById(CANVAS_WRAPPER_ID);
 
     if (canvas) {
-      canvas.querySelector("canvas")?.setAttribute("sample-loaded", "true");
+      canvas.querySelector("canvas")?.setAttribute("canvas-loaded", "true");
     }
   }, []);
 

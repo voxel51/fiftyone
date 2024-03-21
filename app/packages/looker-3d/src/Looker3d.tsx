@@ -18,6 +18,8 @@ export const Looker3d = () => {
   const mediaType = useRecoilValue(fos.mediaType);
   const hasFo3dSlice = useRecoilValue(fos.hasFo3dSlice);
   const hasPcdSlices = useRecoilValue(fos.allPcdSlices).length > 0;
+  const isDynamicGroup = useRecoilValue(fos.isDynamicGroup);
+  const parentMediaType = useRecoilValue(fos.parentMediaTypeSelector);
 
   const [isHovering, setIsHovering] = useState(false);
   const timeout = useRef<NodeJS.Timeout>(null);
@@ -27,12 +29,17 @@ export const Looker3d = () => {
 
   const shouldRenderPcdComponent = useMemo(
     () =>
-      mediaType === "point_cloud" || (mediaType === "group" && hasPcdSlices),
-    [mediaType, hasPcdSlices]
+      mediaType === "point_cloud" ||
+      (mediaType === "group" && hasPcdSlices) ||
+      (isDynamicGroup && parentMediaType === "point_cloud"),
+    [mediaType, hasPcdSlices, isDynamicGroup, parentMediaType]
   );
   const shouldRenderFo3dComponent = useMemo(
-    () => mediaType === "three_d" || (mediaType === "group" && hasFo3dSlice),
-    [mediaType, hasFo3dSlice]
+    () =>
+      mediaType === "three_d" ||
+      (mediaType === "group" && hasFo3dSlice) ||
+      (isDynamicGroup && parentMediaType === "three_d"),
+    [mediaType, hasFo3dSlice, isDynamicGroup, parentMediaType]
   );
 
   const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
