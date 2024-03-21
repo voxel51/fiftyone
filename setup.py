@@ -76,7 +76,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.16.1,<0.17",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.12.5,<0.13",
+    "voxel51-eta>=0.12.6,<0.13",
 ]
 
 
@@ -122,7 +122,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="fiftyone",
-    version="0.15.7",
+    version="0.15.8rc3",
     description=(
         "FiftyOne Teams: the tool for teams building high-quality datasets "
         "and computer vision models"
@@ -162,6 +162,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",

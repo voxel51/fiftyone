@@ -84,6 +84,7 @@ def evaluate_regressions(
     Returns:
         a :class:`RegressionResults`
     """
+    fov.validate_non_grouped_collection(samples)
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Regression, same_type=True
     )

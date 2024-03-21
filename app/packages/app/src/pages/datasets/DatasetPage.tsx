@@ -116,9 +116,9 @@ const DatasetPage: Route<DatasetPageQuery> = ({ prepared }) => {
         <Starter mode="ADD_SAMPLE" />
       ) : (
         <>
-          <OperatorCore />
           <div className={style.page}>
             <datasetQueryContext.Provider value={data}>
+              <OperatorCore />
               <Dataset />
             </datasetQueryContext.Provider>
           </div>

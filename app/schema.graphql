@@ -535,7 +535,6 @@ type Mutation {
     savedViewSlug: String = null
     form: StateForm = null
   ): BSONArray
-  storeTeamsSubmission: Boolean!
   createSavedView(
     subscription: String!
     session: String
@@ -619,7 +618,6 @@ type Query {
     filters: JSON = null
   ): SampleItem
   stageDefinitions: [StageDefinition!]!
-  teamsSubmission: Boolean!
   uid: String!
   version: String!
   savedViews(datasetName: String!): [SavedView!]

@@ -21,7 +21,7 @@ following packages:
 
 .. code-block:: shell
 
-    pip install ultralytics "torch>=1.8"
+    pip install "ultralytics>=8.1.0" "torch>=1.8"
 
 .. _ultralytics-inference:
 
@@ -70,6 +70,10 @@ You can directly pass Ultralytics YOLO detection models to
     # model = YOLO("yolov5l.pt")
     # model = YOLO("yolov5x.pt")
 
+    # YOLOv9
+    # model = YOLO("yolov9c.pt")
+    # model = YOLO("yolov9e.pt")
+
     dataset.apply_model(model, label_field="boxes")
 
     session = fo.launch_app(dataset)
@@ -91,53 +95,39 @@ manually convert Ultralytics predictions to
    :alt: ultralytics-boxes
    :align: center
 
-.. _ultralytics-open-vocabulary-object-detection:
-
-Open vocabulary detection
--------------------------
-
-FiftyOne's Ultralytics integration also supports real-time open vocabulary
-object detection via `YOLO World <https://docs.ultralytics.com/models/yolo-world/>`_.
-
-The usage syntax is the same as for regular object detection, with the caveat
-that you can set the classes that the model should detect:
+You can also load any of these models directly from the
+:ref:`FiftyOne Model Zoo <model-zoo>`:
 
 .. code-block:: python
     :linenos:
 
-    import os; os.environ["YOLO_VERBOSE"] = "False"
+    model_name = "yolov5l-coco-torch"
+    # model_name = "yolov8m-coco-torch"
+    # model_name = "yolov9e-coco-torch"
 
-    import fiftyone as fo
-    import fiftyone.zoo as foz
+    model = foz.load_zoo_model(
+        model_name,
+        label_field="boxes", 
+        confidence_thresh=0.5, 
+        iou_thresh=0.5,
+    )
 
-    ## Load dataset
-    dataset = foz.load_zoo_dataset(
-        "voc-2007", split="validation", max_samples=100
-        )
-    dataset.select_fields().keep_fields()
-    
-    ## Load model
-    from ultralytics import YOLO
-    model = YOLO('yolov8l-world.pt') # or YOLO('yolov8s-world.pt')
+    dataset.apply_model(model)
 
-    ## Set open vocabulary classes
-    model.set_classes(
-        ["plant", "window", "keyboard", "human baby", "computer monitor"]
-        )
+    session = fo.launch_app(dataset)
 
-    label_field = "yolo_world_detections"
+You can use :func:`list_zoo_models() <fiftyone.zoo.list_zoo_models>` to see all
+available YOLO models that are compatible with Ultralytics or SuperGradients:
 
-    ## Apply model
-    dataset.apply_model(model, label_field=label_field)
-    
-    ## Visualize the detection patches
-    session = fo.launch_app(dataset.to_patches(label_field))
+.. code-block:: python
+    :linenos:
 
+    print(foz.list_zoo_models(tags="yolo"))
 
-.. image:: /images/integrations/ultralytics_open_world_boxes.png
-   :alt: ultralytics-open-world-boxes
-   :align: center
-
+In general, model names will contain "yolov", followed by the version number,
+then the model size ("n", "s", "m",  "l", or "x"), and an indicator of the
+label classes ("coco" for MS COCO or "world" for open-world), followed by
+"torch".
 
 .. _ultralytics-instance-segmentation:
 
@@ -229,6 +219,77 @@ manually convert Ultralytics predictions to :ref:`FiftyOne format <keypoints>`:
 .. image:: /images/integrations/ultralytics_keypoints.jpg
    :alt: ultralytics-keypoints
    :align: center
+
+.. _ultralytics-open-vocabulary-object-detection:
+
+Open vocabulary detection
+-------------------------
+
+FiftyOne's Ultralytics integration also supports real-time open vocabulary
+object detection via
+`YOLO World <https://docs.ultralytics.com/models/yolo-world/>`_.
+
+The usage syntax is the same as for regular object detection, with the caveat
+that you can set the classes that the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    import fiftyone as fo
+    import fiftyone.zoo as foz
+
+    from ultralytics import YOLO
+
+    ## Load dataset
+    dataset = foz.load_zoo_dataset(
+        "voc-2007", split="validation", max_samples=100
+    )
+    dataset.select_fields().keep_fields()
+
+    ## Load model
+    model = YOLO("yolov8l-world.pt")
+    # model = YOLO("yolov8s-world.pt")
+    # model =  YOLO("yolov8m-world.pt")
+    # model =  YOLO("yolov8x-world.pt")
+
+    ## Set open vocabulary classes
+    model.set_classes(
+        ["plant", "window", "keyboard", "human baby", "computer monitor"]
+    )
+
+    label_field = "yolo_world_detections"
+
+    ## Apply model
+    dataset.apply_model(model, label_field=label_field)
+
+    ## Visualize the detection patches
+    patches = dataset.to_patches(label_field)
+    session = fo.launch_app(patches)
+
+.. image:: /images/integrations/ultralytics_open_world_boxes.png
+   :alt: ultralytics-open-world-boxes
+   :align: center
+
+You can also load these open-vocabulary models from the
+:ref:`FiftyOne Model Zoo <model-zoo>`, optionally specifying the classes that
+the model should detect:
+
+.. code-block:: python
+    :linenos:
+
+    model_name = "yolov8l-world-torch"
+    # model_name = "yolov8m-world-torch"
+    # model_name = "yolov8x-world-torch"
+
+    model = foz.load_zoo_model(
+        model_name,
+        label_field="yolo_world_detections",
+        classes=["plant", "window", "keyboard", "human baby", "computer monitor"],
+    )
+
+    dataset.apply_model(model)
+
+    session = fo.launch_app(dataset)
 
 .. _ultralytics-batch-inference:
 
