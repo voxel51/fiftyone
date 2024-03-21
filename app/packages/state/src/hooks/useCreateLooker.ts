@@ -3,8 +3,8 @@ import {
   FrameLooker,
   ImaVidLooker,
   ImageLooker,
-  ThreeDLooker,
   Sample,
+  ThreeDLooker,
   VideoLooker,
 } from "@fiftyone/looker";
 import { ImaVidFramesController } from "@fiftyone/looker/src/lookers/imavid/controller";
@@ -92,7 +92,8 @@ export default <T extends AbstractLooker>(
         const urls = getStandardizedUrls(rawUrls);
 
         // split("?")[0] is to remove query params, if any, from signed urls
-        const filePath = urls.filepath?.split("?")[0];
+        const filePath =
+          urls.filepath?.split("?")[0] ?? (sample.filepath as string);
 
         if (filePath.endsWith(".pcd") || filePath.endsWith(".fo3d")) {
           constructor = ThreeDLooker;
