@@ -33,10 +33,14 @@ import {
   VOXEL51_THEME_COLOR_MUTED,
 } from "../constants";
 import { LevaContainer, StatusBarRootContainer } from "../containers";
-import { useFo3d } from "../hooks";
+import { useFo3d, useHotkey } from "../hooks";
 import { useFo3dBounds } from "../hooks/use-bounds";
 import { ThreeDLabels } from "../labels";
-import { actionRenderListAtomFamily, activeNodeAtom } from "../state";
+import {
+  actionRenderListAtomFamily,
+  activeNodeAtom,
+  isFo3dBackgroundOnAtom,
+} from "../state";
 import { FoSceneComponent } from "./FoScene";
 import { Gizmos } from "./Gizmos";
 import { Fo3dSceneContext } from "./context";
@@ -67,6 +71,14 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
   const { foScene, isLoading: isParsingFo3d } = useFo3d(mediaUrl);
 
   const [isSceneInitialized, setSceneInitialized] = useState(false);
+
+  useHotkey(
+    "KeyB",
+    ({ set }) => {
+      set(isFo3dBackgroundOnAtom, (prev) => !prev);
+    },
+    []
+  );
 
   const upVector = useMemo(() => {
     if (foScene?.cameraProps.up) {
@@ -247,6 +259,22 @@ export const MediaTypeFo3dComponent = ({}: MediaTypeFo3dComponentProps) => {
       orbitControlsRef.current.update();
     },
     [sceneBoundingBox, topCameraPosition, defaultCameraPositionComputed]
+  );
+
+  useHotkey(
+    "KeyT",
+    ({}) => {
+      onChangeView("top");
+    },
+    [onChangeView]
+  );
+
+  useHotkey(
+    "KeyE",
+    ({}) => {
+      onChangeView("pov");
+    },
+    [onChangeView]
   );
 
   useEffect(() => {
