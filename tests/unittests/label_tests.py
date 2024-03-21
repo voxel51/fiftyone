@@ -418,13 +418,11 @@ class LabelTests(unittest.TestCase):
                 mask_targets=mask_targets,
                 mask_types="thing",
                 tolerance=2,
-                round_coords=True,
             )
             poly4 = seg4.to_polylines(
                 mask_targets=mask_targets,
                 mask_types="stuff",
                 tolerance=2,
-                round_coords=True,
             )
 
             self.assertEqual(len(dets1.detections), 2)
@@ -447,27 +445,29 @@ class LabelTests(unittest.TestCase):
             # check polylines
             #
             # polyline -> detection -> polyline does not always return
-            # the exact same values, so it's not possible in general
-            # to check for exact equality. However, in this case,
-            # using `tolerance=2 and `round_coords=True` does return the
-            # same bounds.
+            # the exact same values because of interpolation, so it's
+            # not possible in general to check for exact
+            # equality.
             def poly_bounds(p):
                 a = np.array(p["points"]).squeeze()
                 ymin, xmin = a.min(axis=0)
                 ymax, xmax = a.max(axis=0)
                 return (xmin, xmax, ymin, ymax)
 
-            self.assertEqual(
+            nptest.assert_almost_equal(
                 poly_bounds(poly3.polylines[0]),
                 poly_bounds(polylines.polylines[0]),
+                decimal=1,
             )
-            self.assertEqual(
+            nptest.assert_almost_equal(
                 poly_bounds(poly3.polylines[1]),
                 poly_bounds(polylines.polylines[1]),
+                decimal=1,
             )
-            self.assertEqual(
+            nptest.assert_almost_equal(
                 poly_bounds(poly4.polylines[0]),
                 poly_bounds(polylines.polylines[0]),
+                decimal=1,
             )
 
     @drop_datasets
