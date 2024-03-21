@@ -30,6 +30,7 @@ import { RecoilState, selector, selectorFamily } from "recoil";
 import * as atoms from "./atoms";
 import { dataset as datasetAtom } from "./dataset";
 import { activeModalSample } from "./groups";
+import { isLabelPath } from "./labels";
 import { State } from "./types";
 import { getLabelFields } from "./utils";
 
@@ -677,8 +678,17 @@ export const modalFilterFields = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
+      let labelPath;
+
+      if (get(isLabelPath(path))) {
+        labelPath = expandPath(path);
+      } else {
+        const keys = path.split(".");
+        labelPath = keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
+      }
+
       return Array.from(
-        new Set([...get(filterFieldsCommon(path)), path])
+        new Set([...get(filterFieldsCommon(path)), labelPath])
       ).sort();
     },
 });
@@ -688,11 +698,10 @@ export const filterFields = selectorFamily({
   get:
     (path: string) =>
     ({ get }) => {
-      const keys = path.split(".");
       const f = get(field(path));
 
       if (
-        keys.length === 1 ||
+        f.ftype === EMBEDDED_DOCUMENT_FIELD ||
         (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
       ) {
         return [path];

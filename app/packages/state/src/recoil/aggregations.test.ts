@@ -15,7 +15,12 @@ describe("test aggregation path accumulation", () => {
     }));
     setMockAtoms({
       expandPath: (path) => `${path}.detections`,
-      filterFields: (path) => [`${path}.one`, `${path}.two`, `${path}.numeric`],
+      modalFilterFields: (path) => [
+        path,
+        `${path}.one`,
+        `${path}.two`,
+        `${path}.numeric`,
+      ],
       isNumericField: (path) => path.endsWith(".numeric"),
       labelFields: ({ space }) =>
         space === State.SPACE.SAMPLE
@@ -24,8 +29,10 @@ describe("test aggregation path accumulation", () => {
       groupId: "groupId",
     });
     expect(testModalSampleAggregationPaths()).toStrictEqual([
+      "ground_truth.detections",
       "ground_truth.detections.one",
       "ground_truth.detections.two",
+      "predictions.detections",
       "predictions.detections.one",
       "predictions.detections.two",
     ]);
@@ -48,8 +55,10 @@ describe("test aggregation path accumulation", () => {
     }));
 
     expect(testModalFrameAggregationPaths()).toStrictEqual([
+      "frames.frames_ground_truth.detections",
       "frames.frames_ground_truth.detections.one",
       "frames.frames_ground_truth.detections.two",
+      "frames.frames_predictions.detections",
       "frames.frames_predictions.detections.one",
       "frames.frames_predictions.detections.two",
     ]);
