@@ -7,7 +7,7 @@ import { ActionBar } from "./action-bar";
 import { Container } from "./containers";
 import { MediaTypeFo3dComponent } from "./fo3d/MediaTypeFo3d";
 import { useHotkey } from "./hooks";
-import { currentActionAtom } from "./state";
+import { currentActionAtom, isGridOnAtom } from "./state";
 
 /**
  * This component is responsible for rendering both "3d" as well as "point_cloud" media types.
@@ -43,6 +43,14 @@ export const Looker3d = () => {
   );
 
   const sampleMap = useRecoilValue(fos.activePcdSlicesToSampleMap);
+
+  useHotkey(
+    "KeyG",
+    async ({ set }) => {
+      set(isGridOnAtom, (prev) => !prev);
+    },
+    []
+  );
 
   useHotkey(
     "Escape",
