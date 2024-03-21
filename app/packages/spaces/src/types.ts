@@ -40,7 +40,7 @@ export type SpaceNodeJSON = {
   layout?: SpaceNode["layout"];
   type?: SpaceNode["type"];
   pinned?: SpaceNode["pinned"];
-  sizes?: string[];
+  sizes?: number[];
 };
 
 export type PanelProps = {

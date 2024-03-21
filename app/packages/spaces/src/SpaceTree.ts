@@ -82,7 +82,7 @@ export default class SpaceTree {
     }
   }
 
-  setNodeSizes(node: SpaceNode, sizes: string[]) {
+  setNodeSizes(node: SpaceNode, sizes: number[]) {
     node.sizes = sizes;
     this.updateTree(node);
   }
