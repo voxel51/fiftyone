@@ -762,9 +762,7 @@ class Polyline(_HasAttributesDict, _HasID, Label):
         return sg.MultiLineString(points)
 
     @classmethod
-    def from_mask(
-        cls, mask, label=None, tolerance=2, round_coords=False, **attributes
-    ):
+    def from_mask(cls, mask, label=None, tolerance=2, **attributes):
         """Creates a :class:`Polyline` instance with polygons describing the
         non-zero region(s) of the given full image mask.
 
@@ -773,9 +771,6 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             label (None): the label string
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polygons for each region. Typical values are 1-3 pixels
-            round_coords (False): whether to round polyline coordinates before
-                converting to relative coordinates. This can help align
-                coordinates to actual pixel values in the mask.
             **attributes: additional attributes for the :class:`Polyline`
 
         Returns:
@@ -785,7 +780,8 @@ class Polyline(_HasAttributesDict, _HasID, Label):
             mask = mask[:, :, 0]
 
         points = _get_polygons(
-            mask.astype(bool), tolerance=tolerance, round_coords=round_coords
+            mask.astype(bool),
+            tolerance=tolerance,
         )
 
         return cls(
@@ -1157,7 +1153,6 @@ class Segmentation(_HasID, _HasMedia, Label):
         mask_targets=None,
         mask_types="stuff",
         tolerance=2,
-        round_coords=False,
     ):
         """Returns a :class:`Polylines` representation of this instance.
 
@@ -1183,16 +1178,13 @@ class Segmentation(_HasID, _HasMedia, Label):
                     (3D masks) to ``"stuff"`` or ``"thing"`` for each class
             tolerance (2): a tolerance, in pixels, when generating approximate
                 polylines for each region. Typical values are 1-3 pixels
-            round_coords (False): whether to round polyline coordinates before
-                converting to relative coordinates. This can help align
-                coordinates to actual pixel values in the mask.
 
         Returns:
             a :class:`Polylines`
 
         """
         polylines = _segmentation_to_polylines(
-            self, mask_targets, mask_types, tolerance, round_coords
+            self, mask_targets, mask_types, tolerance
         )
         return Polylines(polylines=polylines)
 
@@ -1769,12 +1761,11 @@ def _mask_to_detections(label_mask, label, label_type, offset, frame_size):
 
 
 def _mask_to_polylines(
-    label_mask, label, label_type, offset, frame_size, tolerance, round_coords
+    label_mask, label, label_type, offset, frame_size, tolerance
 ):
     polygons = _get_polygons(
         label_mask,
         tolerance=tolerance,
-        round_coords=round_coords,
         offset=offset,
         frame_size=frame_size,
     )
@@ -1804,11 +1795,9 @@ def _segmentation_to_detections(segmentation, mask_targets, mask_types):
 
 
 def _segmentation_to_polylines(
-    segmentation, mask_targets, mask_types, tolerance, round_coords
+    segmentation, mask_targets, mask_types, tolerance
 ):
-    converter = partial(
-        _mask_to_polylines, tolerance=tolerance, round_coords=round_coords
-    )
+    converter = partial(_mask_to_polylines, tolerance=tolerance)
     return _convert_segmentation(
         segmentation, mask_targets, mask_types, converter
     )
@@ -1929,7 +1918,6 @@ def _parse_thing_instances(mask, offset=None, frame_size=None):
 def _get_polygons(
     mask,
     tolerance,
-    round_coords=False,
     offset=None,
     frame_size=None,
     abs_coords=False,
@@ -1947,17 +1935,12 @@ def _get_polygons(
         else:
             width, height = frame_size
 
-    if round_coords:
-        round_fun = np.round
-    else:
-        round_fun = lambda x: x
-
     polygons = etai._mask_to_polygons(mask, tolerance=tolerance)
     polygons = list(
         list(
             (
-                (round_fun(x) + x_offset) / width,
-                (round_fun(y) + y_offset) / height,
+                (x + x_offset) / width,
+                (y + y_offset) / height,
             )
             for x, y in p
         )
