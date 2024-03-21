@@ -634,22 +634,14 @@ export const fieldType = selectorFamily<
     },
 });
 
-export const filterFields = selectorFamily<string[], string>({
-  key: "filterFields",
+const filterFieldsCommon = selectorFamily<string[], string>({
+  key: "filterFieldsCommon",
   get:
     (path) =>
     ({ get }) => {
       const keys = path.split(".");
-      const f = get(field(path));
-
-      if (
-        keys.length === 1 ||
-        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
-      ) {
-        return [path];
-      }
-
-      const parentPath = keys.slice(0, -1).join(".");
+      const parentPath =
+        keys.length > 1 ? keys.slice(0, -1).join(".") : keys[0];
       const parent = get(field(parentPath));
       let topParentPath = parentPath;
       if (parent.ftype === LIST_FIELD) {
@@ -677,6 +669,35 @@ export const filterFields = selectorFamily<string[], string>({
           );
         })
         .map(({ name }) => [parentPath, name].join("."));
+    },
+});
+
+export const modalFilterFields = selectorFamily({
+  key: "modalFilterFields",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      return Array.from(
+        new Set([...get(filterFieldsCommon(path)), path])
+      ).sort();
+    },
+});
+
+export const filterFields = selectorFamily({
+  key: "filterFields",
+  get:
+    (path: string) =>
+    ({ get }) => {
+      const keys = path.split(".");
+      const f = get(field(path));
+
+      if (
+        keys.length === 1 ||
+        (f.ftype === LIST_FIELD && f.subfield === EMBEDDED_DOCUMENT_FIELD)
+      ) {
+        return [path];
+      }
+      return get(filterFieldsCommon(path));
     },
 });
 
