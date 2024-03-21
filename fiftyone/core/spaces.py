@@ -59,7 +59,8 @@ class Space(Component):
             space's children
         active_child: the ``component_id`` of this space's currently active
             child
-        sizes: the ordered list of sizes for children of space
+        sizes: the ordered list of relative sizes for children of a space in
+            ``[0, 1]`
     """
 
     meta = {"strict": False, "allow_inheritance": True}
