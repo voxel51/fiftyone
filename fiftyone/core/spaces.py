@@ -73,7 +73,7 @@ class Space(Component):
         choices=["horizontal", "vertical"], default=None
     )
     active_child = fof.StringField(default=None)
-    sizes = fof.ListField(fof.StringField(), default=None)
+    sizes = fof.ListField(fof.FloatField(), default=None)
 
 
 samples_panel = Panel(type="Samples", pinned=True)

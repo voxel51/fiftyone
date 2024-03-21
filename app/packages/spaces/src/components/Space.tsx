@@ -7,7 +7,11 @@ import SpaceNode from "../SpaceNode";
 import { Layout } from "../enums";
 import { usePanelTabAutoPosition, useSpaces } from "../hooks";
 import { SpaceProps } from "../types";
-import { getAbsoluteSizes, getRelativeSizes } from "../utils/sizes";
+import {
+  getAbsoluteSizes,
+  getRelativeSizes,
+  toPercentage,
+} from "../utils/sizes";
 import AddPanelButton from "./AddPanelButton";
 import Panel from "./Panel";
 import PanelTab from "./PanelTab";
@@ -18,7 +22,7 @@ export default function Space({ node, id }: SpaceProps) {
   const { spaces } = useSpaces(id);
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
-  const previousSizesRef = useRef<string[]>();
+  const previousSizesRef = useRef<number[]>();
   const currentTotalSize = useRef();
   const { sizes } = node;
 
@@ -34,9 +38,10 @@ export default function Space({ node, id }: SpaceProps) {
 
   // apply sizes updates from remote session
   useEffect(() => {
-    const lastSizes = previousSizesRef.current;
+    const lastSizes = previousSizesRef.current?.toString();
+    const currentSizes = sizes?.toString();
     const totalSize = currentTotalSize.current;
-    if (lastSizes && totalSize && sizes && lastSizes !== sizes) {
+    if (lastSizes && totalSize && sizes && lastSizes !== currentSizes) {
       spaceRef.current?.resize(getAbsoluteSizes(sizes, totalSize));
     }
     previousSizesRef.current = sizes;
@@ -57,7 +62,7 @@ export default function Space({ node, id }: SpaceProps) {
           ref={spaceRef}
         >
           {node.children.map((space, i) => {
-            const preferredSize = node.sizes?.[i];
+            const preferredSize = toPercentage(node.sizes?.[i]);
             return (
               <Allotment.Pane key={space.id} preferredSize={preferredSize}>
                 <Space node={space} id={id} />

@@ -11,7 +11,7 @@ export default class SpaceNode {
   // if layout is set, render as space container instead of panel container
   layout?: Layout;
   pinned?: boolean;
-  sizes?: string[];
+  sizes?: number[];
   constructor(
     id?: string,
     children?: SpaceNode[],
