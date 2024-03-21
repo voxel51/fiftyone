@@ -10,6 +10,7 @@ import eta.core.utils as etau
 import fiftyone.core.labels as fol
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
+import fiftyone.utils.iou as foui
 
 
 def objects_to_segmentations(
@@ -66,6 +67,7 @@ def objects_to_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -179,6 +181,7 @@ def export_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -240,6 +243,7 @@ def import_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -319,6 +323,7 @@ def transform_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Segmentation
     )
@@ -422,6 +427,7 @@ def segmentations_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -477,6 +483,7 @@ def instances_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -549,6 +556,7 @@ def segmentations_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -595,6 +603,7 @@ def classification_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
     )
@@ -641,6 +650,7 @@ def classifications_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications
     )
@@ -673,3 +683,108 @@ def classifications_to_detections(
                 detections.append(detection)
 
             image[out_field] = fol.Detections(detections=detections)
+
+
+def perform_nms(
+    sample_collection,
+    in_field,
+    out_field=None,
+    iou_thresh=0.5,
+    confidence_thresh=None,
+    classwise=True,
+    progress=None,
+):
+    """Performs non-maximum suppression (NMS) on the specified
+    :class:`fiftyone.core.labels.Detections` field.
+
+    NMS is a post-processing technique used in object detection to eliminate
+    duplicate detections and select the most relevant detected objects. This
+    helps reduce false positives.
+
+    Args:
+        sample_collection: a
+            :class:`fiftyone.core.collections.SampleCollection`
+        in_field: the name of the :class:`fiftyone.core.labels.Detections`
+            field
+        out_field (None): the name of the
+            :class:`fiftyone.core.labels.Detections` field to populate. If not
+            specified, the input field is updated in-place
+        iou_thresh (0.5): an intersection over union (IoU) threshold to use.
+            This determines the minimum overlap required between bounding boxes
+            to be considered duplicates. Bounding boxes with IoU values greater
+            than or equal to this threshold will be suppressed
+        confidence_thresh (None): a minimum confidence score required for a
+            detection to be considered valid. Detections with confidence scores
+            lower than this threshold will be discarded
+        classwise (True): whether to treat each class ``label`` separately
+            (True) or suppress all detections jointly (False)
+        progress (None): whether to render a progress bar (True/False), use the
+            default value ``fiftyone.config.show_progress_bars`` (None), or a
+            progress callback function to invoke instead
+    """
+    fov.validate_non_grouped_collection(sample_collection)
+    fov.validate_collection_label_fields(
+        sample_collection, in_field, fol.Detections
+    )
+
+    if out_field is None:
+        out_field = in_field
+
+    samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
+
+    for sample in samples.iter_samples(autosave=True, progress=progress):
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            detections = image[in_field]
+            if detections is not None:
+                _detections = detections.detections.copy()
+                nms_detections = _perform_nms(
+                    _detections,
+                    iou_thresh=iou_thresh,
+                    confidence_thresh=confidence_thresh,
+                    classwise=classwise,
+                )
+                image[out_field] = fol.Detections(detections=nms_detections)
+
+
+def _perform_nms(
+    detections, iou_thresh=0.5, confidence_thresh=None, classwise=True
+):
+    detections.sort(
+        key=lambda d: (d.confidence is not None, d.confidence),
+        reverse=True,
+    )
+
+    if confidence_thresh is not None:
+        detections = [
+            d
+            for d in detections
+            if d.confidence is not None and d.confidence >= confidence_thresh
+        ]
+
+    nms_detections = []
+    while detections:
+        # Pick the detection with highest confidence
+        d0 = detections.pop(0)
+        nms_detections.append(d0)
+
+        # Compare with other detections for NMS
+        rm_inds = []
+        for i, d in enumerate(detections):
+            if classwise and d.label != d0.label:
+                continue
+
+            iou = foui.compute_bbox_iou(d0, d)
+            if iou >= iou_thresh:
+                rm_inds.append(i)
+
+        for i in reversed(rm_inds):
+            del detections[i]
+
+    return nms_detections

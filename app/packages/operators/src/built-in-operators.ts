@@ -19,6 +19,9 @@ import {
   listLocalAndRemoteOperators,
 } from "./operators";
 import { useShowOperatorIO } from "./state";
+import { useSetRecoilState } from "recoil";
+import useRefetchableSavedViews from "../../core/src/hooks/useRefetchableSavedViews";
+import { toSlug } from "@fiftyone/utilities";
 
 //
 // BUILT-IN OPERATORS
@@ -457,20 +460,39 @@ class SetView extends Operator {
     });
   }
   useHooks(ctx: ExecutionContext): {} {
+    const refetchableSavedViews = useRefetchableSavedViews();
+
     return {
+      refetchableSavedViews,
       setView: fos.useSetView(),
+      setViewName: useSetRecoilState(fos.viewName),
     };
   }
   async resolveInput(ctx: ExecutionContext): Promise<types.Property> {
     const inputs = new types.Object();
-    inputs.obj("view", {
-      label: "View",
-      required: true,
-    });
+    inputs.obj("view", { view: new types.HiddenView({}) });
+    inputs.str("name", { label: "Name or slug of a saved view" });
     return new types.Property(inputs);
   }
-  async execute({ state, hooks, params }: ExecutionContext) {
-    hooks.setView(params.view);
+  async execute({ hooks, params }: ExecutionContext) {
+    const { view, name } = params || {};
+    if (view) {
+      hooks.setView(view);
+    } else if (name) {
+      const slug = toSlug(name);
+      const savedViews = hooks.refetchableSavedViews?.[0]?.savedViews;
+      const savedView =
+        Array.isArray(savedViews) &&
+        savedViews.find((view) => slug === view.slug);
+      if (!savedView) {
+        throw new Error(
+          `Saved view with name or slug "${name}" does not exist`
+        );
+      }
+      hooks.setViewName(slug);
+    } else {
+      throw new Error('Param "view" or "name" is required to set a view');
+    }
   }
 }
 
