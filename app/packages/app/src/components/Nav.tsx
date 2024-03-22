@@ -13,7 +13,7 @@ import { useRefresh } from "@fiftyone/state";
 import { isElectron } from "@fiftyone/utilities";
 import { DarkMode, LightMode, Lock } from "@mui/icons-material";
 import { useColorScheme } from "@mui/material";
-import React, { useEffect, useMemo } from "react";
+import React, { Suspense, useEffect, useMemo } from "react";
 import ReactGA from "react-ga4";
 import { useFragment, usePaginationFragment } from "react-relay";
 import { useDebounce } from "react-use";
@@ -112,7 +112,6 @@ const Nav: React.FC<{
       fragment NavFragment on Query {
         ...NavDatasets
         ...NavGA
-        teamsSubmission
       }
     `,
     fragment
@@ -133,7 +132,14 @@ const Nav: React.FC<{
         navChildren={<DatasetSelector useSearch={useSearch} />}
       >
         {datasetHead && datasetSnapshot && (
-          <div className={style.lock}>
+          <div
+            style={{
+              alignItems: "center",
+              display: "flex",
+              height: "100%",
+              marginRight: "1rem",
+            }}
+          >
             <Tooltip
               text={
                 `You are viewing the snapshot "${datasetSnapshot}" of the` +
@@ -147,7 +153,11 @@ const Nav: React.FC<{
             </Tooltip>
           </div>
         )}
-        {hasDataset && <ViewBar />}
+        {hasDataset && (
+          <Suspense fallback={<div style={{ flex: 1 }}></div>}>
+            <ViewBar />
+          </Suspense>
+        )}
         {!hasDataset && <div style={{ flex: 1 }}></div>}
         <div className={iconContainer}>
           <IconButton

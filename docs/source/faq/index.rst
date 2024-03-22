@@ -706,10 +706,10 @@ instructions on using the various Brain methods.
 Does FiftyOne track me?
 -----------------------
 
-FiftyOne tracks anonymous UUID-based usage of the Python library and the App by
-default. We are a small team building an open source project, and basic
-knowledge of how users are engaging with the project is critical to informing
-the roadmap of the project.
+FiftyOne tracks anonymous UUID-based usage of the App by default. We are a
+small team building an open source project, and basic knowledge of how users
+are engaging with the project is critical to informing the roadmap of the
+project.
 
 .. note::
 
