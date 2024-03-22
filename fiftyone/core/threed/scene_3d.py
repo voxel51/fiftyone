@@ -39,11 +39,11 @@ class SceneBackground:
         image (str, optional): the path to the background image. Defaults to
             None. This takes precedence over color if provided
         cube (list, optional): the paths to the six faces of the background.
-            The order of the faces is: +X, -X, +Y, -Y, +Z, -Z.
-            Defaults to None. This takes precedence over the image and color if
-            provided. This can be used to build a skybox.
+            The order of the faces is: +X, -X, +Y, -Y, +Z, -Z. Defaults to
+            ``None``. This takes precedence over the image and color if
+            provided. This can be used to build a skybox
         intensity (float, optional): the intensity of the background. Defaults
-            to 1.0. This only applies for `image` and `cube` backgrounds
+            to ``1.0``. This only applies for ``image`` and ``cube`` backgrounds
     """
 
     color: Optional[str] = None

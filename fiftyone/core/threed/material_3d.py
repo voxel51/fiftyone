@@ -25,7 +25,7 @@ class Material3D:
     """Base class for 3D materials.
 
     Args:
-        opacity (1.0): the opacity of the material, in the range [0, 1]
+        opacity (1.0): the opacity of the material, in the range ``[0, 1]``
         vertex_colors (False): whether the material uses vertex colors
     """
 
@@ -61,7 +61,7 @@ class PointcloudMaterial(Material3D):
         point_size (1.0): the size of the points in the point cloud
         attenuate_by_distance (False): whether to attenuate the point size
             based on distance from the camera
-        kwargs: additional keyword arguments for :class:`Material3D`
+        **kwargs: keyword arguments for :class:`Material3D`
     """
 
     shading_mode: Literal["height", "intensity", "rgb", "custom"] = "height"
@@ -87,7 +87,7 @@ class MeshMaterial(Material3D):
 
     Args:
         wireframe (False): whether to render the mesh as a wireframe
-        kwargs: additional keyword arguments for :class:`Material3D`
+        **kwargs: keyword arguments for :class:`Material3D`
     """
 
     wireframe: bool = False
@@ -100,12 +100,11 @@ class MeshMaterial(Material3D):
 class MeshBasicMaterial(MeshMaterial):
     """Represents a basic mesh material.
 
-    This material is not affected by lights,
-    and is rendered as a solid color.
+    This material is not affected by lights, and is rendered as a solid color.
 
     Args:
         color ("#ffffff"): the color of the material
-        kwargs: additional keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -124,11 +123,12 @@ class MeshStandardMaterial(MeshMaterial):
     Args:
         color ("#ffffff"): the color of the material
         emissive_color ("#000000"): the emissive color of the material.
-            This is the color emitted by the material itself independent of the light.
+            This is the color emitted by the material itself independent of the
+            light
         emissive_intensity (0.0): the intensity of the emissive color
         metalness (0.0): the metalness of the material
         roughness (1.0): the roughness of the material
-        kwargs: additional keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -154,19 +154,19 @@ class MeshStandardMaterial(MeshMaterial):
 class MeshLambertMaterial(MeshMaterial):
     """Represents a Lambert mesh material.
 
-    This material only takes into account diffuse reflections,
-    and ignores specular reflection. This is ideal for materials
-    that reflect light evenly without a glossy or shiny appearance,
-    such as unpolished surfaces.
+    This material only takes into account diffuse reflections, and ignores
+    specular reflection. This is ideal for materials that reflect light evenly
+    without a glossy or shiny appearance, such as unpolished surfaces.
 
     Args:
         color ("#ffffff"): the color of the material
         emissive_color ("#000000"): the emissive color of the material.
-            This is the color emitted by the material itself independent of the light.
+            This is the color emitted by the material itself independent of
+            the light.
         emissive_intensity (0.0): the intensity of the emissive color
         reflectivity (1.0): the reflectivity of the material
         refraction_ratio (0.98): the refraction ratio (IOR) of the material
-        kwargs: additional keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for :class:`MeshMaterial`
     """
 
     color: str = COLOR_DEFAULT_GRAY
@@ -192,14 +192,14 @@ class MeshLambertMaterial(MeshMaterial):
 class MeshPhongMaterial(MeshLambertMaterial):
     """Represents a Phong mesh material.
 
-    This material takes into account specular reflection.
-    This is ideal for materials that reflect light with a glossy or shiny appearance,
-    such as polished surfaces.
+    This material takes into account specular reflection. This is ideal for
+    materials that reflect light with a glossy or shiny appearance, such as
+    polished surfaces.
 
     Args:
         shininess (30): the shininess of the material
         specular_color ("#111111"): the specular color of the material
-        kwargs: additional keyword arguments for :class:`MeshLambertMaterial`
+        **kwargs: keyword arguments for :class:`MeshLambertMaterial`
     """
 
     shininess: float = 30.0
@@ -219,12 +219,11 @@ class MeshPhongMaterial(MeshLambertMaterial):
 class MeshDepthMaterial(MeshMaterial):
     """Represents a depth mesh material.
 
-    This material is used for drawing geometry by depth,
-    where depth is based off of the camera near and far plane.
-    White is nearest, black is farthest.
+    This material is used for drawing geometry by depth, where depth is based
+    off of the camera near and far plane. White is nearest, black is farthest.
 
     Args:
-        kwargs: additional keyword arguments for :class:`MeshMaterial`
+        **kwargs: keyword arguments for :class:`MeshMaterial`
     """
 
     pass

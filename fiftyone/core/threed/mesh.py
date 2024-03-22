@@ -17,11 +17,10 @@ class Mesh(Object3D):
 
     Args:
         material (:class:`fiftyone.core.threed.MeshMaterial`, optional):
-            Default material for the mesh. Defaults to
+            the default material for the mesh. Defaults to
             :class:`fiftyone.core.threed.MeshLambertMaterial`
             if not provided.
-        **kwargs: Arbitrary keyword arguments for
-            :class:`fiftyone.core.threed.Object3D`base class.
+        **kwargs: keyword arguments for :class:`fiftyone.core.threed.Object3D`
     """
 
     def __init__(self, material: Optional[MeshMaterial] = None, **kwargs):
@@ -36,7 +35,7 @@ class Mesh(Object3D):
         """Sets the material of the mesh.
 
         Args:
-            material (MeshMaterial): The material to set as the default.
+            material (MeshMaterial): the material to set as the default.
         """
         if isinstance(material, dict):
             material = MeshMaterial._from_dict(material)

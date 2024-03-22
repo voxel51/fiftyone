@@ -18,20 +18,20 @@ class Pointcloud(Object3D):
     Args:
         name (str): Name of the point cloud.
         pcd_path (str): Path to the .pcd file. Path may be either absolute or
-            relative to the directory containing the .fo3d file.
+            relative to the directory containing the .fo3d file
         material (:class:`fiftyone.core.threed.PointcloudMaterial`, optional):
             Material of the point cloud. If not specified, defaults to a
             new instance of :class:`fiftyone.core.threed.PointcloudMaterial`
-            with its default parameters.
+            with its default parameters
         flag_for_projection (bool): Whether to flag the point cloud for
             usage in orthographic projection. Each FO Scene can have at most
             one asset flagged for orthographic projection. Defaults to
             ``False``. If multiple assets are flagged, the first one will be
-            chosen.
-        **kwargs: Arbitrary keyword arguments for base class.
+            chosen
+        **kwargs: keyword arguments for base class
 
     Raises:
-        ValueError: If `pcd_path` does not end with '.pcd'.
+        ValueError: If `pcd_path` does not end with '.pcd'
     """
 
     def __init__(
@@ -59,7 +59,7 @@ class Pointcloud(Object3D):
         """Sets the material of the point cloud.
 
         Args:
-            material (PointcloudMaterial): The material to set as the default.
+            material (PointcloudMaterial): The material to set as the default
         """
         if isinstance(material, dict):
             material = PointcloudMaterial._from_dict(material)
