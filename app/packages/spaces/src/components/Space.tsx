@@ -1,7 +1,7 @@
 import { Allotment, AllotmentHandle } from "allotment";
 import "allotment/dist/style.css";
 import { debounce } from "lodash";
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ReactSortable } from "react-sortablejs";
 import SpaceNode from "../SpaceNode";
 import { Layout } from "../enums";
@@ -23,16 +23,20 @@ export default function Space({ node, id }: SpaceProps) {
   const autoPosition = usePanelTabAutoPosition();
   const spaceRef = useRef<AllotmentHandle>(null);
   const previousSizesRef = useRef<number[]>();
-  const currentTotalSize = useRef();
+  const currentTotalSize = useRef<number>();
   const { sizes } = node;
 
   const setSpaceSizes = useCallback(
-    debounce((node, sizes) => {
-      currentTotalSize.current = sizes.reduce((total, item) => total + item, 0);
-      const relativeSizes = getRelativeSizes(sizes);
-      previousSizesRef.current = relativeSizes;
-      spaces.setNodeSizes(node, relativeSizes);
-    }, 500),
+    (node: SpaceNode, sizes: number[]) =>
+      debounce(() => {
+        currentTotalSize.current = sizes.reduce(
+          (total, item) => total + item,
+          0
+        );
+        const relativeSizes = getRelativeSizes(sizes);
+        previousSizesRef.current = relativeSizes;
+        spaces.setNodeSizes(node, relativeSizes);
+      }, 500),
     [spaces]
   );
 
