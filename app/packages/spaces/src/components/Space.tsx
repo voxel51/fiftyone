@@ -1,7 +1,7 @@
 import { Allotment, AllotmentHandle } from "allotment";
 import "allotment/dist/style.css";
 import { debounce } from "lodash";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ReactSortable } from "react-sortablejs";
 import SpaceNode from "../SpaceNode";
 import { Layout } from "../enums";
@@ -26,19 +26,14 @@ export default function Space({ node, id }: SpaceProps) {
   const currentTotalSize = useRef<number>();
   const { sizes } = node;
 
-  const setSpaceSizes = useCallback(
-    (node: SpaceNode, sizes: number[]) =>
-      debounce(() => {
-        currentTotalSize.current = sizes.reduce(
-          (total, item) => total + item,
-          0
-        );
-        const relativeSizes = getRelativeSizes(sizes);
-        previousSizesRef.current = relativeSizes;
-        spaces.setNodeSizes(node, relativeSizes);
-      }, 500),
-    [spaces]
-  );
+  const setSpaceSizes = useMemo(() => {
+    return debounce((node: SpaceNode, sizes: number[]) => {
+      currentTotalSize.current = sizes.reduce((total, item) => total + item, 0);
+      const relativeSizes = getRelativeSizes(sizes);
+      previousSizesRef.current = relativeSizes;
+      spaces.setNodeSizes(node, relativeSizes);
+    }, 500);
+  }, [spaces]);
 
   // apply sizes updates from remote session
   useEffect(() => {
