@@ -128,7 +128,7 @@ to the above command.
 .. note::
 
     You can customize the local/remote ports used when launching remote
-    sessions in order to connect/servce multiple remote sessions
+    sessions in order to connect/service multiple remote sessions
     simultaneously.
 
 .. note::
@@ -192,7 +192,7 @@ or by setting the following environment variable:
 Notebooks
 _________
 
-FiftyOne officialy supports `Jupyter Notebooks <https://jupyter.org>`_,
+FiftyOne officially supports `Jupyter Notebooks <https://jupyter.org>`_,
 `Google Colab Notebooks <https://colab.research.google.com>`_,
 `Databricks Notebooks <https://docs.databricks.com/en/notebooks/index.html>`_.
 App support is also available in
@@ -528,7 +528,7 @@ For prototyping, it is *possible* to work with data in cloud storage buckets in
 FiftyOne by mounting the buckets as local drives.
 
 The following sections describe how to do this in the :ref:`AWS <aws>`,
-:ref:`Google Cloud <google-cloud>`, and :ref:`Miscrosoft Azure <azure>`
+:ref:`Google Cloud <google-cloud>`, and :ref:`Microsoft Azure <azure>`
 environments.
 
 .. warning::
@@ -730,5 +730,5 @@ successfully :ref:`install FiftyOne <installing-fiftyone>`.
     . fiftyone-env/bin/activate
 
     # Python packages
-    pip install --upgrade pip setuptools wheel
+    pip install --upgrade pip setuptools wheel build
     pip install ipython

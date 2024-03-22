@@ -33,7 +33,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
-          pip install --upgrade pip setuptools wheel
+          pip install --upgrade pip setuptools wheel build
       - name: Cache Node Modules
         id: node-cache
         uses: actions/cache@v3
@@ -70,7 +70,7 @@ jobs:
           fi
       - name: Build wheel
         working-directory: package/desktop
-        run: python setup.py bdist_wheel --plat-name ${{ matrix.platform }}
+        run: RELEASE_DIR=${PWD}/../../app/packages/desktop/release python -Im build -C="--build-option=--plat-name=${{ matrix.platform }}"
       - name: Upload wheel
         uses: actions/upload-artifact@v3
         with:

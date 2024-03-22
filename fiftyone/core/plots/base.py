@@ -270,8 +270,8 @@ def plot_roc_curve(
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array-like of false postive rates
-        tpr: an array-like of true postive rates
+        fpr: an array-like of false positive rates
+        tpr: an array-like of true positive rates
         thresholds (None): an array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         backend ("plotly"): the plotting backend to use. Supported values are
@@ -334,11 +334,11 @@ def lines(
                 of array-likes of values for multiple line traces
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract values for a single line
-            -   the name of a frame field or ``frames.embbeded.field.name`` of
+            -   the name of a frame field or ``frames.embedded.field.name`` of
                 ``samples`` from which to extract values for per-sample line
                 traces
             -   a :class:`fiftyone.core.expressions.ViewExpression` that
-                resolves to a list (one line plot) or list of lists (muliple
+                resolves to a list (one line plot) or list of lists (multiple
                 line plots) of numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
         y (None): the y data to plot. Can be any of the following:
@@ -348,11 +348,11 @@ def lines(
                 of array-likes of values for multiple line traces
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract values for a single line
-            -   the name of a frame field or ``frames.embbeded.field.name`` of
+            -   the name of a frame field or ``frames.embedded.field.name`` of
                 ``samples`` from which to extract values for per-sample line
                 traces
             -   a :class:`fiftyone.core.expressions.ViewExpression` that
-                resolves to a list (one line plot) or list of lists (muliple
+                resolves to a list (one line plot) or list of lists (multiple
                 line plots) of numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
@@ -1049,7 +1049,7 @@ class InteractivePlot(ResponsivePlot):
         Selection callbacks are functions that take a single argument
         containing the list of currently selected IDs.
 
-        If a selection callback is registred, this plot should invoke it each
+        If a selection callback is registered, this plot should invoke it each
         time their selection is updated.
 
         Args:

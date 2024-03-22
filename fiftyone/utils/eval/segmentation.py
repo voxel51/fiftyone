@@ -96,6 +96,7 @@ def evaluate_segmentations(
     Returns:
         a :class:`SegmentationResults`
     """
+    fov.validate_non_grouped_collection(samples)
     fov.validate_collection_label_fields(
         samples, (pred_field, gt_field), fol.Segmentation, same_type=True
     )
@@ -314,7 +315,7 @@ class SimpleEvaluationConfig(SegmentationEvaluationConfig):
 
 
 class SimpleEvaluation(SegmentationEvaluation):
-    """Stardard pixelwise segmentation evaluation.
+    """Standard pixelwise segmentation evaluation.
 
     This class can optionally be configured to evaluate along only the
     boundaries of the ground truth segmentation masks.

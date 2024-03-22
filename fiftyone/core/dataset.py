@@ -5,6 +5,7 @@ FiftyOne datasets.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from collections import defaultdict
 import contextlib
 from datetime import datetime
@@ -105,8 +106,19 @@ def _validate_dataset_name(name, skip=None):
         query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
 
     conn = foo.get_db_conn()
-    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
-        raise ValueError("Dataset name '%s' is not available" % name)
+
+    clashing_name_doc = conn.datasets.find_one(
+        query, {"name": True, "_id": False}
+    )
+    if clashing_name_doc is not None:
+        clashing_name = clashing_name_doc["name"]
+        if clashing_name == name:
+            raise ValueError(f"Dataset name '{name}' is not available")
+        else:
+            raise ValueError(
+                f"Dataset name '{name}' is not available: slug '{slug}' "
+                f"in use by dataset '{clashing_name}'"
+            )
 
     return slug
 
@@ -6588,6 +6600,20 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
                         field_name, value.name, sample.media_type
                     )
 
+                if (
+                    self.media_type == fom.GROUP
+                    and sample.media_type
+                    not in set(self.group_media_types.values())
+                ):
+                    expanded |= self._sample_doc_cls.merge_field_schema(
+                        {
+                            "metadata": fo.EmbeddedDocumentField(
+                                fome.get_metadata_cls(sample.media_type)
+                            )
+                        },
+                        validate=False,
+                    )
+
                 if not dynamic and field_name in schema:
                     continue
 
@@ -6794,7 +6820,10 @@ class Dataset(foc.SampleCollection, metaclass=DatasetSingleton):
     def _serialize(self):
         return self._doc.to_dict(extended=True)
 
-    def _update_last_loaded_at(self):
+    def _update_last_loaded_at(self, force=False):
+        if os.environ.get("FIFTYONE_SERVER", False) and not force:
+            return
+
         self._doc.last_loaded_at = datetime.utcnow()
         self._save()
 
@@ -6935,6 +6964,93 @@ def _create_group_indexes(sample_collection_name, group_field):
     sample_collection = conn[sample_collection_name]
     sample_collection.create_index(group_field + "._id")
     sample_collection.create_index(group_field + ".name")
+
+
+def _clone_indexes(src_collection, dst_doc):
+    if isinstance(src_collection, fov.DatasetView):
+        src_dataset = src_collection._dataset
+        src_view = src_collection
+    else:
+        src_dataset = src_collection
+        src_view = None
+
+    # Omit indexes on filtered fields
+    if src_view is not None:
+        skip = _get_indexes_to_skip(src_view)
+    else:
+        skip = None
+
+    _clone_collection_indexes(
+        src_dataset._sample_collection_name,
+        dst_doc.sample_collection_name,
+        skip=skip,
+    )
+
+    if dst_doc.frame_collection_name is not None:
+        # Omit indexes on filtered fields
+        if src_view is not None:
+            skip = _get_indexes_to_skip(src_view, frames=True)
+        else:
+            skip = None
+
+        _clone_collection_indexes(
+            src_dataset._frame_collection_name,
+            dst_doc.frame_collection_name,
+            skip=skip,
+        )
+
+
+def _get_indexes_to_skip(view, frames=False):
+    selected_fields, excluded_fields = view._get_selected_excluded_fields(
+        frames=frames
+    )
+
+    if selected_fields is None and excluded_fields is None:
+        return None
+
+    if selected_fields is not None:
+        selected_roots = {f.split(".", 1)[0] for f in selected_fields}
+    else:
+        selected_roots = None
+
+    if frames:
+        src_coll = view._dataset._frame_collection
+        fields_map = view._get_db_fields_map(frames=True, reverse=True)
+    else:
+        src_coll = view._dataset._sample_collection
+        fields_map = view._get_db_fields_map(reverse=True)
+
+    skip = set()
+
+    for name, index_info in src_coll.index_information().items():
+        for field, _ in index_info["key"]:
+            field = fields_map.get(field, field)
+            root = field.split(".", 1)[0]
+
+            if selected_roots is not None and root not in selected_roots:
+                skip.add(name)
+
+            if excluded_fields is not None and field in excluded_fields:
+                skip.add(name)
+
+    return skip
+
+
+def _clone_collection_indexes(
+    src_collection_name, dst_collection_name, skip=None
+):
+    conn = foo.get_db_conn()
+    src_coll = conn[src_collection_name]
+    dst_coll = conn[dst_collection_name]
+
+    for name, index_info in src_coll.index_information().items():
+        key = index_info.pop("key")
+        index_info.pop("ns", None)
+        index_info.pop("v", None)
+        if skip is not None and name in skip:
+            continue
+
+        dst_coll.create_index(key, name=name, **index_info)
 
 
 def _make_sample_collection_name(
@@ -7191,10 +7307,8 @@ def _clone_dataset_or_view(dataset_or_view, name, persistent):
 
     dataset_doc.save(upsert=True)
 
-    # Create indexes
-    _create_indexes(sample_collection_name, frame_collection_name)
-    if contains_groups and dataset.group_field is not None:
-        _create_group_indexes(sample_collection_name, dataset.group_field)
+    # Clone indexes
+    _clone_indexes(dataset_or_view, dataset_doc)
 
     # Clone samples
     coll, pipeline = _get_samples_pipeline(dataset_or_view)
@@ -7337,7 +7451,7 @@ def _save_view(view, fields=None):
         pipeline = view._pipeline(frames_only=True)
 
         # Clips datasets may contain overlapping clips, so we must select only
-        # the first occurrance of each frame
+        # the first occurrence of each frame
         if dataset._is_clips:
             pipeline.extend(
                 [
@@ -8089,7 +8203,7 @@ def _merge_samples_pipeline(
     # here, but here's the current workflow:
     #
     # - Store the `key_field` value on each frame document in both the source
-    #   and destination collections corresopnding to its parent sample in a
+    #   and destination collections corresponding to its parent sample in a
     #   temporary `frame_key_field` field
     # - Merge the sample documents without frames attached
     # - Merge the frame documents on `[frame_key_field, frame_number]` with
@@ -8548,7 +8662,7 @@ def _finalize_frames(sample_collection, key_field, frame_key_field):
 
 
 def _get_media_type(sample):
-    for field, value in sample.iter_fields():
+    for _, value in sample.iter_fields():
         if isinstance(value, fog.Group):
             return fom.GROUP
 

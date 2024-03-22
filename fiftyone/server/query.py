@@ -336,6 +336,7 @@ class Dataset:
             serialized_view=view,
             saved_view_slug=saved_view_slug,
             dicts=False,
+            update_last_loaded_at=True,
         )
 
 
@@ -468,16 +469,6 @@ class Query(fosa.AggregateQuery):
     stage_definitions = gql.field(stage_definitions)
 
     @gql.field
-    def teams_submission(self) -> bool:
-        isfile = os.path.isfile(foc.TEAMS_PATH)
-        if isfile:
-            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
-        else:
-            submitted = False
-
-        return submitted
-
-    @gql.field
     def uid(self) -> str:
         return fou.get_user_id()
 
@@ -578,12 +569,17 @@ async def serialize_dataset(
     serialized_view: BSONArray,
     saved_view_slug: t.Optional[str] = None,
     dicts=True,
+    update_last_loaded_at=False,
 ) -> Dataset:
     def run():
         if not fod.dataset_exists(dataset_name):
             return None
 
         dataset = fod.load_dataset(dataset_name)
+
+        if update_last_loaded_at:
+            dataset._update_last_loaded_at(force=True)
+
         dataset.reload()
         view_name = None
         try:

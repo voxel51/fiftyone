@@ -5,6 +5,7 @@ FiftyOne Server /values route
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import regex as re
 from starlette.endpoints import HTTPEndpoint
 from starlette.requests import Request
@@ -36,7 +37,7 @@ class Values(HTTPEndpoint):
         slice = data.get("slice", None)
         filters = data.get("filters", None)
 
-        view = fosv.get_view(
+        view = await fosv.get_view(
             dataset,
             stages=stages,
             extended_stages=extended,
@@ -46,6 +47,7 @@ class Values(HTTPEndpoint):
                     slice=slice, id=group_id, slices=slices
                 )
             ),
+            awaitable=True,
         )
 
         if sample_id is not None:
@@ -53,7 +55,7 @@ class Values(HTTPEndpoint):
 
         sort_by = "count" if count else "_id"
 
-        # escape special characters, add support for wilcard pattern matching
+        # escape special characters, add support for wildcard pattern matching
         regex_safe_search = (
             re.escape(search).replace(r"\*", ".*").replace(r"\?", ".")
             if search

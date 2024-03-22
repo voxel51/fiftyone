@@ -66,7 +66,7 @@ class PluginDefinition(object):
 
     @property
     def fiftyone_compatibility(self):
-        """The FiftyOne compatibilty version."""
+        """The FiftyOne compatibility version."""
         return self._metadata.get("fiftyone", {}).get("version", None)
 
     @property

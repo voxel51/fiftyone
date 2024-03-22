@@ -2,6 +2,7 @@
  * Copyright 2017-2024, Voxel51, Inc.
  */
 
+import { getCls } from "@fiftyone/utilities";
 import { BaseState, Coordinates, NONFINITE } from "../state";
 import { getLabelColor, shouldShowLabelTag, sizeBytes } from "./util";
 
@@ -14,7 +15,6 @@ export enum CONTAINS {
 
 export interface BaseLabel {
   id: string;
-  _cls: string;
   frame_number?: number;
   tags: string[];
   index?: number;
@@ -99,6 +99,7 @@ export abstract class CoordinateOverlay<
   }
 
   getColor({
+    config,
     options: {
       coloring,
       customizeColorSetting,
@@ -113,6 +114,7 @@ export abstract class CoordinateOverlay<
       isTagged: shouldShowLabelTag(selectedLabelTags, this.label.tags),
       labelTagColors,
       customizeColorSetting,
+      embeddedDocType: getCls(this.field, config.fieldSchema),
     });
   }
 

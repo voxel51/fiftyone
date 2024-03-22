@@ -5,6 +5,7 @@ Documents that track datasets and their sample schemas in the database.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 import logging
 
 from bson import DBRef, ObjectId
@@ -290,7 +291,7 @@ class ColorScheme(EmbeddedDocument):
 
     id = ObjectIdField(
         required=True,
-        default=ObjectId,
+        default=lambda: str(ObjectId()),
         db_field="_id",
     )
     color_pool = ListField(ColorField(), null=True)
@@ -304,17 +305,13 @@ class ColorScheme(EmbeddedDocument):
     colorscales = ListField(DictField(), null=True)
     default_colorscale = DictField(null=True)
 
-    def to_dict(self, extended=False):
-        d = super().to_dict(extended)
-        d["id"] = str(d.pop("_id"))
+    @property
+    def _id(self):
+        return ObjectId(self.id)
 
-        return d
-
-    @classmethod
-    def from_dict(cls, d):
-        d = dict(**d)
-        d["_id"] = ObjectId(d.get("id", None))
-        return super().from_dict(d)
+    @_id.setter
+    def _id(self, value):
+        self.id = str(value)
 
 
 class KeypointSkeleton(EmbeddedDocument):
@@ -604,7 +601,10 @@ class DatasetDocument(Document):
     """Backing document for datasets."""
 
     # strict=False lets this class ignore unknown fields from other versions
-    meta = {"collection": "datasets", "strict": False}
+    meta = {
+        "collection": "datasets",
+        "strict": False,
+    }
 
     name = StringField(unique=True, required=True)
     slug = StringField()

@@ -216,9 +216,10 @@ def annotate(
     anno_backend.ensure_requirements()
 
     supported_media_types = anno_backend.supported_media_types
-    if samples.media_type == fomm.GROUP:
-        raise fomm.SelectGroupSlicesError(supported_media_types)
-    elif samples.media_type not in supported_media_types:
+    if samples.media_type not in supported_media_types:
+        if samples.media_type == fomm.GROUP:
+            raise fomm.SelectGroupSlicesError(supported_media_types)
+
         raise fomm.MediaTypeError(
             "The '%s' backend does not supported annotating '%s' collections"
             % (anno_backend.config.name, samples.media_type)
@@ -1006,7 +1007,7 @@ def load_annotations(
         anno_key: an annotation key
         dest_field (None): an optional name of a new destination field
             into which to load the annotations, or a dict mapping field names
-            in the run's label schema to new desination field names
+            in the run's label schema to new destination field names
         unexpected ("prompt"): how to deal with any unexpected labels that
             don't match the run's label schema when importing. The supported
             values are:
@@ -2342,7 +2343,7 @@ def draw_labeled_images(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         progress (None): whether to render a progress bar (True/False), use the
@@ -2386,7 +2387,7 @@ def draw_labeled_image(
         sample: a :class:`fiftyone.core.sample.Sample`
         outpath: the path to write the annotated image
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the
@@ -2432,7 +2433,7 @@ def draw_labeled_videos(
             converted to an absolute path (if necessary) via
             :func:`fiftyone.core.storage.normalize_path`
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         progress (None): whether to render a progress bar (True/False), use the
@@ -2488,7 +2489,7 @@ def draw_labeled_video(
         support (None): an optional ``[first, last]`` range of frames to
             render
         label_fields (None): a label field or list of label fields to render.
-            If omitted, all compatiable fields are rendered
+            If omitted, all compatible fields are rendered
         config (None): an optional :class:`DrawConfig` configuring how to draw
             the labels
         **kwargs: optional keyword arguments specifying parameters of the

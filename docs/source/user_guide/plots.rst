@@ -19,7 +19,7 @@ modes, annotation gaps, and more.
 
 What do we mean by **interactive plots**? First, FiftyOne plots are
 `powered by Plotly <https://plotly.com/python>`_, which means they are
-responsive JavaScript-based plots that can be zommed, panned, and lasso-ed.
+responsive JavaScript-based plots that can be zoomed, panned, and lasso-ed.
 Second, FiftyOne plots can be linked to the :ref:`FiftyOne App <fiftyone-app>`,
 so that selecting points in a plot will automatically load the corresponding
 samples/labels in the App (and vice versa) for you to visualize! Linking plots
@@ -1108,7 +1108,7 @@ options are:
     frame
 -   `"frames"`: show only the selected frames in a frames view
 
-Wehn a plot is linked to labels, the available
+When a plot is linked to labels, the available
 :meth:`selection_mode <fiftyone.core.plots.base.InteractivePlot.selection_mode>`
 options are:
 

@@ -17,12 +17,14 @@ import fiftyone.core.dataset as fod
 import fiftyone.core.odm.utils as focu
 import fiftyone.core.utils as fou
 import fiftyone.core.view as fov
+from fiftyone.operators.decorators import coroutine_timeout
+from fiftyone.operators.message import GeneratedMessage, MessageType
+from fiftyone.operators.operations import Operations
+from fiftyone.operators.registry import OperatorRegistry
 import fiftyone.operators.types as types
-import fiftyone.server.view as fosv
 from fiftyone.plugins.secrets import PluginSecretsResolver, SecretsDictionary
-from .decorators import coroutine_timeout
-from .message import GeneratedMessage, MessageType
-from .registry import OperatorRegistry
+import fiftyone.server.view as fosv
+
 
 logger = logging.getLogger(__name__)
 
@@ -138,20 +140,33 @@ def execute_operator(operator_uri, ctx=None, **kwargs):
             as keyword arguments rather than including them in ``ctx``
 
     Returns:
-        an :class:`ExecutionResult`
+        an :class:`ExecutionResult`, or an ``asyncio.Task`` if you run this
+        method in a notebook context
 
     Raises:
         ExecutionError: if an error occurred while immediately executing an
             operation or scheduling a delegated operation
     """
     request_params = _parse_ctx(ctx=ctx, **kwargs)
-
-    result = asyncio.run(
-        execute_or_delegate_operator(
-            operator_uri, request_params, exhaust=True
-        )
+    coroutine = execute_or_delegate_operator(
+        operator_uri, request_params, exhaust=True
     )
-    result.raise_exceptions()
+
+    try:
+        # Some contexts like notebooks already have event loops running, so we
+        # must use the existing loop
+        loop = asyncio.get_running_loop()
+    except:
+        loop = None
+
+    if loop is not None:
+        # @todo is it possible to await result here?
+        # Sadly, run_until_complete() is not allowed in Jupyter notebooks
+        # https://nocomplexity.com/documents/jupyterlab/tip-asyncio.html
+        result = loop.create_task(coroutine)
+    else:
+        result = asyncio.run(coroutine)
+        result.raise_exceptions()
 
     return result
 
@@ -429,6 +444,7 @@ class ExecutionContext(object):
 
         self._dataset = None
         self._view = None
+        self._ops = Operations(self)
 
         self._set_progress = set_progress
         self._delegated_operation_id = delegated_operation_id
@@ -585,6 +601,13 @@ class ExecutionContext(object):
             resolver_fn=self._secrets_client.get_secret_sync,
             required_keys=self._required_secret_keys,
         )
+
+    @property
+    def ops(self):
+        """A :class:`fiftyone.operators.operations.Operations` instance that
+        you can use to trigger builtin operations on the current context.
+        """
+        return self._ops
 
     def secret(self, key):
         """Retrieves the secret with the given key.

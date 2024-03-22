@@ -36,7 +36,6 @@ describe("EmbeddedDocumentField and tags bubbles get correct color", () => {
     id: "1",
     label: "telephone",
     tags: ["non-worm", "mistake"],
-    _cls: "Classification",
   };
 
   const sampleInput1 = {

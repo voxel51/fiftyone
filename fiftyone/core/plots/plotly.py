@@ -137,7 +137,7 @@ def _plot_confusion_matrix_static(
     xlabels = labels[:num_cols]
     ylabels = labels[:num_rows]
 
-    # Flip data so plot will have the standard descending diagnoal
+    # Flip data so plot will have the standard descending diagonal
     # Flipping the yaxis via `autorange="reversed"` isn't an option because
     # screenshots don't seem to respect that setting...
     confusion_matrix = np.flip(confusion_matrix, axis=0)
@@ -214,7 +214,7 @@ def _plot_confusion_matrix_interactive(
     xlabels = labels[:num_cols]
     ylabels = labels[:num_rows]
 
-    # Flip data so plot will have the standard descending diagnoal
+    # Flip data so plot will have the standard descending diagonal
     # Flipping the yaxis via `autorange="reversed"` isn't an option because
     # screenshots don't seem to respect that setting...
     confusion_matrix = np.flip(confusion_matrix, axis=0)
@@ -326,7 +326,7 @@ def plot_regressions(
             By default, if ``sizes`` is a field name, this name will be used,
             otherwise the tooltip will use "size"
         show_colorbar_title (None): whether to show the colorbar title. By
-            default, a title will be shown only if a value was pasesd to
+            default, a title will be shown only if a value was passed to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         **kwargs: optional keyword arguments for
@@ -618,8 +618,8 @@ def plot_roc_curve(
     """Plots a receiver operating characteristic (ROC) curve.
 
     Args:
-        fpr: an array-like of false postive rates
-        tpr: an array-like of true postive rates
+        fpr: an array-like of false positive rates
+        tpr: an array-like of true positive rates
         thresholds (None): an array-like of decision thresholds
         roc_auc (None): the area under the ROC curve
         style ("area"): a plot style to use. Supported values are
@@ -729,11 +729,11 @@ def lines(
                 of array-likes of values for multiple line traces
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract values for a single line
-            -   the name of a frame field or ``frames.embbeded.field.name`` of
+            -   the name of a frame field or ``frames.embedded.field.name`` of
                 ``samples`` from which to extract values for per-sample line
                 traces
             -   a :class:`fiftyone.core.expressions.ViewExpression` that
-                resolves to a list (one line plot) or list of lists (muliple
+                resolves to a list (one line plot) or list of lists (multiple
                 line plots) of numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
         y (None): the y data to plot. Can be any of the following:
@@ -743,11 +743,11 @@ def lines(
                 of array-likes of values for multiple line traces
             -   the name of a sample field or ``embedded.field.name`` of
                 ``samples`` from which to extract values for a single line
-            -   the name of a frame field or ``frames.embbeded.field.name`` of
+            -   the name of a frame field or ``frames.embedded.field.name`` of
                 ``samples`` from which to extract values for per-sample line
                 traces
             -   a :class:`fiftyone.core.expressions.ViewExpression` that
-                resolves to a list (one line plot) or list of lists (muliple
+                resolves to a list (one line plot) or list of lists (multiple
                 line plots) of numeric values to compute from ``samples`` via
                 :meth:`fiftyone.core.collections.SampleCollection.values`
         samples (None): the :class:`fiftyone.core.collections.SampleCollection`
@@ -1027,7 +1027,7 @@ def scatterplot(
         edges_title (None): a title string to use for ``edges`` in the legend.
             If none is provided, edges are not included in the legend
         show_colorbar_title (None): whether to show the colorbar title. By
-            default, a title will be shown only if a value was pasesd to
+            default, a title will be shown only if a value was passed to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         axis_equal (False): whether to set the axes to equal scale
@@ -1302,7 +1302,7 @@ def location_scatterplot(
         edges_title (None): a title string to use for ``edges`` in the legend.
             If none is provided, edges are not included in the legend
         show_colorbar_title (None): whether to show the colorbar title. By
-            default, a title will be shown only if a value was pasesd to
+            default, a title will be shown only if a value was passed to
             ``labels_title`` or an appropriate default can be inferred from
             the ``labels`` parameter
         map_type ("satellite"): the map type to render. Supported values are
@@ -2563,23 +2563,25 @@ def _plot_scatter_numeric(
 
     return figure
 
+
 def _set_map_type_to_figure(
-    figure, 
+    figure,
     map_type,
 ):
     if map_type == "satellite":
-        figure.update_layout(mapbox_style="white-bg",
+        figure.update_layout(
+            mapbox_style="white-bg",
             mapbox_layers=[
                 {
-                    "below": 'traces',
+                    "below": "traces",
                     "sourcetype": "raster",
                     "sourceattribution": "United States Geological Survey",
                     "source": [
                         "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
-                    ]
+                    ],
                 }
             ],
-            margin={"r":0,"t":0,"l":0,"b":0},
+            margin={"r": 0, "t": 0, "l": 0, "b": 0},
         )
     elif map_type == "roadmap":
         figure.update_layout(mapbox_style="carto-positron")
@@ -2587,6 +2589,34 @@ def _set_map_type_to_figure(
         figure.update_layout(mapbox_style="carto-positron")
         msg = "Unsupported map type '%s'; defaulted to 'roadmap'" % map_type
         warnings.warn(msg)
+
+
+def _set_map_type_to_figure(
+    figure,
+    map_type,
+):
+    if map_type == "satellite":
+        figure.update_layout(
+            mapbox_style="white-bg",
+            mapbox_layers=[
+                {
+                    "below": "traces",
+                    "sourcetype": "raster",
+                    "sourceattribution": "United States Geological Survey",
+                    "source": [
+                        "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}"
+                    ],
+                }
+            ],
+            margin={"r": 0, "t": 0, "l": 0, "b": 0},
+        )
+    elif map_type == "roadmap":
+        figure.update_layout(mapbox_style="carto-positron")
+    else:
+        figure.update_layout(mapbox_style="carto-positron")
+        msg = "Unsupported map type '%s'; defaulted to 'roadmap'" % map_type
+        warnings.warn(msg)
+
 
 def _plot_scatter_mapbox_categorical(
     coords,

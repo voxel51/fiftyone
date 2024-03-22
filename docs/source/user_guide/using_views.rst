@@ -1241,7 +1241,7 @@ respectively.
 
 .. note::
 
-    You can pass the optional `other_fields` pararmeter to
+    You can pass the optional `other_fields` parameter to
     :meth:`to_patches() <fiftyone.core.collections.SampleCollection.to_patches>`
     to specify additional read-only sample-level fields that each patch should
     include from their parent samples.
@@ -1399,7 +1399,7 @@ classification has a one-to-one relationship with its clip.
 
 .. note::
 
-    You can pass the optional `other_fields` pararmeter to
+    You can pass the optional `other_fields` parameter to
     :meth:`to_clips() <fiftyone.core.collections.SampleCollection.to_clips>` to
     specify additional read-only sample-level fields that each clip should
     include from their parent samples.

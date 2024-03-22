@@ -33,7 +33,7 @@ def bytes_to_unicode():
     want to avoid UNKs.
 
     When you're at something like a 10B token dataset you end up needing around
-    5K for decent coverage. This is a signficant percentage of your normal,
+    5K for decent coverage. This is a significant percentage of your normal,
     say, 32K bpe vocab. To avoid that, we want lookup tables between utf-8
     bytes and unicode strings.
 
