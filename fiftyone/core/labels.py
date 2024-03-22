@@ -1522,8 +1522,9 @@ def _transform_mask(in_mask, targets_map):
     out_mask = np.zeros_like(in_mask, dtype=dtype)
     objects = _find_slices(in_mask)
     for in_val, out_val in targets_map.items():
-        slices = objects[in_val]
-        out_mask[slices][in_mask[slices] == in_val] = out_val
+        slices = objects.get(in_val, None)
+        if slices is not None:
+            out_mask[slices][in_mask[slices] == in_val] = out_val
 
     if rgb_out:
         out_mask = _int_array_to_rgb(out_mask)
