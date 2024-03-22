@@ -5,6 +5,7 @@ Base classes for documents that back dataset contents.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from copy import deepcopy
 import json
 
@@ -643,9 +644,6 @@ class Document(BaseDocument, mongoengine.Document):
             raise mongoengine.InvalidDocumentError(
                 "Cannot save an abstract document"
             )
-
-        if self._meta.get("auto_create_index", True):
-            self.ensure_indexes()
 
         if validate:
             self.validate(clean=clean)
