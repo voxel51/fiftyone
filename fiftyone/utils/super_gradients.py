@@ -131,6 +131,7 @@ class TorchYoloNasModel(fout.TorchImageModel):
             dp.labels.astype(int),
         )
         height, width, _ = img.shape
+
         if 0 in bboxes.shape:
             return fo.Detections(detections=[])
 
@@ -143,7 +144,5 @@ class TorchYoloNasModel(fout.TorchImageModel):
         return fo.Detections(detections=detections)
 
     def _predict_all(self, imgs):
-        preds = self._model.predict(
-            imgs, conf=self.config.confidence_thresh
-        )._images_prediction_lst
-        return [self._generate_detections(pred) for pred in preds]
+        preds = self._model.predict(imgs, conf=self.config.confidence_thresh)
+        return self._generate_detections(preds)

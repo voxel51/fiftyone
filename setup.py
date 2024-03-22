@@ -76,7 +76,7 @@ INSTALL_REQUIRES = [
     # internal packages
     "fiftyone-brain>=0.16.0,<0.17",
     "fiftyone-db~=0.4",  # pinned to legacy db, do not remove
-    "voxel51-eta>=0.12.4,<0.13",
+    "voxel51-eta>=0.12.6,<0.13",
 ]
 
 
@@ -162,6 +162,8 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ],
     entry_points={"console_scripts": ["fiftyone=fiftyone.core.cli:main"]},
     python_requires=">=3.7",
