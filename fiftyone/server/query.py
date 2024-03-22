@@ -465,16 +465,6 @@ class Query(fosa.AggregateQuery):
     stage_definitions = gql.field(stage_definitions)
 
     @gql.field
-    def teams_submission(self) -> bool:
-        isfile = os.path.isfile(foc.TEAMS_PATH)
-        if isfile:
-            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
-        else:
-            submitted = False
-
-        return submitted
-
-    @gql.field
     def uid(self) -> str:
         return fou.get_user_id()
 

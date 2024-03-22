@@ -264,11 +264,6 @@ class Mutation(SetColorScheme):
         return result_view._serialize() if result_view else []
 
     @gql.mutation
-    async def store_teams_submission(self) -> bool:
-        etas.write_json({"submitted": True}, foc.TEAMS_PATH)
-        return True
-
-    @gql.mutation
     async def create_saved_view(
         self,
         subscription: str,
@@ -373,7 +368,7 @@ class Mutation(SetColorScheme):
         return deleted_view_id
 
     @gql.mutation
-    async def update_saved_view(
+    def update_saved_view(
         self,
         view_name: str,
         subscription: t.Optional[str],
@@ -437,7 +432,7 @@ class Mutation(SetColorScheme):
         return True
 
     @gql.mutation
-    async def search_select_fields(
+    def search_select_fields(
         self, dataset_name: str, meta_filter: t.Optional[JSON]
     ) -> t.List[str]:
         if not meta_filter:
