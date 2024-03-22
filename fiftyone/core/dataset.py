@@ -107,8 +107,19 @@ def _validate_dataset_name(name, skip=None):
         query = {"$and": [query, {"_id": {"$ne": skip._doc.id}}]}
 
     conn = foo.get_db_conn()
-    if bool(list(conn.datasets.find(query, {"_id": 1}).limit(1))):
-        raise ValueError("Dataset name '%s' is not available" % name)
+
+    clashing_name_doc = conn.datasets.find_one(
+        query, {"name": True, "_id": False}
+    )
+    if clashing_name_doc is not None:
+        clashing_name = clashing_name_doc["name"]
+        if clashing_name == name:
+            raise ValueError(f"Dataset name '{name}' is not available")
+        else:
+            raise ValueError(
+                f"Dataset name '{name}' is not available: slug '{slug}' "
+                f"in use by dataset '{clashing_name}'"
+            )
 
     return slug
 

@@ -5,6 +5,7 @@ FiftyOne Server queries.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 from datetime import date, datetime
 from enum import Enum
@@ -467,19 +468,6 @@ class Query(fosa.AggregateQuery):
     stage_definitions = gql.field(stage_definitions)
 
     @gql.field
-    def teams_submission(
-        self,
-    ) -> bool:  # TODO: check what this method should be
-        return True
-        isfile = os.path.isfile(foc.TEAMS_PATH)
-        if isfile:
-            submitted = etas.load_json(foc.TEAMS_PATH)["submitted"]
-        else:
-            submitted = False
-
-        return submitted
-
-    @gql.field
     def uid(self) -> str:
         return fou.get_user_id()
 
@@ -689,9 +677,11 @@ def _assign_estimated_counts(dataset: Dataset, fo_dataset: fo.Dataset):
     setattr(
         dataset,
         "estimated_frame_count",
-        fo_dataset._frame_collection.estimated_document_count()
-        if fo_dataset._frame_collection_name
-        else None,
+        (
+            fo_dataset._frame_collection.estimated_document_count()
+            if fo_dataset._frame_collection_name
+            else None
+        ),
     )
 
 

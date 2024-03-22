@@ -11,7 +11,7 @@ import fiftyone.core.labels as fol
 import fiftyone.core.storage as fos
 import fiftyone.core.utils as fou
 import fiftyone.core.validation as fov
-import fiftyone.utils.iou as foi
+import fiftyone.utils.iou as foui
 
 
 def objects_to_segmentations(
@@ -68,6 +68,7 @@ def objects_to_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -190,6 +191,7 @@ def export_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -262,6 +264,7 @@ def import_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, (fol.Segmentation, fol.Heatmap)
     )
@@ -344,6 +347,7 @@ def transform_segmentations(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Segmentation
     )
@@ -472,6 +476,7 @@ def segmentations_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -529,6 +534,7 @@ def instances_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -601,6 +607,7 @@ def segmentations_to_polylines(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection,
         in_field,
@@ -649,6 +656,7 @@ def classification_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classification
     )
@@ -695,6 +703,7 @@ def classifications_to_detections(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Classifications
     )
@@ -766,6 +775,7 @@ def perform_nms(
             default value ``fiftyone.config.show_progress_bars`` (None), or a
             progress callback function to invoke instead
     """
+    fov.validate_non_grouped_collection(sample_collection)
     fov.validate_collection_label_fields(
         sample_collection, in_field, fol.Detections
     )
@@ -774,18 +784,26 @@ def perform_nms(
         out_field = in_field
 
     samples = sample_collection.select_fields(in_field)
+    in_field, processing_frames = samples._handle_frame_field(in_field)
+    out_field, _ = samples._handle_frame_field(out_field)
 
     for sample in samples.iter_samples(autosave=True, progress=progress):
-        detections = sample[in_field]
-        if detections is not None:
-            _detections = detections.detections.copy()
-            nms_detections = _perform_nms(
-                _detections,
-                iou_thresh=iou_thresh,
-                confidence_thresh=confidence_thresh,
-                classwise=classwise,
-            )
-            sample[out_field] = fol.Detections(detections=nms_detections)
+        if processing_frames:
+            images = sample.frames.values()
+        else:
+            images = [sample]
+
+        for image in images:
+            detections = image[in_field]
+            if detections is not None:
+                _detections = detections.detections.copy()
+                nms_detections = _perform_nms(
+                    _detections,
+                    iou_thresh=iou_thresh,
+                    confidence_thresh=confidence_thresh,
+                    classwise=classwise,
+                )
+                image[out_field] = fol.Detections(detections=nms_detections)
 
 
 def _perform_nms(
@@ -815,7 +833,7 @@ def _perform_nms(
             if classwise and d.label != d0.label:
                 continue
 
-            iou = foi.compute_bbox_iou(d0, d)
+            iou = foui.compute_bbox_iou(d0, d)
             if iou >= iou_thresh:
                 rm_inds.append(i)
 

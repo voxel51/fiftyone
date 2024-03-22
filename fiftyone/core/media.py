@@ -46,16 +46,24 @@ class MediaTypeError(TypeError):
 class SelectGroupSlicesError(ValueError):
     """Exception raised when a grouped collection is passed to a method that
     expects a primitive media type to be selected.
+
+    Args:
+        supported_media_types (None): an optional media type or iterable of
+            media types that are supported
     """
 
-    def __init__(self, supported_media_types):
-        if not isinstance(supported_media_types, str):
-            supported_media_types = "/".join(supported_media_types)
+    def __init__(self, supported_media_types=None):
+        if isinstance(supported_media_types, str):
+            type_str = supported_media_types + " "
+        elif supported_media_types is not None:
+            type_str = "/".join(supported_media_types) + " "
+        else:
+            type_str = ""
 
         message = (
             "This method does not directly support grouped collections. "
-            "You must use `select_group_slices()` to select %s slice(s) to "
+            "You must use `select_group_slices()` to select %sslice(s) to "
             "process"
-        ) % supported_media_types
+        ) % type_str
 
         super().__init__(message)

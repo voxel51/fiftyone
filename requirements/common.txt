@@ -1,5 +1,5 @@
 aiofiles==0.7.0
-aiohttp==3.8.0
+aiohttp
 argcomplete==1.11.0
 backoff==1.11.1
 boto3==1.17.36
@@ -38,4 +38,4 @@ tabulate==0.8.10
 wcmatch==8.3
 websocket-client==1.4.2
 xmltodict==0.12.0
-yarl==1.7.2
+yarl

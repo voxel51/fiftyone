@@ -5,6 +5,7 @@ FiftyOne Server mutations.
 | `voxel51.com <https://voxel51.com/>`_
 |
 """
+
 from dataclasses import asdict
 import strawberry as gql
 import typing as t
@@ -218,13 +219,15 @@ class Mutation(SetColorScheme):
                 stages=view if view else None,
                 filters=form.filters if form else None,
                 extended_stages=form.extended if form else None,
-                sample_filter=SampleFilter(
-                    group=GroupElementFilter(
-                        slice=form.slice, slices=[form.slice]
+                sample_filter=(
+                    SampleFilter(
+                        group=GroupElementFilter(
+                            slice=form.slice, slices=[form.slice]
+                        )
                     )
-                )
-                if form.slice
-                else None,
+                    if form.slice
+                    else None
+                ),
             )
 
             # special case for group datasets where conversion stage is added
@@ -260,11 +263,6 @@ class Mutation(SetColorScheme):
         return result_view._serialize() if result_view else []
 
     @gql.mutation
-    async def store_teams_submission(self) -> bool:
-        etas.write_json({"submitted": True}, foc.TEAMS_PATH)
-        return True
-
-    @gql.mutation
     async def create_saved_view(
         self,
         subscription: str,
@@ -294,11 +292,15 @@ class Mutation(SetColorScheme):
             stages=view_stages if view_stages else None,
             filters=form.filters if form else None,
             extended_stages=form.extended if form else None,
-            sample_filter=SampleFilter(
-                group=GroupElementFilter(slice=form.slice, slices=[form.slice])
-            )
-            if form.slice
-            else None,
+            sample_filter=(
+                SampleFilter(
+                    group=GroupElementFilter(
+                        slice=form.slice, slices=[form.slice]
+                    )
+                )
+                if form.slice
+                else None
+            ),
         )
 
         result_view = _build_result_view(dataset_view, form)
