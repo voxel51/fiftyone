@@ -137,17 +137,13 @@ class TorchYoloNasModel(fout.TorchImageModel):
             return fo.Detections(detections=[])
         bboxes = self._convert_bboxes(bboxes, width, height)
         labels = [class_names[l] for l in labels]
-        
+
         detections = [
             fo.Detection(label=l, confidence=c, bounding_box=b)
             for (l, c, b) in zip(labels, confs, bboxes)
         ]
         return fo.Detections(detections=detections)
 
-
     def _predict_all(self, imgs):
-        preds = self._model.predict(
-            imgs, conf=self.config.confidence_thresh
-        )
-
+        preds = self._model.predict(imgs, conf=self.config.confidence_thresh)
         return self._generate_detections(preds)

@@ -298,7 +298,12 @@ export const useOperatorPrompt = () => {
   const [inputFields, setInputFields] = useState();
   const [resolving, setResolving] = useState(false);
   const [resolvedCtx, setResolvedCtx] = useState(null);
+  const [resolvedIO, setResolvedIO] = useState({ input: null, output: null });
   const notify = fos.useNotification();
+  const isDynamic = useMemo(() => Boolean(operator.config.dynamic), [operator]);
+  const cachedResolvedInput = useMemo(() => {
+    return isDynamic ? null : resolvedIO.input;
+  }, [isDynamic, resolvedIO.input]);
 
   const resolveInput = useCallback(
     debounce(
@@ -308,10 +313,13 @@ export const useOperatorPrompt = () => {
           if (operator.config.resolveExecutionOptionsOnChange) {
             execDetails.fetch(ctx);
           }
-          const resolved = await operator.resolveInput(ctx);
+          const resolved =
+            cachedResolvedInput || (await operator.resolveInput(ctx));
+
           validateThrottled(ctx, resolved);
           if (resolved) {
             setInputFields(resolved.toProps());
+            setResolvedIO((state) => ({ ...state, input: resolved }));
           } else {
             setInputFields(null);
           }
@@ -325,7 +333,7 @@ export const useOperatorPrompt = () => {
       operator.isRemote ? RESOLVE_TYPE_TTL : 0,
       { leading: true }
     ),
-    []
+    [cachedResolvedInput, setResolvedCtx, ctx]
   );
   const resolveInputFields = useCallback(async () => {
     ctx.hooks = hooks;
@@ -399,14 +407,15 @@ export const useOperatorPrompt = () => {
   );
   const execute = useCallback(
     async (options = null) => {
-      const resolved = await operator.resolveInput(ctx);
-      const { invalid, errors } = await validate(ctx, resolved);
+      const resolved =
+        cachedResolvedInput || (await operator.resolveInput(ctx));
+      const { invalid } = await validate(ctx, resolved);
       if (invalid) {
         return;
       }
       executor.execute(promptingOperator.params, options);
     },
-    [operator, promptingOperator]
+    [operator, promptingOperator, cachedResolvedInput]
   );
   const close = () => {
     setPromptingOperator(null);
@@ -827,6 +836,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
   const [needsOutput, setNeedsOutput] = useState(false);
   const ctx = useExecutionContext(uri);
   const hooks = operator.useHooks(ctx);
+  const notify = fos.useNotification();
 
   const clear = useCallback(() => {
     setIsExecuting(false);
@@ -870,6 +880,7 @@ export function useOperatorExecutor(uri, handlers: any = {}) {
           handlers.onError?.(e);
           console.error("Error executing operator", operator, ctx);
           console.error(e);
+          notify({ msg: e.message, variant: "error" });
         }
       }
       setHasExecuted(true);
